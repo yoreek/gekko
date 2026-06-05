@@ -42,7 +42,11 @@ private:
         CredentialsFailed,
     };
 
-    void handleCredentials(const char* ssid, const char* password);
+    void handleCredentials(const char* ssid, const char* password, uint32_t now);
+    void runLifecyclePolicy(uint32_t now);
+    void handleReentryRequest(uint32_t now);
+    bool autoStartEligible() const;
+    bool shouldAutoStart() const;
     void startSession(uint32_t now, bool forceBleTransport);
     void finishSession(uint32_t now, const char* reason, PState terminalState);
     void postEvent(PendingEvent event, const char* ssid = nullptr, const char* password = nullptr);

@@ -2,6 +2,7 @@
 #include "config/MemoryConfigStorage.h"
 #include "core/Clock.h"
 #include "core/StateMachine.h"
+#include "platform/ArduinoOtaService.h"
 #include "portal/PortalAssets.h"
 #include "provisioning/MobileProvisioning.h"
 #include "provisioning/ProvisioningCoordinator.h"
@@ -14,6 +15,10 @@ using namespace ewfm;
 
 class FakeWifiDriver final : public IWifiDriver {
 public:
+    bool begin() override {
+        ++beginCalls;
+        return true;
+    }
     bool beginStation(const WiFiCredentials& credentials) override {
         lastCredentials = credentials;
         ++beginStationCalls;
@@ -63,6 +68,7 @@ public:
     WifiDriverStatus statusValue{WifiDriverStatus::Idle};
     WiFiCredentials lastCredentials;
     std::string setupApSsid;
+    int beginCalls{0};
     int beginStationCalls{0};
     int disconnectCalls{0};
     int clearStationCredentialsCalls{0};
@@ -108,6 +114,7 @@ void test_no_credentials_enters_provisioning_fallback() {
     manager.begin(config);
     manager.tick(clock.millis());
 
+    TEST_ASSERT_EQUAL(1, driver.beginCalls);
     TEST_ASSERT_TRUE(manager.provisioningFallback());
     TEST_ASSERT_EQUAL(1, driver.startApCalls);
     TEST_ASSERT_TRUE(driver.setupApSsid.find("ABC123") != std::string::npos);
@@ -254,6 +261,88 @@ void test_provisioning_coordinator_queues_mobile_reentry_request() {
     TEST_ASSERT_FALSE(coordinator.takeMobileProvisioningReentryRequest());
 }
 
+void test_mobile_provisioning_starts_when_credentials_are_missing() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    MemoryConfigStorage storage;
+    ConfigStore store(storage);
+    TEST_ASSERT_TRUE(store.begin());
+    TEST_ASSERT_TRUE(store.load().ok());
+
+    WifiManager manager(driver, clock);
+    manager.begin(store.config());
+    ProvisioningCoordinator coordinator(store, manager);
+    MobileProvisioning provisioning(coordinator, clock);
+    provisioning.begin(store.config());
+
+    provisioning.tick(100);
+
+    TEST_ASSERT_TRUE(provisioning.running());
+}
+
+void test_mobile_provisioning_starts_when_wifi_enters_fallback() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    MemoryConfigStorage storage;
+    ConfigStore store(storage);
+    TEST_ASSERT_TRUE(store.begin());
+    TEST_ASSERT_TRUE(store.load().ok());
+
+    DeviceConfig config = store.config();
+    config.wifi.ssid = "office";
+    config.wifi.password = "secret";
+    config.wifiRuntime.maxConnectRetries = 0;
+    TEST_ASSERT_TRUE(store.save(config).ok());
+
+    WifiManager manager(driver, clock);
+    manager.begin(store.config());
+    ProvisioningCoordinator coordinator(store, manager);
+    MobileProvisioning provisioning(coordinator, clock);
+    provisioning.begin(store.config());
+
+    manager.tick(100);
+    provisioning.tick(100);
+    TEST_ASSERT_FALSE(provisioning.running());
+
+    driver.statusValue = WifiDriverStatus::Failed;
+    manager.tick(101);
+    TEST_ASSERT_TRUE(manager.provisioningFallback());
+
+    provisioning.tick(101);
+    TEST_ASSERT_TRUE(provisioning.running());
+}
+
+void test_mobile_provisioning_reentry_resets_credentials_and_restarts_ble() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    MemoryConfigStorage storage;
+    ConfigStore store(storage);
+    TEST_ASSERT_TRUE(store.begin());
+    TEST_ASSERT_TRUE(store.load().ok());
+
+    DeviceConfig config = store.config();
+    config.wifi.ssid = "office";
+    config.wifi.password = "secret";
+    config.provisioning.mobileBleTransport = false;
+    TEST_ASSERT_TRUE(store.save(config).ok());
+
+    WifiManager manager(driver, clock);
+    manager.begin(store.config());
+    ProvisioningCoordinator coordinator(store, manager);
+    MobileProvisioning provisioning(coordinator, clock);
+    provisioning.begin(store.config());
+
+    TEST_ASSERT_TRUE(coordinator.requestMobileProvisioningReentry());
+    provisioning.tick(200);
+
+    TEST_ASSERT_FALSE(store.config().wifi.hasCredentials());
+    TEST_ASSERT_FALSE(manager.credentials().hasCredentials());
+    TEST_ASSERT_TRUE(manager.provisioningFallback());
+    TEST_ASSERT_TRUE(provisioning.running());
+    TEST_ASSERT_EQUAL(1, driver.clearStationCredentialsCalls);
+    TEST_ASSERT_EQUAL(1, driver.startApCalls);
+}
+
 void test_mobile_provisioning_timeout_uses_supplied_timestamp() {
     ManualClock clock;
     FakeWifiDriver driver;
@@ -268,9 +357,12 @@ void test_mobile_provisioning_timeout_uses_supplied_timestamp() {
     MobileProvisioning provisioning(coordinator, clock);
 
     DeviceConfig config = store.config();
+    config.wifi.ssid = "office";
     config.provisioning.sessionTimeoutMs = 10;
+    TEST_ASSERT_TRUE(store.save(config).ok());
 
-    provisioning.begin(config);
+    manager.begin(store.config());
+    provisioning.begin(store.config());
     provisioning.start(100);
     provisioning.tick(109);
     TEST_ASSERT_TRUE(provisioning.running());
@@ -324,10 +416,33 @@ void test_mobile_provisioning_restart_after_timeout_is_allowed() {
     provisioning.begin(config);
     provisioning.start(100);
     provisioning.tick(111);
-    TEST_ASSERT_TRUE(provisioning.timedOut());
-
-    provisioning.start(112);
     TEST_ASSERT_TRUE(provisioning.running());
+    TEST_ASSERT_EQUAL_UINT32(111, provisioning.stateUpdated());
+}
+
+void test_arduino_ota_starts_after_wifi_connects() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    WifiManager manager(driver, clock);
+    DeviceConfig config = defaultConfig();
+    config.wifi.ssid = "office";
+    config.wifi.password = "secret";
+
+    manager.begin(config);
+    ArduinoOtaService ota;
+    ota.begin(config.deviceName, manager);
+
+    ota.tick(100);
+    TEST_ASSERT_FALSE(ota.started());
+
+    manager.tick(100);
+    ota.tick(100);
+    TEST_ASSERT_FALSE(ota.started());
+
+    driver.statusValue = WifiDriverStatus::Connected;
+    manager.tick(101);
+    ota.tick(101);
+    TEST_ASSERT_TRUE(ota.started());
 }
 
 void test_portal_html_exposes_provisioning_reentry_action() {
@@ -387,9 +502,13 @@ int main(int, char**) {
     RUN_TEST(test_provisioning_coordinator_rejects_oversized_http_credentials);
     RUN_TEST(test_provisioning_coordinator_reset_clears_credentials_and_starts_softap);
     RUN_TEST(test_provisioning_coordinator_queues_mobile_reentry_request);
+    RUN_TEST(test_mobile_provisioning_starts_when_credentials_are_missing);
+    RUN_TEST(test_mobile_provisioning_starts_when_wifi_enters_fallback);
+    RUN_TEST(test_mobile_provisioning_reentry_resets_credentials_and_restarts_ble);
     RUN_TEST(test_mobile_provisioning_timeout_uses_supplied_timestamp);
     RUN_TEST(test_mobile_provisioning_restart_ble_keeps_session_active);
     RUN_TEST(test_mobile_provisioning_restart_after_timeout_is_allowed);
+    RUN_TEST(test_arduino_ota_starts_after_wifi_connects);
     RUN_TEST(test_portal_html_exposes_provisioning_reentry_action);
     RUN_TEST(test_state_machine_stack_and_return_to_popped_state);
     RUN_TEST(test_state_machine_pause_restart_and_updated_flag);

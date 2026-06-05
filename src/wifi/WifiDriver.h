@@ -35,6 +35,7 @@ struct WifiNetwork {
 class IWifiDriver {
 public:
     virtual ~IWifiDriver() = default;
+    virtual bool begin() = 0;
     virtual bool beginStation(const WiFiCredentials& credentials) = 0;
     virtual void disconnect() = 0;
     virtual void clearStationCredentials() = 0;

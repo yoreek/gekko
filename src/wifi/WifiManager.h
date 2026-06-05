@@ -14,8 +14,11 @@ public:
     void begin(const DeviceConfig& config);
     void tick(uint32_t now);
     void connect(const WiFiCredentials& credentials);
+    void connectAt(const WiFiCredentials& credentials, uint32_t now);
     void enterProvisioningFallback();
+    void enterProvisioningFallbackAt(uint32_t now);
     void clearCredentials();
+    void clearCredentialsAt(uint32_t now);
 
     bool connected() const {
         return is((PState)&WifiManager::Connected);
@@ -38,8 +41,6 @@ private:
     void Connecting();
     void Connected();
     void ProvisioningFallback();
-    void connectAt(const WiFiCredentials& credentials, uint32_t now);
-    void enterProvisioningFallbackAt(uint32_t now);
     void startProvisioningFallbackAt(uint32_t now);
     void retryConnection(uint32_t now, const char* reason);
     bool retriesExhausted() const;

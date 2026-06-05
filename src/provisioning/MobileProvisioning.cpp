@@ -136,6 +136,49 @@ void MobileProvisioning::finishSession(uint32_t now, const char* reason, PState 
 
 void MobileProvisioning::tick(uint32_t now) {
     loop(now);
+    runLifecyclePolicy(now);
+}
+
+void MobileProvisioning::runLifecyclePolicy(uint32_t now) {
+    if (!config_.provisioning.mobileProvisioningEnabled) {
+        return;
+    }
+
+    if (coordinator_.takeMobileProvisioningReentryRequest()) {
+        handleReentryRequest(now);
+        return;
+    }
+
+    if (!shouldAutoStart()) {
+        return;
+    }
+
+    EWFM_APP_LOG_DEBUG("starting mobile provisioning");
+    startSession(now, false);
+}
+
+void MobileProvisioning::handleReentryRequest(uint32_t now) {
+    EWFM_APP_LOG_INFO("PROV_REENTER handling");
+    EWFM_APP_LOG_INFO("PROV_REENTER clearing wifi credentials and switching to provisioning fallback");
+    coordinator_.resetWifiCredentialsAt(now);
+    restartBle(now);
+}
+
+bool MobileProvisioning::autoStartEligible() const {
+    return idle() || succeeded() || timedOut();
+}
+
+bool MobileProvisioning::shouldAutoStart() const {
+    if (running() || !autoStartEligible()) {
+        return false;
+    }
+
+    const bool missingCredentials = !coordinator_.hasWifiCredentials();
+    if (missingCredentials && (idle() || timedOut())) {
+        return true;
+    }
+
+    return coordinator_.wifiProvisioningFallback();
 }
 
 SM_STATE(Disabled) {}
@@ -153,7 +196,7 @@ SM_STATE(Running) {
     if (takePendingEvent(event, ssid, sizeof(ssid), password, sizeof(password))) {
         switch (event) {
         case PendingEvent::CredentialsReceived:
-            handleCredentials(ssid, password);
+            handleCredentials(ssid, password, uptime());
             return;
         case PendingEvent::CredentialsSucceeded:
             finishSession(uptime(), "succeeded", (PState)&MobileProvisioning::Succeeded);
@@ -177,7 +220,7 @@ SM_STATE(Failed) {}
 
 SM_STATE(TimedOut) {}
 
-void MobileProvisioning::handleCredentials(const char* ssid, const char* password) {
+void MobileProvisioning::handleCredentials(const char* ssid, const char* password, uint32_t now) {
     WiFiCredentials credentials;
     if (ssid != nullptr) {
         credentials.ssid = ssid;
@@ -185,12 +228,12 @@ void MobileProvisioning::handleCredentials(const char* ssid, const char* passwor
     if (password != nullptr) {
         credentials.password = password;
     }
-    ProvisioningResult result = coordinator_.submitWifiCredentials(credentials);
+    ProvisioningResult result = coordinator_.submitWifiCredentialsAt(credentials, now);
     if (result != ProvisioningResult::Accepted) {
-        finishSession(uptime(), "credentials_rejected", (PState)&MobileProvisioning::Failed);
+        finishSession(now, "credentials_rejected", (PState)&MobileProvisioning::Failed);
         return;
     }
-    finishSession(uptime(), "credentials_accepted", (PState)&MobileProvisioning::Succeeded);
+    finishSession(now, "credentials_accepted", (PState)&MobileProvisioning::Succeeded);
 }
 
 void MobileProvisioning::postEvent(PendingEvent event, const char* ssid, const char* password) {

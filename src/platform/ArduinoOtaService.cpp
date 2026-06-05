@@ -26,33 +26,47 @@ void onOtaError(ota_error_t error) {
 
 namespace ewfm {
 
-void ArduinoOtaService::begin(const std::string& hostname) {
-#if defined(ARDUINO) && !defined(UNIT_TEST) && defined(WITH_ARDUINO_OTA)
+void ArduinoOtaService::begin(const std::string& hostname, const WifiManager& wifiManager) {
     if (started_) {
         return;
     }
 
     hostname_ = hostname;
+    wifiManager_ = &wifiManager;
+    configured_ = true;
+}
+
+void ArduinoOtaService::tick(uint32_t now) {
+    (void)now;
+    if (!configured_ || wifiManager_ == nullptr) {
+        return;
+    }
+
+    if (!started_ && wifiManager_->connected()) {
+        start();
+    }
+
+#if defined(ARDUINO) && !defined(UNIT_TEST) && defined(WITH_ARDUINO_OTA)
+    if (started_) {
+        ArduinoOTA.handle();
+    }
+#endif
+}
+
+void ArduinoOtaService::start() {
+    if (started_) {
+        return;
+    }
+
+#if defined(ARDUINO) && !defined(UNIT_TEST) && defined(WITH_ARDUINO_OTA)
     ArduinoOTA.setHostname(hostname_.c_str());
     ArduinoOTA.onStart(onOtaStart);
     ArduinoOTA.onEnd(onOtaEnd);
     ArduinoOTA.onProgress(onOtaProgress);
     ArduinoOTA.onError(onOtaError);
     ArduinoOTA.begin();
+#endif
     started_ = true;
-#else
-    (void)hostname;
-#endif
-}
-
-void ArduinoOtaService::tick() {
-#if defined(ARDUINO) && !defined(UNIT_TEST) && defined(WITH_ARDUINO_OTA)
-    if (!started_) {
-        return;
-    }
-
-    ArduinoOTA.handle();
-#endif
 }
 
 } // namespace ewfm

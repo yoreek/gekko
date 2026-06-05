@@ -21,10 +21,6 @@ public:
     void tick();
 
 private:
-    void startMobileProvisioning(uint32_t now);
-    void restartMobileProvisioningBle(uint32_t now);
-    void tickDevOta();
-
     ArduinoClock clock_;
     PreferencesConfigStorage storage_;
     ArduinoWifiDriver wifiDriver_;

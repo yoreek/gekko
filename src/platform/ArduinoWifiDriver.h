@@ -6,6 +6,7 @@ namespace ewfm {
 
 class ArduinoWifiDriver final : public IWifiDriver {
 public:
+    bool begin() override;
     bool beginStation(const WiFiCredentials& credentials) override;
     void disconnect() override;
     void clearStationCredentials() override;

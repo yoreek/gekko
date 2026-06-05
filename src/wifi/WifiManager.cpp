@@ -10,6 +10,7 @@ namespace ewfm {
 WifiManager::WifiManager(IWifiDriver& driver, IClock& clock) : StateMachine((PState)&WifiManager::Idle), driver_(driver), clock_(clock) {}
 
 void WifiManager::begin(const DeviceConfig& config) {
+    driver_.begin();
     config_ = config;
     credentials_ = config.wifi;
     retryCount_ = 0;
@@ -46,12 +47,16 @@ void WifiManager::startProvisioningFallbackAt(uint32_t now) {
 }
 
 void WifiManager::clearCredentials() {
+    clearCredentialsAt(clock_.millis());
+}
+
+void WifiManager::clearCredentialsAt(uint32_t now) {
     credentials_ = {};
     retryCount_ = 0;
     nextRetryAt_ = 0;
     stationIpLogged_ = false;
     driver_.clearStationCredentials();
-    startProvisioningFallbackAt(clock_.millis());
+    startProvisioningFallbackAt(now);
 }
 
 void WifiManager::tick(uint32_t now) {

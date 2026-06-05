@@ -6,6 +6,14 @@
 
 namespace ewfm {
 
+bool ArduinoWifiDriver::begin() {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return WiFi.mode(WIFI_STA);
+#else
+    return false;
+#endif
+}
+
 bool ArduinoWifiDriver::beginStation(const WiFiCredentials& credentials) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     if (WiFi.status() == WL_CONNECTED) {

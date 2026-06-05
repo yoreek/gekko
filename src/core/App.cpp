@@ -33,14 +33,17 @@ bool App::begin() {
     const uint32_t now = clock_.millis();
     wifiManager_.begin(config);
     mobileProvisioning_.begin(config);
+#if defined(WITH_ARDUINO_OTA)
+    otaService_.begin(config.deviceName, wifiManager_);
+#endif
 
     wifiManager_.tick(now);
     mobileProvisioning_.tick(now);
     portalServer_.begin();
-
-    if (!config.wifi.hasCredentials()) {
-        startMobileProvisioning(now);
-    }
+    portalServer_.tick(now);
+#if defined(WITH_ARDUINO_OTA)
+    otaService_.tick(now);
+#endif
 
     return true;
 }
@@ -51,47 +54,8 @@ void App::tick() {
     wifiManager_.tick(now);
     mobileProvisioning_.tick(now);
     portalServer_.tick(now);
-    tickDevOta();
-
-    if (provisioningCoordinator_.takeMobileProvisioningReentryRequest()) {
-        restartMobileProvisioningBle(now);
-        return;
-    }
-
-    const DeviceConfig& config = configStore_.config();
-    const bool autoStartEligible = mobileProvisioning_.idle() || mobileProvisioning_.succeeded() || mobileProvisioning_.timedOut();
-    if (!mobileProvisioning_.running()) {
-        if (!config.wifi.hasCredentials() && mobileProvisioning_.idle()) {
-            startMobileProvisioning(now);
-            return;
-        }
-        if (wifiManager_.provisioningFallback() && autoStartEligible) {
-            startMobileProvisioning(now);
-        }
-    }
-}
-
-void App::startMobileProvisioning(uint32_t now) {
-    const DeviceConfig& config = configStore_.config();
-    EWFM_APP_LOG_DEBUG("starting mobile provisioning");
-    if (config.provisioning.mobileProvisioningEnabled) {
-        mobileProvisioning_.start(now);
-    }
-}
-
-void App::restartMobileProvisioningBle(uint32_t now) {
-    EWFM_APP_LOG_INFO("PROV_REENTER handling");
-    EWFM_APP_LOG_INFO("PROV_REENTER clearing wifi credentials and switching to provisioning fallback");
-    provisioningCoordinator_.resetWifiCredentials();
-    mobileProvisioning_.restartBle(now);
-}
-
-void App::tickDevOta() {
 #if defined(WITH_ARDUINO_OTA)
-    if (!otaService_.started() && wifiManager_.connected()) {
-        otaService_.begin(configStore_.config().deviceName);
-    }
-    otaService_.tick();
+    otaService_.tick(now);
 #endif
 }
 
