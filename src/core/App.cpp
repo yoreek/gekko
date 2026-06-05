@@ -51,6 +51,7 @@ void App::tick() {
     wifiManager_.tick(now);
     mobileProvisioning_.tick(now);
     portalServer_.tick(now);
+    tickDevOta();
 
     if (provisioningCoordinator_.takeMobileProvisioningReentryRequest()) {
         restartMobileProvisioningBle(now);
@@ -58,7 +59,7 @@ void App::tick() {
     }
 
     const DeviceConfig& config = configStore_.config();
-    const bool autoStartEligible = mobileProvisioning_.idle() || mobileProvisioning_.succeeded();
+    const bool autoStartEligible = mobileProvisioning_.idle() || mobileProvisioning_.succeeded() || mobileProvisioning_.timedOut();
     if (!mobileProvisioning_.running()) {
         if (!config.wifi.hasCredentials() && mobileProvisioning_.idle()) {
             startMobileProvisioning(now);
@@ -83,6 +84,15 @@ void App::restartMobileProvisioningBle(uint32_t now) {
     EWFM_APP_LOG_INFO("PROV_REENTER clearing wifi credentials and switching to provisioning fallback");
     provisioningCoordinator_.resetWifiCredentials();
     mobileProvisioning_.restartBle(now);
+}
+
+void App::tickDevOta() {
+#if defined(WITH_ARDUINO_OTA)
+    if (!otaService_.started() && wifiManager_.connected()) {
+        otaService_.begin(configStore_.config().deviceName);
+    }
+    otaService_.tick();
+#endif
 }
 
 } // namespace ewfm

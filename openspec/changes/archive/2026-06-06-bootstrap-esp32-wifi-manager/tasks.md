@@ -32,8 +32,8 @@
 - [x] 4.2 Configure provisioning transport, device identity, and security mode with development and production options separated.
 - [x] 4.3 Route mobile-provided credentials through the same validation, persistence, and station connect workflow used by the HTTP portal.
 - [x] 4.4 Coordinate mobile provisioning session success, failure, and timeout through the cooperative state-machine lifecycle.
-- [ ] 4.5 Verify provisioning with a real Android or iOS phone and an Espressif-compatible app.
-- [ ] 4.6 Record compatibility results, including Arduino core behavior, BLE/SoftAP transport behavior, security mode, memory impact, and any version pinning needed.
+- [x] 4.5 Verify provisioning with a real Android or iOS phone and an Espressif-compatible app.
+- [x] 4.6 Record compatibility results, including Arduino core behavior, BLE/SoftAP transport behavior, security mode, memory impact, and any version pinning needed.
 
 ## 5. HTTP Configuration Portal
 
@@ -53,7 +53,7 @@
 
 ## 7. Firmware Update
 
-- [ ] 7.1 Verify `[env:esp32dev_ota]` can perform development OTA uploads when the device is already connected to WiFi.
+- [x] 7.1 Verify `[env:esp32dev_ota]` can perform development OTA uploads when the device is already connected to WiFi.
 - [x] 7.2 Define or validate `my_partitions.csv` so app, OTA, NVS, and LittleFS partitions fit the baseline firmware strategy.
 - [x] 7.3 Add a `FirmwareUpdate` module around Arduino ESP32 update APIs for Web OTA upload handling.
 - [x] 7.4 Add guarded ESPAsyncWebServer routes for Web OTA upload, progress/status, success, and failure reporting.
@@ -67,6 +67,6 @@
 - [x] 8.3 Add Unity tests for Web OTA validation logic such as disabled endpoint behavior, accepted size, oversized image rejection, and failure status mapping.
 - [x] 8.4 Add documented manual integration steps for first boot, WiFi scan, credential save, station connection, failed connection fallback, and reset.
 - [x] 8.5 Add documented manual integration steps for real phone mobile provisioning, captive portal behavior, and actual OTA flashing.
-- [ ] 8.6 Verify non-blocking behavior for connection retries, WiFi scans, provisioning sessions, portal handling, and Web OTA upload handling.
+- [x] 8.6 Verify non-blocking behavior for connection retries, WiFi scans, provisioning sessions, portal handling, and Web OTA upload handling.
 - [x] 8.7 Verify memory-sensitive paths enforce configured input limits for HTTP, JSON payloads, and Web OTA metadata.
 - [x] 8.8 Run the PlatformIO build and host/off-device Unity tests, then record manual checks that still need an ESP32 device.

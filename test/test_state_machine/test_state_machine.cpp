@@ -304,6 +304,32 @@ void test_mobile_provisioning_restart_ble_keeps_session_active() {
     TEST_ASSERT_TRUE(provisioning.running());
 }
 
+void test_mobile_provisioning_restart_after_timeout_is_allowed() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    MemoryConfigStorage storage;
+    ConfigStore store(storage);
+    TEST_ASSERT_TRUE(store.begin());
+    TEST_ASSERT_TRUE(store.load().ok());
+
+    WifiManager manager(driver, clock);
+    manager.begin(store.config());
+    ProvisioningCoordinator coordinator(store, manager);
+    MobileProvisioning provisioning(coordinator, clock);
+
+    DeviceConfig config = store.config();
+    config.provisioning.mobileProvisioningEnabled = true;
+    config.provisioning.sessionTimeoutMs = 10;
+
+    provisioning.begin(config);
+    provisioning.start(100);
+    provisioning.tick(111);
+    TEST_ASSERT_TRUE(provisioning.timedOut());
+
+    provisioning.start(112);
+    TEST_ASSERT_TRUE(provisioning.running());
+}
+
 void test_portal_html_exposes_provisioning_reentry_action() {
     const char* html = portalHtml();
     TEST_ASSERT_NOT_NULL(strstr(html, "/api/provisioning/reenter"));
@@ -363,6 +389,7 @@ int main(int, char**) {
     RUN_TEST(test_provisioning_coordinator_queues_mobile_reentry_request);
     RUN_TEST(test_mobile_provisioning_timeout_uses_supplied_timestamp);
     RUN_TEST(test_mobile_provisioning_restart_ble_keeps_session_active);
+    RUN_TEST(test_mobile_provisioning_restart_after_timeout_is_allowed);
     RUN_TEST(test_portal_html_exposes_provisioning_reentry_action);
     RUN_TEST(test_state_machine_stack_and_return_to_popped_state);
     RUN_TEST(test_state_machine_pause_restart_and_updated_flag);

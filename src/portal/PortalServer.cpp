@@ -77,15 +77,23 @@ private:
             return;
         }
 
+        if (!wifiDriver_.setupApActive()) {
+            if (dns_) {
+                dns_->stop();
+                dns_.reset();
+                EWFM_PORTAL_LOG_INFO("portal dns stopped");
+            }
+            return;
+        }
+
         const IPAddress apIp = parseIp(wifiDriver_.setupApIp());
-        const bool apActive = apIp != IPAddress(0, 0, 0, 0);
-        if (apActive && !dns_) {
+        if (apIp != IPAddress(0, 0, 0, 0) && !dns_) {
             dns_ = std::make_unique<DNSServer>();
             dns_->start(53, "*", apIp);
             EWFM_PORTAL_LOG_INFO("portal dns started");
             return;
         }
-        if (!apActive && dns_) {
+        if (apIp == IPAddress(0, 0, 0, 0) && dns_) {
             dns_->stop();
             dns_.reset();
             EWFM_PORTAL_LOG_INFO("portal dns stopped");
