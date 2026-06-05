@@ -1,11 +1,15 @@
 #include "portal/PortalResponses.h"
 
+#if defined(ARDUINO) && !defined(UNIT_TEST)
 #include <ArduinoJson.h>
+#include <ESPAsyncWebServer.h>
+#endif
 
 namespace ewfm {
 
-std::string wifiScanResponseJson(const std::vector<WifiNetwork>& networks) {
-    DynamicJsonDocument doc(2048);
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+void writeWifiScanResponseJson(::AsyncResponseStream& out, const std::vector<WifiNetwork>& networks) {
+    StaticJsonDocument<2048> doc;
     JsonArray array = doc.createNestedArray("networks");
 
     for (const auto& network : networks) {
@@ -15,20 +19,30 @@ std::string wifiScanResponseJson(const std::vector<WifiNetwork>& networks) {
         item["channel"] = network.channel;
     }
 
-    std::string payload;
-    serializeJson(doc, payload);
-    return payload;
+    serializeJson(doc, out);
 }
 
-std::string otaStatusResponseJson(size_t freeSketchSpace, bool hasError) {
-    DynamicJsonDocument doc(256);
+void writeOtaStatusResponseJson(::AsyncResponseStream& out, size_t freeSketchSpace, bool hasError) {
+    StaticJsonDocument<128> doc;
     doc["enabled"] = true;
     doc["free_sketch_space"] = freeSketchSpace;
     doc["has_error"] = hasError;
 
-    std::string payload;
-    serializeJson(doc, payload);
-    return payload;
+    serializeJson(doc, out);
 }
+#else
+class AsyncResponseStream;
+
+void writeWifiScanResponseJson(::AsyncResponseStream& out, const std::vector<WifiNetwork>& networks) {
+    (void)out;
+    (void)networks;
+}
+
+void writeOtaStatusResponseJson(::AsyncResponseStream& out, size_t freeSketchSpace, bool hasError) {
+    (void)out;
+    (void)freeSketchSpace;
+    (void)hasError;
+}
+#endif
 
 } // namespace ewfm

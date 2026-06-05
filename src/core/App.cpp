@@ -30,45 +30,51 @@ bool App::begin() {
     }
 
     const DeviceConfig& config = configStore_.config();
+    const uint32_t now = clock_.millis();
     wifiManager_.begin(config);
     mobileProvisioning_.begin(config);
 
+    wifiManager_.tick(now);
+    mobileProvisioning_.tick(now);
+
     if (!config.wifi.hasCredentials()) {
-        startProvisioningServices();
+        startProvisioningServices(now);
     }
 
     return true;
 }
 
 void App::tick() {
-    wifiManager_.tick();
-    mobileProvisioning_.tick();
-    portalServer_.tick();
+    const uint32_t now = clock_.millis();
 
-    if (wifiManager_.state() == WifiManagerState::ProvisioningFallback && !provisioningServicesRunning_) {
-        startProvisioningServices();
+    wifiManager_.tick(now);
+    mobileProvisioning_.tick(now);
+    portalServer_.tick(now);
+
+    if (wifiManager_.provisioningFallback() && !provisioningServicesRunning_) {
+        startProvisioningServices(now);
     }
     if (wifiManager_.connected() && provisioningServicesRunning_) {
-        stopProvisioningServices();
+        stopProvisioningServices(now);
     }
 }
 
-void App::startProvisioningServices() {
+void App::startProvisioningServices(uint32_t now) {
     const DeviceConfig& config = configStore_.config();
     EWFM_APP_LOG_DEBUG("starting provisioning services");
     if (config.provisioning.httpPortalEnabled) {
         portalServer_.begin();
     }
     if (config.provisioning.mobileProvisioningEnabled) {
-        mobileProvisioning_.start();
+        mobileProvisioning_.start(now);
     }
     provisioningServicesRunning_ = true;
 }
 
-void App::stopProvisioningServices() {
+void App::stopProvisioningServices(uint32_t now) {
     EWFM_APP_LOG_DEBUG("stopping provisioning services");
     portalServer_.end();
-    mobileProvisioning_.stop();
+    mobileProvisioning_.stop(now);
     provisioningServicesRunning_ = false;
 }
 

@@ -35,8 +35,9 @@ void WifiPortalRoutes::handleScan(AsyncWebServerRequest* request) {
     }
 
     scanStarted_ = false;
-    const std::string payload = wifiScanResponseJson(networks);
-    request->send(200, "application/json", payload.c_str());
+    AsyncResponseStream* response = request->beginResponseStream("application/json");
+    writeWifiScanResponseJson(*response, networks);
+    request->send(response);
 }
 
 void WifiPortalRoutes::handleConfigure(AsyncWebServerRequest* request) {

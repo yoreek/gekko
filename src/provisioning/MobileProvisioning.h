@@ -5,39 +5,56 @@
 #include "core/StateMachine.h"
 #include "provisioning/ProvisioningCoordinator.h"
 
-#include <string>
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+#include <Arduino.h>
+#endif
 
 namespace ewfm {
 
-enum class MobileProvisioningState {
-    Disabled,
-    Idle,
-    Running,
-    Succeeded,
-    Failed,
-    TimedOut,
-};
-
-class MobileProvisioning {
+class MobileProvisioning : public StateMachine {
 public:
     MobileProvisioning(ProvisioningCoordinator& coordinator, IClock& clock);
 
     void begin(const DeviceConfig& config);
-    void start();
-    void stop();
-    void tick();
+    void start(uint32_t now);
+    void stop(uint32_t now);
+    void tick(uint32_t now);
 
-    MobileProvisioningState state() const {
-        return state_.state();
+    bool running() const {
+        return is((PState)&MobileProvisioning::Running);
+    }
+    bool timedOut() const {
+        return is((PState)&MobileProvisioning::TimedOut);
     }
 
 private:
+    enum class PendingEvent {
+        None,
+        CredentialsReceived,
+        CredentialsSucceeded,
+        CredentialsFailed,
+    };
+
     void handleCredentials(const char* ssid, const char* password);
+    void postEvent(PendingEvent event, const char* ssid = nullptr, const char* password = nullptr);
+    bool takePendingEvent(PendingEvent& event, char* ssid, size_t ssidSize, char* password, size_t passwordSize);
+    void Disabled();
+    void Idle();
+    void Running();
+    void Succeeded();
+    void Failed();
+    void TimedOut();
 
     ProvisioningCoordinator& coordinator_;
     IClock& clock_;
     DeviceConfig config_;
-    StateMachine<MobileProvisioningState> state_{MobileProvisioningState::Idle};
+
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    char pendingSsid_[kMaxSsidLength + 1]{};
+    char pendingPassword_[kMaxPasswordLength + 1]{};
+    PendingEvent pendingEvent_{PendingEvent::None};
+    portMUX_TYPE pendingMutex_ = portMUX_INITIALIZER_UNLOCKED;
+#endif
 };
 
 } // namespace ewfm

@@ -1,6 +1,8 @@
 #include "config/ConfigStore.h"
 #include "config/MemoryConfigStorage.h"
 #include "core/Clock.h"
+#include "core/StateMachine.h"
+#include "provisioning/MobileProvisioning.h"
 #include "provisioning/ProvisioningCoordinator.h"
 #include "wifi/WifiManager.h"
 
@@ -52,6 +54,32 @@ public:
     int stopApCalls{0};
 };
 
+#undef SM_CLASS
+#define SM_CLASS TestMachine
+class TestMachine : public StateMachine {
+public:
+    TestMachine() : StateMachine((PState)&TestMachine::Idle) {}
+
+    void requestRun() {
+        runRequested = true;
+    }
+
+    State Idle() {
+        if (runRequested) {
+            SM_GOTO(Running);
+        }
+    }
+    State Running() {
+        if (isTimeout(10)) {
+            SM_GOTO(TimedOut);
+        }
+    }
+    State TimedOut() {}
+
+    bool runRequested{false};
+};
+#undef SM_CLASS
+
 void test_no_credentials_enters_provisioning_fallback() {
     ManualClock clock;
     FakeWifiDriver driver;
@@ -59,8 +87,9 @@ void test_no_credentials_enters_provisioning_fallback() {
     DeviceConfig config = defaultConfig();
 
     manager.begin(config);
+    manager.tick(clock.millis());
 
-    TEST_ASSERT_EQUAL(static_cast<int>(WifiManagerState::ProvisioningFallback), static_cast<int>(manager.state()));
+    TEST_ASSERT_TRUE(manager.provisioningFallback());
     TEST_ASSERT_EQUAL(1, driver.startApCalls);
     TEST_ASSERT_TRUE(driver.setupApSsid.find("ABC123") != std::string::npos);
 }
@@ -74,8 +103,9 @@ void test_credentials_start_station_connect() {
     config.wifi.password = "secret";
 
     manager.begin(config);
+    manager.tick(clock.millis());
 
-    TEST_ASSERT_EQUAL(static_cast<int>(WifiManagerState::Connecting), static_cast<int>(manager.state()));
+    TEST_ASSERT_TRUE(manager.connecting());
     TEST_ASSERT_EQUAL(1, driver.beginStationCalls);
 }
 
@@ -87,8 +117,9 @@ void test_connection_success_stops_setup_ap() {
     config.wifi.ssid = "office";
 
     manager.begin(config);
+    manager.tick(clock.millis());
     driver.statusValue = WifiDriverStatus::Connected;
-    manager.tick();
+    manager.tick(clock.millis());
 
     TEST_ASSERT_TRUE(manager.connected());
     TEST_ASSERT_EQUAL(1, driver.stopApCalls);
@@ -104,14 +135,15 @@ void test_failed_connection_retries_and_falls_back() {
     config.wifiRuntime.retryDelayMs = 10;
 
     manager.begin(config);
+    manager.tick(clock.millis());
     driver.statusValue = WifiDriverStatus::Failed;
-    manager.tick();
+    manager.tick(clock.millis());
     TEST_ASSERT_EQUAL(1, manager.retryCount());
 
     clock.advance(20);
     driver.statusValue = WifiDriverStatus::Failed;
-    manager.tick();
-    TEST_ASSERT_EQUAL(static_cast<int>(WifiManagerState::ProvisioningFallback), static_cast<int>(manager.state()));
+    manager.tick(clock.millis());
+    TEST_ASSERT_TRUE(manager.provisioningFallback());
 }
 
 void test_connection_timeout_retry_resets_state_timer() {
@@ -125,15 +157,16 @@ void test_connection_timeout_retry_resets_state_timer() {
     config.wifiRuntime.maxConnectRetries = 3;
 
     manager.begin(config);
+    manager.tick(clock.millis());
     TEST_ASSERT_EQUAL(1, driver.beginStationCalls);
 
     clock.advance(11);
-    manager.tick();
+    manager.tick(clock.millis());
     TEST_ASSERT_EQUAL(2, driver.beginStationCalls);
     TEST_ASSERT_EQUAL(1, manager.retryCount());
 
     clock.advance(1);
-    manager.tick();
+    manager.tick(clock.millis());
     TEST_ASSERT_EQUAL(2, driver.beginStationCalls);
     TEST_ASSERT_EQUAL(1, manager.retryCount());
 }
@@ -158,40 +191,69 @@ void test_provisioning_coordinator_rejects_oversized_http_credentials() {
     TEST_ASSERT_EQUAL(0, driver.beginStationCalls);
 }
 
-void test_state_machine_stack_and_return_to_popped_state() {
-    StateMachine<WifiManagerState> sm(WifiManagerState::Idle);
-    TEST_ASSERT_TRUE(sm.push(WifiManagerState::Connected));
-    sm.transitionTo(WifiManagerState::Connecting, 10);
+void test_mobile_provisioning_timeout_uses_supplied_timestamp() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    MemoryConfigStorage storage;
+    ConfigStore store(storage);
+    TEST_ASSERT_TRUE(store.begin());
+    TEST_ASSERT_TRUE(store.load().ok());
 
-    TEST_ASSERT_TRUE(sm.returnToPopped(20));
-    TEST_ASSERT_EQUAL(static_cast<int>(WifiManagerState::Connected), static_cast<int>(sm.state()));
-    TEST_ASSERT_EQUAL_UINT32(20, sm.enteredAt());
+    WifiManager manager(driver, clock);
+    manager.begin(store.config());
+    ProvisioningCoordinator coordinator(store, manager);
+    MobileProvisioning provisioning(coordinator, clock);
+
+    DeviceConfig config = store.config();
+    config.provisioning.sessionTimeoutMs = 10;
+
+    provisioning.begin(config);
+    provisioning.start(100);
+    provisioning.tick(109);
+    TEST_ASSERT_TRUE(provisioning.running());
+
+    provisioning.tick(111);
+    TEST_ASSERT_TRUE(provisioning.timedOut());
+}
+
+void test_state_machine_stack_and_return_to_popped_state() {
+    TestMachine machine;
+    TEST_ASSERT_TRUE(machine.pushState((StateMachine::PState)&TestMachine::TimedOut));
+    machine.transitionTo((StateMachine::PState)&TestMachine::Running, 10);
+
+    TEST_ASSERT_TRUE(machine.returnToPopped(20));
+    TEST_ASSERT_TRUE(machine.is((StateMachine::PState)&TestMachine::TimedOut));
+    TEST_ASSERT_EQUAL_UINT32(20, machine.stateUpdated());
 }
 
 void test_state_machine_pause_restart_and_updated_flag() {
-    StateMachine<WifiManagerState> sm(WifiManagerState::Idle);
-    sm.transitionTo(WifiManagerState::Connecting, 10);
-    TEST_ASSERT_TRUE(sm.isUpdated());
+    TestMachine machine;
+    machine.transitionTo((StateMachine::PState)&TestMachine::Running, 10);
+    TEST_ASSERT_TRUE(machine.isStateUpdated());
 
-    sm.transitionTo(WifiManagerState::Connecting, 20);
-    TEST_ASSERT_FALSE(sm.isUpdated());
+    machine.transitionTo((StateMachine::PState)&TestMachine::Running, 20);
+    TEST_ASSERT_FALSE(machine.isStateUpdated());
 
-    sm.pause();
-    TEST_ASSERT_TRUE(sm.isPaused());
-    sm.restart();
-    TEST_ASSERT_FALSE(sm.isPaused());
+    machine.pause();
+    TEST_ASSERT_TRUE(machine.isPaused());
+    machine.restart();
+    TEST_ASSERT_FALSE(machine.isPaused());
 }
 
 void test_state_machine_timeout_helpers() {
-    StateMachine<WifiManagerState> sm(WifiManagerState::Idle);
+    TestMachine machine;
 
-    sm.transitionTo(WifiManagerState::Connecting, 10);
-    TEST_ASSERT_FALSE(EWFM_SM_TIMEOUT(sm, 19, 10));
-    TEST_ASSERT_TRUE(EWFM_SM_TIMEOUT(sm, 20, 10));
+    machine.transitionTo((StateMachine::PState)&TestMachine::Running, 10);
+    TEST_ASSERT_FALSE(machine.elapsed(19, 10));
+    TEST_ASSERT_TRUE(machine.elapsed(20, 10));
 
-    sm.resetTimer(20);
-    TEST_ASSERT_FALSE(EWFM_SM_TIMEOUT(sm, 29, 10));
-    TEST_ASSERT_TRUE(EWFM_SM_TIMEOUT(sm, 30, 10));
+    machine.loop(10);
+    machine.requestRun();
+    machine.loop(11);
+    TEST_ASSERT_TRUE(machine.is((StateMachine::PState)&TestMachine::Running));
+
+    machine.loop(21);
+    TEST_ASSERT_TRUE(machine.is((StateMachine::PState)&TestMachine::TimedOut));
     TEST_ASSERT_TRUE(EWFM_SM_TIME_REACHED(5, 5));
 }
 
@@ -203,6 +265,7 @@ int main(int, char**) {
     RUN_TEST(test_failed_connection_retries_and_falls_back);
     RUN_TEST(test_connection_timeout_retry_resets_state_timer);
     RUN_TEST(test_provisioning_coordinator_rejects_oversized_http_credentials);
+    RUN_TEST(test_mobile_provisioning_timeout_uses_supplied_timestamp);
     RUN_TEST(test_state_machine_stack_and_return_to_popped_state);
     RUN_TEST(test_state_machine_pause_restart_and_updated_flag);
     RUN_TEST(test_state_machine_timeout_helpers);

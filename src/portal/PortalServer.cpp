@@ -56,7 +56,8 @@ public:
 #endif
     }
 
-    void tick() {
+    void tick(uint32_t now) {
+        (void)now;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
         if (dns_) {
             dns_->processNextRequest();
@@ -88,8 +89,8 @@ void PortalServer::end() {
     impl_->end();
 }
 
-void PortalServer::tick() {
-    impl_->tick();
+void PortalServer::tick(uint32_t now) {
+    impl_->tick(now);
 }
 
 } // namespace ewfm

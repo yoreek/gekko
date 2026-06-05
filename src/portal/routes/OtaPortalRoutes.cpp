@@ -25,8 +25,9 @@ void OtaPortalRoutes::registerRoutes(AsyncWebServer& server) {
 }
 
 void OtaPortalRoutes::handleStatus(AsyncWebServerRequest* request) {
-    const std::string payload = otaStatusResponseJson(ESP.getFreeSketchSpace(), Update.hasError());
-    request->send(200, "application/json", payload.c_str());
+    AsyncResponseStream* response = request->beginResponseStream("application/json");
+    writeOtaStatusResponseJson(*response, ESP.getFreeSketchSpace(), Update.hasError());
+    request->send(response);
 }
 
 void OtaPortalRoutes::handleFinished(AsyncWebServerRequest* request) {

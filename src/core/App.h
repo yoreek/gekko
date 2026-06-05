@@ -20,8 +20,8 @@ public:
     void tick();
 
 private:
-    void startProvisioningServices();
-    void stopProvisioningServices();
+    void startProvisioningServices(uint32_t now);
+    void stopProvisioningServices(uint32_t now);
 
     ArduinoClock clock_;
     PreferencesConfigStorage storage_;

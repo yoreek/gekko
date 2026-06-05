@@ -3,12 +3,13 @@
 #include "wifi/WifiDriver.h"
 
 #include <cstddef>
-#include <string>
 #include <vector>
+
+class AsyncResponseStream;
 
 namespace ewfm {
 
-std::string wifiScanResponseJson(const std::vector<WifiNetwork>& networks);
-std::string otaStatusResponseJson(size_t freeSketchSpace, bool hasError);
+void writeWifiScanResponseJson(::AsyncResponseStream& out, const std::vector<WifiNetwork>& networks);
+void writeOtaStatusResponseJson(::AsyncResponseStream& out, size_t freeSketchSpace, bool hasError);
 
 } // namespace ewfm

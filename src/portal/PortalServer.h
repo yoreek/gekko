@@ -3,6 +3,7 @@
 #include "provisioning/ProvisioningCoordinator.h"
 #include "wifi/WifiDriver.h"
 
+#include <cstdint>
 #include <memory>
 
 namespace ewfm {
@@ -14,7 +15,7 @@ public:
 
     bool begin();
     void end();
-    void tick();
+    void tick(uint32_t now);
 
 private:
     class Impl;
