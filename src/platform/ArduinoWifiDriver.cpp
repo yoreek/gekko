@@ -8,7 +8,11 @@ namespace ewfm {
 
 bool ArduinoWifiDriver::beginStation(const WiFiCredentials& credentials) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    WiFi.mode(WIFI_AP_STA);
+    if (WiFi.status() == WL_CONNECTED) {
+        return true;
+    }
+
+    WiFi.mode(WIFI_STA);
     WiFi.begin(credentials.ssid.c_str(), credentials.password.c_str());
     return true;
 #else
@@ -23,9 +27,16 @@ void ArduinoWifiDriver::disconnect() {
 #endif
 }
 
+void ArduinoWifiDriver::clearStationCredentials() {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    WiFi.disconnect(true, true);
+#endif
+}
+
 bool ArduinoWifiDriver::startSetupAp(const std::string& ssid, const std::string& password) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     WiFi.mode(WIFI_AP_STA);
+    setupApActive_ = true;
     if (password.empty()) {
         return WiFi.softAP(ssid.c_str());
     }
@@ -40,6 +51,7 @@ bool ArduinoWifiDriver::startSetupAp(const std::string& ssid, const std::string&
 void ArduinoWifiDriver::stopSetupAp() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     WiFi.softAPdisconnect(true);
+    setupApActive_ = false;
 #endif
 }
 
@@ -58,6 +70,30 @@ WifiDriverStatus ArduinoWifiDriver::status() const {
     }
 #else
     return WifiDriverStatus::Idle;
+#endif
+}
+
+bool ArduinoWifiDriver::setupApActive() const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return setupApActive_;
+#else
+    return false;
+#endif
+}
+
+std::string ArduinoWifiDriver::stationIp() const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return WiFi.localIP().toString().c_str();
+#else
+    return {};
+#endif
+}
+
+std::string ArduinoWifiDriver::setupApIp() const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return WiFi.softAPIP().toString().c_str();
+#else
+    return {};
 #endif
 }
 

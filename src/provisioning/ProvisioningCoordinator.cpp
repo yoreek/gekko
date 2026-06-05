@@ -24,4 +24,24 @@ void ProvisioningCoordinator::resetWifiCredentials() {
     wifiManager_.clearCredentials();
 }
 
+bool ProvisioningCoordinator::requestMobileProvisioningReentry() {
+    if (!mobileProvisioningEnabled()) {
+        EWFM_PROV_LOG_WARN("mobile provisioning re-entry rejected: disabled");
+        return false;
+    }
+
+    mobileProvisioningReentryRequested_.store(true);
+    EWFM_APP_LOG_INFO("PROV_REENTER requested");
+    EWFM_PROV_LOG_INFO("mobile provisioning re-entry requested");
+    return true;
+}
+
+bool ProvisioningCoordinator::takeMobileProvisioningReentryRequest() {
+    return mobileProvisioningReentryRequested_.exchange(false);
+}
+
+bool ProvisioningCoordinator::mobileProvisioningEnabled() const {
+    return configStore_.config().provisioning.mobileProvisioningEnabled;
+}
+
 } // namespace ewfm

@@ -20,8 +20,8 @@ public:
     void tick();
 
 private:
-    void startProvisioningServices(uint32_t now);
-    void stopProvisioningServices(uint32_t now);
+    void startMobileProvisioning(uint32_t now);
+    void restartMobileProvisioningBle(uint32_t now);
 
     ArduinoClock clock_;
     PreferencesConfigStorage storage_;
@@ -31,7 +31,6 @@ private:
     ProvisioningCoordinator provisioningCoordinator_;
     MobileProvisioning mobileProvisioning_;
     PortalServer portalServer_;
-    bool provisioningServicesRunning_{false};
 };
 
 } // namespace ewfm

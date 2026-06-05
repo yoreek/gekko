@@ -27,15 +27,13 @@ public:
         }
 
         server_ = std::make_unique<AsyncWebServer>(80);
-        dns_ = std::make_unique<DNSServer>();
-        dns_->start(53, "*", WiFi.softAPIP());
-
         homeRoutes_->registerRoutes(*server_);
         wifiRoutes_->registerRoutes(*server_);
         otaRoutes_->registerRoutes(*server_);
 
         server_->begin();
         EWFM_PORTAL_LOG_INFO("portal started");
+        startDnsIfNeeded();
         return true;
 #else
         return false;
@@ -59,6 +57,13 @@ public:
     void tick(uint32_t now) {
         (void)now;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+        if (wifiDriver_.setupApActive()) {
+            startDnsIfNeeded();
+        } else if (dns_) {
+            dns_->stop();
+            dns_.reset();
+            EWFM_PORTAL_LOG_INFO("portal dns stopped");
+        }
         if (dns_) {
             dns_->processNextRequest();
         }
@@ -67,6 +72,34 @@ public:
 
 private:
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+    void startDnsIfNeeded() {
+        if (!server_) {
+            return;
+        }
+
+        const IPAddress apIp = parseIp(wifiDriver_.setupApIp());
+        const bool apActive = apIp != IPAddress(0, 0, 0, 0);
+        if (apActive && !dns_) {
+            dns_ = std::make_unique<DNSServer>();
+            dns_->start(53, "*", apIp);
+            EWFM_PORTAL_LOG_INFO("portal dns started");
+            return;
+        }
+        if (!apActive && dns_) {
+            dns_->stop();
+            dns_.reset();
+            EWFM_PORTAL_LOG_INFO("portal dns stopped");
+        }
+    }
+
+    static IPAddress parseIp(const std::string& value) {
+        IPAddress ip;
+        if (ip.fromString(value.c_str())) {
+            return ip;
+        }
+        return IPAddress(0, 0, 0, 0);
+    }
+
     std::unique_ptr<AsyncWebServer> server_;
     std::unique_ptr<DNSServer> dns_;
 #endif

@@ -16,7 +16,7 @@ bool App::begin() {
     EWFM_APP_LOG_INFO("ESP32 WiFi Manager booting");
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    LittleFS.begin(true);
+    LittleFS.begin(true, "/littlefs", 10, "littlefs");
 #endif
 
     if (!configStore_.begin()) {
@@ -36,9 +36,10 @@ bool App::begin() {
 
     wifiManager_.tick(now);
     mobileProvisioning_.tick(now);
+    portalServer_.begin();
 
     if (!config.wifi.hasCredentials()) {
-        startProvisioningServices(now);
+        startMobileProvisioning(now);
     }
 
     return true;
@@ -51,31 +52,37 @@ void App::tick() {
     mobileProvisioning_.tick(now);
     portalServer_.tick(now);
 
-    if (wifiManager_.provisioningFallback() && !provisioningServicesRunning_) {
-        startProvisioningServices(now);
+    if (provisioningCoordinator_.takeMobileProvisioningReentryRequest()) {
+        restartMobileProvisioningBle(now);
+        return;
     }
-    if (wifiManager_.connected() && provisioningServicesRunning_) {
-        stopProvisioningServices(now);
+
+    const DeviceConfig& config = configStore_.config();
+    const bool autoStartEligible = mobileProvisioning_.idle() || mobileProvisioning_.succeeded();
+    if (!mobileProvisioning_.running()) {
+        if (!config.wifi.hasCredentials() && mobileProvisioning_.idle()) {
+            startMobileProvisioning(now);
+            return;
+        }
+        if (wifiManager_.provisioningFallback() && autoStartEligible) {
+            startMobileProvisioning(now);
+        }
     }
 }
 
-void App::startProvisioningServices(uint32_t now) {
+void App::startMobileProvisioning(uint32_t now) {
     const DeviceConfig& config = configStore_.config();
-    EWFM_APP_LOG_DEBUG("starting provisioning services");
-    if (config.provisioning.httpPortalEnabled) {
-        portalServer_.begin();
-    }
+    EWFM_APP_LOG_DEBUG("starting mobile provisioning");
     if (config.provisioning.mobileProvisioningEnabled) {
         mobileProvisioning_.start(now);
     }
-    provisioningServicesRunning_ = true;
 }
 
-void App::stopProvisioningServices(uint32_t now) {
-    EWFM_APP_LOG_DEBUG("stopping provisioning services");
-    portalServer_.end();
-    mobileProvisioning_.stop(now);
-    provisioningServicesRunning_ = false;
+void App::restartMobileProvisioningBle(uint32_t now) {
+    EWFM_APP_LOG_INFO("PROV_REENTER handling");
+    EWFM_APP_LOG_INFO("PROV_REENTER clearing wifi credentials and switching to provisioning fallback");
+    provisioningCoordinator_.resetWifiCredentials();
+    mobileProvisioning_.restartBle(now);
 }
 
 } // namespace ewfm

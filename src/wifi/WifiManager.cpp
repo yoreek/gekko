@@ -24,6 +24,7 @@ void WifiManager::connectAt(const WiFiCredentials& credentials, uint32_t now) {
     credentials_ = credentials;
     retryCount_ = 0;
     nextRetryAt_ = now;
+    stationIpLogged_ = false;
     driver_.beginStation(credentials_);
     EWFM_WIFI_LOG_INFO("station connection started for ssid=%s", credentials.ssid.c_str());
     setState((PState)&WifiManager::Connecting, now);
@@ -35,6 +36,10 @@ void WifiManager::enterProvisioningFallback() {
 
 void WifiManager::enterProvisioningFallbackAt(uint32_t now) {
     driver_.disconnect();
+    startProvisioningFallbackAt(now);
+}
+
+void WifiManager::startProvisioningFallbackAt(uint32_t now) {
     driver_.startSetupAp(setupApSsid(), config_.provisioning.setupApPassword);
     EWFM_WIFI_LOG_INFO("setup AP started");
     setState((PState)&WifiManager::ProvisioningFallback, now);
@@ -42,7 +47,11 @@ void WifiManager::enterProvisioningFallbackAt(uint32_t now) {
 
 void WifiManager::clearCredentials() {
     credentials_ = {};
-    enterProvisioningFallback();
+    retryCount_ = 0;
+    nextRetryAt_ = 0;
+    stationIpLogged_ = false;
+    driver_.clearStationCredentials();
+    startProvisioningFallbackAt(clock_.millis());
 }
 
 void WifiManager::tick(uint32_t now) {
@@ -95,7 +104,16 @@ SM_STATE(Connecting) {
 }
 
 SM_STATE(Connected) {
+    if (!stationIpLogged_) {
+        const std::string ip = driver_.stationIp();
+        if (!ip.empty()) {
+            EWFM_WIFI_LOG_INFO("station ip=%s", ip.c_str());
+            stationIpLogged_ = true;
+        }
+    }
+
     if (driver_.status() == WifiDriverStatus::Disconnected || driver_.status() == WifiDriverStatus::Failed) {
+        stationIpLogged_ = false;
         EWFM_WIFI_LOG_WARN("station disconnected, reconnecting");
         retryConnection(uptime(), "connection restore retry");
     }

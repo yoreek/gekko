@@ -40,6 +40,7 @@ private:
     void ProvisioningFallback();
     void connectAt(const WiFiCredentials& credentials, uint32_t now);
     void enterProvisioningFallbackAt(uint32_t now);
+    void startProvisioningFallbackAt(uint32_t now);
     void retryConnection(uint32_t now, const char* reason);
     bool retriesExhausted() const;
     std::string setupApSsid() const;
@@ -50,6 +51,7 @@ private:
     WiFiCredentials credentials_;
     uint8_t retryCount_{0};
     uint32_t nextRetryAt_{0};
+    bool stationIpLogged_{false};
 };
 
 } // namespace ewfm

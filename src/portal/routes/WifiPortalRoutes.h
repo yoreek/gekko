@@ -21,8 +21,10 @@ public:
 private:
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     void handleScan(AsyncWebServerRequest* request);
+    void handleStatus(AsyncWebServerRequest* request);
     void handleConfigure(AsyncWebServerRequest* request);
     void handleReset(AsyncWebServerRequest* request);
+    void handleReenterProvisioning(AsyncWebServerRequest* request);
 #endif
 
     ProvisioningCoordinator& coordinator_;

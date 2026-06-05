@@ -17,14 +17,21 @@ public:
 
     void begin(const DeviceConfig& config);
     void start(uint32_t now);
+    void restartBle(uint32_t now);
     void stop(uint32_t now);
     void tick(uint32_t now);
 
     bool running() const {
         return is((PState)&MobileProvisioning::Running);
     }
+    bool idle() const {
+        return is((PState)&MobileProvisioning::Idle);
+    }
     bool timedOut() const {
         return is((PState)&MobileProvisioning::TimedOut);
+    }
+    bool succeeded() const {
+        return is((PState)&MobileProvisioning::Succeeded);
     }
 
 private:
@@ -36,6 +43,8 @@ private:
     };
 
     void handleCredentials(const char* ssid, const char* password);
+    void startSession(uint32_t now, bool forceBleTransport);
+    void finishSession(uint32_t now, const char* reason, PState terminalState);
     void postEvent(PendingEvent event, const char* ssid = nullptr, const char* password = nullptr);
     bool takePendingEvent(PendingEvent& event, char* ssid, size_t ssidSize, char* password, size_t passwordSize);
     void Disabled();
@@ -48,6 +57,9 @@ private:
     ProvisioningCoordinator& coordinator_;
     IClock& clock_;
     DeviceConfig config_;
+    bool sessionActive_{false};
+    bool bleTransportActive_{false};
+    std::string bleServiceName_;
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     char pendingSsid_[kMaxSsidLength + 1]{};
