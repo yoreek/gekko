@@ -75,12 +75,12 @@ The firmware SHALL manage WiFi station connection attempts, retries, fallback, a
 - **WHEN** WiFi connection retry or fallback logic is changed
 - **THEN** Unity tests cover state transitions using mocked time and mocked WiFi events where practical
 
-### Requirement: Espressif-compatible mobile provisioning
-The firmware SHALL support and validate mobile-app WiFi provisioning through an Espressif-compatible provisioning transport as an early baseline milestone.
+### Requirement: Espressif-compatible BLE mobile provisioning
+The firmware SHALL support and validate mobile-app WiFi provisioning through the Espressif-compatible BLE provisioning transport as an early baseline milestone.
 
 #### Scenario: Mobile provisioning session starts
 - **WHEN** provisioning mode starts and mobile provisioning is enabled
-- **THEN** the firmware starts the Espressif-compatible provisioning service with declared security settings and device identity
+- **THEN** the firmware starts the Espressif-compatible BLE provisioning service with declared security settings and device identity
 
 #### Scenario: Mobile app provides credentials
 - **WHEN** a compatible mobile app submits WiFi credentials through the provisioning protocol

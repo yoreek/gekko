@@ -30,19 +30,11 @@ bool App::begin() {
     }
 
     const DeviceConfig& config = configStore_.config();
-    const uint32_t now = clock_.millis();
     wifiManager_.begin(config);
     mobileProvisioning_.begin(config);
+    portalServer_.begin();
 #if defined(WITH_ARDUINO_OTA)
     otaService_.begin(config.deviceName, wifiManager_);
-#endif
-
-    wifiManager_.tick(now);
-    mobileProvisioning_.tick(now);
-    portalServer_.begin();
-    portalServer_.tick(now);
-#if defined(WITH_ARDUINO_OTA)
-    otaService_.tick(now);
 #endif
 
     return true;

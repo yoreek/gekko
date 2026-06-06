@@ -8,7 +8,11 @@ namespace ewfm {
 
 bool ArduinoWifiDriver::begin() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    return WiFi.mode(WIFI_STA);
+    networkStackReady_ = WiFi.mode(WIFI_STA);
+    if (networkStackReady_) {
+        setupApActive_ = false;
+    }
+    return networkStackReady_;
 #else
     return false;
 #endif
@@ -17,10 +21,15 @@ bool ArduinoWifiDriver::begin() {
 bool ArduinoWifiDriver::beginStation(const WiFiCredentials& credentials) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     if (WiFi.status() == WL_CONNECTED) {
-        return true;
+        networkStackReady_ = WiFi.getMode() != WIFI_MODE_NULL;
+        return networkStackReady_;
     }
 
-    WiFi.mode(WIFI_STA);
+    networkStackReady_ = WiFi.mode(WIFI_STA);
+    if (!networkStackReady_) {
+        return false;
+    }
+    setupApActive_ = false;
     WiFi.begin(credentials.ssid.c_str(), credentials.password.c_str());
     return true;
 #else
@@ -43,12 +52,14 @@ void ArduinoWifiDriver::clearStationCredentials() {
 
 bool ArduinoWifiDriver::startSetupAp(const std::string& ssid, const std::string& password) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    WiFi.mode(WIFI_AP_STA);
-    setupApActive_ = true;
-    if (password.empty()) {
-        return WiFi.softAP(ssid.c_str());
+    networkStackReady_ = WiFi.mode(WIFI_AP_STA);
+    if (!networkStackReady_) {
+        setupApActive_ = false;
+        return false;
     }
-    return WiFi.softAP(ssid.c_str(), password.c_str());
+
+    setupApActive_ = password.empty() ? WiFi.softAP(ssid.c_str()) : WiFi.softAP(ssid.c_str(), password.c_str());
+    return setupApActive_;
 #else
     (void)ssid;
     (void)password;
@@ -84,6 +95,30 @@ WifiDriverStatus ArduinoWifiDriver::status() const {
 bool ArduinoWifiDriver::setupApActive() const {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     return setupApActive_;
+#else
+    return false;
+#endif
+}
+
+bool ArduinoWifiDriver::networkStackReady() const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return networkStackReady_ && WiFi.getMode() != WIFI_MODE_NULL;
+#else
+    return false;
+#endif
+}
+
+bool ArduinoWifiDriver::stationReady() const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return networkStackReady() && WiFi.status() == WL_CONNECTED && ipValid(stationIp());
+#else
+    return false;
+#endif
+}
+
+bool ArduinoWifiDriver::setupApReady() const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return networkStackReady() && setupApActive_ && ipValid(setupApIp());
 #else
     return false;
 #endif
@@ -150,6 +185,10 @@ std::string ArduinoWifiDriver::macSuffix() const {
 #else
     return {};
 #endif
+}
+
+bool ArduinoWifiDriver::ipValid(const std::string& ip) {
+    return !ip.empty() && ip != "0.0.0.0";
 }
 
 } // namespace ewfm

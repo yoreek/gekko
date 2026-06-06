@@ -32,7 +32,7 @@ ValidationResult validateConfig(const DeviceConfig& config, bool requireWifiCred
     if (config.maxJsonBytes == 0 || config.maxJsonBytes > 8192) {
         return {ConfigError::JsonTooLarge, "json limit is invalid"};
     }
-    if (config.provisioning.proofOfPossession.size() > 64 || config.provisioning.serviceKey.size() > 64) {
+    if (config.provisioning.proofOfPossession.size() > 64) {
         return {ConfigError::PasswordTooLong, "provisioning secret is too long"};
     }
     return validateWifiCredentials(config.wifi, requireWifiCredentials);

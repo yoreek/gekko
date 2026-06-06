@@ -12,7 +12,6 @@ public:
     WifiManager(IWifiDriver& driver, IClock& clock);
 
     void begin(const DeviceConfig& config);
-    void tick(uint32_t now);
     void connect(const WiFiCredentials& credentials);
     void connectAt(const WiFiCredentials& credentials, uint32_t now);
     void enterProvisioningFallback();
@@ -28,6 +27,30 @@ public:
     }
     bool provisioningFallback() const {
         return is((PState)&WifiManager::ProvisioningFallback);
+    }
+    bool networkStackReady() const {
+        return driver_.networkStackReady();
+    }
+    bool stationReady() const {
+        return connected() && driver_.stationReady();
+    }
+    bool setupApReady() const {
+        return provisioningFallback() && driver_.setupApReady();
+    }
+    bool otaReady() const {
+        return stationReady() || setupApReady();
+    }
+    std::string stationIp() const {
+        return driver_.stationIp();
+    }
+    std::string otaIp() const {
+        if (stationReady()) {
+            return driver_.stationIp();
+        }
+        if (setupApReady()) {
+            return driver_.setupApIp();
+        }
+        return {};
     }
     uint8_t retryCount() const {
         return retryCount_;

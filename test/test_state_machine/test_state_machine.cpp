@@ -4,6 +4,7 @@
 #include "core/StateMachine.h"
 #include "platform/ArduinoOtaService.h"
 #include "portal/PortalAssets.h"
+#include "portal/PortalServer.h"
 #include "provisioning/MobileProvisioning.h"
 #include "provisioning/ProvisioningCoordinator.h"
 #include "wifi/WifiManager.h"
@@ -17,11 +18,17 @@ class FakeWifiDriver final : public IWifiDriver {
 public:
     bool begin() override {
         ++beginCalls;
-        return true;
+        networkStackReadyValue = beginResult;
+        if (networkStackReadyValue) {
+            setupApActiveValue = false;
+        }
+        return beginResult;
     }
     bool beginStation(const WiFiCredentials& credentials) override {
         lastCredentials = credentials;
         ++beginStationCalls;
+        networkStackReadyValue = true;
+        setupApActiveValue = false;
         statusValue = WifiDriverStatus::Connecting;
         return true;
     }
@@ -31,21 +38,34 @@ public:
     void clearStationCredentials() override {
         ++clearStationCredentialsCalls;
         statusValue = WifiDriverStatus::Idle;
+        stationIpValue.clear();
     }
     bool startSetupAp(const std::string& ssid, const std::string& password) override {
         (void)password;
         setupApSsid = ssid;
         ++startApCalls;
-        return true;
+        networkStackReadyValue = true;
+        setupApActiveValue = startApResult;
+        return startApResult;
     }
     void stopSetupAp() override {
         ++stopApCalls;
+        setupApActiveValue = false;
     }
     WifiDriverStatus status() const override {
         return statusValue;
     }
     bool setupApActive() const override {
         return setupApActiveValue;
+    }
+    bool networkStackReady() const override {
+        return networkStackReadyValue;
+    }
+    bool stationReady() const override {
+        return networkStackReadyValue && statusValue == WifiDriverStatus::Connected && ipValid(stationIpValue);
+    }
+    bool setupApReady() const override {
+        return networkStackReadyValue && setupApActiveValue && ipValid(setupApIpValue);
     }
     std::string stationIp() const override {
         return stationIpValue;
@@ -65,6 +85,10 @@ public:
         return "ABC123";
     }
 
+    static bool ipValid(const std::string& ip) {
+        return !ip.empty() && ip != "0.0.0.0";
+    }
+
     WifiDriverStatus statusValue{WifiDriverStatus::Idle};
     WiFiCredentials lastCredentials;
     std::string setupApSsid;
@@ -74,6 +98,9 @@ public:
     int clearStationCredentialsCalls{0};
     int startApCalls{0};
     int stopApCalls{0};
+    bool beginResult{true};
+    bool startApResult{true};
+    bool networkStackReadyValue{false};
     bool setupApActiveValue{false};
     std::string stationIpValue;
     std::string setupApIpValue{"192.168.4.1"};
@@ -197,6 +224,83 @@ void test_connection_timeout_retry_resets_state_timer() {
     TEST_ASSERT_EQUAL(1, manager.retryCount());
 }
 
+void test_wifi_readiness_requires_driver_begin_and_valid_addresses() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    WifiManager manager(driver, clock);
+    DeviceConfig config = defaultConfig();
+    config.wifi.ssid = "office";
+    config.wifi.password = "secret";
+
+    TEST_ASSERT_FALSE(manager.networkStackReady());
+
+    manager.begin(config);
+    TEST_ASSERT_TRUE(manager.networkStackReady());
+    TEST_ASSERT_FALSE(manager.stationReady());
+    TEST_ASSERT_FALSE(manager.setupApReady());
+
+    manager.tick(100);
+    driver.statusValue = WifiDriverStatus::Connected;
+    manager.tick(101);
+    TEST_ASSERT_TRUE(manager.connected());
+    TEST_ASSERT_FALSE(manager.stationReady());
+
+    driver.stationIpValue = "192.168.1.240";
+    TEST_ASSERT_TRUE(manager.stationReady());
+}
+
+void test_setup_ap_readiness_requires_successful_ap_start_and_valid_ip() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    WifiManager manager(driver, clock);
+    DeviceConfig config = defaultConfig();
+
+    manager.begin(config);
+    manager.tick(100);
+
+    TEST_ASSERT_TRUE(manager.provisioningFallback());
+    TEST_ASSERT_TRUE(driver.setupApActive());
+    TEST_ASSERT_TRUE(manager.setupApReady());
+
+    driver.setupApIpValue = "0.0.0.0";
+    TEST_ASSERT_FALSE(manager.setupApReady());
+}
+
+void test_failed_setup_ap_start_does_not_report_setup_ap_ready() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    driver.startApResult = false;
+    WifiManager manager(driver, clock);
+    DeviceConfig config = defaultConfig();
+
+    manager.begin(config);
+    manager.tick(100);
+
+    TEST_ASSERT_TRUE(manager.provisioningFallback());
+    TEST_ASSERT_EQUAL(1, driver.startApCalls);
+    TEST_ASSERT_FALSE(driver.setupApActive());
+    TEST_ASSERT_FALSE(manager.setupApReady());
+}
+
+void test_station_connect_clears_setup_ap_readiness() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    WifiManager manager(driver, clock);
+    DeviceConfig config = defaultConfig();
+
+    manager.begin(config);
+    manager.tick(100);
+    TEST_ASSERT_TRUE(manager.setupApReady());
+
+    WiFiCredentials credentials;
+    credentials.ssid = "office";
+    credentials.password = "secret";
+    manager.connectAt(credentials, 101);
+
+    TEST_ASSERT_FALSE(driver.setupApActive());
+    TEST_ASSERT_FALSE(manager.setupApReady());
+}
+
 void test_provisioning_coordinator_rejects_oversized_http_credentials() {
     ManualClock clock;
     FakeWifiDriver driver;
@@ -261,6 +365,112 @@ void test_provisioning_coordinator_queues_mobile_reentry_request() {
     TEST_ASSERT_FALSE(coordinator.takeMobileProvisioningReentryRequest());
 }
 
+void test_portal_waits_for_network_stack_before_http_start() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    MemoryConfigStorage storage;
+    ConfigStore store(storage);
+    TEST_ASSERT_TRUE(store.begin());
+    TEST_ASSERT_TRUE(store.load().ok());
+
+    WifiManager manager(driver, clock);
+    ProvisioningCoordinator coordinator(store, manager);
+    PortalServer portal(coordinator, driver);
+
+    TEST_ASSERT_TRUE(portal.begin());
+    portal.tick(100);
+    TEST_ASSERT_EQUAL(static_cast<int>(PortalRuntimeState::WaitingForNetwork), static_cast<int>(portal.state()));
+    TEST_ASSERT_FALSE(portal.httpRunning());
+    TEST_ASSERT_EQUAL(0, portal.httpStartCount());
+
+    driver.networkStackReadyValue = true;
+    portal.tick(101);
+    TEST_ASSERT_FALSE(portal.httpRunning());
+
+    portal.tick(102);
+    TEST_ASSERT_TRUE(portal.httpRunning());
+    TEST_ASSERT_EQUAL(static_cast<int>(PortalRuntimeState::Running), static_cast<int>(portal.state()));
+    TEST_ASSERT_EQUAL(1, portal.httpStartCount());
+}
+
+void test_portal_dns_follows_setup_ap_readiness_without_http_restart() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    driver.networkStackReadyValue = true;
+    MemoryConfigStorage storage;
+    ConfigStore store(storage);
+    TEST_ASSERT_TRUE(store.begin());
+    TEST_ASSERT_TRUE(store.load().ok());
+
+    WifiManager manager(driver, clock);
+    ProvisioningCoordinator coordinator(store, manager);
+    PortalServer portal(coordinator, driver);
+
+    TEST_ASSERT_TRUE(portal.begin());
+    portal.tick(100);
+    portal.tick(101);
+    portal.tick(102);
+    TEST_ASSERT_TRUE(portal.httpRunning());
+    TEST_ASSERT_FALSE(portal.dnsRunning());
+
+    driver.setupApActiveValue = true;
+    driver.setupApIpValue = "0.0.0.0";
+    portal.tick(103);
+    TEST_ASSERT_FALSE(portal.dnsRunning());
+
+    driver.setupApIpValue = "192.168.4.1";
+    portal.tick(104);
+    TEST_ASSERT_TRUE(portal.dnsRunning());
+    TEST_ASSERT_EQUAL(1, portal.dnsStartCount());
+    TEST_ASSERT_EQUAL(1, portal.httpStartCount());
+
+    driver.setupApActiveValue = false;
+    portal.tick(105);
+    TEST_ASSERT_FALSE(portal.dnsRunning());
+    TEST_ASSERT_EQUAL(1, portal.dnsStopCount());
+    TEST_ASSERT_EQUAL(1, portal.httpStartCount());
+}
+
+void test_portal_restarts_http_only_when_network_stack_is_lost() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    driver.networkStackReadyValue = true;
+    MemoryConfigStorage storage;
+    ConfigStore store(storage);
+    TEST_ASSERT_TRUE(store.begin());
+    TEST_ASSERT_TRUE(store.load().ok());
+
+    WifiManager manager(driver, clock);
+    ProvisioningCoordinator coordinator(store, manager);
+    PortalServer portal(coordinator, driver);
+
+    TEST_ASSERT_TRUE(portal.begin());
+    portal.tick(100);
+    portal.tick(101);
+    portal.tick(102);
+    TEST_ASSERT_TRUE(portal.httpRunning());
+    TEST_ASSERT_EQUAL(1, portal.httpStartCount());
+
+    driver.setupApActiveValue = true;
+    portal.tick(103);
+    driver.setupApActiveValue = false;
+    portal.tick(104);
+    TEST_ASSERT_TRUE(portal.httpRunning());
+    TEST_ASSERT_EQUAL(1, portal.httpStartCount());
+    TEST_ASSERT_EQUAL(0, portal.httpStopCount());
+
+    driver.networkStackReadyValue = false;
+    portal.tick(105);
+    TEST_ASSERT_FALSE(portal.httpRunning());
+    TEST_ASSERT_EQUAL(1, portal.httpStopCount());
+
+    driver.networkStackReadyValue = true;
+    portal.tick(106);
+    portal.tick(107);
+    TEST_ASSERT_TRUE(portal.httpRunning());
+    TEST_ASSERT_EQUAL(2, portal.httpStartCount());
+}
+
 void test_mobile_provisioning_starts_when_credentials_are_missing() {
     ManualClock clock;
     FakeWifiDriver driver;
@@ -323,7 +533,6 @@ void test_mobile_provisioning_reentry_resets_credentials_and_restarts_ble() {
     DeviceConfig config = store.config();
     config.wifi.ssid = "office";
     config.wifi.password = "secret";
-    config.provisioning.mobileBleTransport = false;
     TEST_ASSERT_TRUE(store.save(config).ok());
 
     WifiManager manager(driver, clock);
@@ -386,13 +595,19 @@ void test_mobile_provisioning_restart_ble_keeps_session_active() {
 
     DeviceConfig config = store.config();
     config.provisioning.mobileProvisioningEnabled = true;
-    config.provisioning.mobileBleTransport = false;
 
     provisioning.begin(config);
     provisioning.start(100);
     TEST_ASSERT_TRUE(provisioning.running());
 
     provisioning.restartBle(150);
+    TEST_ASSERT_FALSE(provisioning.running());
+    TEST_ASSERT_TRUE(provisioning.restartPending());
+
+    provisioning.tick(1649);
+    TEST_ASSERT_TRUE(provisioning.restartPending());
+
+    provisioning.tick(1650);
     TEST_ASSERT_TRUE(provisioning.running());
 }
 
@@ -416,8 +631,15 @@ void test_mobile_provisioning_restart_after_timeout_is_allowed() {
     provisioning.begin(config);
     provisioning.start(100);
     provisioning.tick(111);
+    TEST_ASSERT_FALSE(provisioning.running());
+    TEST_ASSERT_TRUE(provisioning.restartPending());
+
+    provisioning.tick(1610);
+    TEST_ASSERT_TRUE(provisioning.restartPending());
+
+    provisioning.tick(1611);
     TEST_ASSERT_TRUE(provisioning.running());
-    TEST_ASSERT_EQUAL_UINT32(111, provisioning.stateUpdated());
+    TEST_ASSERT_EQUAL_UINT32(1611, provisioning.stateUpdated());
 }
 
 void test_arduino_ota_starts_after_wifi_connects() {
@@ -442,7 +664,122 @@ void test_arduino_ota_starts_after_wifi_connects() {
     driver.statusValue = WifiDriverStatus::Connected;
     manager.tick(101);
     ota.tick(101);
+    TEST_ASSERT_FALSE(ota.started());
+
+    driver.stationIpValue = "192.168.1.240";
+    ota.tick(102);
+    TEST_ASSERT_FALSE(ota.started());
+
+    ota.tick(103);
     TEST_ASSERT_TRUE(ota.started());
+    TEST_ASSERT_TRUE(ota.running());
+    TEST_ASSERT_EQUAL(1, ota.startCount());
+}
+
+void test_arduino_ota_starts_on_setup_ap_readiness() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    WifiManager manager(driver, clock);
+    DeviceConfig config = defaultConfig();
+
+    manager.begin(config);
+    ArduinoOtaService ota;
+    ota.begin(config.deviceName, manager);
+
+    manager.tick(100);
+    ota.tick(100);
+    TEST_ASSERT_FALSE(ota.started());
+
+    ota.tick(101);
+    TEST_ASSERT_FALSE(ota.started());
+
+    ota.tick(102);
+    TEST_ASSERT_TRUE(ota.started());
+    TEST_ASSERT_TRUE(ota.running());
+    TEST_ASSERT_EQUAL(1, ota.startCount());
+}
+
+void test_arduino_ota_stops_and_restarts_after_wifi_loss() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    WifiManager manager(driver, clock);
+    DeviceConfig config = defaultConfig();
+    config.wifi.ssid = "office";
+    config.wifi.password = "secret";
+
+    manager.begin(config);
+    manager.tick(100);
+    driver.statusValue = WifiDriverStatus::Connected;
+    driver.stationIpValue = "192.168.1.240";
+    manager.tick(101);
+
+    ArduinoOtaService ota;
+    ota.begin(config.deviceName, manager);
+    ota.tick(102);
+    ota.tick(103);
+    TEST_ASSERT_FALSE(ota.started());
+
+    ota.tick(104);
+    TEST_ASSERT_TRUE(ota.started());
+    TEST_ASSERT_EQUAL(1, ota.startCount());
+
+    driver.statusValue = WifiDriverStatus::Disconnected;
+    driver.stationIpValue.clear();
+    manager.tick(105);
+    ota.tick(105);
+
+    TEST_ASSERT_FALSE(ota.started());
+    TEST_ASSERT_TRUE(ota.waitingForStation());
+    TEST_ASSERT_EQUAL(1, ota.stopCount());
+
+    driver.statusValue = WifiDriverStatus::Connected;
+    driver.stationIpValue = "192.168.1.241";
+    manager.tick(106);
+    ota.tick(106);
+    TEST_ASSERT_FALSE(ota.started());
+
+    ota.tick(107);
+
+    TEST_ASSERT_TRUE(ota.started());
+    TEST_ASSERT_EQUAL(2, ota.startCount());
+}
+
+void test_arduino_ota_restarts_after_station_ip_changes() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    WifiManager manager(driver, clock);
+    DeviceConfig config = defaultConfig();
+    config.wifi.ssid = "office";
+    config.wifi.password = "secret";
+
+    manager.begin(config);
+    manager.tick(100);
+    driver.statusValue = WifiDriverStatus::Connected;
+    driver.stationIpValue = "192.168.1.240";
+    manager.tick(101);
+
+    ArduinoOtaService ota;
+    ota.begin(config.deviceName, manager);
+    ota.tick(102);
+    ota.tick(103);
+    TEST_ASSERT_FALSE(ota.started());
+
+    ota.tick(104);
+    TEST_ASSERT_TRUE(ota.started());
+
+    driver.stationIpValue = "192.168.1.241";
+    ota.tick(105);
+
+    TEST_ASSERT_FALSE(ota.started());
+    TEST_ASSERT_TRUE(ota.waitingForStation());
+    TEST_ASSERT_EQUAL(1, ota.stopCount());
+
+    ota.tick(106);
+    TEST_ASSERT_FALSE(ota.started());
+
+    ota.tick(107);
+    TEST_ASSERT_TRUE(ota.started());
+    TEST_ASSERT_EQUAL(2, ota.startCount());
 }
 
 void test_portal_html_exposes_provisioning_reentry_action() {
@@ -482,12 +819,12 @@ void test_state_machine_timeout_helpers() {
     TEST_ASSERT_FALSE(machine.elapsed(19, 10));
     TEST_ASSERT_TRUE(machine.elapsed(20, 10));
 
-    machine.loop(10);
+    machine.tick(10);
     machine.requestRun();
-    machine.loop(11);
+    machine.tick(11);
     TEST_ASSERT_TRUE(machine.is((StateMachine::PState)&TestMachine::Running));
 
-    machine.loop(21);
+    machine.tick(21);
     TEST_ASSERT_TRUE(machine.is((StateMachine::PState)&TestMachine::TimedOut));
     TEST_ASSERT_TRUE(EWFM_SM_TIME_REACHED(5, 5));
 }
@@ -499,9 +836,16 @@ int main(int, char**) {
     RUN_TEST(test_connection_success_stops_setup_ap);
     RUN_TEST(test_failed_connection_retries_and_falls_back);
     RUN_TEST(test_connection_timeout_retry_resets_state_timer);
+    RUN_TEST(test_wifi_readiness_requires_driver_begin_and_valid_addresses);
+    RUN_TEST(test_setup_ap_readiness_requires_successful_ap_start_and_valid_ip);
+    RUN_TEST(test_failed_setup_ap_start_does_not_report_setup_ap_ready);
+    RUN_TEST(test_station_connect_clears_setup_ap_readiness);
     RUN_TEST(test_provisioning_coordinator_rejects_oversized_http_credentials);
     RUN_TEST(test_provisioning_coordinator_reset_clears_credentials_and_starts_softap);
     RUN_TEST(test_provisioning_coordinator_queues_mobile_reentry_request);
+    RUN_TEST(test_portal_waits_for_network_stack_before_http_start);
+    RUN_TEST(test_portal_dns_follows_setup_ap_readiness_without_http_restart);
+    RUN_TEST(test_portal_restarts_http_only_when_network_stack_is_lost);
     RUN_TEST(test_mobile_provisioning_starts_when_credentials_are_missing);
     RUN_TEST(test_mobile_provisioning_starts_when_wifi_enters_fallback);
     RUN_TEST(test_mobile_provisioning_reentry_resets_credentials_and_restarts_ble);
@@ -509,6 +853,9 @@ int main(int, char**) {
     RUN_TEST(test_mobile_provisioning_restart_ble_keeps_session_active);
     RUN_TEST(test_mobile_provisioning_restart_after_timeout_is_allowed);
     RUN_TEST(test_arduino_ota_starts_after_wifi_connects);
+    RUN_TEST(test_arduino_ota_starts_on_setup_ap_readiness);
+    RUN_TEST(test_arduino_ota_stops_and_restarts_after_wifi_loss);
+    RUN_TEST(test_arduino_ota_restarts_after_station_ip_changes);
     RUN_TEST(test_portal_html_exposes_provisioning_reentry_action);
     RUN_TEST(test_state_machine_stack_and_return_to_popped_state);
     RUN_TEST(test_state_machine_pause_restart_and_updated_flag);

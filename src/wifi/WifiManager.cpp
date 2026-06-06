@@ -41,8 +41,11 @@ void WifiManager::enterProvisioningFallbackAt(uint32_t now) {
 }
 
 void WifiManager::startProvisioningFallbackAt(uint32_t now) {
-    driver_.startSetupAp(setupApSsid(), config_.provisioning.setupApPassword);
-    EWFM_WIFI_LOG_INFO("setup AP started");
+    if (driver_.startSetupAp(setupApSsid(), config_.provisioning.setupApPassword)) {
+        EWFM_WIFI_LOG_INFO("setup AP started");
+    } else {
+        EWFM_WIFI_LOG_WARN("setup AP start failed");
+    }
     setState((PState)&WifiManager::ProvisioningFallback, now);
 }
 
@@ -59,10 +62,6 @@ void WifiManager::clearCredentialsAt(uint32_t now) {
     startProvisioningFallbackAt(now);
 }
 
-void WifiManager::tick(uint32_t now) {
-    loop(now);
-}
-
 SM_STATE(Idle) {
     if (credentials_.hasCredentials()) {
         EWFM_WIFI_LOG_INFO("stored credentials found, connecting");
@@ -71,7 +70,7 @@ SM_STATE(Idle) {
     }
 
     if (config_.wifiRuntime.fallbackApEnabled) {
-        EWFM_WIFI_LOG_INFO("no credentials, entering provisioning fallback");
+        EWFM_WIFI_LOG_INFO("no station credentials, starting setup AP");
         enterProvisioningFallbackAt(uptime());
     }
 }
@@ -86,7 +85,7 @@ SM_STATE(Connecting) {
     case WifiDriverStatus::Disconnected:
         if (retriesExhausted()) {
             if (config_.wifiRuntime.fallbackApEnabled) {
-                EWFM_WIFI_LOG_WARN("connection failed, entering provisioning fallback");
+                EWFM_WIFI_LOG_WARN("station connection failed, starting setup AP");
                 enterProvisioningFallbackAt(uptime());
             }
             return;

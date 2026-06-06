@@ -1,8 +1,8 @@
 #include "platform/ArduinoOtaService.h"
 
-#if defined(ARDUINO) && !defined(UNIT_TEST) && defined(WITH_ARDUINO_OTA)
 #include "debug/Debug.h"
 
+#if defined(ARDUINO) && !defined(UNIT_TEST) && defined(WITH_ARDUINO_OTA)
 #include <ArduinoOTA.h>
 
 namespace {
@@ -26,6 +26,11 @@ void onOtaError(ota_error_t error) {
 
 namespace ewfm {
 
+#undef SM_CLASS
+#define SM_CLASS ArduinoOtaService
+
+ArduinoOtaService::ArduinoOtaService() : StateMachine((PState)&ArduinoOtaService::Idle) {}
+
 void ArduinoOtaService::begin(const std::string& hostname, const WifiManager& wifiManager) {
     if (started_) {
         return;
@@ -36,21 +41,68 @@ void ArduinoOtaService::begin(const std::string& hostname, const WifiManager& wi
     configured_ = true;
 }
 
-void ArduinoOtaService::tick(uint32_t now) {
-    (void)now;
+bool ArduinoOtaService::waitingForStation() const {
+    return is((PState)&ArduinoOtaService::WaitingForStation);
+}
+
+bool ArduinoOtaService::running() const {
+    return is((PState)&ArduinoOtaService::Running);
+}
+
+SM_STATE(Idle) {
     if (!configured_ || wifiManager_ == nullptr) {
         return;
     }
+    SM_GOTO(WaitingForStation);
+}
 
-    if (!started_ && wifiManager_->connected()) {
-        start();
+SM_STATE(WaitingForStation) {
+    if (!configured_ || wifiManager_ == nullptr) {
+        SM_GOTO(Idle);
+    }
+
+    if (!otaReady()) {
+        if (!stationWaitLogged_) {
+            EWFM_APP_LOG_INFO("dev OTA waiting for WiFi/IP readiness");
+            stationWaitLogged_ = true;
+        }
+        return;
+    }
+
+    stationWaitLogged_ = false;
+    SM_GOTO(Starting);
+}
+
+SM_STATE(Starting) {
+    if (!otaReady()) {
+        SM_GOTO(WaitingForStation);
+    }
+
+    start();
+    if (!started_) {
+        SM_GOTO(Faulted);
+    }
+    SM_GOTO(Running);
+}
+
+SM_STATE(Running) {
+    if (!otaReady() || otaIpChanged()) {
+        stop();
+        SM_GOTO(WaitingForStation);
     }
 
 #if defined(ARDUINO) && !defined(UNIT_TEST) && defined(WITH_ARDUINO_OTA)
-    if (started_) {
-        ArduinoOTA.handle();
-    }
+    ArduinoOTA.handle();
 #endif
+}
+
+SM_STATE(Faulted) {
+    if (!otaReady()) {
+        SM_GOTO(WaitingForStation);
+    }
+
+    EWFM_APP_LOG_INFO("dev OTA faulted, retrying start");
+    SM_GOTO(Starting);
 }
 
 void ArduinoOtaService::start() {
@@ -67,6 +119,30 @@ void ArduinoOtaService::start() {
     ArduinoOTA.begin();
 #endif
     started_ = true;
+    activeIp_ = wifiManager_ != nullptr ? wifiManager_->otaIp() : std::string{};
+    ++startCount_;
+}
+
+void ArduinoOtaService::stop() {
+    if (!started_) {
+        activeIp_.clear();
+        return;
+    }
+
+#if defined(ARDUINO) && !defined(UNIT_TEST) && defined(WITH_ARDUINO_OTA)
+    ArduinoOTA.end();
+#endif
+    started_ = false;
+    activeIp_.clear();
+    ++stopCount_;
+}
+
+bool ArduinoOtaService::otaReady() const {
+    return wifiManager_ != nullptr && wifiManager_->otaReady();
+}
+
+bool ArduinoOtaService::otaIpChanged() const {
+    return wifiManager_ != nullptr && !activeIp_.empty() && wifiManager_->otaIp() != activeIp_;
 }
 
 } // namespace ewfm

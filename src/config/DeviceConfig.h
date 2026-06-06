@@ -24,10 +24,8 @@ struct WiFiCredentials {
 struct ProvisioningConfig {
     bool httpPortalEnabled{true};
     bool mobileProvisioningEnabled{true};
-    bool mobileBleTransport{true};
     bool resetProvisionedOnStart{false};
     std::string proofOfPossession{"abcd1234"};
-    std::string serviceKey;
     bool setupApPasswordEnabled{false};
     std::string setupApPassword;
     uint32_t sessionTimeoutMs{10UL * 60UL * 1000UL};

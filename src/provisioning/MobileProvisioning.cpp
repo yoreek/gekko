@@ -22,6 +22,13 @@ bool wifiEventRegistered = false;
 } // namespace
 #endif
 
+namespace {
+constexpr uint32_t kProvisioningRestartDelayMs = 1500;
+const char* kBleServiceName = "PROV_123";
+const char* kBlePop = "abcd1234";
+uint8_t kBleServiceUuid[16] = {0xb4, 0xdf, 0x5a, 0x1c, 0x3f, 0x6b, 0xf4, 0xbf, 0xea, 0x4a, 0x82, 0x03, 0x04, 0x90, 0x1a, 0x02};
+} // namespace
+
 MobileProvisioning::MobileProvisioning(ProvisioningCoordinator& coordinator, IClock& clock)
     : StateMachine((PState)&MobileProvisioning::Idle), coordinator_(coordinator), clock_(clock) {}
 
@@ -30,17 +37,21 @@ void MobileProvisioning::begin(const DeviceConfig& config) {
 }
 
 void MobileProvisioning::start(uint32_t now) {
-    startSession(now, false);
+    startSession(now);
 }
 
 void MobileProvisioning::restartBle(uint32_t now) {
     if (sessionActive_) {
         finishSession(now, "restart", (PState)&MobileProvisioning::Idle);
     }
-    startSession(now, true);
+    if (!startCooldownElapsed(now)) {
+        scheduleStart(now);
+        return;
+    }
+    startSession(now);
 }
 
-void MobileProvisioning::startSession(uint32_t now, bool forceBleTransport) {
+void MobileProvisioning::startSession(uint32_t now) {
     if (!config_.provisioning.mobileProvisioningEnabled) {
         setState((PState)&MobileProvisioning::Disabled, now);
         return;
@@ -50,8 +61,12 @@ void MobileProvisioning::startSession(uint32_t now, bool forceBleTransport) {
         return;
     }
 
+    if (!startCooldownElapsed(now)) {
+        scheduleStart(now);
+        return;
+    }
+
     sessionActive_ = true;
-    bleTransportActive_ = forceBleTransport || config_.provisioning.mobileBleTransport;
     setState((PState)&MobileProvisioning::Running, now);
 
 #if EWFM_HAS_WIFI_PROV
@@ -62,16 +77,25 @@ void MobileProvisioning::startSession(uint32_t now, bool forceBleTransport) {
                 return;
             }
             switch (event->event_id) {
+            case ARDUINO_EVENT_PROV_START:
+                EWFM_PROV_LOG_INFO("event PROV_START");
+                break;
             case ARDUINO_EVENT_PROV_CRED_RECV:
+                EWFM_PROV_LOG_INFO("event PROV_CRED_RECV ssid=%s", reinterpret_cast<const char*>(event->event_info.prov_cred_recv.ssid));
                 activeProvisioning->postEvent(PendingEvent::CredentialsReceived,
                                               reinterpret_cast<const char*>(event->event_info.prov_cred_recv.ssid),
                                               reinterpret_cast<const char*>(event->event_info.prov_cred_recv.password));
                 break;
             case ARDUINO_EVENT_PROV_CRED_SUCCESS:
+                EWFM_PROV_LOG_INFO("event PROV_CRED_SUCCESS");
                 activeProvisioning->postEvent(PendingEvent::CredentialsSucceeded);
                 break;
             case ARDUINO_EVENT_PROV_CRED_FAIL:
+                EWFM_PROV_LOG_WARN("event PROV_CRED_FAIL reason=%d", static_cast<int>(event->event_info.prov_fail_reason));
                 activeProvisioning->postEvent(PendingEvent::CredentialsFailed);
+                break;
+            case ARDUINO_EVENT_PROV_END:
+                EWFM_PROV_LOG_INFO("event PROV_END");
                 break;
             default:
                 break;
@@ -80,31 +104,29 @@ void MobileProvisioning::startSession(uint32_t now, bool forceBleTransport) {
         wifiEventRegistered = true;
     }
 
-    const char* pop = config_.provisioning.proofOfPossession.c_str();
-    const char* serviceKey = config_.provisioning.serviceKey.empty() ? nullptr : config_.provisioning.serviceKey.c_str();
-    const bool resetProvisioned = config_.provisioning.resetProvisionedOnStart;
-    prov_scheme_t scheme = bleTransportActive_ ? WIFI_PROV_SCHEME_BLE : WIFI_PROV_SCHEME_SOFTAP;
-    scheme_handler_t handler = WIFI_PROV_SCHEME_HANDLER_NONE;
-    if (bleTransportActive_) {
-        String mac = WiFi.macAddress();
-        mac.replace(":", "");
-        std::string suffix = mac.c_str();
-        if (suffix.empty()) {
-            suffix = "esp32";
-        } else if (suffix.size() > 6) {
-            suffix = suffix.substr(suffix.size() - 6);
-        }
-        bleServiceName_ = "PROV_" + suffix;
-    } else {
-        bleServiceName_.clear();
-    }
-    const char* serviceName = bleTransportActive_ ? bleServiceName_.c_str() : config_.deviceName.c_str();
-    EWFM_APP_LOG_INFO("PROV_START transport=%s", bleTransportActive_ ? "ble" : "softap");
-    EWFM_PROV_LOG_INFO("PROV_START transport=%s", bleTransportActive_ ? "ble" : "softap");
-    WiFiProv.beginProvision(scheme, handler, WIFI_PROV_SECURITY_1, pop, serviceName, serviceKey, nullptr, resetProvisioned);
-    if (bleTransportActive_) {
-        WiFiProv.printQR(serviceName, pop, "ble");
-    }
+    beginBleProvisioning();
+#endif
+}
+
+void MobileProvisioning::scheduleStart(uint32_t now) {
+    pendingStart_ = true;
+    restartWaitLogged_ = false;
+    setState((PState)&MobileProvisioning::RestartPending, now);
+}
+
+bool MobileProvisioning::startCooldownElapsed(uint32_t now) const {
+    return nextStartAllowedAt_ == 0 || timeReached(now, nextStartAllowedAt_);
+}
+
+void MobileProvisioning::beginBleProvisioning() {
+#if EWFM_HAS_WIFI_PROV
+    const bool resetProvisioned = true;
+
+    EWFM_APP_LOG_INFO("PROV_START transport=ble service=%s", kBleServiceName);
+    EWFM_PROV_LOG_INFO("PROV_START transport=ble service=%s", kBleServiceName);
+    WiFiProv.beginProvision(WIFI_PROV_SCHEME_BLE, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, kBlePop, kBleServiceName, nullptr,
+                            kBleServiceUuid, resetProvisioned);
+    WiFiProv.printQR(kBleServiceName, kBlePop, "ble");
 #endif
 }
 
@@ -119,23 +141,23 @@ void MobileProvisioning::finishSession(uint32_t now, const char* reason, PState 
     }
 
 #if EWFM_HAS_WIFI_PROV
-    EWFM_APP_LOG_INFO("PROV_END reason=%s transport=%s", reason, bleTransportActive_ ? "ble" : "softap");
-    EWFM_PROV_LOG_INFO("PROV_END reason=%s transport=%s", reason, bleTransportActive_ ? "ble" : "softap");
+    EWFM_APP_LOG_INFO("PROV_END reason=%s transport=ble", reason);
+    EWFM_PROV_LOG_INFO("PROV_END reason=%s transport=ble", reason);
+    wifi_prov_mgr_deinit();
     if (activeProvisioning == this) {
         activeProvisioning = nullptr;
     }
-    wifi_prov_mgr_deinit();
 #else
     (void)reason;
 #endif
+    nextStartAllowedAt_ = now + kProvisioningRestartDelayMs;
+    restartWaitLogged_ = false;
     sessionActive_ = false;
-    bleTransportActive_ = false;
-    bleServiceName_.clear();
     setState(terminalState, now);
 }
 
 void MobileProvisioning::tick(uint32_t now) {
-    loop(now);
+    StateMachine::tick(now);
     runLifecyclePolicy(now);
 }
 
@@ -149,17 +171,21 @@ void MobileProvisioning::runLifecyclePolicy(uint32_t now) {
         return;
     }
 
+    if (restartPending()) {
+        return;
+    }
+
     if (!shouldAutoStart()) {
         return;
     }
 
     EWFM_APP_LOG_DEBUG("starting mobile provisioning");
-    startSession(now, false);
+    startSession(now);
 }
 
 void MobileProvisioning::handleReentryRequest(uint32_t now) {
     EWFM_APP_LOG_INFO("PROV_REENTER handling");
-    EWFM_APP_LOG_INFO("PROV_REENTER clearing wifi credentials and switching to provisioning fallback");
+    EWFM_APP_LOG_INFO("PROV_REENTER clearing wifi credentials and starting BLE provisioning");
     coordinator_.resetWifiCredentialsAt(now);
     restartBle(now);
 }
@@ -219,6 +245,29 @@ SM_STATE(Succeeded) {}
 SM_STATE(Failed) {}
 
 SM_STATE(TimedOut) {}
+
+SM_STATE(RestartPending) {
+    if (!config_.provisioning.mobileProvisioningEnabled) {
+        pendingStart_ = false;
+        SM_GOTO(Disabled);
+    }
+
+    if (!pendingStart_) {
+        SM_GOTO(Idle);
+    }
+
+    if (!startCooldownElapsed(uptime())) {
+        if (!restartWaitLogged_) {
+            EWFM_APP_LOG_INFO("PROV_RESTART waiting for provisioning manager cooldown");
+            EWFM_PROV_LOG_INFO("PROV_RESTART waiting for provisioning manager cooldown");
+            restartWaitLogged_ = true;
+        }
+        return;
+    }
+
+    pendingStart_ = false;
+    startSession(uptime());
+}
 
 void MobileProvisioning::handleCredentials(const char* ssid, const char* password, uint32_t now) {
     WiFiCredentials credentials;

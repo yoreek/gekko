@@ -43,6 +43,9 @@ public:
     virtual void stopSetupAp() = 0;
     virtual WifiDriverStatus status() const = 0;
     virtual bool setupApActive() const = 0;
+    virtual bool networkStackReady() const = 0;
+    virtual bool stationReady() const = 0;
+    virtual bool setupApReady() const = 0;
     virtual std::string stationIp() const = 0;
     virtual std::string setupApIp() const = 0;
     virtual bool startScan() = 0;

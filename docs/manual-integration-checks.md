@@ -12,17 +12,17 @@ These checks require a real ESP32 device and are intentionally not part of the h
 - Submit valid credentials and confirm the setup AP stops after station connection.
 - Submit invalid or oversized values and confirm the last valid configuration remains unchanged.
 
-## Failed Connection Fallback
+## Failed Station Connection Recovery
 
 - Save credentials for an unavailable network.
 - Reboot the device.
 - Confirm station connection retries are timeout-driven.
-- Confirm the device enters provisioning fallback without deleting saved credentials.
+- Confirm the setup AP and HTTP portal remain available without deleting saved credentials.
 
 ## Mobile Provisioning
 
 - Enable mobile provisioning in the build/configuration.
-- Start from an unprovisioned device.
+- Confirm mobile provisioning starts with BLE transport only; WiFiProv SoftAP transport is intentionally not used because setup AP and HTTP portal are owned by the firmware.
 - Use an Espressif-compatible Android or iOS provisioning app.
 - Record transport, security mode, phone OS, app version, discovery result, credential submission result, and memory/build-size impact.
 - Confirm HTTP portal provisioning remains available when mobile provisioning is disabled.
@@ -34,6 +34,7 @@ These checks require a real ESP32 device and are intentionally not part of the h
 
 ## OTA
 
+- Use `esp32dev` for routine firmware compile verification. `esp32dev_ota` only inherits `esp32dev` and changes `upload_protocol`/`upload_port`, so reserve it for actual OTA upload checks or changes to OTA upload settings.
 - Connect the device to WiFi and verify PlatformIO `esp32dev_ota` upload.
 - Enable Web OTA only in a guarded development/admin build.
 - Upload a valid firmware image and confirm reboot after successful finalization.

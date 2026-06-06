@@ -14,6 +14,9 @@ public:
     void stopSetupAp() override;
     WifiDriverStatus status() const override;
     bool setupApActive() const override;
+    bool networkStackReady() const override;
+    bool stationReady() const override;
+    bool setupApReady() const override;
     std::string stationIp() const override;
     std::string setupApIp() const override;
     bool startScan() override;
@@ -21,6 +24,9 @@ public:
     std::string macSuffix() const override;
 
 private:
+    static bool ipValid(const std::string& ip);
+
+    bool networkStackReady_{false};
     bool setupApActive_{false};
 };
 

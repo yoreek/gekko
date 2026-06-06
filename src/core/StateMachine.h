@@ -20,7 +20,7 @@ public:
     explicit StateMachine(PState current) : current_(current), previous_(current) {}
     virtual ~StateMachine() = default;
 
-    void loop(uint32_t uptime) {
+    virtual void tick(uint32_t uptime) {
         uptime_ = uptime;
         if (paused_) {
             return;
