@@ -34,5 +34,5 @@
 - [x] 5.1 Add or update host tests for boot ordering so portal and OTA cannot start their network backends before dependencies are ready.
 - [x] 5.2 Run `scripts/test.sh`.
 - [x] 5.3 Run PlatformIO firmware build for `esp32dev`; do not treat `esp32dev_ota` as a separate compile verification target unless OTA upload settings changed or an actual OTA upload check is being performed.
-- [ ] 5.4 Manually verify on ESP32: first boot provisioning, portal availability, captive DNS, AP-to-STA and STA-to-AP transitions without unnecessary HTTP restart, WiFi stop/down recovery, station reconnect, development OTA, and no `Invalid mbox` crash at boot.
+- [x] 5.4 Manually verify on ESP32: first boot provisioning, portal availability, captive DNS, AP-to-STA and STA-to-AP transitions without unnecessary HTTP restart, WiFi stop/down recovery, station reconnect, development OTA, and no `Invalid mbox` crash at boot.
 - [x] 5.5 Keep mobile provisioning BLE-only; do not use WiFiProv SoftAP transport because setup AP and HTTP portal are owned by `WifiManager`/`PortalServer`.

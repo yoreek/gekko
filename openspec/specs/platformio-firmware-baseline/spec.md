@@ -41,6 +41,29 @@ The project SHALL include a PlatformIO Unity testing baseline for deterministic 
 - **WHEN** a developer runs the PlatformIO build for the default ESP32 environment
 - **THEN** the firmware compiles without requiring generated local files outside the repository
 
+### Requirement: Dependency-gated runtime services
+Runtime services that depend on WiFi, TCP/IP, sockets, AsyncTCP, DNS, MQTT, OTA, or HTTP server backends SHALL gate backend initialization on explicit dependency readiness instead of assuming construction order or begin-time application ticks are sufficient.
+
+#### Scenario: Dependent service waits for readiness
+- **WHEN** a runtime service depends on WiFi or network stack functionality and its dependency is not ready
+- **THEN** the service remains in an idle or dependency-wait state without starting its network backend
+
+#### Scenario: Dependent service starts after readiness
+- **WHEN** the required dependency becomes ready during a cooperative loop pass
+- **THEN** the service advances through an explicit startup state and starts its backend from its own tick flow
+
+#### Scenario: Dependency wait is diagnosable
+- **WHEN** a service cannot start because a dependency is unavailable
+- **THEN** the service provides bounded diagnostics through the local debug layer or test-visible state
+
+#### Scenario: WiFi loss is handled by service policy
+- **WHEN** a running WiFi-dependent service observes that a required WiFi dependency is lost
+- **THEN** it either remains safely running if the backend supports reconnects or moves through an explicit stop/restart/fault state owned by that service
+
+#### Scenario: WiFi stack stop invalidates network services
+- **WHEN** WiFi is explicitly stopped or placed into `WIFI_OFF`, `WIFI_MODE_NULL`, or another down mode that invalidates WiFi/TCP-IP dependencies
+- **THEN** WiFi-dependent services stop or fault their network backends and wait for dependency readiness before restarting
+
 ### Requirement: Application lifecycle
 The firmware SHALL expose a clear cooperative application lifecycle that initializes Arduino platform services, wires runtime services with explicit dependencies, and delegates service operational policy to the owning modules before WiFi provisioning or station mode are advanced.
 
@@ -70,6 +93,18 @@ The firmware SHALL use a cooperative non-blocking runtime model where `loop()` d
 #### Scenario: Application tick delegates service-owned work
 - **WHEN** the application lifecycle advances runtime services during a loop pass
 - **THEN** it computes the current runtime timestamp at the application boundary and delegates to service ticks without embedding service-specific branches for provisioning re-entry, provisioning timeout recovery, WiFi fallback provisioning startup, or OTA readiness
+
+#### Scenario: Runtime service ticks use explicit lifecycle naming
+- **WHEN** a runtime service exposes cooperative work to the application lifecycle
+- **THEN** it uses `tick(uint32_t now)` for runtime advancement, optional `end()` for explicit shutdown, and reserves `loop()` naming for the Arduino entrypoint
+
+#### Scenario: State machine services avoid trivial tick wrappers
+- **WHEN** a runtime service inherits the shared `StateMachine` helper and needs only normal state advancement
+- **THEN** it uses the inherited `StateMachine::tick(now)` directly rather than adding a service-local wrapper that only forwards to the state-machine implementation
+
+#### Scenario: State machine services can add bounded tick policy
+- **WHEN** a runtime service needs bounded pre- or post-state-machine policy during cooperative runtime
+- **THEN** it may override `tick(uint32_t now)` and call `StateMachine::tick(now)` as part of that service-owned policy
 
 ### Requirement: Modular firmware boundaries
 The firmware SHALL separate platform startup, configuration storage, WiFi management, provisioning transports, OTA handling, and HTTP UI handling into distinct modules with explicit ownership of service policy.

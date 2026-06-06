@@ -13,7 +13,7 @@ The firmware SHALL enter provisioning mode when no valid WiFi station credential
 
 #### Scenario: Credentials exist on boot
 - **WHEN** the device boots and valid WiFi credentials are stored
-- **THEN** the device attempts station-mode connection before starting provisioning fallback
+- **THEN** the device attempts station-mode connection before deciding whether setup AP mode is needed
 
 ### Requirement: Provisioning access point
 The firmware SHALL provide a temporary SoftAP for local setup with a deterministic device-specific SSID.
@@ -22,9 +22,9 @@ The firmware SHALL provide a temporary SoftAP for local setup with a determinist
 - **WHEN** provisioning mode starts
 - **THEN** the device broadcasts a setup SSID that includes a stable device identifier derived from hardware identity or configured device name
 
-#### Scenario: Setup AP is stopped after successful setup
+#### Scenario: Setup AP remains policy-driven after successful station connection
 - **WHEN** valid credentials are saved and the device connects to the selected WiFi network
-- **THEN** the provisioning access point is stopped unless explicit fallback mode remains enabled
+- **THEN** the setup AP remains governed by the WiFi state machine policy instead of being forced off by the station-connect path
 
 ### Requirement: HTTP WiFi configuration portal
 The firmware SHALL provide an asynchronous HTTP portal that supports WiFi scanning, network selection, credential entry, and saving setup settings.
@@ -65,11 +65,11 @@ The firmware SHALL manage WiFi station connection attempts, retries, fallback, a
 
 #### Scenario: Connection fails
 - **WHEN** station connection attempts fail after configured retry limits
-- **THEN** the firmware enters provisioning fallback without deleting the last saved credentials
+- **THEN** the firmware enters setup AP mode without deleting the last saved credentials
 
 #### Scenario: Connection flow is non-blocking
 - **WHEN** the firmware attempts to connect to a WiFi network
-- **THEN** connection progress, retry timing, and fallback decisions are advanced by cooperative state-machine ticks rather than a blocking wait loop
+- **THEN** connection progress, retry timing, and setup AP decisions are advanced by cooperative state-machine ticks rather than a blocking wait loop
 
 #### Scenario: Connection state machine is covered by Unity tests
 - **WHEN** WiFi connection retry or fallback logic is changed
