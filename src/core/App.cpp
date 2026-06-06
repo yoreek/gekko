@@ -10,7 +10,7 @@ namespace ewfm {
 
 App::App()
     : configStore_(storage_), wifiManager_(wifiDriver_), provisioningCoordinator_(configStore_, wifiManager_),
-      mobileProvisioning_(provisioningCoordinator_, wifiManager_, clock_), portalServer_(provisioningCoordinator_, wifiDriver_) {}
+      mobileProvisioning_(provisioningCoordinator_, wifiManager_), portalServer_(provisioningCoordinator_, wifiDriver_) {}
 
 bool App::begin() {
     EWFM_APP_LOG_INFO("ESP32 WiFi Manager booting");

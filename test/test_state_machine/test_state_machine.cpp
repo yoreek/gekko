@@ -528,7 +528,7 @@ void test_mobile_provisioning_starts_when_credentials_are_missing() {
     WifiManager manager(driver);
     manager.begin(store.config());
     ProvisioningCoordinator coordinator(store, manager);
-    MobileProvisioning provisioning(coordinator, manager, clock);
+    MobileProvisioning provisioning(coordinator, manager);
     provisioning.begin(store.config());
 
     provisioning.tick(100);
@@ -553,7 +553,7 @@ void test_mobile_provisioning_starts_when_wifi_enters_setup_ap() {
     WifiManager manager(driver);
     manager.begin(store.config());
     ProvisioningCoordinator coordinator(store, manager);
-    MobileProvisioning provisioning(coordinator, manager, clock);
+    MobileProvisioning provisioning(coordinator, manager);
     provisioning.begin(store.config());
 
     manager.tick(100);
@@ -587,7 +587,7 @@ void test_mobile_provisioning_reentry_resets_credentials_and_restarts_ble() {
     WifiManager manager(driver);
     manager.begin(store.config());
     ProvisioningCoordinator coordinator(store, manager);
-    MobileProvisioning provisioning(coordinator, manager, clock);
+    MobileProvisioning provisioning(coordinator, manager);
     provisioning.begin(store.config());
 
     TEST_ASSERT_TRUE(coordinator.requestMobileProvisioningReentry());
@@ -613,7 +613,7 @@ void test_mobile_provisioning_timeout_uses_supplied_timestamp() {
     WifiManager manager(driver);
     manager.begin(store.config());
     ProvisioningCoordinator coordinator(store, manager);
-    MobileProvisioning provisioning(coordinator, manager, clock);
+    MobileProvisioning provisioning(coordinator, manager);
 
     DeviceConfig config = store.config();
     config.wifi.ssid = "office";
@@ -641,7 +641,7 @@ void test_mobile_provisioning_restart_ble_keeps_session_active() {
     WifiManager manager(driver);
     manager.begin(store.config());
     ProvisioningCoordinator coordinator(store, manager);
-    MobileProvisioning provisioning(coordinator, manager, clock);
+    MobileProvisioning provisioning(coordinator, manager);
 
     DeviceConfig config = store.config();
     config.provisioning.mobileProvisioningEnabled = true;
@@ -672,7 +672,7 @@ void test_mobile_provisioning_restart_after_timeout_is_allowed() {
     WifiManager manager(driver);
     manager.begin(store.config());
     ProvisioningCoordinator coordinator(store, manager);
-    MobileProvisioning provisioning(coordinator, manager, clock);
+    MobileProvisioning provisioning(coordinator, manager);
 
     DeviceConfig config = store.config();
     config.provisioning.mobileProvisioningEnabled = true;

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "config/DeviceConfig.h"
-#include "core/Clock.h"
 #include "core/StateMachine.h"
 #include "provisioning/ProvisioningCoordinator.h"
 #include "wifi/WifiManager.h"
@@ -33,7 +32,7 @@ public:
     static bool wifiEventRegistered;
 #endif
 
-    MobileProvisioning(ProvisioningCoordinator& coordinator, WifiManager& wifiManager, IClock& clock);
+    MobileProvisioning(ProvisioningCoordinator& coordinator, WifiManager& wifiManager);
 
     void begin(const DeviceConfig& config);
     void start(uint32_t now);
@@ -88,7 +87,6 @@ private:
 
     ProvisioningCoordinator& coordinator_;
     WifiManager& wifiManager_;
-    IClock& clock_;
     DeviceConfig config_;
     char bleServiceName_[kMaxBleServiceNameLength + 1]{};
     bool sessionActive_{false};

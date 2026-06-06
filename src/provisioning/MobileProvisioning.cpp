@@ -12,8 +12,8 @@ MobileProvisioning* MobileProvisioning::activeProvisioning = nullptr;
 bool MobileProvisioning::wifiEventRegistered = false;
 #endif
 
-MobileProvisioning::MobileProvisioning(ProvisioningCoordinator& coordinator, WifiManager& wifiManager, IClock& clock)
-    : StateMachine((PState)&MobileProvisioning::Idle), coordinator_(coordinator), wifiManager_(wifiManager), clock_(clock) {}
+MobileProvisioning::MobileProvisioning(ProvisioningCoordinator& coordinator, WifiManager& wifiManager)
+    : StateMachine((PState)&MobileProvisioning::Idle), coordinator_(coordinator), wifiManager_(wifiManager) {}
 
 void MobileProvisioning::begin(const DeviceConfig& config) {
     config_ = config;

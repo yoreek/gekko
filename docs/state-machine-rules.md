@@ -37,3 +37,16 @@ The current `WifiManager` flow is the reference style:
 - `SetupAp` owns AP start and readiness checks.
 
 This keeps the flow explicit, testable, and easy to extend with more services.
+
+## Practical Checklist
+
+When writing a new cooperative service:
+
+- Define the service's owned inputs first, then derive state transitions from those inputs inside `SM_STATE(...)`.
+- Keep external methods limited to updating inputs, configuration, or explicit lifecycle requests.
+- Put hardware start/stop calls in the state that owns them, not in the caller that supplied the request.
+- Use `SM_GOTO(...)` only inside a state body, and make the next state name describe the real runtime mode.
+- Use `tick(uint32_t now)` as the only cooperative runtime entrypoint for repeated work.
+- If the service needs a shutdown path, expose `end()` or an explicit stop method rather than hiding teardown in `begin()`.
+- Add tests for startup wait, success, timeout, and recovery before adding new branches.
+- Prefer one service owning one domain of hardware or policy; if a service needs another service, pass a narrow dependency interface instead of reaching across layers.
