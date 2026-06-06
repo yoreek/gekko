@@ -9,7 +9,7 @@ These checks require a real ESP32 device and are intentionally not part of the h
 - Confirm the device starts a setup AP with the device-specific SSID suffix.
 - Connect a phone or laptop to the setup AP and open the portal by direct IP.
 - Confirm `/api/wifi/scan` returns a bounded list of nearby networks.
-- Submit valid credentials and confirm the setup AP stops after station connection.
+- Submit valid credentials and confirm the setup AP policy follows the WiFi state machine instead of being forced off by the station connect path.
 - Submit invalid or oversized values and confirm the last valid configuration remains unchanged.
 
 ## Failed Station Connection Recovery

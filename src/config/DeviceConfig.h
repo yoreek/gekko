@@ -35,7 +35,7 @@ struct WifiRuntimeConfig {
     uint8_t maxConnectRetries{5};
     uint32_t connectTimeoutMs{15000};
     uint32_t retryDelayMs{3000};
-    bool fallbackApEnabled{true};
+    bool setupApEnabled{true};
 };
 
 struct FirmwareUpdateConfig {

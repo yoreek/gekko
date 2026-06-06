@@ -1,7 +1,6 @@
 #pragma once
 
 #include "config/DeviceConfig.h"
-#include "core/Clock.h"
 #include "core/StateMachine.h"
 #include "wifi/WifiDriver.h"
 
@@ -9,15 +8,11 @@ namespace ewfm {
 
 class WifiManager : public StateMachine {
 public:
-    WifiManager(IWifiDriver& driver, IClock& clock);
+    explicit WifiManager(IWifiDriver& driver);
 
     void begin(const DeviceConfig& config);
-    void connect(const WiFiCredentials& credentials);
-    void connectAt(const WiFiCredentials& credentials, uint32_t now);
-    void enterProvisioningFallback();
-    void enterProvisioningFallbackAt(uint32_t now);
+    void updateCredentials(const WiFiCredentials& credentials);
     void clearCredentials();
-    void clearCredentialsAt(uint32_t now);
 
     bool connected() const {
         return is((PState)&WifiManager::Connected);
@@ -25,8 +20,11 @@ public:
     bool connecting() const {
         return is((PState)&WifiManager::Connecting);
     }
-    bool provisioningFallback() const {
-        return is((PState)&WifiManager::ProvisioningFallback);
+    bool apMode() const {
+        return is((PState)&WifiManager::SetupAp);
+    }
+    bool checkConnection() const {
+        return is((PState)&WifiManager::CheckConnection);
     }
     bool networkStackReady() const {
         return driver_.networkStackReady();
@@ -35,7 +33,7 @@ public:
         return connected() && driver_.stationReady();
     }
     bool setupApReady() const {
-        return provisioningFallback() && driver_.setupApReady();
+        return apMode() && driver_.setupApReady();
     }
     bool otaReady() const {
         return stationReady() || setupApReady();
@@ -62,20 +60,19 @@ public:
 private:
     void Idle();
     void Connecting();
+    void CheckConnection();
+    void RetryDelay();
     void Connected();
-    void ProvisioningFallback();
-    void startProvisioningFallbackAt(uint32_t now);
-    void retryConnection(uint32_t now, const char* reason);
+    void SetupAp();
     bool retriesExhausted() const;
     std::string setupApSsid() const;
 
     IWifiDriver& driver_;
-    IClock& clock_;
     DeviceConfig config_;
     WiFiCredentials credentials_;
     uint8_t retryCount_{0};
-    uint32_t nextRetryAt_{0};
     bool stationIpLogged_{false};
+    bool stationConnectRequested_{false};
 };
 
 } // namespace ewfm

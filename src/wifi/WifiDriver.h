@@ -41,6 +41,7 @@ public:
     virtual void clearStationCredentials() = 0;
     virtual bool startSetupAp(const std::string& ssid, const std::string& password) = 0;
     virtual void stopSetupAp() = 0;
+    virtual bool prepareProvisioningScan() = 0;
     virtual WifiDriverStatus status() const = 0;
     virtual bool setupApActive() const = 0;
     virtual bool networkStackReady() const = 0;

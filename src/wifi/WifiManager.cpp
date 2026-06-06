@@ -7,103 +7,139 @@ namespace ewfm {
 #undef SM_CLASS
 #define SM_CLASS WifiManager
 
-WifiManager::WifiManager(IWifiDriver& driver, IClock& clock) : StateMachine((PState)&WifiManager::Idle), driver_(driver), clock_(clock) {}
+WifiManager::WifiManager(IWifiDriver& driver) : StateMachine((PState)&WifiManager::Idle), driver_(driver) {}
 
 void WifiManager::begin(const DeviceConfig& config) {
     driver_.begin();
     config_ = config;
     credentials_ = config.wifi;
     retryCount_ = 0;
-    nextRetryAt_ = 0;
+    stationIpLogged_ = false;
+    stationConnectRequested_ = credentials_.hasCredentials();
 }
 
-void WifiManager::connect(const WiFiCredentials& credentials) {
-    connectAt(credentials, clock_.millis());
-}
-
-void WifiManager::connectAt(const WiFiCredentials& credentials, uint32_t now) {
+void WifiManager::updateCredentials(const WiFiCredentials& credentials) {
     credentials_ = credentials;
     retryCount_ = 0;
-    nextRetryAt_ = now;
     stationIpLogged_ = false;
-    driver_.beginStation(credentials_);
-    EWFM_WIFI_LOG_INFO("station connection started for ssid=%s", credentials.ssid.c_str());
-    setState((PState)&WifiManager::Connecting, now);
-}
-
-void WifiManager::enterProvisioningFallback() {
-    enterProvisioningFallbackAt(clock_.millis());
-}
-
-void WifiManager::enterProvisioningFallbackAt(uint32_t now) {
-    driver_.disconnect();
-    startProvisioningFallbackAt(now);
-}
-
-void WifiManager::startProvisioningFallbackAt(uint32_t now) {
-    if (driver_.startSetupAp(setupApSsid(), config_.provisioning.setupApPassword)) {
-        EWFM_WIFI_LOG_INFO("setup AP started");
-    } else {
-        EWFM_WIFI_LOG_WARN("setup AP start failed");
-    }
-    setState((PState)&WifiManager::ProvisioningFallback, now);
+    stationConnectRequested_ = credentials_.hasCredentials();
 }
 
 void WifiManager::clearCredentials() {
-    clearCredentialsAt(clock_.millis());
-}
-
-void WifiManager::clearCredentialsAt(uint32_t now) {
     credentials_ = {};
     retryCount_ = 0;
-    nextRetryAt_ = 0;
     stationIpLogged_ = false;
-    driver_.clearStationCredentials();
-    startProvisioningFallbackAt(now);
+    stationConnectRequested_ = false;
 }
 
 SM_STATE(Idle) {
-    if (credentials_.hasCredentials()) {
+    if (stationConnectRequested_ && credentials_.hasCredentials()) {
         EWFM_WIFI_LOG_INFO("stored credentials found, connecting");
-        connectAt(credentials_, uptime());
-        return;
+        SM_GOTO(Connecting);
     }
 
-    if (config_.wifiRuntime.fallbackApEnabled) {
+    if (config_.wifiRuntime.setupApEnabled) {
         EWFM_WIFI_LOG_INFO("no station credentials, starting setup AP");
-        enterProvisioningFallbackAt(uptime());
+        if (!driver_.setupApActive()) {
+            if (driver_.startSetupAp(setupApSsid(), config_.provisioning.setupApPassword)) {
+                EWFM_WIFI_LOG_INFO("setup AP started");
+                if (!driver_.prepareProvisioningScan()) {
+                    EWFM_WIFI_LOG_WARN("provisioning scan preparation failed");
+                }
+            } else {
+                EWFM_WIFI_LOG_WARN("setup AP start failed");
+            }
+        }
+        SM_GOTO(SetupAp);
     }
 }
 
 SM_STATE(Connecting) {
+    if (isStateUpdated()) {
+        if (!credentials_.hasCredentials()) {
+            EWFM_WIFI_LOG_WARN("station connection requested without credentials");
+            SM_GOTO(Idle);
+        }
+
+        driver_.beginStation(credentials_);
+        EWFM_WIFI_LOG_INFO("station connection started for ssid=%s", credentials_.ssid.c_str());
+        stationConnectRequested_ = false;
+        SM_GOTO(CheckConnection);
+    }
+}
+
+SM_STATE(CheckConnection) {
     switch (driver_.status()) {
     case WifiDriverStatus::Connected:
-        driver_.stopSetupAp();
         EWFM_WIFI_LOG_INFO("station connected");
+        stationIpLogged_ = false;
+        stationConnectRequested_ = false;
         SM_GOTO(Connected);
     case WifiDriverStatus::Failed:
     case WifiDriverStatus::Disconnected:
+        stationIpLogged_ = false;
+        ++retryCount_;
         if (retriesExhausted()) {
-            if (config_.wifiRuntime.fallbackApEnabled) {
+            if (config_.wifiRuntime.setupApEnabled) {
                 EWFM_WIFI_LOG_WARN("station connection failed, starting setup AP");
-                enterProvisioningFallbackAt(uptime());
+                if (!driver_.setupApActive()) {
+                    if (driver_.startSetupAp(setupApSsid(), config_.provisioning.setupApPassword)) {
+                        EWFM_WIFI_LOG_INFO("setup AP started");
+                        if (!driver_.prepareProvisioningScan()) {
+                            EWFM_WIFI_LOG_WARN("provisioning scan preparation failed");
+                        }
+                    } else {
+                        EWFM_WIFI_LOG_WARN("setup AP start failed");
+                    }
+                }
+                stationConnectRequested_ = false;
+                SM_GOTO(SetupAp);
             }
-            return;
+            SM_GOTO(Idle);
         }
-        if (timeReached(uptime(), nextRetryAt_)) {
-            retryConnection(uptime(), "connection retry");
+
+        EWFM_WIFI_LOG_DEBUG("connection retry %u", retryCount_);
+        if (config_.wifiRuntime.retryDelayMs == 0) {
+            SM_GOTO(Connecting);
         }
-        return;
+        SM_GOTO(RetryDelay);
     case WifiDriverStatus::Connecting:
     case WifiDriverStatus::Idle:
         if (isTimeout(config_.wifiRuntime.connectTimeoutMs)) {
+            stationIpLogged_ = false;
+            ++retryCount_;
             if (retriesExhausted()) {
-                enterProvisioningFallbackAt(uptime());
-            } else {
-                retryConnection(uptime(), "connection timeout retry");
+                if (config_.wifiRuntime.setupApEnabled) {
+                    EWFM_WIFI_LOG_WARN("station connection timeout, starting setup AP");
+                    if (!driver_.setupApActive()) {
+                        if (driver_.startSetupAp(setupApSsid(), config_.provisioning.setupApPassword)) {
+                            EWFM_WIFI_LOG_INFO("setup AP started");
+                            if (!driver_.prepareProvisioningScan()) {
+                                EWFM_WIFI_LOG_WARN("provisioning scan preparation failed");
+                            }
+                        } else {
+                            EWFM_WIFI_LOG_WARN("setup AP start failed");
+                        }
+                    }
+                    stationConnectRequested_ = false;
+                    SM_GOTO(SetupAp);
+                }
+                SM_GOTO(Idle);
             }
+
+            EWFM_WIFI_LOG_DEBUG("connection timeout retry %u", retryCount_);
+            if (config_.wifiRuntime.retryDelayMs == 0) {
+                SM_GOTO(Connecting);
+            }
+            SM_GOTO(RetryDelay);
         }
-        return;
+        break;
+    }
+}
+
+SM_STATE(RetryDelay) {
+    if (isTimeout(config_.wifiRuntime.retryDelayMs)) {
+        SM_GOTO(Connecting);
     }
 }
 
@@ -116,22 +152,94 @@ SM_STATE(Connected) {
         }
     }
 
-    if (driver_.status() == WifiDriverStatus::Disconnected || driver_.status() == WifiDriverStatus::Failed) {
+    if (!credentials_.hasCredentials()) {
+        stationIpLogged_ = false;
+        EWFM_WIFI_LOG_WARN("station credentials cleared, falling back");
+        if (config_.wifiRuntime.setupApEnabled) {
+            if (!driver_.setupApActive()) {
+                if (driver_.startSetupAp(setupApSsid(), config_.provisioning.setupApPassword)) {
+                    EWFM_WIFI_LOG_INFO("setup AP started");
+                    if (!driver_.prepareProvisioningScan()) {
+                        EWFM_WIFI_LOG_WARN("provisioning scan preparation failed");
+                    }
+                } else {
+                    EWFM_WIFI_LOG_WARN("setup AP start failed");
+                }
+            }
+            stationConnectRequested_ = false;
+            SM_GOTO(SetupAp);
+        }
+        stationConnectRequested_ = false;
+        SM_GOTO(Idle);
+    }
+
+    switch (driver_.status()) {
+    case WifiDriverStatus::Connected:
+        if (isTimeout(config_.wifiRuntime.connectTimeoutMs)) {
+            SM_GOTO(CheckConnection);
+        }
+        break;
+    case WifiDriverStatus::Failed:
+    case WifiDriverStatus::Disconnected:
         stationIpLogged_ = false;
         EWFM_WIFI_LOG_WARN("station disconnected, reconnecting");
-        retryConnection(uptime(), "connection restore retry");
+        retryCount_ = 0;
+        if (credentials_.hasCredentials()) {
+            stationConnectRequested_ = true;
+            SM_GOTO(Connecting);
+        }
+        if (config_.wifiRuntime.setupApEnabled) {
+            if (!driver_.setupApActive()) {
+                if (driver_.startSetupAp(setupApSsid(), config_.provisioning.setupApPassword)) {
+                    EWFM_WIFI_LOG_INFO("setup AP started");
+                    if (!driver_.prepareProvisioningScan()) {
+                        EWFM_WIFI_LOG_WARN("provisioning scan preparation failed");
+                    }
+                } else {
+                    EWFM_WIFI_LOG_WARN("setup AP start failed");
+                }
+            }
+            stationConnectRequested_ = false;
+            SM_GOTO(SetupAp);
+        }
+        stationConnectRequested_ = false;
+        SM_GOTO(Idle);
+    case WifiDriverStatus::Connecting:
+    case WifiDriverStatus::Idle:
+        if (isTimeout(config_.wifiRuntime.connectTimeoutMs)) {
+            SM_GOTO(CheckConnection);
+        }
+        break;
     }
 }
 
-SM_STATE(ProvisioningFallback) {}
+SM_STATE(SetupAp) {
+    if (isStateUpdated() && !driver_.setupApActive()) {
+        if (driver_.startSetupAp(setupApSsid(), config_.provisioning.setupApPassword)) {
+            EWFM_WIFI_LOG_INFO("setup AP started");
+            if (!driver_.prepareProvisioningScan()) {
+                EWFM_WIFI_LOG_WARN("provisioning scan preparation failed");
+            }
+        } else {
+            EWFM_WIFI_LOG_WARN("setup AP start failed");
+        }
+    }
 
-void WifiManager::retryConnection(uint32_t now, const char* reason) {
-    (void)reason;
-    ++retryCount_;
-    EWFM_WIFI_LOG_DEBUG("%s %u", reason, retryCount_);
-    nextRetryAt_ = now + config_.wifiRuntime.retryDelayMs;
-    driver_.beginStation(credentials_);
-    setState((PState)&WifiManager::Connecting, now);
+    if (stationConnectRequested_ && credentials_.hasCredentials()) {
+        SM_GOTO(Connecting);
+    }
+
+    switch (driver_.status()) {
+    case WifiDriverStatus::Connected:
+        EWFM_WIFI_LOG_INFO("station connected");
+        stationIpLogged_ = false;
+        SM_GOTO(Connected);
+    case WifiDriverStatus::Failed:
+    case WifiDriverStatus::Disconnected:
+    case WifiDriverStatus::Connecting:
+    case WifiDriverStatus::Idle:
+        break;
+    }
 }
 
 bool WifiManager::retriesExhausted() const {

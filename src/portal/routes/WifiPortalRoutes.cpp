@@ -29,7 +29,7 @@ void WifiPortalRoutes::handleScan(AsyncWebServerRequest* request) {
     std::vector<WifiNetwork> networks;
     if (!scanStarted_) {
         scanStarted_ = wifiDriver_.startScan();
-        EWFM_PORTAL_LOG_DEBUG("wifi scan started=%d", scanStarted_);
+        EWFM_PORTAL_LOG_INFO("wifi scan started=%d", scanStarted_);
         request->send(202, "application/json", "{\"status\":\"scanning\"}");
         return;
     }

@@ -18,14 +18,12 @@ public:
     ProvisioningCoordinator(ConfigStore& configStore, WifiManager& wifiManager);
 
     ProvisioningResult submitWifiCredentials(const WiFiCredentials& credentials);
-    ProvisioningResult submitWifiCredentialsAt(const WiFiCredentials& credentials, uint32_t now);
     void resetWifiCredentials();
-    void resetWifiCredentialsAt(uint32_t now);
     bool requestMobileProvisioningReentry();
     bool takeMobileProvisioningReentryRequest();
     bool hasWifiCredentials() const;
     bool mobileProvisioningEnabled() const;
-    bool wifiProvisioningFallback() const;
+    bool wifiApMode() const;
 
 private:
     ConfigStore& configStore_;

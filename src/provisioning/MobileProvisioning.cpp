@@ -2,38 +2,22 @@
 
 #include "debug/Debug.h"
 
-#if defined(ARDUINO) && !defined(UNIT_TEST) && __has_include(<WiFiProv.h>)
-#include <WiFi.h>
-#include <WiFiProv.h>
-#define EWFM_HAS_WIFI_PROV 1
-#else
-#define EWFM_HAS_WIFI_PROV 0
-#endif
-
 namespace ewfm {
 
 #undef SM_CLASS
 #define SM_CLASS MobileProvisioning
 
 #if EWFM_HAS_WIFI_PROV
-namespace {
-MobileProvisioning* activeProvisioning = nullptr;
-bool wifiEventRegistered = false;
-} // namespace
+MobileProvisioning* MobileProvisioning::activeProvisioning = nullptr;
+bool MobileProvisioning::wifiEventRegistered = false;
 #endif
 
-namespace {
-constexpr uint32_t kProvisioningRestartDelayMs = 1500;
-const char* kBleServiceName = "PROV_123";
-const char* kBlePop = "abcd1234";
-uint8_t kBleServiceUuid[16] = {0xb4, 0xdf, 0x5a, 0x1c, 0x3f, 0x6b, 0xf4, 0xbf, 0xea, 0x4a, 0x82, 0x03, 0x04, 0x90, 0x1a, 0x02};
-} // namespace
-
-MobileProvisioning::MobileProvisioning(ProvisioningCoordinator& coordinator, IClock& clock)
-    : StateMachine((PState)&MobileProvisioning::Idle), coordinator_(coordinator), clock_(clock) {}
+MobileProvisioning::MobileProvisioning(ProvisioningCoordinator& coordinator, WifiManager& wifiManager, IClock& clock)
+    : StateMachine((PState)&MobileProvisioning::Idle), coordinator_(coordinator), wifiManager_(wifiManager), clock_(clock) {}
 
 void MobileProvisioning::begin(const DeviceConfig& config) {
     config_ = config;
+    initBleServiceName();
 }
 
 void MobileProvisioning::start(uint32_t now) {
@@ -114,19 +98,40 @@ void MobileProvisioning::scheduleStart(uint32_t now) {
     setState((PState)&MobileProvisioning::RestartPending, now);
 }
 
-bool MobileProvisioning::startCooldownElapsed(uint32_t now) const {
+bool MobileProvisioning::startCooldownElapsed(const uint32_t now) const {
     return nextStartAllowedAt_ == 0 || timeReached(now, nextStartAllowedAt_);
+}
+
+void MobileProvisioning::initBleServiceName() {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    String mac = WiFi.macAddress();
+    mac.replace(":", "");
+    std::string suffix = mac.c_str();
+    if (suffix.empty()) {
+        suffix = "esp32";
+    } else if (suffix.size() > 6) {
+        suffix = suffix.substr(suffix.size() - 6);
+    }
+#else
+    std::string suffix = "native";
+#endif
+
+    snprintf(bleServiceName_, sizeof(bleServiceName_), "%s%s", kBleServiceNamePrefix, suffix.c_str());
 }
 
 void MobileProvisioning::beginBleProvisioning() {
 #if EWFM_HAS_WIFI_PROV
     const bool resetProvisioned = true;
 
-    EWFM_APP_LOG_INFO("PROV_START transport=ble service=%s", kBleServiceName);
-    EWFM_PROV_LOG_INFO("PROV_START transport=ble service=%s", kBleServiceName);
-    WiFiProv.beginProvision(WIFI_PROV_SCHEME_BLE, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, kBlePop, kBleServiceName, nullptr,
-                            kBleServiceUuid, resetProvisioned);
-    WiFiProv.printQR(kBleServiceName, kBlePop, "ble");
+    EWFM_APP_LOG_INFO("PROV_START transport=ble service=%s", bleServiceName_);
+    EWFM_PROV_LOG_INFO("PROV_START transport=ble service=%s", bleServiceName_);
+    if (!wifiManager_.networkStackReady()) {
+        EWFM_PROV_LOG_WARN("wifi stack is not ready for BLE provisioning");
+        return;
+    }
+    WiFiProv.beginProvision(WIFI_PROV_SCHEME_BLE, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, kBlePop, bleServiceName_, nullptr,
+                            nullptr, resetProvisioned);
+    WiFiProv.printQR(bleServiceName_, kBlePop, "ble");
 #endif
 }
 
@@ -186,7 +191,7 @@ void MobileProvisioning::runLifecyclePolicy(uint32_t now) {
 void MobileProvisioning::handleReentryRequest(uint32_t now) {
     EWFM_APP_LOG_INFO("PROV_REENTER handling");
     EWFM_APP_LOG_INFO("PROV_REENTER clearing wifi credentials and starting BLE provisioning");
-    coordinator_.resetWifiCredentialsAt(now);
+    coordinator_.resetWifiCredentials();
     restartBle(now);
 }
 
@@ -204,7 +209,7 @@ bool MobileProvisioning::shouldAutoStart() const {
         return true;
     }
 
-    return coordinator_.wifiProvisioningFallback();
+    return coordinator_.wifiApMode();
 }
 
 SM_STATE(Disabled) {}
@@ -277,7 +282,7 @@ void MobileProvisioning::handleCredentials(const char* ssid, const char* passwor
     if (password != nullptr) {
         credentials.password = password;
     }
-    ProvisioningResult result = coordinator_.submitWifiCredentialsAt(credentials, now);
+    ProvisioningResult result = coordinator_.submitWifiCredentials(credentials);
     if (result != ProvisioningResult::Accepted) {
         finishSession(now, "credentials_rejected", (PState)&MobileProvisioning::Failed);
         return;

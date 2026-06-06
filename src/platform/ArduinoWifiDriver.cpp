@@ -1,17 +1,74 @@
 #include "platform/ArduinoWifiDriver.h"
 
+#include "debug/Debug.h"
+
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 #include <WiFi.h>
 #endif
 
 namespace ewfm {
 
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+namespace {
+
+const char* wifiModeName(wifi_mode_t mode) {
+    switch (mode) {
+    case WIFI_MODE_NULL:
+        return "NULL";
+    case WIFI_MODE_STA:
+        return "STA";
+    case WIFI_MODE_AP:
+        return "AP";
+    case WIFI_MODE_APSTA:
+        return "AP_STA";
+    default:
+        return "UNKNOWN";
+    }
+}
+
+const char* wifiStatusName(wl_status_t status) {
+    switch (status) {
+    case WL_IDLE_STATUS:
+        return "IDLE";
+    case WL_NO_SSID_AVAIL:
+        return "NO_SSID_AVAIL";
+    case WL_SCAN_COMPLETED:
+        return "SCAN_COMPLETED";
+    case WL_CONNECTED:
+        return "CONNECTED";
+    case WL_CONNECT_FAILED:
+        return "CONNECT_FAILED";
+    case WL_CONNECTION_LOST:
+        return "CONNECTION_LOST";
+    case WL_DISCONNECTED:
+        return "DISCONNECTED";
+    default:
+        return "UNKNOWN";
+    }
+}
+
+void logWifiSnapshot(const char* action) {
+    const wifi_mode_t mode = WiFi.getMode();
+    const wl_status_t status = WiFi.status();
+    const std::string stationIp = WiFi.localIP().toString().c_str();
+    const std::string setupApIp = WiFi.softAPIP().toString().c_str();
+    EWFM_WIFI_LOG_INFO("%s mode=%s status=%s staIp=%s apIp=%s stackReady=%d apActive=%d", action, wifiModeName(mode),
+                       wifiStatusName(status), stationIp.c_str(), setupApIp.c_str(), static_cast<int>(mode != WIFI_MODE_NULL),
+                       static_cast<int>(WiFi.getMode() == WIFI_MODE_AP || WiFi.getMode() == WIFI_MODE_APSTA));
+}
+
+} // namespace
+#endif
+
 bool ArduinoWifiDriver::begin() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+    EWFM_WIFI_LOG_INFO("driver begin: mode=WIFI_STA");
     networkStackReady_ = WiFi.mode(WIFI_STA);
+    EWFM_WIFI_LOG_INFO("driver begin: mode result=%d", static_cast<int>(networkStackReady_));
     if (networkStackReady_) {
         setupApActive_ = false;
     }
+    logWifiSnapshot("driver begin");
     return networkStackReady_;
 #else
     return false;
@@ -20,17 +77,25 @@ bool ArduinoWifiDriver::begin() {
 
 bool ArduinoWifiDriver::beginStation(const WiFiCredentials& credentials) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+    EWFM_WIFI_LOG_INFO("beginStation ssid=%s", credentials.ssid.c_str());
     if (WiFi.status() == WL_CONNECTED) {
         networkStackReady_ = WiFi.getMode() != WIFI_MODE_NULL;
+        EWFM_WIFI_LOG_DEBUG("beginStation already connected");
+        logWifiSnapshot("beginStation already connected");
         return networkStackReady_;
     }
 
+    EWFM_WIFI_LOG_INFO("beginStation: mode=WIFI_STA");
     networkStackReady_ = WiFi.mode(WIFI_STA);
     if (!networkStackReady_) {
+        EWFM_WIFI_LOG_WARN("beginStation: WiFi.mode(WIFI_STA) failed");
+        logWifiSnapshot("beginStation mode failed");
         return false;
     }
     setupApActive_ = false;
+    EWFM_WIFI_LOG_INFO("beginStation: WiFi.begin(ssid, ****)");
     WiFi.begin(credentials.ssid.c_str(), credentials.password.c_str());
+    logWifiSnapshot("beginStation requested");
     return true;
 #else
     (void)credentials;
@@ -40,25 +105,37 @@ bool ArduinoWifiDriver::beginStation(const WiFiCredentials& credentials) {
 
 void ArduinoWifiDriver::disconnect() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+    EWFM_WIFI_LOG_INFO("disconnect: WiFi.disconnect(false, false)");
     WiFi.disconnect(false, false);
+    networkStackReady_ = WiFi.getMode() != WIFI_MODE_NULL;
+    logWifiSnapshot("disconnect");
 #endif
 }
 
 void ArduinoWifiDriver::clearStationCredentials() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+    EWFM_WIFI_LOG_INFO("clearStationCredentials: WiFi.disconnect(true, true)");
     WiFi.disconnect(true, true);
+    networkStackReady_ = WiFi.getMode() != WIFI_MODE_NULL;
+    logWifiSnapshot("clearStationCredentials");
 #endif
 }
 
 bool ArduinoWifiDriver::startSetupAp(const std::string& ssid, const std::string& password) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+    EWFM_WIFI_LOG_INFO("startSetupAp ssid=%s password=%s", ssid.c_str(), password.empty() ? "<empty>" : "<set>");
+    EWFM_WIFI_LOG_INFO("startSetupAp: mode=WIFI_AP_STA");
     networkStackReady_ = WiFi.mode(WIFI_AP_STA);
     if (!networkStackReady_) {
         setupApActive_ = false;
+        EWFM_WIFI_LOG_WARN("startSetupAp: WiFi.mode(WIFI_AP_STA) failed");
+        logWifiSnapshot("startSetupAp mode failed");
         return false;
     }
 
     setupApActive_ = password.empty() ? WiFi.softAP(ssid.c_str()) : WiFi.softAP(ssid.c_str(), password.c_str());
+    EWFM_WIFI_LOG_INFO("startSetupAp: WiFi.softAP result=%d", static_cast<int>(setupApActive_));
+    logWifiSnapshot("startSetupAp");
     return setupApActive_;
 #else
     (void)ssid;
@@ -69,8 +146,23 @@ bool ArduinoWifiDriver::startSetupAp(const std::string& ssid, const std::string&
 
 void ArduinoWifiDriver::stopSetupAp() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+    EWFM_WIFI_LOG_INFO("stopSetupAp: WiFi.softAPdisconnect(true)");
     WiFi.softAPdisconnect(true);
     setupApActive_ = false;
+    logWifiSnapshot("stopSetupAp");
+#endif
+}
+
+bool ArduinoWifiDriver::prepareProvisioningScan() {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    EWFM_WIFI_LOG_INFO("prepareProvisioningScan: WiFi.enableSTA(true)");
+    const bool enabled = WiFi.enableSTA(true);
+    EWFM_WIFI_LOG_INFO("prepareProvisioningScan: STA enable result=%d", static_cast<int>(enabled));
+    networkStackReady_ = WiFi.getMode() != WIFI_MODE_NULL;
+    logWifiSnapshot("prepareProvisioningScan");
+    return networkStackReady_;
+#else
+    return false;
 #endif
 }
 
@@ -142,8 +234,12 @@ std::string ArduinoWifiDriver::setupApIp() const {
 
 bool ArduinoWifiDriver::startScan() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+    EWFM_WIFI_LOG_INFO("startScan");
     WiFi.scanDelete();
-    return WiFi.scanNetworks(true, true) == WIFI_SCAN_RUNNING;
+    const bool started = WiFi.scanNetworks(true, true) == WIFI_SCAN_RUNNING;
+    EWFM_WIFI_LOG_INFO("startScan result=%d", static_cast<int>(started));
+    logWifiSnapshot("startScan");
+    return started;
 #else
     return false;
 #endif
@@ -151,10 +247,13 @@ bool ArduinoWifiDriver::startScan() {
 
 bool ArduinoWifiDriver::scanComplete(std::vector<WifiNetwork>& networks, size_t maxResults) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+    EWFM_WIFI_LOG_INFO("scanComplete requested maxResults=%u", static_cast<unsigned>(maxResults));
     int16_t count = WiFi.scanComplete();
     if (count < 0) {
+        EWFM_WIFI_LOG_DEBUG("scanComplete not ready count=%d", static_cast<int>(count));
         return false;
     }
+    EWFM_WIFI_LOG_INFO("scanComplete count=%d", static_cast<int>(count));
     networks.clear();
     const size_t limit = static_cast<size_t>(count) < maxResults ? static_cast<size_t>(count) : maxResults;
     for (size_t i = 0; i < limit; ++i) {
@@ -166,6 +265,7 @@ bool ArduinoWifiDriver::scanComplete(std::vector<WifiNetwork>& networks, size_t 
         networks.push_back(network);
     }
     WiFi.scanDelete();
+    logWifiSnapshot("scanComplete");
     return true;
 #else
     (void)networks;
