@@ -15,9 +15,9 @@ constexpr const char* kNamespace = "device_registry";
 constexpr const char* kIndexKey = "index";
 constexpr uint32_t kRegistryMagic = 0x44565249UL;
 constexpr uint32_t kRecordMagic = 0x44565243UL;
+constexpr char kHexDigits[] = "0123456789abcdef";
 
-template <typename T>
-void appendLE(std::string& out, T value) {
+template <typename T> void appendLE(std::string& out, T value) {
     using Unsigned = typename std::make_unsigned<T>::type;
     const Unsigned v = static_cast<Unsigned>(value);
     for (size_t index = 0; index < sizeof(T); ++index) {
@@ -25,8 +25,7 @@ void appendLE(std::string& out, T value) {
     }
 }
 
-template <typename T>
-bool readLE(const std::string& blob, size_t& pos, T& value) {
+template <typename T> bool readLE(const std::string& blob, size_t& pos, T& value) {
     using Unsigned = typename std::make_unsigned<T>::type;
     if (pos + sizeof(T) > blob.size()) {
         return false;
@@ -42,6 +41,46 @@ bool readLE(const std::string& blob, size_t& pos, T& value) {
 
 void appendBytes(std::string& out, const std::string& bytes) {
     out.append(bytes.data(), bytes.size());
+}
+
+std::string toHex(const std::string& bytes) {
+    std::string hex;
+    hex.reserve(bytes.size() * 2);
+    for (unsigned char byte : bytes) {
+        hex.push_back(kHexDigits[(byte >> 4) & 0x0F]);
+        hex.push_back(kHexDigits[byte & 0x0F]);
+    }
+    return hex;
+}
+
+int fromHexDigit(char ch) {
+    if (ch >= '0' && ch <= '9') {
+        return ch - '0';
+    }
+    if (ch >= 'a' && ch <= 'f') {
+        return 10 + (ch - 'a');
+    }
+    if (ch >= 'A' && ch <= 'F') {
+        return 10 + (ch - 'A');
+    }
+    return -1;
+}
+
+bool fromHex(const std::string& hex, std::string& bytes) {
+    if ((hex.size() % 2) != 0) {
+        return false;
+    }
+    bytes.clear();
+    bytes.reserve(hex.size() / 2);
+    for (size_t index = 0; index < hex.size(); index += 2) {
+        const int hi = fromHexDigit(hex[index]);
+        const int lo = fromHexDigit(hex[index + 1]);
+        if (hi < 0 || lo < 0) {
+            return false;
+        }
+        bytes.push_back(static_cast<char>((hi << 4) | lo));
+    }
+    return true;
 }
 
 bool readBytes(const std::string& blob, size_t& pos, size_t length, std::string& out) {
@@ -244,7 +283,8 @@ DeviceValidationResult parseIndex(const std::string& blob, DeviceRegistrySnapsho
 }
 
 std::string serializeRecord(const DeviceRecord& record) {
-    const uint32_t payloadLength = record.configPayload.size() > kMaxDeviceConfigBytes ? 0U : static_cast<uint32_t>(record.configPayload.size());
+    const uint32_t payloadLength =
+        record.configPayload.size() > kMaxDeviceConfigBytes ? 0U : static_cast<uint32_t>(record.configPayload.size());
     std::string blob;
     blob.reserve(48 + record.name.size() + record.configPayload.size());
     appendLE<uint32_t>(blob, kRecordMagic);
@@ -289,8 +329,8 @@ DeviceValidationResult parseRecord(const std::string& blob, DeviceRecord& record
     if (!readLE(blob, pos, record.header.deviceId) || !readLE(blob, pos, record.header.typeId) || !readLE(blob, pos, enabled) ||
         !readLE(blob, pos, record.header.configVersion) || !readLE(blob, pos, record.header.configRevision) ||
         !readLE(blob, pos, record.header.payloadLength) || !readLE(blob, pos, record.header.payloadChecksum) ||
-        !readLE(blob, pos, nameLength) || !readLE(blob, pos, hasParent) || !readLE(blob, pos, status) ||
-        !readLE(blob, pos, persistence) || !readLE(blob, pos, reserved8) || !readLE(blob, pos, record.parentDeviceId)) {
+        !readLE(blob, pos, nameLength) || !readLE(blob, pos, hasParent) || !readLE(blob, pos, status) || !readLE(blob, pos, persistence) ||
+        !readLE(blob, pos, reserved8) || !readLE(blob, pos, record.parentDeviceId)) {
         return {DeviceError::CorruptRecord, "device record header is truncated"};
     }
 
@@ -337,6 +377,11 @@ DeviceValidationResult DeviceRegistryStore::load(DeviceRegistrySnapshot& snapsho
     if (!storage_.getString(kIndexKey, indexBlob)) {
         return {DeviceError::StorageError, "failed to read registry index"};
     }
+    std::string indexBytes;
+    if (!fromHex(indexBlob, indexBytes)) {
+        return {DeviceError::CorruptRecord, "registry index is not valid hex"};
+    }
+    indexBlob = std::move(indexBytes);
 
     DeviceValidationResult indexResult = parseIndex(indexBlob, snapshot);
     if (!indexResult.ok()) {
@@ -352,6 +397,12 @@ DeviceValidationResult DeviceRegistryStore::load(DeviceRegistrySnapshot& snapsho
             snapshot = {};
             return {DeviceError::MissingRecord, "missing device record"};
         }
+        std::string recordBytes;
+        if (!fromHex(recordBlob, recordBytes)) {
+            snapshot = {};
+            return {DeviceError::CorruptRecord, "device record is not valid hex"};
+        }
+        recordBlob = std::move(recordBytes);
 
         DeviceRecord record{};
         DeviceValidationResult recordResult = parseRecord(recordBlob, record);
@@ -408,8 +459,9 @@ DeviceValidationResult DeviceRegistryStore::load(DeviceRegistrySnapshot& snapsho
         }
 
         if (typeRegistry != nullptr && childDescriptor != nullptr && !childDescriptor->compatibleParentTypes.empty()) {
-            const bool parentCompatible = std::find(childDescriptor->compatibleParentTypes.begin(), childDescriptor->compatibleParentTypes.end(),
-                                                    parentRecord.header.typeId) != childDescriptor->compatibleParentTypes.end();
+            const bool parentCompatible =
+                std::find(childDescriptor->compatibleParentTypes.begin(), childDescriptor->compatibleParentTypes.end(),
+                          parentRecord.header.typeId) != childDescriptor->compatibleParentTypes.end();
             if (!parentCompatible) {
                 snapshot = {};
                 return {DeviceError::InvalidRelationship, "incompatible parent type"};
@@ -463,7 +515,7 @@ DeviceValidationResult DeviceRegistryStore::save(const DeviceRegistrySnapshot& s
         return {DeviceError::BoundsExceeded, "registry index exceeds supported size"};
     }
 
-    if (!storage_.putString(kIndexKey, indexBlob)) {
+    if (!storage_.putString(kIndexKey, toHex(indexBlob))) {
         return {DeviceError::StorageError, "failed to persist registry index"};
     }
 
@@ -473,7 +525,7 @@ DeviceValidationResult DeviceRegistryStore::save(const DeviceRegistrySnapshot& s
             return {DeviceError::BoundsExceeded, "device record exceeds supported size"};
         }
         const std::string recordKey = makeRecordKey(record.header.deviceId);
-        if (!storage_.putString(recordKey.c_str(), recordBlob)) {
+        if (!storage_.putString(recordKey.c_str(), toHex(recordBlob))) {
             return {DeviceError::StorageError, "failed to persist device record"};
         }
     }

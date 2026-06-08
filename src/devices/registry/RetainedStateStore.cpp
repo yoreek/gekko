@@ -8,9 +8,9 @@ namespace ewfm {
 namespace {
 constexpr const char* kNamespace = "device_retained";
 constexpr uint32_t kRetainedMagic = 0x44525444UL;
+constexpr char kHexDigits[] = "0123456789abcdef";
 
-template <typename T>
-void appendLE(std::string& out, T value) {
+template <typename T> void appendLE(std::string& out, T value) {
     using Unsigned = typename std::make_unsigned<T>::type;
     const Unsigned v = static_cast<Unsigned>(value);
     for (size_t index = 0; index < sizeof(T); ++index) {
@@ -18,8 +18,7 @@ void appendLE(std::string& out, T value) {
     }
 }
 
-template <typename T>
-bool readLE(const std::string& blob, size_t& pos, T& value) {
+template <typename T> bool readLE(const std::string& blob, size_t& pos, T& value) {
     using Unsigned = typename std::make_unsigned<T>::type;
     if (pos + sizeof(T) > blob.size()) {
         return false;
@@ -35,6 +34,46 @@ bool readLE(const std::string& blob, size_t& pos, T& value) {
 
 void appendBytes(std::string& out, const std::string& bytes) {
     out.append(bytes.data(), bytes.size());
+}
+
+std::string toHex(const std::string& bytes) {
+    std::string hex;
+    hex.reserve(bytes.size() * 2);
+    for (unsigned char byte : bytes) {
+        hex.push_back(kHexDigits[(byte >> 4) & 0x0F]);
+        hex.push_back(kHexDigits[byte & 0x0F]);
+    }
+    return hex;
+}
+
+int fromHexDigit(char ch) {
+    if (ch >= '0' && ch <= '9') {
+        return ch - '0';
+    }
+    if (ch >= 'a' && ch <= 'f') {
+        return 10 + (ch - 'a');
+    }
+    if (ch >= 'A' && ch <= 'F') {
+        return 10 + (ch - 'A');
+    }
+    return -1;
+}
+
+bool fromHex(const std::string& hex, std::string& bytes) {
+    if ((hex.size() % 2) != 0) {
+        return false;
+    }
+    bytes.clear();
+    bytes.reserve(hex.size() / 2);
+    for (size_t index = 0; index < hex.size(); index += 2) {
+        const int hi = fromHexDigit(hex[index]);
+        const int lo = fromHexDigit(hex[index + 1]);
+        if (hi < 0 || lo < 0) {
+            return false;
+        }
+        bytes.push_back(static_cast<char>((hi << 4) | lo));
+    }
+    return true;
 }
 
 bool readBytes(const std::string& blob, size_t& pos, size_t length, std::string& out) {
@@ -131,6 +170,11 @@ DeviceValidationResult RetainedStateStore::load(DeviceId deviceId, RetainedState
     if (!storage_.getString(key.c_str(), blob)) {
         return {DeviceError::StorageError, "failed to read retained state"};
     }
+    std::string decoded;
+    if (!fromHex(blob, decoded)) {
+        return {DeviceError::CorruptRecord, "retained state is not valid hex"};
+    }
+    blob = std::move(decoded);
 
     DeviceValidationResult result = parseRecord(blob, record);
     if (!result.ok()) {
@@ -151,7 +195,7 @@ DeviceValidationResult RetainedStateStore::save(const RetainedStateRecord& recor
     }
 
     const std::string blob = serializeRecord(record);
-    if (!storage_.putString(makeStateKey(record.deviceId).c_str(), blob)) {
+    if (!storage_.putString(makeStateKey(record.deviceId).c_str(), toHex(blob))) {
         return {DeviceError::StorageError, "failed to persist retained state"};
     }
 

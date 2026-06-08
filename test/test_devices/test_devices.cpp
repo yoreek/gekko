@@ -1,7 +1,7 @@
 #include "config/MemoryConfigStorage.h"
 #include "devices/core/DeviceIdGenerator.h"
-#include "devices/registry/DeviceRegistryStore.h"
 #include "devices/dummy/DummyDevice.h"
+#include "devices/registry/DeviceRegistryStore.h"
 #include "devices/registry/RetainedStateStore.h"
 
 #include <type_traits>
@@ -11,8 +11,7 @@ using namespace ewfm;
 
 namespace {
 
-template <typename T>
-void appendLE(std::string& out, T value) {
+template <typename T> void appendLE(std::string& out, T value) {
     using Unsigned = typename std::make_unsigned<T>::type;
     const Unsigned v = static_cast<Unsigned>(value);
     for (size_t index = 0; index < sizeof(T); ++index) {
@@ -121,7 +120,7 @@ void test_device_registry_store_round_trip() {
 
 void test_device_registry_store_rejects_corrupt_index() {
     MemoryConfigStorage storage;
-    TEST_ASSERT_TRUE(storage.putString("index", std::string("\x00\x01", 2)));
+    TEST_ASSERT_TRUE(storage.putString("index", "zz"));
 
     DeviceRegistryStore store(storage);
     TEST_ASSERT_TRUE(store.begin(true));
@@ -157,7 +156,7 @@ void test_retained_state_store_round_trip_and_remove() {
 
 void test_retained_state_store_rejects_corrupt_payload() {
     MemoryConfigStorage storage;
-    TEST_ASSERT_TRUE(storage.putString("state_00000007", std::string("bad", 3)));
+    TEST_ASSERT_TRUE(storage.putString("state_00000007", "zz"));
 
     RetainedStateStore store(storage);
     TEST_ASSERT_TRUE(store.begin(true));

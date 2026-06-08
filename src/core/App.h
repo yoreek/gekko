@@ -1,6 +1,10 @@
 #pragma once
 
 #include "config/ConfigStore.h"
+#include "devices/core/DeviceIdGenerator.h"
+#include "devices/core/DeviceTypes.h"
+#include "devices/registry/DeviceRegistry.h"
+#include "devices/registry/DeviceRegistryStore.h"
 #include "platform/ArduinoClock.h"
 #include "platform/ArduinoOtaService.h"
 #include "platform/ArduinoWifiDriver.h"
@@ -19,12 +23,25 @@ public:
     void tick();
 
 private:
+    void tickDeviceCadence(uint32_t now);
+
     ArduinoClock clock_;
     PreferencesConfigStorage storage_;
+    PreferencesConfigStorage deviceStorage_;
     ArduinoWifiDriver wifiDriver_;
     ConfigStore configStore_;
     WifiManager wifiManager_;
     PortalServer portalServer_;
+    DeviceTypeRegistry deviceTypeRegistry_{DeviceTypeRegistry::withDefaults()};
+    DeviceRegistryStore deviceRegistryStore_;
+#if defined(ARDUINO)
+    EspRandomDeviceIdSource deviceIdSource_;
+#else
+    SequentialDeviceIdSource deviceIdSource_;
+#endif
+    DeviceRegistry deviceRegistry_;
+    uint32_t lastTick100ms_{0};
+    uint32_t lastTick1s_{0};
 #if defined(WITH_ARDUINO_OTA)
     ArduinoOtaService otaService_;
 #endif

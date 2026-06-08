@@ -22,22 +22,22 @@
 
 ## 3. Registry Operations
 
-- [ ] 3.1 Implement `DeviceRegistry` create, list, find-by-ID, rename, update config, enable, disable, delete, and command entry points.
-- [ ] 3.2 Ensure every registry mutation validates before changing in-memory records or writing to NVS.
-- [ ] 3.3 Implement immediate persistence mutations that write required NVS index/record changes before returning success and roll back or reject when persistence fails.
-- [ ] 3.4 Implement delayed persistence mutations that update the in-memory registry, mark dirty index/config records, and expose pending persistence until a later flush succeeds.
+- [x] 3.1 Implement `DeviceRegistry` create, list, find-by-ID, rename, update config, enable, disable, delete, and command entry points.
+- [x] 3.2 Ensure every registry mutation validates before changing in-memory records or writing to NVS.
+- [x] 3.3 Implement immediate persistence mutations that write required NVS index/record changes before returning success and roll back or reject when persistence fails.
+- [x] 3.4 Implement delayed persistence mutations that update the in-memory registry, mark dirty index/config records, and expose pending persistence until a later flush succeeds.
 - [ ] 3.5 Implement coalesced retained-state mutations that keep only the latest retained value dirty until flush policy is due.
 - [ ] 3.6 Track dirty index, dirty config record IDs, dirty retained-state IDs, first-dirty time, and last-change time.
-- [ ] 3.7 Implement flush policy using debounce delay, max delay, and a forced `flushNow()` path for controlled reboot, OTA restart, factory reset, or explicit save/apply action.
-- [ ] 3.8 Increment device config revision and registry revision for accepted configuration or registry mutations and avoid incrementing them again when delayed persistence later succeeds.
+- [x] 3.7 Implement flush policy using debounce delay, max delay, and a forced `flushNow()` path for controlled reboot, OTA restart, factory reset, or explicit save/apply action.
+- [x] 3.8 Increment device config revision and registry revision for accepted configuration or registry mutations and avoid incrementing them again when delayed persistence later succeeds.
 - [ ] 3.9 Keep `updatedAt` or equivalent wall-clock metadata optional and outside ordering, migration, and correctness logic.
 - [ ] 3.10 Add native Unity tests for duplicate display names, device ID stability across rename/update, invalid device ID rejection, duplicate generated ID retry, unsupported type rejection, max device count, config/registry revision increments, runtime status changes not incrementing config revision, and persistence failure rollback.
 - [ ] 3.11 Add native Unity tests for immediate persistence success/failure, delayed dirty marking, coalesced retained-state updates, debounce flush, max-delay flush, failed flush preserving dirty state, and forced flush behavior.
 
 ## 4. Runtime Lifecycle And DummyDevice
 
-- [ ] 4.1 Add App-level cadence scheduling for fast-loop, 100 ms, and 1 s or the chosen initial cadence set, computing `now` once at the application boundary.
-- [ ] 4.2 Add a runtime device interface with `begin`, cadence-specific `tick...(..., uint32_t now)` behavior, `requestReconfigure`, `requestDisable`, `requestDelete`, `status`, and `handleCommand` behavior.
+- [x] 4.1 Add App-level cadence scheduling for fast-loop, 100 ms, and 1 s or the chosen initial cadence set, computing `now` once at the application boundary.
+- [x] 4.2 Add a runtime device interface with `begin`, cadence-specific `tick...(..., uint32_t now)` behavior, `requestReconfigure`, `requestDisable`, `requestDelete`, `status`, and `handleCommand` behavior.
 - [x] 4.3 Implement `DummyDevice` with explicit lifecycle/status transitions for create/start, ready, simulated fault, reconfigure, disable, and delete.
 - [x] 4.4 Use `StateMachine` or an equivalent explicit state-machine adapter for `DummyDevice` transitions that are not immediate.
 - [x] 4.5 Add a switch-like retained-state behavior to `DummyDevice` or a focused dummy subtype so previous-state restore can be tested without real GPIO hardware.
@@ -76,9 +76,9 @@
 
 ## 8. App Integration And Diagnostics
 
-- [ ] 8.1 Wire the device registry into `src/core/App` startup after controller configuration load and before runtime ticks begin.
-- [ ] 8.2 Add registry fast-loop, 100 ms, and 1 s cadence routing to `App::tick()` using the single loop-provided timestamp.
-- [ ] 8.3 Ensure API-triggered registry mutations do not call `millis()` and any timestamp-dependent debounce, max-delay, or dirty flush work is handled by the next due registry cadence tick.
+- [x] 8.1 Wire the device registry into `src/core/App` startup after controller configuration load and before runtime ticks begin.
+- [x] 8.2 Add registry fast-loop, 100 ms, and 1 s cadence routing to `App::tick()` using the single loop-provided timestamp.
+- [x] 8.3 Ensure API-triggered registry mutations do not call `millis()` and any timestamp-dependent debounce, max-delay, or dirty flush work is handled by the next due registry cadence tick.
 - [ ] 8.4 Ensure retained-state flush/debounce work is handled by a registry cadence tick rather than direct wall-clock reads inside device handlers.
 - [ ] 8.5 Call forced registry flush before controlled firmware restart flows that are introduced or touched by this change.
 - [ ] 8.6 Add device-domain debug logging through `src/debug/Debug.h` and a build flag such as `WITH_DEVICE_REGISTRY_DEBUG`.

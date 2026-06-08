@@ -32,7 +32,8 @@ private:
 };
 
 template <typename Predicate>
-DeviceValidationResult assignUniqueDeviceId(IDeviceIdSource& source, Predicate&& isDuplicate, DeviceId& out, size_t maxAttempts = kMaxDeviceIdGenerationAttempts) {
+DeviceValidationResult assignUniqueDeviceId(IDeviceIdSource& source, Predicate&& isDuplicate, DeviceId& out,
+                                            size_t maxAttempts = kMaxDeviceIdGenerationAttempts) {
     for (size_t attempt = 0; attempt < maxAttempts; ++attempt) {
         DeviceId candidate{0};
         if (!source.next(candidate)) {

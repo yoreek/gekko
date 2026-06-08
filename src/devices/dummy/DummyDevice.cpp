@@ -12,8 +12,7 @@ namespace {
 constexpr DeviceTypeId kDummyDeviceTypeId = 1;
 constexpr uint32_t kDummyDeviceConfigVersion = 2;
 
-template <typename T>
-void appendLE(std::string& out, T value) {
+template <typename T> void appendLE(std::string& out, T value) {
     using Unsigned = typename std::make_unsigned<T>::type;
     const Unsigned v = static_cast<Unsigned>(value);
     for (size_t index = 0; index < sizeof(T); ++index) {
@@ -21,8 +20,7 @@ void appendLE(std::string& out, T value) {
     }
 }
 
-template <typename T>
-bool readLE(const std::string& blob, size_t& pos, T& value) {
+template <typename T> bool readLE(const std::string& blob, size_t& pos, T& value) {
     using Unsigned = typename std::make_unsigned<T>::type;
     if (pos + sizeof(T) > blob.size()) {
         return false;
@@ -52,7 +50,8 @@ bool decodeConfig(const std::string& blob, DummyDeviceConfigV2& config) {
     }
 
     if (magic == DummyDeviceConfigV1::magicKey) {
-        if (!readLE(blob, pos, enabled) || !readLE(blob, pos, restore) || !readLE(blob, pos, defaultOutput) || !readLE(blob, pos, currentOutput)) {
+        if (!readLE(blob, pos, enabled) || !readLE(blob, pos, restore) || !readLE(blob, pos, defaultOutput) ||
+            !readLE(blob, pos, currentOutput)) {
             return false;
         }
         config.enabled = enabled != 0;
