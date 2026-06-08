@@ -70,6 +70,12 @@ void DeviceRegistry::tick(uint32_t now) {
         return;
     }
 
+    if (firstDirtyAt_ == kDirtyTimestampUnset) {
+        firstDirtyAt_ = now;
+        dirtySince_ = now;
+        return;
+    }
+
     const uint32_t elapsed = static_cast<uint32_t>(now - dirtySince_);
     const uint32_t dirtyAge = static_cast<uint32_t>(now - firstDirtyAt_);
     if (elapsed < kPersistenceDebounceMs && dirtyAge < kPersistenceMaxDelayMs) {
@@ -658,8 +664,8 @@ void DeviceRegistry::markDirty(uint32_t now) {
 
 void DeviceRegistry::markClean() {
     dirty_ = false;
-    firstDirtyAt_ = 0;
-    dirtySince_ = 0;
+    firstDirtyAt_ = kDirtyTimestampUnset;
+    dirtySince_ = kDirtyTimestampUnset;
 }
 
 } // namespace ewfm

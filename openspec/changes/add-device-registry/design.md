@@ -85,7 +85,11 @@ The first implementation should prove the architecture with `DummyDevice` before
 
    Registry and runtime changes emit `DeviceEvent` records such as registry-loaded, device-created, device-updated, device-deleted, status-changed, state-changed, command-accepted, command-rejected, and config-persisted. Events carry a registry revision, device ID, type, event kind, and bounded payload/detail fields. Integrations implement an interface such as `IDeviceIntegration` with `begin(...)`, cadence-specific ticks, `onDeviceEvent(...)`, and command submission into the registry. The event bus fans out to registered integrations without knowing MQTT, WebSocket, or Home Assistant details. The alternative of calling MQTT/WebSocket code directly from the registry would make the registry untestable and transport-specific.
 
-14. Route all external commands through the same registry service.
+14. Add a transport-neutral device API adapter layer and implement REST first.
+
+   External interfaces such as REST, MQTT, WebSocket, and Home Assistant should reuse the same device-type adapter concept for translating transport payloads into typed registry requests and device JSON. The first concrete slice mounts a REST route under `src/portal/routes/` to create, list, show, delete, and flush `DummyDevice` instances, while device-specific JSON serializers and request parsers live under `src/devices/api/` or the owning device family folder. This keeps DummyDevice encoding logic reusable when MQTT or Home Assistant are added later. The alternative of parsing device-specific JSON directly inside each transport handler would duplicate code and make future adapters drift from one another.
+
+15. Route all external commands through the same registry service.
 
     Web UI routes and integration adapters submit normalized commands: create, update config, delete, enable, disable, rename, set status for DummyDevice, or type-specific commands. The registry validates permissions implied by type metadata, current lifecycle status, relationships, bounds, and the operation's persistence policy before accepting a mutation. Immediate operations only return success after required NVS writes succeed; delayed operations return success with pending persistence marked. Failed commands return explicit errors and emit command-rejected events. This prevents a remote integration from bypassing rules enforced in the UI.
 

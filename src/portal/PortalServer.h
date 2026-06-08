@@ -1,5 +1,6 @@
 #pragma once
 
+#include "devices/registry/DeviceRegistry.h"
 #include "wifi/WifiDriver.h"
 #include "wifi/WifiManager.h"
 
@@ -18,7 +19,7 @@ enum class PortalRuntimeState {
 
 class PortalServer {
 public:
-    PortalServer(WifiManager& wifiManager, IWifiDriver& wifiDriver);
+    PortalServer(WifiManager& wifiManager, IWifiDriver& wifiDriver, DeviceRegistry* deviceRegistry = nullptr);
     // NOLINTNEXTLINE(performance-trivially-destructible)
     ~PortalServer();
 
@@ -39,6 +40,7 @@ private:
     class Impl;
     WifiManager& wifiManager_;
     IWifiDriver& wifiDriver_;
+    DeviceRegistry* deviceRegistry_{nullptr};
     std::unique_ptr<Impl> impl_;
 };
 

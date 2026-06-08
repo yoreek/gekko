@@ -2,6 +2,7 @@
 
 #include "core/StateMachine.h"
 #include "debug/Debug.h"
+#include "portal/routes/DeviceRegistryRoutes.h"
 #include "portal/routes/OtaPortalRoutes.h"
 #include "portal/routes/PortalHomeRoutes.h"
 #include "portal/routes/WifiPortalRoutes.h"
@@ -19,8 +20,9 @@ namespace ewfm {
 
 class PortalServer::Impl : public StateMachine {
 public:
-    Impl(WifiManager& wifiManager, IWifiDriver& wifiDriver)
-        : StateMachine((PState)&PortalServer::Impl::Idle), wifiManager_(wifiManager), wifiDriver_(wifiDriver) {}
+    Impl(WifiManager& wifiManager, IWifiDriver& wifiDriver, DeviceRegistry* deviceRegistry)
+        : StateMachine((PState)&PortalServer::Impl::Idle), wifiManager_(wifiManager), wifiDriver_(wifiDriver),
+          deviceRegistry_(deviceRegistry) {}
 
     bool begin() {
         configured_ = true;
@@ -97,11 +99,15 @@ private:
         if (!wifiRoutes_) {
             wifiRoutes_ = std::make_unique<WifiPortalRoutes>(wifiManager_, wifiDriver_);
         }
+        if (deviceRegistry_ != nullptr && !deviceRoutes_) {
+            deviceRoutes_ = std::make_unique<DeviceRegistryRoutes>(*deviceRegistry_);
+        }
         if (!otaRoutes_) {
             otaRoutes_ = std::make_unique<OtaPortalRoutes>();
         }
         homeRoutes_->registerRoutes(*server_);
         wifiRoutes_->registerRoutes(*server_);
+        deviceRoutes_->registerRoutes(*server_);
         otaRoutes_->registerRoutes(*server_);
 
         server_->begin();
@@ -187,8 +193,10 @@ private:
 #endif
     WifiManager& wifiManager_;
     IWifiDriver& wifiDriver_;
+    DeviceRegistry* deviceRegistry_{nullptr};
     std::unique_ptr<PortalHomeRoutes> homeRoutes_;
     std::unique_ptr<WifiPortalRoutes> wifiRoutes_;
+    std::unique_ptr<DeviceRegistryRoutes> deviceRoutes_;
     std::unique_ptr<OtaPortalRoutes> otaRoutes_;
     bool configured_{false};
     bool dependencyWaitLogged_{false};
@@ -264,13 +272,14 @@ SM_STATE(Faulted) {
     SM_GOTO(Starting);
 }
 
-PortalServer::PortalServer(WifiManager& wifiManager, IWifiDriver& wifiDriver) : wifiManager_(wifiManager), wifiDriver_(wifiDriver) {}
+PortalServer::PortalServer(WifiManager& wifiManager, IWifiDriver& wifiDriver, DeviceRegistry* deviceRegistry)
+    : wifiManager_(wifiManager), wifiDriver_(wifiDriver), deviceRegistry_(deviceRegistry) {}
 
 PortalServer::~PortalServer() = default;
 
 bool PortalServer::begin() {
     if (!impl_) {
-        impl_ = std::make_unique<Impl>(wifiManager_, wifiDriver_);
+        impl_ = std::make_unique<Impl>(wifiManager_, wifiDriver_, deviceRegistry_);
     }
     return impl_ != nullptr && impl_->begin();
 }

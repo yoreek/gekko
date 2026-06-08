@@ -31,7 +31,6 @@ private:
     ArduinoWifiDriver wifiDriver_;
     ConfigStore configStore_;
     WifiManager wifiManager_;
-    PortalServer portalServer_;
     DeviceTypeRegistry deviceTypeRegistry_{DeviceTypeRegistry::withDefaults()};
     DeviceRegistryStore deviceRegistryStore_;
 #if defined(ARDUINO)
@@ -40,6 +39,7 @@ private:
     SequentialDeviceIdSource deviceIdSource_;
 #endif
     DeviceRegistry deviceRegistry_;
+    PortalServer portalServer_;
     uint32_t lastTick100ms_{0};
     uint32_t lastTick1s_{0};
 #if defined(WITH_ARDUINO_OTA)

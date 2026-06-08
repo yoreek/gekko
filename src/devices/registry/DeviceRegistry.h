@@ -79,6 +79,8 @@ private:
         std::unique_ptr<IDeviceRuntime> runtime{};
     };
 
+    static constexpr uint32_t kDirtyTimestampUnset = 0xFFFFFFFFUL;
+
     DeviceValidationResult validateSnapshot(const DeviceRegistrySnapshot& snapshot) const;
     DeviceValidationResult validateRecord(const DeviceRecord& record, const DeviceTypeDescriptor& descriptor) const;
     DeviceValidationResult validateParent(const DeviceRegistrySnapshot& snapshot, const DeviceRecord& record) const;
@@ -96,8 +98,8 @@ private:
     std::map<DeviceId, RuntimeEntry> runtimes_{};
     uint32_t registryRevision_{0};
     bool dirty_{false};
-    uint32_t firstDirtyAt_{0};
-    uint32_t dirtySince_{0};
+    uint32_t firstDirtyAt_{kDirtyTimestampUnset};
+    uint32_t dirtySince_{kDirtyTimestampUnset};
     uint32_t lastMutationAt_{0};
 };
 

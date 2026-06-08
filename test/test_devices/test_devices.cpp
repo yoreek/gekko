@@ -1,37 +1,18 @@
 #include "config/MemoryConfigStorage.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/dummy/DummyDevice.h"
+#include "devices/dummy/DummyDeviceConfigCodec.h"
 #include "devices/registry/DeviceRegistryStore.h"
 #include "devices/registry/RetainedStateStore.h"
 
-#include <type_traits>
 #include <unity.h>
 
 using namespace ewfm;
 
 namespace {
 
-template <typename T> void appendLE(std::string& out, T value) {
-    using Unsigned = typename std::make_unsigned<T>::type;
-    const Unsigned v = static_cast<Unsigned>(value);
-    for (size_t index = 0; index < sizeof(T); ++index) {
-        out.push_back(static_cast<char>((v >> (index * 8)) & 0xFFU));
-    }
-}
-
 std::string encodeDummyConfig(const DummyDeviceConfigV2& config) {
-    std::string blob;
-    blob.reserve(16);
-    appendLE<uint32_t>(blob, DummyDeviceConfigV2::magicKey);
-    appendLE<uint8_t>(blob, config.enabled ? 1U : 0U);
-    appendLE<uint8_t>(blob, config.restorePreviousState ? 1U : 0U);
-    appendLE<uint8_t>(blob, config.defaultOutput ? 1U : 0U);
-    appendLE<uint8_t>(blob, config.currentOutput ? 1U : 0U);
-    appendLE<uint8_t>(blob, config.inverted ? 1U : 0U);
-    appendLE<uint8_t>(blob, 0U);
-    appendLE<uint8_t>(blob, 0U);
-    appendLE<uint8_t>(blob, 0U);
-    return blob;
+    return ewfm::encodeDummyDeviceConfig(config);
 }
 
 DeviceRecord makeDummyRecord(DeviceId id, DeviceId parentId, bool hasParent, const std::string& name, const DummyDeviceConfigV2& config) {
