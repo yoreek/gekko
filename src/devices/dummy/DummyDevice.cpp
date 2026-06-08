@@ -1,4 +1,4 @@
-#include "devices/DummyDevice.h"
+#include "devices/dummy/DummyDevice.h"
 
 #include <algorithm>
 #include <type_traits>

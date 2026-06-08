@@ -1,6 +1,6 @@
 #pragma once
 
-#include "devices/DeviceTypes.h"
+#include "devices/core/DeviceTypes.h"
 
 #include <utility>
 

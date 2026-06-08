@@ -1,4 +1,4 @@
-#include "devices/DeviceIdGenerator.h"
+#include "devices/core/DeviceIdGenerator.h"
 
 #if defined(ARDUINO)
 #include <esp_system.h>

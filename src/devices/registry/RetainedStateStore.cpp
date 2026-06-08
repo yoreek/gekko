@@ -1,4 +1,4 @@
-#include "devices/RetainedStateStore.h"
+#include "devices/registry/RetainedStateStore.h"
 
 #include <cstdio>
 #include <type_traits>

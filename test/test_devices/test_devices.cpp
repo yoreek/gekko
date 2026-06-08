@@ -1,8 +1,8 @@
 #include "config/MemoryConfigStorage.h"
-#include "devices/DeviceIdGenerator.h"
-#include "devices/DeviceRegistryStore.h"
-#include "devices/DummyDevice.h"
-#include "devices/RetainedStateStore.h"
+#include "devices/core/DeviceIdGenerator.h"
+#include "devices/registry/DeviceRegistryStore.h"
+#include "devices/dummy/DummyDevice.h"
+#include "devices/registry/RetainedStateStore.h"
 
 #include <type_traits>
 #include <unity.h>

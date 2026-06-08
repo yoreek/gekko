@@ -1,7 +1,7 @@
 #pragma once
 
 #include "config/ConfigStore.h"
-#include "devices/DeviceTypes.h"
+#include "devices/core/DeviceTypes.h"
 
 namespace ewfm {
 

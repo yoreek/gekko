@@ -1,6 +1,6 @@
-#include "devices/DeviceTypes.h"
+#include "devices/core/DeviceTypes.h"
 
-#include "devices/DummyDevice.h"
+#include "devices/dummy/DummyDevice.h"
 
 namespace ewfm {
 

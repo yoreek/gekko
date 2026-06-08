@@ -1,4 +1,4 @@
-#include "devices/DeviceRegistryStore.h"
+#include "devices/registry/DeviceRegistryStore.h"
 
 #include <algorithm>
 #include <array>
