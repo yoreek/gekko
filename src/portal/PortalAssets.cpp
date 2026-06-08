@@ -26,7 +26,7 @@ button{margin-top:16px}
 <label>Password<input name="password" placeholder="Password" type="password"></label>
 <button type="submit">Save</button>
 </form>
-<button id="reenter" type="button">Re-enter BLE provisioning</button>
+<button id="ble-config" type="button">Start BLE config mode</button>
 <script>
 async function refreshStatus() {
   try {
@@ -45,20 +45,20 @@ async function refreshStatus() {
     document.getElementById('status').textContent = 'Status unavailable';
   }
 }
-async function reenterProvisioning() {
-  const button = document.getElementById('reenter');
+async function startBleConfig() {
+  const button = document.getElementById('ble-config');
   button.disabled = true;
   try {
-    const response = await fetch('/api/provisioning/reenter', {method: 'POST'});
+    const response = await fetch('/api/wifi/ble-config', {method: 'POST'});
     const payload = await response.json();
     document.getElementById('status').textContent = payload.status || payload.error || 'Request sent';
   } catch (error) {
-    document.getElementById('status').textContent = 'Provisioning re-entry failed';
+    document.getElementById('status').textContent = 'BLE config request failed';
   } finally {
     button.disabled = false;
   }
 }
-document.getElementById('reenter').addEventListener('click', reenterProvisioning);
+document.getElementById('ble-config').addEventListener('click', startBleConfig);
 refreshStatus();
 setInterval(refreshStatus, 2000);
 </script>

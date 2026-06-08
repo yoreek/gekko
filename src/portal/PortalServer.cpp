@@ -19,8 +19,8 @@ namespace ewfm {
 
 class PortalServer::Impl : public StateMachine {
 public:
-    Impl(ProvisioningCoordinator& coordinator, IWifiDriver& wifiDriver)
-        : StateMachine((PState)&PortalServer::Impl::Idle), coordinator_(coordinator), wifiDriver_(wifiDriver) {}
+    Impl(WifiManager& wifiManager, IWifiDriver& wifiDriver)
+        : StateMachine((PState)&PortalServer::Impl::Idle), wifiManager_(wifiManager), wifiDriver_(wifiDriver) {}
 
     bool begin() {
         configured_ = true;
@@ -95,7 +95,7 @@ private:
             homeRoutes_ = std::make_unique<PortalHomeRoutes>();
         }
         if (!wifiRoutes_) {
-            wifiRoutes_ = std::make_unique<WifiPortalRoutes>(coordinator_, wifiDriver_);
+            wifiRoutes_ = std::make_unique<WifiPortalRoutes>(wifiManager_, wifiDriver_);
         }
         if (!otaRoutes_) {
             otaRoutes_ = std::make_unique<OtaPortalRoutes>();
@@ -185,7 +185,7 @@ private:
     std::unique_ptr<AsyncWebServer> server_;
     std::unique_ptr<DNSServer> dns_;
 #endif
-    ProvisioningCoordinator& coordinator_;
+    WifiManager& wifiManager_;
     IWifiDriver& wifiDriver_;
     std::unique_ptr<PortalHomeRoutes> homeRoutes_;
     std::unique_ptr<WifiPortalRoutes> wifiRoutes_;
@@ -264,14 +264,13 @@ SM_STATE(Faulted) {
     SM_GOTO(Starting);
 }
 
-PortalServer::PortalServer(ProvisioningCoordinator& coordinator, IWifiDriver& wifiDriver)
-    : coordinator_(coordinator), wifiDriver_(wifiDriver) {}
+PortalServer::PortalServer(WifiManager& wifiManager, IWifiDriver& wifiDriver) : wifiManager_(wifiManager), wifiDriver_(wifiDriver) {}
 
 PortalServer::~PortalServer() = default;
 
 bool PortalServer::begin() {
     if (!impl_) {
-        impl_ = std::make_unique<Impl>(coordinator_, wifiDriver_);
+        impl_ = std::make_unique<Impl>(wifiManager_, wifiDriver_);
     }
     return impl_ != nullptr && impl_->begin();
 }

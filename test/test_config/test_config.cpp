@@ -11,6 +11,7 @@ void test_default_config_is_valid() {
     ValidationResult result = validateConfig(config);
     TEST_ASSERT_TRUE(result.ok());
     TEST_ASSERT_EQUAL_UINT32(kCurrentConfigSchemaVersion, config.schemaVersion);
+    TEST_ASSERT_EQUAL_UINT32(3UL * 60UL * 1000UL, config.provisioning.sessionTimeoutMs);
 }
 
 void test_invalid_ssid_is_rejected() {

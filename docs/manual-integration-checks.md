@@ -5,7 +5,7 @@ These checks require a real ESP32 device and are intentionally not part of the h
 ## First Boot and HTTP Provisioning
 
 - Flash the base `esp32dev` environment over serial.
-- Erase NVS or use the WiFi reset action.
+- Erase NVS before the first-boot check when stored credentials are present.
 - Confirm the device starts a setup AP with the device-specific SSID suffix.
 - Connect a phone or laptop to the setup AP and open the portal by direct IP.
 - Confirm `/api/wifi/scan` returns a bounded list of nearby networks.
@@ -19,13 +19,17 @@ These checks require a real ESP32 device and are intentionally not part of the h
 - Confirm station connection retries are timeout-driven.
 - Confirm the setup AP and HTTP portal remain available without deleting saved credentials.
 
-## Mobile Provisioning
+## BLE WiFi Config Mode
 
 - Enable mobile provisioning in the build/configuration.
-- Confirm mobile provisioning starts with BLE transport only; WiFiProv SoftAP transport is intentionally not used because setup AP and HTTP portal are owned by the firmware.
+- Confirm BLE config mode starts only after an explicit portal/API request.
+- Confirm BLE transport is used; WiFiProv SoftAP transport is intentionally not used because setup AP and HTTP portal are owned by the firmware.
 - Use an Espressif-compatible Android or iOS provisioning app.
+- Confirm the log records `PROV_CRED_RECV` when the app submits credentials.
+- Confirm the next cooperative `WifiManager` ticks save credentials through `ConfigStore`, call `wifi_prov_mgr_stop_provisioning()`, observe `PROV_END`, call `wifi_prov_mgr_deinit()`, and start the normal station connection flow.
+- Confirm a BLE config timeout stops and deinitializes provisioning without changing stored credentials.
 - Record transport, security mode, phone OS, app version, discovery result, credential submission result, and memory/build-size impact.
-- Confirm HTTP portal provisioning remains available when mobile provisioning is disabled.
+- Confirm HTTP portal provisioning remains available when BLE config mode is disabled.
 
 ## Captive Portal
 

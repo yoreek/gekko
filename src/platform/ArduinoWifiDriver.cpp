@@ -62,12 +62,11 @@ void logWifiSnapshot(const char* action) {
 
 bool ArduinoWifiDriver::begin() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+    WiFi.persistent(false);
+    WiFi.setAutoReconnect(false);
     EWFM_WIFI_LOG_INFO("driver begin: mode=WIFI_STA");
     networkStackReady_ = WiFi.mode(WIFI_STA);
     EWFM_WIFI_LOG_INFO("driver begin: mode result=%d", static_cast<int>(networkStackReady_));
-    if (networkStackReady_) {
-        setupApActive_ = false;
-    }
     logWifiSnapshot("driver begin");
     return networkStackReady_;
 #else
@@ -78,13 +77,6 @@ bool ArduinoWifiDriver::begin() {
 bool ArduinoWifiDriver::beginStation(const WiFiCredentials& credentials) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     EWFM_WIFI_LOG_INFO("beginStation ssid=%s", credentials.ssid.c_str());
-    if (WiFi.status() == WL_CONNECTED) {
-        networkStackReady_ = WiFi.getMode() != WIFI_MODE_NULL;
-        EWFM_WIFI_LOG_DEBUG("beginStation already connected");
-        logWifiSnapshot("beginStation already connected");
-        return networkStackReady_;
-    }
-
     EWFM_WIFI_LOG_INFO("beginStation: mode=WIFI_STA");
     networkStackReady_ = WiFi.mode(WIFI_STA);
     if (!networkStackReady_) {
@@ -92,7 +84,6 @@ bool ArduinoWifiDriver::beginStation(const WiFiCredentials& credentials) {
         logWifiSnapshot("beginStation mode failed");
         return false;
     }
-    setupApActive_ = false;
     EWFM_WIFI_LOG_INFO("beginStation: WiFi.begin(ssid, ****)");
     WiFi.begin(credentials.ssid.c_str(), credentials.password.c_str());
     logWifiSnapshot("beginStation requested");
@@ -127,16 +118,15 @@ bool ArduinoWifiDriver::startSetupAp(const std::string& ssid, const std::string&
     EWFM_WIFI_LOG_INFO("startSetupAp: mode=WIFI_AP_STA");
     networkStackReady_ = WiFi.mode(WIFI_AP_STA);
     if (!networkStackReady_) {
-        setupApActive_ = false;
         EWFM_WIFI_LOG_WARN("startSetupAp: WiFi.mode(WIFI_AP_STA) failed");
         logWifiSnapshot("startSetupAp mode failed");
         return false;
     }
 
-    setupApActive_ = password.empty() ? WiFi.softAP(ssid.c_str()) : WiFi.softAP(ssid.c_str(), password.c_str());
-    EWFM_WIFI_LOG_INFO("startSetupAp: WiFi.softAP result=%d", static_cast<int>(setupApActive_));
+    bool started = password.empty() ? WiFi.softAP(ssid.c_str()) : WiFi.softAP(ssid.c_str(), password.c_str());
+    EWFM_WIFI_LOG_INFO("startSetupAp: WiFi.softAP result=%d", static_cast<int>(started));
     logWifiSnapshot("startSetupAp");
-    return setupApActive_;
+    return started;
 #else
     (void)ssid;
     (void)password;
@@ -148,21 +138,7 @@ void ArduinoWifiDriver::stopSetupAp() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     EWFM_WIFI_LOG_INFO("stopSetupAp: WiFi.softAPdisconnect(true)");
     WiFi.softAPdisconnect(true);
-    setupApActive_ = false;
     logWifiSnapshot("stopSetupAp");
-#endif
-}
-
-bool ArduinoWifiDriver::prepareProvisioningScan() {
-#if defined(ARDUINO) && !defined(UNIT_TEST)
-    EWFM_WIFI_LOG_INFO("prepareProvisioningScan: WiFi.enableSTA(true)");
-    const bool enabled = WiFi.enableSTA(true);
-    EWFM_WIFI_LOG_INFO("prepareProvisioningScan: STA enable result=%d", static_cast<int>(enabled));
-    networkStackReady_ = WiFi.getMode() != WIFI_MODE_NULL;
-    logWifiSnapshot("prepareProvisioningScan");
-    return networkStackReady_;
-#else
-    return false;
 #endif
 }
 
@@ -184,14 +160,6 @@ WifiDriverStatus ArduinoWifiDriver::status() const {
 #endif
 }
 
-bool ArduinoWifiDriver::setupApActive() const {
-#if defined(ARDUINO) && !defined(UNIT_TEST)
-    return setupApActive_;
-#else
-    return false;
-#endif
-}
-
 bool ArduinoWifiDriver::networkStackReady() const {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     return networkStackReady_ && WiFi.getMode() != WIFI_MODE_NULL;
@@ -210,7 +178,7 @@ bool ArduinoWifiDriver::stationReady() const {
 
 bool ArduinoWifiDriver::setupApReady() const {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    return networkStackReady() && setupApActive_ && ipValid(setupApIp());
+    return networkStackReady() && ipValid(setupApIp());
 #else
     return false;
 #endif

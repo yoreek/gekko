@@ -5,8 +5,6 @@
 #include "platform/ArduinoOtaService.h"
 #include "portal/PortalAssets.h"
 #include "portal/PortalServer.h"
-#include "provisioning/MobileProvisioning.h"
-#include "provisioning/ProvisioningCoordinator.h"
 #include "wifi/WifiManager.h"
 
 #include <cstring>
@@ -52,15 +50,10 @@ public:
         ++stopApCalls;
         setupApActiveValue = false;
     }
-    bool prepareProvisioningScan() override {
-        ++prepareProvisioningScanCalls;
-        networkStackReadyValue = true;
-        return prepareProvisioningScanResult;
-    }
     WifiDriverStatus status() const override {
         return statusValue;
     }
-    bool setupApActive() const override {
+    bool setupApActive() const {
         return setupApActiveValue;
     }
     bool networkStackReady() const override {
@@ -103,10 +96,8 @@ public:
     int clearStationCredentialsCalls{0};
     int startApCalls{0};
     int stopApCalls{0};
-    int prepareProvisioningScanCalls{0};
     bool beginResult{true};
     bool startApResult{true};
-    bool prepareProvisioningScanResult{true};
     bool networkStackReadyValue{false};
     bool setupApActiveValue{false};
     std::string stationIpValue;
@@ -150,7 +141,11 @@ void test_no_credentials_enters_setup_ap() {
 
     TEST_ASSERT_EQUAL(1, driver.beginCalls);
     TEST_ASSERT_TRUE(manager.apMode());
+    TEST_ASSERT_EQUAL(0, driver.startApCalls);
+
+    manager.tick(clock.millis() + 1);
     TEST_ASSERT_EQUAL(1, driver.startApCalls);
+    TEST_ASSERT_TRUE(driver.setupApActive());
     TEST_ASSERT_TRUE(driver.setupApSsid.find("ABC123") != std::string::npos);
 }
 
@@ -196,19 +191,20 @@ void test_failed_connection_retries_and_falls_back() {
     WifiManager manager(driver);
     DeviceConfig config = defaultConfig();
     config.wifi.ssid = "office";
+    config.wifiRuntime.connectTimeoutMs = 10;
     config.wifiRuntime.maxConnectRetries = 1;
     config.wifiRuntime.retryDelayMs = 10;
 
     manager.begin(config);
     manager.tick(clock.millis());
     manager.tick(clock.millis());
-    driver.statusValue = WifiDriverStatus::Failed;
+    clock.advance(11);
     manager.tick(clock.millis());
     TEST_ASSERT_EQUAL(1, manager.retryCount());
+    TEST_ASSERT_TRUE(manager.apMode());
 
-    clock.advance(20);
-    driver.statusValue = WifiDriverStatus::Failed;
     manager.tick(clock.millis());
+    TEST_ASSERT_EQUAL(1, driver.startApCalls);
     TEST_ASSERT_TRUE(manager.apMode());
 }
 
@@ -240,6 +236,14 @@ void test_connection_timeout_retry_resets_state_timer() {
     clock.advance(1);
     manager.tick(clock.millis());
     TEST_ASSERT_EQUAL(1, manager.retryCount());
+
+    clock.advance(1);
+    manager.tick(clock.millis());
+    TEST_ASSERT_EQUAL(1, driver.beginStationCalls);
+
+    clock.advance(1);
+    manager.tick(clock.millis());
+    TEST_ASSERT_EQUAL(2, driver.beginStationCalls);
 
     clock.advance(1);
     manager.tick(clock.millis());
@@ -285,6 +289,7 @@ void test_setup_ap_readiness_requires_successful_ap_start_and_valid_ip() {
 
     manager.begin(config);
     manager.tick(100);
+    manager.tick(101);
 
     TEST_ASSERT_TRUE(manager.apMode());
     TEST_ASSERT_TRUE(driver.setupApActive());
@@ -303,6 +308,7 @@ void test_failed_setup_ap_start_does_not_report_setup_ap_ready() {
 
     manager.begin(config);
     manager.tick(100);
+    manager.tick(101);
 
     TEST_ASSERT_TRUE(manager.apMode());
     TEST_ASSERT_EQUAL(1, driver.startApCalls);
@@ -318,35 +324,48 @@ void test_station_connect_clears_setup_ap_readiness() {
 
     manager.begin(config);
     manager.tick(100);
+    manager.tick(101);
     TEST_ASSERT_TRUE(manager.setupApReady());
 
     WiFiCredentials credentials;
     credentials.ssid = "office";
     credentials.password = "secret";
-    manager.updateCredentials(credentials);
+    TEST_ASSERT_EQUAL(static_cast<int>(WifiManagerResult::Accepted), static_cast<int>(manager.submitCredentials(credentials)));
 
     TEST_ASSERT_TRUE(manager.apMode());
     TEST_ASSERT_TRUE(driver.setupApActive());
     TEST_ASSERT_TRUE(manager.setupApReady());
 
-    manager.tick(101);
-    TEST_ASSERT_TRUE(manager.connecting());
+    manager.tick(102);
+    TEST_ASSERT_FALSE(manager.apMode());
+    TEST_ASSERT_EQUAL(0, driver.beginStationCalls);
     TEST_ASSERT_TRUE(driver.setupApActive());
     TEST_ASSERT_FALSE(manager.setupApReady());
 
-    manager.tick(102);
+    manager.tick(103);
+    TEST_ASSERT_FALSE(manager.apMode());
+    TEST_ASSERT_TRUE(driver.setupApActive());
+    TEST_ASSERT_FALSE(manager.setupApReady());
+
+    manager.tick(104);
+    TEST_ASSERT_TRUE(manager.connecting());
+    TEST_ASSERT_EQUAL(0, driver.beginStationCalls);
+    TEST_ASSERT_TRUE(driver.setupApActive());
+    TEST_ASSERT_FALSE(manager.setupApReady());
+
+    manager.tick(105);
     TEST_ASSERT_EQUAL(1, driver.beginStationCalls);
     TEST_ASSERT_FALSE(driver.setupApActive());
     TEST_ASSERT_FALSE(manager.setupApReady());
 
     driver.statusValue = WifiDriverStatus::Connected;
     driver.stationIpValue = "192.168.1.240";
-    manager.tick(103);
+    manager.tick(106);
     TEST_ASSERT_FALSE(driver.setupApActive());
     TEST_ASSERT_FALSE(manager.setupApReady());
 }
 
-void test_provisioning_coordinator_rejects_oversized_http_credentials() {
+void test_wifi_manager_rejects_oversized_credentials() {
     ManualClock clock;
     FakeWifiDriver driver;
     MemoryConfigStorage storage;
@@ -354,19 +373,19 @@ void test_provisioning_coordinator_rejects_oversized_http_credentials() {
     TEST_ASSERT_TRUE(store.begin());
     TEST_ASSERT_TRUE(store.load().ok());
 
-    WifiManager manager(driver);
+    WifiManager manager(driver, &store);
     manager.begin(store.config());
-    ProvisioningCoordinator coordinator(store, manager);
 
     WiFiCredentials credentials;
     credentials.ssid.assign(kMaxSsidLength + 1, 'x');
-    ProvisioningResult result = coordinator.submitWifiCredentials(credentials);
+    WifiManagerResult result = manager.submitCredentials(credentials);
 
-    TEST_ASSERT_EQUAL(static_cast<int>(ProvisioningResult::InvalidInput), static_cast<int>(result));
+    TEST_ASSERT_EQUAL(static_cast<int>(WifiManagerResult::InvalidInput), static_cast<int>(result));
+    TEST_ASSERT_FALSE(store.config().wifi.hasCredentials());
     TEST_ASSERT_EQUAL(0, driver.beginStationCalls);
 }
 
-void test_provisioning_coordinator_reset_clears_credentials_and_starts_softap() {
+void test_wifi_manager_submit_credentials_saves_and_connects() {
     ManualClock clock;
     FakeWifiDriver driver;
     MemoryConfigStorage storage;
@@ -374,41 +393,59 @@ void test_provisioning_coordinator_reset_clears_credentials_and_starts_softap() 
     TEST_ASSERT_TRUE(store.begin());
     TEST_ASSERT_TRUE(store.load().ok());
 
-    WifiManager manager(driver);
+    WifiManager manager(driver, &store);
     manager.begin(store.config());
-    ProvisioningCoordinator coordinator(store, manager);
 
     WiFiCredentials credentials;
     credentials.ssid = "office";
     credentials.password = "secret";
-    TEST_ASSERT_EQUAL(static_cast<int>(ProvisioningResult::Accepted), static_cast<int>(coordinator.submitWifiCredentials(credentials)));
-
-    coordinator.resetWifiCredentials();
+    TEST_ASSERT_EQUAL(static_cast<int>(WifiManagerResult::Accepted), static_cast<int>(manager.submitCredentials(credentials)));
 
     TEST_ASSERT_FALSE(store.config().wifi.hasCredentials());
-    TEST_ASSERT_FALSE(manager.credentials().hasCredentials());
-    manager.tick(clock.millis());
-    TEST_ASSERT_TRUE(manager.apMode());
-    TEST_ASSERT_EQUAL(0, driver.clearStationCredentialsCalls);
     TEST_ASSERT_EQUAL(0, driver.disconnectCalls);
-    TEST_ASSERT_EQUAL(1, driver.startApCalls);
+    TEST_ASSERT_EQUAL(0, driver.beginStationCalls);
+
+    manager.tick(clock.millis());
+    TEST_ASSERT_FALSE(store.config().wifi.hasCredentials());
+    TEST_ASSERT_EQUAL(0, driver.disconnectCalls);
+    TEST_ASSERT_EQUAL(0, driver.beginStationCalls);
+    TEST_ASSERT_TRUE(manager.apMode());
+
+    manager.tick(clock.millis() + 1);
+    TEST_ASSERT_FALSE(store.config().wifi.hasCredentials());
+    TEST_ASSERT_EQUAL(0, driver.disconnectCalls);
+    TEST_ASSERT_EQUAL(0, driver.beginStationCalls);
+    TEST_ASSERT_FALSE(manager.apMode());
+
+    manager.tick(clock.millis() + 2);
+    TEST_ASSERT_TRUE(store.config().wifi.hasCredentials());
+    TEST_ASSERT_EQUAL_STRING("office", store.config().wifi.ssid.c_str());
+    TEST_ASSERT_EQUAL_STRING("secret", store.config().wifi.password.c_str());
+    TEST_ASSERT_EQUAL(0, driver.disconnectCalls);
+    TEST_ASSERT_FALSE(manager.connecting());
+    TEST_ASSERT_FALSE(manager.apMode());
+
+    manager.tick(clock.millis() + 3);
+    TEST_ASSERT_TRUE(manager.connecting());
+    TEST_ASSERT_EQUAL(0, driver.beginStationCalls);
+
+    manager.tick(clock.millis() + 4);
+    TEST_ASSERT_EQUAL(1, driver.beginStationCalls);
 }
 
-void test_provisioning_coordinator_queues_mobile_reentry_request() {
+void test_wifi_manager_rejects_ble_config_when_disabled() {
     ManualClock clock;
     FakeWifiDriver driver;
-    MemoryConfigStorage storage;
-    ConfigStore store(storage);
-    TEST_ASSERT_TRUE(store.begin());
-    TEST_ASSERT_TRUE(store.load().ok());
-
     WifiManager manager(driver);
-    manager.begin(store.config());
-    ProvisioningCoordinator coordinator(store, manager);
+    DeviceConfig config = defaultConfig();
+    config.provisioning.mobileProvisioningEnabled = false;
 
-    TEST_ASSERT_TRUE(coordinator.requestMobileProvisioningReentry());
-    TEST_ASSERT_TRUE(coordinator.takeMobileProvisioningReentryRequest());
-    TEST_ASSERT_FALSE(coordinator.takeMobileProvisioningReentryRequest());
+    manager.begin(config);
+
+    TEST_ASSERT_FALSE(manager.requestBleConfig());
+    manager.tick(clock.millis());
+    TEST_ASSERT_FALSE(manager.bleConfigMode());
+    TEST_ASSERT_EQUAL(0, manager.bleStartCount());
 }
 
 void test_portal_waits_for_network_stack_before_http_start() {
@@ -420,8 +457,7 @@ void test_portal_waits_for_network_stack_before_http_start() {
     TEST_ASSERT_TRUE(store.load().ok());
 
     WifiManager manager(driver);
-    ProvisioningCoordinator coordinator(store, manager);
-    PortalServer portal(coordinator, driver);
+    PortalServer portal(manager, driver);
 
     TEST_ASSERT_TRUE(portal.begin());
     portal.tick(100);
@@ -449,8 +485,7 @@ void test_portal_dns_follows_setup_ap_readiness_without_http_restart() {
     TEST_ASSERT_TRUE(store.load().ok());
 
     WifiManager manager(driver);
-    ProvisioningCoordinator coordinator(store, manager);
-    PortalServer portal(coordinator, driver);
+    PortalServer portal(manager, driver);
 
     TEST_ASSERT_TRUE(portal.begin());
     portal.tick(100);
@@ -487,8 +522,7 @@ void test_portal_restarts_http_only_when_network_stack_is_lost() {
     TEST_ASSERT_TRUE(store.load().ok());
 
     WifiManager manager(driver);
-    ProvisioningCoordinator coordinator(store, manager);
-    PortalServer portal(coordinator, driver);
+    PortalServer portal(manager, driver);
 
     TEST_ASSERT_TRUE(portal.begin());
     portal.tick(100);
@@ -517,62 +551,52 @@ void test_portal_restarts_http_only_when_network_stack_is_lost() {
     TEST_ASSERT_EQUAL(2, portal.httpStartCount());
 }
 
-void test_mobile_provisioning_starts_when_credentials_are_missing() {
+void test_wifi_manager_ble_config_request_starts_ble_mode() {
     ManualClock clock;
     FakeWifiDriver driver;
-    MemoryConfigStorage storage;
-    ConfigStore store(storage);
-    TEST_ASSERT_TRUE(store.begin());
-    TEST_ASSERT_TRUE(store.load().ok());
-
     WifiManager manager(driver);
-    manager.begin(store.config());
-    ProvisioningCoordinator coordinator(store, manager);
-    MobileProvisioning provisioning(coordinator, manager);
-    provisioning.begin(store.config());
+    DeviceConfig config = defaultConfig();
 
-    provisioning.tick(100);
+    manager.begin(config);
 
-    TEST_ASSERT_TRUE(provisioning.running());
+    TEST_ASSERT_TRUE(manager.requestBleConfig());
+    TEST_ASSERT_FALSE(manager.bleConfigMode());
+    TEST_ASSERT_FALSE(manager.bleConfigRunning());
+    TEST_ASSERT_EQUAL(0, manager.bleStartCount());
+
+    manager.tick(clock.millis());
+    TEST_ASSERT_TRUE(manager.apMode());
+
+    manager.tick(clock.millis() + 1);
+    TEST_ASSERT_TRUE(manager.bleConfigMode());
+    TEST_ASSERT_FALSE(manager.bleConfigRunning());
+    TEST_ASSERT_EQUAL(0, manager.bleStartCount());
+
+    manager.tick(clock.millis() + 2);
+    TEST_ASSERT_TRUE(manager.bleConfigRunning());
+    TEST_ASSERT_EQUAL(1, manager.bleStartCount());
 }
 
-void test_mobile_provisioning_starts_when_wifi_enters_setup_ap() {
-    ManualClock clock;
+void test_wifi_manager_rejects_portal_submit_while_ble_config_is_running() {
     FakeWifiDriver driver;
-    MemoryConfigStorage storage;
-    ConfigStore store(storage);
-    TEST_ASSERT_TRUE(store.begin());
-    TEST_ASSERT_TRUE(store.load().ok());
-
-    DeviceConfig config = store.config();
-    config.wifi.ssid = "office";
-    config.wifi.password = "secret";
-    config.wifiRuntime.maxConnectRetries = 0;
-    TEST_ASSERT_TRUE(store.save(config).ok());
-
     WifiManager manager(driver);
-    manager.begin(store.config());
-    ProvisioningCoordinator coordinator(store, manager);
-    MobileProvisioning provisioning(coordinator, manager);
-    provisioning.begin(store.config());
+    DeviceConfig config = defaultConfig();
 
+    manager.begin(config);
+    TEST_ASSERT_TRUE(manager.requestBleConfig());
     manager.tick(100);
-    provisioning.tick(100);
-    TEST_ASSERT_FALSE(provisioning.running());
-
     manager.tick(101);
-    TEST_ASSERT_FALSE(manager.apMode());
-
-    driver.statusValue = WifiDriverStatus::Failed;
     manager.tick(102);
-    TEST_ASSERT_TRUE(manager.apMode());
+    TEST_ASSERT_TRUE(manager.bleConfigRunning());
 
-    provisioning.tick(102);
-    TEST_ASSERT_TRUE(provisioning.running());
+    WiFiCredentials credentials;
+    credentials.ssid = "office";
+    credentials.password = "secret";
+    TEST_ASSERT_EQUAL(static_cast<int>(WifiManagerResult::Busy), static_cast<int>(manager.submitCredentials(credentials)));
+    TEST_ASSERT_EQUAL(0, driver.beginStationCalls);
 }
 
-void test_mobile_provisioning_reentry_resets_credentials_and_restarts_ble() {
-    ManualClock clock;
+void test_wifi_manager_ble_timeout_stops_deinitializes_and_returns() {
     FakeWifiDriver driver;
     MemoryConfigStorage storage;
     ConfigStore store(storage);
@@ -580,116 +604,158 @@ void test_mobile_provisioning_reentry_resets_credentials_and_restarts_ble() {
     TEST_ASSERT_TRUE(store.load().ok());
 
     DeviceConfig config = store.config();
-    config.wifi.ssid = "office";
-    config.wifi.password = "secret";
+    config.provisioning.sessionTimeoutMs = 10;
     TEST_ASSERT_TRUE(store.save(config).ok());
 
-    WifiManager manager(driver);
+    WifiManager manager(driver, &store);
     manager.begin(store.config());
-    ProvisioningCoordinator coordinator(store, manager);
-    MobileProvisioning provisioning(coordinator, manager);
-    provisioning.begin(store.config());
 
-    TEST_ASSERT_TRUE(coordinator.requestMobileProvisioningReentry());
-    provisioning.tick(200);
-    manager.tick(200);
+    TEST_ASSERT_TRUE(manager.requestBleConfig());
+    manager.tick(100);
+    manager.tick(101);
+    manager.tick(102);
+    TEST_ASSERT_TRUE(manager.bleConfigRunning());
+    TEST_ASSERT_EQUAL(1, manager.bleStartCount());
 
+    manager.tick(113);
+    TEST_ASSERT_TRUE(manager.bleConfigMode());
+    TEST_ASSERT_EQUAL(0, manager.bleStopCount());
+
+    manager.tick(114);
+    TEST_ASSERT_EQUAL(1, manager.bleStopCount());
+    TEST_ASSERT_EQUAL(0, manager.bleDeinitCount());
+
+    manager.tick(115);
+    TEST_ASSERT_EQUAL(1, manager.bleStopCount());
+    TEST_ASSERT_EQUAL(0, manager.bleDeinitCount());
+
+    manager.tick(116);
+    TEST_ASSERT_EQUAL(1, manager.bleDeinitCount());
+
+    manager.tick(117);
+    TEST_ASSERT_FALSE(manager.bleConfigMode());
     TEST_ASSERT_FALSE(store.config().wifi.hasCredentials());
-    TEST_ASSERT_FALSE(manager.credentials().hasCredentials());
-    TEST_ASSERT_TRUE(manager.apMode());
-    TEST_ASSERT_TRUE(provisioning.running());
-    TEST_ASSERT_EQUAL(0, driver.clearStationCredentialsCalls);
-    TEST_ASSERT_EQUAL(1, driver.startApCalls);
+    TEST_ASSERT_EQUAL(0, driver.beginStationCalls);
 }
 
-void test_mobile_provisioning_timeout_uses_supplied_timestamp() {
-    ManualClock clock;
+void test_wifi_manager_ble_stop_wait_is_bounded_when_prov_end_is_missing() {
     FakeWifiDriver driver;
     MemoryConfigStorage storage;
     ConfigStore store(storage);
     TEST_ASSERT_TRUE(store.begin());
     TEST_ASSERT_TRUE(store.load().ok());
 
-    WifiManager manager(driver);
-    manager.begin(store.config());
-    ProvisioningCoordinator coordinator(store, manager);
-    MobileProvisioning provisioning(coordinator, manager);
-
     DeviceConfig config = store.config();
-    config.wifi.ssid = "office";
     config.provisioning.sessionTimeoutMs = 10;
     TEST_ASSERT_TRUE(store.save(config).ok());
 
+    WifiManager manager(driver, &store);
+    manager.setBleStopAutoEnd(false);
     manager.begin(store.config());
-    provisioning.begin(store.config());
-    provisioning.start(100);
-    provisioning.tick(109);
-    TEST_ASSERT_TRUE(provisioning.running());
 
-    provisioning.tick(111);
-    TEST_ASSERT_TRUE(provisioning.timedOut());
+    TEST_ASSERT_TRUE(manager.requestBleConfig());
+    manager.tick(100);
+    manager.tick(101);
+    manager.tick(102);
+    manager.tick(113);
+    manager.tick(114);
+    TEST_ASSERT_EQUAL(1, manager.bleStopCount());
+    TEST_ASSERT_EQUAL(0, manager.bleDeinitCount());
+
+    manager.tick(5115);
+    TEST_ASSERT_EQUAL(0, manager.bleDeinitCount());
+
+    manager.tick(5116);
+    TEST_ASSERT_EQUAL(1, manager.bleDeinitCount());
+
+    manager.tick(5117);
+    TEST_ASSERT_EQUAL(1, manager.bleDeinitCount());
+
+    manager.tick(5118);
+    TEST_ASSERT_FALSE(manager.bleConfigMode());
 }
 
-void test_mobile_provisioning_restart_ble_keeps_session_active() {
-    ManualClock clock;
+void test_wifi_manager_ble_credentials_stop_deinit_save_and_connect() {
     FakeWifiDriver driver;
     MemoryConfigStorage storage;
     ConfigStore store(storage);
     TEST_ASSERT_TRUE(store.begin());
     TEST_ASSERT_TRUE(store.load().ok());
 
-    WifiManager manager(driver);
+    WifiManager manager(driver, &store);
     manager.begin(store.config());
-    ProvisioningCoordinator coordinator(store, manager);
-    MobileProvisioning provisioning(coordinator, manager);
 
-    DeviceConfig config = store.config();
-    config.provisioning.mobileProvisioningEnabled = true;
+    TEST_ASSERT_TRUE(manager.requestBleConfig());
+    manager.tick(100);
+    manager.tick(101);
+    manager.tick(102);
+    TEST_ASSERT_TRUE(manager.bleConfigRunning());
+    TEST_ASSERT_EQUAL(1, manager.bleStartCount());
 
-    provisioning.begin(config);
-    provisioning.start(100);
-    TEST_ASSERT_TRUE(provisioning.running());
+    manager.simulateBleCredentialsReceived("office", "secret");
+    manager.tick(103);
+    TEST_ASSERT_TRUE(manager.bleConfigMode());
+    TEST_ASSERT_EQUAL(0, manager.bleStopCount());
 
-    provisioning.restartBle(150);
-    TEST_ASSERT_FALSE(provisioning.running());
-    TEST_ASSERT_TRUE(provisioning.restartPending());
+    manager.tick(104);
+    TEST_ASSERT_EQUAL(0, manager.bleStopCount());
+    TEST_ASSERT_EQUAL(0, manager.bleDeinitCount());
 
-    provisioning.tick(1649);
-    TEST_ASSERT_TRUE(provisioning.restartPending());
+    manager.tick(105);
+    TEST_ASSERT_EQUAL(1, manager.bleStopCount());
+    TEST_ASSERT_EQUAL(0, manager.bleDeinitCount());
 
-    provisioning.tick(1650);
-    TEST_ASSERT_TRUE(provisioning.running());
+    manager.tick(106);
+    TEST_ASSERT_EQUAL(0, manager.bleDeinitCount());
+
+    manager.tick(107);
+    TEST_ASSERT_EQUAL(1, manager.bleDeinitCount());
+    TEST_ASSERT_TRUE(store.config().wifi.hasCredentials());
+
+    manager.tick(108);
+    TEST_ASSERT_TRUE(store.config().wifi.hasCredentials());
+    TEST_ASSERT_EQUAL_STRING("office", store.config().wifi.ssid.c_str());
+    TEST_ASSERT_EQUAL_STRING("secret", store.config().wifi.password.c_str());
+    TEST_ASSERT_TRUE(manager.connecting());
+    TEST_ASSERT_EQUAL(0, driver.beginStationCalls);
+
+    manager.tick(109);
+    TEST_ASSERT_EQUAL(1, driver.beginStationCalls);
+    TEST_ASSERT_EQUAL_STRING("office", driver.lastCredentials.ssid.c_str());
+    TEST_ASSERT_FALSE(manager.connecting());
 }
 
-void test_mobile_provisioning_restart_after_timeout_is_allowed() {
-    ManualClock clock;
+void test_wifi_manager_invalid_ble_credentials_do_not_start_station_connect() {
     FakeWifiDriver driver;
     MemoryConfigStorage storage;
     ConfigStore store(storage);
     TEST_ASSERT_TRUE(store.begin());
     TEST_ASSERT_TRUE(store.load().ok());
 
-    WifiManager manager(driver);
+    WifiManager manager(driver, &store);
     manager.begin(store.config());
-    ProvisioningCoordinator coordinator(store, manager);
-    MobileProvisioning provisioning(coordinator, manager);
 
-    DeviceConfig config = store.config();
-    config.provisioning.mobileProvisioningEnabled = true;
-    config.provisioning.sessionTimeoutMs = 10;
+    TEST_ASSERT_TRUE(manager.requestBleConfig());
+    manager.tick(100);
+    manager.tick(101);
+    manager.tick(102);
+    TEST_ASSERT_TRUE(manager.bleConfigRunning());
 
-    provisioning.begin(config);
-    provisioning.start(100);
-    provisioning.tick(111);
-    TEST_ASSERT_FALSE(provisioning.running());
-    TEST_ASSERT_TRUE(provisioning.restartPending());
+    manager.simulateBleCredentialsReceived("", "secret");
+    manager.tick(103);
+    manager.tick(104);
+    manager.tick(105);
+    manager.tick(106);
+    TEST_ASSERT_EQUAL(0, manager.bleDeinitCount());
 
-    provisioning.tick(1610);
-    TEST_ASSERT_TRUE(provisioning.restartPending());
+    manager.tick(107);
+    TEST_ASSERT_EQUAL(1, manager.bleDeinitCount());
+    TEST_ASSERT_FALSE(store.config().wifi.hasCredentials());
+    TEST_ASSERT_EQUAL(0, driver.beginStationCalls);
 
-    provisioning.tick(1611);
-    TEST_ASSERT_TRUE(provisioning.running());
-    TEST_ASSERT_EQUAL_UINT32(1611, provisioning.stateUpdated());
+    manager.tick(108);
+    TEST_ASSERT_TRUE(manager.apMode());
+    TEST_ASSERT_EQUAL(0, driver.beginStationCalls);
 }
 
 void test_arduino_ota_starts_after_wifi_connects() {
@@ -741,6 +807,7 @@ void test_arduino_ota_starts_on_setup_ap_readiness() {
     ota.tick(100);
     TEST_ASSERT_FALSE(ota.started());
 
+    manager.tick(101);
     ota.tick(101);
     TEST_ASSERT_FALSE(ota.started());
 
@@ -789,13 +856,20 @@ void test_arduino_ota_stops_and_restarts_after_wifi_loss() {
     ota.tick(108);
     TEST_ASSERT_FALSE(ota.started());
 
-    driver.statusValue = WifiDriverStatus::Connected;
-    driver.stationIpValue = "192.168.1.241";
     manager.tick(109);
     ota.tick(109);
     TEST_ASSERT_FALSE(ota.started());
 
+    driver.statusValue = WifiDriverStatus::Connected;
+    driver.stationIpValue = "192.168.1.241";
     ota.tick(110);
+    TEST_ASSERT_FALSE(ota.started());
+
+    manager.tick(110);
+    ota.tick(111);
+    TEST_ASSERT_FALSE(ota.started());
+
+    ota.tick(112);
 
     TEST_ASSERT_TRUE(ota.started());
     TEST_ASSERT_EQUAL(2, ota.startCount());
@@ -841,10 +915,10 @@ void test_arduino_ota_restarts_after_station_ip_changes() {
     TEST_ASSERT_EQUAL(2, ota.startCount());
 }
 
-void test_portal_html_exposes_provisioning_reentry_action() {
+void test_portal_html_exposes_ble_config_action() {
     const char* html = portalHtml();
-    TEST_ASSERT_NOT_NULL(strstr(html, "/api/provisioning/reenter"));
-    TEST_ASSERT_NOT_NULL(strstr(html, "Re-enter BLE provisioning"));
+    TEST_ASSERT_NOT_NULL(strstr(html, "/api/wifi/ble-config"));
+    TEST_ASSERT_NOT_NULL(strstr(html, "Start BLE config mode"));
 }
 
 void test_state_machine_stack_and_return_to_popped_state() {
@@ -899,23 +973,23 @@ int main(int, char**) {
     RUN_TEST(test_setup_ap_readiness_requires_successful_ap_start_and_valid_ip);
     RUN_TEST(test_failed_setup_ap_start_does_not_report_setup_ap_ready);
     RUN_TEST(test_station_connect_clears_setup_ap_readiness);
-    RUN_TEST(test_provisioning_coordinator_rejects_oversized_http_credentials);
-    RUN_TEST(test_provisioning_coordinator_reset_clears_credentials_and_starts_softap);
-    RUN_TEST(test_provisioning_coordinator_queues_mobile_reentry_request);
+    RUN_TEST(test_wifi_manager_rejects_oversized_credentials);
+    RUN_TEST(test_wifi_manager_submit_credentials_saves_and_connects);
+    RUN_TEST(test_wifi_manager_rejects_ble_config_when_disabled);
     RUN_TEST(test_portal_waits_for_network_stack_before_http_start);
     RUN_TEST(test_portal_dns_follows_setup_ap_readiness_without_http_restart);
     RUN_TEST(test_portal_restarts_http_only_when_network_stack_is_lost);
-    RUN_TEST(test_mobile_provisioning_starts_when_credentials_are_missing);
-    RUN_TEST(test_mobile_provisioning_starts_when_wifi_enters_setup_ap);
-    RUN_TEST(test_mobile_provisioning_reentry_resets_credentials_and_restarts_ble);
-    RUN_TEST(test_mobile_provisioning_timeout_uses_supplied_timestamp);
-    RUN_TEST(test_mobile_provisioning_restart_ble_keeps_session_active);
-    RUN_TEST(test_mobile_provisioning_restart_after_timeout_is_allowed);
+    RUN_TEST(test_wifi_manager_ble_config_request_starts_ble_mode);
+    RUN_TEST(test_wifi_manager_rejects_portal_submit_while_ble_config_is_running);
+    RUN_TEST(test_wifi_manager_ble_timeout_stops_deinitializes_and_returns);
+    RUN_TEST(test_wifi_manager_ble_stop_wait_is_bounded_when_prov_end_is_missing);
+    RUN_TEST(test_wifi_manager_ble_credentials_stop_deinit_save_and_connect);
+    RUN_TEST(test_wifi_manager_invalid_ble_credentials_do_not_start_station_connect);
     RUN_TEST(test_arduino_ota_starts_after_wifi_connects);
     RUN_TEST(test_arduino_ota_starts_on_setup_ap_readiness);
     RUN_TEST(test_arduino_ota_stops_and_restarts_after_wifi_loss);
     RUN_TEST(test_arduino_ota_restarts_after_station_ip_changes);
-    RUN_TEST(test_portal_html_exposes_provisioning_reentry_action);
+    RUN_TEST(test_portal_html_exposes_ble_config_action);
     RUN_TEST(test_state_machine_stack_and_return_to_popped_state);
     RUN_TEST(test_state_machine_pause_restart_and_updated_flag);
     RUN_TEST(test_state_machine_timeout_helpers);

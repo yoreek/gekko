@@ -76,15 +76,15 @@ The firmware SHALL manage WiFi station connection attempts, retries, fallback, a
 - **THEN** Unity tests cover state transitions using mocked time and mocked WiFi events where practical
 
 ### Requirement: Espressif-compatible BLE mobile provisioning
-The firmware SHALL support and validate mobile-app WiFi provisioning through the Espressif-compatible BLE provisioning transport as an early baseline milestone.
+The firmware SHALL support mobile-app WiFi credential entry through an explicit Espressif-compatible BLE config mode owned by `WifiManager`.
 
 #### Scenario: Mobile provisioning session starts
-- **WHEN** provisioning mode starts and mobile provisioning is enabled
+- **WHEN** BLE config mode is requested and mobile provisioning is enabled
 - **THEN** the firmware starts the Espressif-compatible BLE provisioning service with declared security settings and device identity
 
 #### Scenario: Mobile app provides credentials
 - **WHEN** a compatible mobile app submits WiFi credentials through the provisioning protocol
-- **THEN** the firmware validates and persists the credentials through the same configuration flow used by the HTTP portal
+- **THEN** the firmware records the credentials, persists them through the same configuration flow used by the HTTP portal, stops provisioning, deinitializes provisioning, and returns to the normal WiFi state-machine flow
 
 #### Scenario: Mobile provisioning can be disabled
 - **WHEN** the build or runtime configuration disables mobile provisioning
@@ -96,14 +96,7 @@ The firmware SHALL support and validate mobile-app WiFi provisioning through the
 
 #### Scenario: Provisioning session is timeout-driven
 - **WHEN** a mobile provisioning session is active
-- **THEN** session progress, timeout, success, and failure handling are coordinated by non-blocking state-machine flow
-
-### Requirement: WiFi reset and recovery
-The firmware SHALL provide a way to clear WiFi credentials and return to provisioning mode.
-
-#### Scenario: Credentials are reset
-- **WHEN** a reset action for WiFi credentials is invoked
-- **THEN** the firmware clears stored WiFi credentials and starts provisioning mode on the next boot or immediately when supported
+- **THEN** session progress, timeout, credential receipt, stop, and deinit handling are coordinated by non-blocking state-machine flow
 
 ### Requirement: Provisioning timeout recovery
 The firmware SHALL treat a mobile provisioning timeout as a recoverable state rather than a terminal dead end.

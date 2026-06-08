@@ -96,9 +96,11 @@ DebugLogger& debugLogger();
 #if defined(WITH_PROVISIONING_DEBUG)
 #define EWFM_PROV_LOG_INFO(fmt, ...) EWFM_LOG_INFO("provisioning", fmt, ##__VA_ARGS__)
 #define EWFM_PROV_LOG_WARN(fmt, ...) EWFM_LOG_WARN("provisioning", fmt, ##__VA_ARGS__)
+#define EWFM_PROV_LOG_ERROR(fmt, ...) EWFM_LOG_ERROR("provisioning", fmt, ##__VA_ARGS__)
 #else
 #define EWFM_PROV_LOG_INFO(fmt, ...)
 #define EWFM_PROV_LOG_WARN(fmt, ...)
+#define EWFM_PROV_LOG_ERROR(fmt, ...)
 #endif
 
 #if defined(WITH_STATE_MACHINE_DEBUG)

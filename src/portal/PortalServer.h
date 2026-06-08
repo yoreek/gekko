@@ -1,7 +1,7 @@
 #pragma once
 
-#include "provisioning/ProvisioningCoordinator.h"
 #include "wifi/WifiDriver.h"
+#include "wifi/WifiManager.h"
 
 #include <cstdint>
 #include <memory>
@@ -18,7 +18,7 @@ enum class PortalRuntimeState {
 
 class PortalServer {
 public:
-    PortalServer(ProvisioningCoordinator& coordinator, IWifiDriver& wifiDriver);
+    PortalServer(WifiManager& wifiManager, IWifiDriver& wifiDriver);
     ~PortalServer();
 
     bool begin();
@@ -36,7 +36,7 @@ public:
 
 private:
     class Impl;
-    ProvisioningCoordinator& coordinator_;
+    WifiManager& wifiManager_;
     IWifiDriver& wifiDriver_;
     std::unique_ptr<Impl> impl_;
 };

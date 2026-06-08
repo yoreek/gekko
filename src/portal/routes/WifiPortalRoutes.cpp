@@ -9,8 +9,8 @@
 
 namespace ewfm {
 
-WifiPortalRoutes::WifiPortalRoutes(ProvisioningCoordinator& coordinator, IWifiDriver& wifiDriver)
-    : coordinator_(coordinator), wifiDriver_(wifiDriver) {}
+WifiPortalRoutes::WifiPortalRoutes(WifiManager& wifiManager, IWifiDriver& wifiDriver)
+    : wifiManager_(wifiManager), wifiDriver_(wifiDriver) {}
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 void WifiPortalRoutes::registerRoutes(AsyncWebServer& server) {
@@ -20,9 +20,7 @@ void WifiPortalRoutes::registerRoutes(AsyncWebServer& server) {
 
     server.on("/api/wifi/configure", HTTP_POST, [this](AsyncWebServerRequest* request) { handleConfigure(request); });
 
-    server.on("/api/wifi/reset", HTTP_POST, [this](AsyncWebServerRequest* request) { handleReset(request); });
-
-    server.on("/api/provisioning/reenter", HTTP_POST, [this](AsyncWebServerRequest* request) { handleReenterProvisioning(request); });
+    server.on("/api/wifi/ble-config", HTTP_POST, [this](AsyncWebServerRequest* request) { handleStartBleConfig(request); });
 }
 
 void WifiPortalRoutes::handleScan(AsyncWebServerRequest* request) {
@@ -85,26 +83,23 @@ void WifiPortalRoutes::handleConfigure(AsyncWebServerRequest* request) {
         credentials.password = request->getParam("password", true)->value().c_str();
     }
 
-    ProvisioningResult result = coordinator_.submitWifiCredentials(credentials);
-    if (result == ProvisioningResult::Accepted) {
+    WifiManagerResult result = wifiManager_.submitCredentials(credentials);
+    if (result == WifiManagerResult::Accepted) {
         request->send(202, "application/json", "{\"status\":\"accepted\"}");
+    } else if (result == WifiManagerResult::Busy) {
+        request->send(409, "application/json", "{\"error\":\"wifi manager busy\"}");
     } else {
         request->send(400, "application/json", "{\"error\":\"invalid credentials\"}");
     }
 }
 
-void WifiPortalRoutes::handleReset(AsyncWebServerRequest* request) {
-    coordinator_.resetWifiCredentials();
-    request->send(200, "application/json", "{\"status\":\"reset\"}");
-}
-
-void WifiPortalRoutes::handleReenterProvisioning(AsyncWebServerRequest* request) {
-    if (!coordinator_.requestMobileProvisioningReentry()) {
-        request->send(409, "application/json", "{\"error\":\"mobile provisioning disabled\"}");
+void WifiPortalRoutes::handleStartBleConfig(AsyncWebServerRequest* request) {
+    if (!wifiManager_.requestBleConfig()) {
+        request->send(409, "application/json", "{\"error\":\"ble config disabled\"}");
         return;
     }
 
-    request->send(202, "application/json", "{\"status\":\"accepted\",\"action\":\"reenter_ble_provisioning\"}");
+    request->send(202, "application/json", "{\"status\":\"accepted\",\"action\":\"start_ble_config\"}");
 }
 #endif
 

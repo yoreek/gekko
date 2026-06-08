@@ -12,9 +12,7 @@ public:
     void clearStationCredentials() override;
     bool startSetupAp(const std::string& ssid, const std::string& password) override;
     void stopSetupAp() override;
-    bool prepareProvisioningScan() override;
     WifiDriverStatus status() const override;
-    bool setupApActive() const override;
     bool networkStackReady() const override;
     bool stationReady() const override;
     bool setupApReady() const override;
@@ -28,7 +26,6 @@ private:
     static bool ipValid(const std::string& ip);
 
     bool networkStackReady_{false};
-    bool setupApActive_{false};
 };
 
 } // namespace ewfm

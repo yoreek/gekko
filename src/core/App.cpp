@@ -8,9 +8,7 @@
 
 namespace ewfm {
 
-App::App()
-    : configStore_(storage_), wifiManager_(wifiDriver_), provisioningCoordinator_(configStore_, wifiManager_),
-      mobileProvisioning_(provisioningCoordinator_, wifiManager_), portalServer_(provisioningCoordinator_, wifiDriver_) {}
+App::App() : configStore_(storage_), wifiManager_(wifiDriver_, &configStore_), portalServer_(wifiManager_, wifiDriver_) {}
 
 bool App::begin() {
     EWFM_APP_LOG_INFO("ESP32 WiFi Manager booting");
@@ -31,7 +29,6 @@ bool App::begin() {
 
     const DeviceConfig& config = configStore_.config();
     wifiManager_.begin(config);
-    mobileProvisioning_.begin(config);
     portalServer_.begin();
 #if defined(WITH_ARDUINO_OTA)
     otaService_.begin(config.deviceName, wifiManager_);
@@ -44,7 +41,6 @@ void App::tick() {
     const uint32_t now = clock_.millis();
 
     wifiManager_.tick(now);
-    mobileProvisioning_.tick(now);
     portalServer_.tick(now);
 #if defined(WITH_ARDUINO_OTA)
     otaService_.tick(now);

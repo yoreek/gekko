@@ -6,8 +6,6 @@
 #include "platform/ArduinoWifiDriver.h"
 #include "platform/PreferencesConfigStorage.h"
 #include "portal/PortalServer.h"
-#include "provisioning/MobileProvisioning.h"
-#include "provisioning/ProvisioningCoordinator.h"
 #include "wifi/WifiManager.h"
 
 #include <memory>
@@ -26,8 +24,6 @@ private:
     ArduinoWifiDriver wifiDriver_;
     ConfigStore configStore_;
     WifiManager wifiManager_;
-    ProvisioningCoordinator provisioningCoordinator_;
-    MobileProvisioning mobileProvisioning_;
     PortalServer portalServer_;
 #if defined(WITH_ARDUINO_OTA)
     ArduinoOtaService otaService_;

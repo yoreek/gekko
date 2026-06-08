@@ -28,14 +28,13 @@ struct ProvisioningConfig {
     std::string proofOfPossession{"abcd1234"};
     bool setupApPasswordEnabled{false};
     std::string setupApPassword;
-    uint32_t sessionTimeoutMs{10UL * 60UL * 1000UL};
+    uint32_t sessionTimeoutMs{3UL * 60UL * 1000UL};
 };
 
 struct WifiRuntimeConfig {
     uint8_t maxConnectRetries{5};
     uint32_t connectTimeoutMs{15000};
     uint32_t retryDelayMs{3000};
-    bool setupApEnabled{true};
 };
 
 struct FirmwareUpdateConfig {

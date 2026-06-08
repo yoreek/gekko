@@ -1,7 +1,7 @@
 #pragma once
 
-#include "provisioning/ProvisioningCoordinator.h"
 #include "wifi/WifiDriver.h"
+#include "wifi/WifiManager.h"
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 class AsyncWebServer;
@@ -12,7 +12,7 @@ namespace ewfm {
 
 class WifiPortalRoutes {
 public:
-    WifiPortalRoutes(ProvisioningCoordinator& coordinator, IWifiDriver& wifiDriver);
+    WifiPortalRoutes(WifiManager& wifiManager, IWifiDriver& wifiDriver);
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     void registerRoutes(AsyncWebServer& server);
@@ -23,11 +23,10 @@ private:
     void handleScan(AsyncWebServerRequest* request);
     void handleStatus(AsyncWebServerRequest* request);
     void handleConfigure(AsyncWebServerRequest* request);
-    void handleReset(AsyncWebServerRequest* request);
-    void handleReenterProvisioning(AsyncWebServerRequest* request);
+    void handleStartBleConfig(AsyncWebServerRequest* request);
 #endif
 
-    ProvisioningCoordinator& coordinator_;
+    WifiManager& wifiManager_;
     IWifiDriver& wifiDriver_;
     bool scanStarted_{false};
 };
