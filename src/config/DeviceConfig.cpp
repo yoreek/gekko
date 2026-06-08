@@ -6,6 +6,10 @@ DeviceConfig defaultConfig() {
     return DeviceConfig{};
 }
 
+ValidationResult validateConfig(const DeviceConfig& config) {
+    return validateConfig(config, false);
+}
+
 ValidationResult validateWifiCredentials(const WiFiCredentials& credentials, bool requireCredentials) {
     if (requireCredentials && credentials.ssid.empty()) {
         return {ConfigError::EmptySsid, "ssid is required"};
@@ -29,10 +33,10 @@ ValidationResult validateConfig(const DeviceConfig& config, bool requireWifiCred
     if (config.deviceName.size() > kMaxDeviceNameLength) {
         return {ConfigError::DeviceNameTooLong, "device name is too long"};
     }
-    if (config.maxJsonBytes == 0 || config.maxJsonBytes > 8192) {
+    if (config.maxJsonBytes == 0 || config.maxJsonBytes > kMaxJsonSizeBytes) {
         return {ConfigError::JsonTooLarge, "json limit is invalid"};
     }
-    if (config.provisioning.proofOfPossession.size() > 64) {
+    if (config.provisioning.proofOfPossession.size() > kMaxProvisioningSecretLength) {
         return {ConfigError::PasswordTooLong, "provisioning secret is too long"};
     }
     return validateWifiCredentials(config.wifi, requireWifiCredentials);

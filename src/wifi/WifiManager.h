@@ -125,18 +125,20 @@ private:
     [[nodiscard]] bool startBleProvisioning();
     void stopBleProvisioning();
     void deinitBleProvisioning();
-    void saveReceivedBleCredentials(const char* ssid, const char* password);
+    void saveReceivedBleCredentials(const WiFiCredentials& credentials);
     bool takeReceivedBleCredentials(WiFiCredentials& credentials);
     void clearReceivedBleCredentials();
     void registerWiFiEvents();
-#if defined(ARDUINO) && !defined(UNIT_TEST)
-    void handleWiFiEvent(arduino_event_id_t eventId, const arduino_event_info_t& info);
-#endif
 
     IWifiDriver& driver_;
     ConfigStore* configStore_{nullptr};
     DeviceConfig config_;
     WiFiCredentials credentials_;
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    mutable portMUX_TYPE controlMutex_;
+    mutable portMUX_TYPE bleEventMutex_;
+    bool wifiEventsRegistered_{false};
+#endif
     char pendingSubmitSsid_[kMaxSsidLength + 1]{};
     char pendingSubmitPassword_[kMaxPasswordLength + 1]{};
     char receivedBleSsid_[kMaxSsidLength + 1]{};
@@ -153,6 +155,11 @@ private:
     uint16_t bleStopCount_{0};
     uint16_t bleDeinitCount_{0};
     bool bleStopAutoEnd_{true};
+#endif
+
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    inline static constexpr uint8_t kBleProvisioningUuid_[16] = {0xb4, 0xdf, 0x5a, 0x1c, 0x3f, 0x6b, 0xf4, 0xbf,
+                                                                 0xea, 0x4a, 0x82, 0x03, 0x04, 0x90, 0x1a, 0x02};
 #endif
 };
 

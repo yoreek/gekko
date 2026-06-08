@@ -16,18 +16,6 @@ namespace ewfm {
 #undef SM_CLASS
 #define SM_CLASS WifiManager
 
-#if defined(ARDUINO) && !defined(UNIT_TEST)
-namespace {
-WifiManager* activeWifiManager = nullptr;
-bool wifiEventsRegistered = false;
-portMUX_TYPE controlMutex = portMUX_INITIALIZER_UNLOCKED;
-portMUX_TYPE bleEventMutex = portMUX_INITIALIZER_UNLOCKED;
-
-constexpr uint8_t kBleProvisioningUuid[16] = {0xb4, 0xdf, 0x5a, 0x1c, 0x3f, 0x6b, 0xf4, 0xbf,
-                                              0xea, 0x4a, 0x82, 0x03, 0x04, 0x90, 0x1a, 0x02};
-} // namespace
-#endif
-
 namespace {
 void copyBoundedCString(char* destination, const size_t destinationSize, const char* value) {
     if (destination == nullptr || destinationSize == 0) {
@@ -50,7 +38,12 @@ void copyBoundedCString(char* destination, const size_t destinationSize, const c
 constexpr uint32_t kBleStopTimeoutMs = 5000;
 
 WifiManager::WifiManager(IWifiDriver& driver, ConfigStore* configStore)
-    : StateMachine((PState)&WifiManager::Idle), driver_(driver), configStore_(configStore) {}
+    : StateMachine((PState)&WifiManager::Idle), driver_(driver), configStore_(configStore) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    portMUX_INITIALIZE(&controlMutex_);
+    portMUX_INITIALIZE(&bleEventMutex_);
+#endif
+}
 
 void WifiManager::begin(const DeviceConfig& config) {
     driver_.begin();
@@ -257,9 +250,9 @@ SM_STATE(DeinitBleConfig) {
 }
 
 SM_STATE(ApplyBleCredentials) {
-    WiFiCredentials credentials;
-    if (takeReceivedBleCredentials(credentials)) {
-        WifiManagerResult result = applyCredentialsNow(credentials);
+    WiFiCredentials receivedCredentials;
+    if (takeReceivedBleCredentials(receivedCredentials)) {
+        WifiManagerResult result = applyCredentialsNow(receivedCredentials);
         if (result != WifiManagerResult::Accepted) {
             EWFM_WIFI_LOG_WARN("BLE credentials were not applied");
         }
@@ -269,12 +262,12 @@ SM_STATE(ApplyBleCredentials) {
 }
 
 SM_STATE(ApplySubmittedCredentials) {
-    WiFiCredentials credentials;
-    if (!takePendingSubmittedCredentials(credentials)) {
+    WiFiCredentials submittedCredentials;
+    if (!takePendingSubmittedCredentials(submittedCredentials)) {
         SM_GOTO(Idle);
     }
 
-    WifiManagerResult result = applyCredentialsNow(credentials);
+    WifiManagerResult result = applyCredentialsNow(submittedCredentials);
     if (result != WifiManagerResult::Accepted) {
         EWFM_WIFI_LOG_WARN("submitted credentials were not applied");
         SM_GOTO(Idle);
@@ -304,44 +297,44 @@ bool WifiManager::isBleConfigState() const {
 
 bool WifiManager::pendingCredentialsSubmit() const {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portENTER_CRITICAL(&controlMutex);
+    portENTER_CRITICAL(&controlMutex_);
 #endif
     const bool pending = pendingCredentialsSubmit_;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portEXIT_CRITICAL(&controlMutex);
+    portEXIT_CRITICAL(&controlMutex_);
 #endif
     return pending;
 }
 
 bool WifiManager::bleConfigRequested() const {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portENTER_CRITICAL(&controlMutex);
+    portENTER_CRITICAL(&controlMutex_);
 #endif
     const bool requested = bleConfigRequested_;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portEXIT_CRITICAL(&controlMutex);
+    portEXIT_CRITICAL(&controlMutex_);
 #endif
     return requested;
 }
 
 bool WifiManager::bleCredentialsReceived() const {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portENTER_CRITICAL(&bleEventMutex);
+    portENTER_CRITICAL(&bleEventMutex_);
 #endif
     const bool received = bleCredentialsReceived_;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portEXIT_CRITICAL(&bleEventMutex);
+    portEXIT_CRITICAL(&bleEventMutex_);
 #endif
     return received;
 }
 
 bool WifiManager::bleProvisioningStopped() const {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portENTER_CRITICAL(&bleEventMutex);
+    portENTER_CRITICAL(&bleEventMutex_);
 #endif
     const bool stopped = bleProvisioningStopped_;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portEXIT_CRITICAL(&bleEventMutex);
+    portEXIT_CRITICAL(&bleEventMutex_);
 #endif
     return stopped;
 }
@@ -356,9 +349,8 @@ WifiManagerResult WifiManager::applyCredentialsNow(const WiFiCredentials& creden
 
     if (configStore_ != nullptr) {
         config_ = configStore_->config();
-    } else {
-        config_.wifi = credentials;
     }
+    config_.wifi = credentials;
 
     EWFM_WIFI_LOG_INFO("credentials applied");
     updateCredentials(credentials);
@@ -371,7 +363,7 @@ bool WifiManager::takePendingSubmittedCredentials(WiFiCredentials& credentials) 
     bool pending = false;
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portENTER_CRITICAL(&controlMutex);
+    portENTER_CRITICAL(&controlMutex_);
 #endif
     pending = pendingCredentialsSubmit_;
     if (pending) {
@@ -382,7 +374,7 @@ bool WifiManager::takePendingSubmittedCredentials(WiFiCredentials& credentials) 
         pendingSubmitPassword_[0] = '\0';
     }
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portEXIT_CRITICAL(&controlMutex);
+    portEXIT_CRITICAL(&controlMutex_);
 #endif
 
     if (!pending) {
@@ -396,7 +388,7 @@ bool WifiManager::takePendingSubmittedCredentials(WiFiCredentials& credentials) 
 
 bool WifiManager::trySavePendingSubmittedCredentials(const WiFiCredentials& credentials) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portENTER_CRITICAL(&controlMutex);
+    portENTER_CRITICAL(&controlMutex_);
 #endif
     const bool accepted = !pendingCredentialsSubmit_ && !bleConfigRequested_;
     if (accepted) {
@@ -405,51 +397,52 @@ bool WifiManager::trySavePendingSubmittedCredentials(const WiFiCredentials& cred
         pendingCredentialsSubmit_ = true;
     }
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portEXIT_CRITICAL(&controlMutex);
+    portEXIT_CRITICAL(&controlMutex_);
 #endif
     return accepted;
 }
 
 bool WifiManager::tryRequestBleConfig() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portENTER_CRITICAL(&controlMutex);
+    portENTER_CRITICAL(&controlMutex_);
 #endif
     const bool accepted = !bleConfigRequested_ && !pendingCredentialsSubmit_;
     if (accepted) {
         bleConfigRequested_ = true;
     }
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portEXIT_CRITICAL(&controlMutex);
+    portEXIT_CRITICAL(&controlMutex_);
 #endif
     return accepted;
 }
 
 void WifiManager::setBleConfigRequested(bool requested) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portENTER_CRITICAL(&controlMutex);
+    portENTER_CRITICAL(&controlMutex_);
 #endif
     bleConfigRequested_ = requested;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portEXIT_CRITICAL(&controlMutex);
+    portEXIT_CRITICAL(&controlMutex_);
 #endif
 }
 
 void WifiManager::setBleProvisioningStopped(bool stopped) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portENTER_CRITICAL(&bleEventMutex);
+    portENTER_CRITICAL(&bleEventMutex_);
 #endif
     bleProvisioningStopped_ = stopped;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portEXIT_CRITICAL(&bleEventMutex);
+    portEXIT_CRITICAL(&bleEventMutex_);
 #endif
 }
 
 void WifiManager::startSetupAp() {
-    if (driver_.startSetupAp(setupApSsid(), config_.provisioning.setupApPassword)) {
-        EWFM_WIFI_LOG_INFO("setup AP started");
-    } else {
+    if (!driver_.startSetupAp(setupApSsid(), config_.provisioning.setupApPassword)) {
         EWFM_WIFI_LOG_WARN("setup AP start failed");
+        return;
     }
+
+    EWFM_WIFI_LOG_INFO("setup AP started");
 }
 
 std::string WifiManager::setupApSsid() const {
@@ -474,8 +467,8 @@ bool WifiManager::startBleProvisioning() {
     provConfig.app_event_handler.event_cb = nullptr;
     provConfig.app_event_handler.user_data = nullptr;
 
-    uint8_t uuid[sizeof(kBleProvisioningUuid)]{};
-    std::memcpy(uuid, kBleProvisioningUuid, sizeof(uuid));
+    uint8_t uuid[sizeof(kBleProvisioningUuid_)]{};
+    std::memcpy(uuid, kBleProvisioningUuid_, sizeof(uuid));
     wifi_prov_scheme_ble_set_service_uuid(uuid);
 
     if (wifi_prov_mgr_init(provConfig) != ESP_OK) {
@@ -517,15 +510,15 @@ void WifiManager::deinitBleProvisioning() {
 #endif
 }
 
-void WifiManager::saveReceivedBleCredentials(const char* ssid, const char* password) {
+void WifiManager::saveReceivedBleCredentials(const WiFiCredentials& credentials) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portENTER_CRITICAL(&bleEventMutex);
+    portENTER_CRITICAL(&bleEventMutex_);
 #endif
-    copyBoundedCString(receivedBleSsid_, sizeof(receivedBleSsid_), ssid);
-    copyBoundedCString(receivedBlePassword_, sizeof(receivedBlePassword_), password);
+    copyBoundedCString(receivedBleSsid_, sizeof(receivedBleSsid_), credentials.ssid.c_str());
+    copyBoundedCString(receivedBlePassword_, sizeof(receivedBlePassword_), credentials.password.c_str());
     bleCredentialsReceived_ = true;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portEXIT_CRITICAL(&bleEventMutex);
+    portEXIT_CRITICAL(&bleEventMutex_);
 #endif
 }
 
@@ -535,7 +528,7 @@ bool WifiManager::takeReceivedBleCredentials(WiFiCredentials& credentials) {
     bool received = false;
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portENTER_CRITICAL(&bleEventMutex);
+    portENTER_CRITICAL(&bleEventMutex_);
 #endif
     received = bleCredentialsReceived_;
     if (received) {
@@ -546,7 +539,7 @@ bool WifiManager::takeReceivedBleCredentials(WiFiCredentials& credentials) {
         receivedBlePassword_[0] = '\0';
     }
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portEXIT_CRITICAL(&bleEventMutex);
+    portEXIT_CRITICAL(&bleEventMutex_);
 #endif
 
     if (!received) {
@@ -560,83 +553,74 @@ bool WifiManager::takeReceivedBleCredentials(WiFiCredentials& credentials) {
 
 void WifiManager::clearReceivedBleCredentials() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portENTER_CRITICAL(&bleEventMutex);
+    portENTER_CRITICAL(&bleEventMutex_);
 #endif
     bleCredentialsReceived_ = false;
     receivedBleSsid_[0] = '\0';
     receivedBlePassword_[0] = '\0';
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    portEXIT_CRITICAL(&bleEventMutex);
+    portEXIT_CRITICAL(&bleEventMutex_);
 #endif
 }
 
 void WifiManager::registerWiFiEvents() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    activeWifiManager = this;
-    if (wifiEventsRegistered) {
+    if (wifiEventsRegistered_) {
         return;
     }
 
-    WiFi.onEvent([](const arduino_event_id_t eventId, const arduino_event_info_t& info) {
-        if (activeWifiManager != nullptr) {
-            activeWifiManager->handleWiFiEvent(eventId, info);
+    WiFi.onEvent([this](const arduino_event_id_t eventId, const arduino_event_info_t& info) {
+        switch (eventId) {
+        case ARDUINO_EVENT_PROV_INIT:
+            EWFM_WIFI_LOG_INFO("event PROV_INIT");
+            break;
+        case ARDUINO_EVENT_PROV_DEINIT:
+            EWFM_WIFI_LOG_INFO("event PROV_DEINIT");
+            break;
+        case ARDUINO_EVENT_PROV_START:
+            EWFM_WIFI_LOG_INFO("event PROV_START");
+            break;
+        case ARDUINO_EVENT_PROV_END:
+            EWFM_WIFI_LOG_INFO("event PROV_END");
+            setBleProvisioningStopped(true);
+            break;
+        case ARDUINO_EVENT_PROV_CRED_RECV:
+            EWFM_WIFI_LOG_INFO("event PROV_CRED_RECV ssid=%s", reinterpret_cast<const char*>(info.prov_cred_recv.ssid));
+            saveReceivedBleCredentials(
+                {reinterpret_cast<const char*>(info.prov_cred_recv.ssid), reinterpret_cast<const char*>(info.prov_cred_recv.password)});
+            break;
+        case ARDUINO_EVENT_PROV_CRED_FAIL:
+            EWFM_WIFI_LOG_WARN("event PROV_CRED_FAIL reason=%d", static_cast<int>(info.prov_fail_reason));
+            break;
+        case ARDUINO_EVENT_PROV_CRED_SUCCESS:
+            EWFM_WIFI_LOG_INFO("event PROV_CRED_SUCCESS");
+            break;
+        case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
+            EWFM_WIFI_LOG_INFO("event WIFI_STA_DISCONNECTED reason=%u", static_cast<unsigned>(info.wifi_sta_disconnected.reason));
+            break;
+        case ARDUINO_EVENT_WIFI_STA_CONNECTED:
+            EWFM_WIFI_LOG_INFO("event WIFI_STA_CONNECTED");
+            break;
+        case ARDUINO_EVENT_WIFI_STA_GOT_IP:
+            EWFM_WIFI_LOG_INFO("event WIFI_STA_GOT_IP");
+            break;
+        case ARDUINO_EVENT_WIFI_STA_START:
+            EWFM_WIFI_LOG_INFO("event WIFI_STA_START");
+            break;
+        case ARDUINO_EVENT_WIFI_STA_STOP:
+            EWFM_WIFI_LOG_INFO("event WIFI_STA_STOP");
+            break;
+        default:
+            break;
         }
     });
-    wifiEventsRegistered = true;
+    wifiEventsRegistered_ = true;
 #endif
 }
-
-#if defined(ARDUINO) && !defined(UNIT_TEST)
-void WifiManager::handleWiFiEvent(const arduino_event_id_t eventId, const arduino_event_info_t& info) {
-    switch (eventId) {
-    case ARDUINO_EVENT_PROV_INIT:
-        EWFM_WIFI_LOG_INFO("event PROV_INIT");
-        break;
-    case ARDUINO_EVENT_PROV_DEINIT:
-        EWFM_WIFI_LOG_INFO("event PROV_DEINIT");
-        break;
-    case ARDUINO_EVENT_PROV_START:
-        EWFM_WIFI_LOG_INFO("event PROV_START");
-        break;
-    case ARDUINO_EVENT_PROV_END:
-        EWFM_WIFI_LOG_INFO("event PROV_END");
-        setBleProvisioningStopped(true);
-        break;
-    case ARDUINO_EVENT_PROV_CRED_RECV:
-        EWFM_WIFI_LOG_INFO("event PROV_CRED_RECV ssid=%s", reinterpret_cast<const char*>(info.prov_cred_recv.ssid));
-        saveReceivedBleCredentials(reinterpret_cast<const char*>(info.prov_cred_recv.ssid),
-                                   reinterpret_cast<const char*>(info.prov_cred_recv.password));
-        break;
-    case ARDUINO_EVENT_PROV_CRED_FAIL:
-        EWFM_WIFI_LOG_WARN("event PROV_CRED_FAIL reason=%d", static_cast<int>(info.prov_fail_reason));
-        break;
-    case ARDUINO_EVENT_PROV_CRED_SUCCESS:
-        EWFM_WIFI_LOG_INFO("event PROV_CRED_SUCCESS");
-        break;
-    case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-        EWFM_WIFI_LOG_INFO("event WIFI_STA_DISCONNECTED reason=%u", static_cast<unsigned>(info.wifi_sta_disconnected.reason));
-        break;
-    case ARDUINO_EVENT_WIFI_STA_CONNECTED:
-        EWFM_WIFI_LOG_INFO("event WIFI_STA_CONNECTED");
-        break;
-    case ARDUINO_EVENT_WIFI_STA_GOT_IP:
-        EWFM_WIFI_LOG_INFO("event WIFI_STA_GOT_IP");
-        break;
-    case ARDUINO_EVENT_WIFI_STA_START:
-        EWFM_WIFI_LOG_INFO("event WIFI_STA_START");
-        break;
-    case ARDUINO_EVENT_WIFI_STA_STOP:
-        EWFM_WIFI_LOG_INFO("event WIFI_STA_STOP");
-        break;
-    default:
-        break;
-    }
-}
-#endif
 
 #if defined(UNIT_TEST)
 void WifiManager::simulateBleCredentialsReceived(const char* ssid, const char* password) {
-    saveReceivedBleCredentials(ssid, password);
+    saveReceivedBleCredentials({ssid, password});
 }
 
 void WifiManager::simulateBleProvisioningEnded() {

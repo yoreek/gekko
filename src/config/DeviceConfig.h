@@ -11,6 +11,9 @@ constexpr size_t kMaxSsidLength = 32;
 constexpr size_t kMaxPasswordLength = 64;
 constexpr size_t kMaxDeviceNameLength = 32;
 constexpr size_t kDefaultMaxJsonBytes = 2048;
+constexpr uint32_t kProvisioningSessionTimeoutMs = 3UL * 60UL * 1000UL;
+constexpr size_t kMaxProvisioningSecretLength = 64;
+constexpr size_t kMaxJsonSizeBytes = 8192;
 
 struct WiFiCredentials {
     std::string ssid;
@@ -27,8 +30,8 @@ struct ProvisioningConfig {
     bool resetProvisionedOnStart{false};
     std::string proofOfPossession{"abcd1234"};
     bool setupApPasswordEnabled{false};
-    std::string setupApPassword;
-    uint32_t sessionTimeoutMs{3UL * 60UL * 1000UL};
+    std::string setupApPassword{};
+    uint32_t sessionTimeoutMs{kProvisioningSessionTimeoutMs};
 };
 
 struct WifiRuntimeConfig {
@@ -45,10 +48,10 @@ struct FirmwareUpdateConfig {
 struct DeviceConfig {
     uint32_t schemaVersion{kCurrentConfigSchemaVersion};
     std::string deviceName{"esp32-wifi-manager"};
-    WiFiCredentials wifi;
-    ProvisioningConfig provisioning;
-    WifiRuntimeConfig wifiRuntime;
-    FirmwareUpdateConfig firmwareUpdate;
+    WiFiCredentials wifi{};
+    ProvisioningConfig provisioning{};
+    WifiRuntimeConfig wifiRuntime{};
+    FirmwareUpdateConfig firmwareUpdate{};
     size_t maxJsonBytes{kDefaultMaxJsonBytes};
 };
 
@@ -75,7 +78,8 @@ struct ValidationResult {
 };
 
 DeviceConfig defaultConfig();
-ValidationResult validateConfig(const DeviceConfig& config, bool requireWifiCredentials = false);
+ValidationResult validateConfig(const DeviceConfig& config);
+ValidationResult validateConfig(const DeviceConfig& config, bool requireWifiCredentials);
 ValidationResult validateWifiCredentials(const WiFiCredentials& credentials, bool requireCredentials);
 ValidationResult migrateConfig(DeviceConfig& config);
 

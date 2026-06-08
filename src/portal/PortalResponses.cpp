@@ -31,8 +31,6 @@ void writeOtaStatusResponseJson(::AsyncResponseStream& out, size_t freeSketchSpa
     serializeJson(doc, out);
 }
 #else
-class AsyncResponseStream;
-
 void writeWifiScanResponseJson(::AsyncResponseStream& out, const std::vector<WifiNetwork>& networks) {
     (void)out;
     (void)networks;

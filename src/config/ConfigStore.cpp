@@ -22,7 +22,7 @@ bool ConfigStore::begin() {
 ValidationResult ConfigStore::load() {
     config_ = defaultConfig();
 
-    uint32_t schema = config_.schemaVersion;
+    uint32_t schema{config_.schemaVersion};
     if (storage_.getUInt(kSchema, schema)) {
         config_.schemaVersion = schema;
     }
@@ -33,7 +33,7 @@ ValidationResult ConfigStore::load() {
     storage_.getBool(kMobileProv, config_.provisioning.mobileProvisioningEnabled);
     storage_.getBool(kWebOta, config_.firmwareUpdate.webOtaEnabled);
 
-    ValidationResult migrated = migrateConfig(config_);
+    const ValidationResult migrated = migrateConfig(config_);
     if (!migrated.ok()) {
         config_ = defaultConfig();
         return migrated;
@@ -46,18 +46,18 @@ ValidationResult ConfigStore::load() {
 }
 
 ValidationResult ConfigStore::save(const DeviceConfig& config) {
-    ValidationResult validation = validateConfig(config, false);
+    const ValidationResult validation = validateConfig(config, false);
     if (!validation.ok()) {
         return validation;
     }
 
-    bool ok = storage_.putUInt(kSchema, config.schemaVersion) && storage_.putString(kDevice, config.deviceName) &&
-              storage_.putString(kSsid, config.wifi.ssid) && storage_.putString(kPassword, config.wifi.password) &&
-              storage_.putBool(kHttpPortal, config.provisioning.httpPortalEnabled) &&
-              storage_.putBool(kMobileProv, config.provisioning.mobileProvisioningEnabled) &&
-              storage_.putBool(kWebOta, config.firmwareUpdate.webOtaEnabled);
+    const bool saved = storage_.putUInt(kSchema, config.schemaVersion) && storage_.putString(kDevice, config.deviceName) &&
+                       storage_.putString(kSsid, config.wifi.ssid) && storage_.putString(kPassword, config.wifi.password) &&
+                       storage_.putBool(kHttpPortal, config.provisioning.httpPortalEnabled) &&
+                       storage_.putBool(kMobileProv, config.provisioning.mobileProvisioningEnabled) &&
+                       storage_.putBool(kWebOta, config.firmwareUpdate.webOtaEnabled);
 
-    if (!ok) {
+    if (!saved) {
         EWFM_CONFIG_LOG_WARN("failed to save configuration");
         return {ConfigError::StorageError, "failed to save configuration"};
     }
@@ -68,7 +68,7 @@ ValidationResult ConfigStore::save(const DeviceConfig& config) {
 }
 
 ValidationResult ConfigStore::saveWifiCredentials(const WiFiCredentials& credentials) {
-    ValidationResult validation = validateWifiCredentials(credentials, true);
+    const ValidationResult validation = validateWifiCredentials(credentials, true);
     if (!validation.ok()) {
         return validation;
     }

@@ -26,24 +26,24 @@ public:
             return;
         }
 
-        PState oldState = current_;
+        const PState oldState = current_;
         (this->*current_)();
         isStateUpdated_ = (oldState != current_);
     }
 
-    void setState(PState state) {
+    void setState(const PState state) {
         previous_ = current_;
         current_ = state;
         stateUpdated_ = uptime_;
         isStateUpdated_ = (previous_ != current_);
     }
 
-    void setState(PState state, uint32_t uptime) {
+    void setState(const PState state, uint32_t uptime) {
         uptime_ = uptime;
         setState(state);
     }
 
-    void transitionTo(PState state, uint32_t uptime) {
+    void transitionTo(const PState state, uint32_t uptime) {
         setState(state, uptime);
     }
 
@@ -57,7 +57,7 @@ public:
         setState(previous_);
     }
 
-    bool pushState(PState state) {
+    bool pushState(const PState state) {
         if (stackPos_ < kStateMachineStackDepth) {
             stack_[stackPos_++] = state;
             return true;
@@ -90,7 +90,7 @@ public:
     [[nodiscard]] bool isPaused() const {
         return paused_;
     }
-    [[nodiscard]] bool is(PState state) const {
+    [[nodiscard]] bool is(const PState state) const {
         return current_ == state;
     }
     [[nodiscard]] uint32_t stateUpdated() const {
@@ -138,21 +138,22 @@ inline StateMachine::State StateMachine::DELAY() {
 
 #define SM_CLASS StateMachine
 #define SM_STATE(s) void SM_CLASS::s()
-#define SM_NEXT(s) setState((PState) & SM_CLASS::s)
+#define SM_PTR(s) static_cast<PState>(&SM_CLASS::s)
+#define SM_NEXT(s) setState(SM_PTR(s))
 #define SM_GOTO(s)                                                                                                                         \
     do {                                                                                                                                   \
-        setState((PState) & SM_CLASS::s);                                                                                                  \
+        setState(SM_PTR(s));                                                                                                               \
         return;                                                                                                                            \
     } while (0)
 #define SM_CALL(s, r)                                                                                                                      \
     do {                                                                                                                                   \
-        pushState((PState) & SM_CLASS::r);                                                                                                 \
+        pushState(SM_PTR(r));                                                                                                              \
         SM_GOTO(s);                                                                                                                        \
     } while (0)
 #define SM_CALL2(s, r1, r2)                                                                                                                \
     do {                                                                                                                                   \
-        pushState((PState) & SM_CLASS::r1);                                                                                                \
-        pushState((PState) & SM_CLASS::r2);                                                                                                \
+        pushState(SM_PTR(r1));                                                                                                             \
+        pushState(SM_PTR(r2));                                                                                                             \
         SM_GOTO(s);                                                                                                                        \
     } while (0)
 #define SM_RETURN()                                                                                                                        \
@@ -174,7 +175,7 @@ inline StateMachine::State StateMachine::DELAY() {
     } while (0)
 #define SM_TIMED_GOTO(s, t)                                                                                                                \
     do {                                                                                                                                   \
-        delay_ = t;                                                                                                                        \
+        delay_ = (t);                                                                                                                      \
         SM_CALL(DELAY, s);                                                                                                                 \
     } while (0)
 #define EWFM_SM_TIME_REACHED(now, deadline) (::ewfm::timeReached((now), (deadline)))

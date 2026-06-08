@@ -36,26 +36,30 @@ bool DebugLogger::enabled(DebugLevel level) const {
 void DebugLogger::log(DebugLevel level, const char* domain, const char* file, int line, const char* function, const char* format, ...) {
     va_list args;
     va_start(args, format);
-    vlog(level, domain, file, line, function, format, args);
-    va_end(args);
-}
 
-void DebugLogger::vlog(DebugLevel level, const char* domain, const char* file, int line, const char* function, const char* format,
-                       va_list args) {
     if (!enabled(level)) {
+        va_end(args);
         return;
     }
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     char message[192];
+    // clang-tidy false positive: the analyzer loses track of the va_list after the early return above.
+    // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
     std::vsnprintf(message, sizeof(message), format, args);
     DEBUG_SERIAL_DEVICE.printf("[%c] %s %s:%d %s: ", debugLevelChar(level), domain, file, line, function);
     DEBUG_SERIAL_DEVICE.println(message);
 #else
+    char message[192];
+    // clang-tidy false positive: the analyzer loses track of the va_list after the early return above.
+    // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
+    std::vsnprintf(message, sizeof(message), format, args);
     std::fprintf(stderr, "[%c] %s %s:%d %s: ", debugLevelChar(level), domain, file, line, function);
-    std::vfprintf(stderr, format, args);
+    std::fputs(message, stderr);
     std::fprintf(stderr, "\n");
 #endif
+
+    va_end(args);
 }
 
 } // namespace ewfm

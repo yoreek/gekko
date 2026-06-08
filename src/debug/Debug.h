@@ -17,7 +17,6 @@ public:
     }
     bool enabled(DebugLevel level) const;
     void log(DebugLevel level, const char* domain, const char* file, int line, const char* function, const char* format, ...);
-    void vlog(DebugLevel level, const char* domain, const char* file, int line, const char* function, const char* format, va_list args);
 
 private:
     DebugLevel level_{DebugLevel::Info};

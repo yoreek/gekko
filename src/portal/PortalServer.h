@@ -19,6 +19,7 @@ enum class PortalRuntimeState {
 class PortalServer {
 public:
     PortalServer(WifiManager& wifiManager, IWifiDriver& wifiDriver);
+    // NOLINTNEXTLINE(performance-trivially-destructible)
     ~PortalServer();
 
     bool begin();

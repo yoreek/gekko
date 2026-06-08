@@ -9,8 +9,13 @@ namespace ewfm {
 
 class IConfigStorage {
 public:
+    IConfigStorage() = default;
+    IConfigStorage(const IConfigStorage&) = delete;
+    IConfigStorage& operator=(const IConfigStorage&) = delete;
+    IConfigStorage(IConfigStorage&&) = delete;
+    IConfigStorage& operator=(IConfigStorage&&) = delete;
     virtual ~IConfigStorage() = default;
-    virtual bool begin(const char* ns, bool readOnly) = 0;
+    virtual bool begin(const char* namespaceName, bool readOnly) = 0;
     virtual void end() = 0;
     virtual bool hasKey(const char* key) const = 0;
     virtual bool putString(const char* key, const std::string& value) = 0;

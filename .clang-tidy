@@ -1,0 +1,13 @@
+Checks: >
+  -*,
+  clang-analyzer-*,
+  bugprone-*,
+  performance-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-macro-parentheses,
+  -bugprone-reserved-identifier,
+  -bugprone-unused-local-non-trivial-variable
+WarningsAsErrors: ''
+HeaderFilterRegex: '^.*/(src|test)/'
+ExcludeHeaderFilterRegex: '^.*/\\.pio/|^/usr/include/|^/usr/lib/'
+FormatStyle: file
