@@ -1,6 +1,6 @@
 ## 1. Device Domain Model
 
-- [x] 1.1 Add focused `src/devices/` modules for device IDs, records, types, statuses, commands, validation results, and registry constants.
+- [x] 1.1 Add focused `src/devices/` modules organized by domain folders for device IDs, records, types, statuses, commands, validation results, and registry constants.
 - [x] 1.2 Define bounded limits for device count, display name length, type config size, retained-state size, event detail size, per-device record size, and registry index size.
 - [x] 1.3 Add a `uint32_t DeviceId` generator behind an interface with deterministic native-test behavior and an ESP32 implementation based on `esp_random()`.
 - [x] 1.4 Reject reserved or duplicate generated device IDs and retry generation a bounded number of times before failing creation.

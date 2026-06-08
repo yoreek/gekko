@@ -35,6 +35,8 @@ The first implementation should prove the architecture with `DummyDevice` before
 
    `DeviceConfig` remains the controller-level boot/provisioning configuration. Dynamic device records live under a device-registry module and storage namespace. This avoids coupling WiFi provisioning and controller identity migrations to user-created sensor/bus records. The alternative of extending `DeviceConfig` with dynamic devices is simpler initially, but it would make boot-critical config larger, harder to validate, and harder to migrate independently.
 
+   The device codebase should follow a domain folder layout under `src/devices/` so future growth stays organized: shared types and identity helpers in `src/devices/core/`, persistence and registry services in `src/devices/registry/`, and one folder per concrete device family such as `src/devices/dummy/`. The alternative of keeping every device type in one flat directory is acceptable for a tiny proof of concept, but it scales poorly once one-wire, I2C, switch, and integration-specific device families arrive.
+
 2. Store persistent records as bounded descriptors and rebuild runtime instances on boot.
 
    A persistent `DeviceRecord` should contain `DeviceId`, type, name, enabled flag, record/header version, type-specific `configVersion`, `configRevision`, optional parent `DeviceId`, relationship role, and type-specific config payload. Runtime objects are created from records by a `DeviceFactory` registry after load. Runtime-only values such as current status detail, last reading, transient fault text, retry deadlines, and integration delivery state are not the source of truth in NVS. The alternative of persisting live device objects would mix hardware state with configuration and make migrations brittle.

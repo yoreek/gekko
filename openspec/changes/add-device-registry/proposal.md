@@ -4,7 +4,7 @@ The firmware needs a durable model for dynamically created runtime devices befor
 
 ## What Changes
 
-- Add a device registry that stores dynamic devices in NVS and rebuilds in-memory runtime devices on boot.
+- Add a device registry that stores dynamic devices in NVS and rebuilds in-memory runtime devices on boot, organized under `src/devices/core/`, `src/devices/registry/`, and per-family device folders such as `src/devices/dummy/`.
 - Define a stable device identity model with 32-bit `DeviceId`, type, display name, enabled/configuration fields, lifecycle status, and versioned metadata.
 - Add relationship rules for parent/child devices such as DS18B20 sensors attached to OneWire buses, including create/update/delete validation and status propagation.
 - Add per-device-type binary configuration versioning and migration so old persisted device records can be upgraded safely when a config layout changes.
