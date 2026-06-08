@@ -1,8 +1,7 @@
 #include "devices/dummy/DummyDevice.h"
 
-#include "devices/dummy/DummyDeviceConfigCodec.h"
-
-#include <algorithm>
+#include <cstring>
+#include <type_traits>
 
 namespace ewfm {
 
@@ -15,12 +14,111 @@ constexpr uint32_t kDummyDeviceConfigVersion = 2;
 
 } // namespace
 
+static_assert(std::is_trivially_copyable<DummyDeviceConfigV1>::value, "DummyDeviceConfigV1 must be POD");
+static_assert(std::is_trivially_copyable<DummyDeviceConfigV2>::value, "DummyDeviceConfigV2 must be POD");
+static_assert(sizeof(DummyDeviceConfigV1) == 4, "DummyDeviceConfigV1 layout changed");
+static_assert(sizeof(DummyDeviceConfigV2) == 5, "DummyDeviceConfigV2 layout changed");
+
 void DummyDeviceConfigV2::migrateFrom(const DummyDeviceConfigV1& orig) {
     enabled = orig.enabled;
     restorePreviousState = orig.restorePreviousState;
     defaultOutput = orig.defaultOutput;
     currentOutput = orig.currentOutput;
     inverted = false;
+}
+
+void DummyDeviceConfigV2::migrateFrom(const DummyDeviceConfigV2& orig) {
+    enabled = orig.enabled;
+    restorePreviousState = orig.restorePreviousState;
+    defaultOutput = orig.defaultOutput;
+    currentOutput = orig.currentOutput;
+    inverted = orig.inverted;
+}
+
+namespace {
+template <typename T> std::string encodeDeviceConfigBlob(uint32_t magicKey, const T& config) {
+    std::string blob;
+    blob.resize(sizeof(magicKey) + sizeof(T));
+    std::memcpy(blob.data(), &magicKey, sizeof(magicKey));
+    std::memcpy(blob.data() + sizeof(magicKey), &config, sizeof(T));
+    return blob;
+}
+
+template <typename T> bool decodeDeviceConfigBlob(const std::string& blob, uint32_t expectedMagicKey, T& config, size_t legacySize = 0) {
+    const size_t compactSize = sizeof(expectedMagicKey) + sizeof(T);
+    if (blob.size() != compactSize && blob.size() != legacySize) {
+        return false;
+    }
+
+    uint32_t magicKey{0};
+    std::memcpy(&magicKey, blob.data(), sizeof(magicKey));
+    if (magicKey != expectedMagicKey) {
+        return false;
+    }
+
+    std::memcpy(&config, blob.data() + sizeof(magicKey), sizeof(T));
+    return true;
+}
+} // namespace
+
+std::string encodeDummyDeviceConfig(const DummyDeviceConfigV1& config) {
+    return encodeDeviceConfigBlob(DummyDeviceConfigV1::kMagicKey, config);
+}
+
+std::string encodeDummyDeviceConfig(const DummyDeviceConfigV2& config) {
+    return encodeDeviceConfigBlob(DummyDeviceConfigV2::kMagicKey, config);
+}
+
+bool decodeDummyDeviceConfig(const std::string& blob, DummyDeviceConfigV2& config) {
+    if (blob.size() < sizeof(uint32_t)) {
+        return false;
+    }
+
+    uint32_t magicKey{0};
+    std::memcpy(&magicKey, blob.data(), sizeof(magicKey));
+    if (magicKey == DummyDeviceConfigV1::kMagicKey) {
+        DummyDeviceConfigV1 legacy{};
+        if (!decodeDeviceConfigBlob(blob, DummyDeviceConfigV1::kMagicKey, legacy)) {
+            return false;
+        }
+        config.migrateFrom(legacy);
+        return true;
+    }
+
+    if (magicKey == DummyDeviceConfigV2::kMagicKey) {
+        return decodeDeviceConfigBlob(blob, DummyDeviceConfigV2::kMagicKey, config, sizeof(uint32_t) + sizeof(DummyDeviceConfigV2) + 3U);
+    }
+
+    return false;
+}
+
+bool parseDummyDeviceConfigJson(const JsonObjectConst& input, uint32_t configVersion, DummyDeviceConfigV2& config, std::string& error) {
+    if (configVersion == 0U) {
+        configVersion = DummyDevice::descriptor().currentConfigVersion;
+    }
+
+    if (configVersion != 1U && configVersion != 2U) {
+        error = "unsupported DummyDevice config version";
+        return false;
+    }
+
+    config.enabled = (input["enabled"] | true) ? 1U : 0U;
+    config.restorePreviousState = (input["restore_previous_state"] | false) ? 1U : 0U;
+    config.defaultOutput = (input["default_output"] | false) ? 1U : 0U;
+    config.currentOutput = (input["current_output"] | (config.defaultOutput != 0U)) ? 1U : 0U;
+    config.inverted = (input["inverted"] | false) ? 1U : 0U;
+    if (configVersion == 1U) {
+        config.inverted = false;
+    }
+    return true;
+}
+
+void writeDummyDeviceConfigJson(const DummyDeviceConfigV2& config, JsonObject output) {
+    output["enabled"] = config.enabled != 0U;
+    output["restore_previous_state"] = config.restorePreviousState != 0U;
+    output["default_output"] = config.defaultOutput != 0U;
+    output["current_output"] = config.currentOutput != 0U;
+    output["inverted"] = config.inverted != 0U;
 }
 
 DummyDevice::DummyDevice(const DeviceRecord& record) : StateMachine((PState)&DummyDevice::Idle) {

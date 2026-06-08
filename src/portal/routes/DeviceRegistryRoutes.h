@@ -1,7 +1,7 @@
 #pragma once
 
-#include "devices/api/DeviceApiAdapter.h"
 #include "devices/registry/DeviceRegistry.h"
+#include "integrations/common/DeviceApiAdapter.h"
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 #include <ArduinoJson.h>

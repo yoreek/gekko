@@ -1,7 +1,6 @@
-#include "devices/api/DeviceApiAdapter.h"
 #include "devices/dummy/DummyDevice.h"
-#include "devices/dummy/DummyDeviceApiAdapter.h"
-#include "devices/dummy/DummyDeviceConfigCodec.h"
+#include "integrations/common/DeviceApiAdapter.h"
+#include "integrations/rest/dummy/DummyDeviceApiAdapter.h"
 
 #include <ArduinoJson.h>
 #include <unity.h>

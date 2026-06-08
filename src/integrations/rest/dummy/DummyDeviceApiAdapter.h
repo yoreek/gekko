@@ -1,6 +1,6 @@
 #pragma once
 
-#include "devices/api/DeviceApiAdapter.h"
+#include "integrations/common/DeviceApiAdapter.h"
 
 namespace ewfm {
 

@@ -1,6 +1,6 @@
-#include "devices/api/DeviceApiAdapter.h"
+#include "integrations/common/DeviceApiAdapter.h"
 
-#include "devices/dummy/DummyDeviceApiAdapter.h"
+#include "integrations/rest/dummy/DummyDeviceApiAdapter.h"
 
 #include <cstring>
 

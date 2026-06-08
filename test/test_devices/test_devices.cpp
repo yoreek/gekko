@@ -1,7 +1,6 @@
 #include "config/MemoryConfigStorage.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/dummy/DummyDevice.h"
-#include "devices/dummy/DummyDeviceConfigCodec.h"
 #include "devices/registry/DeviceRegistryStore.h"
 #include "devices/registry/RetainedStateStore.h"
 
