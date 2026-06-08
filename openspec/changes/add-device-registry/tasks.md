@@ -1,24 +1,24 @@
 ## 1. Device Domain Model
 
-- [ ] 1.1 Add focused `src/devices/` modules for device IDs, records, types, statuses, commands, validation results, and registry constants.
-- [ ] 1.2 Define bounded limits for device count, display name length, type config size, retained-state size, event detail size, per-device record size, and registry index size.
-- [ ] 1.3 Add a `uint32_t DeviceId` generator behind an interface with deterministic native-test behavior and an ESP32 implementation based on `esp_random()`.
-- [ ] 1.4 Reject reserved or duplicate generated device IDs and retry generation a bounded number of times before failing creation.
-- [ ] 1.5 Add device record header metadata for record/header version, device ID, type ID, config version, config revision, payload length, and optional validation/check fields.
-- [ ] 1.6 Add persistence policy metadata for immediate, delayed, and coalesced mutations.
-- [ ] 1.7 Add device type descriptors/factories that declare type id, current config version, parent compatibility, child support, command support, runtime creation, retained-state support, default persistence policies, and tick cadence needs.
-- [ ] 1.8 Register the first `DummyDevice` descriptor without adding real OneWire, DS18B20, I2C, switch, MQTT, WebSocket, or Home Assistant implementations.
+- [x] 1.1 Add focused `src/devices/` modules for device IDs, records, types, statuses, commands, validation results, and registry constants.
+- [x] 1.2 Define bounded limits for device count, display name length, type config size, retained-state size, event detail size, per-device record size, and registry index size.
+- [x] 1.3 Add a `uint32_t DeviceId` generator behind an interface with deterministic native-test behavior and an ESP32 implementation based on `esp_random()`.
+- [x] 1.4 Reject reserved or duplicate generated device IDs and retry generation a bounded number of times before failing creation.
+- [x] 1.5 Add device record header metadata for record/header version, device ID, type ID, config version, config revision, payload length, and optional validation/check fields.
+- [x] 1.6 Add persistence policy metadata for immediate, delayed, and coalesced mutations.
+- [x] 1.7 Add device type descriptors/factories that declare type id, current config version, parent compatibility, child support, command support, runtime creation, retained-state support, default persistence policies, and tick cadence needs.
+- [x] 1.8 Register the first `DummyDevice` descriptor without adding real OneWire, DS18B20, I2C, switch, MQTT, WebSocket, or Home Assistant implementations.
 
 ## 2. Registry Persistence
 
-- [ ] 2.1 Add a `DeviceRegistryStore` that uses `IConfigStorage` in a separate device-registry namespace from controller `DeviceConfig`.
-- [ ] 2.2 Implement a versioned index record containing count and `{DeviceId, type}` entries plus one bounded per-device record for each device.
-- [ ] 2.3 Implement registry serialization and parsing with validation for index version, record/header version, config version, index size, record size, device ID validity, type support, enabled state, config revision, and parent device ID references.
-- [ ] 2.4 Treat missing NVS registry data as an empty current-version registry and corrupt/unsupported index or records as a logged recovery path that does not instantiate unsafe records.
-- [ ] 2.5 Implement type-specific config migration hooks that parse immutable old config layouts and produce current config records through the owning device type descriptor.
-- [ ] 2.6 Add native Unity tests for empty load, valid load, corrupt index recovery, corrupt record recovery, unsupported schema handling, save/load round trip, rejected oversized records/indexes, and migration from old binary config fixtures.
-- [ ] 2.7 Add a separate retained-state store keyed by device ID with bounded record size and independent load/save/remove behavior.
-- [ ] 2.8 Add native Unity tests for retained-state load, missing retained state, invalid retained state, save/remove behavior, and ensuring retained-state writes do not modify device config records.
+- [x] 2.1 Add a `DeviceRegistryStore` that uses `IConfigStorage` in a separate device-registry namespace from controller `DeviceConfig`.
+- [x] 2.2 Implement a versioned index record containing count and `{DeviceId, type}` entries plus one bounded per-device record for each device.
+- [x] 2.3 Implement registry serialization and parsing with validation for index version, record/header version, config version, index size, record size, device ID validity, type support, enabled state, config revision, and parent device ID references.
+- [x] 2.4 Treat missing NVS registry data as an empty current-version registry and corrupt/unsupported index or records as a logged recovery path that does not instantiate unsafe records.
+- [x] 2.5 Implement type-specific config migration hooks that parse immutable old config layouts and produce current config records through the owning device type descriptor.
+- [x] 2.6 Add native Unity tests for empty load, valid load, corrupt index recovery, corrupt record recovery, unsupported schema handling, save/load round trip, rejected oversized records/indexes, and migration from old binary config fixtures.
+- [x] 2.7 Add a separate retained-state store keyed by device ID with bounded record size and independent load/save/remove behavior.
+- [x] 2.8 Add native Unity tests for retained-state load, missing retained state, invalid retained state, save/remove behavior, and ensuring retained-state writes do not modify device config records.
 
 ## 3. Registry Operations
 
@@ -38,11 +38,11 @@
 
 - [ ] 4.1 Add App-level cadence scheduling for fast-loop, 100 ms, and 1 s or the chosen initial cadence set, computing `now` once at the application boundary.
 - [ ] 4.2 Add a runtime device interface with `begin`, cadence-specific `tick...(..., uint32_t now)` behavior, `requestReconfigure`, `requestDisable`, `requestDelete`, `status`, and `handleCommand` behavior.
-- [ ] 4.3 Implement `DummyDevice` with explicit lifecycle/status transitions for create/start, ready, simulated fault, reconfigure, disable, and delete.
-- [ ] 4.4 Use `StateMachine` or an equivalent explicit state-machine adapter for `DummyDevice` transitions that are not immediate.
-- [ ] 4.5 Add a switch-like retained-state behavior to `DummyDevice` or a focused dummy subtype so previous-state restore can be tested without real GPIO hardware.
-- [ ] 4.6 Restore enabled `DummyDevice` instances from persisted records during registry load and stop disabled records from doing runtime work.
-- [ ] 4.7 Restore retained runtime state only when the device config requests restore-from-previous behavior and valid retained state exists.
+- [x] 4.3 Implement `DummyDevice` with explicit lifecycle/status transitions for create/start, ready, simulated fault, reconfigure, disable, and delete.
+- [x] 4.4 Use `StateMachine` or an equivalent explicit state-machine adapter for `DummyDevice` transitions that are not immediate.
+- [x] 4.5 Add a switch-like retained-state behavior to `DummyDevice` or a focused dummy subtype so previous-state restore can be tested without real GPIO hardware.
+- [x] 4.6 Restore enabled `DummyDevice` instances from persisted records during registry load and stop disabled records from doing runtime work.
+- [x] 4.7 Restore retained runtime state only when the device config requests restore-from-previous behavior and valid retained state exists.
 - [ ] 4.8 Add native Unity tests that drive lifecycle transitions with explicit cadence ticks and verify no device handler needs `millis()` or `clock_.millis()`.
 - [ ] 4.9 Add native Unity tests that verify devices are invoked only for due cadences declared by their type descriptor.
 - [ ] 4.10 Add native Unity tests for retained-state restore, missing retained-state fallback, and retained-state write debounce/coalescing behavior.
@@ -86,6 +86,6 @@
 
 ## 9. Verification
 
-- [ ] 9.1 Run focused native Unity tests for registry, config migration, retained-state persistence, relationships, lifecycle, events, and portal JSON behavior.
+- [x] 9.1 Run focused native Unity tests for registry, config migration, retained-state persistence, relationships, lifecycle, events, and portal JSON behavior.
 - [ ] 9.2 Run `scripts/test.sh` and address formatting, cppcheck, build, or test failures.
 - [ ] 9.3 Review the implementation for cooperative-flow violations, unnecessary fast-cadence work across all devices, unbounded allocations in runtime paths, direct `Serial.print` logging, accidental coupling between controller `DeviceConfig` and dynamic device registry, accidental mixing of retained runtime state into config payloads, and incorrectly treating delayed persistence as already durable.
