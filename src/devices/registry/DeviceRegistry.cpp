@@ -1,5 +1,6 @@
 #include "devices/registry/DeviceRegistry.h"
 
+#include "debug/Debug.h"
 #include "devices/registry/DeviceRegistryRelationshipOrchestrator.h"
 
 #include <algorithm>
@@ -65,9 +66,11 @@ DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
 
     const DeviceValidationResult loadResult = store_.load(snapshot_, &typeRegistry_);
     if (!loadResult.ok()) {
+        EWFM_DEVICE_REGISTRY_LOG_WARN("registry load failed: %s", loadResult.message);
         snapshot_ = {};
         return loadResult;
     }
+    EWFM_DEVICE_REGISTRY_LOG_INFO("registry loaded: devices=%u", static_cast<unsigned>(snapshot_.records.size()));
 
     const DeviceValidationResult structureResult = validateSnapshot(snapshot_);
     if (!structureResult.ok()) {
@@ -211,11 +214,13 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
     DeviceCreateResult result{};
     const DeviceTypeDescriptor* descriptor = typeRegistry_.find(request.typeId);
     if (descriptor == nullptr) {
+        EWFM_DEVICE_REGISTRY_LOG_WARN("create rejected: unsupported type=%u", static_cast<unsigned>(request.typeId));
         result.validation = {DeviceError::UnsupportedType, "unsupported device type"};
         return result;
     }
 
     if (request.name.empty()) {
+        EWFM_DEVICE_REGISTRY_LOG_WARN("create rejected: empty name");
         result.validation = {DeviceError::InvalidConfig, "device name is empty"};
         return result;
     }
@@ -231,6 +236,7 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
     }
 
     if (hasDuplicateNames(snapshot_, request.name)) {
+        EWFM_DEVICE_REGISTRY_LOG_WARN("create rejected: duplicate name=%s", request.name.c_str());
         result.validation = {DeviceError::InvalidConfig, "device name already exists"};
         return result;
     }
@@ -337,6 +343,9 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
     }
 
     result.validation = {};
+    EWFM_DEVICE_REGISTRY_LOG_INFO("device created id=%u type=%u policy=%u pending=%d", static_cast<unsigned>(deviceId),
+                                  static_cast<unsigned>(record.header.typeId), static_cast<unsigned>(request.persistencePolicy),
+                                  static_cast<int>(result.pendingPersistence));
     return result;
 }
 
@@ -525,6 +534,7 @@ DeviceMutationResult DeviceRegistry::setParent(DeviceId deviceId, bool hasParent
     }
 
     if (policy != DevicePersistencePolicy::Immediate) {
+        EWFM_DEVICE_REGISTRY_LOG_WARN("setParent rejected: non-immediate policy=%u", static_cast<unsigned>(policy));
         result.validation = {DeviceError::InvalidConfig, "parent reassignment requires immediate persistence"};
         return result;
     }
@@ -583,6 +593,8 @@ DeviceMutationResult DeviceRegistry::setParent(DeviceId deviceId, bool hasParent
     accepted.commandAccepted = true;
     DeviceRegistryEventReporter::setEventDetail(accepted, "set_parent");
     eventReporter_.emit(accepted);
+    EWFM_DEVICE_REGISTRY_LOG_INFO("parent reassigned device=%u hasParent=%d parent=%u", static_cast<unsigned>(deviceId),
+                                  static_cast<int>(hasParent), static_cast<unsigned>(hasParent ? parentDeviceId : 0));
     return result;
 }
 
@@ -681,6 +693,8 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
 
     result.dependentChildDeviceIds = childDeviceIds(deviceId);
     if (!result.dependentChildDeviceIds.empty()) {
+        EWFM_DEVICE_REGISTRY_LOG_WARN("delete rejected: device=%u has %u children", static_cast<unsigned>(deviceId),
+                                      static_cast<unsigned>(result.dependentChildDeviceIds.size()));
         result.validation = {DeviceError::InvalidRelationship, "device has dependent child devices"};
         return result;
     }
@@ -737,6 +751,8 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
     eventReporter_.emit(accepted);
     result.pendingPersistence = persistence_.hasPendingPersistence();
     result.validation = {};
+    EWFM_DEVICE_REGISTRY_LOG_INFO("device deleted id=%u pending=%d", static_cast<unsigned>(deviceId),
+                                  static_cast<int>(result.pendingPersistence));
     return result;
 }
 
@@ -914,6 +930,10 @@ DeviceValidationResult DeviceRegistry::flushNow() {
     if (!persistence_.hasPendingPersistence()) {
         return {};
     }
+    EWFM_DEVICE_REGISTRY_LOG_DEBUG("flush start: dirtyIndex=%d configDirty=%u retainedDirty=%u",
+                                   static_cast<int>(persistence_.dirtyIndex()),
+                                   static_cast<unsigned>(persistence_.dirtyConfigRecordIdsRef().size()),
+                                   static_cast<unsigned>(persistence_.dirtyRetainedStateIdsRef().size()));
 
     if (persistence_.hasConfigPersistenceWork()) {
         const DeviceValidationResult saveResult = store_.save(snapshot_);
@@ -985,6 +1005,7 @@ DeviceValidationResult DeviceRegistry::flushNow() {
     DeviceRegistryEventReporter::setEventDetail(cleared, "pending persistence cleared");
     eventReporter_.emit(cleared);
     persistence_.markClean();
+    EWFM_DEVICE_REGISTRY_LOG_INFO("flush complete");
     return {};
 }
 

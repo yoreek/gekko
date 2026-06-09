@@ -107,3 +107,13 @@ DebugLogger& debugLogger();
 #else
 #define EWFM_SM_LOG_DEBUG(fmt, ...)
 #endif
+
+#if defined(WITH_DEVICE_REGISTRY_DEBUG)
+#define EWFM_DEVICE_REGISTRY_LOG_INFO(fmt, ...) EWFM_LOG_INFO("device-registry", fmt, ##__VA_ARGS__)
+#define EWFM_DEVICE_REGISTRY_LOG_WARN(fmt, ...) EWFM_LOG_WARN("device-registry", fmt, ##__VA_ARGS__)
+#define EWFM_DEVICE_REGISTRY_LOG_DEBUG(fmt, ...) EWFM_LOG_DEBUG("device-registry", fmt, ##__VA_ARGS__)
+#else
+#define EWFM_DEVICE_REGISTRY_LOG_INFO(fmt, ...)
+#define EWFM_DEVICE_REGISTRY_LOG_WARN(fmt, ...)
+#define EWFM_DEVICE_REGISTRY_LOG_DEBUG(fmt, ...)
+#endif

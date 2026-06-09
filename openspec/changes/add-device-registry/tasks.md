@@ -81,7 +81,7 @@
 - [x] 8.3 Ensure API-triggered registry mutations do not call `millis()` and any timestamp-dependent debounce, max-delay, or dirty flush work is handled by the next due registry cadence tick.
 - [x] 8.4 Ensure retained-state flush/debounce work is handled by a registry cadence tick rather than direct wall-clock reads inside device handlers.
 - [ ] 8.5 Call forced registry flush before controlled firmware restart flows that are introduced or touched by this change.
-- [ ] 8.6 Add device-domain debug logging through `src/debug/Debug.h` and a build flag such as `WITH_DEVICE_REGISTRY_DEBUG`.
+- [x] 8.6 Add device-domain debug logging through `src/debug/Debug.h` and a build flag such as `WITH_DEVICE_REGISTRY_DEBUG`.
 - [ ] 8.7 Keep device headers private under `src/` unless a narrow public API is required by tests or external library consumers.
 
 ## 9. Verification
