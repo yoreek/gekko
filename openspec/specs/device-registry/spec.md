@@ -76,8 +76,12 @@ The firmware SHALL support immediate, delayed, and coalesced persistence policie
 - **THEN** the firmware writes dirty index, config records, and retained-state records to NVS and clears dirty flags only for writes that succeed
 
 #### Scenario: Forced flush is requested
-- **WHEN** the firmware is about to perform a controlled reboot, OTA restart, factory reset, or explicit save/apply action
+- **WHEN** the firmware is about to perform a controlled reboot, OTA restart, runtime-control restart API action, factory reset, or explicit save/apply action
 - **THEN** the firmware attempts to flush pending dirty registry, config, and retained-state records before continuing the controlled action
+
+#### Scenario: Runtime-control restart flush fails
+- **WHEN** a runtime-control restart API request cannot flush pending registry persistence
+- **THEN** the firmware rejects the restart action and keeps running without initiating reboot
 
 ### Requirement: Type-specific config version migration
 The firmware SHALL version each device type's binary configuration payload independently from the registry index and SHALL migrate old supported payload versions through the owning device type descriptor.

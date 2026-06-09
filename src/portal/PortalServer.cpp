@@ -5,6 +5,7 @@
 #include "portal/routes/DeviceRegistryRoutes.h"
 #include "portal/routes/OtaPortalRoutes.h"
 #include "portal/routes/PortalHomeRoutes.h"
+#include "portal/routes/SystemControlRoutes.h"
 #include "portal/routes/WifiPortalRoutes.h"
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
@@ -105,10 +106,14 @@ private:
         if (!otaRoutes_) {
             otaRoutes_ = std::make_unique<OtaPortalRoutes>(deviceRegistry_);
         }
+        if (!systemControlRoutes_) {
+            systemControlRoutes_ = std::make_unique<SystemControlRoutes>(deviceRegistry_);
+        }
         homeRoutes_->registerRoutes(*server_);
         wifiRoutes_->registerRoutes(*server_);
         deviceRoutes_->registerRoutes(*server_);
         otaRoutes_->registerRoutes(*server_);
+        systemControlRoutes_->registerRoutes(*server_);
 
         server_->begin();
 #endif
@@ -198,6 +203,7 @@ private:
     std::unique_ptr<WifiPortalRoutes> wifiRoutes_;
     std::unique_ptr<DeviceRegistryRoutes> deviceRoutes_;
     std::unique_ptr<OtaPortalRoutes> otaRoutes_;
+    std::unique_ptr<SystemControlRoutes> systemControlRoutes_;
     bool configured_{false};
     bool dependencyWaitLogged_{false};
     bool httpRunning_{false};
