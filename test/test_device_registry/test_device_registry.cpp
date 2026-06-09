@@ -2,6 +2,7 @@
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/dummy/DummyDevice.h"
 #include "devices/registry/DeviceRegistry.h"
+#include "integrations/common/DeviceEventDispatcher.h"
 
 #include <algorithm>
 #include <unity.h>
@@ -200,6 +201,29 @@ struct ToggleConfigStorage final : public IConfigStorage {
     bool failNextPutString_{false};
     bool failNextRemove_{false};
 };
+
+struct RecordingSink final : public IDeviceEventSink {
+    void onDeviceEvent(const DeviceEvent& event) override {
+        events.push_back(event);
+    }
+
+    void tickFastLoop(uint32_t now) override {
+        lastTickNow = now;
+    }
+    void tick100ms(uint32_t now) override {
+        lastTickNow = now;
+    }
+    void tick1s(uint32_t now) override {
+        lastTickNow = now;
+    }
+
+    std::vector<DeviceEvent> events{};
+    uint32_t lastTickNow{0};
+};
+
+bool hasEventKind(const std::vector<DeviceEvent>& events, DeviceEventKind kind) {
+    return std::find_if(events.begin(), events.end(), [kind](const DeviceEvent& event) { return event.kind == kind; }) != events.end();
+}
 
 DeviceCreateRequest makeDummyCreateRequest(const std::string& name, bool enabled = true) {
     DummyDeviceConfigV2 config{};
@@ -826,6 +850,59 @@ void test_registry_set_parent_command_normalization() {
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::InvalidCommand), static_cast<int>(invalidPayload.validation.error));
 }
 
+void test_registry_emits_required_event_kinds() {
+    MemoryConfigStorage storage;
+    DeviceRegistryStore registryStore(storage);
+    RetainedStateStore retainedStore(storage);
+    TEST_ASSERT_TRUE(registryStore.begin(false));
+    TEST_ASSERT_TRUE(retainedStore.begin(false));
+
+    DeviceEventDispatcher dispatcher;
+    RecordingSink sink{};
+    TEST_ASSERT_TRUE(dispatcher.registerSink(sink));
+
+    FixedDeviceIdSource idSource({321, 322});
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(registryStore, types, idSource, &retainedStore, &dispatcher);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+
+    DeviceCreateResult created = registry.command(makeDummyCreateRequest("events"), 10);
+    TEST_ASSERT_TRUE(created.ok());
+    dispatcher.tickFastLoop(11);
+
+    DeviceMutationResult renamed =
+        registry.command(DeviceCommand{DeviceCommandType::Rename, created.deviceId, "events-2", DevicePersistencePolicy::Delayed}, 20);
+    TEST_ASSERT_TRUE(renamed.ok());
+    dispatcher.tickFastLoop(21);
+
+    DeviceMutationResult rejected =
+        registry.command(DeviceCommand{DeviceCommandType::SetStatus, 9999, "fault", DevicePersistencePolicy::Immediate}, 22);
+    TEST_ASSERT_FALSE(rejected.ok());
+    dispatcher.tickFastLoop(23);
+
+    DeviceMutationResult retained = registry.setRetainedState(created.deviceId, "output=1", 24, DevicePersistencePolicy::Coalesced);
+    TEST_ASSERT_TRUE(retained.ok());
+    dispatcher.tickFastLoop(25);
+
+    TEST_ASSERT_TRUE(registry.flushNow().ok());
+    dispatcher.tickFastLoop(26);
+
+    DeviceMutationResult deleted =
+        registry.command(DeviceCommand{DeviceCommandType::Delete, created.deviceId, "", DevicePersistencePolicy::Immediate}, 27);
+    TEST_ASSERT_TRUE(deleted.ok());
+    dispatcher.tickFastLoop(28);
+
+    TEST_ASSERT_TRUE(hasEventKind(sink.events, DeviceEventKind::DeviceCreated));
+    TEST_ASSERT_TRUE(hasEventKind(sink.events, DeviceEventKind::DeviceUpdated));
+    TEST_ASSERT_TRUE(hasEventKind(sink.events, DeviceEventKind::DeviceDeleted));
+    TEST_ASSERT_TRUE(hasEventKind(sink.events, DeviceEventKind::StatusChanged));
+    TEST_ASSERT_TRUE(hasEventKind(sink.events, DeviceEventKind::RetainedStateChanged));
+    TEST_ASSERT_TRUE(hasEventKind(sink.events, DeviceEventKind::CommandAccepted));
+    TEST_ASSERT_TRUE(hasEventKind(sink.events, DeviceEventKind::CommandRejected));
+    TEST_ASSERT_TRUE(hasEventKind(sink.events, DeviceEventKind::ConfigPersisted));
+    TEST_ASSERT_TRUE(hasEventKind(sink.events, DeviceEventKind::PersistencePendingCleared));
+}
+
 void test_registry_rejects_duplicate_name_and_unsupported_type() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
@@ -1053,6 +1130,7 @@ int main(int, char**) {
     RUN_TEST(test_registry_rejects_parent_delete_with_children);
     RUN_TEST(test_registry_propagates_parent_dependency_status_and_recovers);
     RUN_TEST(test_registry_set_parent_command_normalization);
+    RUN_TEST(test_registry_emits_required_event_kinds);
     RUN_TEST(test_registry_invokes_only_declared_cadences);
     RUN_TEST(test_registry_coalesces_retained_state_updates);
     return UNITY_END();
