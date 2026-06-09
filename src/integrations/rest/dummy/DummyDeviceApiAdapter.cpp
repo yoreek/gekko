@@ -122,11 +122,15 @@ void DummyDeviceApiAdapter::writeDeviceJson(const DeviceRecord& record, JsonObje
     output["persistence_policy"] = persistencePolicyToString(record.persistencePolicy);
     output["has_parent"] = record.hasParent;
     output["parent_device_id"] = record.parentDeviceId;
+    output["retained_state_supported"] = DummyDevice::descriptor().supportsRetainedState;
 
     DummyDeviceConfigV2 config{};
     if (decodeDummyDeviceConfig(record.configPayload, config)) {
         JsonObject configObject = output.createNestedObject("config");
         writeDummyDeviceConfigJson(config, configObject);
+        output["retained_startup_enabled"] = config.restorePreviousState != 0U;
+        output["retained_startup_fallback_output"] = config.defaultOutput != 0U;
+        output["retained_state_in_config_payload"] = false;
     }
 }
 

@@ -79,6 +79,10 @@ void test_dummy_device_api_adapter_serializes_record() {
     TEST_ASSERT_EQUAL_STRING("dummy-api", output["name"].as<const char*>());
     TEST_ASSERT_TRUE(output["enabled"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("ready", output["status"].as<const char*>());
+    TEST_ASSERT_TRUE(output["retained_state_supported"].as<bool>());
+    TEST_ASSERT_TRUE(output["retained_startup_enabled"].as<bool>());
+    TEST_ASSERT_FALSE(output["retained_startup_fallback_output"].as<bool>());
+    TEST_ASSERT_FALSE(output["retained_state_in_config_payload"].as<bool>());
 
     JsonObject config = output["config"].as<JsonObject>();
     TEST_ASSERT_TRUE(config["restore_previous_state"].as<bool>());
