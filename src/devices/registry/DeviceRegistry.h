@@ -2,7 +2,10 @@
 
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/core/DeviceTypes.h"
+#include "devices/registry/DeviceRegistryEventReporter.h"
+#include "devices/registry/DeviceRegistryPersistenceCoordinator.h"
 #include "devices/registry/DeviceRegistryStore.h"
+#include "devices/registry/DeviceRuntimeStore.h"
 #include "devices/registry/RetainedStateStore.h"
 
 #include <map>
@@ -90,19 +93,11 @@ public:
     uint32_t lastChangeAt() const;
 
 private:
-    struct RuntimeEntry {
-        const DeviceTypeDescriptor* descriptor{nullptr};
-        std::unique_ptr<IDeviceRuntime> runtime{};
-    };
-
-    static constexpr uint32_t kDirtyTimestampUnset = 0xFFFFFFFFUL;
-
     DeviceValidationResult validateSnapshot(const DeviceRegistrySnapshot& snapshot) const;
     DeviceValidationResult validateRecord(const DeviceRecord& record, const DeviceTypeDescriptor& descriptor) const;
     DeviceValidationResult validateParent(const DeviceRegistrySnapshot& snapshot, const DeviceRecord& record) const;
     DeviceValidationResult validateAcyclicParentGraph(const DeviceRegistrySnapshot& snapshot) const;
     std::vector<DeviceId> childDeviceIds(DeviceId parentId) const;
-    IDeviceRuntime* parentRuntimeFor(const DeviceRecord& record) const;
     void syncRuntimeParentLink(DeviceId deviceId);
     DeviceStatus effectiveStatusForRecord(const DeviceRecord& record) const;
     void refreshDependentRuntimeStates(uint32_t now);
@@ -110,34 +105,17 @@ private:
     DeviceValidationResult reloadRuntimeFor(DeviceId deviceId);
     void clearRuntime(DeviceId deviceId);
     void clearRuntimeIfDisabled(DeviceId deviceId);
-    void markDirty(uint32_t now);
-    void markIndexDirty(uint32_t now);
-    void markConfigDirty(DeviceId deviceId, uint32_t now);
-    void markRetainedDirty(DeviceId deviceId, uint32_t now);
-    bool eraseDirtyId(std::vector<DeviceId>& dirtyIds, DeviceId deviceId);
-    void clearConfigDirtyAfterImmediateFlush();
-    void markClean();
-    void emitEvent(const DeviceEvent& event);
-    void emitStatusChange(DeviceId deviceId, DeviceStatus previousStatus, DeviceStatus status, const char* detail);
-    void trackRuntimeStatus(DeviceId deviceId, DeviceStatus status);
     void emitRuntimeStatusChanges();
 
     DeviceRegistryStore& store_;
     const DeviceTypeRegistry& typeRegistry_;
     IDeviceIdSource& idSource_;
     RetainedStateStore* retainedStateStore_{nullptr};
-    DeviceEventDispatcher* eventDispatcher_{nullptr};
+    DeviceRegistryEventReporter eventReporter_{};
+    DeviceRegistryPersistenceCoordinator persistence_{};
     DeviceRegistrySnapshot snapshot_{};
-    std::map<DeviceId, RuntimeEntry> runtimes_{};
-    std::map<DeviceId, RetainedStateRecord> pendingRetainedStateRecords_{};
-    std::map<DeviceId, DeviceStatus> lastRuntimeStatuses_{};
+    DeviceRuntimeMap runtimes_{};
     uint32_t registryRevision_{0};
-    bool dirty_{false};
-    bool dirtyIndex_{false};
-    std::vector<DeviceId> dirtyConfigRecordIds_{};
-    std::vector<DeviceId> dirtyRetainedStateIds_{};
-    uint32_t firstDirtyAt_{kDirtyTimestampUnset};
-    uint32_t lastChangeAt_{kDirtyTimestampUnset};
 };
 
 } // namespace ewfm

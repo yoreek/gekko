@@ -1,20 +1,12 @@
 #include "devices/registry/DeviceRegistry.h"
 
-#include "integrations/common/DeviceEventDispatcher.h"
+#include "devices/registry/DeviceRegistryRelationshipOrchestrator.h"
 
 #include <algorithm>
 
 namespace ewfm {
 
 namespace {
-void setEventDetail(DeviceEvent& event, const char* detail) {
-    if (detail == nullptr) {
-        event.detail.clear();
-        return;
-    }
-    (void)event.detail.assign(detail);
-}
-
 bool hasDuplicateNames(const DeviceRegistrySnapshot& snapshot, const std::string& name, DeviceId ignoreId = 0) {
     for (const auto& record : snapshot.records) {
         if (record.header.deviceId == ignoreId) {
@@ -27,29 +19,19 @@ bool hasDuplicateNames(const DeviceRegistrySnapshot& snapshot, const std::string
     return false;
 }
 
-bool parentBlocksChildren(DeviceStatus status) {
-    return status != DeviceStatus::Ready;
-}
-
 } // namespace
 
 DeviceRegistry::DeviceRegistry(DeviceRegistryStore& store, const DeviceTypeRegistry& typeRegistry, IDeviceIdSource& idSource,
                                RetainedStateStore* retainedStateStore, DeviceEventDispatcher* eventDispatcher)
     : store_(store), typeRegistry_(typeRegistry), idSource_(idSource), retainedStateStore_(retainedStateStore),
-      eventDispatcher_(eventDispatcher) {}
+      eventReporter_(eventDispatcher) {}
 
 DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
     snapshot_ = {};
     runtimes_.clear();
-    pendingRetainedStateRecords_.clear();
-    lastRuntimeStatuses_.clear();
+    persistence_.reset(now);
+    eventReporter_.reset();
     registryRevision_ = 0;
-    dirty_ = false;
-    dirtyIndex_ = false;
-    dirtyConfigRecordIds_.clear();
-    dirtyRetainedStateIds_.clear();
-    firstDirtyAt_ = kDirtyTimestampUnset;
-    lastChangeAt_ = now;
 
     const DeviceValidationResult loadResult = store_.load(snapshot_, &typeRegistry_);
     if (!loadResult.ok()) {
@@ -83,7 +65,7 @@ DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
             } else {
                 runtime->requestDisable();
             }
-            lastRuntimeStatuses_[record.header.deviceId] = runtime->status();
+            eventReporter_.trackRuntimeStatus(record.header.deviceId, runtime->status());
         }
     }
 
@@ -93,19 +75,7 @@ DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
 }
 
 void DeviceRegistry::tick(uint32_t now) {
-    if (!dirty_) {
-        return;
-    }
-
-    if (firstDirtyAt_ == kDirtyTimestampUnset) {
-        firstDirtyAt_ = now;
-        lastChangeAt_ = now;
-        return;
-    }
-
-    const uint32_t elapsed = static_cast<uint32_t>(now - lastChangeAt_);
-    const uint32_t dirtyAge = static_cast<uint32_t>(now - firstDirtyAt_);
-    if (elapsed < kPersistenceDebounceMs && dirtyAge < kPersistenceMaxDelayMs) {
+    if (!persistence_.shouldFlush(now, kPersistenceDebounceMs, kPersistenceMaxDelayMs)) {
         return;
     }
 
@@ -151,27 +121,27 @@ uint32_t DeviceRegistry::registryRevision() const {
 }
 
 bool DeviceRegistry::hasPendingPersistence() const {
-    return dirty_;
+    return persistence_.hasPendingPersistence();
 }
 
 bool DeviceRegistry::dirtyIndex() const {
-    return dirtyIndex_;
+    return persistence_.dirtyIndex();
 }
 
 std::vector<DeviceId> DeviceRegistry::dirtyConfigRecordIds() const {
-    return dirtyConfigRecordIds_;
+    return persistence_.dirtyConfigRecordIds();
 }
 
 std::vector<DeviceId> DeviceRegistry::dirtyRetainedStateIds() const {
-    return dirtyRetainedStateIds_;
+    return persistence_.dirtyRetainedStateIds();
 }
 
 uint32_t DeviceRegistry::firstDirtyAt() const {
-    return firstDirtyAt_ == kDirtyTimestampUnset ? 0 : firstDirtyAt_;
+    return persistence_.firstDirtyAt();
 }
 
 uint32_t DeviceRegistry::lastChangeAt() const {
-    return lastChangeAt_ == kDirtyTimestampUnset ? 0 : lastChangeAt_;
+    return persistence_.lastChangeAt();
 }
 
 std::vector<DeviceRecord> DeviceRegistry::list() const {
@@ -284,15 +254,15 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
         }
         snapshot_ = std::move(next);
         ++registryRevision_;
-        clearConfigDirtyAfterImmediateFlush();
+        persistence_.clearConfigDirtyAfterImmediateFlush();
     } else {
         snapshot_ = std::move(next);
         ++registryRevision_;
-        markIndexDirty(now);
-        markConfigDirty(deviceId, now);
+        persistence_.markIndexDirty(now);
+        persistence_.markConfigDirty(deviceId, now);
     }
 
-    result.pendingPersistence = dirty_;
+    result.pendingPersistence = persistence_.hasPendingPersistence();
     result.validation = reloadRuntimeFor(deviceId);
     if (!result.validation.ok()) {
         return result;
@@ -318,9 +288,9 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
         created.deviceId = deviceId;
         created.typeId = record.header.typeId;
         created.status = runtimePtr->status();
-        created.pendingPersistence = dirty_;
-        setEventDetail(created, "device created");
-        emitEvent(created);
+        created.pendingPersistence = persistence_.hasPendingPersistence();
+        DeviceRegistryEventReporter::setEventDetail(created, "device created");
+        eventReporter_.emit(created);
 
         DeviceEvent accepted{};
         accepted.kind = DeviceEventKind::CommandAccepted;
@@ -329,11 +299,11 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
         accepted.deviceId = deviceId;
         accepted.typeId = record.header.typeId;
         accepted.status = runtimePtr->status();
-        accepted.pendingPersistence = dirty_;
+        accepted.pendingPersistence = persistence_.hasPendingPersistence();
         accepted.commandAccepted = true;
-        setEventDetail(accepted, "create");
-        emitEvent(accepted);
-        trackRuntimeStatus(deviceId, runtimePtr->status());
+        DeviceRegistryEventReporter::setEventDetail(accepted, "create");
+        eventReporter_.emit(accepted);
+        eventReporter_.trackRuntimeStatus(deviceId, runtimePtr->status());
     }
 
     result.validation = {};
@@ -348,8 +318,8 @@ DeviceCreateResult DeviceRegistry::command(const DeviceCreateRequest& request, u
         rejected.registryRevision = registryRevision_;
         rejected.deviceId = 0;
         rejected.commandAccepted = false;
-        setEventDetail(rejected, result.validation.message);
-        emitEvent(rejected);
+        DeviceRegistryEventReporter::setEventDetail(rejected, result.validation.message);
+        eventReporter_.emit(rejected);
     }
     return result;
 }
@@ -395,15 +365,15 @@ DeviceMutationResult DeviceRegistry::rename(DeviceId deviceId, const std::string
         }
         snapshot_ = std::move(next);
         ++registryRevision_;
-        clearConfigDirtyAfterImmediateFlush();
+        persistence_.clearConfigDirtyAfterImmediateFlush();
     } else {
         snapshot_ = std::move(next);
         ++registryRevision_;
-        markIndexDirty(now);
-        markConfigDirty(deviceId, now);
+        persistence_.markIndexDirty(now);
+        persistence_.markConfigDirty(deviceId, now);
     }
 
-    result.pendingPersistence = dirty_;
+    result.pendingPersistence = persistence_.hasPendingPersistence();
     result.validation = {};
     DeviceEvent updated{};
     updated.kind = DeviceEventKind::DeviceUpdated;
@@ -412,9 +382,9 @@ DeviceMutationResult DeviceRegistry::rename(DeviceId deviceId, const std::string
     updated.deviceId = deviceId;
     updated.typeId = nextIt->header.typeId;
     updated.status = effectiveStatus(deviceId);
-    updated.pendingPersistence = dirty_;
-    setEventDetail(updated, "renamed");
-    emitEvent(updated);
+    updated.pendingPersistence = persistence_.hasPendingPersistence();
+    DeviceRegistryEventReporter::setEventDetail(updated, "renamed");
+    eventReporter_.emit(updated);
 
     DeviceEvent accepted{};
     accepted.kind = DeviceEventKind::CommandAccepted;
@@ -423,10 +393,10 @@ DeviceMutationResult DeviceRegistry::rename(DeviceId deviceId, const std::string
     accepted.deviceId = deviceId;
     accepted.typeId = nextIt->header.typeId;
     accepted.status = updated.status;
-    accepted.pendingPersistence = dirty_;
+    accepted.pendingPersistence = persistence_.hasPendingPersistence();
     accepted.commandAccepted = true;
-    setEventDetail(accepted, "rename");
-    emitEvent(accepted);
+    DeviceRegistryEventReporter::setEventDetail(accepted, "rename");
+    eventReporter_.emit(accepted);
     return result;
 }
 
@@ -473,15 +443,15 @@ DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const std::
         }
         snapshot_ = std::move(next);
         ++registryRevision_;
-        clearConfigDirtyAfterImmediateFlush();
+        persistence_.clearConfigDirtyAfterImmediateFlush();
     } else {
         snapshot_ = std::move(next);
         ++registryRevision_;
-        markIndexDirty(now);
-        markConfigDirty(deviceId, now);
+        persistence_.markIndexDirty(now);
+        persistence_.markConfigDirty(deviceId, now);
     }
 
-    result.pendingPersistence = dirty_;
+    result.pendingPersistence = persistence_.hasPendingPersistence();
     result.validation = {};
     if (const auto runtimeIt = runtimes_.find(deviceId); runtimeIt != runtimes_.end() && runtimeIt->second.runtime != nullptr) {
         runtimeIt->second.runtime->requestReconfigure();
@@ -496,9 +466,9 @@ DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const std::
     updated.deviceId = deviceId;
     updated.typeId = nextIt->header.typeId;
     updated.status = effectiveStatus(deviceId);
-    updated.pendingPersistence = dirty_;
-    setEventDetail(updated, "config updated");
-    emitEvent(updated);
+    updated.pendingPersistence = persistence_.hasPendingPersistence();
+    DeviceRegistryEventReporter::setEventDetail(updated, "config updated");
+    eventReporter_.emit(updated);
 
     DeviceEvent accepted{};
     accepted.kind = DeviceEventKind::CommandAccepted;
@@ -507,10 +477,10 @@ DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const std::
     accepted.deviceId = deviceId;
     accepted.typeId = nextIt->header.typeId;
     accepted.status = updated.status;
-    accepted.pendingPersistence = dirty_;
+    accepted.pendingPersistence = persistence_.hasPendingPersistence();
     accepted.commandAccepted = true;
-    setEventDetail(accepted, "update_config");
-    emitEvent(accepted);
+    DeviceRegistryEventReporter::setEventDetail(accepted, "update_config");
+    eventReporter_.emit(accepted);
     return result;
 }
 
@@ -549,7 +519,7 @@ DeviceMutationResult DeviceRegistry::setParent(DeviceId deviceId, bool hasParent
 
     snapshot_ = std::move(next);
     ++registryRevision_;
-    clearConfigDirtyAfterImmediateFlush();
+    persistence_.clearConfigDirtyAfterImmediateFlush();
 
     syncRuntimeParentLink(deviceId);
     if (auto* runtimePtr = runtime(deviceId); runtimePtr != nullptr) {
@@ -559,7 +529,7 @@ DeviceMutationResult DeviceRegistry::setParent(DeviceId deviceId, bool hasParent
     refreshDependentRuntimeStates(now);
     emitRuntimeStatusChanges();
 
-    result.pendingPersistence = dirty_;
+    result.pendingPersistence = persistence_.hasPendingPersistence();
     result.validation = {};
     DeviceEvent updated{};
     updated.kind = DeviceEventKind::DeviceUpdated;
@@ -568,9 +538,9 @@ DeviceMutationResult DeviceRegistry::setParent(DeviceId deviceId, bool hasParent
     updated.deviceId = deviceId;
     updated.typeId = nextIt->header.typeId;
     updated.status = effectiveStatus(deviceId);
-    updated.pendingPersistence = dirty_;
-    setEventDetail(updated, "parent reassigned");
-    emitEvent(updated);
+    updated.pendingPersistence = persistence_.hasPendingPersistence();
+    DeviceRegistryEventReporter::setEventDetail(updated, "parent reassigned");
+    eventReporter_.emit(updated);
 
     DeviceEvent accepted{};
     accepted.kind = DeviceEventKind::CommandAccepted;
@@ -579,10 +549,10 @@ DeviceMutationResult DeviceRegistry::setParent(DeviceId deviceId, bool hasParent
     accepted.deviceId = deviceId;
     accepted.typeId = nextIt->header.typeId;
     accepted.status = updated.status;
-    accepted.pendingPersistence = dirty_;
+    accepted.pendingPersistence = persistence_.hasPendingPersistence();
     accepted.commandAccepted = true;
-    setEventDetail(accepted, "set_parent");
-    emitEvent(accepted);
+    DeviceRegistryEventReporter::setEventDetail(accepted, "set_parent");
+    eventReporter_.emit(accepted);
     return result;
 }
 
@@ -615,15 +585,15 @@ DeviceMutationResult DeviceRegistry::setEnabled(DeviceId deviceId, bool enabled,
         }
         snapshot_ = std::move(next);
         ++registryRevision_;
-        clearConfigDirtyAfterImmediateFlush();
+        persistence_.clearConfigDirtyAfterImmediateFlush();
     } else {
         snapshot_ = std::move(next);
         ++registryRevision_;
-        markIndexDirty(now);
-        markConfigDirty(deviceId, now);
+        persistence_.markIndexDirty(now);
+        persistence_.markConfigDirty(deviceId, now);
     }
 
-    result.pendingPersistence = dirty_;
+    result.pendingPersistence = persistence_.hasPendingPersistence();
     result.validation = {};
     if (enabled) {
         if (runtime(deviceId) == nullptr) {
@@ -652,9 +622,9 @@ DeviceMutationResult DeviceRegistry::setEnabled(DeviceId deviceId, bool enabled,
     updated.deviceId = deviceId;
     updated.typeId = nextIt->header.typeId;
     updated.status = effectiveStatus(deviceId);
-    updated.pendingPersistence = dirty_;
-    setEventDetail(updated, enabled ? "enabled" : "disabled");
-    emitEvent(updated);
+    updated.pendingPersistence = persistence_.hasPendingPersistence();
+    DeviceRegistryEventReporter::setEventDetail(updated, enabled ? "enabled" : "disabled");
+    eventReporter_.emit(updated);
 
     DeviceEvent accepted{};
     accepted.kind = DeviceEventKind::CommandAccepted;
@@ -663,10 +633,10 @@ DeviceMutationResult DeviceRegistry::setEnabled(DeviceId deviceId, bool enabled,
     accepted.deviceId = deviceId;
     accepted.typeId = nextIt->header.typeId;
     accepted.status = updated.status;
-    accepted.pendingPersistence = dirty_;
+    accepted.pendingPersistence = persistence_.hasPendingPersistence();
     accepted.commandAccepted = true;
-    setEventDetail(accepted, enabled ? "enable" : "disable");
-    emitEvent(accepted);
+    DeviceRegistryEventReporter::setEventDetail(accepted, enabled ? "enable" : "disable");
+    eventReporter_.emit(accepted);
     return result;
 }
 
@@ -707,12 +677,12 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
         }
         snapshot_ = std::move(next);
         ++registryRevision_;
-        clearConfigDirtyAfterImmediateFlush();
+        persistence_.clearConfigDirtyAfterImmediateFlush();
     } else {
         snapshot_ = std::move(next);
         ++registryRevision_;
-        markIndexDirty(now);
-        markConfigDirty(deviceId, now);
+        persistence_.markIndexDirty(now);
+        persistence_.markConfigDirty(deviceId, now);
     }
 
     clearRuntime(deviceId);
@@ -723,19 +693,19 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
     deleted.kind = DeviceEventKind::DeviceDeleted;
     deleted.registryRevision = registryRevision_;
     deleted.deviceId = deviceId;
-    deleted.pendingPersistence = dirty_;
-    setEventDetail(deleted, "deleted");
-    emitEvent(deleted);
+    deleted.pendingPersistence = persistence_.hasPendingPersistence();
+    DeviceRegistryEventReporter::setEventDetail(deleted, "deleted");
+    eventReporter_.emit(deleted);
 
     DeviceEvent accepted{};
     accepted.kind = DeviceEventKind::CommandAccepted;
     accepted.registryRevision = registryRevision_;
     accepted.deviceId = deviceId;
-    accepted.pendingPersistence = dirty_;
+    accepted.pendingPersistence = persistence_.hasPendingPersistence();
     accepted.commandAccepted = true;
-    setEventDetail(accepted, "delete");
-    emitEvent(accepted);
-    result.pendingPersistence = dirty_;
+    DeviceRegistryEventReporter::setEventDetail(accepted, "delete");
+    eventReporter_.emit(accepted);
+    result.pendingPersistence = persistence_.hasPendingPersistence();
     result.validation = {};
     return result;
 }
@@ -780,38 +750,35 @@ DeviceMutationResult DeviceRegistry::setRetainedState(DeviceId deviceId, const s
             result.validation = persistResult;
             return result;
         }
-        eraseDirtyId(dirtyRetainedStateIds_, deviceId);
-        pendingRetainedStateRecords_.erase(deviceId);
-        if (dirtyIndex_ || !dirtyConfigRecordIds_.empty() || !dirtyRetainedStateIds_.empty() || !pendingRetainedStateRecords_.empty()) {
-            dirty_ = true;
-        } else {
-            markClean();
+        persistence_.clearRetainedTracking(deviceId);
+        if (!persistence_.hasAnyPersistenceWork()) {
+            persistence_.markClean();
         }
-        result.pendingPersistence = dirty_;
+        result.pendingPersistence = persistence_.hasPendingPersistence();
         result.validation = {};
         DeviceEvent updated{};
         updated.kind = DeviceEventKind::RetainedStateChanged;
         updated.registryRevision = registryRevision_;
         updated.deviceId = deviceId;
         updated.typeId = record->header.typeId;
-        updated.pendingPersistence = dirty_;
-        setEventDetail(updated, "retained state persisted");
-        emitEvent(updated);
+        updated.pendingPersistence = persistence_.hasPendingPersistence();
+        DeviceRegistryEventReporter::setEventDetail(updated, "retained state persisted");
+        eventReporter_.emit(updated);
         return result;
     }
 
-    pendingRetainedStateRecords_[deviceId] = retained;
-    markRetainedDirty(deviceId, now);
-    result.pendingPersistence = dirty_;
+    persistence_.pendingRetainedStateRecords()[deviceId] = retained;
+    persistence_.markRetainedDirty(deviceId, now);
+    result.pendingPersistence = persistence_.hasPendingPersistence();
     result.validation = {};
     DeviceEvent updated{};
     updated.kind = DeviceEventKind::RetainedStateChanged;
     updated.registryRevision = registryRevision_;
     updated.deviceId = deviceId;
     updated.typeId = record->header.typeId;
-    updated.pendingPersistence = dirty_;
-    setEventDetail(updated, "retained state updated");
-    emitEvent(updated);
+    updated.pendingPersistence = persistence_.hasPendingPersistence();
+    DeviceRegistryEventReporter::setEventDetail(updated, "retained state updated");
+    eventReporter_.emit(updated);
     return result;
 }
 
@@ -823,8 +790,8 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
         rejected.registryRevision = registryRevision_;
         rejected.deviceId = command.deviceId;
         rejected.commandAccepted = false;
-        setEventDetail(rejected, result.validation.message);
-        emitEvent(rejected);
+        DeviceRegistryEventReporter::setEventDetail(rejected, result.validation.message);
+        eventReporter_.emit(rejected);
         return result;
     }
 
@@ -849,8 +816,8 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
             rejected.registryRevision = registryRevision_;
             rejected.deviceId = command.deviceId;
             rejected.commandAccepted = false;
-            setEventDetail(rejected, result.validation.message);
-            emitEvent(rejected);
+            DeviceRegistryEventReporter::setEventDetail(rejected, result.validation.message);
+            eventReporter_.emit(rejected);
             return result;
         }
         if (!runtime->handleCommand(command)) {
@@ -861,8 +828,8 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
             rejected.deviceId = command.deviceId;
             rejected.typeId = find(command.deviceId) != nullptr ? find(command.deviceId)->header.typeId : 0;
             rejected.commandAccepted = false;
-            setEventDetail(rejected, result.validation.message);
-            emitEvent(rejected);
+            DeviceRegistryEventReporter::setEventDetail(rejected, result.validation.message);
+            eventReporter_.emit(rejected);
             return result;
         }
         refreshDependentRuntimeStates(now);
@@ -874,9 +841,9 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
         accepted.typeId = find(command.deviceId) != nullptr ? find(command.deviceId)->header.typeId : 0;
         accepted.status = runtime->status();
         accepted.commandAccepted = true;
-        accepted.pendingPersistence = dirty_;
-        setEventDetail(accepted, "runtime command");
-        emitEvent(accepted);
+        accepted.pendingPersistence = persistence_.hasPendingPersistence();
+        DeviceRegistryEventReporter::setEventDetail(accepted, "runtime command");
+        eventReporter_.emit(accepted);
         result.validation = {};
         return result;
     }
@@ -892,22 +859,22 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
     rejected.registryRevision = registryRevision_;
     rejected.deviceId = command.deviceId;
     rejected.commandAccepted = false;
-    setEventDetail(rejected, result.validation.message);
-    emitEvent(rejected);
+    DeviceRegistryEventReporter::setEventDetail(rejected, result.validation.message);
+    eventReporter_.emit(rejected);
     return result;
 }
 
 DeviceValidationResult DeviceRegistry::flushNow() {
-    if (!dirty_) {
+    if (!persistence_.hasPendingPersistence()) {
         return {};
     }
 
-    if (dirtyIndex_ || !dirtyConfigRecordIds_.empty()) {
+    if (persistence_.hasConfigPersistenceWork()) {
         const DeviceValidationResult saveResult = store_.save(snapshot_);
         if (!saveResult.ok()) {
             return saveResult;
         }
-        for (const DeviceId deviceId : dirtyConfigRecordIds_) {
+        for (const DeviceId deviceId : persistence_.dirtyConfigRecordIdsRef()) {
             const DeviceRecord* record = find(deviceId);
             if (record == nullptr) {
                 continue;
@@ -920,21 +887,21 @@ DeviceValidationResult DeviceRegistry::flushNow() {
             persisted.typeId = record->header.typeId;
             persisted.status = effectiveStatusForRecord(*record);
             persisted.pendingPersistence = false;
-            setEventDetail(persisted, "config persisted");
-            emitEvent(persisted);
+            DeviceRegistryEventReporter::setEventDetail(persisted, "config persisted");
+            eventReporter_.emit(persisted);
         }
-        dirtyIndex_ = false;
-        dirtyConfigRecordIds_.clear();
+        persistence_.clearConfigDirtyAfterPersisted();
     }
 
-    if (!dirtyRetainedStateIds_.empty()) {
+    if (persistence_.hasRetainedPersistenceWork()) {
         if (retainedStateStore_ == nullptr) {
             return {DeviceError::StorageError, "retained state store is unavailable"};
         }
 
-        for (const DeviceId deviceId : dirtyRetainedStateIds_) {
-            const auto pendingIt = pendingRetainedStateRecords_.find(deviceId);
-            if (pendingIt == pendingRetainedStateRecords_.end()) {
+        for (const DeviceId deviceId : persistence_.dirtyRetainedStateIdsRef()) {
+            auto& pending = persistence_.pendingRetainedStateRecords();
+            const auto pendingIt = pending.find(deviceId);
+            if (pendingIt == pending.end()) {
                 continue;
             }
 
@@ -952,17 +919,16 @@ DeviceValidationResult DeviceRegistry::flushNow() {
                 persisted.typeId = record->header.typeId;
                 persisted.status = effectiveStatusForRecord(*record);
                 persisted.pendingPersistence = false;
-                setEventDetail(persisted, "retained state persisted");
-                emitEvent(persisted);
+                DeviceRegistryEventReporter::setEventDetail(persisted, "retained state persisted");
+                eventReporter_.emit(persisted);
             }
 
-            pendingRetainedStateRecords_.erase(pendingIt);
+            persistence_.markRetainedPersisted(deviceId);
         }
-        dirtyRetainedStateIds_.clear();
+        persistence_.clearRetainedDirtyAfterPersisted();
     }
 
-    if (dirtyIndex_ || !dirtyConfigRecordIds_.empty() || !dirtyRetainedStateIds_.empty() || !pendingRetainedStateRecords_.empty()) {
-        dirty_ = true;
+    if (persistence_.hasAnyPersistenceWork()) {
         return {};
     }
 
@@ -970,9 +936,9 @@ DeviceValidationResult DeviceRegistry::flushNow() {
     cleared.kind = DeviceEventKind::PersistencePendingCleared;
     cleared.registryRevision = registryRevision_;
     cleared.pendingPersistence = false;
-    setEventDetail(cleared, "pending persistence cleared");
-    emitEvent(cleared);
-    markClean();
+    DeviceRegistryEventReporter::setEventDetail(cleared, "pending persistence cleared");
+    eventReporter_.emit(cleared);
+    persistence_.markClean();
     return {};
 }
 
@@ -1134,132 +1100,17 @@ std::vector<DeviceId> DeviceRegistry::childDeviceIds(DeviceId parentId) const {
     return children;
 }
 
-IDeviceRuntime* DeviceRegistry::parentRuntimeFor(const DeviceRecord& record) const {
-    if (!record.hasParent) {
-        return nullptr;
-    }
-
-    const auto parentIt = runtimes_.find(record.parentDeviceId);
-    if (parentIt == runtimes_.end()) {
-        return nullptr;
-    }
-
-    return parentIt->second.runtime.get();
-}
-
 void DeviceRegistry::syncRuntimeParentLink(DeviceId deviceId) {
-    const DeviceRecord* record = find(deviceId);
-    if (record == nullptr) {
-        return;
-    }
-
-    const auto runtimeIt = runtimes_.find(deviceId);
-    if (runtimeIt == runtimes_.end() || runtimeIt->second.runtime == nullptr) {
-        return;
-    }
-
-    IDeviceRuntime* currentParent = runtimeIt->second.runtime->parentRuntime();
-    IDeviceRuntime* nextParent = parentRuntimeFor(*record);
-    if (currentParent != nextParent) {
-        if (currentParent != nullptr) {
-            currentParent->detachChildRuntime(runtimeIt->second.runtime.get());
-        }
-        runtimeIt->second.runtime->setParentRuntime(nextParent);
-        if (nextParent != nullptr) {
-            nextParent->attachChildRuntime(runtimeIt->second.runtime.get());
-        }
-    }
+    DeviceRegistryRelationshipOrchestrator::syncRuntimeParentLink(deviceId, snapshot_, runtimes_);
 }
 
 DeviceStatus DeviceRegistry::effectiveStatusForRecord(const DeviceRecord& record) const {
-    DeviceStatus rawStatus = record.status;
-    if (const auto runtimeIt = runtimes_.find(record.header.deviceId);
-        runtimeIt != runtimes_.end() && runtimeIt->second.runtime != nullptr) {
-        rawStatus = runtimeIt->second.runtime->status();
-    }
-
-    if (!record.enabled) {
-        return DeviceStatus::Disabled;
-    }
-
-    if (rawStatus == DeviceStatus::Faulted || rawStatus == DeviceStatus::Deleting) {
-        return rawStatus;
-    }
-
-    if (!record.hasParent) {
-        return rawStatus;
-    }
-
-    const DeviceRecord* parent = find(record.parentDeviceId);
-    if (parent == nullptr) {
-        return DeviceStatus::DependencyBlocked;
-    }
-
-    const DeviceStatus parentStatus = effectiveStatusForRecord(*parent);
-    if (parentBlocksChildren(parentStatus)) {
-        return DeviceStatus::DependencyBlocked;
-    }
-
-    return rawStatus;
+    return DeviceRegistryRelationshipOrchestrator::effectiveStatusForRecord(record, snapshot_, runtimes_);
 }
 
 void DeviceRegistry::refreshDependentRuntimeStates(uint32_t now) {
     (void)now;
-    for (const auto& record : snapshot_.records) {
-        syncRuntimeParentLink(record.header.deviceId);
-
-        const auto runtimeIt = runtimes_.find(record.header.deviceId);
-        if (runtimeIt == runtimes_.end() || runtimeIt->second.runtime == nullptr) {
-            continue;
-        }
-
-        if (!record.enabled) {
-            runtimeIt->second.runtime->requestDisable();
-            continue;
-        }
-
-        if (record.hasParent) {
-            const DeviceRecord* parent = find(record.parentDeviceId);
-            if (parent != nullptr && parentBlocksChildren(effectiveStatusForRecord(*parent))) {
-                continue;
-            }
-        }
-
-        if (runtimeIt->second.runtime->status() == DeviceStatus::DependencyBlocked) {
-            runtimeIt->second.runtime->requestReconfigure();
-            continue;
-        }
-    }
-}
-
-void DeviceRegistry::emitEvent(const DeviceEvent& event) {
-    if (eventDispatcher_ == nullptr) {
-        return;
-    }
-    (void)eventDispatcher_->enqueue(event);
-}
-
-void DeviceRegistry::emitStatusChange(DeviceId deviceId, DeviceStatus previousStatus, DeviceStatus status, const char* detail) {
-    if (previousStatus == status) {
-        return;
-    }
-
-    const DeviceRecord* record = find(deviceId);
-    DeviceEvent event{};
-    event.kind = DeviceEventKind::StatusChanged;
-    event.registryRevision = registryRevision_;
-    event.deviceId = deviceId;
-    event.typeId = record != nullptr ? record->header.typeId : 0;
-    event.previousStatus = previousStatus;
-    event.status = status;
-    event.pendingPersistence = dirty_;
-    setEventDetail(event, detail);
-    emitEvent(event);
-    trackRuntimeStatus(deviceId, status);
-}
-
-void DeviceRegistry::trackRuntimeStatus(DeviceId deviceId, DeviceStatus status) {
-    lastRuntimeStatuses_[deviceId] = status;
+    DeviceRegistryRelationshipOrchestrator::refreshDependentRuntimeStates(snapshot_, runtimes_);
 }
 
 void DeviceRegistry::emitRuntimeStatusChanges() {
@@ -1268,11 +1119,10 @@ void DeviceRegistry::emitRuntimeStatusChanges() {
             continue;
         }
         const DeviceStatus current = entry.second.runtime->status();
-        const auto previousIt = lastRuntimeStatuses_.find(entry.first);
-        const DeviceStatus previous = previousIt == lastRuntimeStatuses_.end() ? DeviceStatus::Unknown : previousIt->second;
-        if (previous != current) {
-            emitStatusChange(entry.first, previous, current, "runtime status changed");
-        }
+        const DeviceRecord* record = find(entry.first);
+        const DeviceTypeId typeId = record != nullptr ? record->header.typeId : 0;
+        eventReporter_.emitRuntimeStatusChangeIfNeeded(entry.first, typeId, current, registryRevision_,
+                                                       persistence_.hasPendingPersistence(), "runtime status changed");
     }
 }
 
@@ -1307,7 +1157,7 @@ DeviceValidationResult DeviceRegistry::reloadRuntimeFor(DeviceId deviceId) {
         }
     }
 
-    RuntimeEntry entry;
+    DeviceRuntimeSlot entry;
     entry.descriptor = descriptor;
     entry.runtime = descriptor->createRuntime(*record);
     if (entry.runtime == nullptr) {
@@ -1325,7 +1175,7 @@ void DeviceRegistry::clearRuntime(DeviceId deviceId) {
         }
     }
     runtimes_.erase(deviceId);
-    lastRuntimeStatuses_.erase(deviceId);
+    eventReporter_.clearRuntimeStatus(deviceId);
 }
 
 void DeviceRegistry::clearRuntimeIfDisabled(DeviceId deviceId) {
@@ -1333,62 +1183,6 @@ void DeviceRegistry::clearRuntimeIfDisabled(DeviceId deviceId) {
     if (record != nullptr && !record->enabled) {
         clearRuntime(deviceId);
     }
-}
-
-void DeviceRegistry::markDirty(uint32_t now) {
-    if (!dirty_) {
-        firstDirtyAt_ = now;
-    }
-    dirty_ = true;
-    lastChangeAt_ = now;
-}
-
-void DeviceRegistry::markIndexDirty(uint32_t now) {
-    markDirty(now);
-    dirtyIndex_ = true;
-}
-
-void DeviceRegistry::markConfigDirty(DeviceId deviceId, uint32_t now) {
-    markDirty(now);
-    if (std::find(dirtyConfigRecordIds_.begin(), dirtyConfigRecordIds_.end(), deviceId) == dirtyConfigRecordIds_.end()) {
-        dirtyConfigRecordIds_.push_back(deviceId);
-    }
-}
-
-void DeviceRegistry::markRetainedDirty(DeviceId deviceId, uint32_t now) {
-    markDirty(now);
-    if (std::find(dirtyRetainedStateIds_.begin(), dirtyRetainedStateIds_.end(), deviceId) == dirtyRetainedStateIds_.end()) {
-        dirtyRetainedStateIds_.push_back(deviceId);
-    }
-}
-
-bool DeviceRegistry::eraseDirtyId(std::vector<DeviceId>& dirtyIds, DeviceId deviceId) {
-    const auto it = std::remove(dirtyIds.begin(), dirtyIds.end(), deviceId);
-    if (it == dirtyIds.end()) {
-        return false;
-    }
-    dirtyIds.erase(it, dirtyIds.end());
-    return true;
-}
-
-void DeviceRegistry::clearConfigDirtyAfterImmediateFlush() {
-    dirtyIndex_ = false;
-    dirtyConfigRecordIds_.clear();
-    if (dirtyRetainedStateIds_.empty() && pendingRetainedStateRecords_.empty()) {
-        markClean();
-        return;
-    }
-    dirty_ = true;
-}
-
-void DeviceRegistry::markClean() {
-    dirty_ = false;
-    dirtyIndex_ = false;
-    dirtyConfigRecordIds_.clear();
-    dirtyRetainedStateIds_.clear();
-    firstDirtyAt_ = kDirtyTimestampUnset;
-    lastChangeAt_ = kDirtyTimestampUnset;
-    pendingRetainedStateRecords_.clear();
 }
 
 } // namespace ewfm
