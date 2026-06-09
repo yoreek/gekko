@@ -5,6 +5,7 @@
 #include "devices/core/DeviceTypes.h"
 #include "devices/registry/DeviceRegistry.h"
 #include "devices/registry/DeviceRegistryStore.h"
+#include "integrations/common/DeviceEventDispatcher.h"
 #include "platform/ArduinoClock.h"
 #include "platform/ArduinoOtaService.h"
 #include "platform/ArduinoWifiDriver.h"
@@ -33,6 +34,7 @@ private:
     WifiManager wifiManager_;
     DeviceTypeRegistry deviceTypeRegistry_{DeviceTypeRegistry::withDefaults()};
     DeviceRegistryStore deviceRegistryStore_;
+    DeviceEventDispatcher deviceEventDispatcher_{};
 #if defined(ARDUINO)
     EspRandomDeviceIdSource deviceIdSource_;
 #else

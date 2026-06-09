@@ -57,8 +57,8 @@
 
 ## 6. Integration Event And Command Interfaces
 
-- [ ] 6.1 Add bounded `DeviceEvent` and `DeviceCommand` structures with event kind, registry revision, config revision where relevant, device ID, type, status, command result, and bounded detail fields.
-- [ ] 6.2 Add a small transport-neutral integration/event bus interface with bounded sink registration, cadence-specific ticks, and non-blocking event fanout.
+- [x] 6.1 Add bounded `DeviceEvent` and `DeviceCommand` structures with event kind, registry revision, config revision where relevant, device ID, type, status, command result, and bounded detail fields.
+- [x] 6.2 Add a small transport-neutral integration/event bus interface with bounded sink registration, cadence-specific ticks, and non-blocking event fanout.
 - [ ] 6.3 Normalize Web UI and integration commands through the same registry command entry point.
 - [ ] 6.4 Emit device-created, device-updated, device-deleted, status-changed, retained-state-changed, command-accepted, command-rejected, config-persisted, and persistence-pending-cleared events after the relevant state changes or persistence flushes.
 - [ ] 6.5 Add integration identity helpers that derive globally unique external IDs from controller identity plus device ID for adapters such as Home Assistant.

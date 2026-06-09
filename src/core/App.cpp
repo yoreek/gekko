@@ -15,7 +15,7 @@ constexpr uint32_t kTick1sIntervalMs = 1000;
 
 App::App()
     : configStore_(storage_), wifiManager_(wifiDriver_, &configStore_), deviceRegistryStore_(deviceStorage_),
-      deviceRegistry_(deviceRegistryStore_, deviceTypeRegistry_, deviceIdSource_),
+      deviceRegistry_(deviceRegistryStore_, deviceTypeRegistry_, deviceIdSource_, nullptr, &deviceEventDispatcher_),
       portalServer_(wifiManager_, wifiDriver_, &deviceRegistry_) {}
 
 bool App::begin() {
@@ -63,25 +63,35 @@ void App::tick() {
     wifiManager_.tick(now);
     portalServer_.tick(now);
     tickDeviceCadence(now);
+    deviceEventDispatcher_.tickFastLoop(now);
 #if defined(WITH_ARDUINO_OTA)
     otaService_.tick(now);
 #endif
 }
 
 void App::tickDeviceCadence(uint32_t now) {
+    const bool due100ms = static_cast<uint32_t>(now - lastTick100ms_) >= kTick100msIntervalMs;
+    const bool due1s = static_cast<uint32_t>(now - lastTick1s_) >= kTick1sIntervalMs;
+
     deviceRegistry_.tickFastLoop(now);
 
-    if (static_cast<uint32_t>(now - lastTick100ms_) >= kTick100msIntervalMs) {
+    if (due100ms) {
         lastTick100ms_ = now;
         deviceRegistry_.tick100ms(now);
     }
 
-    if (static_cast<uint32_t>(now - lastTick1s_) >= kTick1sIntervalMs) {
+    if (due1s) {
         lastTick1s_ = now;
         deviceRegistry_.tick1s(now);
     }
 
     deviceRegistry_.tick(now);
+    if (due100ms) {
+        deviceEventDispatcher_.tick100ms(now);
+    }
+    if (due1s) {
+        deviceEventDispatcher_.tick1s(now);
+    }
 }
 
 } // namespace ewfm

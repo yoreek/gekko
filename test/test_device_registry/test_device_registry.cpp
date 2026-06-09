@@ -969,7 +969,6 @@ void test_registry_coalesces_retained_state_updates() {
     RetainedStateStore retainedStore(storage);
     TEST_ASSERT_TRUE(registryStore.begin(false));
     TEST_ASSERT_TRUE(retainedStore.begin(false));
-
     FixedDeviceIdSource idSource({501, 502});
     DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
     DeviceRegistry registry(registryStore, types, idSource, &retainedStore);

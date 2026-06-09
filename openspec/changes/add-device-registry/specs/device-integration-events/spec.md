@@ -30,6 +30,21 @@ The firmware SHALL expose a transport-neutral integration interface that concret
 - **WHEN** an integration such as Home Assistant needs a globally unique object or entity identifier
 - **THEN** the firmware derives it from controller identity plus the device ID instead of requiring each dynamic device to store a UUID
 
+### Requirement: Bounded event pipeline
+The firmware SHALL route dynamic device events through a bounded, cooperative event pipeline before fanout to registered integration sinks.
+
+#### Scenario: Registry enqueues event
+- **WHEN** the registry accepts a dynamic device event
+- **THEN** the firmware places the event into a fixed-size queue instead of allocating unbounded memory or performing network work inline
+
+#### Scenario: Dispatcher drains queued events
+- **WHEN** the application scheduler runs the event dispatcher on a cooperative tick
+- **THEN** the firmware drains queued events in order and fans them out to registered sinks without blocking the mutation path
+
+#### Scenario: Queue overflows
+- **WHEN** the bounded event queue is full
+- **THEN** the firmware rejects or drops the new event according to the bounded event policy and keeps the cooperative loop responsive
+
 ### Requirement: External command normalization
 The firmware SHALL normalize commands received from Web UI and integration transports before applying them to dynamic devices.
 

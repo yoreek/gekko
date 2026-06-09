@@ -99,7 +99,7 @@ void DeviceRegistryRoutes::handleCreate(AsyncWebServerRequest* request, JsonVari
         return;
     }
 
-    const DeviceCreateResult result = registry_.create(createRequest, 0);
+    const DeviceCreateResult result = registry_.command(createRequest, 0);
     if (!result.ok()) {
         sendError(request, 400, "BAD_ARGS", result.validation.message);
         return;
@@ -127,7 +127,8 @@ void DeviceRegistryRoutes::handleDelete(AsyncWebServerRequest* request) {
         return;
     }
 
-    const DeviceMutationResult result = registry_.remove(deviceId, 0, DevicePersistencePolicy::Immediate);
+    const DeviceMutationResult result =
+        registry_.command(DeviceCommand{DeviceCommandType::Delete, deviceId, "", DevicePersistencePolicy::Immediate}, 0);
     if (!result.ok()) {
         sendError(request, 400, "BAD_ARGS", result.validation.message);
         return;

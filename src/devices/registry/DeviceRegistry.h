@@ -11,6 +11,8 @@
 
 namespace ewfm {
 
+class DeviceEventDispatcher;
+
 struct DeviceCreateRequest {
     DeviceTypeId typeId{0};
     std::string name{};
@@ -48,7 +50,7 @@ public:
     static constexpr uint32_t kPersistenceMaxDelayMs = 2000;
 
     DeviceRegistry(DeviceRegistryStore& store, const DeviceTypeRegistry& typeRegistry, IDeviceIdSource& idSource,
-                   RetainedStateStore* retainedStateStore = nullptr);
+                   RetainedStateStore* retainedStateStore = nullptr, DeviceEventDispatcher* eventDispatcher = nullptr);
 
     DeviceValidationResult begin(uint32_t now = 0);
     void tick(uint32_t now);
@@ -66,6 +68,7 @@ public:
     IDeviceRuntime* runtime(DeviceId deviceId);
 
     DeviceCreateResult create(const DeviceCreateRequest& request, uint32_t now);
+    DeviceCreateResult command(const DeviceCreateRequest& request, uint32_t now);
     DeviceMutationResult rename(DeviceId deviceId, const std::string& name, uint32_t now,
                                 DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
     DeviceMutationResult updateConfig(DeviceId deviceId, const std::string& configPayload, uint32_t configVersion, uint32_t now,
@@ -114,14 +117,20 @@ private:
     bool eraseDirtyId(std::vector<DeviceId>& dirtyIds, DeviceId deviceId);
     void clearConfigDirtyAfterImmediateFlush();
     void markClean();
+    void emitEvent(const DeviceEvent& event);
+    void emitStatusChange(DeviceId deviceId, DeviceStatus previousStatus, DeviceStatus status, const char* detail);
+    void trackRuntimeStatus(DeviceId deviceId, DeviceStatus status);
+    void emitRuntimeStatusChanges();
 
     DeviceRegistryStore& store_;
     const DeviceTypeRegistry& typeRegistry_;
     IDeviceIdSource& idSource_;
     RetainedStateStore* retainedStateStore_{nullptr};
+    DeviceEventDispatcher* eventDispatcher_{nullptr};
     DeviceRegistrySnapshot snapshot_{};
     std::map<DeviceId, RuntimeEntry> runtimes_{};
     std::map<DeviceId, RetainedStateRecord> pendingRetainedStateRecords_{};
+    std::map<DeviceId, DeviceStatus> lastRuntimeStatuses_{};
     uint32_t registryRevision_{0};
     bool dirty_{false};
     bool dirtyIndex_{false};

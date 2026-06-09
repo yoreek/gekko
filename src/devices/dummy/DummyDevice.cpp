@@ -200,11 +200,11 @@ DeviceStatus DummyDevice::status() const {
 
 bool DummyDevice::handleCommand(const DeviceCommand& command) {
     if (command.type == DeviceCommandType::SetStatus) {
-        if (command.payload == "fault") {
+        if (command.payload.equals("fault")) {
             faultRequested_ = true;
             return true;
         }
-        if (command.payload == "ready") {
+        if (command.payload.equals("ready")) {
             faultRequested_ = false;
             reconfigureRequested_ = false;
             disableRequested_ = false;
@@ -213,11 +213,11 @@ bool DummyDevice::handleCommand(const DeviceCommand& command) {
     }
 
     if (command.type == DeviceCommandType::Custom) {
-        if (command.payload == "output=1") {
+        if (command.payload.equals("output=1")) {
             config_.currentOutput = true;
             return true;
         }
-        if (command.payload == "output=0") {
+        if (command.payload.equals("output=0")) {
             config_.currentOutput = false;
             return true;
         }

@@ -1,9 +1,12 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace ewfm {
@@ -24,6 +27,58 @@ constexpr size_t kMaxDeviceEventBytes = 256;
 constexpr size_t kMaxRegistryIndexBytes = 2048;
 constexpr size_t kMaxDeviceRecordBytes = 1024;
 constexpr size_t kMaxDeviceIdGenerationAttempts = 8;
+
+template <size_t kCapacity> struct BoundedText {
+    bool assign(std::string_view value) {
+        if (value.size() > kCapacity) {
+            clear();
+            overflow_ = true;
+            return false;
+        }
+        if (!value.empty()) {
+            std::memcpy(data_.data(), value.data(), value.size());
+        }
+        length_ = value.size();
+        data_[length_] = '\0';
+        overflow_ = false;
+        return true;
+    }
+
+    bool assign(const char* value) {
+        return assign(value == nullptr ? std::string_view{} : std::string_view(value));
+    }
+
+    void clear() {
+        length_ = 0;
+        overflow_ = false;
+        data_[0] = '\0';
+    }
+
+    bool valid() const {
+        return !overflow_;
+    }
+
+    bool empty() const {
+        return length_ == 0;
+    }
+
+    const char* c_str() const {
+        return data_.data();
+    }
+
+    std::string_view view() const {
+        return std::string_view(data_.data(), length_);
+    }
+
+    bool equals(const char* value) const {
+        return view() == (value == nullptr ? std::string_view{} : std::string_view(value));
+    }
+
+private:
+    std::array<char, kCapacity + 1> data_{};
+    size_t length_{0};
+    bool overflow_{false};
+};
 
 enum class DeviceStatus : uint8_t {
     Unknown = 0,
@@ -96,6 +151,20 @@ struct DeviceRecordHeader {
     uint32_t payloadChecksum{0};
 };
 
+enum class DeviceEventKind : uint8_t {
+    RegistryLoaded = 0,
+    DeviceCreated = 1,
+    DeviceUpdated = 2,
+    DeviceDeleted = 3,
+    StatusChanged = 4,
+    StateChanged = 5,
+    CommandAccepted = 6,
+    CommandRejected = 7,
+    ConfigPersisted = 8,
+    RetainedStateChanged = 9,
+    PersistencePendingCleared = 10,
+};
+
 struct DeviceIndexEntry {
     DeviceId deviceId{0};
     DeviceTypeId typeId{0};
@@ -127,8 +196,33 @@ struct RetainedStateRecord {
 struct DeviceCommand {
     DeviceCommandType type{DeviceCommandType::None};
     DeviceId deviceId{0};
-    std::string payload{};
+    BoundedText<kMaxDeviceEventBytes> payload{};
     DevicePersistencePolicy persistencePolicy{DevicePersistencePolicy::Delayed};
+
+    DeviceCommand() = default;
+
+    DeviceCommand(DeviceCommandType commandType, DeviceId commandDeviceId, std::string_view commandPayload,
+                  DevicePersistencePolicy commandPolicy = DevicePersistencePolicy::Delayed)
+        : type(commandType), deviceId(commandDeviceId), persistencePolicy(commandPolicy) {
+        (void)payload.assign(commandPayload);
+    }
+
+    bool valid() const {
+        return payload.valid();
+    }
+};
+
+struct DeviceEvent {
+    DeviceEventKind kind{DeviceEventKind::RegistryLoaded};
+    uint32_t registryRevision{0};
+    uint32_t configRevision{0};
+    DeviceId deviceId{0};
+    DeviceTypeId typeId{0};
+    DeviceStatus previousStatus{DeviceStatus::Unknown};
+    DeviceStatus status{DeviceStatus::Unknown};
+    bool pendingPersistence{false};
+    bool commandAccepted{false};
+    BoundedText<kMaxDeviceEventBytes> detail{};
 };
 
 class IDeviceRuntime {
