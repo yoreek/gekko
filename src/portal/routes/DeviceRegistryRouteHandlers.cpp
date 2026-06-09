@@ -4,9 +4,64 @@
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 #include <ESPAsyncWebServer.h>
+#include <cstring>
 #endif
 
 namespace ewfm {
+
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+namespace {
+DevicePersistencePolicy parsePolicy(const JsonObjectConst& input) {
+    const char* value = input["persistence_policy"] | "immediate";
+    if (std::strcmp(value, "delayed") == 0) {
+        return DevicePersistencePolicy::Delayed;
+    }
+    if (std::strcmp(value, "coalesced") == 0) {
+        return DevicePersistencePolicy::Coalesced;
+    }
+    return DevicePersistencePolicy::Immediate;
+}
+
+bool parseCommandType(const char* value, DeviceCommandType& type) {
+    if (value == nullptr || *value == '\0') {
+        return false;
+    }
+    if (std::strcmp(value, "rename") == 0) {
+        type = DeviceCommandType::Rename;
+        return true;
+    }
+    if (std::strcmp(value, "enable") == 0) {
+        type = DeviceCommandType::Enable;
+        return true;
+    }
+    if (std::strcmp(value, "disable") == 0) {
+        type = DeviceCommandType::Disable;
+        return true;
+    }
+    if (std::strcmp(value, "delete") == 0) {
+        type = DeviceCommandType::Delete;
+        return true;
+    }
+    if (std::strcmp(value, "update_config") == 0) {
+        type = DeviceCommandType::UpdateConfig;
+        return true;
+    }
+    if (std::strcmp(value, "set_status") == 0) {
+        type = DeviceCommandType::SetStatus;
+        return true;
+    }
+    if (std::strcmp(value, "custom") == 0) {
+        type = DeviceCommandType::Custom;
+        return true;
+    }
+    if (std::strcmp(value, "set_parent") == 0) {
+        type = DeviceCommandType::SetParent;
+        return true;
+    }
+    return false;
+}
+} // namespace
+#endif
 
 DeviceRegistryRouteHandlers::DeviceRegistryRouteHandlers(DeviceRegistry& registry, const DeviceApiAdapterRegistry& adapters)
     : registry_(registry), parser_(registry, adapters) {}
@@ -107,6 +162,51 @@ void DeviceRegistryRouteHandlers::handleCreate(AsyncWebServerRequest* request, J
     JsonObject device = doc.createNestedObject("device");
     adapter->writeDeviceJson(*record, device);
     DeviceRegistryRouteResponder::sendJson(request, 201, doc);
+}
+
+void DeviceRegistryRouteHandlers::handleCommand(AsyncWebServerRequest* request, JsonVariant& json) const {
+    if (!json.is<JsonObject>()) {
+        DeviceRegistryRouteResponder::sendError(request, 400, "BAD_JSON", "bad command payload");
+        return;
+    }
+
+    const JsonObjectConst input = json.as<JsonObjectConst>();
+    const DeviceId deviceId = static_cast<DeviceId>(input["device_id"] | 0U);
+    if (deviceId == 0) {
+        DeviceRegistryRouteResponder::sendError(request, 400, "BAD_ARGS", "device_id is required");
+        return;
+    }
+
+    DeviceCommandType commandType = DeviceCommandType::None;
+    const char* commandName = input["command"] | "";
+    if (!parseCommandType(commandName, commandType)) {
+        DeviceRegistryRouteResponder::sendError(request, 400, "BAD_ARGS", "unsupported command");
+        return;
+    }
+
+    std::string payload;
+    if (commandType == DeviceCommandType::SetParent) {
+        if (input["has_parent"].is<bool>() && !(input["has_parent"].as<bool>())) {
+            payload = "parent=0";
+        } else {
+            const DeviceId parentId = static_cast<DeviceId>(input["parent_device_id"] | 0U);
+            payload = std::string("parent=") + std::to_string(parentId);
+        }
+    } else {
+        payload = input["payload"] | "";
+    }
+
+    const DeviceMutationResult result = registry_.command(DeviceCommand{commandType, deviceId, payload.c_str(), parsePolicy(input)}, 0);
+    if (!result.ok()) {
+        DeviceRegistryRouteResponder::sendError(request, 400, "BAD_ARGS", result.validation.message);
+        return;
+    }
+
+    DynamicJsonDocument doc(256);
+    doc["success"] = true;
+    doc["registry_revision"] = registry_.registryRevision();
+    doc["pending_persistence"] = result.pendingPersistence;
+    DeviceRegistryRouteResponder::sendJson(request, 200, doc);
 }
 
 void DeviceRegistryRouteHandlers::handleDelete(AsyncWebServerRequest* request) const {

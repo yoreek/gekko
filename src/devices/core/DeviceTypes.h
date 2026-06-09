@@ -103,6 +103,7 @@ enum class DeviceCommandType : uint8_t {
     Delete = 6,
     SetStatus = 7,
     Custom = 8,
+    SetParent = 9,
 };
 
 enum class DevicePersistencePolicy : uint8_t {

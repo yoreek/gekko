@@ -20,6 +20,7 @@ public:
     void handleList(AsyncWebServerRequest* request) const;
     void handleShow(AsyncWebServerRequest* request) const;
     void handleCreate(AsyncWebServerRequest* request, JsonVariant& json) const;
+    void handleCommand(AsyncWebServerRequest* request, JsonVariant& json) const;
     void handleDelete(AsyncWebServerRequest* request) const;
     void handleFlush(AsyncWebServerRequest* request) const;
     void handleOptions(AsyncWebServerRequest* request) const;

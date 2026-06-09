@@ -20,6 +20,8 @@ void DeviceRegistryRoutes::registerRoutes(AsyncWebServer& server) {
               [this](AsyncWebServerRequest* request) { handlers_.handleFlush(request); });
     server.on(AsyncURIMatcher::prefix("/api/devices/"), HTTP_GET,
               [this](AsyncWebServerRequest* request) { handlers_.handleShow(request); });
+    server.on(AsyncURIMatcher::exact("/api/devices/command"), HTTP_POST,
+              [this](AsyncWebServerRequest* request, JsonVariant& json) { handlers_.handleCommand(request, json); });
     server.on(AsyncURIMatcher::prefix("/api/devices/"), HTTP_DELETE,
               [this](AsyncWebServerRequest* request) { handlers_.handleDelete(request); });
     server.on(AsyncURIMatcher::prefix("/api/devices/"), HTTP_OPTIONS,

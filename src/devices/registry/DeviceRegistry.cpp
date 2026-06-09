@@ -3,6 +3,7 @@
 #include "devices/registry/DeviceRegistryRelationshipOrchestrator.h"
 
 #include <algorithm>
+#include <cstdlib>
 
 namespace ewfm {
 
@@ -17,6 +18,35 @@ bool hasDuplicateNames(const DeviceRegistrySnapshot& snapshot, const std::string
         }
     }
     return false;
+}
+
+bool parseSetParentPayload(const BoundedText<kMaxDeviceEventBytes>& payload, bool& hasParent, DeviceId& parentId) {
+    const std::string value(payload.view());
+    constexpr const char* kPrefix = "parent=";
+    if (value.rfind(kPrefix, 0) != 0) {
+        return false;
+    }
+
+    const char* raw = value.c_str() + 7;
+    if (*raw == '\0') {
+        return false;
+    }
+
+    char* end = nullptr;
+    const unsigned long parsed = std::strtoul(raw, &end, 10);
+    if (end == raw || (end != nullptr && *end != '\0')) {
+        return false;
+    }
+
+    if (parsed == 0UL) {
+        hasParent = false;
+        parentId = 0;
+        return true;
+    }
+
+    hasParent = true;
+    parentId = static_cast<DeviceId>(parsed);
+    return true;
 }
 
 } // namespace
@@ -846,6 +876,22 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
         eventReporter_.emit(accepted);
         result.validation = {};
         return result;
+    }
+    case DeviceCommandType::SetParent: {
+        bool hasParent = false;
+        DeviceId parentId = 0;
+        if (!parseSetParentPayload(command.payload, hasParent, parentId)) {
+            DeviceMutationResult result{{DeviceError::InvalidCommand, "set_parent payload must be parent=<device_id|0>"}, false};
+            DeviceEvent rejected{};
+            rejected.kind = DeviceEventKind::CommandRejected;
+            rejected.registryRevision = registryRevision_;
+            rejected.deviceId = command.deviceId;
+            rejected.commandAccepted = false;
+            DeviceRegistryEventReporter::setEventDetail(rejected, result.validation.message);
+            eventReporter_.emit(rejected);
+            return result;
+        }
+        return setParent(command.deviceId, hasParent, parentId, now, command.persistencePolicy);
     }
     case DeviceCommandType::Create:
     case DeviceCommandType::Custom:

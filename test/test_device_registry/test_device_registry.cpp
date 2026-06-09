@@ -787,6 +787,45 @@ void test_registry_propagates_parent_dependency_status_and_recovers() {
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(faultedChild->status));
 }
 
+void test_registry_set_parent_command_normalization() {
+    MemoryConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    FixedDeviceIdSource idSource({311, 312, 313});
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(store, types, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+
+    DeviceCreateResult parentA = registry.create(makeDummyCreateRequest("parent-a"), 10);
+    DeviceCreateResult parentB = registry.create(makeDummyCreateRequest("parent-b"), 20);
+    TEST_ASSERT_TRUE(parentA.ok());
+    TEST_ASSERT_TRUE(parentB.ok());
+
+    DeviceCreateRequest childRequest = makeDummyCreateRequest("child");
+    childRequest.hasParent = true;
+    childRequest.parentDeviceId = parentA.deviceId;
+    DeviceCreateResult child = registry.create(childRequest, 30);
+    TEST_ASSERT_TRUE(child.ok());
+
+    DeviceMutationResult commandResult =
+        registry.command(DeviceCommand{DeviceCommandType::SetParent, child.deviceId, "parent=312", DevicePersistencePolicy::Immediate}, 40);
+    TEST_ASSERT_TRUE(commandResult.ok());
+    TEST_ASSERT_EQUAL_UINT32(parentB.deviceId, registry.find(child.deviceId)->parentDeviceId);
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(parentB.deviceId), registry.runtime(child.deviceId)->parentRuntime());
+
+    DeviceMutationResult clearParentResult =
+        registry.command(DeviceCommand{DeviceCommandType::SetParent, child.deviceId, "parent=0", DevicePersistencePolicy::Immediate}, 41);
+    TEST_ASSERT_TRUE(clearParentResult.ok());
+    TEST_ASSERT_FALSE(registry.find(child.deviceId)->hasParent);
+    TEST_ASSERT_NULL(registry.runtime(child.deviceId)->parentRuntime());
+
+    DeviceMutationResult invalidPayload =
+        registry.command(DeviceCommand{DeviceCommandType::SetParent, child.deviceId, "invalid", DevicePersistencePolicy::Immediate}, 42);
+    TEST_ASSERT_FALSE(invalidPayload.ok());
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::InvalidCommand), static_cast<int>(invalidPayload.validation.error));
+}
+
 void test_registry_rejects_duplicate_name_and_unsupported_type() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
@@ -1013,6 +1052,7 @@ int main(int, char**) {
     RUN_TEST(test_registry_validates_parent_child_graph_rules);
     RUN_TEST(test_registry_rejects_parent_delete_with_children);
     RUN_TEST(test_registry_propagates_parent_dependency_status_and_recovers);
+    RUN_TEST(test_registry_set_parent_command_normalization);
     RUN_TEST(test_registry_invokes_only_declared_cadences);
     RUN_TEST(test_registry_coalesces_retained_state_updates);
     return UNITY_END();
