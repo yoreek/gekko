@@ -37,6 +37,36 @@ const char* statusToString(DeviceStatus status) {
     }
 }
 
+const char* errorCodeForDeviceError(DeviceError error) {
+    switch (error) {
+    case DeviceError::UnsupportedType:
+        return "UNSUPPORTED_TYPE";
+    case DeviceError::InvalidDeviceId:
+        return "INVALID_DEVICE_ID";
+    case DeviceError::DuplicateDeviceId:
+        return "DUPLICATE_DEVICE_ID";
+    case DeviceError::InvalidRelationship:
+        return "INVALID_RELATIONSHIP";
+    case DeviceError::BoundsExceeded:
+        return "BOUNDS_EXCEEDED";
+    case DeviceError::StorageError:
+        return "STORAGE_ERROR";
+    case DeviceError::InvalidVersion:
+        return "INVALID_VERSION";
+    case DeviceError::CorruptRecord:
+        return "CORRUPT_RECORD";
+    case DeviceError::MissingRecord:
+        return "NOT_FOUND";
+    case DeviceError::InvalidCommand:
+        return "INVALID_COMMAND";
+    case DeviceError::InvalidConfig:
+        return "INVALID_CONFIG";
+    case DeviceError::None:
+    default:
+        return "BAD_ARGS";
+    }
+}
+
 DevicePersistencePolicy parsePolicy(const JsonObjectConst& input) {
     const char* value = input["persistence_policy"] | "immediate";
     if (std::strcmp(value, "delayed") == 0) {
@@ -202,7 +232,7 @@ void DeviceRegistryRouteHandlers::handleCreate(AsyncWebServerRequest* request, J
 
     const DeviceCreateResult result = registry_.command(createRequest, 0);
     if (!result.ok()) {
-        DeviceRegistryRouteResponder::sendError(request, 400, "BAD_ARGS", result.validation.message);
+        DeviceRegistryRouteResponder::sendError(request, 400, errorCodeForDeviceError(result.validation.error), result.validation.message);
         return;
     }
 
@@ -255,7 +285,7 @@ void DeviceRegistryRouteHandlers::handleCommand(AsyncWebServerRequest* request, 
 
     const DeviceMutationResult result = registry_.command(DeviceCommand{commandType, deviceId, payload.c_str(), parsePolicy(input)}, 0);
     if (!result.ok()) {
-        DeviceRegistryRouteResponder::sendError(request, 400, "BAD_ARGS", result.validation.message);
+        DeviceRegistryRouteResponder::sendError(request, 400, errorCodeForDeviceError(result.validation.error), result.validation.message);
         return;
     }
 
@@ -276,7 +306,18 @@ void DeviceRegistryRouteHandlers::handleDelete(AsyncWebServerRequest* request) c
     const DeviceMutationResult result =
         registry_.command(DeviceCommand{DeviceCommandType::Delete, deviceId, "", DevicePersistencePolicy::Immediate}, 0);
     if (!result.ok()) {
-        DeviceRegistryRouteResponder::sendError(request, 400, "BAD_ARGS", result.validation.message);
+        DynamicJsonDocument doc(384);
+        doc["success"] = false;
+        doc["code"] = errorCodeForDeviceError(result.validation.error);
+        doc["error"] = result.validation.message;
+        if (result.validation.error == DeviceError::InvalidRelationship && !result.dependentChildDeviceIds.empty()) {
+            doc["code"] = "DEPENDENT_DELETE";
+            JsonArray ids = doc.createNestedArray("dependent_child_device_ids");
+            for (DeviceId childId : result.dependentChildDeviceIds) {
+                ids.add(childId);
+            }
+        }
+        DeviceRegistryRouteResponder::sendJson(request, 400, doc);
         return;
     }
 

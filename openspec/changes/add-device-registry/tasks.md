@@ -67,9 +67,9 @@
 ## 7. Portal API And Web UI Slice
 
 - [x] 7.1 Add portal routes for listing dynamic devices and returning device ID, type, name, enabled state, parent device ID, config version, config revision, registry revision, optional updatedAt metadata, pending persistence state, lifecycle status, and effective dependency status.
-- [ ] 7.2 Add portal routes for creating, renaming, updating, enabling, disabling, deleting, and commanding `DummyDevice` through the registry service.
+- [x] 7.2 Add portal routes for creating, renaming, updating, enabling, disabling, deleting, and commanding `DummyDevice` through the registry service.
 - [ ] 7.3 Add minimal Web UI controls for `DummyDevice` create/list/edit/delete/enable/disable/status-command flows using device IDs as stable references.
-- [ ] 7.4 Return structured validation errors from portal routes for unsupported type, invalid device ID, duplicate ID generation failure, invalid relationship, dependent delete, bounds errors, and persistence failure.
+- [x] 7.4 Return structured validation errors from portal routes for unsupported type, invalid device ID, duplicate ID generation failure, invalid relationship, dependent delete, bounds errors, and persistence failure.
 - [ ] 7.5 Expose retained-state-dependent startup behavior in API responses without embedding frequently changing retained state in the configuration payload.
 - [x] 7.6 Add an explicit save/apply API path or internal service call that invokes registry `flushNow()` for pending dirty records.
 - [ ] 7.7 Add host-testable route or JSON codec coverage for successful and rejected device API payloads, version/revision fields, pending persistence state, explicit save/apply behavior, and retained-state restore metadata.
