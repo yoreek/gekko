@@ -25,6 +25,7 @@ struct DeviceCreateRequest {
 struct DeviceMutationResult {
     DeviceValidationResult validation{};
     bool pendingPersistence{false};
+    std::vector<DeviceId> dependentChildDeviceIds{};
 
     bool ok() const {
         return validation.ok();
@@ -46,7 +47,8 @@ public:
     static constexpr uint32_t kPersistenceDebounceMs = 500;
     static constexpr uint32_t kPersistenceMaxDelayMs = 2000;
 
-    DeviceRegistry(DeviceRegistryStore& store, const DeviceTypeRegistry& typeRegistry, IDeviceIdSource& idSource);
+    DeviceRegistry(DeviceRegistryStore& store, const DeviceTypeRegistry& typeRegistry, IDeviceIdSource& idSource,
+                   RetainedStateStore* retainedStateStore = nullptr);
 
     DeviceValidationResult begin(uint32_t now = 0);
     void tick(uint32_t now);
@@ -60,6 +62,7 @@ public:
 
     std::vector<DeviceRecord> list() const;
     const DeviceRecord* find(DeviceId deviceId) const;
+    DeviceStatus effectiveStatus(DeviceId deviceId) const;
     IDeviceRuntime* runtime(DeviceId deviceId);
 
     DeviceCreateResult create(const DeviceCreateRequest& request, uint32_t now);
@@ -67,11 +70,21 @@ public:
                                 DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
     DeviceMutationResult updateConfig(DeviceId deviceId, const std::string& configPayload, uint32_t configVersion, uint32_t now,
                                       DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
+    DeviceMutationResult setParent(DeviceId deviceId, bool hasParent, DeviceId parentDeviceId, uint32_t now,
+                                   DevicePersistencePolicy policy = DevicePersistencePolicy::Immediate);
     DeviceMutationResult setEnabled(DeviceId deviceId, bool enabled, uint32_t now,
                                     DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
     DeviceMutationResult remove(DeviceId deviceId, uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Immediate);
+    DeviceMutationResult setRetainedState(DeviceId deviceId, const std::string& payload, uint32_t now,
+                                          DevicePersistencePolicy policy = DevicePersistencePolicy::Coalesced);
     DeviceMutationResult command(const DeviceCommand& command, uint32_t now);
     DeviceValidationResult flushNow();
+
+    bool dirtyIndex() const;
+    std::vector<DeviceId> dirtyConfigRecordIds() const;
+    std::vector<DeviceId> dirtyRetainedStateIds() const;
+    uint32_t firstDirtyAt() const;
+    uint32_t lastChangeAt() const;
 
 private:
     struct RuntimeEntry {
@@ -84,23 +97,38 @@ private:
     DeviceValidationResult validateSnapshot(const DeviceRegistrySnapshot& snapshot) const;
     DeviceValidationResult validateRecord(const DeviceRecord& record, const DeviceTypeDescriptor& descriptor) const;
     DeviceValidationResult validateParent(const DeviceRegistrySnapshot& snapshot, const DeviceRecord& record) const;
+    DeviceValidationResult validateAcyclicParentGraph(const DeviceRegistrySnapshot& snapshot) const;
+    std::vector<DeviceId> childDeviceIds(DeviceId parentId) const;
+    IDeviceRuntime* parentRuntimeFor(const DeviceRecord& record) const;
+    void syncRuntimeParentLink(DeviceId deviceId);
+    DeviceStatus effectiveStatusForRecord(const DeviceRecord& record) const;
+    void refreshDependentRuntimeStates(uint32_t now);
     DeviceValidationResult persistIfNeeded(const DeviceRegistrySnapshot& snapshot, DevicePersistencePolicy policy);
     DeviceValidationResult reloadRuntimeFor(DeviceId deviceId);
     void clearRuntime(DeviceId deviceId);
     void clearRuntimeIfDisabled(DeviceId deviceId);
     void markDirty(uint32_t now);
+    void markIndexDirty(uint32_t now);
+    void markConfigDirty(DeviceId deviceId, uint32_t now);
+    void markRetainedDirty(DeviceId deviceId, uint32_t now);
+    bool eraseDirtyId(std::vector<DeviceId>& dirtyIds, DeviceId deviceId);
+    void clearConfigDirtyAfterImmediateFlush();
     void markClean();
 
     DeviceRegistryStore& store_;
     const DeviceTypeRegistry& typeRegistry_;
     IDeviceIdSource& idSource_;
+    RetainedStateStore* retainedStateStore_{nullptr};
     DeviceRegistrySnapshot snapshot_{};
     std::map<DeviceId, RuntimeEntry> runtimes_{};
+    std::map<DeviceId, RetainedStateRecord> pendingRetainedStateRecords_{};
     uint32_t registryRevision_{0};
     bool dirty_{false};
+    bool dirtyIndex_{false};
+    std::vector<DeviceId> dirtyConfigRecordIds_{};
+    std::vector<DeviceId> dirtyRetainedStateIds_{};
     uint32_t firstDirtyAt_{kDirtyTimestampUnset};
-    uint32_t dirtySince_{kDirtyTimestampUnset};
-    uint32_t lastMutationAt_{0};
+    uint32_t lastChangeAt_{kDirtyTimestampUnset};
 };
 
 } // namespace ewfm

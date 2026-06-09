@@ -17,18 +17,27 @@ bool hasDuplicateNames(const DeviceRegistrySnapshot& snapshot, const std::string
     return false;
 }
 
+bool parentBlocksChildren(DeviceStatus status) {
+    return status != DeviceStatus::Ready;
+}
+
 } // namespace
 
-DeviceRegistry::DeviceRegistry(DeviceRegistryStore& store, const DeviceTypeRegistry& typeRegistry, IDeviceIdSource& idSource)
-    : store_(store), typeRegistry_(typeRegistry), idSource_(idSource) {}
+DeviceRegistry::DeviceRegistry(DeviceRegistryStore& store, const DeviceTypeRegistry& typeRegistry, IDeviceIdSource& idSource,
+                               RetainedStateStore* retainedStateStore)
+    : store_(store), typeRegistry_(typeRegistry), idSource_(idSource), retainedStateStore_(retainedStateStore) {}
 
 DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
     snapshot_ = {};
     runtimes_.clear();
+    pendingRetainedStateRecords_.clear();
     registryRevision_ = 0;
     dirty_ = false;
-    dirtySince_ = now;
-    lastMutationAt_ = now;
+    dirtyIndex_ = false;
+    dirtyConfigRecordIds_.clear();
+    dirtyRetainedStateIds_.clear();
+    firstDirtyAt_ = kDirtyTimestampUnset;
+    lastChangeAt_ = now;
 
     const DeviceValidationResult loadResult = store_.load(snapshot_, &typeRegistry_);
     if (!loadResult.ok()) {
@@ -51,16 +60,21 @@ DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
         if (!configResult.ok()) {
             return configResult;
         }
-        if (record.enabled) {
-            const DeviceValidationResult runtimeResult = reloadRuntimeFor(record.header.deviceId);
-            if (!runtimeResult.ok()) {
-                return runtimeResult;
-            }
-            if (auto* runtime = this->runtime(record.header.deviceId); runtime != nullptr) {
+        const DeviceValidationResult runtimeResult = reloadRuntimeFor(record.header.deviceId);
+        if (!runtimeResult.ok()) {
+            return runtimeResult;
+        }
+        syncRuntimeParentLink(record.header.deviceId);
+        if (auto* runtime = this->runtime(record.header.deviceId); runtime != nullptr) {
+            if (record.enabled) {
                 runtime->begin(now);
+            } else {
+                runtime->requestDisable();
             }
         }
     }
+
+    refreshDependentRuntimeStates(now);
 
     return {};
 }
@@ -72,11 +86,11 @@ void DeviceRegistry::tick(uint32_t now) {
 
     if (firstDirtyAt_ == kDirtyTimestampUnset) {
         firstDirtyAt_ = now;
-        dirtySince_ = now;
+        lastChangeAt_ = now;
         return;
     }
 
-    const uint32_t elapsed = static_cast<uint32_t>(now - dirtySince_);
+    const uint32_t elapsed = static_cast<uint32_t>(now - lastChangeAt_);
     const uint32_t dirtyAge = static_cast<uint32_t>(now - firstDirtyAt_);
     if (elapsed < kPersistenceDebounceMs && dirtyAge < kPersistenceMaxDelayMs) {
         return;
@@ -91,6 +105,7 @@ void DeviceRegistry::tickFastLoop(uint32_t now) {
             entry.second.runtime->tickFastLoop(now);
         }
     }
+    refreshDependentRuntimeStates(now);
 }
 
 void DeviceRegistry::tick100ms(uint32_t now) {
@@ -99,6 +114,7 @@ void DeviceRegistry::tick100ms(uint32_t now) {
             entry.second.runtime->tick100ms(now);
         }
     }
+    refreshDependentRuntimeStates(now);
 }
 
 void DeviceRegistry::tick1s(uint32_t now) {
@@ -107,6 +123,7 @@ void DeviceRegistry::tick1s(uint32_t now) {
             entry.second.runtime->tick1s(now);
         }
     }
+    refreshDependentRuntimeStates(now);
 }
 
 const DeviceRegistrySnapshot& DeviceRegistry::snapshot() const {
@@ -121,8 +138,32 @@ bool DeviceRegistry::hasPendingPersistence() const {
     return dirty_;
 }
 
+bool DeviceRegistry::dirtyIndex() const {
+    return dirtyIndex_;
+}
+
+std::vector<DeviceId> DeviceRegistry::dirtyConfigRecordIds() const {
+    return dirtyConfigRecordIds_;
+}
+
+std::vector<DeviceId> DeviceRegistry::dirtyRetainedStateIds() const {
+    return dirtyRetainedStateIds_;
+}
+
+uint32_t DeviceRegistry::firstDirtyAt() const {
+    return firstDirtyAt_ == kDirtyTimestampUnset ? 0 : firstDirtyAt_;
+}
+
+uint32_t DeviceRegistry::lastChangeAt() const {
+    return lastChangeAt_ == kDirtyTimestampUnset ? 0 : lastChangeAt_;
+}
+
 std::vector<DeviceRecord> DeviceRegistry::list() const {
-    return snapshot_.records;
+    std::vector<DeviceRecord> records = snapshot_.records;
+    for (auto& record : records) {
+        record.status = effectiveStatusForRecord(record);
+    }
+    return records;
 }
 
 const DeviceRecord* DeviceRegistry::find(DeviceId deviceId) const {
@@ -132,6 +173,14 @@ const DeviceRecord* DeviceRegistry::find(DeviceId deviceId) const {
         }
     }
     return nullptr;
+}
+
+DeviceStatus DeviceRegistry::effectiveStatus(DeviceId deviceId) const {
+    const DeviceRecord* record = find(deviceId);
+    if (record == nullptr) {
+        return DeviceStatus::Unknown;
+    }
+    return effectiveStatusForRecord(*record);
 }
 
 IDeviceRuntime* DeviceRegistry::runtime(DeviceId deviceId) {
@@ -219,24 +268,30 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
         }
         snapshot_ = std::move(next);
         ++registryRevision_;
-        markClean();
+        clearConfigDirtyAfterImmediateFlush();
     } else {
         snapshot_ = std::move(next);
         ++registryRevision_;
-        markDirty(now);
+        markIndexDirty(now);
+        markConfigDirty(deviceId, now);
     }
 
     result.pendingPersistence = dirty_;
-    if (record.enabled) {
-        result.validation = reloadRuntimeFor(deviceId);
-        if (!result.validation.ok()) {
-            return result;
-        }
-        auto* runtimePtr = this->runtime(deviceId);
-        if (runtimePtr != nullptr) {
+    result.validation = reloadRuntimeFor(deviceId);
+    if (!result.validation.ok()) {
+        return result;
+    }
+    syncRuntimeParentLink(deviceId);
+    auto* runtimePtr = this->runtime(deviceId);
+    if (runtimePtr != nullptr) {
+        if (record.enabled) {
             runtimePtr->begin(now);
+        } else {
+            runtimePtr->requestDisable();
         }
     }
+
+    refreshDependentRuntimeStates(now);
 
     result.validation = {};
     return result;
@@ -283,11 +338,12 @@ DeviceMutationResult DeviceRegistry::rename(DeviceId deviceId, const std::string
         }
         snapshot_ = std::move(next);
         ++registryRevision_;
-        markClean();
+        clearConfigDirtyAfterImmediateFlush();
     } else {
         snapshot_ = std::move(next);
         ++registryRevision_;
-        markDirty(now);
+        markIndexDirty(now);
+        markConfigDirty(deviceId, now);
     }
 
     result.pendingPersistence = dirty_;
@@ -338,11 +394,12 @@ DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const std::
         }
         snapshot_ = std::move(next);
         ++registryRevision_;
-        markClean();
+        clearConfigDirtyAfterImmediateFlush();
     } else {
         snapshot_ = std::move(next);
         ++registryRevision_;
-        markDirty(now);
+        markIndexDirty(now);
+        markConfigDirty(deviceId, now);
     }
 
     result.pendingPersistence = dirty_;
@@ -350,6 +407,56 @@ DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const std::
     if (const auto runtimeIt = runtimes_.find(deviceId); runtimeIt != runtimes_.end() && runtimeIt->second.runtime != nullptr) {
         runtimeIt->second.runtime->requestReconfigure();
     }
+    refreshDependentRuntimeStates(now);
+    return result;
+}
+
+DeviceMutationResult DeviceRegistry::setParent(DeviceId deviceId, bool hasParent, DeviceId parentDeviceId, uint32_t now,
+                                               DevicePersistencePolicy policy) {
+    DeviceMutationResult result{};
+    auto it = std::find_if(snapshot_.records.begin(), snapshot_.records.end(),
+                           [deviceId](const DeviceRecord& record) { return record.header.deviceId == deviceId; });
+    if (it == snapshot_.records.end()) {
+        result.validation = {DeviceError::MissingRecord, "device not found"};
+        return result;
+    }
+
+    if (policy != DevicePersistencePolicy::Immediate) {
+        result.validation = {DeviceError::InvalidConfig, "parent reassignment requires immediate persistence"};
+        return result;
+    }
+
+    DeviceRegistrySnapshot next = snapshot_;
+    auto nextIt = std::find_if(next.records.begin(), next.records.end(),
+                               [deviceId](const DeviceRecord& record) { return record.header.deviceId == deviceId; });
+    nextIt->hasParent = hasParent;
+    nextIt->parentDeviceId = hasParent ? parentDeviceId : 0;
+
+    const DeviceValidationResult structureResult = validateSnapshot(next);
+    if (!structureResult.ok()) {
+        result.validation = structureResult;
+        return result;
+    }
+
+    const DeviceValidationResult persistResult = persistIfNeeded(next, policy);
+    if (!persistResult.ok()) {
+        result.validation = persistResult;
+        return result;
+    }
+
+    snapshot_ = std::move(next);
+    ++registryRevision_;
+    clearConfigDirtyAfterImmediateFlush();
+
+    syncRuntimeParentLink(deviceId);
+    if (auto* runtimePtr = runtime(deviceId); runtimePtr != nullptr) {
+        runtimePtr->requestReconfigure();
+    }
+
+    refreshDependentRuntimeStates(now);
+
+    result.pendingPersistence = dirty_;
+    result.validation = {};
     return result;
 }
 
@@ -382,27 +489,34 @@ DeviceMutationResult DeviceRegistry::setEnabled(DeviceId deviceId, bool enabled,
         }
         snapshot_ = std::move(next);
         ++registryRevision_;
-        markClean();
+        clearConfigDirtyAfterImmediateFlush();
     } else {
         snapshot_ = std::move(next);
         ++registryRevision_;
-        markDirty(now);
+        markIndexDirty(now);
+        markConfigDirty(deviceId, now);
     }
 
     result.pendingPersistence = dirty_;
     result.validation = {};
     if (enabled) {
-        result.validation = reloadRuntimeFor(deviceId);
-        if (!result.validation.ok()) {
-            return result;
+        if (runtime(deviceId) == nullptr) {
+            result.validation = reloadRuntimeFor(deviceId);
+            if (!result.validation.ok()) {
+                return result;
+            }
         }
+        syncRuntimeParentLink(deviceId);
         const auto runtimePtr = runtime(deviceId);
         if (runtimePtr != nullptr) {
-            runtimePtr->begin(now);
+            runtimePtr->requestReconfigure();
         }
     } else {
-        clearRuntime(deviceId);
+        if (const auto runtimePtr = runtime(deviceId); runtimePtr != nullptr) {
+            runtimePtr->requestDisable();
+        }
     }
+    refreshDependentRuntimeStates(now);
     return result;
 }
 
@@ -412,6 +526,12 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
                            [deviceId](const DeviceRecord& record) { return record.header.deviceId == deviceId; });
     if (it == snapshot_.records.end()) {
         result.validation = {DeviceError::MissingRecord, "device not found"};
+        return result;
+    }
+
+    result.dependentChildDeviceIds = childDeviceIds(deviceId);
+    if (!result.dependentChildDeviceIds.empty()) {
+        result.validation = {DeviceError::InvalidRelationship, "device has dependent child devices"};
         return result;
     }
 
@@ -437,14 +557,75 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
         }
         snapshot_ = std::move(next);
         ++registryRevision_;
-        markClean();
+        clearConfigDirtyAfterImmediateFlush();
     } else {
         snapshot_ = std::move(next);
         ++registryRevision_;
-        markDirty(now);
+        markIndexDirty(now);
+        markConfigDirty(deviceId, now);
     }
 
     clearRuntime(deviceId);
+    refreshDependentRuntimeStates(now);
+    result.pendingPersistence = dirty_;
+    result.validation = {};
+    return result;
+}
+
+DeviceMutationResult DeviceRegistry::setRetainedState(DeviceId deviceId, const std::string& payload, uint32_t now,
+                                                      DevicePersistencePolicy policy) {
+    DeviceMutationResult result{};
+    if (payload.size() > kMaxRetainedStateBytes) {
+        result.validation = {DeviceError::BoundsExceeded, "retained state exceeds supported size"};
+        return result;
+    }
+
+    const DeviceRecord* record = find(deviceId);
+    if (record == nullptr) {
+        result.validation = {DeviceError::MissingRecord, "device not found"};
+        return result;
+    }
+
+    const DeviceTypeDescriptor* descriptor = typeRegistry_.find(record->header.typeId);
+    if (descriptor == nullptr) {
+        result.validation = {DeviceError::UnsupportedType, "unsupported device type"};
+        return result;
+    }
+
+    if (!descriptor->supportsRetainedState) {
+        result.validation = {DeviceError::InvalidConfig, "device type does not support retained state"};
+        return result;
+    }
+
+    RetainedStateRecord retained{};
+    retained.deviceId = deviceId;
+    retained.payload = payload;
+
+    if (policy == DevicePersistencePolicy::Immediate) {
+        if (retainedStateStore_ == nullptr) {
+            result.validation = {DeviceError::StorageError, "retained state store is unavailable"};
+            return result;
+        }
+
+        const DeviceValidationResult persistResult = retainedStateStore_->save(retained);
+        if (!persistResult.ok()) {
+            result.validation = persistResult;
+            return result;
+        }
+        eraseDirtyId(dirtyRetainedStateIds_, deviceId);
+        pendingRetainedStateRecords_.erase(deviceId);
+        if (dirtyIndex_ || !dirtyConfigRecordIds_.empty() || !dirtyRetainedStateIds_.empty() || !pendingRetainedStateRecords_.empty()) {
+            dirty_ = true;
+        } else {
+            markClean();
+        }
+        result.pendingPersistence = dirty_;
+        result.validation = {};
+        return result;
+    }
+
+    pendingRetainedStateRecords_[deviceId] = retained;
+    markRetainedDirty(deviceId, now);
     result.pendingPersistence = dirty_;
     result.validation = {};
     return result;
@@ -473,6 +654,7 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
             result.validation = {DeviceError::InvalidCommand, "command rejected by runtime"};
             return result;
         }
+        refreshDependentRuntimeStates(now);
         result.validation = {};
         return result;
     }
@@ -490,9 +672,39 @@ DeviceValidationResult DeviceRegistry::flushNow() {
         return {};
     }
 
-    const DeviceValidationResult saveResult = store_.save(snapshot_);
-    if (!saveResult.ok()) {
-        return saveResult;
+    if (dirtyIndex_ || !dirtyConfigRecordIds_.empty()) {
+        const DeviceValidationResult saveResult = store_.save(snapshot_);
+        if (!saveResult.ok()) {
+            return saveResult;
+        }
+        dirtyIndex_ = false;
+        dirtyConfigRecordIds_.clear();
+    }
+
+    if (!dirtyRetainedStateIds_.empty()) {
+        if (retainedStateStore_ == nullptr) {
+            return {DeviceError::StorageError, "retained state store is unavailable"};
+        }
+
+        for (const DeviceId deviceId : dirtyRetainedStateIds_) {
+            const auto pendingIt = pendingRetainedStateRecords_.find(deviceId);
+            if (pendingIt == pendingRetainedStateRecords_.end()) {
+                continue;
+            }
+
+            const DeviceValidationResult saveResult = retainedStateStore_->save(pendingIt->second);
+            if (!saveResult.ok()) {
+                return saveResult;
+            }
+
+            pendingRetainedStateRecords_.erase(pendingIt);
+        }
+        dirtyRetainedStateIds_.clear();
+    }
+
+    if (dirtyIndex_ || !dirtyConfigRecordIds_.empty() || !dirtyRetainedStateIds_.empty() || !pendingRetainedStateRecords_.empty()) {
+        dirty_ = true;
+        return {};
     }
 
     markClean();
@@ -550,6 +762,11 @@ DeviceValidationResult DeviceRegistry::validateSnapshot(const DeviceRegistrySnap
         }
     }
 
+    const DeviceValidationResult graphResult = validateAcyclicParentGraph(snapshot);
+    if (!graphResult.ok()) {
+        return graphResult;
+    }
+
     return {};
 }
 
@@ -566,6 +783,10 @@ DeviceValidationResult DeviceRegistry::validateRecord(const DeviceRecord& record
 DeviceValidationResult DeviceRegistry::validateParent(const DeviceRegistrySnapshot& snapshot, const DeviceRecord& record) const {
     if (!record.hasParent) {
         return {};
+    }
+
+    if (record.parentDeviceId == record.header.deviceId) {
+        return {DeviceError::InvalidRelationship, "self parent relationship is not allowed"};
     }
 
     const auto parentIt =
@@ -599,6 +820,151 @@ DeviceValidationResult DeviceRegistry::validateParent(const DeviceRegistrySnapsh
         return {DeviceError::InvalidRelationship, "parent child limit exceeded"};
     }
     return {};
+}
+
+DeviceValidationResult DeviceRegistry::validateAcyclicParentGraph(const DeviceRegistrySnapshot& snapshot) const {
+    std::map<DeviceId, const DeviceRecord*> recordsById;
+    for (const auto& record : snapshot.records) {
+        recordsById.emplace(record.header.deviceId, &record);
+    }
+
+    for (const auto& record : snapshot.records) {
+        if (!record.hasParent) {
+            continue;
+        }
+
+        std::map<DeviceId, bool> seen;
+        DeviceId parentId = record.parentDeviceId;
+        while (parentId != 0) {
+            if (parentId == record.header.deviceId) {
+                return {DeviceError::InvalidRelationship, "cyclic parent relationship detected"};
+            }
+            if (seen.find(parentId) != seen.end()) {
+                return {DeviceError::InvalidRelationship, "cyclic parent relationship detected"};
+            }
+            seen[parentId] = true;
+
+            const auto current = recordsById.find(parentId);
+            if (current == recordsById.end()) {
+                break;
+            }
+            const DeviceRecord& parentRecord = *current->second;
+            if (!parentRecord.hasParent) {
+                break;
+            }
+            parentId = parentRecord.parentDeviceId;
+        }
+    }
+
+    return {};
+}
+
+std::vector<DeviceId> DeviceRegistry::childDeviceIds(DeviceId parentId) const {
+    std::vector<DeviceId> children;
+    for (const auto& record : snapshot_.records) {
+        if (record.hasParent && record.parentDeviceId == parentId) {
+            children.push_back(record.header.deviceId);
+        }
+    }
+    return children;
+}
+
+IDeviceRuntime* DeviceRegistry::parentRuntimeFor(const DeviceRecord& record) const {
+    if (!record.hasParent) {
+        return nullptr;
+    }
+
+    const auto parentIt = runtimes_.find(record.parentDeviceId);
+    if (parentIt == runtimes_.end()) {
+        return nullptr;
+    }
+
+    return parentIt->second.runtime.get();
+}
+
+void DeviceRegistry::syncRuntimeParentLink(DeviceId deviceId) {
+    const DeviceRecord* record = find(deviceId);
+    if (record == nullptr) {
+        return;
+    }
+
+    const auto runtimeIt = runtimes_.find(deviceId);
+    if (runtimeIt == runtimes_.end() || runtimeIt->second.runtime == nullptr) {
+        return;
+    }
+
+    IDeviceRuntime* currentParent = runtimeIt->second.runtime->parentRuntime();
+    IDeviceRuntime* nextParent = parentRuntimeFor(*record);
+    if (currentParent != nextParent) {
+        if (currentParent != nullptr) {
+            currentParent->detachChildRuntime(runtimeIt->second.runtime.get());
+        }
+        runtimeIt->second.runtime->setParentRuntime(nextParent);
+        if (nextParent != nullptr) {
+            nextParent->attachChildRuntime(runtimeIt->second.runtime.get());
+        }
+    }
+}
+
+DeviceStatus DeviceRegistry::effectiveStatusForRecord(const DeviceRecord& record) const {
+    DeviceStatus rawStatus = record.status;
+    if (const auto runtimeIt = runtimes_.find(record.header.deviceId);
+        runtimeIt != runtimes_.end() && runtimeIt->second.runtime != nullptr) {
+        rawStatus = runtimeIt->second.runtime->status();
+    }
+
+    if (!record.enabled) {
+        return DeviceStatus::Disabled;
+    }
+
+    if (rawStatus == DeviceStatus::Faulted || rawStatus == DeviceStatus::Deleting) {
+        return rawStatus;
+    }
+
+    if (!record.hasParent) {
+        return rawStatus;
+    }
+
+    const DeviceRecord* parent = find(record.parentDeviceId);
+    if (parent == nullptr) {
+        return DeviceStatus::DependencyBlocked;
+    }
+
+    const DeviceStatus parentStatus = effectiveStatusForRecord(*parent);
+    if (parentBlocksChildren(parentStatus)) {
+        return DeviceStatus::DependencyBlocked;
+    }
+
+    return rawStatus;
+}
+
+void DeviceRegistry::refreshDependentRuntimeStates(uint32_t now) {
+    (void)now;
+    for (const auto& record : snapshot_.records) {
+        syncRuntimeParentLink(record.header.deviceId);
+
+        const auto runtimeIt = runtimes_.find(record.header.deviceId);
+        if (runtimeIt == runtimes_.end() || runtimeIt->second.runtime == nullptr) {
+            continue;
+        }
+
+        if (!record.enabled) {
+            runtimeIt->second.runtime->requestDisable();
+            continue;
+        }
+
+        if (record.hasParent) {
+            const DeviceRecord* parent = find(record.parentDeviceId);
+            if (parent != nullptr && parentBlocksChildren(effectiveStatusForRecord(*parent))) {
+                continue;
+            }
+        }
+
+        if (runtimeIt->second.runtime->status() == DeviceStatus::DependencyBlocked) {
+            runtimeIt->second.runtime->requestReconfigure();
+            continue;
+        }
+    }
 }
 
 DeviceValidationResult DeviceRegistry::persistIfNeeded(const DeviceRegistrySnapshot& snapshot, DevicePersistencePolicy policy) {
@@ -643,6 +1009,12 @@ DeviceValidationResult DeviceRegistry::reloadRuntimeFor(DeviceId deviceId) {
 }
 
 void DeviceRegistry::clearRuntime(DeviceId deviceId) {
+    const auto it = runtimes_.find(deviceId);
+    if (it != runtimes_.end() && it->second.runtime != nullptr) {
+        if (IDeviceRuntime* parent = it->second.runtime->parentRuntime(); parent != nullptr) {
+            parent->detachChildRuntime(it->second.runtime.get());
+        }
+    }
     runtimes_.erase(deviceId);
 }
 
@@ -658,14 +1030,55 @@ void DeviceRegistry::markDirty(uint32_t now) {
         firstDirtyAt_ = now;
     }
     dirty_ = true;
-    dirtySince_ = now;
-    lastMutationAt_ = now;
+    lastChangeAt_ = now;
+}
+
+void DeviceRegistry::markIndexDirty(uint32_t now) {
+    markDirty(now);
+    dirtyIndex_ = true;
+}
+
+void DeviceRegistry::markConfigDirty(DeviceId deviceId, uint32_t now) {
+    markDirty(now);
+    if (std::find(dirtyConfigRecordIds_.begin(), dirtyConfigRecordIds_.end(), deviceId) == dirtyConfigRecordIds_.end()) {
+        dirtyConfigRecordIds_.push_back(deviceId);
+    }
+}
+
+void DeviceRegistry::markRetainedDirty(DeviceId deviceId, uint32_t now) {
+    markDirty(now);
+    if (std::find(dirtyRetainedStateIds_.begin(), dirtyRetainedStateIds_.end(), deviceId) == dirtyRetainedStateIds_.end()) {
+        dirtyRetainedStateIds_.push_back(deviceId);
+    }
+}
+
+bool DeviceRegistry::eraseDirtyId(std::vector<DeviceId>& dirtyIds, DeviceId deviceId) {
+    const auto it = std::remove(dirtyIds.begin(), dirtyIds.end(), deviceId);
+    if (it == dirtyIds.end()) {
+        return false;
+    }
+    dirtyIds.erase(it, dirtyIds.end());
+    return true;
+}
+
+void DeviceRegistry::clearConfigDirtyAfterImmediateFlush() {
+    dirtyIndex_ = false;
+    dirtyConfigRecordIds_.clear();
+    if (dirtyRetainedStateIds_.empty() && pendingRetainedStateRecords_.empty()) {
+        markClean();
+        return;
+    }
+    dirty_ = true;
 }
 
 void DeviceRegistry::markClean() {
     dirty_ = false;
+    dirtyIndex_ = false;
+    dirtyConfigRecordIds_.clear();
+    dirtyRetainedStateIds_.clear();
     firstDirtyAt_ = kDirtyTimestampUnset;
-    dirtySince_ = kDirtyTimestampUnset;
+    lastChangeAt_ = kDirtyTimestampUnset;
+    pendingRetainedStateRecords_.clear();
 }
 
 } // namespace ewfm

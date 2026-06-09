@@ -144,6 +144,22 @@ public:
     virtual void tickFastLoop(uint32_t now) = 0;
     virtual void tick100ms(uint32_t now) = 0;
     virtual void tick1s(uint32_t now) = 0;
+    virtual void setParentRuntime(IDeviceRuntime* parentRuntime) {
+        (void)parentRuntime;
+    }
+    virtual IDeviceRuntime* parentRuntime() const {
+        return nullptr;
+    }
+    virtual void attachChildRuntime(IDeviceRuntime* childRuntime) {
+        (void)childRuntime;
+    }
+    virtual void detachChildRuntime(IDeviceRuntime* childRuntime) {
+        (void)childRuntime;
+    }
+    virtual const std::vector<IDeviceRuntime*>& childRuntimes() const {
+        static const std::vector<IDeviceRuntime*> kEmptyChildren;
+        return kEmptyChildren;
+    }
     virtual void requestReconfigure() = 0;
     virtual void requestDisable() = 0;
     virtual void requestDelete() = 0;

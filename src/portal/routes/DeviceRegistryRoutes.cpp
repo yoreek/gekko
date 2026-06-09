@@ -67,13 +67,15 @@ void DeviceRegistryRoutes::handleShow(AsyncWebServerRequest* request) {
     doc["pending_persistence"] = registry_.hasPendingPersistence();
     JsonObject device = doc.createNestedObject("device");
     const IDeviceApiAdapter* adapter = findAdapterForRecord(*record);
+    DeviceRecord effectiveRecord = *record;
+    effectiveRecord.status = registry_.effectiveStatus(record->header.deviceId);
     if (adapter != nullptr) {
-        adapter->writeDeviceJson(*record, device);
+        adapter->writeDeviceJson(effectiveRecord, device);
     } else {
-        device["device_id"] = record->header.deviceId;
-        device["type_id"] = record->header.typeId;
-        device["name"] = record->name;
-        device["enabled"] = record->enabled;
+        device["device_id"] = effectiveRecord.header.deviceId;
+        device["type_id"] = effectiveRecord.header.typeId;
+        device["name"] = effectiveRecord.name;
+        device["enabled"] = effectiveRecord.enabled;
     }
     sendJson(request, 200, doc);
 }

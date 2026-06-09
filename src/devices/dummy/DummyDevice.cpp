@@ -1,5 +1,6 @@
 #include "devices/dummy/DummyDevice.h"
 
+#include <algorithm>
 #include <cstring>
 #include <type_traits>
 
@@ -148,16 +149,49 @@ void DummyDevice::tick1s(uint32_t now) {
     tickCadence(now);
 }
 
+void DummyDevice::setParentRuntime(IDeviceRuntime* parentRuntime) {
+    parentRuntime_ = parentRuntime;
+}
+
+IDeviceRuntime* DummyDevice::parentRuntime() const {
+    return parentRuntime_;
+}
+
+void DummyDevice::attachChildRuntime(IDeviceRuntime* childRuntime) {
+    if (childRuntime == nullptr || hasChildRuntime(childRuntime)) {
+        return;
+    }
+    childRuntimes_.push_back(childRuntime);
+}
+
+void DummyDevice::detachChildRuntime(IDeviceRuntime* childRuntime) {
+    if (childRuntime == nullptr) {
+        return;
+    }
+    const auto it = std::remove(childRuntimes_.begin(), childRuntimes_.end(), childRuntime);
+    if (it != childRuntimes_.end()) {
+        childRuntimes_.erase(it, childRuntimes_.end());
+    }
+}
+
+const std::vector<IDeviceRuntime*>& DummyDevice::childRuntimes() const {
+    return childRuntimes_;
+}
+
 void DummyDevice::requestReconfigure() {
     reconfigureRequested_ = true;
+    disableRequested_ = false;
+    status_ = DeviceStatus::Reconfiguring;
 }
 
 void DummyDevice::requestDisable() {
     disableRequested_ = true;
+    status_ = DeviceStatus::Disabled;
 }
 
 void DummyDevice::requestDelete() {
     deleteRequested_ = true;
+    status_ = DeviceStatus::Deleting;
 }
 
 DeviceStatus DummyDevice::status() const {
@@ -173,6 +207,7 @@ bool DummyDevice::handleCommand(const DeviceCommand& command) {
         if (command.payload == "ready") {
             faultRequested_ = false;
             reconfigureRequested_ = false;
+            disableRequested_ = false;
             return true;
         }
     }
@@ -252,6 +287,17 @@ void DummyDevice::tickCadence(uint32_t now) {
     StateMachine::tick(now);
 }
 
+bool DummyDevice::parentReady() const {
+    if (parentRuntime_ == nullptr) {
+        return true;
+    }
+    return parentRuntime_->status() == DeviceStatus::Ready;
+}
+
+bool DummyDevice::hasChildRuntime(const IDeviceRuntime* childRuntime) const {
+    return std::find(childRuntimes_.begin(), childRuntimes_.end(), childRuntime) != childRuntimes_.end();
+}
+
 SM_STATE(DummyDevice::Idle) {
     status_ = DeviceStatus::Creating;
     if (startRequested_) {
@@ -261,6 +307,10 @@ SM_STATE(DummyDevice::Idle) {
 
 SM_STATE(DummyDevice::Starting) {
     status_ = DeviceStatus::Starting;
+    if (!parentReady()) {
+        status_ = DeviceStatus::DependencyBlocked;
+        SM_GOTO(DependencyBlocked);
+    }
     if (deleteRequested_) {
         status_ = DeviceStatus::Deleting;
         deleted_ = true;
@@ -286,6 +336,10 @@ SM_STATE(DummyDevice::Starting) {
 
 SM_STATE(DummyDevice::Ready) {
     status_ = DeviceStatus::Ready;
+    if (!parentReady()) {
+        status_ = DeviceStatus::DependencyBlocked;
+        SM_GOTO(DependencyBlocked);
+    }
     if (deleteRequested_) {
         status_ = DeviceStatus::Deleting;
         deleted_ = true;
@@ -305,9 +359,32 @@ SM_STATE(DummyDevice::Ready) {
     }
 }
 
+SM_STATE(DummyDevice::DependencyBlocked) {
+    status_ = DeviceStatus::DependencyBlocked;
+    if (deleteRequested_) {
+        status_ = DeviceStatus::Deleting;
+        deleted_ = true;
+        SM_GOTO(Deleting);
+    }
+    if (disableRequested_) {
+        status_ = DeviceStatus::Disabled;
+        SM_GOTO(Disabled);
+    }
+    if (reconfigureRequested_ || startRequested_) {
+        if (parentReady()) {
+            status_ = DeviceStatus::Reconfiguring;
+            SM_GOTO(Reconfiguring);
+        }
+    }
+}
+
 SM_STATE(DummyDevice::Reconfiguring) {
     status_ = DeviceStatus::Reconfiguring;
     reconfigureRequested_ = false;
+    if (!parentReady()) {
+        status_ = DeviceStatus::DependencyBlocked;
+        SM_GOTO(DependencyBlocked);
+    }
     status_ = DeviceStatus::Starting;
     SM_GOTO(Starting);
 }

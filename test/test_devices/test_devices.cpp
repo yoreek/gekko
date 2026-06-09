@@ -178,6 +178,22 @@ void test_dummy_device_lifecycle_and_retained_restore() {
     TEST_ASSERT_TRUE(device.deleted());
 }
 
+void test_dummy_device_missing_retained_state_uses_configured_startup_state() {
+    DummyDeviceConfigV2 config{};
+    config.enabled = true;
+    config.restorePreviousState = true;
+    config.defaultOutput = false;
+    config.currentOutput = true;
+
+    DeviceRecord record = makeDummyRecord(4, 0, false, "dummy-fallback", config);
+    DummyDevice device(record);
+
+    device.begin(200);
+    device.tickFastLoop(201);
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(device.status()));
+    TEST_ASSERT_TRUE(device.outputState());
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_default_device_type_registry_contains_dummy);
@@ -188,5 +204,6 @@ int main(int, char**) {
     RUN_TEST(test_retained_state_store_round_trip_and_remove);
     RUN_TEST(test_retained_state_store_rejects_corrupt_payload);
     RUN_TEST(test_dummy_device_lifecycle_and_retained_restore);
+    RUN_TEST(test_dummy_device_missing_retained_state_uses_configured_startup_state);
     return UNITY_END();
 }

@@ -7,6 +7,10 @@ The firmware SHALL validate parent/child relationships according to the particip
 - **WHEN** a caller creates a child device whose type declares a required compatible parent and the referenced parent exists with that type
 - **THEN** the firmware stores the relationship using the parent device ID and includes the child in relationship queries
 
+#### Scenario: Runtime parent link is established
+- **WHEN** a relationship is accepted and the device runtimes are instantiated
+- **THEN** the child runtime receives a live pointer to its parent runtime and the parent runtime exposes the child runtime through its child list
+
 #### Scenario: Incompatible relationship is rejected
 - **WHEN** a caller creates or updates a device relationship that the child or parent type does not support
 - **THEN** the firmware rejects the mutation and leaves existing registry state unchanged
@@ -61,7 +65,11 @@ The firmware SHALL apply relationship changes atomically using the immediate reg
 
 #### Scenario: Parent reassignment succeeds
 - **WHEN** a caller reassigns a child device from one compatible parent to another compatible parent
-- **THEN** the firmware validates the full resulting graph, persists the updated relationship before returning success, and emits relationship/status events after the accepted mutation
+- **THEN** the firmware validates the full resulting graph, persists the updated relationship before returning success, rewires the child runtime to the new parent runtime, updates the parent child lists, and emits relationship/status events after the accepted mutation
+
+#### Scenario: Parent runtime is removed
+- **WHEN** a child runtime is deleted or detached from its parent
+- **THEN** the firmware removes the child runtime from the old parent child list and clears the child runtime's parent pointer before the runtime object is destroyed or repurposed
 
 #### Scenario: Persistence fails during relationship update
 - **WHEN** a validated relationship mutation cannot be written to NVS

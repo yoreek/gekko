@@ -39,7 +39,7 @@ The firmware SHALL persist accepted dynamic device registry changes as a version
 
 #### Scenario: Existing registry is loaded
 - **WHEN** the device boots and NVS contains a supported dynamic device registry
-- **THEN** the firmware validates the registry version, index, per-device records, and type support before rebuilding the in-memory registry and creating runtime instances for enabled records
+- **THEN** the firmware validates the registry version, index, per-device records, and type support before rebuilding the in-memory registry, creating runtime instances for the loaded records, and wiring child runtime pointers to their parent runtime objects
 
 #### Scenario: Corrupt registry is handled
 - **WHEN** the device boots and NVS contains a corrupt or unsupported dynamic device registry
@@ -47,7 +47,7 @@ The firmware SHALL persist accepted dynamic device registry changes as a version
 
 #### Scenario: Accepted mutation is applied
 - **WHEN** a caller creates, updates, enables, disables, or deletes a dynamic device and validation succeeds
-- **THEN** the firmware updates the in-memory registry immediately and applies the operation's persistence policy to the affected index, device record, or retained-state record
+- **THEN** the firmware updates the in-memory registry immediately, keeps live runtime objects in memory when appropriate, rewires runtime parent/child pointers for relationship changes, and applies the operation's persistence policy to the affected index, device record, or retained-state record
 
 ### Requirement: Operation-level persistence policy
 The firmware SHALL support immediate, delayed, and coalesced persistence policies for registry, configuration, and retained-state mutations.

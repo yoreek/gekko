@@ -44,6 +44,11 @@ public:
     void tickFastLoop(uint32_t now) override;
     void tick100ms(uint32_t now) override;
     void tick1s(uint32_t now) override;
+    void setParentRuntime(IDeviceRuntime* parentRuntime) override;
+    IDeviceRuntime* parentRuntime() const override;
+    void attachChildRuntime(IDeviceRuntime* childRuntime) override;
+    void detachChildRuntime(IDeviceRuntime* childRuntime) override;
+    const std::vector<IDeviceRuntime*>& childRuntimes() const override;
     void requestReconfigure() override;
     void requestDisable() override;
     void requestDelete() override;
@@ -67,9 +72,13 @@ private:
     State Starting();
     State Ready();
     State Reconfiguring();
+    State DependencyBlocked();
     State Disabled();
     State Faulted();
     State Deleting();
+
+    bool parentReady() const;
+    bool hasChildRuntime(const IDeviceRuntime* childRuntime) const;
 
     DummyDeviceConfigV2 config_{};
     DeviceStatus status_{DeviceStatus::Unknown};
@@ -81,6 +90,8 @@ private:
     bool retainedStateAvailable_{false};
     bool retainedOutput_{false};
     bool deleted_{false};
+    IDeviceRuntime* parentRuntime_{nullptr};
+    std::vector<IDeviceRuntime*> childRuntimes_{};
 };
 
 } // namespace ewfm

@@ -39,7 +39,7 @@ The first implementation should prove the architecture with `DummyDevice` before
 
 2. Store persistent records as bounded descriptors and rebuild runtime instances on boot.
 
-   A persistent `DeviceRecord` should contain `DeviceId`, type, name, enabled flag, record/header version, type-specific `configVersion`, `configRevision`, optional parent `DeviceId`, relationship role, and type-specific config payload. Runtime objects are created from records by a `DeviceFactory` registry after load. Runtime-only values such as current status detail, last reading, transient fault text, retry deadlines, and integration delivery state are not the source of truth in NVS. The alternative of persisting live device objects would mix hardware state with configuration and make migrations brittle.
+   A persistent `DeviceRecord` should contain `DeviceId`, type, name, enabled flag, record/header version, type-specific `configVersion`, `configRevision`, optional parent `DeviceId`, relationship role, and type-specific config payload. Runtime objects are created from records by a `DeviceFactory` registry after load. The runtime object graph mirrors the persistent ID graph: child runtimes hold live pointers to their parent runtime, and parent runtimes keep bounded child pointer lists for fast access. Runtime-only values such as current status detail, last reading, transient fault text, retry deadlines, and integration delivery state are not the source of truth in NVS. The alternative of persisting live device objects would mix hardware state with configuration and make migrations brittle.
 
 3. Keep the NVS format versioned and bounded.
 
@@ -80,6 +80,8 @@ The first implementation should prove the architecture with `DummyDevice` before
 12. Use multi-rate cooperative ticks and lifecycle state machines only where they add value.
 
    `App` should compute `now` once per loop pass and schedule multiple cooperative cadences, for example a fast-loop tick, a 100 ms tick, and a 1 s tick. The registry can route each cadence only to devices or services that declare they need it, so 100-200 devices do not all run fast-path logic unnecessarily. Runtime devices that have multi-step start, stop, retry, read, scan, or reconfigure flows can inherit `StateMachine` or use a small equivalent adapter. `DummyDevice` should exercise lifecycle states without artificial blocking waits. Domain state handlers MUST use the App-provided `now` for their cadence and must not call `millis()` or `clock_.millis()`. API mutations do not need to carry timestamps; timestamp-dependent debounce or dirty flush behavior should be resolved on a later registry tick.
+
+   When relationships are valid, the registry should keep both sides of the runtime link live in memory: children get direct parent pointers for fast access to bus-like parents, and parents keep child pointer lists so detach/reparent/delete can be handled without scanning all runtime objects. Relationship changes should update the pointers in place and request reconfiguration rather than recreating stable child runtimes unnecessarily.
 
 13. Publish normalized events through a small integration event bus.
 
