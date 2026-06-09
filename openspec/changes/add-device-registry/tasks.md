@@ -51,7 +51,7 @@
 
 - [x] 5.1 Implement parent/child validation using device type descriptors, including missing parent, incompatible type, self-parent, cycle, and max-child checks.
 - [x] 5.2 Reject deletion of a device with children and report dependent child device IDs; allow deletion of leaf devices after runtime stop.
-- [ ] 5.3 Apply compatible parent reassignment atomically with immediate persistence and event emission after the mutation is accepted.
+- [x] 5.3 Apply compatible parent reassignment atomically with immediate persistence and event emission after the mutation is accepted.
 - [x] 5.4 Propagate disabled, faulted, missing, or deleting parent status to enabled children as dependency-blocked effective status without rewriting child enabled state.
 - [x] 5.5 Add native Unity tests for compatible relationships, rejected invalid graphs, restrictive parent delete, leaf delete, parent reassignment, and parent status recovery.
 
