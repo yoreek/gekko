@@ -67,6 +67,19 @@ void test_dummy_device_api_adapter_parses_create_request() {
     TEST_ASSERT_TRUE(parsed.inverted);
 }
 
+void test_dummy_device_api_adapter_rejects_invalid_payload() {
+    StaticJsonDocument<256> doc;
+    doc["type"] = "dummy";
+    doc["name"] = "";
+    doc["config_version"] = 9;
+
+    DeviceCreateRequest request;
+    std::string error;
+    const bool ok = DummyDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error);
+    TEST_ASSERT_FALSE(ok);
+    TEST_ASSERT_TRUE(!error.empty());
+}
+
 void test_dummy_device_api_adapter_serializes_record() {
     const DeviceRecord record = makeDummyRecord();
     StaticJsonDocument<1024> doc;
@@ -79,6 +92,8 @@ void test_dummy_device_api_adapter_serializes_record() {
     TEST_ASSERT_EQUAL_STRING("dummy-api", output["name"].as<const char*>());
     TEST_ASSERT_TRUE(output["enabled"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("ready", output["status"].as<const char*>());
+    TEST_ASSERT_EQUAL_UINT32(DummyDevice::descriptor().currentConfigVersion, output["config_version"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32(3, output["config_revision"].as<uint32_t>());
     TEST_ASSERT_TRUE(output["retained_state_supported"].as<bool>());
     TEST_ASSERT_TRUE(output["retained_startup_enabled"].as<bool>());
     TEST_ASSERT_FALSE(output["retained_startup_fallback_output"].as<bool>());
@@ -94,6 +109,7 @@ int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_device_api_adapter_registry_resolves_dummy);
     RUN_TEST(test_dummy_device_api_adapter_parses_create_request);
+    RUN_TEST(test_dummy_device_api_adapter_rejects_invalid_payload);
     RUN_TEST(test_dummy_device_api_adapter_serializes_record);
     return UNITY_END();
 }
