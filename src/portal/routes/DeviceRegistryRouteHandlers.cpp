@@ -11,6 +11,32 @@ namespace ewfm {
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 namespace {
+const char* statusToString(DeviceStatus status) {
+    switch (status) {
+    case DeviceStatus::Creating:
+        return "creating";
+    case DeviceStatus::Starting:
+        return "starting";
+    case DeviceStatus::Ready:
+        return "ready";
+    case DeviceStatus::Disabled:
+        return "disabled";
+    case DeviceStatus::Faulted:
+        return "faulted";
+    case DeviceStatus::DependencyBlocked:
+        return "dependency_blocked";
+    case DeviceStatus::Reconfiguring:
+        return "reconfiguring";
+    case DeviceStatus::Stopping:
+        return "stopping";
+    case DeviceStatus::Deleting:
+        return "deleting";
+    case DeviceStatus::Unknown:
+    default:
+        return "unknown";
+    }
+}
+
 DevicePersistencePolicy parsePolicy(const JsonObjectConst& input) {
     const char* value = input["persistence_policy"] | "immediate";
     if (std::strcmp(value, "delayed") == 0) {
@@ -90,6 +116,22 @@ void DeviceRegistryRouteHandlers::handleList(AsyncWebServerRequest* request) con
             device["name"] = record.name;
             device["enabled"] = record.enabled;
         }
+        const DeviceRecord* persisted = registry_.find(record.header.deviceId);
+        const DeviceStatus lifecycleStatus = registry_.runtime(record.header.deviceId) != nullptr
+                                                 ? registry_.runtime(record.header.deviceId)->status()
+                                                 : (persisted != nullptr ? persisted->status : record.status);
+        device["device_id"] = record.header.deviceId;
+        device["type_id"] = record.header.typeId;
+        device["name"] = record.name;
+        device["enabled"] = record.enabled;
+        device["has_parent"] = record.hasParent;
+        device["parent_device_id"] = record.parentDeviceId;
+        device["config_version"] = record.header.configVersion;
+        device["config_revision"] = record.header.configRevision;
+        device["lifecycle_status"] = statusToString(lifecycleStatus);
+        device["effective_status"] = statusToString(record.status);
+        device["registry_revision"] = registry_.registryRevision();
+        device["pending_persistence"] = registry_.hasPendingPersistence();
         serializeJson(item, *response);
     }
     response->print("]}");
@@ -121,6 +163,21 @@ void DeviceRegistryRouteHandlers::handleShow(AsyncWebServerRequest* request) con
         device["name"] = effectiveRecord.name;
         device["enabled"] = effectiveRecord.enabled;
     }
+    const DeviceStatus lifecycleStatus = registry_.runtime(effectiveRecord.header.deviceId) != nullptr
+                                             ? registry_.runtime(effectiveRecord.header.deviceId)->status()
+                                             : record->status;
+    device["device_id"] = effectiveRecord.header.deviceId;
+    device["type_id"] = effectiveRecord.header.typeId;
+    device["name"] = effectiveRecord.name;
+    device["enabled"] = effectiveRecord.enabled;
+    device["has_parent"] = effectiveRecord.hasParent;
+    device["parent_device_id"] = effectiveRecord.parentDeviceId;
+    device["config_version"] = effectiveRecord.header.configVersion;
+    device["config_revision"] = effectiveRecord.header.configRevision;
+    device["lifecycle_status"] = statusToString(lifecycleStatus);
+    device["effective_status"] = statusToString(effectiveRecord.status);
+    device["registry_revision"] = registry_.registryRevision();
+    device["pending_persistence"] = registry_.hasPendingPersistence();
     DeviceRegistryRouteResponder::sendJson(request, 200, doc);
 }
 

@@ -66,7 +66,7 @@
 
 ## 7. Portal API And Web UI Slice
 
-- [ ] 7.1 Add portal routes for listing dynamic devices and returning device ID, type, name, enabled state, parent device ID, config version, config revision, registry revision, optional updatedAt metadata, pending persistence state, lifecycle status, and effective dependency status.
+- [x] 7.1 Add portal routes for listing dynamic devices and returning device ID, type, name, enabled state, parent device ID, config version, config revision, registry revision, optional updatedAt metadata, pending persistence state, lifecycle status, and effective dependency status.
 - [ ] 7.2 Add portal routes for creating, renaming, updating, enabling, disabling, deleting, and commanding `DummyDevice` through the registry service.
 - [ ] 7.3 Add minimal Web UI controls for `DummyDevice` create/list/edit/delete/enable/disable/status-command flows using device IDs as stable references.
 - [ ] 7.4 Return structured validation errors from portal routes for unsupported type, invalid device ID, duplicate ID generation failure, invalid relationship, dependent delete, bounds errors, and persistence failure.
