@@ -1,5 +1,7 @@
 #include "portal/routes/OtaPortalRoutes.h"
 
+#include "devices/registry/DeviceRegistry.h"
+
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 #include "portal/PortalResponses.h"
 
@@ -32,6 +34,14 @@ void OtaPortalRoutes::handleStatus(AsyncWebServerRequest* request) {
 
 void OtaPortalRoutes::handleFinished(AsyncWebServerRequest* request) {
     const bool ok = !Update.hasError();
+    if (ok && deviceRegistry_ != nullptr) {
+        const DeviceValidationResult flush = deviceRegistry_->flushNow();
+        if (!flush.ok()) {
+            request->send(500, "application/json", "{\"error\":\"registry flush failed before reboot\"}");
+            return;
+        }
+    }
+
     AsyncWebServerResponse* response = request->beginResponse(ok ? 200 : 500, "application/json",
                                                               ok ? "{\"status\":\"ok\",\"rebooting\":true}" : "{\"error\":\"ota failed\"}");
     response->addHeader("Connection", "close");

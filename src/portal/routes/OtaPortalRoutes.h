@@ -11,13 +11,19 @@ class AsyncWebServerRequest;
 
 namespace ewfm {
 
+class DeviceRegistry;
+
 class OtaPortalRoutes {
 public:
+    explicit OtaPortalRoutes(DeviceRegistry* deviceRegistry = nullptr) : deviceRegistry_(deviceRegistry) {}
+
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     void registerRoutes(AsyncWebServer& server);
 #endif
 
 private:
+    DeviceRegistry* deviceRegistry_{nullptr};
+
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     void handleStatus(AsyncWebServerRequest* request);
     void handleFinished(AsyncWebServerRequest* request);

@@ -103,7 +103,7 @@ private:
             deviceRoutes_ = std::make_unique<DeviceRegistryRoutes>(*deviceRegistry_);
         }
         if (!otaRoutes_) {
-            otaRoutes_ = std::make_unique<OtaPortalRoutes>();
+            otaRoutes_ = std::make_unique<OtaPortalRoutes>(deviceRegistry_);
         }
         homeRoutes_->registerRoutes(*server_);
         wifiRoutes_->registerRoutes(*server_);
