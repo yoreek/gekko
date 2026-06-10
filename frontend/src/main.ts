@@ -17,6 +17,7 @@ const app = createApp(App)
 const store = useAppStore(pinia)
 
 store.initializeApp()
+store.setTransportMode(store.transportMode)
 if (store.mockResetRequested) {
   resetMockDatabase()
   store.consumeMockReset()

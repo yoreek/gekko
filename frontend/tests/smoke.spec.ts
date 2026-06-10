@@ -59,8 +59,7 @@ for (const scenario of scenarios) {
     await expect(page.locator('.empty-state').getByText('No networks scanned yet.')).toBeVisible()
     const scanButton = page.getByRole('button', { name: 'Scan' })
     await scanButton.click()
-    await expect(scanButton).toHaveAttribute('aria-busy', 'true')
-    await expect(scanButton).not.toHaveAttribute('aria-busy', 'true', { timeout: 10000 })
+    await expect(page.getByText('GekkoLab', { exact: true })).toBeVisible()
 
     await page.locator('.portal-drawer__item').filter({ hasText: 'OTA' }).click()
     await expect(page.getByText('Firmware update status')).toBeVisible()
