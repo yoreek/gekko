@@ -24,7 +24,6 @@ public:
 
     void create() override {
         createCalled = true;
-        parsedBody = parseBody();
     }
 
     void update() override {
@@ -72,14 +71,12 @@ void test_base_controller_parses_valid_and_invalid_json_body() {
     TestController controller(nullptr, BaseController::Action::Create);
     uint8_t invalidBody[] = "{bad json";
     controller.dispatch(invalidBody, sizeof(invalidBody) - 1U);
-    TEST_ASSERT_TRUE(controller.createCalled);
-    TEST_ASSERT_FALSE(controller.parsedBody);
+    TEST_ASSERT_FALSE(controller.createCalled);
 
     TestController validController(nullptr, BaseController::Action::Create);
     uint8_t validBody[] = "{\"name\":\"demo\"}";
     validController.dispatch(validBody, sizeof(validBody) - 1U);
     TEST_ASSERT_TRUE(validController.createCalled);
-    TEST_ASSERT_TRUE(validController.parsedBody);
 }
 
 void test_base_controller_builds_standard_envelopes() {

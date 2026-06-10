@@ -44,7 +44,7 @@ const IDeviceApiAdapter* DeviceRegistryRouteParser::findAdapterForRecord(const D
 }
 
 const IDeviceApiAdapter* DeviceRegistryRouteParser::findAdapterForCreate(const JsonVariant& json, std::string& error) const {
-    if (json.isNull() || !json.is<JsonObject>()) {
+    if (json.isNull()) {
         error = "device payload is missing";
         return nullptr;
     }

@@ -10,6 +10,45 @@
 
 namespace ewfm {
 
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+namespace {
+bool appendRequestBody(AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+    if (request == nullptr) {
+        return false;
+    }
+
+    if (index == 0U) {
+        if (request->_tempObject != nullptr) {
+            free(request->_tempObject);
+            request->_tempObject = nullptr;
+        }
+
+        request->_tempObject = calloc(total + 1U, sizeof(uint8_t));
+        if (request->_tempObject == nullptr) {
+            return false;
+        }
+    }
+
+    if (request->_tempObject == nullptr) {
+        return false;
+    }
+
+    auto* buffer = static_cast<uint8_t*>(request->_tempObject);
+    std::memcpy(buffer + index, data, len);
+    return (index + len) == total;
+}
+
+void clearRequestBody(AsyncWebServerRequest* request) {
+    if (request == nullptr || request->_tempObject == nullptr) {
+        return;
+    }
+
+    free(request->_tempObject);
+    request->_tempObject = nullptr;
+}
+} // namespace
+#endif
+
 DeviceRegistryController::DeviceRegistryController(AsyncWebServerRequest* request, const Action action, DeviceRegistry& registry,
                                                    const DeviceApiAdapterRegistry& adapters)
     : BaseController(request, action), registry_(registry), parser_(registry, adapters), adapters_(adapters) {}
@@ -22,10 +61,16 @@ void DeviceRegistryController::registerRoutes(AsyncWebServer& server, DeviceRegi
     });
     server.on(
         AsyncURIMatcher::exact("/api/devices"), HTTP_POST,
-        [&registry](AsyncWebServerRequest* request) { DeviceRegistryController(request, Action::Create, registry, adapters).dispatch(); },
+        [&registry](AsyncWebServerRequest* request) { (void)request; },
         nullptr,
-        [&registry](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t, size_t) {
-            DeviceRegistryController(request, Action::Create, registry, adapters).dispatch(data, len);
+        [&registry](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+            if (!appendRequestBody(request, data, len, index, total)) {
+                return;
+            }
+
+            DeviceRegistryController(request, Action::Create, registry, adapters).dispatch(
+                static_cast<uint8_t*>(request->_tempObject), total);
+            clearRequestBody(request);
         });
     server.on(AsyncURIMatcher::exact("/api/devices"), HTTP_OPTIONS, [&registry](AsyncWebServerRequest* request) {
         DeviceRegistryController(request, Action::Options, registry, adapters).dispatch();
@@ -46,10 +91,16 @@ void DeviceRegistryController::registerRoutes(AsyncWebServer& server, DeviceRegi
     });
     server.on(
         AsyncURIMatcher::prefix("/api/devices/"), HTTP_POST,
-        [&registry](AsyncWebServerRequest* request) { DeviceRegistryController(request, Action::Cmd, registry, adapters).dispatch(); },
+        [&registry](AsyncWebServerRequest* request) { (void)request; },
         nullptr,
-        [&registry](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t, size_t) {
-            DeviceRegistryController(request, Action::Cmd, registry, adapters).dispatch(data, len);
+        [&registry](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+            if (!appendRequestBody(request, data, len, index, total)) {
+                return;
+            }
+
+            DeviceRegistryController(request, Action::Cmd, registry, adapters).dispatch(
+                static_cast<uint8_t*>(request->_tempObject), total);
+            clearRequestBody(request);
         });
     server.on(AsyncURIMatcher::prefix("/api/devices/"), HTTP_OPTIONS, [&registry](AsyncWebServerRequest* request) {
         DeviceRegistryController(request, Action::Options, registry, adapters).dispatch();
@@ -60,7 +111,6 @@ void DeviceRegistryController::registerRoutes(AsyncWebServer& server, DeviceRegi
 const BaseController::RulesChain* DeviceRegistryController::beforeChain() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     static constexpr HookRule rules[] = {
-        {&DeviceRegistryController::parseBodyJson, A(Action::Create) | A(Action::Cmd)},
         {&DeviceRegistryController::requireId, A(Action::Show) | A(Action::Destroy) | A(Action::Cmd)},
         {&DeviceRegistryController::requireEntity, A(Action::Show) | A(Action::Destroy) | A(Action::Cmd)},
     };
@@ -69,21 +119,6 @@ const BaseController::RulesChain* DeviceRegistryController::beforeChain() {
 #else
     return BaseController::beforeChain();
 #endif
-}
-
-bool DeviceRegistryController::parseBodyJson(BaseController& self) {
-    auto& ctl = static_cast<DeviceRegistryController&>(self); // NOLINT
-    if (ctl.body_ == nullptr || ctl.bodyLen_ == 0) {
-        ctl.renderError(400, "INVALID", "invalid body");
-        return false;
-    }
-
-    StaticJsonDocument<1024> doc;
-    if (deserializeJson(doc, ctl.body_, ctl.bodyLen_)) {
-        ctl.renderError(400, "BAD_JSON", "bad json");
-        return false;
-    }
-    return true;
 }
 
 bool DeviceRegistryController::parseDeviceIdPath(const char* url, const bool requireCommandSuffix, DeviceId& deviceId) {
@@ -151,7 +186,7 @@ bool DeviceRegistryController::requireEntity(BaseController& self) {
 
 bool DeviceRegistryController::parseCreateAdapter(const JsonVariantConst& json, std::string& error,
                                                   const IDeviceApiAdapter*& adapter) const {
-    if (json.isNull() || !json.is<JsonObject>()) {
+    if (json.isNull()) {
         error = "device payload is missing";
         adapter = nullptr;
         return false;
@@ -371,14 +406,8 @@ void DeviceRegistryController::show() {
 
 void DeviceRegistryController::create() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    StaticJsonDocument<1024> bodyDoc;
-    if (deserializeJson(bodyDoc, body_, bodyLen_)) {
-        renderError(400, "BAD_JSON", "bad json");
-        return;
-    }
-
     std::string error;
-    const JsonObjectConst input = bodyDoc.as<JsonObjectConst>();
+    const JsonObjectConst input = getDoc()->as<JsonObjectConst>();
     const IDeviceApiAdapter* adapter = nullptr;
     if (!parseCreateAdapter(input, error, adapter)) {
         renderError(400, "BAD_ARGS", error.c_str());
@@ -441,13 +470,7 @@ void DeviceRegistryController::destroy() {
 
 void DeviceRegistryController::cmd() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    StaticJsonDocument<1024> bodyDoc;
-    if (deserializeJson(bodyDoc, body_, bodyLen_)) {
-        renderError(400, "BAD_JSON", "bad json");
-        return;
-    }
-
-    const JsonObjectConst input = bodyDoc.as<JsonObjectConst>();
+    const JsonObjectConst input = getDoc()->as<JsonObjectConst>();
     const DeviceId bodyDeviceId = static_cast<DeviceId>(input["device_id"] | 0U);
     if (bodyDeviceId != 0U && bodyDeviceId != deviceId_) {
         renderError(400, "BAD_ARGS", "device_id mismatch");

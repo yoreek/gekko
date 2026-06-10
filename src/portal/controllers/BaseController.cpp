@@ -6,11 +6,22 @@ namespace ewfm {
 
 BaseController::BaseController(AsyncWebServerRequest* request, const Action action) : request_(request), action_(action) {}
 
-BaseController::~BaseController() {}
+BaseController::~BaseController() {
+    delete doc_;
+}
 
 const BaseController::RulesChain* BaseController::beforeChain() {
     static constexpr HookRule rules[] = {
         {&BaseController::beforeCorsOptions, ALL},
+        {[](BaseController& self) { return self.parseBody(); }, A(Action::Create) | A(Action::Update) | A(Action::Cmd)},
+    };
+    static const RulesChain node{rules, std::size(rules), nullptr};
+    return &node;
+}
+
+const BaseController::RulesChain* BaseController::afterChain() {
+    static constexpr HookRule rules[] = {
+        {&BaseController::afterDefaultHeaders, ALL},
     };
     static const RulesChain node{rules, std::size(rules), nullptr};
     return &node;
@@ -99,6 +110,10 @@ bool BaseController::runBefore() {
     return _runBefore(beforeChain());
 }
 
+void BaseController::runAfter() {
+    _runAfter(afterChain());
+}
+
 bool BaseController::_runBefore(const RulesChain* chain) {
     if (chain == nullptr) {
         return true;
@@ -119,6 +134,26 @@ bool BaseController::_runBefore(const RulesChain* chain) {
     return true;
 }
 
+void BaseController::_runAfter(const RulesChain* chain) {
+    if (chain == nullptr) {
+        return;
+    }
+    _runAfter(chain->prev);
+
+    for (size_t i = 0; i < chain->size; ++i) {
+        const HookRule& rule = chain->rules[i];
+        if ((rule.mask & A(action_)) == 0U) {
+            continue;
+        }
+        (void)(rule.fn)(*this);
+    }
+}
+
+bool BaseController::afterDefaultHeaders(BaseController& self) {
+    self.applyDefaultHeaders_ = true;
+    return true;
+}
+
 bool BaseController::parseBody(const size_t size) {
     if (body_ == nullptr || bodyLen_ == 0) {
         renderError(400, "INVALID", "invalid body");
@@ -130,8 +165,13 @@ bool BaseController::parseBody(const size_t size) {
         return false;
     }
 
-    StaticJsonDocument<1024> json;
-    const DeserializationError error = deserializeJson(json, body_, bodyLen_);
+    auto* json = createDoc(size);
+    if (json == nullptr) {
+        renderError(500, "INTERNAL", "doc allocation failed");
+        return false;
+    }
+
+    const DeserializationError error = deserializeJson(*json, body_, bodyLen_);
     if (error) {
         renderError(400, "BAD_JSON", "bad json");
         return false;
@@ -145,9 +185,13 @@ void BaseController::renderError(const int httpCode, const char* errCode, const 
         return;
     }
 
-    StaticJsonDocument<256> json;
-    addErrorEnvelope(json, errCode, message);
-    sendJson(httpCode, json);
+    auto* json = createDoc(256);
+    if (json == nullptr) {
+        return;
+    }
+    json->clear();
+    addErrorEnvelope(*json, errCode, message);
+    sendJson(httpCode, *json);
 #else
     (void)httpCode;
     (void)errCode;
@@ -161,6 +205,7 @@ void BaseController::renderOk(JsonDocument& doc) {
         return;
     }
 
+    applyDefaultHeaders_ = true;
     addSuccessEnvelope(doc);
     doc["status"] = "ok";
     AsyncResponseStream* stream = request_->beginResponseStream("application/json");
@@ -198,7 +243,8 @@ void BaseController::sendJson(const int httpCode, JsonDocument& doc) {
 void BaseController::send(AsyncWebServerResponse* response) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     if (request_ != nullptr) {
-        request_->send(response);
+        runAfter();
+        request_->send(wrap(response));
     }
 #else
     (void)response;
@@ -208,7 +254,8 @@ void BaseController::send(AsyncWebServerResponse* response) {
 void BaseController::send(AsyncResponseStream* stream) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     if (request_ != nullptr) {
-        request_->send(stream);
+        runAfter();
+        request_->send(wrap(stream));
     }
 #else
     (void)stream;
@@ -254,6 +301,32 @@ bool BaseController::beforeCorsOptions(BaseController& self) {
 #endif
 }
 
+AsyncWebServerResponse* BaseController::wrap(AsyncWebServerResponse* response) const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    if (response == nullptr) {
+        return response;
+    }
+    if (applyDefaultHeaders_) {
+        addCorsHeaders(response);
+        addNoCacheHeaders(response);
+    }
+#endif
+    return response;
+}
+
+AsyncResponseStream* BaseController::wrap(AsyncResponseStream* stream) const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    if (stream == nullptr) {
+        return stream;
+    }
+    if (applyDefaultHeaders_) {
+        addCorsHeaders(stream);
+        addNoCacheHeaders(stream);
+    }
+#endif
+    return stream;
+}
+
 void BaseController::addSuccessEnvelope(JsonDocument& doc) {
     doc["success"] = true;
 }
@@ -275,6 +348,22 @@ void BaseController::addNoCacheHeaders(AsyncWebServerResponse* response) {
 #else
     (void)response;
 #endif
+}
+
+DynamicJsonDocument* BaseController::createDoc(const size_t size) {
+    if (doc_ == nullptr) {
+        doc_ = new DynamicJsonDocument(size);
+    } else {
+        doc_->clear();
+    }
+    return doc_;
+}
+
+DynamicJsonDocument* BaseController::getDoc() {
+    if (doc_ == nullptr) {
+        doc_ = new DynamicJsonDocument(64);
+    }
+    return doc_;
 }
 
 } // namespace ewfm

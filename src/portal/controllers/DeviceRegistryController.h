@@ -44,7 +44,6 @@ private:
     DeviceId deviceId_{0};
     const DeviceRecord* record_{nullptr};
 
-    static bool parseBodyJson(BaseController& self);
     static bool parseDeviceIdPath(const char* url, bool requireCommandSuffix, DeviceId& deviceId);
     static bool requireId(BaseController& self);
     static bool requireEntity(BaseController& self);

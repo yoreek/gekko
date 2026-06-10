@@ -65,6 +65,7 @@ protected:
     virtual void flush();
 
     virtual const RulesChain* beforeChain();
+    virtual const RulesChain* afterChain();
 
     bool parseBody(size_t size = 1024);
 
@@ -79,14 +80,25 @@ protected:
     static const char* corsAllowMethods();
     static const char* corsAllowHeaders();
     static bool beforeCorsOptions(BaseController& self);
+    static bool afterDefaultHeaders(BaseController& self);
     static void addSuccessEnvelope(JsonDocument& doc);
     static void addErrorEnvelope(JsonDocument& doc, const char* errCode, const char* message);
     static void addCorsHeaders(AsyncWebServerResponse* response);
     static void addNoCacheHeaders(AsyncWebServerResponse* response);
 
+    DynamicJsonDocument* createDoc(size_t size = 1024);
+    DynamicJsonDocument* getDoc();
+
 private:
     bool runBefore();
+    void runAfter();
     bool _runBefore(const RulesChain* chain);
+    void _runAfter(const RulesChain* chain);
+    AsyncWebServerResponse* wrap(AsyncWebServerResponse* response) const;
+    AsyncResponseStream* wrap(AsyncResponseStream* stream) const;
+
+    DynamicJsonDocument* doc_{nullptr};
+    bool applyDefaultHeaders_{true};
 };
 
 } // namespace ewfm
