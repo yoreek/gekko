@@ -23,6 +23,24 @@ public:
         Options,
         Cmd,
         Flush,
+        COUNT,
+    };
+
+    using ActionMask = uint32_t;
+    static constexpr ActionMask A(const Action action) {
+        return 1u << static_cast<uint8_t>(action);
+    }
+    static constexpr ActionMask ALL = (1u << static_cast<uint8_t>(Action::COUNT)) - 1u;
+
+    using HookFn = bool (*)(BaseController& self);
+    struct HookRule {
+        HookFn fn;
+        ActionMask mask;
+    };
+    struct RulesChain {
+        const HookRule* rules;
+        size_t size;
+        const RulesChain* prev{nullptr};
     };
 
     explicit BaseController(AsyncWebServerRequest* request, Action action);
@@ -46,6 +64,8 @@ protected:
     virtual void cmd();
     virtual void flush();
 
+    virtual const RulesChain* beforeChain();
+
     bool parseBody(size_t size = 1024);
 
     void renderError(int httpCode, const char* errCode, const char* message);
@@ -58,16 +78,15 @@ protected:
 
     static const char* corsAllowMethods();
     static const char* corsAllowHeaders();
+    static bool beforeCorsOptions(BaseController& self);
     static void addSuccessEnvelope(JsonDocument& doc);
     static void addErrorEnvelope(JsonDocument& doc, const char* errCode, const char* message);
     static void addCorsHeaders(AsyncWebServerResponse* response);
-    static void addCorsHeaders(AsyncResponseStream* stream);
     static void addNoCacheHeaders(AsyncWebServerResponse* response);
-    static void addNoCacheHeaders(AsyncResponseStream* stream);
 
 private:
-    void applyHeaders(AsyncWebServerResponse* response) const;
-    void applyHeaders(AsyncResponseStream* stream) const;
+    bool runBefore();
+    bool _runBefore(const RulesChain* chain);
 };
 
 } // namespace ewfm

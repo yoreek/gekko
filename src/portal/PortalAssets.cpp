@@ -125,7 +125,7 @@ async function sendDeviceCommand(command, payloadOverride) {
     return;
   }
   try {
-    const response = await fetch('/api/devices/command', {
+    const response = await fetch('/api/devices/' + deviceId + '/command', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({device_id: deviceId, command, payload})

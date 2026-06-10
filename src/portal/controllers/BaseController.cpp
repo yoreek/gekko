@@ -8,13 +8,18 @@ BaseController::BaseController(AsyncWebServerRequest* request, const Action acti
 
 BaseController::~BaseController() {}
 
+const BaseController::RulesChain* BaseController::beforeChain() {
+    static constexpr HookRule rules[] = {
+        {&BaseController::beforeCorsOptions, ALL},
+    };
+    static const RulesChain node{rules, std::size(rules), nullptr};
+    return &node;
+}
+
 void BaseController::dispatch() {
-#if defined(ARDUINO) && !defined(UNIT_TEST)
-    if (request_ != nullptr && request_->method() == HTTP_OPTIONS) {
-        options();
+    if (!runBefore()) {
         return;
     }
-#endif
 
     switch (action_) {
     case Action::Index:
@@ -86,6 +91,30 @@ void BaseController::cmd() {
 
 void BaseController::flush() {
     renderError(405, "METHOD_NOT_ALLOWED", "Flush not implemented");
+}
+
+bool BaseController::runBefore() {
+    return _runBefore(beforeChain());
+}
+
+bool BaseController::_runBefore(const RulesChain* chain) {
+    if (chain == nullptr) {
+        return true;
+    }
+    if (!_runBefore(chain->prev)) {
+        return false;
+    }
+
+    for (size_t i = 0; i < chain->size; ++i) {
+        const HookRule& rule = chain->rules[i];
+        if ((rule.mask & A(action_)) == 0U) {
+            continue;
+        }
+        if (!(rule.fn)(*this)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool BaseController::parseBody(const size_t size) {
@@ -166,7 +195,6 @@ void BaseController::sendJson(const int httpCode, JsonDocument& doc) {
 
 void BaseController::send(AsyncWebServerResponse* response) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    applyHeaders(response);
     if (request_ != nullptr) {
         request_->send(response);
     }
@@ -177,7 +205,6 @@ void BaseController::send(AsyncWebServerResponse* response) {
 
 void BaseController::send(AsyncResponseStream* stream) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    applyHeaders(stream);
     if (request_ != nullptr) {
         request_->send(stream);
     }
@@ -200,26 +227,29 @@ void BaseController::addCorsHeaders(AsyncWebServerResponse* response) {
 #endif
 }
 
-void BaseController::addCorsHeaders(AsyncResponseStream* stream) {
-#if defined(ARDUINO) && !defined(UNIT_TEST)
-    if (stream == nullptr) {
-        return;
-    }
-    stream->addHeader("Access-Control-Allow-Origin", "*");
-    stream->addHeader("Access-Control-Allow-Methods", corsAllowMethods());
-    stream->addHeader("Access-Control-Allow-Headers", corsAllowHeaders());
-    stream->addHeader("Access-Control-Max-Age", "3600");
-#else
-    (void)stream;
-#endif
-}
-
 const char* BaseController::corsAllowMethods() {
     return "GET, POST, PUT, PATCH, DELETE, OPTIONS";
 }
 
 const char* BaseController::corsAllowHeaders() {
     return "Content-Type";
+}
+
+bool BaseController::beforeCorsOptions(BaseController& self) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    if (self.request_ == nullptr || self.request_->method() != HTTP_OPTIONS) {
+        return true;
+    }
+
+    AsyncWebServerResponse* response = self.request_->beginResponse(204);
+    addCorsHeaders(response);
+    addNoCacheHeaders(response);
+    self.request_->send(response);
+    return false;
+#else
+    (void)self;
+    return true;
+#endif
 }
 
 void BaseController::addSuccessEnvelope(JsonDocument& doc) {
@@ -242,43 +272,6 @@ void BaseController::addNoCacheHeaders(AsyncWebServerResponse* response) {
     response->addHeader("Expires", "0");
 #else
     (void)response;
-#endif
-}
-
-void BaseController::addNoCacheHeaders(AsyncResponseStream* stream) {
-#if defined(ARDUINO) && !defined(UNIT_TEST)
-    if (stream == nullptr) {
-        return;
-    }
-    stream->addHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
-    stream->addHeader("Pragma", "no-cache");
-    stream->addHeader("Expires", "0");
-#else
-    (void)stream;
-#endif
-}
-
-void BaseController::applyHeaders(AsyncWebServerResponse* response) const {
-#if defined(ARDUINO) && !defined(UNIT_TEST)
-    if (response == nullptr) {
-        return;
-    }
-    addCorsHeaders(response);
-    addNoCacheHeaders(response);
-#else
-    (void)response;
-#endif
-}
-
-void BaseController::applyHeaders(AsyncResponseStream* stream) const {
-#if defined(ARDUINO) && !defined(UNIT_TEST)
-    if (stream == nullptr) {
-        return;
-    }
-    addCorsHeaders(stream);
-    addNoCacheHeaders(stream);
-#else
-    (void)stream;
 #endif
 }
 

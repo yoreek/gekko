@@ -1,25 +1,14 @@
 #include "portal/controllers/DeviceRegistryController.h"
 
+#include <cstdlib>
+#include <cstring>
+
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
-#include <cstdlib>
-#include <cstring>
 #endif
 
 namespace ewfm {
-
-#if defined(ARDUINO) && !defined(UNIT_TEST)
-namespace {
-bool endsWith(const String& value, const char* suffix) {
-    const size_t suffixLen = std::strlen(suffix);
-    if (value.length() < suffixLen) {
-        return false;
-    }
-    return std::strcmp(value.c_str() + (value.length() - suffixLen), suffix) == 0;
-}
-} // namespace
-#endif
 
 DeviceRegistryController::DeviceRegistryController(AsyncWebServerRequest* request, const Action action, DeviceRegistry& registry,
                                                    const DeviceApiAdapterRegistry& adapters)
@@ -28,11 +17,11 @@ DeviceRegistryController::DeviceRegistryController(AsyncWebServerRequest* reques
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 void DeviceRegistryController::registerRoutes(AsyncWebServer& server, DeviceRegistry& registry) {
     static const DeviceApiAdapterRegistry adapters = DeviceApiAdapterRegistry::withDefaults();
-    server.on("/api/devices", HTTP_GET, [&registry, &adapters](AsyncWebServerRequest* request) {
+    server.on(AsyncURIMatcher::exact("/api/devices"), HTTP_GET, [&registry, &adapters](AsyncWebServerRequest* request) {
         DeviceRegistryController(request, Action::Index, registry, adapters).dispatch();
     });
     server.on(
-        "/api/devices", HTTP_POST,
+        AsyncURIMatcher::exact("/api/devices"), HTTP_POST,
         [&registry, &adapters](AsyncWebServerRequest* request) {
             DeviceRegistryController(request, Action::Create, registry, adapters).dispatch();
         },
@@ -40,14 +29,14 @@ void DeviceRegistryController::registerRoutes(AsyncWebServer& server, DeviceRegi
         [&registry, &adapters](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t, size_t) {
             DeviceRegistryController(request, Action::Create, registry, adapters).dispatch(data, len);
         });
-    server.on("/api/devices", HTTP_OPTIONS, [&registry, &adapters](AsyncWebServerRequest* request) {
+    server.on(AsyncURIMatcher::exact("/api/devices"), HTTP_OPTIONS, [&registry, &adapters](AsyncWebServerRequest* request) {
         DeviceRegistryController(request, Action::Options, registry, adapters).dispatch();
     });
 
-    server.on("/api/devices/flush", HTTP_POST, [&registry, &adapters](AsyncWebServerRequest* request) {
+    server.on(AsyncURIMatcher::exact("/api/devices/flush"), HTTP_POST, [&registry, &adapters](AsyncWebServerRequest* request) {
         DeviceRegistryController(request, Action::Flush, registry, adapters).dispatch();
     });
-    server.on("/api/devices/flush", HTTP_OPTIONS, [&registry, &adapters](AsyncWebServerRequest* request) {
+    server.on(AsyncURIMatcher::exact("/api/devices/flush"), HTTP_OPTIONS, [&registry, &adapters](AsyncWebServerRequest* request) {
         DeviceRegistryController(request, Action::Options, registry, adapters).dispatch();
     });
 
@@ -72,45 +61,94 @@ void DeviceRegistryController::registerRoutes(AsyncWebServer& server, DeviceRegi
 }
 #endif
 
-bool DeviceRegistryController::parseDeviceId(const bool allowCommandSuffix, DeviceId& deviceId) const {
+const BaseController::RulesChain* DeviceRegistryController::beforeChain() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    if (request_ == nullptr) {
+    static constexpr HookRule rules[] = {
+        {&DeviceRegistryController::parseBodyJson, A(Action::Create) | A(Action::Cmd)},
+        {&DeviceRegistryController::requireId, A(Action::Show) | A(Action::Destroy) | A(Action::Cmd)},
+        {&DeviceRegistryController::requireEntity, A(Action::Show) | A(Action::Destroy) | A(Action::Cmd)},
+    };
+    static const RulesChain node{rules, sizeof(rules) / sizeof(rules[0]), BaseController::beforeChain()};
+    return &node;
+#else
+    return BaseController::beforeChain();
+#endif
+}
+
+bool DeviceRegistryController::parseBodyJson(BaseController& self) {
+    auto& ctl = static_cast<DeviceRegistryController&>(self); // NOLINT
+    if (ctl.body_ == nullptr || ctl.bodyLen_ == 0) {
+        ctl.renderError(400, "INVALID", "invalid body");
         return false;
     }
 
-    const String url = request_->url();
+    StaticJsonDocument<1024> doc;
+    if (deserializeJson(doc, ctl.body_, ctl.bodyLen_)) {
+        ctl.renderError(400, "BAD_JSON", "bad json");
+        return false;
+    }
+    return true;
+}
+
+bool DeviceRegistryController::parseDeviceIdPath(const char* url, const bool requireCommandSuffix, DeviceId& deviceId) {
     constexpr size_t kPrefixLen = sizeof("/api/devices/") - 1;
-    if (url.length() <= kPrefixLen) {
+    if (url == nullptr || std::strlen(url) <= kPrefixLen) {
         return false;
     }
 
-    const char* value = url.c_str() + kPrefixLen;
+    const char* value = url + kPrefixLen;
     char* end = nullptr;
     const unsigned long parsed = strtoul(value, &end, 10);
     if (end == value || parsed == 0UL) {
         return false;
     }
 
-    if (allowCommandSuffix) {
-        if (end == nullptr) {
+    if (requireCommandSuffix) {
+        if (end == nullptr || std::strcmp(end, "/command") != 0) {
             return false;
         }
-        if (*end == '\0' || std::strcmp(end, "/command") == 0) {
-            deviceId = static_cast<DeviceId>(parsed);
-            return true;
-        }
-        return false;
-    }
-
-    if (end != nullptr && *end != '\0') {
+    } else if (end != nullptr && *end != '\0') {
         return false;
     }
 
     deviceId = static_cast<DeviceId>(parsed);
     return true;
+}
+
+bool DeviceRegistryController::requireId(BaseController& self) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    auto& ctl = static_cast<DeviceRegistryController&>(self); // NOLINT
+    if (ctl.request_ == nullptr) {
+        return false;
+    }
+
+    const bool requireCommandSuffix = ctl.action_ == Action::Cmd;
+    if (!parseDeviceIdPath(ctl.request_->url().c_str(), requireCommandSuffix, ctl.deviceId_)) {
+        ctl.renderError(400, "BAD_PARAMS", "bad_id");
+        return false;
+    }
+    return true;
 #else
-    (void)allowCommandSuffix;
-    (void)deviceId;
+    (void)self;
+    return false;
+#endif
+}
+
+bool DeviceRegistryController::requireEntity(BaseController& self) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    auto& ctl = static_cast<DeviceRegistryController&>(self); // NOLINT
+    if (ctl.deviceId_ == 0U) {
+        return false;
+    }
+
+    ctl.record_ = ctl.registry_.find(ctl.deviceId_);
+    if (ctl.record_ == nullptr) {
+        ctl.renderError(404, "NOT_FOUND", "device not found");
+        return false;
+    }
+    return true;
+#else
+    (void)self;
     return false;
 #endif
 }
@@ -296,14 +334,7 @@ void DeviceRegistryController::index() {
 
 void DeviceRegistryController::show() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    DeviceId deviceId{0};
-    if (!parseDeviceId(false, deviceId)) {
-        renderError(400, "BAD_PARAMS", "bad_id");
-        return;
-    }
-
-    const DeviceRecord* record = registry_.find(deviceId);
-    if (record == nullptr) {
+    if (record_ == nullptr) {
         renderError(404, "NOT_FOUND", "device not found");
         return;
     }
@@ -312,9 +343,9 @@ void DeviceRegistryController::show() {
     doc["registry_revision"] = registry_.registryRevision();
     doc["pending_persistence"] = registry_.hasPendingPersistence();
     JsonObject device = doc.createNestedObject("device");
-    const IDeviceApiAdapter* adapter = parser_.findAdapterForRecord(*record);
-    DeviceRecord effectiveRecord = *record;
-    effectiveRecord.status = registry_.effectiveStatus(record->header.deviceId);
+    const IDeviceApiAdapter* adapter = parser_.findAdapterForRecord(*record_);
+    DeviceRecord effectiveRecord = *record_;
+    effectiveRecord.status = registry_.effectiveStatus(record_->header.deviceId);
     if (adapter != nullptr) {
         adapter->writeDeviceJson(effectiveRecord, device);
     } else {
@@ -325,7 +356,7 @@ void DeviceRegistryController::show() {
     }
     const DeviceStatus lifecycleStatus = registry_.runtime(effectiveRecord.header.deviceId) != nullptr
                                              ? registry_.runtime(effectiveRecord.header.deviceId)->status()
-                                             : record->status;
+                                             : record_->status;
     device["device_id"] = effectiveRecord.header.deviceId;
     device["type_id"] = effectiveRecord.header.typeId;
     device["name"] = effectiveRecord.name;
@@ -344,11 +375,6 @@ void DeviceRegistryController::show() {
 
 void DeviceRegistryController::create() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    if (body_ == nullptr || bodyLen_ == 0) {
-        renderError(400, "INVALID", "invalid body");
-        return;
-    }
-
     StaticJsonDocument<1024> bodyDoc;
     if (deserializeJson(bodyDoc, body_, bodyLen_)) {
         renderError(400, "BAD_JSON", "bad json");
@@ -392,14 +418,8 @@ void DeviceRegistryController::create() {
 
 void DeviceRegistryController::destroy() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    DeviceId deviceId{0};
-    if (!parseDeviceId(false, deviceId)) {
-        renderError(400, "BAD_PARAMS", "bad_id");
-        return;
-    }
-
     const DeviceMutationResult result =
-        registry_.command(DeviceCommand{DeviceCommandType::Delete, deviceId, "", DevicePersistencePolicy::Immediate}, 0);
+        registry_.command(DeviceCommand{DeviceCommandType::Delete, deviceId_, "", DevicePersistencePolicy::Immediate}, 0);
     if (!result.ok()) {
         StaticJsonDocument<384> doc;
         doc["success"] = false;
@@ -425,17 +445,6 @@ void DeviceRegistryController::destroy() {
 
 void DeviceRegistryController::cmd() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    DeviceId deviceId{0};
-    if (!parseDeviceId(true, deviceId)) {
-        renderError(400, "BAD_PARAMS", "bad_id");
-        return;
-    }
-
-    if (body_ == nullptr || bodyLen_ == 0) {
-        renderError(400, "INVALID", "invalid body");
-        return;
-    }
-
     StaticJsonDocument<1024> bodyDoc;
     if (deserializeJson(bodyDoc, body_, bodyLen_)) {
         renderError(400, "BAD_JSON", "bad json");
@@ -444,7 +453,7 @@ void DeviceRegistryController::cmd() {
 
     const JsonObjectConst input = bodyDoc.as<JsonObjectConst>();
     const DeviceId bodyDeviceId = static_cast<DeviceId>(input["device_id"] | 0U);
-    if (bodyDeviceId != 0U && bodyDeviceId != deviceId) {
+    if (bodyDeviceId != 0U && bodyDeviceId != deviceId_) {
         renderError(400, "BAD_ARGS", "device_id mismatch");
         return;
     }
@@ -468,7 +477,7 @@ void DeviceRegistryController::cmd() {
         payload = input["payload"] | "";
     }
 
-    const DeviceMutationResult result = registry_.command(DeviceCommand{commandType, deviceId, payload.c_str(), parsePolicy(input)}, 0);
+    const DeviceMutationResult result = registry_.command(DeviceCommand{commandType, deviceId_, payload.c_str(), parsePolicy(input)}, 0);
     if (!result.ok()) {
         renderError(400, errorCodeForDeviceError(result.validation.error), result.validation.message);
         return;

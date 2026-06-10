@@ -59,3 +59,15 @@ When writing a new cooperative service:
 - If the service needs a shutdown path, expose `end()` or an explicit stop method rather than hiding teardown in `begin()`.
 - Add tests for startup wait, success, timeout, and recovery before adding new branches.
 - Prefer one service owning one domain of hardware or policy; if a service needs another service, pass a narrow dependency interface instead of reaching across layers.
+
+## Portal Controller Reference
+
+For HTTP portal features, use the controller and hook pattern documented in [controller-ruleschain.md](controller-ruleschain.md).
+
+That guide covers:
+
+- `BaseController` responsibilities
+- `RulesChain` hook usage
+- `beforeCorsOptions` preflight handling
+- `requireId` / `requireEntity` path guards
+- response envelope conventions for new portal endpoints

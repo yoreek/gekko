@@ -21,7 +21,14 @@ public:
     static void registerRoutes(AsyncWebServer& server, DeviceRegistry& registry);
 #endif
 
+#if defined(UNIT_TEST)
+    static bool parseDeviceIdPathForTest(const char* url, bool requireCommandSuffix, DeviceId& deviceId) {
+        return parseDeviceIdPath(url, requireCommandSuffix, deviceId);
+    }
+#endif
+
 protected:
+    const RulesChain* beforeChain() override;
     void index() override;
     void show() override;
     void create() override;
@@ -34,8 +41,13 @@ private:
     DeviceRegistry& registry_;
     DeviceRegistryRouteParser parser_;
     const DeviceApiAdapterRegistry& adapters_;
+    DeviceId deviceId_{0};
+    const DeviceRecord* record_{nullptr};
 
-    bool parseDeviceId(bool allowCommandSuffix, DeviceId& deviceId) const;
+    static bool parseBodyJson(BaseController& self);
+    static bool parseDeviceIdPath(const char* url, bool requireCommandSuffix, DeviceId& deviceId);
+    static bool requireId(BaseController& self);
+    static bool requireEntity(BaseController& self);
     bool parseCreateAdapter(const JsonVariantConst& json, std::string& error, const IDeviceApiAdapter*& adapter) const;
     static const char* statusToString(DeviceStatus status);
     static const char* errorCodeForDeviceError(DeviceError error);

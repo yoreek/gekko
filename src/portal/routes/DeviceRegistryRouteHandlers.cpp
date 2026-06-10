@@ -165,8 +165,6 @@ void DeviceRegistryRouteHandlers::handleList(AsyncWebServerRequest* request) con
         serializeJson(item, *response);
     }
     response->print("]}");
-    DeviceRegistryRouteResponder::addCorsHeaders(response);
-    DeviceRegistryRouteResponder::addNoCacheHeaders(response);
     request->send(response);
 }
 

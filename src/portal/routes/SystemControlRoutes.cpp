@@ -63,8 +63,6 @@ void SystemControlRoutes::handleRestart(AsyncWebServerRequest* request) {
 
     AsyncWebServerResponse* response = request->beginResponse(200, "application/json", payload);
     response->addHeader("Connection", "close");
-    DeviceRegistryRouteResponder::addCorsHeaders(response);
-    DeviceRegistryRouteResponder::addNoCacheHeaders(response);
     request->send(response);
 
     EWFM_PORTAL_LOG_INFO("system restart requested via API");

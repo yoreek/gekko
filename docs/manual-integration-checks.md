@@ -48,3 +48,8 @@ These checks require a real ESP32 device and are intentionally not part of the h
 ## Non-Blocking Runtime
 
 - During WiFi retries, scans, provisioning sessions, portal requests, and Web OTA upload, confirm serial logs continue and the cooperative loop remains responsive.
+
+## Portal Controllers
+
+- When adding or changing portal REST behavior, follow [controller-ruleschain.md](controller-ruleschain.md) so new endpoints keep the shared `BaseController` and `RulesChain` contract.
+- Validate that `OPTIONS` preflight still returns CORS headers, non-API paths still fall back correctly, and path-guard hooks reject invalid ids with the expected JSON envelope.
