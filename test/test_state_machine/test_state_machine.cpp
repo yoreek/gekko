@@ -3,7 +3,6 @@
 #include "core/Clock.h"
 #include "core/StateMachine.h"
 #include "platform/ArduinoOtaService.h"
-#include "portal/PortalAssets.h"
 #include "portal/PortalServer.h"
 #include "wifi/WifiManager.h"
 
@@ -915,12 +914,6 @@ void test_arduino_ota_restarts_after_station_ip_changes() {
     TEST_ASSERT_EQUAL(2, ota.startCount());
 }
 
-void test_portal_html_exposes_ble_config_action() {
-    const char* html = portalHtml();
-    TEST_ASSERT_NOT_NULL(strstr(html, "/api/wifi/ble-config"));
-    TEST_ASSERT_NOT_NULL(strstr(html, "Start BLE config mode"));
-}
-
 void test_state_machine_stack_and_return_to_popped_state() {
     TestMachine machine;
     TEST_ASSERT_TRUE(machine.pushState((StateMachine::PState)&TestMachine::TimedOut));
@@ -989,7 +982,6 @@ int main(int, char**) {
     RUN_TEST(test_arduino_ota_starts_on_setup_ap_readiness);
     RUN_TEST(test_arduino_ota_stops_and_restarts_after_wifi_loss);
     RUN_TEST(test_arduino_ota_restarts_after_station_ip_changes);
-    RUN_TEST(test_portal_html_exposes_ble_config_action);
     RUN_TEST(test_state_machine_stack_and_return_to_popped_state);
     RUN_TEST(test_state_machine_pause_restart_and_updated_flag);
     RUN_TEST(test_state_machine_timeout_helpers);

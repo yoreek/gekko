@@ -46,6 +46,10 @@ These checks require a real ESP32 device and are intentionally not part of the h
 - Upload an oversized image and confirm the current firmware keeps running.
 - Interrupt an upload and confirm the current firmware keeps running.
 
+## Frontend Deployment
+
+- See [frontend-deployment.md](frontend-deployment.md) for the rule that `frontend/` build refreshes `data/`, while `pio run -t uploadfs` remains the explicit ESP32 filesystem upload step.
+
 ## Non-Blocking Runtime
 
 - During WiFi retries, scans, provisioning sessions, portal requests, and Web OTA upload, confirm serial logs continue and the cooperative loop remains responsive.

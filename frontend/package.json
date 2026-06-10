@@ -1,0 +1,34 @@
+{
+  "name": "gekko-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "smoke": "playwright test",
+    "check:budget": "node scripts/check-data-budget.mjs",
+    "deploy:data": "pnpm build && node scripts/export-data.mjs"
+  },
+  "dependencies": {
+    "pinia": "^3.0.4",
+    "vue": "^3.5.28",
+    "vue-i18n": "^11.1.10",
+    "vue-router": "^4.6.4",
+    "vuetify": "^4.1.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.0",
+    "@types/node": "^20.19.33",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "rollup-plugin-visualizer": "^6.0.3",
+    "terser": "^5.46.0",
+    "typescript": "^5.9.3",
+    "vite": "^6.3.5",
+    "vite-plugin-compression2": "^1.4.0",
+    "vite-plugin-vuetify": "^2.1.3",
+    "vue-tsc": "^2.2.10"
+  },
+  "packageManager": "pnpm@10.10.0+sha512.d615db246fe70f25dcfea6d8d73dee782ce23e2245e3c4f6f888249fb568149318637dca73c2c5c8ef2a4ca0d5657fb9567188bfab47f566d1ee6ce987815c39"
+}
