@@ -21,6 +21,7 @@ export interface WifiScanResponse {
 export interface DeviceRecord {
   device_id: number
   type_id: number
+  type?: string
   name: string
   enabled: boolean
   has_parent: boolean
@@ -29,6 +30,13 @@ export interface DeviceRecord {
   config_revision: number
   lifecycle_status: string
   effective_status: string
+  status?: string
+  persistence_policy?: 'immediate' | 'delayed' | 'coalesced' | string
+  config?: Record<string, unknown>
+  retained_state_supported?: boolean
+  retained_startup_enabled?: boolean
+  retained_startup_fallback_output?: boolean
+  retained_state_in_config_payload?: boolean
   registry_revision?: number
   pending_persistence?: boolean
 }
@@ -42,7 +50,7 @@ export interface DeviceRegistryResponse {
 
 export interface DeviceCommandRequest {
   device_id?: number
-  command: 'rename' | 'enable' | 'disable' | 'delete' | 'set_config' | 'set_parent'
+  command: 'rename' | 'enable' | 'disable' | 'delete' | 'update_config' | 'set_status' | 'custom' | 'set_parent'
   payload?: string
   has_parent?: boolean
   parent_device_id?: number
@@ -53,6 +61,13 @@ export interface DeviceMutationResponse {
   registry_revision: number
   pending_persistence: boolean
   device?: DeviceRecord
+  success?: boolean
+}
+
+export interface DeviceDetailResponse {
+  registry_revision: number
+  pending_persistence: boolean
+  device: DeviceRecord
   success?: boolean
 }
 

@@ -53,4 +53,26 @@ for (const scenario of scenarios) {
     await expect(page.locator('.device-card').first()).toBeVisible()
     await expect(page.locator('.wifi-summary')).toBeVisible()
   })
+
+  test(`opens the device modal and runs mock actions on ${scenario.name}`, async ({ page }) => {
+    await page.setViewportSize(scenario.viewport)
+    await page.setContent(renderBuiltApp(), { waitUntil: 'load' })
+
+    const deviceCard = page.locator('.device-card').first()
+    await deviceCard.click()
+
+    const dialog = page.locator('.device-dialog')
+    await expect(dialog.getByText('Device details')).toBeVisible()
+    await expect(dialog.getByText('Aquarium Lamp')).toBeVisible()
+
+    const renameInput = dialog.getByLabel('New name')
+    await renameInput.fill('Aquarium Lamp Smoke')
+    await dialog.getByRole('button', { name: 'Rename' }).click()
+    await expect(page.getByText('Aquarium Lamp Smoke')).toBeVisible()
+
+    const typedStatusChip = dialog.locator('.typed-panel .v-chip').first()
+    await expect(typedStatusChip).toHaveText('Output on')
+    await dialog.getByRole('button', { name: 'Output off' }).click()
+    await expect(typedStatusChip).toHaveText('Output off')
+  })
 }

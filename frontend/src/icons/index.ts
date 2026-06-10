@@ -1,4 +1,4 @@
-export type AppIconName = 'portal' | 'wifi' | 'device' | 'ota' | 'system' | 'ws' | 'locale'
+export type AppIconName = 'portal' | 'wifi' | 'device' | 'ota' | 'system' | 'ws' | 'locale' | 'refresh' | 'close' | 'edit' | 'trash'
 
 type IconShape = {
   viewBox: string
@@ -34,5 +34,20 @@ export const iconRegistry: Record<AppIconName, IconShape> = {
     viewBox: '0 0 24 24',
     paths: ['M4 5h16v14H4z', 'M8 9h8M8 12h8M8 15h5'],
   },
+  refresh: {
+    viewBox: '0 0 24 24',
+    paths: ['M20 12a8 8 0 10-2.34 5.66', 'M20 8V4h-4'],
+  },
+  close: {
+    viewBox: '0 0 24 24',
+    paths: ['M6 6l12 12', 'M18 6L6 18'],
+  },
+  edit: {
+    viewBox: '0 0 24 24',
+    paths: ['M4 20h4l10-10-4-4L4 16z', 'M14 6l4 4'],
+  },
+  trash: {
+    viewBox: '0 0 24 24',
+    paths: ['M4 7h16', 'M9 7V4h6v3', 'M7 7l1 13h8l1-13', 'M10 11v6M14 11v6'],
+  },
 }
-

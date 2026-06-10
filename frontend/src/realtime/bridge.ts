@@ -1,5 +1,4 @@
 import type { RealtimeMessage } from './messages'
-import type { DeviceRecord } from '@/api'
 import type { useAppStore } from '@/stores/app'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { useOtaStore } from '@/stores/ota'
@@ -59,24 +58,34 @@ export function bindRealtimeBridge(
       }
       case 'device.upsert': {
         appStore.registryRevision = message.revision
-        appStore.deviceCount += 1
-        deviceStore.upsertDevice(message.payload as DeviceRecord, message.revision)
+        deviceStore.setRevision(message.revision)
+        const payload = message.payload as { pending_persistence?: boolean }
+        if (typeof payload.pending_persistence === 'boolean') {
+          deviceStore.setPendingPersistence(payload.pending_persistence)
+        }
         break
       }
       case 'device.remove': {
         appStore.registryRevision = message.revision
-        appStore.deviceCount = Math.max(0, appStore.deviceCount - 1)
+        deviceStore.setRevision(message.revision)
         const payload = message.payload as { device_id?: number }
         if (typeof payload.device_id === 'number') {
           deviceStore.removeDevice(payload.device_id, message.revision)
         } else {
           deviceStore.setRevision(message.revision)
         }
+        if (typeof (message.payload as { pending_persistence?: boolean }).pending_persistence === 'boolean') {
+          deviceStore.setPendingPersistence((message.payload as { pending_persistence?: boolean }).pending_persistence === true)
+        }
         break
       }
       case 'device.command_result': {
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
+        const payload = message.payload as { pending_persistence?: boolean }
+        if (typeof payload.pending_persistence === 'boolean') {
+          deviceStore.setPendingPersistence(payload.pending_persistence)
+        }
         break
       }
       default:

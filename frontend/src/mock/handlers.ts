@@ -1,6 +1,8 @@
 import type {
   DeviceCommandRequest,
+  DeviceDetailResponse,
   DeviceMutationResponse,
+  DeviceRecord,
   DeviceRegistryResponse,
   OtaStatusResponse,
   SystemRestartResponse,
@@ -97,12 +99,26 @@ export function mockFetchDevices(): DeviceRegistryResponse {
   })
 }
 
+export function mockFetchDevice(deviceId: number): DeviceDetailResponse {
+  const db = loadMockDatabase()
+  const device = db.devices.find(entry => entry.device_id === deviceId)
+  if (!device) {
+    throw new ApiClientError('device not found', 'NOT_FOUND', 404, null)
+  }
+  return ok({
+    registry_revision: db.registryRevision,
+    pending_persistence: db.pendingPersistence,
+    device,
+  })
+}
+
 export function mockCreateDevice(payload: Record<string, unknown>): Promise<DeviceMutationResponse> {
   const response = mutateRegistry(db => {
       const nextId = Math.max(1, ...db.devices.map(device => device.device_id)) + 1
-      db.devices.push({
+      const device: DeviceRecord = {
         device_id: nextId,
         type_id: Number(payload.type_id ?? 0),
+        type: typeof payload.type === 'string' ? payload.type : undefined,
         name: String(payload.name ?? 'New Device'),
         enabled: Boolean(payload.enabled ?? true),
         has_parent: false,
@@ -111,7 +127,13 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
         config_revision: 1,
         lifecycle_status: 'ready',
         effective_status: 'ready',
-      })
+        status: 'ready',
+        persistence_policy: typeof payload.persistence_policy === 'string' ? payload.persistence_policy : 'delayed',
+      }
+      if (isRecordPayload(payload.config)) {
+        device.config = payload.config
+      }
+      db.devices.push(device)
       db.registryRevision += 1
       db.pendingPersistence = true
       return ok({
@@ -142,15 +164,50 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           break
         case 'enable':
           device.enabled = true
+          device.lifecycle_status = 'ready'
+          device.effective_status = 'ready'
+          device.status = 'ready'
           break
         case 'disable':
           device.enabled = false
+          device.lifecycle_status = 'disabled'
+          device.effective_status = 'disabled'
+          device.status = 'disabled'
           break
         case 'delete':
           db.devices = db.devices.filter(entry => entry.device_id !== deviceId)
           break
-        case 'set_config':
+        case 'update_config':
           device.config_revision += 1
+          break
+        case 'set_status':
+          if (payload.payload === 'fault') {
+            device.lifecycle_status = 'faulted'
+            device.effective_status = 'faulted'
+            device.status = 'faulted'
+          }
+          if (payload.payload === 'ready') {
+            device.lifecycle_status = 'ready'
+            device.effective_status = 'ready'
+            device.status = 'ready'
+          }
+          break
+        case 'custom':
+          if (!isRecordPayload(device.config)) {
+            device.config = {}
+          }
+          if (payload.payload === 'output=1') {
+            device.config = {
+              ...device.config,
+              current_output: true,
+            }
+          }
+          if (payload.payload === 'output=0') {
+            device.config = {
+              ...device.config,
+              current_output: false,
+            }
+          }
           break
         case 'set_parent':
           device.has_parent = Boolean(payload.has_parent ?? true)
@@ -205,4 +262,8 @@ export function mockRestartSystem(): Promise<SystemRestartResponse> {
     },
   })
   return Promise.resolve(response)
+}
+
+function isRecordPayload(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

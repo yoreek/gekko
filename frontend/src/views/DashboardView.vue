@@ -74,58 +74,43 @@
     </v-row>
 
     <v-row class="mt-2" density="comfortable">
-      <v-col cols="12" md="6">
+      <v-col cols="12">
         <v-card class="list-card" elevation="1">
-          <v-card-title>{{ t('dashboard.devices') }}</v-card-title>
+          <v-card-title class="device-list-header">
+            <div>
+              <div class="eyebrow">{{ t('device.dashboard.title') }}</div>
+              <h2>{{ t('device.dashboard.subtitle') }}</h2>
+            </div>
+            <div class="device-list-header__actions">
+              <v-chip size="small" variant="tonal">
+                {{ deviceStore.pendingPersistence ? t('device.fields.pendingPersistence') : t('dashboard.synced') }}
+              </v-chip>
+              <v-chip size="small" variant="outlined">
+                {{ t('device.dashboard.count', { count: deviceStore.devices.length }) }}
+              </v-chip>
+              <v-btn :loading="devicesLoading" color="primary" size="small" variant="tonal" @click="() => refreshDevices()">
+                {{ t('actions.refresh') }}
+              </v-btn>
+            </div>
+          </v-card-title>
           <v-card-text>
             <template v-if="deviceStore.devices.length > 0">
               <v-row density="comfortable">
-                <v-col v-for="device in deviceStore.devices" :key="device.device_id" cols="12">
-                  <v-card class="device-card" variant="outlined">
-                    <v-card-title class="device-title">
-                      <span>{{ device.name }}</span>
-                      <v-chip size="x-small" variant="tonal">
-                        #{{ device.device_id }}
-                      </v-chip>
-                    </v-card-title>
-                    <v-card-text>
-                      <div class="device-meta">
-                        <span>type {{ device.type_id }}</span>
-                        <span>{{ device.lifecycle_status }}</span>
-                        <span>{{ device.effective_status }}</span>
-                        <span>cfg {{ device.config_revision }}</span>
-                      </div>
-                      <div class="device-actions">
-                        <v-btn
-                          :loading="busyDeviceId === device.device_id"
-                          size="small"
-                          variant="tonal"
-                          @click="toggleEnabled(device.device_id, !device.enabled)"
-                        >
-                          {{ device.enabled ? t('status.disabled') : t('status.enabled') }}
-                        </v-btn>
-                        <v-btn
-                          :loading="busyDeviceId === device.device_id"
-                          color="error"
-                          size="small"
-                          variant="text"
-                          @click="deleteDevice(device.device_id)"
-                        >
-                          Delete
-                        </v-btn>
-                      </div>
-                    </v-card-text>
-                  </v-card>
+                <v-col v-for="device in deviceStore.devices" :key="device.deviceId" cols="12" md="6" xl="4">
+                  <DeviceCard :device="device" :selected="device.deviceId === selectedDeviceId" @open="openDevice(device.deviceId)" />
                 </v-col>
               </v-row>
             </template>
             <div v-else class="empty-state">
-              <span>{{ t('dashboard.deviceCardsHint') }}</span>
+              <span>{{ t('device.dashboard.empty') }}</span>
             </div>
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="12" md="6">
+    </v-row>
+
+    <v-row class="mt-2" density="comfortable">
+      <v-col cols="12" lg="7">
         <v-card class="list-card" elevation="1">
           <v-card-title>{{ t('dashboard.wifi') }}</v-card-title>
           <v-card-text>
@@ -167,23 +152,60 @@
           </v-card-text>
         </v-card>
       </v-col>
+
+      <v-col cols="12" lg="5">
+        <v-card class="list-card" elevation="1">
+          <v-card-title>{{ t('dashboard.ota') }}</v-card-title>
+          <v-card-text>
+            <div class="stack">
+              <div class="status-row">
+                <span>{{ t('dashboard.ota') }}</span>
+                <strong>{{ otaStore.enabled ? t('status.enabled') : t('status.disabled') }}</strong>
+              </div>
+              <div class="status-row">
+                <span>{{ t('dashboard.otaFreeSketchSpace') }}</span>
+                <strong>{{ otaStore.freeSketchSpace }} B</strong>
+              </div>
+              <div class="status-row">
+                <span>{{ t('dashboard.otaHasError') }}</span>
+                <strong>{{ otaStore.hasError ? t('status.failed') : t('labels.no') }}</strong>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
     </v-row>
+
+    <DeviceDetailDialog
+      v-model="detailOpen"
+      :device="selectedDevice"
+      :busy-action="detailBusyAction"
+      :error-message="detailError"
+      @refresh="refreshSelectedDevice"
+      @rename="renameDevice"
+      @toggle-enabled="toggleDeviceEnabled"
+      @delete="deleteSelectedDevice"
+      @command="submitDeviceCommand"
+    />
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { commandDevice, fetchWifiScan, fetchWifiStatus, restartSystem as requestRestartSystem } from '@/api'
+import { commandDevice, deleteDevice, fetchDevice, fetchDevices, fetchWifiScan, fetchWifiStatus, restartSystem as requestRestartSystem } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
+import DeviceCard from '@/components/device/DeviceCard.vue'
+import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
+import { type DashboardDevice } from '@/models/device'
 import { useAppStore } from '@/stores/app'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { useOtaStore } from '@/stores/ota'
 import { useSystemStore } from '@/stores/system'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useWifiStore } from '@/stores/wifi'
+import type { DeviceCommandRequest } from '@/api'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -192,10 +214,15 @@ const wifiStore = useWifiStore()
 const otaStore = useOtaStore()
 const systemStore = useSystemStore()
 const wsStore = useWebSocketStore()
-const busyDeviceId = ref<number | null>(null)
+
+const devicesLoading = ref(false)
 const wifiLoading = ref(false)
 const restartLoading = ref(false)
 const restartState = ref<'idle' | 'pending' | 'success' | 'error'>('idle')
+const detailOpen = ref(false)
+const detailBusyAction = ref<'refresh' | 'rename' | 'toggle' | 'delete' | 'command' | null>(null)
+const detailError = ref('')
+const selectedDeviceId = ref<number | null>(null)
 
 const modeLabel = computed(() => t(`status.mode.${appStore.mode}`))
 const restartMessage = computed(() => {
@@ -210,6 +237,27 @@ const restartMessage = computed(() => {
   }
   return t('dashboard.systemState')
 })
+const selectedDevice = computed<DashboardDevice | null>(() => {
+  if (selectedDeviceId.value === null) {
+    return null
+  }
+  return deviceStore.devices.find(device => device.deviceId === selectedDeviceId.value) ?? null
+})
+const realtimeDeviceKey = computed(() => `${wsStore.revision}:${wsStore.lastTopic}`)
+
+async function refreshDevices(silent = false): Promise<void> {
+  if (!silent) {
+    devicesLoading.value = true
+  }
+  try {
+    const response = await fetchDevices()
+    deviceStore.replaceFromResponse(response)
+  } finally {
+    if (!silent) {
+      devicesLoading.value = false
+    }
+  }
+}
 
 async function refreshWifi(): Promise<void> {
   wifiLoading.value = true
@@ -224,33 +272,116 @@ async function refreshWifi(): Promise<void> {
   }
 }
 
-onMounted(() => {
-  void refreshWifi()
-})
+async function refreshSelectedDevice(): Promise<void> {
+  if (selectedDeviceId.value === null) {
+    return
+  }
 
-async function toggleEnabled(deviceId: number, enabled: boolean): Promise<void> {
-  busyDeviceId.value = deviceId
+  detailBusyAction.value = 'refresh'
+  detailError.value = ''
   try {
-    const response = await commandDevice(deviceId, {
-      command: enabled ? 'enable' : 'disable',
-    })
-    if (response.device) {
-      deviceStore.upsertDevice(response.device, response.registry_revision)
-    }
+    const response = await fetchDevice(selectedDeviceId.value)
+    deviceStore.upsertDevice(response.device, response.registry_revision)
+    deviceStore.setPendingPersistence(response.pending_persistence)
+  } catch (error) {
+    detailError.value = formatError(error)
   } finally {
-    busyDeviceId.value = null
+    detailBusyAction.value = null
   }
 }
 
-async function deleteDevice(deviceId: number): Promise<void> {
-  busyDeviceId.value = deviceId
+async function openDevice(deviceId: number): Promise<void> {
+  selectedDeviceId.value = deviceId
+  detailOpen.value = true
+  await refreshSelectedDevice()
+}
+
+function applyMutationResponse(response: { registry_revision: number; pending_persistence: boolean; device?: DashboardDevice['raw'] }): void {
+  deviceStore.setRevision(response.registry_revision)
+  deviceStore.setPendingPersistence(response.pending_persistence)
+  if (response.device !== undefined) {
+    deviceStore.upsertDevice(response.device, response.registry_revision)
+  } else {
+    void refreshDevices(true)
+  }
+}
+
+async function renameDevice(name: string): Promise<void> {
+  if (selectedDeviceId.value === null) {
+    return
+  }
+  detailBusyAction.value = 'rename'
+  detailError.value = ''
   try {
-    const response = await commandDevice(deviceId, {
-      command: 'delete',
+    const response = await commandDevice(selectedDeviceId.value, {
+      command: 'rename',
+      payload: name,
     })
-    deviceStore.removeDevice(deviceId, response.registry_revision)
+    applyMutationResponse(response)
+  } catch (error) {
+    detailError.value = formatError(error)
   } finally {
-    busyDeviceId.value = null
+    detailBusyAction.value = null
+  }
+}
+
+async function toggleDeviceEnabled(enabled: boolean): Promise<void> {
+  if (selectedDeviceId.value === null) {
+    return
+  }
+  detailBusyAction.value = 'toggle'
+  detailError.value = ''
+  try {
+    const response = await commandDevice(selectedDeviceId.value, {
+      command: enabled ? 'enable' : 'disable',
+    })
+    applyMutationResponse(response)
+  } catch (error) {
+    detailError.value = formatError(error)
+  } finally {
+    detailBusyAction.value = null
+  }
+}
+
+async function deleteSelectedDevice(): Promise<void> {
+  if (selectedDeviceId.value === null) {
+    return
+  }
+  detailBusyAction.value = 'delete'
+  detailError.value = ''
+  try {
+    const response = await deleteDevice(selectedDeviceId.value)
+    deviceStore.removeDevice(selectedDeviceId.value, response.registry_revision)
+    deviceStore.setPendingPersistence(response.pending_persistence)
+    detailOpen.value = false
+    selectedDeviceId.value = null
+  } catch (error) {
+    detailError.value = formatError(error)
+  } finally {
+    detailBusyAction.value = null
+  }
+}
+
+async function submitDeviceCommand(payload: DeviceCommandRequest, _presetKey?: string): Promise<void> {
+  if (selectedDeviceId.value === null) {
+    return
+  }
+  detailBusyAction.value = 'command'
+  detailError.value = ''
+  try {
+    const response = await commandDevice(selectedDeviceId.value, {
+      ...payload,
+      device_id: selectedDeviceId.value,
+    })
+    applyMutationResponse(response)
+    if (payload.command === 'delete') {
+      detailOpen.value = false
+      selectedDeviceId.value = null
+    }
+  } catch (error) {
+    detailError.value = formatError(error)
+  } finally {
+    detailBusyAction.value = null
   }
 }
 
@@ -266,4 +397,29 @@ async function restartSystem(): Promise<void> {
     restartLoading.value = false
   }
 }
+
+function formatError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message
+  }
+  return t('device.dialog.unknownError')
+}
+
+onMounted(() => {
+  void refreshDevices()
+  void refreshWifi()
+})
+
+watch(realtimeDeviceKey, topicKey => {
+  const topic = topicKey.split(':', 2)[1] ?? ''
+  if (topic.startsWith('device.')) {
+    void refreshDevices(true)
+  }
+})
+
+watch(selectedDevice, value => {
+  if (detailOpen.value && selectedDeviceId.value !== null && value === null) {
+    detailOpen.value = false
+  }
+})
 </script>

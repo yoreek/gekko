@@ -1,5 +1,6 @@
 import type {
   DeviceCommandRequest,
+  DeviceDetailResponse,
   DeviceMutationResponse,
   DeviceRegistryResponse,
   OtaStatusResponse,
@@ -14,6 +15,7 @@ import {
   mockConfigureWifi,
   mockCreateDevice,
   mockDeleteDevice,
+  mockFetchDevice,
   mockFetchDevices,
   mockFetchOtaStatus,
   mockFetchWifiScan,
@@ -64,6 +66,13 @@ export function fetchDevices(): Promise<DeviceRegistryResponse> {
     return Promise.resolve(mockFetchDevices())
   }
   return requestJson<DeviceRegistryResponse>('/api/devices')
+}
+
+export function fetchDevice(deviceId: number): Promise<DeviceDetailResponse> {
+  if (useMockTransport()) {
+    return Promise.resolve().then(() => mockFetchDevice(deviceId))
+  }
+  return requestJson<DeviceDetailResponse>(`/api/devices/${deviceId}`)
 }
 
 export function createDevice(payload: Record<string, unknown>): Promise<DeviceMutationResponse> {
