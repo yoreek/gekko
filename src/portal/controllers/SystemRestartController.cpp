@@ -1,4 +1,4 @@
-#include "portal/routes/SystemRestartController.h"
+#include "portal/controllers/SystemRestartController.h"
 
 #include "devices/registry/DeviceRegistry.h"
 

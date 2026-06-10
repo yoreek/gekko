@@ -51,7 +51,7 @@ void clearRequestBody(AsyncWebServerRequest* request) {
 
 DeviceRegistryController::DeviceRegistryController(AsyncWebServerRequest* request, const Action action, DeviceRegistry& registry,
                                                    const DeviceApiAdapterRegistry& adapters)
-    : BaseController(request, action), registry_(registry), parser_(registry, adapters), adapters_(adapters) {}
+    : BaseController(request, action), registry_(registry), adapters_(adapters) {}
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 void DeviceRegistryController::registerRoutes(AsyncWebServer& server, DeviceRegistry& registry) {
@@ -325,7 +325,7 @@ void DeviceRegistryController::index() {
     response->print("\"devices\":[");
     bool first = true;
     for (const auto& record : registry_.list()) {
-        const IDeviceApiAdapter* adapter = parser_.findAdapterForRecord(record);
+        const IDeviceApiAdapter* adapter = adapters_.find(record.header.typeId);
         if (!first) {
             response->print(',');
         }
@@ -374,7 +374,7 @@ void DeviceRegistryController::show() {
     doc["registry_revision"] = registry_.registryRevision();
     doc["pending_persistence"] = registry_.hasPendingPersistence();
     JsonObject device = doc.createNestedObject("device");
-    const IDeviceApiAdapter* adapter = parser_.findAdapterForRecord(*record_);
+    const IDeviceApiAdapter* adapter = adapters_.find(record_->header.typeId);
     DeviceRecord effectiveRecord = *record_;
     effectiveRecord.status = registry_.effectiveStatus(record_->header.deviceId);
     if (adapter != nullptr) {

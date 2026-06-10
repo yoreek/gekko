@@ -1,7 +1,6 @@
 #pragma once
 
 #include "portal/controllers/BaseController.h"
-#include "portal/routes/SystemRestartController.h"
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 class AsyncWebServer;
@@ -32,7 +31,7 @@ protected:
     void create() override;
 
 private:
-    DeviceRegistryRestartPrecondition precondition_;
+    DeviceRegistry* deviceRegistry_{nullptr};
 };
 
 } // namespace ewfm

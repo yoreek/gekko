@@ -9,6 +9,7 @@ import { publishMockSnapshot } from './mock/snapshot'
 import { useAppStore } from './stores/app'
 import { createAppVuetify } from './plugins/vuetify'
 import { bindRealtimeBridge } from './realtime/bridge'
+import { connectRealtimeSocket } from './realtime/socket'
 import { subscribeRealtimeMessage } from './realtime/bus'
 import './styles/main.css'
 
@@ -24,6 +25,7 @@ if (store.mockResetRequested) {
 }
 applyLocale(store.locale)
 bindRealtimeBridge(pinia, store, subscribeRealtimeMessage)
+const realtimeSocket = store.transportMode === 'real' ? connectRealtimeSocket(pinia) : null
 if (store.transportMode === 'mock') {
   publishMockSnapshot()
 }
@@ -33,3 +35,9 @@ app.use(router)
 app.use(appI18n)
 app.use(createAppVuetify())
 app.mount('#app')
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    realtimeSocket?.dispose()
+  })
+}

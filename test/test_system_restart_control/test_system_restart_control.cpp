@@ -1,5 +1,5 @@
-#include "portal/routes/SystemControlRoutes.h"
-#include "portal/routes/SystemRestartController.h"
+#include "portal/controllers/SystemController.h"
+#include "portal/controllers/SystemRestartController.h"
 
 #include <unity.h>
 
@@ -51,9 +51,9 @@ void test_restart_controller_rejects_reboot_when_flush_fails() {
 
 void test_restart_route_build_flag_state_matches_compilation() {
 #if defined(WITH_SYSTEM_RESTART_API)
-    TEST_ASSERT_TRUE(SystemControlRoutes::restartApiEnabledForBuild());
+    TEST_ASSERT_TRUE(SystemController::restartApiEnabledForBuild());
 #else
-    TEST_ASSERT_FALSE(SystemControlRoutes::restartApiEnabledForBuild());
+    TEST_ASSERT_FALSE(SystemController::restartApiEnabledForBuild());
 #endif
 }
 

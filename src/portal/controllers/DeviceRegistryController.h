@@ -3,7 +3,6 @@
 #include "devices/registry/DeviceRegistry.h"
 #include "integrations/common/DeviceApiAdapter.h"
 #include "portal/controllers/BaseController.h"
-#include "portal/routes/DeviceRegistryRouteParser.h"
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 class AsyncWebServer;
@@ -39,7 +38,6 @@ protected:
 
 private:
     DeviceRegistry& registry_;
-    DeviceRegistryRouteParser parser_;
     const DeviceApiAdapterRegistry& adapters_;
     DeviceId deviceId_{0};
     const DeviceRecord* record_{nullptr};

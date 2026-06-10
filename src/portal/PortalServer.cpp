@@ -6,7 +6,7 @@
 #include "portal/controllers/OtaController.h"
 #include "portal/controllers/SystemController.h"
 #include "portal/controllers/WifiController.h"
-#include "portal/routes/PortalHomeRoutes.h"
+#include "portal/controllers/PortalAssetController.h"
 #include "portal/ws/PortalWebSocketManager.h"
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
@@ -96,10 +96,7 @@ private:
             EWFM_PORTAL_LOG_WARN("portal http allocation failed");
             return false;
         }
-        if (!homeRoutes_) {
-            homeRoutes_ = std::make_unique<PortalHomeRoutes>();
-        }
-        homeRoutes_->registerRoutes(*server_);
+        PortalAssetController::registerRoutes(*server_);
         WifiController::registerRoutes(*server_, wifiManager_, wifiDriver_);
         if (deviceRegistry_ != nullptr) {
             DeviceRegistryController::registerRoutes(*server_, *deviceRegistry_);
@@ -216,7 +213,6 @@ private:
     IWifiDriver& wifiDriver_;
     DeviceRegistry* deviceRegistry_{nullptr};
     DeviceEventDispatcher* deviceEventDispatcher_{nullptr};
-    std::unique_ptr<PortalHomeRoutes> homeRoutes_;
     std::unique_ptr<PortalWebSocketManager> webSocketManager_;
     bool configured_{false};
     bool dependencyWaitLogged_{false};
