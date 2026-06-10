@@ -46,6 +46,8 @@ void BaseController::dispatch() {
     case Action::Flush:
         flush();
         break;
+    case Action::COUNT:
+        break;
     }
 }
 
