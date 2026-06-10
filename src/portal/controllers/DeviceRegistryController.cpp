@@ -17,45 +17,41 @@ DeviceRegistryController::DeviceRegistryController(AsyncWebServerRequest* reques
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 void DeviceRegistryController::registerRoutes(AsyncWebServer& server, DeviceRegistry& registry) {
     static const DeviceApiAdapterRegistry adapters = DeviceApiAdapterRegistry::withDefaults();
-    server.on(AsyncURIMatcher::exact("/api/devices"), HTTP_GET, [&registry, &adapters](AsyncWebServerRequest* request) {
+    server.on(AsyncURIMatcher::exact("/api/devices"), HTTP_GET, [&registry](AsyncWebServerRequest* request) {
         DeviceRegistryController(request, Action::Index, registry, adapters).dispatch();
     });
     server.on(
         AsyncURIMatcher::exact("/api/devices"), HTTP_POST,
-        [&registry, &adapters](AsyncWebServerRequest* request) {
-            DeviceRegistryController(request, Action::Create, registry, adapters).dispatch();
-        },
+        [&registry](AsyncWebServerRequest* request) { DeviceRegistryController(request, Action::Create, registry, adapters).dispatch(); },
         nullptr,
-        [&registry, &adapters](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t, size_t) {
+        [&registry](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t, size_t) {
             DeviceRegistryController(request, Action::Create, registry, adapters).dispatch(data, len);
         });
-    server.on(AsyncURIMatcher::exact("/api/devices"), HTTP_OPTIONS, [&registry, &adapters](AsyncWebServerRequest* request) {
+    server.on(AsyncURIMatcher::exact("/api/devices"), HTTP_OPTIONS, [&registry](AsyncWebServerRequest* request) {
         DeviceRegistryController(request, Action::Options, registry, adapters).dispatch();
     });
 
-    server.on(AsyncURIMatcher::exact("/api/devices/flush"), HTTP_POST, [&registry, &adapters](AsyncWebServerRequest* request) {
+    server.on(AsyncURIMatcher::exact("/api/devices/flush"), HTTP_POST, [&registry](AsyncWebServerRequest* request) {
         DeviceRegistryController(request, Action::Flush, registry, adapters).dispatch();
     });
-    server.on(AsyncURIMatcher::exact("/api/devices/flush"), HTTP_OPTIONS, [&registry, &adapters](AsyncWebServerRequest* request) {
+    server.on(AsyncURIMatcher::exact("/api/devices/flush"), HTTP_OPTIONS, [&registry](AsyncWebServerRequest* request) {
         DeviceRegistryController(request, Action::Options, registry, adapters).dispatch();
     });
 
-    server.on(AsyncURIMatcher::prefix("/api/devices/"), HTTP_GET, [&registry, &adapters](AsyncWebServerRequest* request) {
+    server.on(AsyncURIMatcher::prefix("/api/devices/"), HTTP_GET, [&registry](AsyncWebServerRequest* request) {
         DeviceRegistryController(request, Action::Show, registry, adapters).dispatch();
     });
-    server.on(AsyncURIMatcher::prefix("/api/devices/"), HTTP_DELETE, [&registry, &adapters](AsyncWebServerRequest* request) {
+    server.on(AsyncURIMatcher::prefix("/api/devices/"), HTTP_DELETE, [&registry](AsyncWebServerRequest* request) {
         DeviceRegistryController(request, Action::Destroy, registry, adapters).dispatch();
     });
     server.on(
         AsyncURIMatcher::prefix("/api/devices/"), HTTP_POST,
-        [&registry, &adapters](AsyncWebServerRequest* request) {
-            DeviceRegistryController(request, Action::Cmd, registry, adapters).dispatch();
-        },
+        [&registry](AsyncWebServerRequest* request) { DeviceRegistryController(request, Action::Cmd, registry, adapters).dispatch(); },
         nullptr,
-        [&registry, &adapters](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t, size_t) {
+        [&registry](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t, size_t) {
             DeviceRegistryController(request, Action::Cmd, registry, adapters).dispatch(data, len);
         });
-    server.on(AsyncURIMatcher::prefix("/api/devices/"), HTTP_OPTIONS, [&registry, &adapters](AsyncWebServerRequest* request) {
+    server.on(AsyncURIMatcher::prefix("/api/devices/"), HTTP_OPTIONS, [&registry](AsyncWebServerRequest* request) {
         DeviceRegistryController(request, Action::Options, registry, adapters).dispatch();
     });
 }
