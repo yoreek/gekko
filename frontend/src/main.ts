@@ -5,10 +5,10 @@ import App from './App.vue'
 import router from './router'
 import { appI18n, applyLocale } from './i18n'
 import { resetMockDatabase } from './mock/database'
-import { publishMockSnapshot } from './mock/snapshot'
 import { useAppStore } from './stores/app'
 import { createAppVuetify } from './plugins/vuetify'
 import { bindRealtimeBridge } from './realtime/bridge'
+import { connectMockRealtimeSocket } from './realtime/mockSocket'
 import { connectRealtimeSocket } from './realtime/socket'
 import { subscribeRealtimeMessage } from './realtime/bus'
 import './styles/main.css'
@@ -25,10 +25,7 @@ if (store.mockResetRequested) {
 }
 applyLocale(store.locale)
 bindRealtimeBridge(pinia, store, subscribeRealtimeMessage)
-const realtimeSocket = store.transportMode === 'real' ? connectRealtimeSocket(pinia) : null
-if (store.transportMode === 'mock') {
-  publishMockSnapshot()
-}
+const realtimeSocket = store.transportMode === 'real' ? connectRealtimeSocket(pinia) : connectMockRealtimeSocket(pinia)
 
 app.use(pinia)
 app.use(router)

@@ -69,6 +69,60 @@ for (const scenario of scenarios) {
     await expect(page.locator('.device-card').filter({ hasText: 'Smoke Device' })).toBeVisible()
   })
 
+  test(`emits mock websocket updates on ${scenario.name}`, async ({ page }) => {
+    await page.setViewportSize(scenario.viewport)
+    await page.goto(`${baseUrl}/?mockMode=1&mockReset=1`)
+    await page.waitForLoadState('networkidle')
+
+    await expect(page.getByText('WebSocket connected')).toBeVisible()
+
+    const firstDeviceName = page.locator('.device-card__name').first()
+    await expect(firstDeviceName).toHaveText('Aquarium Lamp')
+
+    await page.evaluate(() => {
+      const controller = (window as Window & {
+        __gekkoMockRealtime?: {
+          upsertDevice(device: Record<string, unknown>): void
+          removeDevice(deviceId: number): void
+        }
+      }).__gekkoMockRealtime
+      if (!controller) {
+        throw new Error('mock realtime controller unavailable')
+      }
+
+      const raw = window.localStorage.getItem('gekko.mockDb.v2')
+      if (!raw) {
+        throw new Error('mock database unavailable')
+      }
+
+      const db = JSON.parse(raw) as { devices?: Array<Record<string, unknown>> }
+      const device = db.devices?.find(entry => entry.device_id === 670845748)
+      if (!device) {
+        throw new Error('seed device unavailable')
+      }
+
+      device.name = 'Aquarium Lamp Live'
+      controller.upsertDevice(device)
+    })
+
+    await expect(firstDeviceName).toHaveText('Aquarium Lamp Live')
+
+    await page.evaluate(() => {
+      const controller = (window as Window & {
+        __gekkoMockRealtime?: {
+          removeDevice(deviceId: number): void
+        }
+      }).__gekkoMockRealtime
+      if (!controller) {
+        throw new Error('mock realtime controller unavailable')
+      }
+
+      controller.removeDevice(670845749)
+    })
+
+    await expect(page.locator('.device-card')).toHaveCount(1)
+  })
+
   test(`navigates to routed pages on ${scenario.name}`, async ({ page }) => {
     await page.setViewportSize(scenario.viewport)
     await page.goto(`${baseUrl}/?mockMode=1&mockReset=1`)
