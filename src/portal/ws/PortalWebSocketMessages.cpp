@@ -69,6 +69,8 @@ std::string PortalWebSocketMessages::buildDeviceCommandResult(const DeviceEvent&
 std::string PortalWebSocketMessages::buildWifiStatus(const WifiManager& wifiManager, const IWifiDriver& wifiDriver,
                                                      const uint32_t revision) {
     DynamicJsonDocument payload(384);
+    const std::string stationIp = wifiDriver.stationIp();
+    const std::string setupApIp = wifiDriver.setupApIp();
     payload["wifi_status"] = wifiManager.connected()          ? "connected"
                              : wifiManager.connecting()       ? "connecting"
                              : wifiManager.apMode()           ? "ap"
@@ -77,8 +79,8 @@ std::string PortalWebSocketMessages::buildWifiStatus(const WifiManager& wifiMana
     payload["wifi_interface_up"] = wifiManager.networkStackReady();
     payload["station_ready"] = wifiManager.stationReady();
     payload["setup_ap_ready"] = wifiManager.setupApReady();
-    payload["station_ip"] = wifiDriver.stationIp();
-    payload["setup_ap_ip"] = wifiDriver.setupApIp();
+    payload["station_ip"] = stationIp;
+    payload["setup_ap_ip"] = setupApIp;
     payload["retry_count"] = wifiManager.retryCount();
     return buildEnvelope("wifi.status", revision, payload);
 }

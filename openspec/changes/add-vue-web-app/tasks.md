@@ -11,8 +11,8 @@
 - [x] 2.1 Add a portal WebSocket manager mounted at `/ws` and owned by `PortalServer` lifecycle startup/shutdown.
 - [x] 2.2 Define compact `{topic, revision, payload}` message helpers for connection hello, device upsert/remove/command result, WiFi status, OTA status, and system status.
 - [x] 2.3 Wire device registry mutations and command results to broadcast small incremental messages with revision metadata.
-- [ ] 2.4 Wire WiFi and OTA visible status changes to broadcast bounded topic messages without buffering an unbounded backlog.
-- [ ] 2.5 Add tests or test seams for broadcaster behavior when clients are absent, connected, and disconnected.
+- [x] 2.4 Wire WiFi and OTA visible status changes to broadcast bounded topic messages without buffering an unbounded backlog.
+- [x] 2.5 Add tests or test seams for broadcaster behavior when clients are absent, connected, and disconnected.
 
 ## 3. Frontend Scaffold
 

@@ -76,6 +76,7 @@ void test_ws_manager_receives_device_events_when_attached() {
     DeviceEventDispatcher dispatcher;
     PortalWebSocketManager manager(&dispatcher);
     manager.attachDispatcher();
+    manager.setClientCountForTest(1);
 
     const DeviceEvent event = makeDeviceEvent(DeviceEventKind::DeviceUpdated, 33);
     TEST_ASSERT_TRUE(dispatcher.enqueue(event));
@@ -100,6 +101,7 @@ void test_ws_manager_stops_receiving_after_detach() {
     PortalWebSocketManager manager(&dispatcher);
     manager.attachDispatcher();
     manager.detachDispatcher();
+    manager.setClientCountForTest(1);
 
     const DeviceEvent event = makeDeviceEvent(DeviceEventKind::DeviceUpdated, 44);
     TEST_ASSERT_TRUE(dispatcher.enqueue(event));
@@ -108,6 +110,33 @@ void test_ws_manager_stops_receiving_after_detach() {
 #if defined(UNIT_TEST)
     TEST_ASSERT_EQUAL_UINT32(0, static_cast<uint32_t>(manager.sentMessageCount()));
 #endif
+}
+
+void test_ws_manager_broadcasts_snapshots_only_when_clients_are_connected() {
+    PortalWebSocketManager manager;
+
+    manager.publishSnapshotPayloadsForTest("{\"topic\":\"wifi.status\",\"revision\":1,\"payload\":{\"wifi_status\":\"idle\"}}",
+                                           "{\"topic\":\"ota.status\",\"revision\":1,\"payload\":{\"enabled\":true}}");
+    TEST_ASSERT_EQUAL_UINT32(0, static_cast<uint32_t>(manager.sentMessageCount()));
+
+    manager.setClientCountForTest(1);
+    manager.publishSnapshotPayloadsForTest("{\"topic\":\"wifi.status\",\"revision\":1,\"payload\":{\"wifi_status\":\"idle\"}}",
+                                           "{\"topic\":\"ota.status\",\"revision\":1,\"payload\":{\"enabled\":true}}");
+    TEST_ASSERT_EQUAL_UINT32(2, static_cast<uint32_t>(manager.sentMessageCount()));
+
+    manager.publishSnapshotPayloadsForTest("{\"topic\":\"wifi.status\",\"revision\":1,\"payload\":{\"wifi_status\":\"idle\"}}",
+                                           "{\"topic\":\"ota.status\",\"revision\":1,\"payload\":{\"enabled\":true}}");
+    TEST_ASSERT_EQUAL_UINT32(2, static_cast<uint32_t>(manager.sentMessageCount()));
+
+    manager.setClientCountForTest(0);
+    manager.publishSnapshotPayloadsForTest("{\"topic\":\"wifi.status\",\"revision\":2,\"payload\":{\"wifi_status\":\"ap\"}}",
+                                           "{\"topic\":\"ota.status\",\"revision\":2,\"payload\":{\"enabled\":false}}");
+    TEST_ASSERT_EQUAL_UINT32(2, static_cast<uint32_t>(manager.sentMessageCount()));
+
+    manager.setClientCountForTest(1);
+    manager.publishSnapshotPayloadsForTest("{\"topic\":\"wifi.status\",\"revision\":2,\"payload\":{\"wifi_status\":\"ap\"}}",
+                                           "{\"topic\":\"ota.status\",\"revision\":2,\"payload\":{\"enabled\":false}}");
+    TEST_ASSERT_EQUAL_UINT32(4, static_cast<uint32_t>(manager.sentMessageCount()));
 }
 
 void test_ws_status_messages_are_serializable() {
@@ -135,6 +164,7 @@ int main(int, char**) {
     RUN_TEST(test_ws_manager_attaches_and_detaches_from_dispatcher);
     RUN_TEST(test_ws_manager_receives_device_events_when_attached);
     RUN_TEST(test_ws_manager_stops_receiving_after_detach);
+    RUN_TEST(test_ws_manager_broadcasts_snapshots_only_when_clients_are_connected);
     RUN_TEST(test_ws_status_messages_are_serializable);
     return UNITY_END();
 }

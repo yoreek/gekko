@@ -39,6 +39,7 @@ These checks require a real ESP32 device and are intentionally not part of the h
 ## OTA
 
 - Use `esp32dev` for routine firmware compile verification. `esp32dev_ota` only inherits `esp32dev` and changes `upload_protocol`/`upload_port`, so reserve it for actual OTA upload checks or changes to OTA upload settings.
+- See [platformio-environments.md](platformio-environments.md) for the canonical environment contract.
 - Connect the device to WiFi and verify PlatformIO `esp32dev_ota` upload.
 - Enable Web OTA only in a guarded development/admin build.
 - Upload a valid firmware image and confirm reboot after successful finalization.

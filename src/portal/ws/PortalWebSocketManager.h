@@ -28,6 +28,8 @@ public:
 #endif
 
     void tick(uint32_t now, const WifiManager& wifiManager, const IWifiDriver& wifiDriver);
+    void tick(uint32_t now, const WifiManager& wifiManager, const IWifiDriver& wifiDriver, bool otaEnabled, bool otaHasError,
+              uint32_t freeSketchSpace);
 
     void onDeviceEvent(const DeviceEvent& event) override;
     void tickFastLoop(uint32_t now) override;
@@ -37,15 +39,22 @@ public:
 #if defined(UNIT_TEST)
     const std::vector<std::string>& sentMessages() const;
     size_t sentMessageCount() const;
+    void setClientCountForTest(size_t clientCount);
+    void publishSnapshotPayloadsForTest(const std::string& wifiPayload, const std::string& otaPayload);
 #endif
 
 private:
     void sendText(const std::string& payload);
     void broadcastHello();
+    void resyncSnapshots();
+    void publishSnapshotPayloads(const std::string& wifiPayload, const std::string& otaPayload);
 
     DeviceEventDispatcher* dispatcher_{nullptr};
     uint32_t lastRevision_{0};
     std::string lastWifiStatusPayload_{};
+    std::string lastOtaStatusPayload_{};
+    size_t connectedClientCount_{0};
+    bool resyncSnapshots_{true};
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     AsyncWebSocket* socket_{nullptr};

@@ -12,6 +12,7 @@
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 #include <DNSServer.h>
 #include <ESPAsyncWebServer.h>
+#include <Update.h>
 #include <WiFi.h>
 #endif
 
@@ -275,7 +276,11 @@ SM_STATE(Running) {
 
     updateDns();
     if (webSocketManager_ != nullptr) {
-        webSocketManager_->tick(uptime(), wifiManager_, wifiDriver_);
+#if defined(WITH_WEB_OTA)
+        webSocketManager_->tick(uptime(), wifiManager_, wifiDriver_, true, Update.hasError(), ESP.getFreeSketchSpace());
+#else
+        webSocketManager_->tick(uptime(), wifiManager_, wifiDriver_, false, false, 0U);
+#endif
     }
 }
 

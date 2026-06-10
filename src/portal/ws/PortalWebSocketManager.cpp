@@ -39,11 +39,15 @@ bool PortalWebSocketManager::begin(AsyncWebServer& server) {
         case WS_EVT_CONNECT:
             (void)ws;
             if (client != nullptr) {
+                connectedClientCount_ = socket_ != nullptr ? socket_->count() : connectedClientCount_;
                 const std::string hello = PortalWebSocketMessages::buildHello(lastRevision_, lastRevision_, socket_->count());
                 client->text(hello.c_str(), hello.length());
+                resyncSnapshots();
             }
             break;
         case WS_EVT_DISCONNECT:
+            connectedClientCount_ = socket_ != nullptr ? socket_->count() : 0U;
+            break;
         case WS_EVT_ERROR:
         case WS_EVT_PONG:
         case WS_EVT_DATA:
@@ -70,12 +74,15 @@ void PortalWebSocketManager::end(AsyncWebServer& server) {
 #endif
 
 void PortalWebSocketManager::tick(uint32_t now, const WifiManager& wifiManager, const IWifiDriver& wifiDriver) {
+    tick(now, wifiManager, wifiDriver, false, false, 0U);
+}
+
+void PortalWebSocketManager::tick(uint32_t now, const WifiManager& wifiManager, const IWifiDriver& wifiDriver, const bool otaEnabled,
+                                  const bool otaHasError, const uint32_t freeSketchSpace) {
     (void)now;
     const std::string wifiPayload = PortalWebSocketMessages::buildWifiStatus(wifiManager, wifiDriver, lastRevision_);
-    if (wifiPayload != lastWifiStatusPayload_) {
-        lastWifiStatusPayload_ = wifiPayload;
-        sendText(wifiPayload);
-    }
+    const std::string otaPayload = PortalWebSocketMessages::buildOtaStatus(otaEnabled, otaHasError, freeSketchSpace, lastRevision_);
+    publishSnapshotPayloads(wifiPayload, otaPayload);
 }
 
 void PortalWebSocketManager::onDeviceEvent(const DeviceEvent& event) {
@@ -123,17 +130,39 @@ void PortalWebSocketManager::sendText(const std::string& payload) {
     }
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    if (socket_ == nullptr || socket_->count() == 0U) {
+    connectedClientCount_ = socket_ != nullptr ? socket_->count() : 0U;
+    if (connectedClientCount_ == 0U) {
         return;
     }
     socket_->textAll(payload.c_str(), payload.length());
 #else
+    if (connectedClientCount_ == 0U) {
+        return;
+    }
     sentMessages_.push_back(payload);
 #endif
 }
 
 void PortalWebSocketManager::broadcastHello() {
     sendText(PortalWebSocketMessages::buildHello(lastRevision_, lastRevision_, 0));
+}
+
+void PortalWebSocketManager::resyncSnapshots() {
+    resyncSnapshots_ = true;
+}
+
+void PortalWebSocketManager::publishSnapshotPayloads(const std::string& wifiPayload, const std::string& otaPayload) {
+    if (resyncSnapshots_ || wifiPayload != lastWifiStatusPayload_) {
+        lastWifiStatusPayload_ = wifiPayload;
+        sendText(wifiPayload);
+    }
+
+    if (resyncSnapshots_ || otaPayload != lastOtaStatusPayload_) {
+        lastOtaStatusPayload_ = otaPayload;
+        sendText(otaPayload);
+    }
+
+    resyncSnapshots_ = false;
 }
 
 #if defined(UNIT_TEST)
@@ -143,6 +172,15 @@ const std::vector<std::string>& PortalWebSocketManager::sentMessages() const {
 
 size_t PortalWebSocketManager::sentMessageCount() const {
     return sentMessages_.size();
+}
+
+void PortalWebSocketManager::setClientCountForTest(const size_t clientCount) {
+    connectedClientCount_ = clientCount;
+    resyncSnapshots_ = clientCount > 0U;
+}
+
+void PortalWebSocketManager::publishSnapshotPayloadsForTest(const std::string& wifiPayload, const std::string& otaPayload) {
+    publishSnapshotPayloads(wifiPayload, otaPayload);
 }
 #endif
 
