@@ -1,36 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import { join } from 'node:path'
 
-const rootDir = fileURLToPath(new URL('../', import.meta.url))
-const distDir = join(rootDir, 'dist')
-
-function escapeScript(content: string): string {
-  return content.replace(/<\/script>/g, '<\\/script>')
-}
-
-function renderBuiltApp(): string {
-  const html = readFileSync(join(distDir, 'index.html'), 'utf8')
-  const cssMatch = html.match(/href=\"\.\/assets\/(index-[^"]+\.css)\"/)
-  const jsMatch = html.match(/src=\"\.\/assets\/(index-[^"]+\.js)\"/)
-  if (!cssMatch || !jsMatch) {
-    throw new Error('Unable to locate built asset references in dist/index.html')
-  }
-
-  const css = readFileSync(join(distDir, 'assets', cssMatch[1]), 'utf8')
-  const js = readFileSync(join(distDir, 'assets', jsMatch[1]), 'utf8')
-
-  return html
-    .replace(
-      `<link rel="stylesheet" crossorigin href="./assets/${cssMatch[1]}">`,
-      `<style>${css}</style>`,
-    )
-    .replace(
-      `<script type="module" crossorigin src="./assets/${jsMatch[1]}"></script>`,
-      `<script>history.replaceState(null, '', '?mockMode=1&mockReset=1');</script><script type="module">${escapeScript(js)}</script>`,
-    )
-}
+const baseUrl = 'http://127.0.0.1:4173'
 
 const scenarios = [
   {
@@ -46,19 +16,22 @@ const scenarios = [
 for (const scenario of scenarios) {
   test(`renders the dashboard shell on ${scenario.name}`, async ({ page }) => {
     await page.setViewportSize(scenario.viewport)
-    await page.setContent(renderBuiltApp(), { waitUntil: 'load' })
+    await page.goto(`${baseUrl}/?mockMode=1&mockReset=1`)
+    await page.waitForLoadState('networkidle')
+
     await expect(page.getByText('Gekko Portal')).toBeVisible()
-    await expect(page.getByText(/Offline controller dashboard|Офлайн панель управления/i)).toBeVisible()
-    await expect(page.locator('.hero-card')).toBeVisible()
+    await expect(page.locator('.portal-drawer__item')).toHaveCount(5)
+    await expect(page.getByRole('heading', { name: 'Device dashboard' })).toBeVisible()
     await expect(page.locator('.device-card').first()).toBeVisible()
-    await expect(page.locator('.wifi-summary')).toBeVisible()
   })
 
   test(`opens the device modal and runs mock actions on ${scenario.name}`, async ({ page }) => {
     await page.setViewportSize(scenario.viewport)
-    await page.setContent(renderBuiltApp(), { waitUntil: 'load' })
+    await page.goto(`${baseUrl}/?mockMode=1&mockReset=1`)
+    await page.waitForLoadState('networkidle')
 
     const deviceCard = page.locator('.device-card').first()
+    await expect(deviceCard).toBeVisible()
     await deviceCard.click()
 
     const dialog = page.locator('.device-dialog')
@@ -68,11 +41,37 @@ for (const scenario of scenarios) {
     const renameInput = dialog.getByLabel('New name')
     await renameInput.fill('Aquarium Lamp Smoke')
     await dialog.getByRole('button', { name: 'Rename' }).click()
-    await expect(page.getByText('Aquarium Lamp Smoke')).toBeVisible()
+    await expect(dialog.locator('.device-dialog__headline')).toHaveText('Aquarium Lamp Smoke')
 
     const typedStatusChip = dialog.locator('.typed-panel .v-chip').first()
     await expect(typedStatusChip).toHaveText('Output on')
     await dialog.getByRole('button', { name: 'Output off' }).click()
     await expect(typedStatusChip).toHaveText('Output off')
+  })
+
+  test(`navigates to routed pages on ${scenario.name}`, async ({ page }) => {
+    await page.setViewportSize(scenario.viewport)
+    await page.goto(`${baseUrl}/?mockMode=1&mockReset=1`)
+    await page.waitForLoadState('networkidle')
+
+    await page.locator('.portal-drawer__item').filter({ hasText: 'WiFi' }).click()
+    await expect(page.getByText('Current connection state and manual network scans')).toBeVisible()
+    await expect(page.locator('.empty-state').getByText('No networks scanned yet.')).toBeVisible()
+    const scanButton = page.getByRole('button', { name: 'Scan' })
+    await scanButton.click()
+    await expect(scanButton).toHaveAttribute('aria-busy', 'true')
+    await expect(scanButton).not.toHaveAttribute('aria-busy', 'true', { timeout: 10000 })
+
+    await page.locator('.portal-drawer__item').filter({ hasText: 'OTA' }).click()
+    await expect(page.getByText('Firmware update status')).toBeVisible()
+    await expect(page.locator('.page-card').filter({ hasText: 'Firmware update status' }).getByText('Free sketch space', { exact: true })).toBeVisible()
+
+    await page.locator('.portal-drawer__item').filter({ hasText: 'System' }).click()
+    await expect(page.getByText('Restart and runtime status')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Restart' })).toBeVisible()
+
+    await page.locator('.portal-drawer__item').filter({ hasText: 'Controller overview' }).click()
+    await expect(page.getByRole('heading', { name: 'Controller overview' })).toBeVisible()
+    await expect(page.locator('.page-card').filter({ hasText: 'Registry' }).getByText('Registry', { exact: true })).toBeVisible()
   })
 }

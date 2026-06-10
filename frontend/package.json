@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "test:unit": "node --experimental-strip-types --test tests/device-model.test.ts",
     "smoke": "playwright test",
     "check:budget": "node scripts/check-data-budget.mjs",

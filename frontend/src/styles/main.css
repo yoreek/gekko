@@ -28,10 +28,80 @@ body {
   backdrop-filter: blur(18px);
 }
 
+.app-main {
+  min-width: 0;
+}
+
+.portal-drawer {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(241, 245, 249, 0.94) 100%) !important;
+  border-right: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.portal-drawer__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px 12px;
+}
+
+.portal-drawer__brand-icon {
+  width: 28px;
+  height: 28px;
+  color: #1d4ed8;
+}
+
+.portal-drawer__brand-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.portal-drawer__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.15;
+}
+
+.portal-drawer__subtitle {
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.2;
+}
+
+.portal-drawer__divider {
+  margin: 0 16px 8px;
+}
+
+.portal-drawer__list {
+  padding: 8px 12px 16px;
+}
+
+.portal-drawer__item {
+  margin-bottom: 4px;
+  border-radius: 14px;
+}
+
+.portal-drawer__item .v-list-item-title {
+  font-weight: 600;
+}
+
+.portal-drawer__item-icon {
+  width: 18px;
+  height: 18px;
+  color: #1d4ed8;
+}
+
 .dashboard-page {
   padding: 24px;
 }
 
+.page-shell {
+  padding: 24px;
+}
+
+.page-card,
 .hero-card,
 .status-card,
 .list-card,
@@ -41,6 +111,11 @@ body {
   background: rgba(255, 255, 255, 0.84);
 }
 
+.page-hero {
+  overflow: hidden;
+}
+
+.page-title,
 .hero-title {
   display: flex;
   align-items: flex-start;
@@ -61,16 +136,34 @@ body {
   line-height: 1.1;
 }
 
+.page-title h1,
+.page-title h2 {
+  margin: 6px 0 0;
+  line-height: 1.1;
+}
+
+.page-title h1 {
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+}
+
+.page-title h2 {
+  font-size: clamp(1.1rem, 2vw, 1.45rem);
+}
+
 .hero-copy {
   margin: 0 0 20px;
   max-width: 52ch;
   color: #334155;
 }
 
+.page-grid,
 .hero-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.page-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .brand-icon,
@@ -119,6 +212,17 @@ body {
   gap: 12px;
 }
 
+.page-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.page-actions--spaced {
+  margin-top: 18px;
+}
+
 .empty-state {
   padding: 20px;
   border: 1px dashed rgba(100, 116, 139, 0.35);
@@ -135,8 +239,20 @@ body {
     padding: 16px;
   }
 
+  .page-shell {
+    padding: 16px;
+  }
+
   .hero-title {
     flex-direction: column;
+  }
+
+  .page-title {
+    flex-direction: column;
+  }
+
+  .page-grid--three {
+    grid-template-columns: 1fr;
   }
 }
 

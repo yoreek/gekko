@@ -1,72 +1,37 @@
 <template>
-  <v-container class="dashboard-page" fluid>
+  <v-container class="page-shell dashboard-page" fluid>
     <v-row density="comfortable">
-      <v-col cols="12" lg="8">
-        <v-card class="hero-card" elevation="2">
-          <v-card-title class="hero-title">
+      <v-col cols="12">
+        <v-card class="page-card page-hero" elevation="2">
+          <v-card-title class="page-title">
             <div>
               <div class="eyebrow">{{ t('dashboard.title') }}</div>
               <h1>{{ t('dashboard.overview') }}</h1>
             </div>
             <v-chip variant="tonal" color="primary" size="small">
-              {{ modeLabel }}
+              {{ deviceStore.pendingPersistence ? t('device.fields.pendingPersistence') : t('dashboard.synced') }}
             </v-chip>
           </v-card-title>
           <v-card-text>
             <p class="hero-copy">
-              {{ t('app.subtitle') }}
+              {{ t('device.dashboard.subtitle') }}
             </p>
-            <div class="hero-grid">
-              <section class="metric">
-                <AppIcon class="metric-icon" name="wifi" />
-                <span>{{ t('dashboard.wifi') }}</span>
-                <strong>{{ t(`status.wifi.${wifiStore.wifiStatus}`) }}</strong>
-              </section>
+            <div class="page-grid page-grid--three">
               <section class="metric">
                 <AppIcon class="metric-icon" name="device" />
-                <span>{{ t('dashboard.devices') }}</span>
+                <span>{{ t('device.dashboard.count', { count: deviceStore.devices.length }) }}</span>
                 <strong>{{ deviceStore.devices.length }}</strong>
               </section>
               <section class="metric">
-                <AppIcon class="metric-icon" name="ota" />
-                <span>{{ t('dashboard.ota') }}</span>
-                <strong>{{ otaStore.enabled ? t('status.enabled') : t('status.disabled') }}</strong>
+                <AppIcon class="metric-icon" name="refresh" />
+                <span>{{ t('dashboard.registryRevision') }}</span>
+                <strong>{{ deviceStore.registryRevision }}</strong>
               </section>
               <section class="metric">
                 <AppIcon class="metric-icon" name="ws" />
-                <span>WS</span>
-                <strong>{{ t(`status.ws.${wsStore.connected ? 'connected' : 'disconnected'}`) }}</strong>
-              </section>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" lg="4">
-        <v-card class="status-card" elevation="2">
-          <v-card-title>{{ t('dashboard.system') }}</v-card-title>
-          <v-card-text>
-            <div class="stack">
-              <div class="status-row">
-                <span>{{ t('dashboard.registryRevision') }}</span>
-                <strong>{{ deviceStore.registryRevision }}</strong>
-              </div>
-              <div class="status-row">
-                <span>{{ t('dashboard.systemState') }}</span>
-                <strong>{{ systemStore.status }}</strong>
-              </div>
-              <div class="status-row">
                 <span>{{ t('dashboard.websocket') }}</span>
                 <strong>{{ t(`status.ws.${wsStore.connected ? 'connected' : 'disconnected'}`) }}</strong>
-              </div>
-              <div class="device-actions">
-                <v-btn :loading="restartLoading" color="primary" size="small" variant="tonal" @click="restartSystem">
-                  {{ t('actions.restart') }}
-                </v-btn>
-              </div>
-              <div class="empty-state" :data-state="restartState">
-                <span>{{ restartMessage }}</span>
-              </div>
+              </section>
             </div>
           </v-card-text>
         </v-card>
@@ -75,20 +40,17 @@
 
     <v-row class="mt-2" density="comfortable">
       <v-col cols="12">
-        <v-card class="list-card" elevation="1">
-          <v-card-title class="device-list-header">
+        <v-card class="page-card" elevation="1">
+          <v-card-title class="page-title">
             <div>
               <div class="eyebrow">{{ t('device.dashboard.title') }}</div>
               <h2>{{ t('device.dashboard.subtitle') }}</h2>
             </div>
-            <div class="device-list-header__actions">
-              <v-chip size="small" variant="tonal">
-                {{ deviceStore.pendingPersistence ? t('device.fields.pendingPersistence') : t('dashboard.synced') }}
-              </v-chip>
+            <div class="page-actions">
               <v-chip size="small" variant="outlined">
                 {{ t('device.dashboard.count', { count: deviceStore.devices.length }) }}
               </v-chip>
-              <v-btn :loading="devicesLoading" color="primary" size="small" variant="tonal" @click="() => refreshDevices()">
+              <v-btn :loading="devicesLoading" color="primary" size="small" variant="tonal" @click="refreshDevices">
                 {{ t('actions.refresh') }}
               </v-btn>
             </div>
@@ -103,73 +65,6 @@
             </template>
             <div v-else class="empty-state">
               <span>{{ t('device.dashboard.empty') }}</span>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <v-row class="mt-2" density="comfortable">
-      <v-col cols="12" lg="7">
-        <v-card class="list-card" elevation="1">
-          <v-card-title>{{ t('dashboard.wifi') }}</v-card-title>
-          <v-card-text>
-            <div class="wifi-summary">
-              <div class="status-row">
-                <span>{{ t('dashboard.wifi') }}</span>
-                <strong>{{ t(`status.wifi.${wifiStore.wifiStatus}`) }}</strong>
-              </div>
-              <div class="status-row">
-                <span>Station IP</span>
-                <strong>{{ wifiStore.stationIp || '—' }}</strong>
-              </div>
-              <div class="status-row">
-                <span>AP IP</span>
-                <strong>{{ wifiStore.setupApIp || '—' }}</strong>
-              </div>
-              <div class="device-actions">
-                <v-btn :loading="wifiLoading" size="small" variant="tonal" @click="refreshWifi">
-                  {{ t('actions.refresh') }}
-                </v-btn>
-              </div>
-            </div>
-            <v-divider class="my-4" />
-            <template v-if="wifiStore.scanNetworks.length > 0">
-              <div class="stack">
-                <div
-                  v-for="network in wifiStore.scanNetworks"
-                  :key="`${network.ssid}-${network.channel}`"
-                  class="status-row"
-                >
-                  <span>{{ network.ssid }}</span>
-                  <strong>{{ network.rssi }} dBm · ch {{ network.channel }}</strong>
-                </div>
-              </div>
-            </template>
-            <div v-else class="empty-state">
-              <span>{{ t('dashboard.wifiHint') }}</span>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" lg="5">
-        <v-card class="list-card" elevation="1">
-          <v-card-title>{{ t('dashboard.ota') }}</v-card-title>
-          <v-card-text>
-            <div class="stack">
-              <div class="status-row">
-                <span>{{ t('dashboard.ota') }}</span>
-                <strong>{{ otaStore.enabled ? t('status.enabled') : t('status.disabled') }}</strong>
-              </div>
-              <div class="status-row">
-                <span>{{ t('dashboard.otaFreeSketchSpace') }}</span>
-                <strong>{{ otaStore.freeSketchSpace }} B</strong>
-              </div>
-              <div class="status-row">
-                <span>{{ t('dashboard.otaHasError') }}</span>
-                <strong>{{ otaStore.hasError ? t('status.failed') : t('labels.no') }}</strong>
-              </div>
             </div>
           </v-card-text>
         </v-card>
@@ -194,49 +89,25 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { commandDevice, deleteDevice, fetchDevice, fetchDevices, fetchWifiScan, fetchWifiStatus, restartSystem as requestRestartSystem } from '@/api'
+import { commandDevice, deleteDevice, fetchDevice, fetchDevices } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
 import DeviceCard from '@/components/device/DeviceCard.vue'
 import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
-import { type DashboardDevice } from '@/models/device'
-import { useAppStore } from '@/stores/app'
-import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
-import { useOtaStore } from '@/stores/ota'
-import { useSystemStore } from '@/stores/system'
-import { useWebSocketStore } from '@/stores/websocket'
-import { useWifiStore } from '@/stores/wifi'
 import type { DeviceCommandRequest } from '@/api'
+import { type DashboardDevice } from '@/models/device'
+import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
+import { useWebSocketStore } from '@/stores/websocket'
 
 const { t } = useI18n()
-const appStore = useAppStore()
 const deviceStore = useDeviceRegistryStore()
-const wifiStore = useWifiStore()
-const otaStore = useOtaStore()
-const systemStore = useSystemStore()
 const wsStore = useWebSocketStore()
 
 const devicesLoading = ref(false)
-const wifiLoading = ref(false)
-const restartLoading = ref(false)
-const restartState = ref<'idle' | 'pending' | 'success' | 'error'>('idle')
 const detailOpen = ref(false)
 const detailBusyAction = ref<'refresh' | 'rename' | 'toggle' | 'delete' | 'command' | null>(null)
 const detailError = ref('')
 const selectedDeviceId = ref<number | null>(null)
 
-const modeLabel = computed(() => t(`status.mode.${appStore.mode}`))
-const restartMessage = computed(() => {
-  if (restartState.value === 'pending') {
-    return t('restart.pending')
-  }
-  if (restartState.value === 'success') {
-    return t('restart.success')
-  }
-  if (restartState.value === 'error') {
-    return t('restart.error')
-  }
-  return t('dashboard.systemState')
-})
 const selectedDevice = computed<DashboardDevice | null>(() => {
   if (selectedDeviceId.value === null) {
     return null
@@ -256,19 +127,6 @@ async function refreshDevices(silent = false): Promise<void> {
     if (!silent) {
       devicesLoading.value = false
     }
-  }
-}
-
-async function refreshWifi(): Promise<void> {
-  wifiLoading.value = true
-  try {
-    const [status, scan] = await Promise.all([fetchWifiStatus(), fetchWifiScan()])
-    wifiStore.replaceStatus(status)
-    if (scan.networks) {
-      wifiStore.replaceScan(scan.networks)
-    }
-  } finally {
-    wifiLoading.value = false
   }
 }
 
@@ -385,19 +243,6 @@ async function submitDeviceCommand(payload: DeviceCommandRequest, _presetKey?: s
   }
 }
 
-async function restartSystem(): Promise<void> {
-  restartLoading.value = true
-  restartState.value = 'pending'
-  try {
-    await requestRestartSystem()
-    restartState.value = 'success'
-  } catch {
-    restartState.value = 'error'
-  } finally {
-    restartLoading.value = false
-  }
-}
-
 function formatError(error: unknown): string {
   if (error instanceof Error) {
     return error.message
@@ -407,7 +252,6 @@ function formatError(error: unknown): string {
 
 onMounted(() => {
   void refreshDevices()
-  void refreshWifi()
 })
 
 watch(realtimeDeviceKey, topicKey => {
