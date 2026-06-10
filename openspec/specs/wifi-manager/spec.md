@@ -27,7 +27,7 @@ The firmware SHALL provide a temporary SoftAP for local setup with a determinist
 - **THEN** the setup AP remains governed by the WiFi state machine policy instead of being forced off by the station-connect path
 
 ### Requirement: HTTP WiFi configuration portal
-The firmware SHALL provide an asynchronous HTTP portal that supports WiFi scanning, network selection, credential entry, and saving setup settings.
+The firmware SHALL provide an asynchronous HTTP portal that supports WiFi scanning, network selection, credential entry, and saving setup settings while remaining usable offline from setup AP mode.
 
 #### Scenario: Networks are scanned
 - **WHEN** a user requests available WiFi networks from the portal
@@ -44,6 +44,10 @@ The firmware SHALL provide an asynchronous HTTP portal that supports WiFi scanni
 #### Scenario: Async server does not require blocking polling
 - **WHEN** the HTTP portal is active
 - **THEN** portal request handling uses the async server stack and does not depend on a long blocking `handleClient()` polling loop
+
+#### Scenario: SPA is served in setup AP mode
+- **WHEN** a client connects to the setup access point and opens the portal root URL
+- **THEN** the firmware serves the bundled SPA from LittleFS without requiring internet access
 
 ### Requirement: Captive portal discovery
 The firmware SHALL make the setup portal reachable through direct IP access and best-effort captive portal DNS/HTTP redirection.

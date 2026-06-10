@@ -33,21 +33,21 @@
 - [x] 4.2 Implement generic device cards by type/config/status and device command controls using `/api/devices/:id/command`, updating visible state from REST responses and WebSocket events.
 - [x] 4.3 Implement WiFi scan/status UI over the existing WiFi endpoints without adding new config APIs.
 - [x] 4.4 Implement system restart action with clear pending/error/success states using `/api/system/restart`.
-- [ ] 4.5 Verify responsive layout manually during development at desktop and mobile viewport sizes.
+- [x] 4.5 Verify responsive layout manually during development at desktop and mobile viewport sizes.
 
 ## 5. LittleFS Asset Delivery
 
 - [x] 5.1 Add a frontend deployment script that builds `frontend/`, emits gzip-only assets, and copies deployable files into git-tracked repository `data/`.
 - [x] 5.2 Add `PortalAssetController` or equivalent to serve `/`, `/index.html`, `/assets/*`, and SPA fallback from LittleFS with correct MIME, gzip, no-cache index, and immutable hashed asset cache headers.
 - [x] 5.3 Exclude `/api/*` and `/ws` from SPA fallback so missing API routes do not return frontend HTML.
-- [ ] 5.4 Replace `PortalAssets.cpp` as the primary UI path and remove obsolete embedded HTML when tests confirm LittleFS serving.
+- [x] 5.4 Replace `PortalAssets.cpp` as the primary UI path and remove obsolete embedded HTML when tests confirm LittleFS serving.
 - [x] 5.5 Document that the SPA build updates `data/`, while ESP32 filesystem upload remains an explicit `pio run -t uploadfs` step for AP-mode offline UI validation.
 
 ## 6. Verification
 
-- [ ] 6.1 Run frontend typecheck and production build, then verify git-tracked gzip deploy assets in `data/` stay at or below 220 KB.
+- [x] 6.1 Run frontend typecheck and production build, then verify git-tracked gzip deploy assets in `data/` stay at or below 220 KB.
 - [x] 6.2 Add Playwright visual smoke tests using frontend `mockMode` for desktop and mobile viewports.
-- [ ] 6.3 Run Playwright smoke tests against the built or previewed frontend.
-- [ ] 6.4 Run `scripts/test.sh` for firmware checks and native Unity tests.
-- [ ] 6.5 Run `pio run` for the ESP32 firmware environment.
-- [ ] 6.6 Perform manual hardware validation by uploading firmware and LittleFS data, connecting through setup AP mode, and checking SPA, REST, and `/ws` behavior.
+- [x] 6.3 Run Playwright smoke tests against the built or previewed frontend.
+- [x] 6.4 Run `scripts/test.sh` for firmware checks and native Unity tests.
+- [x] 6.5 Run `pio run` for the ESP32 firmware environment.
+- [x] 6.6 Perform manual hardware validation by uploading firmware and LittleFS data, connecting through setup AP mode, and checking SPA, REST, and `/ws` behavior.
