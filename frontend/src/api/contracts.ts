@@ -21,6 +21,7 @@ export interface WifiScanResponse {
 export interface DeviceRecord {
   device_id: number
   type_id: number
+  label?: string
   type?: string
   name: string
   enabled: boolean
@@ -31,7 +32,6 @@ export interface DeviceRecord {
   lifecycle_status: string
   effective_status: string
   status?: string
-  persistence_policy?: 'immediate' | 'delayed' | 'coalesced' | string
   config?: Record<string, unknown>
   retained_state_supported?: boolean
   retained_startup_enabled?: boolean
@@ -54,7 +54,6 @@ export interface DeviceCommandRequest {
   payload?: string
   has_parent?: boolean
   parent_device_id?: number
-  persistence_policy?: 'immediate' | 'delayed' | 'coalesced'
 }
 
 export interface DeviceMutationResponse {

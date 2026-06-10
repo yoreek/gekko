@@ -1,7 +1,7 @@
 import type { DeviceRecord, OtaStatusResponse, WifiScanNetwork, WifiStatusResponse } from '@/api'
 import { safeReadStorage, safeWriteStorage } from '@/utils/storage'
 
-const storageKey = 'gekko.mockDb'
+const storageKey = 'gekko.mockDb.v2'
 
 export interface MockDatabase {
   registryRevision: number
@@ -27,6 +27,7 @@ const seedDatabase: MockDatabase = {
     {
       device_id: 670845748,
       type_id: 1,
+      label: 'Dummy device',
       type: 'dummy',
       name: 'Aquarium Lamp',
       enabled: true,
@@ -37,7 +38,6 @@ const seedDatabase: MockDatabase = {
       lifecycle_status: 'ready',
       effective_status: 'ready',
       status: 'ready',
-      persistence_policy: 'delayed',
       retained_state_supported: true,
       retained_startup_enabled: true,
       retained_startup_fallback_output: false,
@@ -52,8 +52,9 @@ const seedDatabase: MockDatabase = {
     },
     {
       device_id: 670845749,
-      type_id: 2,
-      type: 'generic',
+      type_id: 1,
+      label: 'Dummy device',
+      type: 'dummy',
       name: 'Temperature Sensor',
       enabled: true,
       has_parent: false,
@@ -63,7 +64,6 @@ const seedDatabase: MockDatabase = {
       lifecycle_status: 'ready',
       effective_status: 'ready',
       status: 'ready',
-      persistence_policy: 'delayed',
     },
   ],
   wifi: {

@@ -54,16 +54,12 @@ The SPA SHALL allow the user to rename, enable, disable, delete, and command a d
 - **THEN** the SPA sends the command to `POST /api/devices/:id/command` and shows the returned result or validation error
 
 ### Requirement: DummyDevice typed view is available
-The SPA SHALL render a typed detail section for `DummyDevice` while keeping the dashboard extensible for future device types.
+The SPA SHALL render a typed detail section for `DummyDevice` while keeping the shared base fields visible in the modal.
 
 #### Scenario: DummyDevice gets a typed panel
-- **WHEN** the selected device is a `DummyDevice`
-- **THEN** the modal renders the typed `DummyDevice` section instead of only a raw JSON summary
+- **WHEN** the selected device is the supported `DummyDevice`
+- **THEN** the modal renders the typed `DummyDevice` panel with the shared base fields and typed controls
 
-#### Scenario: Unknown device type falls back safely
-- **WHEN** the selected device type does not have a typed renderer yet
-- **THEN** the modal still renders the shared base fields and a safe fallback view without breaking the dashboard
-
-#### Scenario: Typed view preserves shared behavior
-- **WHEN** a typed renderer is shown for a device
-- **THEN** it still exposes the same shared base actions and status fields as the generic device view
+#### Scenario: Shared base fields remain visible
+- **WHEN** the detail modal is open for a supported device
+- **THEN** it presents the shared device base fields alongside the typed `DummyDevice` section

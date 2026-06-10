@@ -50,6 +50,9 @@
               <v-chip size="small" variant="outlined">
                 {{ t('device.dashboard.count', { count: deviceStore.devices.length }) }}
               </v-chip>
+              <v-btn color="primary" size="small" variant="flat" @click="openCreateDialog">
+                {{ t('device.dashboard.create') }}
+              </v-btn>
               <v-btn :loading="devicesLoading" color="primary" size="small" variant="tonal" @click="refreshDevices">
                 {{ t('actions.refresh') }}
               </v-btn>
@@ -82,19 +85,84 @@
       @delete="deleteSelectedDevice"
       @command="submitDeviceCommand"
     />
+
+    <v-dialog v-model="createDialogOpen" max-width="720">
+      <v-card class="device-dialog">
+        <v-card-title class="device-dialog__title">
+          <div>
+            <div class="device-dialog__eyebrow">{{ t('device.dialog.createTitle') }}</div>
+            <div class="device-dialog__subline">
+              {{ t('device.dialog.createHint') }}
+            </div>
+          </div>
+          <v-btn class="device-dialog__icon-button" variant="text" @click="createDialogOpen = false">
+            <AppIcon name="close" />
+          </v-btn>
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text class="device-dialog__body">
+          <v-alert v-if="createError" type="error" variant="tonal" density="compact" class="mb-4">
+            {{ createError }}
+          </v-alert>
+
+          <v-row dense>
+            <v-col cols="12" md="8">
+              <v-text-field
+                v-model="createDraft.name"
+                :label="t('device.actions.name')"
+                density="comfortable"
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-select
+                v-model="createDraft.typeId"
+                :items="typeOptions"
+                :label="t('device.actions.type')"
+                density="comfortable"
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-switch
+                v-model="createDraft.enabled"
+                :label="t('device.fields.enabled')"
+                hide-details
+                inset
+              />
+            </v-col>
+          </v-row>
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions class="device-dialog__footer">
+          <v-spacer />
+          <v-btn variant="text" @click="createDialogOpen = false">
+            {{ t('actions.cancel') }}
+          </v-btn>
+          <v-btn color="primary" :loading="createLoading" :disabled="!canCreateDevice" @click="submitCreateDevice">
+            {{ t('device.dashboard.create') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { commandDevice, deleteDevice, fetchDevice, fetchDevices } from '@/api'
+import { commandDevice, createDevice, deleteDevice, fetchDevice, fetchDevices } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
 import DeviceCard from '@/components/device/DeviceCard.vue'
 import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
 import type { DeviceCommandRequest } from '@/api'
 import { type DashboardDevice } from '@/models/device'
+import { DUMMY_DEVICE_TYPE_ID, deviceTypeOptions } from '@/models/device-types'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { useWebSocketStore } from '@/stores/websocket'
 
@@ -103,10 +171,20 @@ const deviceStore = useDeviceRegistryStore()
 const wsStore = useWebSocketStore()
 
 const devicesLoading = ref(false)
+const createDialogOpen = ref(false)
+const createLoading = ref(false)
+const createError = ref('')
 const detailOpen = ref(false)
 const detailBusyAction = ref<'refresh' | 'rename' | 'toggle' | 'delete' | 'command' | null>(null)
 const detailError = ref('')
 const selectedDeviceId = ref<number | null>(null)
+
+const createDraft = reactive({
+  name: 'New Device',
+  typeId: DUMMY_DEVICE_TYPE_ID,
+  enabled: true,
+})
+const typeOptions = computed(() => deviceTypeOptions.map(option => ({ title: t(option.labelKey), value: option.id })))
 
 const selectedDevice = computed<DashboardDevice | null>(() => {
   if (selectedDeviceId.value === null) {
@@ -115,6 +193,7 @@ const selectedDevice = computed<DashboardDevice | null>(() => {
   return deviceStore.devices.find(device => device.deviceId === selectedDeviceId.value) ?? null
 })
 const realtimeDeviceKey = computed(() => `${wsStore.revision}:${wsStore.lastTopic}`)
+const canCreateDevice = computed(() => createDraft.name.trim().length > 0 && createDraft.typeId > 0)
 
 async function refreshDevices(silent = false): Promise<void> {
   if (!silent) {
@@ -128,6 +207,12 @@ async function refreshDevices(silent = false): Promise<void> {
       devicesLoading.value = false
     }
   }
+}
+
+function openCreateDialog(): void {
+  resetCreateDraft()
+  createError.value = ''
+  createDialogOpen.value = true
 }
 
 async function refreshSelectedDevice(): Promise<void> {
@@ -145,6 +230,44 @@ async function refreshSelectedDevice(): Promise<void> {
     detailError.value = formatError(error)
   } finally {
     detailBusyAction.value = null
+  }
+}
+
+function resetCreateDraft(): void {
+  createDraft.name = 'New Device'
+  createDraft.typeId = DUMMY_DEVICE_TYPE_ID
+  createDraft.enabled = true
+}
+
+async function submitCreateDevice(): Promise<void> {
+  if (!canCreateDevice.value || createLoading.value) {
+    return
+  }
+
+  createLoading.value = true
+  createError.value = ''
+  try {
+    const response = await createDevice({
+      name: createDraft.name.trim(),
+      type_id: createDraft.typeId,
+      enabled: createDraft.enabled,
+    })
+
+    if (response.device !== undefined) {
+      deviceStore.upsertDevice(response.device, response.registry_revision)
+      deviceStore.setPendingPersistence(response.pending_persistence)
+      selectedDeviceId.value = response.device.device_id
+      detailOpen.value = true
+    } else {
+      await refreshDevices(true)
+    }
+
+    createDialogOpen.value = false
+    resetCreateDraft()
+  } catch (error) {
+    createError.value = formatError(error)
+  } finally {
+    createLoading.value = false
   }
 }
 

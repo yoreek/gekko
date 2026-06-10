@@ -10,10 +10,10 @@
     @keydown.enter.prevent="$emit('open')"
     @keydown.space.prevent="$emit('open')"
   >
-    <v-card-title class="device-card__title">
+      <v-card-title class="device-card__title">
       <div class="device-card__headline">
         <div class="device-card__name">{{ device.name }}</div>
-        <div class="device-card__type">{{ device.typeLabel }}</div>
+        <div class="device-card__type">{{ typeLabelText }}</div>
       </div>
       <v-chip size="x-small" variant="tonal" :color="statusColor">
         #{{ device.deviceId }}
@@ -52,6 +52,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DashboardDevice } from '@/models/device'
+import { deviceTypeLabelKey } from '@/models/device-types'
 
 const props = defineProps<{
   device: DashboardDevice
@@ -65,6 +66,9 @@ defineEmits<{
 const { t } = useI18n()
 
 const statusText = computed(() => props.device.status || props.device.lifecycleStatus)
+const typeLabelText = computed(() => {
+  return t(deviceTypeLabelKey(props.device.typeId))
+})
 const statusColor = computed(() => {
   switch (props.device.status) {
     case 'ready':

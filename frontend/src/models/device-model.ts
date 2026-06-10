@@ -1,9 +1,7 @@
 import type { DeviceCommandRequest, DeviceRecord, DeviceRegistryResponse, DeviceDetailResponse, DeviceMutationResponse } from '../api/contracts'
-
-export type DeviceKind = 'dummy' | 'generic'
+import { DUMMY_DEVICE_TYPE_ID } from './device-types'
 
 export interface DeviceDetailSnapshot {
-  kind: DeviceKind
   config: Record<string, unknown>
   retainedStateSupported: boolean
   outputState?: boolean
@@ -18,7 +16,6 @@ export interface DashboardDevice {
   typeId: number
   typeName: string
   typeLabel: string
-  kind: DeviceKind
   name: string
   enabled: boolean
   hasParent: boolean
@@ -30,7 +27,6 @@ export interface DashboardDevice {
   lifecycleStatus: string
   effectiveStatus: string
   status: string
-  persistencePolicy: string
   detail: DeviceDetailSnapshot
   raw: DeviceRecord
 }
@@ -54,33 +50,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function normalizeTypeName(record: DeviceRecord): string {
-  if (typeof record.type === 'string' && record.type.trim().length > 0) {
-    return record.type.trim().toLowerCase()
-  }
-  if (record.type_id === 1) {
-    return 'dummy'
-  }
-  return `type-${record.type_id}`
+  return typeof record.type === 'string' ? record.type.trim().toLowerCase() : ''
 }
 
-function normalizeTypeLabel(typeName: string, typeId: number): string {
-  if (typeName === 'dummy') {
-    return 'DummyDevice'
+function normalizeTypeLabel(record: DeviceRecord, typeName: string): string {
+  if (typeof record.label === 'string' && record.label.trim().length > 0) {
+    return record.label.trim()
   }
-  if (typeName.startsWith('type-')) {
-    return `Type #${typeId}`
+  if (typeof record.type === 'string' && record.type.trim().length > 0) {
+    return record.type.trim()
   }
   return typeName
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
 }
 
 function normalizeDetail(record: DeviceRecord, typeName: string): DeviceDetailSnapshot {
   const config = isRecord(record.config) ? record.config : {}
   const detail: DeviceDetailSnapshot = {
-    kind: typeName === 'dummy' ? 'dummy' : 'generic',
     config,
     retainedStateSupported: Boolean(record.retained_state_supported),
     retainedStartupEnabled: record.retained_startup_enabled,
@@ -88,7 +73,7 @@ function normalizeDetail(record: DeviceRecord, typeName: string): DeviceDetailSn
     retainedStateInConfigPayload: record.retained_state_in_config_payload,
   }
 
-  if (typeName === 'dummy') {
+  if (record.type_id === DUMMY_DEVICE_TYPE_ID) {
     const outputState = config.current_output
     const restorePreviousState = config.restore_previous_state
     if (typeof outputState === 'boolean') {
@@ -109,8 +94,7 @@ export function normalizeDeviceRecord(record: DeviceRecord, registryRevision = r
     deviceId: record.device_id,
     typeId: record.type_id,
     typeName,
-    typeLabel: normalizeTypeLabel(typeName, record.type_id),
-    kind: typeName === 'dummy' ? 'dummy' : 'generic',
+    typeLabel: normalizeTypeLabel(record, typeName),
     name: record.name,
     enabled: record.enabled,
     hasParent: record.has_parent,
@@ -122,7 +106,6 @@ export function normalizeDeviceRecord(record: DeviceRecord, registryRevision = r
     lifecycleStatus: record.lifecycle_status,
     effectiveStatus,
     status: record.status ?? effectiveStatus,
-    persistencePolicy: record.persistence_policy ?? 'delayed',
     detail: normalizeDetail(record, typeName),
     raw: record,
   }
@@ -144,7 +127,7 @@ export function normalizeDeviceDetail(payload: DeviceDetailResponse | DeviceMuta
 }
 
 export function deviceActionPresets(device: DashboardDevice): DashboardDeviceActionPreset[] {
-  if (device.kind !== 'dummy') {
+  if (device.typeId !== DUMMY_DEVICE_TYPE_ID) {
     return []
   }
 

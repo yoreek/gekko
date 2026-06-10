@@ -12,6 +12,7 @@ import type { DeviceRecord, DeviceRegistryResponse, DeviceDetailResponse, Device
 const dummyRecord: DeviceRecord = {
   device_id: 101,
   type_id: 1,
+  label: 'Dummy device',
   type: 'dummy',
   name: 'Aquarium Lamp',
   enabled: true,
@@ -22,7 +23,6 @@ const dummyRecord: DeviceRecord = {
   lifecycle_status: 'ready',
   effective_status: 'ready',
   status: 'ready',
-  persistence_policy: 'delayed',
   retained_state_supported: true,
   retained_startup_enabled: true,
   retained_startup_fallback_output: false,
@@ -40,8 +40,7 @@ test('normalizeDeviceRecord maps the shared fields and typed dummy detail', () =
 
   assert.equal(device.deviceId, 101)
   assert.equal(device.typeName, 'dummy')
-  assert.equal(device.typeLabel, 'DummyDevice')
-  assert.equal(device.kind, 'dummy')
+  assert.equal(device.typeLabel, 'Dummy device')
   assert.equal(device.registryRevision, 12)
   assert.equal(device.pendingPersistence, true)
   assert.equal(device.status, 'ready')
@@ -63,7 +62,7 @@ test('normalizeDeviceCollection keeps the registry envelope and typed devices', 
   assert.equal(collection.registryRevision, 8)
   assert.equal(collection.pendingPersistence, false)
   assert.equal(collection.devices.length, 1)
-  assert.equal(collection.devices[0].typeLabel, 'DummyDevice')
+  assert.equal(collection.devices[0].typeLabel, 'Dummy device')
 })
 
 test('normalizeDeviceDetail returns the device from REST envelopes and null when missing', () => {
@@ -85,11 +84,12 @@ test('normalizeDeviceDetail returns the device from REST envelopes and null when
 
 test('deviceActionPresets returns typed DummyDevice quick commands only for dummy devices', () => {
   const dummyDevice = normalizeDeviceRecord(dummyRecord)
-  const genericDevice = normalizeDeviceRecord({
+  const otherDevice = normalizeDeviceRecord({
     ...dummyRecord,
     device_id: 202,
-    type_id: 7,
-    type: 'generic',
+    type_id: 99,
+    label: 'Other device',
+    type: 'other',
     name: 'Unknown Sensor',
   })
 
@@ -97,5 +97,5 @@ test('deviceActionPresets returns typed DummyDevice quick commands only for dumm
   assert.equal(presets.length, 4)
   assert.equal(presets[0].command, 'custom')
   assert.equal(presets[0].labelKey, 'device.commands.outputOn')
-  assert.equal(deviceActionPresets(genericDevice).length, 0)
+  assert.equal(deviceActionPresets(otherDevice).length, 0)
 })

@@ -11,6 +11,7 @@ import type {
 } from '@/api'
 import { ApiClientError } from '@/api/http'
 import { publishRealtimeMessage } from '@/realtime/bus'
+import { DUMMY_DEVICE_TYPE_ID } from '@/models/device-types'
 import { createSeedMockDatabase, loadMockDatabase, saveMockDatabase } from './database'
 
 function ok<T extends object>(payload: T): T & { success: true } {
@@ -114,33 +115,38 @@ export function mockFetchDevice(deviceId: number): DeviceDetailResponse {
 
 export function mockCreateDevice(payload: Record<string, unknown>): Promise<DeviceMutationResponse> {
   const response = mutateRegistry(db => {
-      const nextId = Math.max(1, ...db.devices.map(device => device.device_id)) + 1
-      const device: DeviceRecord = {
-        device_id: nextId,
-        type_id: Number(payload.type_id ?? 0),
-        type: typeof payload.type === 'string' ? payload.type : undefined,
-        name: String(payload.name ?? 'New Device'),
-        enabled: Boolean(payload.enabled ?? true),
-        has_parent: false,
-        parent_device_id: 0,
-        config_version: 1,
-        config_revision: 1,
-        lifecycle_status: 'ready',
-        effective_status: 'ready',
-        status: 'ready',
-        persistence_policy: typeof payload.persistence_policy === 'string' ? payload.persistence_policy : 'delayed',
-      }
-      if (isRecordPayload(payload.config)) {
-        device.config = payload.config
-      }
-      db.devices.push(device)
-      db.registryRevision += 1
-      db.pendingPersistence = true
-      return ok({
-        registry_revision: db.registryRevision,
-        pending_persistence: db.pendingPersistence,
-        device: db.devices.at(-1),
-      })
+    const nextId = Math.max(1, ...db.devices.map(device => device.device_id)) + 1
+    const typeId = payload.type_id
+    if (typeof typeId !== 'number' || typeId !== DUMMY_DEVICE_TYPE_ID) {
+      throw new ApiClientError('unsupported device type', 'UNSUPPORTED_TYPE', 400, null)
+    }
+
+    const device: DeviceRecord = {
+      device_id: nextId,
+      type_id: typeId,
+      label: 'Dummy device',
+      type: 'dummy',
+      name: String(payload.name ?? 'New Device'),
+      enabled: Boolean(payload.enabled ?? true),
+      has_parent: false,
+      parent_device_id: 0,
+      config_version: 1,
+      config_revision: 1,
+      lifecycle_status: 'ready',
+      effective_status: 'ready',
+      status: 'ready',
+    }
+    if (isRecordPayload(payload.config)) {
+      device.config = payload.config
+    }
+    db.devices.push(device)
+    db.registryRevision += 1
+    db.pendingPersistence = true
+    return ok({
+      registry_revision: db.registryRevision,
+      pending_persistence: db.pendingPersistence,
+      device: db.devices.at(-1),
+    })
   })
   const db = loadMockDatabase()
   publishRealtimeMessage({

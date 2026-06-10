@@ -49,6 +49,26 @@ for (const scenario of scenarios) {
     await expect(typedStatusChip).toHaveText('Output off')
   })
 
+  test(`creates a device from the dashboard on ${scenario.name}`, async ({ page }) => {
+    await page.setViewportSize(scenario.viewport)
+    await page.goto(`${baseUrl}/?mockMode=1&mockReset=1`)
+    await page.waitForLoadState('networkidle')
+
+    await page.getByRole('button', { name: 'Create device' }).click()
+    const createDialog = page.locator('.device-dialog').filter({ hasText: 'Create device' }).last()
+    await expect(createDialog).toBeVisible()
+
+    await createDialog.getByLabel('Name').fill('Smoke Device')
+    const typeSelect = createDialog.getByRole('combobox', { name: 'Type' })
+    await typeSelect.focus()
+    await typeSelect.press('ArrowDown')
+    await typeSelect.press('Enter')
+    await createDialog.getByRole('button', { name: 'Create device' }).click()
+
+    await expect(page.locator('.device-card')).toHaveCount(3)
+    await expect(page.locator('.device-card').filter({ hasText: 'Smoke Device' })).toBeVisible()
+  })
+
   test(`navigates to routed pages on ${scenario.name}`, async ({ page }) => {
     await page.setViewportSize(scenario.viewport)
     await page.goto(`${baseUrl}/?mockMode=1&mockReset=1`)

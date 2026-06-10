@@ -12,7 +12,7 @@
           <div class="device-dialog__eyebrow">{{ t('device.dialog.title') }}</div>
           <div class="device-dialog__headline">{{ device?.name ?? t('device.dialog.noneSelected') }}</div>
           <div class="device-dialog__subline" v-if="device">
-            {{ device.typeLabel }} · #{{ device.deviceId }}
+            {{ typeLabelText }} · #{{ device.deviceId }}
           </div>
         </div>
         <div class="device-dialog__title-actions">
@@ -96,7 +96,7 @@
 
           <section class="device-dialog__section">
             <div class="device-dialog__section-title">{{ t('device.dialog.details') }}</div>
-            <div v-if="device.kind === 'dummy'" class="typed-panel">
+            <div class="typed-panel">
               <div class="typed-panel__header">
                 <div>
                   <div class="typed-panel__title">{{ t('device.type.dummy') }}</div>
@@ -144,50 +144,6 @@
               </div>
             </div>
 
-            <div v-else class="generic-panel">
-              <div class="device-dialog__section-copy">{{ t('device.dialog.genericHint') }}</div>
-              <v-row dense>
-                <v-col cols="12" md="4">
-                  <v-select
-                    v-model="commandDraft.command"
-                    :items="commandOptions"
-                    :label="t('device.actions.command')"
-                    density="comfortable"
-                    hide-details
-                  />
-                </v-col>
-                <v-col cols="12" md="8">
-                  <v-text-field
-                    v-model="commandDraft.payload"
-                    :label="t('device.actions.payload')"
-                    :placeholder="t('device.actions.payloadPlaceholder')"
-                    density="comfortable"
-                    hide-details
-                  />
-                </v-col>
-                <v-col v-if="commandDraft.command === 'set_parent'" cols="12" md="6">
-                  <v-switch
-                    v-model="commandDraft.hasParent"
-                    :label="t('device.actions.hasParent')"
-                    hide-details
-                    inset
-                  />
-                </v-col>
-                <v-col v-if="commandDraft.command === 'set_parent'" cols="12" md="6">
-                  <v-text-field
-                    v-model="commandDraft.parentDeviceId"
-                    :label="t('device.actions.parentDeviceId')"
-                    density="comfortable"
-                    hide-details
-                  />
-                </v-col>
-              </v-row>
-              <div class="generic-panel__actions">
-                <v-btn color="primary" :loading="busyAction === 'command'" :disabled="busy" @click="submitCommand">
-                  {{ t('device.actions.sendCommand') }}
-                </v-btn>
-              </div>
-            </div>
           </section>
         </template>
 
@@ -224,13 +180,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommandRequest } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
 import { deviceActionPresets, type DashboardDevice, type DashboardDeviceActionPreset } from '@/models/device'
+import { deviceTypeLabelKey } from '@/models/device-types'
 
 const props = defineProps<{
   modelValue: boolean
@@ -253,28 +210,10 @@ const { smAndDown } = useDisplay()
 const confirmDelete = ref(false)
 const renameDraft = ref('')
 const activePresetKey = ref('')
-const commandDraft = reactive<{
-  command: DeviceCommandRequest['command']
-  payload: string
-  hasParent: boolean
-  parentDeviceId: string
-}>({
-  command: 'custom',
-  payload: '',
-  hasParent: true,
-  parentDeviceId: '',
-})
-
 const busy = computed(() => props.busyAction !== null)
 const fullscreen = computed(() => smAndDown.value)
 const device = computed(() => props.device)
 const commandPresets = computed(() => (device.value ? deviceActionPresets(device.value) : []))
-const commandOptions = computed(() => [
-  { title: t('device.commands.custom'), value: 'custom' },
-  { title: t('device.commands.setStatus'), value: 'set_status' },
-  { title: t('device.commands.setParent'), value: 'set_parent' },
-  { title: t('device.commands.updateConfig'), value: 'update_config' },
-])
 
 const statusText = computed(() => {
   if (device.value === null) {
@@ -301,13 +240,20 @@ const statusColor = computed(() => {
   }
 })
 
+const typeLabelText = computed(() => {
+  if (device.value === null) {
+    return ''
+  }
+  return t(deviceTypeLabelKey(device.value.typeId))
+})
+
 const baseFieldRows = computed(() => {
   if (device.value === null) {
     return []
   }
   return [
     { key: 'device-id', label: t('device.fields.deviceId'), value: `#${device.value.deviceId}` },
-    { key: 'type', label: t('device.fields.type'), value: device.value.typeLabel },
+    { key: 'type', label: t('device.fields.type'), value: typeLabelText.value },
     { key: 'status', label: t('device.fields.status'), value: statusText.value },
     { key: 'enabled', label: t('device.fields.enabled'), value: yesNo(device.value.enabled) },
     { key: 'registry-revision', label: t('device.fields.registryRevision'), value: `${device.value.registryRevision}` },
@@ -315,7 +261,6 @@ const baseFieldRows = computed(() => {
     { key: 'pending-persistence', label: t('device.fields.pendingPersistence'), value: yesNo(device.value.pendingPersistence) },
     { key: 'lifecycle', label: t('device.fields.lifecycle'), value: device.value.lifecycleStatus },
     { key: 'effective-status', label: t('device.fields.effectiveStatus'), value: device.value.effectiveStatus },
-    { key: 'persistence-policy', label: t('device.fields.persistencePolicy'), value: device.value.persistencePolicy },
     { key: 'parent-device', label: t('device.fields.parentDeviceId'), value: device.value.hasParent ? `#${device.value.parentDeviceId}` : '—' },
     { key: 'has-parent', label: t('device.fields.hasParent'), value: yesNo(device.value.hasParent) },
   ]
@@ -327,10 +272,6 @@ function yesNo(value: boolean | undefined): string {
 
 function resetDrafts(current: DashboardDevice | null): void {
   renameDraft.value = current?.name ?? ''
-  commandDraft.command = 'custom'
-  commandDraft.payload = ''
-  commandDraft.hasParent = true
-  commandDraft.parentDeviceId = current?.parentDeviceId ? `${current.parentDeviceId}` : ''
   activePresetKey.value = ''
   confirmDelete.value = false
 }
@@ -369,21 +310,6 @@ function toggleEnabled(): void {
 function submitDelete(): void {
   confirmDelete.value = false
   emit('delete')
-}
-
-function submitCommand(): void {
-  const payload: DeviceCommandRequest = {
-    command: commandDraft.command,
-  }
-  if (commandDraft.command === 'set_parent') {
-    payload.has_parent = commandDraft.hasParent
-    if (commandDraft.parentDeviceId.trim().length > 0) {
-      payload.parent_device_id = Number(commandDraft.parentDeviceId)
-    }
-  } else if (commandDraft.payload.trim().length > 0) {
-    payload.payload = commandDraft.payload.trim()
-  }
-  emit('command', payload)
 }
 
 function runPreset(preset: DashboardDeviceActionPreset): void {
@@ -488,8 +414,7 @@ function runPreset(preset: DashboardDeviceActionPreset): void {
   align-items: end;
 }
 
-.typed-panel,
-.generic-panel {
+.typed-panel {
   display: grid;
   gap: 16px;
   padding: 16px;
@@ -538,11 +463,6 @@ function runPreset(preset: DashboardDeviceActionPreset): void {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-}
-
-.generic-panel__actions {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .device-dialog__empty {
