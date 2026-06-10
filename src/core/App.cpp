@@ -16,7 +16,7 @@ constexpr uint32_t kTick1sIntervalMs = 1000;
 App::App()
     : configStore_(storage_), wifiManager_(wifiDriver_, &configStore_), deviceRegistryStore_(deviceStorage_),
       deviceRegistry_(deviceRegistryStore_, deviceTypeRegistry_, deviceIdSource_, nullptr, &deviceEventDispatcher_),
-      portalServer_(wifiManager_, wifiDriver_, &deviceRegistry_) {}
+      portalServer_(wifiManager_, wifiDriver_, &deviceRegistry_, &deviceEventDispatcher_) {}
 
 bool App::begin() {
     EWFM_APP_LOG_INFO("ESP32 WiFi Manager booting");

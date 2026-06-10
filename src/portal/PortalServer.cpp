@@ -2,11 +2,12 @@
 
 #include "core/StateMachine.h"
 #include "debug/Debug.h"
-#include "portal/routes/DeviceRegistryRoutes.h"
-#include "portal/routes/OtaPortalRoutes.h"
+#include "portal/controllers/DeviceRegistryController.h"
+#include "portal/controllers/OtaController.h"
+#include "portal/controllers/SystemController.h"
+#include "portal/controllers/WifiController.h"
 #include "portal/routes/PortalHomeRoutes.h"
-#include "portal/routes/SystemControlRoutes.h"
-#include "portal/routes/WifiPortalRoutes.h"
+#include "portal/ws/PortalWebSocketManager.h"
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 #include <DNSServer.h>
@@ -21,9 +22,9 @@ namespace ewfm {
 
 class PortalServer::Impl : public StateMachine {
 public:
-    Impl(WifiManager& wifiManager, IWifiDriver& wifiDriver, DeviceRegistry* deviceRegistry)
+    Impl(WifiManager& wifiManager, IWifiDriver& wifiDriver, DeviceRegistry* deviceRegistry, DeviceEventDispatcher* deviceEventDispatcher)
         : StateMachine((PState)&PortalServer::Impl::Idle), wifiManager_(wifiManager), wifiDriver_(wifiDriver),
-          deviceRegistry_(deviceRegistry) {}
+          deviceRegistry_(deviceRegistry), deviceEventDispatcher_(deviceEventDispatcher) {}
 
     bool begin() {
         configured_ = true;
@@ -97,25 +98,32 @@ private:
         if (!homeRoutes_) {
             homeRoutes_ = std::make_unique<PortalHomeRoutes>();
         }
-        if (!wifiRoutes_) {
-            wifiRoutes_ = std::make_unique<WifiPortalRoutes>(wifiManager_, wifiDriver_);
-        }
-        if (deviceRegistry_ != nullptr && !deviceRoutes_) {
-            deviceRoutes_ = std::make_unique<DeviceRegistryRoutes>(*deviceRegistry_);
-        }
-        if (!otaRoutes_) {
-            otaRoutes_ = std::make_unique<OtaPortalRoutes>(deviceRegistry_);
-        }
-        if (!systemControlRoutes_) {
-            systemControlRoutes_ = std::make_unique<SystemControlRoutes>(deviceRegistry_);
-        }
         homeRoutes_->registerRoutes(*server_);
-        wifiRoutes_->registerRoutes(*server_);
-        deviceRoutes_->registerRoutes(*server_);
-        otaRoutes_->registerRoutes(*server_);
-        systemControlRoutes_->registerRoutes(*server_);
+        WifiController::registerRoutes(*server_, wifiManager_, wifiDriver_);
+        if (deviceRegistry_ != nullptr) {
+            DeviceRegistryController::registerRoutes(*server_, *deviceRegistry_);
+        }
+        OtaController::registerRoutes(*server_, deviceRegistry_);
+        SystemController::registerRoutes(*server_, deviceRegistry_);
+        if (!webSocketManager_) {
+            webSocketManager_ = std::make_unique<PortalWebSocketManager>(deviceEventDispatcher_);
+        }
+        if (webSocketManager_ != nullptr) {
+            if (!webSocketManager_->begin(*server_)) {
+                EWFM_PORTAL_LOG_WARN("portal websocket allocation failed");
+                return false;
+            }
+        }
 
         server_->begin();
+#endif
+#if !defined(ARDUINO) || defined(UNIT_TEST)
+        if (!webSocketManager_) {
+            webSocketManager_ = std::make_unique<PortalWebSocketManager>(deviceEventDispatcher_);
+        }
+        if (webSocketManager_ != nullptr) {
+            webSocketManager_->attachDispatcher();
+        }
 #endif
         httpRunning_ = true;
         ++httpStartCount_;
@@ -131,8 +139,15 @@ private:
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
         if (server_) {
+            if (webSocketManager_) {
+                webSocketManager_->end(*server_);
+            }
             server_->end();
             server_.reset();
+        }
+#else
+        if (webSocketManager_) {
+            webSocketManager_->detachDispatcher();
         }
 #endif
         httpRunning_ = false;
@@ -199,11 +214,9 @@ private:
     WifiManager& wifiManager_;
     IWifiDriver& wifiDriver_;
     DeviceRegistry* deviceRegistry_{nullptr};
+    DeviceEventDispatcher* deviceEventDispatcher_{nullptr};
     std::unique_ptr<PortalHomeRoutes> homeRoutes_;
-    std::unique_ptr<WifiPortalRoutes> wifiRoutes_;
-    std::unique_ptr<DeviceRegistryRoutes> deviceRoutes_;
-    std::unique_ptr<OtaPortalRoutes> otaRoutes_;
-    std::unique_ptr<SystemControlRoutes> systemControlRoutes_;
+    std::unique_ptr<PortalWebSocketManager> webSocketManager_;
     bool configured_{false};
     bool dependencyWaitLogged_{false};
     bool httpRunning_{false};
@@ -261,6 +274,9 @@ SM_STATE(Running) {
     }
 
     updateDns();
+    if (webSocketManager_ != nullptr) {
+        webSocketManager_->tick(uptime(), wifiManager_, wifiDriver_);
+    }
 }
 
 SM_STATE(Faulted) {
@@ -278,14 +294,15 @@ SM_STATE(Faulted) {
     SM_GOTO(Starting);
 }
 
-PortalServer::PortalServer(WifiManager& wifiManager, IWifiDriver& wifiDriver, DeviceRegistry* deviceRegistry)
-    : wifiManager_(wifiManager), wifiDriver_(wifiDriver), deviceRegistry_(deviceRegistry) {}
+PortalServer::PortalServer(WifiManager& wifiManager, IWifiDriver& wifiDriver, DeviceRegistry* deviceRegistry,
+                           DeviceEventDispatcher* deviceEventDispatcher)
+    : wifiManager_(wifiManager), wifiDriver_(wifiDriver), deviceRegistry_(deviceRegistry), deviceEventDispatcher_(deviceEventDispatcher) {}
 
 PortalServer::~PortalServer() = default;
 
 bool PortalServer::begin() {
     if (!impl_) {
-        impl_ = std::make_unique<Impl>(wifiManager_, wifiDriver_, deviceRegistry_);
+        impl_ = std::make_unique<Impl>(wifiManager_, wifiDriver_, deviceRegistry_, deviceEventDispatcher_);
     }
     return impl_ != nullptr && impl_->begin();
 }
