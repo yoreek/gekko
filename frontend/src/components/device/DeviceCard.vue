@@ -39,9 +39,6 @@
       <div class="device-card__chips">
         <v-chip size="small" variant="tonal">{{ device.typeName }}</v-chip>
         <v-chip size="small" variant="outlined">cfg {{ device.configRevision }}</v-chip>
-        <v-chip v-if="device.pendingPersistence" size="small" color="warning" variant="flat">
-          {{ t('device.fields.pendingPersistence') }}
-        </v-chip>
       </div>
     </v-card-text>
   </v-card>
