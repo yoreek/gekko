@@ -1,6 +1,6 @@
 ## Purpose
 
-Define the offline-bundled Vue portal application and its deployment constraints.
+Define the offline-bundled Vue portal application, UI shell rules, deployment constraints, and frontend development constraints.
 
 ## Requirements
 
@@ -10,6 +10,14 @@ The project SHALL provide a `portal-spa/` Vue SPA that bundles all runtime depen
 #### Scenario: Frontend dependencies are local
 - **WHEN** the SPA is built for deployment
 - **THEN** the generated HTML, JavaScript, CSS, and icons reference only local bundled assets and do not require CDN, external fonts, external icon packages, or internet access
+
+#### Scenario: JavaScript bundle stays size constrained
+- **WHEN** the SPA production build is generated
+- **THEN** the primary gzipped JavaScript bundle stays below `200 kB`
+
+#### Scenario: LittleFS data output stays bounded
+- **WHEN** the SPA deploy data output is generated
+- **THEN** the git-tracked gzip assets in `data/` stay at or below `250 KiB`
 
 #### Scenario: Current Vue ecosystem is pinned
 - **WHEN** frontend dependencies are installed for implementation
@@ -41,6 +49,112 @@ The frontend build SHALL minimize LittleFS storage usage while preserving a usab
 #### Scenario: Bundle size is measured
 - **WHEN** the frontend build completes
 - **THEN** the build output reports compressed asset sizes and fails or flags the build when git-tracked deployable `data/` output exceeds 250 KiB or the primary gzipped JavaScript asset exceeds 200 KiB
+
+### Requirement: Compact portal shell navigation
+The SPA SHALL provide a compact navigation shell where the sidebar is opened from the top toolbar instead of consuming a permanent wide content column.
+
+#### Scenario: Menu opens on demand
+- **WHEN** the user activates the menu control in the App bar
+- **THEN** the SPA opens the left navigation drawer
+
+#### Scenario: Drawer text follows the active theme
+- **WHEN** the user switches between `light` and `dark` themes
+- **THEN** navigation drawer text, subtitle text, and icon colors remain readable by using the active Vuetify theme colors
+
+#### Scenario: App bar stays compact
+- **WHEN** the portal shell is visible
+- **THEN** the App bar does not reserve space for a permanent wide sidebar or repeated route labels
+
+#### Scenario: Selected menu label is not repeated in the toolbar
+- **WHEN** a route is active
+- **THEN** the top toolbar does not duplicate the selected menu item label as a navigation header
+
+#### Scenario: Toolbar shows shared portal status
+- **WHEN** the portal shell is visible
+- **THEN** the top toolbar can show shared indicators such as the active panel name, sync state, locale, and mock mode
+
+### Requirement: Vuetify-first UI implementation
+The SPA SHALL prefer Vuetify components, Vuetify props, and Vuetify theme tokens for application UI before introducing custom component behavior or custom CSS.
+
+#### Scenario: Standard Vuetify component is available
+- **WHEN** a UI need is covered by an existing Vuetify component
+- **THEN** the SPA uses that Vuetify component instead of reimplementing the behavior with custom markup
+
+#### Scenario: Component shape or behavior can be configured
+- **WHEN** spacing, shape, density, color, theme, or interaction behavior can be configured through Vuetify props/defaults
+- **THEN** the SPA uses those component props/defaults instead of CSS overrides
+
+#### Scenario: Surfaces use theme colors
+- **WHEN** the SPA styles app bars, drawers, panels, cards, dialogs, empty states, or page surfaces
+- **THEN** it uses Vuetify `surface`, `background`, `on-surface`, and related theme colors instead of hard-coded light-only or dark-only colors
+
+#### Scenario: Custom CSS is needed
+- **WHEN** Vuetify components and props do not cover a required layout or visual detail
+- **THEN** custom CSS remains scoped to the smallest relevant class and continues to use theme variables for color
+
+### Requirement: Complex frontend behavior is library-evaluated
+The SPA SHALL evaluate proven third-party libraries before implementing complex interactive behavior from scratch.
+
+#### Scenario: Complex interaction is required
+- **WHEN** a feature requires non-trivial behavior such as grid drag, resize, virtualized tables, rich selection, charts, or collision-aware layout
+- **THEN** implementation planning evaluates existing libraries before writing custom interaction logic
+
+#### Scenario: Library choice affects bundle size or architecture
+- **WHEN** a candidate library adds dependency weight, architectural constraints, or non-obvious trade-offs
+- **THEN** the implementation proposes options for user approval before adding the dependency
+
+#### Scenario: Custom implementation is still chosen
+- **WHEN** no suitable library is chosen for a complex behavior
+- **THEN** the reason is documented and the custom implementation remains limited to the required scope
+
+### Requirement: App bar exposes language and theme switching
+The SPA SHALL provide language switching and two themes, `light` and `dark`, from the App bar.
+
+#### Scenario: Language can be switched
+- **WHEN** the user activates the language control in the App bar
+- **THEN** the SPA switches between the supported interface languages
+
+#### Scenario: Theme can be switched
+- **WHEN** the user activates the theme control in the App bar
+- **THEN** the SPA switches between `light` and `dark` themes
+
+#### Scenario: Theme state persists
+- **WHEN** the user reloads the app after changing theme or language
+- **THEN** the SPA restores the previously selected theme and language
+
+### Requirement: Icons are managed locally
+The SPA SHALL keep UI icons in a local frontend registry and SHALL NOT add a separate icon package dependency.
+
+#### Scenario: Icon assets are local
+- **WHEN** the SPA renders buttons, cards, or navigation icons
+- **THEN** it uses icons from the local frontend registry
+
+#### Scenario: Local icons render with theme color
+- **WHEN** a local icon is rendered in a button, toolbar, or navigation item
+- **THEN** the icon uses `currentColor` so it remains visible in both light and dark themes
+
+#### Scenario: No icon package dependency
+- **WHEN** frontend dependencies are installed
+- **THEN** the project does not require an external icon package just to render the portal UI
+
+### Requirement: Panels page manages dashboard panels
+The SPA SHALL provide a dedicated Panels page that lists existing panels and allows renaming and deletion.
+
+#### Scenario: Panels page shows existing panels
+- **WHEN** the user opens Panels
+- **THEN** the SPA shows a list of all dashboard panels
+
+#### Scenario: Panel name can be edited
+- **WHEN** the user edits a panel name on the Panels page
+- **THEN** the SPA saves the renamed panel
+
+#### Scenario: Panel can be deleted
+- **WHEN** the user deletes a panel from the Panels page
+- **THEN** the SPA removes the panel unless it is the last remaining panel
+
+#### Scenario: Dashboard can be opened from Panels
+- **WHEN** the user selects a panel from the Panels page
+- **THEN** the SPA navigates to the dashboard and activates that panel
 
 ### Requirement: LittleFS SPA serving
 The firmware SHALL serve the built SPA from the LittleFS filesystem through the portal HTTP server.
