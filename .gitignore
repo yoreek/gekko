@@ -9,3 +9,5 @@ compile_commands.json
 *.log
 gekko/
 GekkoFrontend/
+portal-spa/node_modules/
+portal-spa/dist/
