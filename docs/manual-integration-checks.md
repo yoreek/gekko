@@ -48,7 +48,7 @@ These checks require a real ESP32 device and are intentionally not part of the h
 
 ## Frontend Deployment
 
-- See [frontend-deployment.md](frontend-deployment.md) for the rule that `frontend/` build refreshes `data/`, while `pio run -t uploadfs` remains the explicit ESP32 filesystem upload step.
+- See [frontend-deployment.md](frontend-deployment.md) for the rule that `portal-spa/` build refreshes `data/`, while `pio run -t uploadfs` remains the explicit ESP32 filesystem upload step.
 
 ## Non-Blocking Runtime
 

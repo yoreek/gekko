@@ -43,7 +43,7 @@ The current portal UI mixes dashboard cards, device management, and navigation i
 
 ## Impact
 
-- Frontend Vue shell, routing, and page composition in `frontend/`.
+- Frontend Vue shell, routing, and page composition in `portal-spa/`.
 - Device card and device detail components, plus a new table-based devices page.
 - Local UI state for sidebar collapse and panel selection, persisted in browser storage.
 - Smoke coverage and UI text/localization for the new navigation and page split.

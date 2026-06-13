@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Gekko">
-  <rect width="64" height="64" rx="16" fill="#0f172a"/>
-  <rect x="10" y="10" width="44" height="44" rx="12" fill="#0ea5e9"/>
-  <path d="M22 18h20a4 4 0 0 1 4 4v20a4 4 0 0 1-4 4H22a4 4 0 0 1-4-4V22a4 4 0 0 1 4-4Zm4 8v12h6v-4h6v-4h-6v-4h10v-4H26Z" fill="#ffffff"/>
-</svg>

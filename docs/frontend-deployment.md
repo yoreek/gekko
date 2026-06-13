@@ -4,9 +4,9 @@ The frontend build and the ESP32 filesystem upload are separate steps.
 
 ## Build Output
 
-- `frontend/` builds the Vue SPA.
-- `frontend/scripts/export-data.mjs` copies gzip-only deployable assets into git-tracked `data/`.
-- `frontend/pnpm` script `deploy:data` rebuilds the SPA and refreshes `data/`.
+- `portal-spa/` builds the Vue SPA.
+- `portal-spa/scripts/export-data.mjs` copies gzip-only deployable assets into git-tracked `data/`.
+- `portal-spa` pnpm script `deploy:data` rebuilds the SPA and refreshes `data/`.
 
 ## Flashing The Controller
 
@@ -17,4 +17,3 @@ The frontend build and the ESP32 filesystem upload are separate steps.
 
 - Update `data/` from the frontend build first.
 - Upload the filesystem separately when you want the controller to serve the new SPA.
-

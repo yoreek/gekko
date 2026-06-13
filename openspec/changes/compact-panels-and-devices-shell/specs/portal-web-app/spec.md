@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Offline bundled frontend application
-The project SHALL provide a `frontend/` Vue SPA that bundles all runtime dependencies locally and can run from the controller without internet access.
+The project SHALL provide a `portal-spa/` Vue SPA that bundles all runtime dependencies locally and can run from the controller without internet access.
 
 #### Scenario: Frontend dependencies are local
 - **WHEN** the SPA is built for deployment
@@ -10,6 +10,10 @@ The project SHALL provide a `frontend/` Vue SPA that bundles all runtime depende
 #### Scenario: JavaScript bundle stays size constrained
 - **WHEN** the SPA production build is generated
 - **THEN** the primary gzipped JavaScript bundle stays below `200 kB`
+
+#### Scenario: LittleFS data output stays bounded
+- **WHEN** the SPA deploy data output is generated
+- **THEN** the git-tracked gzip assets in `data/` stay at or below `250 KiB`
 
 #### Scenario: Current Vue ecosystem is pinned
 - **WHEN** frontend dependencies are installed for implementation

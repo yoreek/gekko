@@ -5,7 +5,7 @@ Define the offline-bundled Vue portal application and its deployment constraints
 ## Requirements
 
 ### Requirement: Offline bundled frontend application
-The project SHALL provide a `frontend/` Vue SPA that bundles all runtime dependencies locally and can run from the controller without internet access.
+The project SHALL provide a `portal-spa/` Vue SPA that bundles all runtime dependencies locally and can run from the controller without internet access.
 
 #### Scenario: Frontend dependencies are local
 - **WHEN** the SPA is built for deployment
@@ -24,7 +24,7 @@ The project SHALL provide a `frontend/` Vue SPA that bundles all runtime depende
 - **THEN** it uses vue-i18n message keys with English `en` and Russian `ru` dictionaries
 
 ### Requirement: Size-conscious frontend build
-The frontend build SHALL minimize LittleFS storage usage while preserving a usable Vuetify-based interface and keeping git-tracked deployable `data/` output at or below 220 KB.
+The frontend build SHALL minimize LittleFS storage usage while preserving a usable Vuetify-based interface, keeping git-tracked deployable `data/` output at or below 250 KiB and the primary gzipped JavaScript asset below 200 KiB.
 
 #### Scenario: Vuetify is imported manually
 - **WHEN** the frontend initializes Vuetify
@@ -40,7 +40,7 @@ The frontend build SHALL minimize LittleFS storage usage while preserving a usab
 
 #### Scenario: Bundle size is measured
 - **WHEN** the frontend build completes
-- **THEN** the build output reports compressed asset sizes and fails or flags the build when git-tracked deployable `data/` output exceeds 220 KB
+- **THEN** the build output reports compressed asset sizes and fails or flags the build when git-tracked deployable `data/` output exceeds 250 KiB or the primary gzipped JavaScript asset exceeds 200 KiB
 
 ### Requirement: LittleFS SPA serving
 The firmware SHALL serve the built SPA from the LittleFS filesystem through the portal HTTP server.

@@ -13,7 +13,7 @@ async function cleanDirectory(dir) {
   try {
     await fs.rm(dir, { recursive: true, force: true })
   } catch {
-    // Ignore cleanup failures and let the copy step surface the real issue.
+    // Let the copy step surface filesystem problems.
   }
   await ensureDir(dir)
 }
@@ -41,4 +41,3 @@ await cleanDirectory(dataDir)
 await copyGzipAssets(distDir, dataDir)
 
 console.log(`deployed gzip assets from ${distDir} to ${dataDir}`)
-
