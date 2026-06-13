@@ -1,5 +1,6 @@
 import type { RealtimeMessage } from './messages'
 import type { useAppStore } from '@/stores/app'
+import type { DeviceRecord } from '@/api'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { useOtaStore } from '@/stores/ota'
 import { useSystemStore } from '@/stores/system'
@@ -8,6 +9,10 @@ import { useWifiStore } from '@/stores/wifi'
 import type { Pinia } from 'pinia'
 
 type AppStore = ReturnType<typeof useAppStore>
+
+function isDeviceRecord(value: unknown): value is DeviceRecord {
+  return typeof value === 'object' && value !== null && typeof (value as { device_id?: unknown }).device_id === 'number'
+}
 
 export function bindRealtimeBridge(
   pinia: Pinia,
@@ -60,6 +65,10 @@ export function bindRealtimeBridge(
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
         const payload = message.payload as { pending_persistence?: boolean }
+        const devicePayload = (message.payload as { device?: unknown }).device
+        if (isDeviceRecord(devicePayload)) {
+          deviceStore.upsertDevice(devicePayload, message.revision)
+        }
         if (typeof payload.pending_persistence === 'boolean') {
           deviceStore.setPendingPersistence(payload.pending_persistence)
         }

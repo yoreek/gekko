@@ -30,7 +30,10 @@ function publishDeviceUpsert(device: DeviceRecord): void {
   publishRealtimeMessage({
     topic: 'device.upsert',
     revision: device.registry_revision ?? loadMockDatabase().registryRevision,
-    payload: device,
+    payload: {
+      device,
+      pending_persistence: device.pending_persistence ?? false,
+    },
   })
 }
 
@@ -75,9 +78,12 @@ export function connectMockRealtimeSocket(pinia: Pinia): MockRealtimeSocketHandl
         topic: 'device.upsert',
         revision: db.registryRevision,
         payload: {
-          ...device,
+          device: {
+            ...device,
+            pending_persistence: false,
+            registry_revision: db.registryRevision,
+          },
           pending_persistence: false,
-          registry_revision: db.registryRevision,
         },
       })
     }
