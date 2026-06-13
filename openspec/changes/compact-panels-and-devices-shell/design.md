@@ -128,6 +128,20 @@ Alternatives considered:
 - Vuetify default icon packages: rejected because they add dependency and bundle cost.
 - External SVG assets or CDN icons: rejected because the SPA must run offline.
 
+### 8. Prefer Vuetify and evaluate libraries for complex behavior
+The SPA should use Vuetify components, props, defaults, and theme tokens before adding custom markup or CSS. Custom CSS is acceptable only when Vuetify does not provide the needed behavior or layout, and colors should come from Vuetify theme variables such as `surface`, `background`, and `on-surface`.
+
+Why:
+- Vuetify components already solve common UI behavior and accessibility details.
+- Theme tokens prevent light/dark regressions from hard-coded colors.
+- Component props/defaults are easier to maintain than CSS overrides against generated Vuetify internals.
+
+For complex frontend interactions, implementation should evaluate existing libraries before writing custom behavior. Examples include collision-aware dashboard grids, virtualized lists, advanced tables, charts, and rich drag/drop. When a library has bundle-size or architecture trade-offs, options should be presented for user approval before adding the dependency.
+
+Alternatives considered:
+- Custom implementation first: rejected because it increases maintenance risk for interaction-heavy UI.
+- Adding libraries without review: rejected because the controller bundle has size constraints and must remain offline-friendly.
+
 ## Risks / Trade-offs
 
 - [Risk] Frontend-only panel persistence can diverge from a future backend panel model. → Mitigation: keep the stored shape simple and device-reference based so it can be mapped later.
@@ -136,6 +150,8 @@ Alternatives considered:
 - [Risk] Managing state in both dashboard widgets and table rows can duplicate interaction logic. → Mitigation: keep the underlying command path shared and only vary presentation.
 - [Risk] A later backend persistence API can drift from the local layout shape. → Mitigation: keep panel order and widget coordinates serialized as plain `x`, `y`, `w`, `h` metadata from the start.
 - [Risk] Restored grid coordinates can visibly jump while a layout library initializes. → Mitigation: mount only the active panel grid and defer grid visibility until coordinate restoration has settled.
+- [Risk] Hard-coded colors can break one of the themes. → Mitigation: use Vuetify theme tokens for surfaces and text by default.
+- [Risk] Custom implementations of complex interactions can become brittle. → Mitigation: evaluate proven libraries and confirm trade-offs before adding dependencies.
 
 ## Migration Plan
 

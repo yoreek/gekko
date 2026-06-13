@@ -46,6 +46,40 @@ The SPA SHALL provide a compact navigation shell where the sidebar is opened fro
 - **WHEN** the portal shell is visible
 - **THEN** the top toolbar can show shared indicators such as the active panel name, sync state, locale, and mock mode
 
+### Requirement: Vuetify-first UI implementation
+The SPA SHALL prefer Vuetify components, Vuetify props, and Vuetify theme tokens for application UI before introducing custom component behavior or custom CSS.
+
+#### Scenario: Standard Vuetify component is available
+- **WHEN** a UI need is covered by an existing Vuetify component
+- **THEN** the SPA uses that Vuetify component instead of reimplementing the behavior with custom markup
+
+#### Scenario: Component shape or behavior can be configured
+- **WHEN** spacing, shape, density, color, theme, or interaction behavior can be configured through Vuetify props/defaults
+- **THEN** the SPA uses those component props/defaults instead of CSS overrides
+
+#### Scenario: Surfaces use theme colors
+- **WHEN** the SPA styles app bars, drawers, panels, cards, dialogs, empty states, or page surfaces
+- **THEN** it uses Vuetify `surface`, `background`, `on-surface`, and related theme colors instead of hard-coded light-only or dark-only colors
+
+#### Scenario: Custom CSS is needed
+- **WHEN** Vuetify components and props do not cover a required layout or visual detail
+- **THEN** custom CSS remains scoped to the smallest relevant class and continues to use theme variables for color
+
+### Requirement: Complex frontend behavior is library-evaluated
+The SPA SHALL evaluate proven third-party libraries before implementing complex interactive behavior from scratch.
+
+#### Scenario: Complex interaction is required
+- **WHEN** a feature requires non-trivial behavior such as grid drag, resize, virtualized tables, rich selection, charts, or collision-aware layout
+- **THEN** implementation planning evaluates existing libraries before writing custom interaction logic
+
+#### Scenario: Library choice affects bundle size or architecture
+- **WHEN** a candidate library adds dependency weight, architectural constraints, or non-obvious trade-offs
+- **THEN** the implementation proposes options for user approval before adding the dependency
+
+#### Scenario: Custom implementation is still chosen
+- **WHEN** no suitable library is chosen for a complex behavior
+- **THEN** the reason is documented and the custom implementation remains limited to the required scope
+
 ### Requirement: App bar exposes language and theme switching
 The SPA SHALL provide language switching and two themes, `light` and `dark`, from the App bar.
 
