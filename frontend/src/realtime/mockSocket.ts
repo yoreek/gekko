@@ -14,11 +14,15 @@ export interface MockRealtimeSocketHandle {
   upsertDevice(device: DeviceRecord): void
   removeDevice(deviceId: number): void
   refreshSnapshot(): void
+  schedulePersistenceFlush(): void
 }
 
 declare global {
   interface Window {
     __gekkoMockRealtime?: MockRealtimeSocketHandle
+    __gekkoMockRealtimeRuntime?: {
+      schedulePersistenceFlush?: () => void
+    }
   }
 }
 
@@ -45,6 +49,47 @@ function publishDeviceRemove(deviceId: number, revision: number, pendingPersiste
 export function connectMockRealtimeSocket(pinia: Pinia): MockRealtimeSocketHandle {
   const appStore = useAppStore(pinia)
   const wsStore = useWebSocketStore(pinia)
+  let persistenceFlushTimer: number | null = null
+  const persistenceFlushDelayMs = 250
+
+  const clearPersistenceFlushTimer = (): void => {
+    if (persistenceFlushTimer === null) {
+      return
+    }
+    window.clearTimeout(persistenceFlushTimer)
+    persistenceFlushTimer = null
+  }
+
+  const flushPendingPersistence = (): void => {
+    persistenceFlushTimer = null
+    const db = loadMockDatabase()
+    if (!db.pendingPersistence) {
+      return
+    }
+
+    db.pendingPersistence = false
+    saveMockDatabase(db)
+
+    for (const device of db.devices) {
+      publishRealtimeMessage({
+        topic: 'device.upsert',
+        revision: db.registryRevision,
+        payload: {
+          ...device,
+          pending_persistence: false,
+          registry_revision: db.registryRevision,
+        },
+      })
+    }
+  }
+
+  const schedulePersistenceFlush = (): void => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    clearPersistenceFlushTimer()
+    persistenceFlushTimer = window.setTimeout(flushPendingPersistence, persistenceFlushDelayMs)
+  }
 
   const markConnected = (): void => {
     wsStore.markConnected()
@@ -60,6 +105,9 @@ export function connectMockRealtimeSocket(pinia: Pinia): MockRealtimeSocketHandl
     dispose(): void {
       if (typeof window !== 'undefined' && window.__gekkoMockRealtime === handle) {
         window.__gekkoMockRealtime = undefined
+      }
+      if (typeof window !== 'undefined' && window.__gekkoMockRealtimeRuntime?.schedulePersistenceFlush === schedulePersistenceFlush) {
+        window.__gekkoMockRealtimeRuntime = undefined
       }
       markDisconnected()
     },
@@ -94,10 +142,16 @@ export function connectMockRealtimeSocket(pinia: Pinia): MockRealtimeSocketHandl
     refreshSnapshot(): void {
       publishMockSnapshot()
     },
+    schedulePersistenceFlush(): void {
+      schedulePersistenceFlush()
+    },
   }
 
   if (typeof window !== 'undefined') {
     window.__gekkoMockRealtime = handle
+    window.__gekkoMockRealtimeRuntime = {
+      schedulePersistenceFlush,
+    }
   }
 
   publishMockSnapshot()

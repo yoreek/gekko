@@ -67,6 +67,7 @@ for (const scenario of scenarios) {
 
     await expect(page.locator('.device-card')).toHaveCount(3)
     await expect(page.locator('.device-card').filter({ hasText: 'Smoke Device' })).toBeVisible()
+    await expect(page.locator('.dashboard-page .page-hero .v-chip').first()).toHaveText('Synced')
   })
 
   test(`emits mock websocket updates on ${scenario.name}`, async ({ page }) => {

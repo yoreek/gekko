@@ -11,6 +11,7 @@ import type {
 } from '@/api'
 import { ApiClientError } from '@/api/http'
 import { publishRealtimeMessage } from '@/realtime/bus'
+import { scheduleMockPersistenceFlush } from '@/realtime/mockRuntime'
 import { DUMMY_DEVICE_TYPE_ID } from '@/models/device-types'
 import { createSeedMockDatabase, loadMockDatabase, saveMockDatabase } from './database'
 
@@ -66,6 +67,7 @@ export function mockConfigureWifi(ssid: string, password = ''): Promise<{ status
       setup_ap_ip: db.wifi.setupApIp,
     },
   })
+  scheduleMockPersistenceFlush()
   return Promise.resolve(response)
 }
 
@@ -88,6 +90,7 @@ export function mockStartBleWifiConfig(): Promise<{ status: string; action: stri
       setup_ap_ip: loadMockDatabase().wifi.setupApIp,
     },
   })
+  scheduleMockPersistenceFlush()
   return Promise.resolve(response)
 }
 
@@ -154,6 +157,7 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
     revision: db.registryRevision,
     payload: response.device ?? {},
   })
+  scheduleMockPersistenceFlush()
   return Promise.resolve(response)
 }
 
@@ -237,6 +241,7 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
     revision: db.registryRevision,
     payload: response.device ?? { device_id: deviceId },
   })
+  scheduleMockPersistenceFlush()
   return Promise.resolve(response)
 }
 
@@ -267,6 +272,7 @@ export function mockRestartSystem(): Promise<SystemRestartResponse> {
       rebooting: true,
     },
   })
+  scheduleMockPersistenceFlush()
   return Promise.resolve(response)
 }
 
