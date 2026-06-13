@@ -1,6 +1,8 @@
 import type {
   DeviceCommandRequest,
   DeviceDetailResponse,
+  DashboardLayoutRecord,
+  DashboardLayoutResponse,
   DeviceMutationResponse,
   DeviceRegistryResponse,
   OtaStatusResponse,
@@ -12,6 +14,7 @@ import { detectTransportMode } from './transport'
 import { requestForm, requestJson } from './http'
 import {
   mockCommandDevice,
+  mockFetchDashboardLayout,
   mockConfigureWifi,
   mockCreateDevice,
   mockDeleteDevice,
@@ -21,6 +24,7 @@ import {
   mockFetchWifiScan,
   mockFetchWifiStatus,
   mockRestartSystem,
+  mockSaveDashboardLayout,
   mockStartBleWifiConfig,
 } from '@/mock/handlers'
 
@@ -106,6 +110,26 @@ export function deleteDevice(deviceId: number): Promise<DeviceMutationResponse> 
     return mockDeleteDevice(deviceId)
   }
   return requestJson<DeviceMutationResponse>(`/api/devices/${deviceId}`, { method: 'DELETE' })
+}
+
+export function fetchDashboardLayout(): Promise<DashboardLayoutResponse> {
+  if (useMockTransport()) {
+    return Promise.resolve(mockFetchDashboardLayout())
+  }
+  return requestJson<DashboardLayoutResponse>('/api/dashboard/layout')
+}
+
+export function saveDashboardLayout(layout: DashboardLayoutRecord): Promise<DashboardLayoutResponse> {
+  if (useMockTransport()) {
+    return mockSaveDashboardLayout(layout)
+  }
+  return requestJson<DashboardLayoutResponse>('/api/dashboard/layout', {
+    method: 'PUT',
+    body: JSON.stringify({ layout }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
 }
 
 export function fetchOtaStatus(): Promise<OtaStatusResponse> {

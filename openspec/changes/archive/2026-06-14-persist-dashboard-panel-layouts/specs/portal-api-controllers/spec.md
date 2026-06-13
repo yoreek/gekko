@@ -1,34 +1,7 @@
-## Purpose
-
-Define the shared REST controller layer for the portal HTTP API.
-
-## Requirements
-
-### Requirement: Shared portal REST controller base
-The firmware SHALL provide a shared controller base for portal REST endpoints that centralizes request dispatch, bounded JSON body parsing, JSON success/error responses, CORS headers, no-cache API headers, and `OPTIONS` preflight handling.
-
-#### Scenario: CORS headers are applied
-- **WHEN** a portal REST controller sends a JSON response
-- **THEN** the response includes `Access-Control-Allow-Origin: *`, `Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS`, `Access-Control-Allow-Headers: Content-Type`, and `Access-Control-Max-Age: 3600`
-
-#### Scenario: OPTIONS preflight is handled consistently
-- **WHEN** a client sends an `OPTIONS` request to a portal REST endpoint
-- **THEN** the controller returns a no-content response with CORS headers and does not invoke the endpoint mutation handler
-
-#### Scenario: Invalid JSON is rejected
-- **WHEN** a controller action that requires a JSON body receives malformed or oversized JSON input
-- **THEN** the controller rejects the request with a bounded JSON error response and does not call the domain mutation
-
-#### Scenario: Success envelope is consistent
-- **WHEN** a portal REST controller sends a successful JSON response
-- **THEN** the response includes `success` set to `true` plus endpoint-specific payload fields
-
-#### Scenario: Error envelope is consistent
-- **WHEN** a portal REST controller rejects a request
-- **THEN** the response body uses `{"success":false,"code":"...","error":"..."}` with a stable machine-readable code and human-readable error string
+## MODIFIED Requirements
 
 ### Requirement: Existing portal API routes are preserved
-The firmware SHALL preserve the existing first-milestone REST endpoint paths and response semantics while migrating route implementation to controllers.
+The firmware SHALL preserve the existing first-milestone REST endpoint paths and response semantics while migrating route implementation to controllers, and SHALL add dashboard layout routes without changing existing route behavior.
 
 #### Scenario: WiFi status endpoint remains available
 - **WHEN** a client requests `GET /api/wifi/status`
@@ -54,6 +27,8 @@ The firmware SHALL preserve the existing first-milestone REST endpoint paths and
 - **WHEN** a client calls `/api/dashboard/layout`
 - **THEN** the portal handles the request through a REST controller and does not serve the SPA fallback for that API path
 
+## ADDED Requirements
+
 ### Requirement: Dashboard layout controller uses shared REST behavior
 The firmware SHALL implement dashboard layout REST routes using the shared portal REST controller behavior for CORS, no-cache API headers, bounded JSON parsing, and success/error envelopes.
 
@@ -72,14 +47,3 @@ The firmware SHALL implement dashboard layout REST routes using the shared porta
 #### Scenario: Dashboard layout preflight is handled
 - **WHEN** a client sends `OPTIONS /api/dashboard/layout`
 - **THEN** the controller returns the shared no-content CORS preflight response without mutating stored layout
-
-### Requirement: Streamed JSON for potentially large responses
-The firmware SHALL stream REST responses that can grow with device count instead of building one large intermediate payload string.
-
-#### Scenario: Device list is serialized incrementally
-- **WHEN** a client requests the device registry list
-- **THEN** the controller writes the response incrementally to an async response stream and avoids concatenating the full device list into a temporary `String`
-
-#### Scenario: Empty list remains valid JSON
-- **WHEN** a streamed list response contains no items
-- **THEN** the controller returns syntactically valid JSON with an empty array and success metadata

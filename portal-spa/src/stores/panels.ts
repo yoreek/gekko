@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 
-import { safeReadStorage, safeRemoveStorage, safeWriteStorage } from '@/utils/storage'
+import { fetchDashboardLayout, saveDashboardLayout, type DashboardLayoutRecord } from '@/api'
+import { safeReadStorage, safeRemoveStorage } from '@/utils/storage'
 
 export interface DashboardPanelWidget {
   deviceId: number
@@ -11,20 +12,25 @@ export interface DashboardPanelWidget {
 }
 
 export interface DashboardPanel {
-  id: number
+  id: string
   name: string
   widgets: DashboardPanelWidget[]
 }
 
 interface PanelSnapshot {
   panels: DashboardPanel[]
-  activePanelId: number
+  activePanelId: string
 }
 
 const storageKey = 'gekko.panels.v2'
 const defaultColumns = 6
 const defaultWidgetWidth = 1
 const defaultWidgetHeight = 1
+const maxPanels = 8
+const maxPanelNameLength = 32
+const saveDebounceMs = 300
+
+let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 function widgetCells(widget: DashboardPanelWidget): string[] {
   const cells: string[] = []
@@ -116,27 +122,32 @@ function layoutWidgets(deviceIds: number[], columns = defaultColumns): Dashboard
 
 function createDefaultPanel(deviceIds: number[]): DashboardPanel {
   return {
-    id: 1,
+    id: 'main',
     name: 'Main panel',
     widgets: layoutWidgets(deviceIds),
   }
 }
 
-function panelHasName(panels: DashboardPanel[], name: string, excludeId?: number): boolean {
+function sanitizePanelName(name: string): string {
+  const trimmed = name.trim()
+  return (trimmed.length > 0 ? trimmed : 'Panel').slice(0, maxPanelNameLength)
+}
+
+function panelHasName(panels: DashboardPanel[], name: string, excludeId?: string): boolean {
   return panels.some(panel => panel.id !== excludeId && panel.name.toLowerCase() === name.toLowerCase())
 }
 
-function makeUniquePanelName(name: string, panels: DashboardPanel[], excludeId?: number): string {
-  const candidate = name.trim().length > 0 ? name.trim() : 'Panel'
+function makeUniquePanelName(name: string, panels: DashboardPanel[], excludeId?: string): string {
+  const candidate = sanitizePanelName(name)
   if (!panelHasName(panels, candidate, excludeId)) {
     return candidate
   }
 
   let suffix = 2
-  while (panelHasName(panels, `${candidate} ${suffix}`, excludeId)) {
+  while (panelHasName(panels, `${candidate.slice(0, maxPanelNameLength - String(suffix).length - 1)} ${suffix}`, excludeId)) {
     suffix += 1
   }
-  return `${candidate} ${suffix}`
+  return `${candidate.slice(0, maxPanelNameLength - String(suffix).length - 1)} ${suffix}`
 }
 
 function normalizePanel(panel: DashboardPanel, deviceIds: number[]): DashboardPanel {
@@ -144,17 +155,18 @@ function normalizePanel(panel: DashboardPanel, deviceIds: number[]): DashboardPa
   const widgets = normalizeWidgets(panel.widgets.filter(widget => allowedIds.has(widget.deviceId)), defaultColumns)
   return {
     id: panel.id,
-    name: panel.name,
+    name: sanitizePanelName(panel.name),
     widgets,
   }
 }
 
 function normalizeSnapshot(snapshot: Partial<PanelSnapshot> | null, deviceIds: number[]): PanelSnapshot {
-  const rawPanels = Array.isArray(snapshot?.panels) && snapshot.panels.length > 0 ? snapshot.panels : [createDefaultPanel(deviceIds)]
+  const rawPanels = Array.isArray(snapshot?.panels) && snapshot.panels.length > 0 ? snapshot.panels.slice(0, maxPanels) : [createDefaultPanel(deviceIds)]
   const panels: DashboardPanel[] = []
   for (const panel of clonePanels(rawPanels).map(entry => normalizePanel(entry, deviceIds))) {
     panels.push({
       ...panel,
+      id: panel.id || `panel-${panels.length + 1}`,
       name: makeUniquePanelName(panel.name, panels, panel.id),
     })
   }
@@ -174,18 +186,32 @@ function readSnapshot(): PanelSnapshot | null {
   }
 
   try {
-    return JSON.parse(raw) as PanelSnapshot
+    const parsed = JSON.parse(raw) as { panels?: Array<{ id: number | string; name: string; widgets: DashboardPanelWidget[] }>; activePanelId?: number | string }
+    if (!Array.isArray(parsed.panels)) {
+      return null
+    }
+    return {
+      panels: parsed.panels.map(panel => ({
+        id: String(panel.id),
+        name: panel.name,
+        widgets: panel.widgets,
+      })),
+      activePanelId: String(parsed.activePanelId ?? parsed.panels[0]?.id ?? 'main'),
+    }
   } catch {
     return null
   }
 }
 
-function persistSnapshot(snapshot: PanelSnapshot): void {
-  safeWriteStorage(storageKey, JSON.stringify(snapshot))
-}
-
-function nextPanelId(panels: DashboardPanel[]): number {
-  return Math.max(0, ...panels.map(panel => panel.id)) + 1
+function nextPanelId(panels: DashboardPanel[]): string {
+  let suffix = panels.length + 1
+  let candidate = `panel-${suffix}`
+  const ids = new Set(panels.map(panel => panel.id))
+  while (ids.has(candidate)) {
+    suffix += 1
+    candidate = `panel-${suffix}`
+  }
+  return candidate
 }
 
 function removeDeviceFromPanels(panels: DashboardPanel[], deviceId: number): DashboardPanel[] {
@@ -195,6 +221,44 @@ function removeDeviceFromPanels(panels: DashboardPanel[], deviceId: number): Das
   }))
 }
 
+function snapshotToApi(snapshot: PanelSnapshot): DashboardLayoutRecord {
+  return {
+    schema_version: 1,
+    active_panel_id: snapshot.activePanelId,
+    panels: snapshot.panels.map((panel, order) => ({
+      id: panel.id,
+      name: panel.name,
+      order,
+      widgets: panel.widgets.map(widget => ({
+        device_id: widget.deviceId,
+        x: widget.x,
+        y: widget.y,
+        w: widget.w,
+        h: widget.h,
+      })),
+    })),
+  }
+}
+
+function apiToSnapshot(layout: DashboardLayoutRecord): PanelSnapshot {
+  return {
+    activePanelId: layout.active_panel_id,
+    panels: [...layout.panels]
+      .sort((a, b) => a.order - b.order)
+      .map(panel => ({
+        id: panel.id,
+        name: panel.name,
+        widgets: panel.widgets.map(widget => ({
+          deviceId: widget.device_id,
+          x: widget.x,
+          y: widget.y,
+          w: widget.w,
+          h: widget.h,
+        })),
+      })),
+  }
+}
+
 export function resetStoredPanels(): void {
   safeRemoveStorage(storageKey)
 }
@@ -202,8 +266,11 @@ export function resetStoredPanels(): void {
 export const usePanelStore = defineStore('panels', {
   state: () => ({
     panels: [] as DashboardPanel[],
-    activePanelId: 1,
+    activePanelId: 'main',
     initialized: false,
+    revision: 0,
+    saving: false,
+    errorMessage: '',
   }),
   getters: {
     activePanel(state): DashboardPanel | null {
@@ -214,24 +281,78 @@ export const usePanelStore = defineStore('panels', {
     },
   },
   actions: {
-    initialize(deviceIds: number[] = []): void {
+    async initialize(deviceIds: number[] = []): Promise<void> {
       if (this.initialized) {
-        this.syncDeviceIds(deviceIds)
+        await this.syncDeviceIds(deviceIds)
         return
       }
 
-      const snapshot = normalizeSnapshot(readSnapshot(), deviceIds)
-      this.panels = snapshot.panels
-      this.activePanelId = snapshot.activePanelId
-      this.initialized = true
-      persistSnapshot(snapshot)
+      try {
+        const response = await fetchDashboardLayout()
+        let snapshot = normalizeSnapshot(apiToSnapshot(response.layout), deviceIds)
+        const migrated = response.layout_defaulted ? normalizeSnapshot(readSnapshot(), deviceIds) : null
+        if (migrated !== null) {
+          snapshot = migrated
+          const saved = await saveDashboardLayout(snapshotToApi(snapshot))
+          this.revision = saved.revision
+          snapshot = normalizeSnapshot(apiToSnapshot(saved.layout), deviceIds)
+          resetStoredPanels()
+        } else {
+          this.revision = response.revision
+        }
+        this.panels = snapshot.panels
+        this.activePanelId = snapshot.activePanelId
+        this.initialized = true
+        this.errorMessage = ''
+      } catch (error) {
+        const snapshot = normalizeSnapshot(null, deviceIds)
+        this.panels = snapshot.panels
+        this.activePanelId = snapshot.activePanelId
+        this.initialized = true
+        this.errorMessage = error instanceof Error ? error.message : 'dashboard layout unavailable'
+      }
     },
-    syncDeviceIds(deviceIds: number[]): void {
+    async persistNow(): Promise<void> {
       if (!this.initialized) {
-        this.initialize(deviceIds)
+        return
+      }
+      this.saving = true
+      try {
+        const response = await saveDashboardLayout(snapshotToApi({
+          panels: clonePanels(this.panels),
+          activePanelId: this.activePanelId,
+        }))
+        const snapshot = normalizeSnapshot(apiToSnapshot(response.layout), this.panels.flatMap(panel => panel.widgets.map(widget => widget.deviceId)))
+        this.panels = snapshot.panels
+        this.activePanelId = snapshot.activePanelId
+        this.revision = response.revision
+        this.errorMessage = ''
+      } catch (error) {
+        this.errorMessage = error instanceof Error ? error.message : 'dashboard layout save failed'
+      } finally {
+        this.saving = false
+      }
+    },
+    schedulePersist(): void {
+      if (typeof window === 'undefined') {
+        void this.persistNow()
+        return
+      }
+      if (saveDebounceTimer !== null) {
+        window.clearTimeout(saveDebounceTimer)
+      }
+      saveDebounceTimer = window.setTimeout(() => {
+        saveDebounceTimer = null
+        void this.persistNow()
+      }, saveDebounceMs)
+    },
+    async syncDeviceIds(deviceIds: number[]): Promise<void> {
+      if (!this.initialized) {
+        await this.initialize(deviceIds)
         return
       }
 
+      const before = JSON.stringify(this.panels)
       const allowedIds = new Set(deviceIds)
       const missingDeviceIds = deviceIds.filter(deviceId => !this.panels.some(panel => panel.widgets.some(widget => widget.deviceId === deviceId)))
 
@@ -248,26 +369,25 @@ export const usePanelStore = defineStore('panels', {
       }
 
       if (!this.panels.some(panel => panel.id === this.activePanelId)) {
-        this.activePanelId = this.panels[0]?.id ?? 1
+        this.activePanelId = this.panels[0]?.id ?? 'main'
       }
 
-      persistSnapshot({
-        panels: clonePanels(this.panels),
-        activePanelId: this.activePanelId,
-      })
+      if (before !== JSON.stringify(this.panels)) {
+        await this.persistNow()
+      }
     },
-    setActivePanel(panelId: number): void {
+    setActivePanel(panelId: string): void {
       if (!this.panels.some(panel => panel.id === panelId)) {
         return
       }
 
       this.activePanelId = panelId
-      persistSnapshot({
-        panels: clonePanels(this.panels),
-        activePanelId: this.activePanelId,
-      })
+      void this.persistNow()
     },
-    addPanel(name: string): DashboardPanel {
+    addPanel(name: string): DashboardPanel | null {
+      if (this.panels.length >= maxPanels) {
+        return null
+      }
       const panel: DashboardPanel = {
         id: nextPanelId(this.panels),
         name: makeUniquePanelName(name, this.panels),
@@ -275,40 +395,31 @@ export const usePanelStore = defineStore('panels', {
       }
       this.panels = [...this.panels, panel]
       this.activePanelId = panel.id
-      persistSnapshot({
-        panels: clonePanels(this.panels),
-        activePanelId: this.activePanelId,
-      })
+      void this.persistNow()
       return panel
     },
-    renamePanel(panelId: number, name: string): void {
+    renamePanel(panelId: string, name: string): void {
       const panel = this.panels.find(entry => entry.id === panelId)
-      if (!panel) {
+      if (!panel || name.trim().length > maxPanelNameLength) {
         return
       }
 
       panel.name = makeUniquePanelName(name, this.panels, panelId)
-      persistSnapshot({
-        panels: clonePanels(this.panels),
-        activePanelId: this.activePanelId,
-      })
+      void this.persistNow()
     },
-    deletePanel(panelId: number): void {
+    deletePanel(panelId: string): void {
       if (this.panels.length <= 1) {
         return
       }
 
       this.panels = this.panels.filter(panel => panel.id !== panelId)
       if (!this.panels.some(panel => panel.id === this.activePanelId)) {
-        this.activePanelId = this.panels[0]?.id ?? 1
+        this.activePanelId = this.panels[0]?.id ?? 'main'
       }
 
-      persistSnapshot({
-        panels: clonePanels(this.panels),
-        activePanelId: this.activePanelId,
-      })
+      void this.persistNow()
     },
-    movePanel(panelId: number, direction: -1 | 1): void {
+    movePanel(panelId: string, direction: -1 | 1): void {
       const index = this.panels.findIndex(panel => panel.id === panelId)
       if (index < 0) {
         return
@@ -323,60 +434,47 @@ export const usePanelStore = defineStore('panels', {
       const [panel] = next.splice(index, 1)
       next.splice(targetIndex, 0, panel)
       this.panels = next
-      persistSnapshot({
-        panels: clonePanels(this.panels),
-        activePanelId: this.activePanelId,
-      })
+      void this.persistNow()
     },
-    assignDeviceToPanel(panelId: number, deviceId: number): void {
-      const nextPanels = removeDeviceFromPanels(this.panels, deviceId)
-      const target = nextPanels.find(panel => panel.id === panelId)
+    assignDeviceToPanel(panelId: string, deviceId: number): void {
+      const target = this.panels.find(panel => panel.id === panelId)
       if (!target) {
         return
       }
 
-      this.panels = nextPanels
+      if (target.widgets.some(widget => widget.deviceId === deviceId)) {
+        return
+      }
+
       target.widgets = normalizeWidgets([...target.widgets, ...layoutWidgets([deviceId])], defaultColumns)
-      persistSnapshot({
-        panels: clonePanels(this.panels),
-        activePanelId: this.activePanelId,
-      })
+      void this.persistNow()
     },
     assignDeviceToActivePanel(deviceId: number): void {
       this.assignDeviceToPanel(this.activePanelId, deviceId)
     },
     removeDevice(deviceId: number): void {
       this.panels = removeDeviceFromPanels(this.panels, deviceId)
-      persistSnapshot({
-        panels: clonePanels(this.panels),
-        activePanelId: this.activePanelId,
-      })
+      void this.persistNow()
     },
-    removeWidget(panelId: number, deviceId: number): void {
+    removeWidget(panelId: string, deviceId: number): void {
       const panel = this.panels.find(entry => entry.id === panelId)
       if (!panel) {
         return
       }
 
       panel.widgets = normalizeWidgets(panel.widgets.filter(widget => widget.deviceId !== deviceId), defaultColumns)
-      persistSnapshot({
-        panels: clonePanels(this.panels),
-        activePanelId: this.activePanelId,
-      })
+      void this.persistNow()
     },
-    resetPanelLayout(panelId: number, columns = defaultColumns): void {
+    resetPanelLayout(panelId: string, columns = defaultColumns): void {
       const panel = this.panels.find(entry => entry.id === panelId)
       if (!panel) {
         return
       }
 
       panel.widgets = layoutWidgets(panel.widgets.map(widget => widget.deviceId), columns)
-      persistSnapshot({
-        panels: clonePanels(this.panels),
-        activePanelId: this.activePanelId,
-      })
+      void this.persistNow()
     },
-    setWidgetLayout(panelId: number, widgets: DashboardPanelWidget[], columns = defaultColumns): void {
+    setWidgetLayout(panelId: string, widgets: DashboardPanelWidget[], columns = defaultColumns): void {
       const panel = this.panels.find(entry => entry.id === panelId)
       if (!panel) {
         return
@@ -384,22 +482,15 @@ export const usePanelStore = defineStore('panels', {
 
       const knownIds = new Set(panel.widgets.map(widget => widget.deviceId))
       panel.widgets = normalizeWidgets(widgets.filter(widget => knownIds.has(widget.deviceId)), columns)
-      persistSnapshot({
-        panels: clonePanels(this.panels),
-        activePanelId: this.activePanelId,
-      })
+      this.schedulePersist()
     },
-    reflowPanel(panelId: number, columns: number): void {
+    reflowPanel(panelId: string, columns: number): void {
       const panel = this.panels.find(entry => entry.id === panelId)
       if (!panel) {
         return
       }
 
       panel.widgets = normalizeWidgets(panel.widgets, columns)
-      persistSnapshot({
-        panels: clonePanels(this.panels),
-        activePanelId: this.activePanelId,
-      })
     },
   },
 })

@@ -156,7 +156,7 @@ async function refreshDevices(silent = false): Promise<void> {
   try {
     const response = await fetchDevices()
     deviceStore.replaceFromResponse(response)
-    panelStore.syncDeviceIds(response.devices.map(device => device.device_id))
+    await panelStore.syncDeviceIds(response.devices.map(device => device.device_id))
   } finally {
     if (!silent) {
       devicesLoading.value = false
@@ -169,7 +169,7 @@ function applyMutationResponse(response: { registry_revision: number; pending_pe
   deviceStore.setPendingPersistence(response.pending_persistence)
   if (response.device !== undefined) {
     deviceStore.upsertDevice(response.device, response.registry_revision)
-    panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
+    void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
   } else {
     void refreshDevices(true)
   }
@@ -294,7 +294,7 @@ onMounted(() => {
 watch(
   () => deviceStore.devices.map(device => device.deviceId).join(','),
   () => {
-    panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
+    void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
   },
 )
 </script>

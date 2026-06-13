@@ -70,6 +70,34 @@ export interface DeviceDetailResponse {
   success?: boolean
 }
 
+export interface DashboardLayoutWidgetRecord {
+  device_id: number
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+export interface DashboardLayoutPanelRecord {
+  id: string
+  name: string
+  order: number
+  widgets: DashboardLayoutWidgetRecord[]
+}
+
+export interface DashboardLayoutRecord {
+  schema_version: number
+  active_panel_id: string
+  panels: DashboardLayoutPanelRecord[]
+}
+
+export interface DashboardLayoutResponse {
+  revision: number
+  layout_defaulted?: boolean
+  layout: DashboardLayoutRecord
+  success?: boolean
+}
+
 export interface OtaStatusResponse {
   enabled: boolean
   free_sketch_space: number

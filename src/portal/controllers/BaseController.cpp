@@ -4,6 +4,10 @@
 
 namespace ewfm {
 
+namespace {
+constexpr size_t kMaxControllerJsonBodyBytes = 4096;
+} // namespace
+
 BaseController::BaseController(AsyncWebServerRequest* request, const Action action) : request_(request), action_(action) {}
 
 BaseController::~BaseController() {
@@ -13,7 +17,7 @@ BaseController::~BaseController() {
 const BaseController::RulesChain* BaseController::beforeChain() {
     static constexpr HookRule rules[] = {
         {&BaseController::beforeCorsOptions, ALL},
-        {[](BaseController& self) { return self.parseBody(); }, A(Action::Create) | A(Action::Update) | A(Action::Cmd)},
+        {[](BaseController& self) { return self.parseBody(); }, A(Action::Create) | A(Action::Cmd)},
     };
     static const RulesChain node{rules, std::size(rules), nullptr};
     return &node;
@@ -160,7 +164,7 @@ bool BaseController::parseBody(const size_t size) {
         return false;
     }
 
-    if (size > 1024U) {
+    if (size > kMaxControllerJsonBodyBytes) {
         renderError(400, "INVALID", "invalid body");
         return false;
     }

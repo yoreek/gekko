@@ -29,7 +29,7 @@ const panelStore = usePanelStore()
 
 onMounted(async () => {
   const response = await fetchDevices()
-  panelStore.initialize(response.devices.map(device => device.device_id))
-  panelStore.syncDeviceIds(response.devices.map(device => device.device_id))
+  await panelStore.initialize(response.devices.map(device => device.device_id))
+  await panelStore.syncDeviceIds(response.devices.map(device => device.device_id))
 })
 </script>

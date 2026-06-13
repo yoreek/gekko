@@ -1,10 +1,12 @@
-import type { DeviceRecord, OtaStatusResponse, WifiScanNetwork, WifiStatusResponse } from '@/api'
+import type { DashboardLayoutRecord, DeviceRecord, OtaStatusResponse, WifiScanNetwork, WifiStatusResponse } from '@/api'
 import { safeReadStorage, safeWriteStorage } from '@/utils/storage'
 
 const storageKey = 'gekko.mockDb.v3'
 
 export interface MockDatabase {
   registryRevision: number
+  dashboardLayoutRevision: number
+  dashboardLayout: DashboardLayoutRecord
   pendingPersistence: boolean
   devices: DeviceRecord[]
   wifi: {
@@ -22,6 +24,22 @@ export interface MockDatabase {
 
 const seedDatabase: MockDatabase = {
   registryRevision: 18,
+  dashboardLayoutRevision: 1,
+  dashboardLayout: {
+    schema_version: 1,
+    active_panel_id: 'main',
+    panels: [
+      {
+        id: 'main',
+        name: 'Main panel',
+        order: 0,
+        widgets: [
+          { device_id: 670845748, x: 0, y: 0, w: 1, h: 1 },
+          { device_id: 670845749, x: 1, y: 0, w: 1, h: 1 },
+        ],
+      },
+    ],
+  },
   pendingPersistence: false,
   devices: [
     {
@@ -110,6 +128,51 @@ function readStoredDatabase(): MockDatabase | null {
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isDashboardLayoutRecord(value: unknown): value is DashboardLayoutRecord {
+  if (!isRecord(value)) {
+    return false
+  }
+  return Array.isArray(value.panels) && typeof value.active_panel_id === 'string' && typeof value.schema_version === 'number'
+}
+
+function normalizeStoredDatabase(stored: unknown): MockDatabase {
+  const seed = createSeedMockDatabase()
+  if (!isRecord(stored)) {
+    return seed
+  }
+
+  const wifi = isRecord(stored.wifi) ? stored.wifi : {}
+  const ota = isRecord(stored.ota) ? stored.ota : {}
+  const system = isRecord(stored.system) ? stored.system : {}
+
+  return {
+    ...seed,
+    ...stored,
+    registryRevision: typeof stored.registryRevision === 'number' ? stored.registryRevision : seed.registryRevision,
+    dashboardLayoutRevision: typeof stored.dashboardLayoutRevision === 'number' ? stored.dashboardLayoutRevision : seed.dashboardLayoutRevision,
+    dashboardLayout: isDashboardLayoutRecord(stored.dashboardLayout) ? stored.dashboardLayout : seed.dashboardLayout,
+    pendingPersistence: typeof stored.pendingPersistence === 'boolean' ? stored.pendingPersistence : seed.pendingPersistence,
+    devices: Array.isArray(stored.devices) ? (stored.devices as DeviceRecord[]) : seed.devices,
+    wifi: {
+      ...seed.wifi,
+      ...wifi,
+      scan: Array.isArray(wifi.scan) ? (wifi.scan as WifiScanNetwork[]) : seed.wifi.scan,
+    },
+    ota: {
+      ...seed.ota,
+      ...ota,
+    },
+    system: {
+      ...seed.system,
+      ...system,
+    },
+  }
+}
+
 function writeStoredDatabase(db: MockDatabase): void {
   safeWriteStorage(storageKey, JSON.stringify(db))
 }
@@ -127,7 +190,7 @@ export function loadMockDatabase(reset = false): MockDatabase {
 
   const stored = readStoredDatabase()
   if (stored !== null) {
-    return stored
+    return normalizeStoredDatabase(stored)
   }
 
   const seed = createSeedMockDatabase()

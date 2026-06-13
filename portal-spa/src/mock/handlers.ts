@@ -1,4 +1,6 @@
 import type {
+  DashboardLayoutRecord,
+  DashboardLayoutResponse,
   DeviceCommandRequest,
   DeviceDetailResponse,
   DeviceMutationResponse,
@@ -116,6 +118,38 @@ export function mockFetchDevice(deviceId: number): DeviceDetailResponse {
   })
 }
 
+export function mockFetchDashboardLayout(): DashboardLayoutResponse {
+  const db = loadMockDatabase()
+  pruneDashboardLayout(db)
+  saveMockDatabase(db)
+  return ok({
+    revision: db.dashboardLayoutRevision,
+    layout_defaulted: false,
+    layout: db.dashboardLayout,
+  })
+}
+
+export function mockSaveDashboardLayout(layout: DashboardLayoutRecord): Promise<DashboardLayoutResponse> {
+  const response = mutateRegistry(db => {
+    validateDashboardLayout(layout)
+    db.dashboardLayout = normalizeDashboardLayout(layout, db.devices.map(device => device.device_id))
+    db.dashboardLayoutRevision += 1
+    return ok({
+      revision: db.dashboardLayoutRevision,
+      layout_defaulted: false,
+      layout: db.dashboardLayout,
+    })
+  })
+  publishRealtimeMessage({
+    topic: 'dashboard.layout',
+    revision: response.revision,
+    payload: {
+      revision: response.revision,
+    },
+  })
+  return Promise.resolve(response)
+}
+
 export function mockCreateDevice(payload: Record<string, unknown>): Promise<DeviceMutationResponse> {
   const response = mutateRegistry(db => {
     const nextId = Math.max(1, ...db.devices.map(device => device.device_id)) + 1
@@ -200,6 +234,7 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           break
         case 'delete':
           db.devices = db.devices.filter(entry => entry.device_id !== deviceId)
+          pruneDashboardLayout(db)
           break
         case 'update_config':
           device.config_revision += 1
@@ -292,4 +327,93 @@ export function mockRestartSystem(): Promise<SystemRestartResponse> {
 
 function isRecordPayload(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function normalizeDashboardLayout(layout: DashboardLayoutRecord, deviceIds: number[]): DashboardLayoutRecord {
+  const allowedIds = new Set(deviceIds)
+  const panels = layout.panels.slice(0, 8).map((panel, index) => ({
+    id: panel.id || `panel-${index + 1}`,
+    name: panel.name.slice(0, 32),
+    order: index,
+    widgets: panel.widgets
+      .filter(widget => allowedIds.has(widget.device_id))
+      .map(widget => ({
+        device_id: widget.device_id,
+        x: Math.max(0, widget.x),
+        y: Math.max(0, widget.y),
+        w: Math.max(1, widget.w),
+        h: Math.max(1, widget.h),
+      })),
+  }))
+  if (panels.length === 0) {
+    panels.push({
+      id: 'main',
+      name: 'Main panel',
+      order: 0,
+      widgets: deviceIds.map((deviceId, index) => ({
+        device_id: deviceId,
+        x: index % 6,
+        y: Math.floor(index / 6),
+        w: 1,
+        h: 1,
+      })),
+    })
+  }
+  return {
+    schema_version: 1,
+    active_panel_id: panels.some(panel => panel.id === layout.active_panel_id) ? layout.active_panel_id : panels[0].id,
+    panels,
+  }
+}
+
+function pruneDashboardLayout(db: ReturnType<typeof createSeedMockDatabase>): void {
+  db.dashboardLayout = normalizeDashboardLayout(db.dashboardLayout, db.devices.map(device => device.device_id))
+}
+
+function validateDashboardLayout(layout: DashboardLayoutRecord): void {
+  if (layout.schema_version !== 1) {
+    throw new ApiClientError('unsupported dashboard layout schema', 'UNSUPPORTED_SCHEMA', 400, null)
+  }
+  if (layout.panels.length === 0) {
+    throw new ApiClientError('dashboard layout must contain at least one panel', 'EMPTY_PANELS', 400, null)
+  }
+  if (layout.panels.length > 8) {
+    throw new ApiClientError('dashboard layout exceeds panel limit', 'TOO_MANY_PANELS', 400, null)
+  }
+
+  const ids = new Set<string>()
+  const names = new Set<string>()
+  for (const panel of layout.panels) {
+    if (!panel.id || ids.has(panel.id)) {
+      throw new ApiClientError('dashboard panel id is duplicated', 'DUPLICATE_PANEL_ID', 400, null)
+    }
+    if (!panel.name || panel.name.length > 32) {
+      throw new ApiClientError('dashboard panel name is invalid', 'PANEL_NAME_TOO_LONG', 400, null)
+    }
+    const name = panel.name.toLowerCase()
+    if (names.has(name)) {
+      throw new ApiClientError('dashboard panel name is duplicated', 'DUPLICATE_PANEL_NAME', 400, null)
+    }
+    ids.add(panel.id)
+    names.add(name)
+
+    const widgetDeviceIds = new Set<number>()
+    for (const widget of panel.widgets) {
+      if (
+        widget.device_id <= 0 ||
+        widget.x < 0 ||
+        widget.y < 0 ||
+        widget.w <= 0 ||
+        widget.h <= 0 ||
+        widgetDeviceIds.has(widget.device_id)
+      ) {
+        throw new ApiClientError('dashboard widget coordinates are invalid', 'INVALID_WIDGET', 400, null)
+      }
+      widgetDeviceIds.add(widget.device_id)
+    }
+  }
+
+  if (!ids.has(layout.active_panel_id)) {
+    throw new ApiClientError('dashboard active panel does not exist', 'INVALID_ACTIVE_PANEL', 400, null)
+  }
 }

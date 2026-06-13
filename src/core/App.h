@@ -10,6 +10,7 @@
 #include "platform/ArduinoOtaService.h"
 #include "platform/ArduinoWifiDriver.h"
 #include "platform/PreferencesConfigStorage.h"
+#include "portal/DashboardLayoutStore.h"
 #include "portal/PortalServer.h"
 #include "wifi/WifiManager.h"
 
@@ -29,6 +30,7 @@ private:
     ArduinoClock clock_;
     PreferencesConfigStorage storage_;
     PreferencesConfigStorage deviceStorage_;
+    PreferencesConfigStorage dashboardLayoutStorage_;
     ArduinoWifiDriver wifiDriver_;
     ConfigStore configStore_;
     WifiManager wifiManager_;
@@ -41,6 +43,7 @@ private:
     SequentialDeviceIdSource deviceIdSource_;
 #endif
     DeviceRegistry deviceRegistry_;
+    DashboardLayoutStore dashboardLayoutStore_;
     PortalServer portalServer_;
     uint32_t lastTick100ms_{0};
     uint32_t lastTick1s_{0};

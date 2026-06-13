@@ -2,11 +2,12 @@
 
 #include "core/StateMachine.h"
 #include "debug/Debug.h"
+#include "portal/controllers/DashboardLayoutController.h"
 #include "portal/controllers/DeviceRegistryController.h"
 #include "portal/controllers/OtaController.h"
+#include "portal/controllers/PortalAssetController.h"
 #include "portal/controllers/SystemController.h"
 #include "portal/controllers/WifiController.h"
-#include "portal/controllers/PortalAssetController.h"
 #include "portal/ws/PortalWebSocketManager.h"
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
@@ -23,9 +24,10 @@ namespace ewfm {
 
 class PortalServer::Impl : public StateMachine {
 public:
-    Impl(WifiManager& wifiManager, IWifiDriver& wifiDriver, DeviceRegistry* deviceRegistry, DeviceEventDispatcher* deviceEventDispatcher)
+    Impl(WifiManager& wifiManager, IWifiDriver& wifiDriver, DeviceRegistry* deviceRegistry, DeviceEventDispatcher* deviceEventDispatcher,
+         DashboardLayoutStore* dashboardLayoutStore)
         : StateMachine((PState)&PortalServer::Impl::Idle), wifiManager_(wifiManager), wifiDriver_(wifiDriver),
-          deviceRegistry_(deviceRegistry), deviceEventDispatcher_(deviceEventDispatcher) {}
+          deviceRegistry_(deviceRegistry), deviceEventDispatcher_(deviceEventDispatcher), dashboardLayoutStore_(dashboardLayoutStore) {}
 
     bool begin() {
         configured_ = true;
@@ -100,6 +102,9 @@ private:
         WifiController::registerRoutes(*server_, wifiManager_, wifiDriver_);
         if (deviceRegistry_ != nullptr) {
             DeviceRegistryController::registerRoutes(*server_, *deviceRegistry_);
+        }
+        if (dashboardLayoutStore_ != nullptr) {
+            DashboardLayoutController::registerRoutes(*server_, *dashboardLayoutStore_);
         }
         OtaController::registerRoutes(*server_, deviceRegistry_);
         SystemController::registerRoutes(*server_, deviceRegistry_);
@@ -213,6 +218,7 @@ private:
     IWifiDriver& wifiDriver_;
     DeviceRegistry* deviceRegistry_{nullptr};
     DeviceEventDispatcher* deviceEventDispatcher_{nullptr};
+    DashboardLayoutStore* dashboardLayoutStore_{nullptr};
     std::unique_ptr<PortalWebSocketManager> webSocketManager_;
     bool configured_{false};
     bool dependencyWaitLogged_{false};
@@ -296,14 +302,15 @@ SM_STATE(Faulted) {
 }
 
 PortalServer::PortalServer(WifiManager& wifiManager, IWifiDriver& wifiDriver, DeviceRegistry* deviceRegistry,
-                           DeviceEventDispatcher* deviceEventDispatcher)
-    : wifiManager_(wifiManager), wifiDriver_(wifiDriver), deviceRegistry_(deviceRegistry), deviceEventDispatcher_(deviceEventDispatcher) {}
+                           DeviceEventDispatcher* deviceEventDispatcher, DashboardLayoutStore* dashboardLayoutStore)
+    : wifiManager_(wifiManager), wifiDriver_(wifiDriver), deviceRegistry_(deviceRegistry), deviceEventDispatcher_(deviceEventDispatcher),
+      dashboardLayoutStore_(dashboardLayoutStore) {}
 
 PortalServer::~PortalServer() = default;
 
 bool PortalServer::begin() {
     if (!impl_) {
-        impl_ = std::make_unique<Impl>(wifiManager_, wifiDriver_, deviceRegistry_, deviceEventDispatcher_);
+        impl_ = std::make_unique<Impl>(wifiManager_, wifiDriver_, deviceRegistry_, deviceEventDispatcher_, dashboardLayoutStore_);
     }
     return impl_ != nullptr && impl_->begin();
 }

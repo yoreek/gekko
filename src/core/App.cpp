@@ -16,7 +16,8 @@ constexpr uint32_t kTick1sIntervalMs = 1000;
 App::App()
     : configStore_(storage_), wifiManager_(wifiDriver_, &configStore_), deviceRegistryStore_(deviceStorage_),
       deviceRegistry_(deviceRegistryStore_, deviceTypeRegistry_, deviceIdSource_, nullptr, &deviceEventDispatcher_),
-      portalServer_(wifiManager_, wifiDriver_, &deviceRegistry_, &deviceEventDispatcher_) {}
+      dashboardLayoutStore_(dashboardLayoutStorage_, &deviceRegistry_),
+      portalServer_(wifiManager_, wifiDriver_, &deviceRegistry_, &deviceEventDispatcher_, &dashboardLayoutStore_) {}
 
 bool App::begin() {
     EWFM_APP_LOG_INFO("ESP32 WiFi Manager booting");
@@ -31,6 +32,10 @@ bool App::begin() {
     }
     if (!deviceRegistryStore_.begin(false)) {
         EWFM_APP_LOG_INFO("DeviceRegistryStore begin failed");
+        return false;
+    }
+    if (!dashboardLayoutStore_.begin()) {
+        EWFM_APP_LOG_INFO("DashboardLayoutStore begin failed");
         return false;
     }
 

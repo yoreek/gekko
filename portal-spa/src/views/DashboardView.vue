@@ -18,6 +18,22 @@
         </div>
 
         <div class="d-flex align-center flex-shrink-0">
+        <v-tooltip :text="t('dashboard.addDevice')" location="bottom">
+          <template #activator="{ props }">
+            <v-btn
+              v-bind="props"
+              size="small"
+              variant="text"
+              color="primary"
+              :disabled="deviceStore.devices.length === 0 || !activePanel"
+              :aria-label="t('dashboard.addDevice')"
+              @click="openAddDeviceDialog"
+            >
+              <AppIcon class="me-1" name="plus" />
+              {{ t('dashboard.addDevice') }}
+            </v-btn>
+          </template>
+        </v-tooltip>
         <v-tooltip :text="t('dashboard.addPanel')" location="bottom">
           <template #activator="{ props }">
             <v-btn v-bind="props" size="small" variant="text" color="primary" :aria-label="t('dashboard.addPanel')" @click="openCreatePanelDialog">
@@ -75,6 +91,16 @@
       </v-toolbar>
 
       <v-divider />
+
+      <v-alert
+        v-if="panelStore.errorMessage"
+        class="ma-4 mb-0"
+        density="compact"
+        type="warning"
+        variant="tonal"
+      >
+        {{ panelStore.errorMessage }}
+      </v-alert>
 
       <v-tabs-window v-model="activePanelId" class="flex-grow-1" :transition-duration="0">
         <v-tabs-window-item
@@ -158,6 +184,42 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <v-dialog v-model="addDeviceDialogOpen" max-width="520">
+      <v-card class="device-dialog">
+        <v-card-title class="device-dialog__title">
+          <div>
+            <div class="device-dialog__eyebrow">{{ t('dashboard.addDevice') }}</div>
+            <div class="device-dialog__subline">
+              {{ t('dashboard.addDeviceHint') }}
+            </div>
+          </div>
+          <v-btn variant="text" @click="addDeviceDialogOpen = false">
+            <AppIcon name="close" />
+          </v-btn>
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="device-dialog__body">
+          <v-select
+            v-model="selectedAddDeviceId"
+            :items="deviceOptions"
+            :label="t('dashboard.deviceToAdd')"
+            density="comfortable"
+            hide-details
+          />
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="device-dialog__footer">
+          <v-spacer />
+          <v-btn variant="text" @click="addDeviceDialogOpen = false">
+            {{ t('actions.cancel') }}
+          </v-btn>
+          <v-btn color="primary" :disabled="selectedAddDeviceId === null" @click="submitAddDevice">
+            {{ t('dashboard.addDevice') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -190,6 +252,8 @@ const gridReady = ref(false)
 const gridHost = ref<HTMLElement | null>(null)
 const panelDialogOpen = ref(false)
 const panelNameDraft = ref('Panel 2')
+const addDeviceDialogOpen = ref(false)
+const selectedAddDeviceId = ref<number | null>(null)
 let resizeObserver: ResizeObserver | null = null
 let gridReadyFrame = 0
 const dashboardCardWidth = 200
@@ -203,7 +267,7 @@ const selectedDevice = computed<DashboardDevice | null>(() => {
   return deviceStore.devices.find(device => device.deviceId === selectedDeviceId.value) ?? null
 })
 
-const activePanelId = computed<number | null>({
+const activePanelId = computed<string | null>({
   get: () => panelStore.activePanelId,
   set: value => {
     if (value !== null) {
@@ -225,6 +289,22 @@ const activePanelWidgets = computed(() => {
     }))
     .filter((entry): entry is { widget: DashboardPanelWidget; device: DashboardDevice } => Boolean(entry.device))
 })
+
+const addableDevices = computed(() => {
+  if (!activePanel.value) {
+    return deviceStore.devices
+  }
+
+  const usedDeviceIds = new Set(activePanel.value.widgets.map(widget => widget.deviceId))
+  return deviceStore.devices.filter(device => !usedDeviceIds.has(device.deviceId))
+})
+
+const deviceOptions = computed(() =>
+  addableDevices.value.map(device => ({
+    title: `${device.name} #${device.deviceId}`,
+    value: device.deviceId,
+  })),
+)
 
 function columnsForWidth(width: number): number {
   const columns = Math.floor((width - dashboardGridGap) / (dashboardCardWidth + dashboardGridGap))
@@ -295,13 +375,18 @@ async function prepareVisibleGrid(): Promise<void> {
   showGridAfterLayout()
 }
 
-function selectPanel(panelId: number): void {
+function selectPanel(panelId: string): void {
   panelStore.setActivePanel(panelId)
 }
 
 function openCreatePanelDialog(): void {
   panelNameDraft.value = `Panel ${panelStore.panels.length + 1}`
   panelDialogOpen.value = true
+}
+
+function openAddDeviceDialog(): void {
+  selectedAddDeviceId.value = addableDevices.value[0]?.deviceId ?? null
+  addDeviceDialogOpen.value = true
 }
 
 async function refreshDevices(silent = false): Promise<void> {
@@ -311,8 +396,8 @@ async function refreshDevices(silent = false): Promise<void> {
   try {
     const response = await fetchDevices()
     deviceStore.replaceFromResponse(response)
-    panelStore.initialize(response.devices.map(device => device.device_id))
-    panelStore.syncDeviceIds(response.devices.map(device => device.device_id))
+    await panelStore.initialize(response.devices.map(device => device.device_id))
+    await panelStore.syncDeviceIds(response.devices.map(device => device.device_id))
     await nextTick()
     updateColumns()
     showGridAfterLayout()
@@ -384,8 +469,18 @@ async function refreshSelectedDevice(): Promise<void> {
 }
 
 function submitCreatePanel(): void {
-  panelStore.addPanel(panelNameDraft.value)
-  panelDialogOpen.value = false
+  const panel = panelStore.addPanel(panelNameDraft.value)
+  if (panel) {
+    panelDialogOpen.value = false
+  }
+}
+
+function submitAddDevice(): void {
+  if (selectedAddDeviceId.value === null) {
+    return
+  }
+  panelStore.assignDeviceToActivePanel(selectedAddDeviceId.value)
+  addDeviceDialogOpen.value = false
 }
 
 async function renameDevice(name: string): Promise<void> {
@@ -512,7 +607,7 @@ watch(
 watch(
   () => deviceStore.devices.map(device => device.deviceId).join(','),
   () => {
-    panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
+    void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
   },
 )
 
@@ -521,6 +616,9 @@ watch(
   panelId => {
     if (panelId) {
       void prepareVisibleGrid()
+    }
+    if (addDeviceDialogOpen.value) {
+      selectedAddDeviceId.value = addableDevices.value[0]?.deviceId ?? null
     }
   },
 )

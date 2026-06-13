@@ -60,16 +60,14 @@ void DeviceRegistryController::registerRoutes(AsyncWebServer& server, DeviceRegi
         DeviceRegistryController(request, Action::Index, registry, adapters).dispatch();
     });
     server.on(
-        AsyncURIMatcher::exact("/api/devices"), HTTP_POST,
-        [&registry](AsyncWebServerRequest* request) { (void)request; },
-        nullptr,
+        AsyncURIMatcher::exact("/api/devices"), HTTP_POST, [&registry](AsyncWebServerRequest* request) { (void)request; }, nullptr,
         [&registry](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
             if (!appendRequestBody(request, data, len, index, total)) {
                 return;
             }
 
-            DeviceRegistryController(request, Action::Create, registry, adapters).dispatch(
-                static_cast<uint8_t*>(request->_tempObject), total);
+            DeviceRegistryController(request, Action::Create, registry, adapters)
+                .dispatch(static_cast<uint8_t*>(request->_tempObject), total);
             clearRequestBody(request);
         });
     server.on(AsyncURIMatcher::exact("/api/devices"), HTTP_OPTIONS, [&registry](AsyncWebServerRequest* request) {
@@ -90,16 +88,13 @@ void DeviceRegistryController::registerRoutes(AsyncWebServer& server, DeviceRegi
         DeviceRegistryController(request, Action::Destroy, registry, adapters).dispatch();
     });
     server.on(
-        AsyncURIMatcher::prefix("/api/devices/"), HTTP_POST,
-        [&registry](AsyncWebServerRequest* request) { (void)request; },
-        nullptr,
+        AsyncURIMatcher::prefix("/api/devices/"), HTTP_POST, [&registry](AsyncWebServerRequest* request) { (void)request; }, nullptr,
         [&registry](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
             if (!appendRequestBody(request, data, len, index, total)) {
                 return;
             }
 
-            DeviceRegistryController(request, Action::Cmd, registry, adapters).dispatch(
-                static_cast<uint8_t*>(request->_tempObject), total);
+            DeviceRegistryController(request, Action::Cmd, registry, adapters).dispatch(static_cast<uint8_t*>(request->_tempObject), total);
             clearRequestBody(request);
         });
     server.on(AsyncURIMatcher::prefix("/api/devices/"), HTTP_OPTIONS, [&registry](AsyncWebServerRequest* request) {

@@ -76,7 +76,7 @@ import { usePanelStore } from '@/stores/panels'
 
 const { t } = useI18n()
 const panelStore = usePanelStore()
-const panelNameDrafts = reactive<Record<number, string>>({})
+const panelNameDrafts = reactive<Record<string, string>>({})
 
 watch(
   () => panelStore.panels.map(panel => `${panel.id}:${panel.name}`).join('|'),
@@ -90,11 +90,11 @@ watch(
   { immediate: true },
 )
 
-function updateDraft(panelId: number, value: string): void {
+function updateDraft(panelId: string, value: string): void {
   panelNameDrafts[panelId] = value
 }
 
-function savePanelName(panelId: number): void {
+function savePanelName(panelId: string): void {
   panelStore.renamePanel(panelId, panelNameDrafts[panelId] ?? '')
   const panel = panelStore.panels.find(entry => entry.id === panelId)
   if (panel) {
@@ -102,15 +102,15 @@ function savePanelName(panelId: number): void {
   }
 }
 
-function deletePanel(panelId: number): void {
+function deletePanel(panelId: string): void {
   panelStore.deletePanel(panelId)
 }
 
-function movePanel(panelId: number, direction: -1 | 1): void {
+function movePanel(panelId: string, direction: -1 | 1): void {
   panelStore.movePanel(panelId, direction)
 }
 
-function activatePanel(panelId: number): void {
+function activatePanel(panelId: string): void {
   panelStore.setActivePanel(panelId)
 }
 </script>

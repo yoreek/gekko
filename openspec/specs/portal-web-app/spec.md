@@ -25,7 +25,7 @@ The project SHALL provide a `portal-spa/` Vue SPA that bundles all runtime depen
 
 #### Scenario: Existing API surface is used
 - **WHEN** the first SPA milestone loads controller data
-- **THEN** it uses only `/api/wifi/status`, `/api/wifi/scan`, `/api/devices`, `/api/devices/:id/command`, `/api/ota/status`, and `/api/system/restart` unless a later change adds new API requirements
+- **THEN** it uses only `/api/wifi/status`, `/api/wifi/scan`, `/api/devices`, `/api/devices/:id/command`, `/api/dashboard/layout`, `/api/ota/status`, and `/api/system/restart` unless a later change adds new API requirements
 
 #### Scenario: UI is localized
 - **WHEN** the SPA renders user-facing text
@@ -208,3 +208,11 @@ The SPA SHALL provide a `mockMode` that lets developers run and test the fronten
 #### Scenario: Mock data can be reset
 - **WHEN** a developer opens the app with `?mockMode=1&mockReset=1`
 - **THEN** the mock data store is restored to deterministic seed data suitable for repeatable UI testing
+
+#### Scenario: Mock dashboard layout is persisted
+- **WHEN** a user changes dashboard panel order, panel names, active panel, or widget coordinates while mock mode is enabled
+- **THEN** the mock transport persists the layout using the same `GET` and `PUT /api/dashboard/layout` contract as the firmware API
+
+#### Scenario: Mock add-device behavior matches dashboard rules
+- **WHEN** a user adds a device to a panel while mock mode is enabled
+- **THEN** the device may appear on multiple panels, but the same panel does not receive duplicate widget entries for the same device

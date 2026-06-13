@@ -1,7 +1,7 @@
 #include "portal/controllers/SystemController.h"
 
-#include "devices/registry/DeviceRegistry.h"
 #include "debug/Debug.h"
+#include "devices/registry/DeviceRegistry.h"
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 #include <ArduinoJson.h>

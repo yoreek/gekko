@@ -57,6 +57,14 @@ The SPA MUST allow compact device widgets to be reordered within the active pane
 - **WHEN** edit mode is enabled for the active panel
 - **THEN** each widget shows a remove крестик and the user can delete the widget from the panel
 
+#### Scenario: Device can appear in multiple panels
+- **WHEN** the same device is added to another panel
+- **THEN** the device remains in the original panel and is also shown in the target panel
+
+#### Scenario: Duplicate widget in one panel is ignored
+- **WHEN** the same device is added again to the active panel
+- **THEN** the dashboard does not create a second widget entry for that device in that panel
+
 #### Scenario: Grid movement is directional
 - **WHEN** the user drags a widget in edit mode
 - **THEN** the widget moves on the grid horizontally or vertically, including left, right, up, and down placement changes

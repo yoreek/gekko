@@ -71,6 +71,14 @@ The SPA MUST allow dashboard widgets to be reordered within the active panel in 
 - **WHEN** edit mode is enabled for the active panel
 - **THEN** each widget shows a remove крестик and the user can delete the widget from the panel
 
+#### Scenario: Devices may appear in multiple panels
+- **WHEN** the user adds the same device to a different panel
+- **THEN** the device remains present in the original panel and appears in the target panel as well
+
+#### Scenario: Duplicate devices in one panel are ignored
+- **WHEN** the user tries to add a device that is already present in the active panel
+- **THEN** the dashboard does not create a duplicate widget and keeps the current panel layout stable
+
 #### Scenario: Deleted devices are removed from layout
 - **WHEN** a device is deleted from the registry
 - **THEN** the dashboard removes that device from any panel layout that still references it
@@ -86,6 +94,10 @@ The SPA MUST allow dashboard widgets to be reordered within the active panel in 
 #### Scenario: Layout can be reset
 - **WHEN** the user presses the reset layout control
 - **THEN** the active panel widgets return to their default grid coordinates and the reset positions are saved
+
+#### Scenario: Add-device selector excludes current panel devices
+- **WHEN** the user opens the add-device dialog for the active panel
+- **THEN** the selector lists only devices that are not already present in that panel
 
 #### Scenario: Read mode stays stable
 - **WHEN** edit mode is disabled
