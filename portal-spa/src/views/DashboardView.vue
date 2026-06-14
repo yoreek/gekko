@@ -610,16 +610,6 @@ onBeforeUnmount(() => {
 })
 
 watch(
-  () => `${wsStore.revision}:${wsStore.lastTopic}`,
-  topicKey => {
-    const topic = topicKey.split(':', 2)[1] ?? ''
-    if (topic.startsWith('device.')) {
-      void refreshDevices(true)
-    }
-  },
-)
-
-watch(
   () => deviceStore.devices.map(device => device.deviceId).join(','),
   () => {
     if (!panelStore.initialized) {
