@@ -186,8 +186,6 @@ function applyMutationResponse(response: { registry_revision: number; pending_pe
   if (response.device !== undefined) {
     deviceStore.upsertDevice(response.device, response.registry_revision)
     void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
-  } else {
-    void refreshDevices(true)
   }
 }
 

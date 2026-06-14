@@ -417,8 +417,6 @@ function applyMutationResponse(response: { registry_revision: number; pending_pe
     if (isNewDevice) {
       panelStore.assignDeviceToActivePanel(device.device_id)
     }
-  } else {
-    void refreshDevices(true)
   }
 }
 
