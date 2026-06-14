@@ -92,7 +92,9 @@ function compactWidgets(widgets: DashboardPanelWidget[], columns: number): Dashb
 function normalizeWidgets(widgets: DashboardPanelWidget[], columns: number): DashboardPanelWidget[] {
   const normalizedColumns = Math.max(1, columns)
   const occupied = new Set<string>()
-  return widgets.map(widget => {
+  return widgets
+    .filter(widget => Number.isFinite(widget.deviceId) && widget.deviceId > 0)
+    .map(widget => {
     const width = Math.min(Math.max(1, widget.w || defaultWidgetWidth), normalizedColumns)
     const candidate: DashboardPanelWidget = {
       deviceId: widget.deviceId,
@@ -104,7 +106,7 @@ function normalizeWidgets(widgets: DashboardPanelWidget[], columns: number): Das
     const normalized = cellsAreFree(candidate, occupied) ? candidate : nearestFreeWidget(candidate, occupied, normalizedColumns)
     occupyWidget(normalized, occupied)
     return normalized
-  })
+    })
 }
 
 function layoutWidgets(deviceIds: number[], columns = defaultColumns): DashboardPanelWidget[] {
@@ -209,39 +211,39 @@ function snapshotToApi(snapshot: PanelSnapshot): DashboardLayoutRecord {
       id: panel.id,
       name: panel.name,
       order,
-      widgets: panel.widgets.map(widget => [widget.deviceId, widget.x, widget.y, widget.w, widget.h]),
+      widgets: panel.widgets
+        .filter(widget => Number.isFinite(widget.deviceId) && widget.deviceId > 0)
+        .map(widget => [widget.deviceId, widget.x, widget.y, widget.w, widget.h]),
     })),
   }
 }
 
-function readWidgetRecord(widget: unknown): DashboardPanelWidget {
+function readWidgetRecord(widget: unknown): DashboardPanelWidget | null {
   if (Array.isArray(widget) && widget.length >= 5) {
-    return {
-      deviceId: Number(widget[0]),
-      x: Number(widget[1]),
-      y: Number(widget[2]),
-      w: Number(widget[3]),
-      h: Number(widget[4]),
+    const deviceId = Number(widget[0])
+    const x = Number(widget[1])
+    const y = Number(widget[2])
+    const w = Number(widget[3])
+    const h = Number(widget[4])
+    if (!Number.isFinite(deviceId) || deviceId <= 0 || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(w) || !Number.isFinite(h)) {
+      return null
     }
+    return { deviceId, x, y, w, h }
   }
 
   if (isRecord(widget)) {
-    return {
-      deviceId: Number(widget.device_id ?? 0),
-      x: Number(widget.x ?? 0),
-      y: Number(widget.y ?? 0),
-      w: Number(widget.w ?? 1),
-      h: Number(widget.h ?? 1),
+    const deviceId = Number(widget.device_id ?? 0)
+    const x = Number(widget.x ?? 0)
+    const y = Number(widget.y ?? 0)
+    const w = Number(widget.w ?? 1)
+    const h = Number(widget.h ?? 1)
+    if (!Number.isFinite(deviceId) || deviceId <= 0 || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(w) || !Number.isFinite(h)) {
+      return null
     }
+    return { deviceId, x, y, w, h }
   }
 
-  return {
-    deviceId: 0,
-    x: 0,
-    y: 0,
-    w: 1,
-    h: 1,
-  }
+  return null
 }
 
 function apiToSnapshot(layout: DashboardLayoutRecord): PanelSnapshot {
@@ -252,7 +254,7 @@ function apiToSnapshot(layout: DashboardLayoutRecord): PanelSnapshot {
       .map(panel => ({
         id: panel.id,
         name: panel.name,
-        widgets: panel.widgets.map(widget => readWidgetRecord(widget)),
+        widgets: panel.widgets.map(widget => readWidgetRecord(widget)).filter((widget): widget is DashboardPanelWidget => widget !== null),
       })),
   }
 }

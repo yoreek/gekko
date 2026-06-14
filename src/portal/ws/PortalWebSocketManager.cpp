@@ -109,13 +109,14 @@ void PortalWebSocketManager::onDeviceEvent(const DeviceEvent& event) {
         }
         sendText(PortalWebSocketMessages::buildDeviceCommandResult(event));
         return;
+    case DeviceEventKind::PersistencePendingCleared:
+        return;
     case DeviceEventKind::DeviceCreated:
     case DeviceEventKind::DeviceUpdated:
     case DeviceEventKind::StatusChanged:
     case DeviceEventKind::StateChanged:
     case DeviceEventKind::ConfigPersisted:
     case DeviceEventKind::RetainedStateChanged:
-    case DeviceEventKind::PersistencePendingCleared:
         if (deviceRegistry_ != nullptr) {
             const DeviceRecord* record = deviceRegistry_->find(event.deviceId);
             if (record != nullptr) {

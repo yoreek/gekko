@@ -11,7 +11,13 @@ import type { Pinia } from 'pinia'
 type AppStore = ReturnType<typeof useAppStore>
 
 function isDeviceRecord(value: unknown): value is DeviceRecord {
-  return typeof value === 'object' && value !== null && typeof (value as { device_id?: unknown }).device_id === 'number'
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { device_id?: unknown }).device_id === 'number' &&
+    Number.isFinite((value as { device_id: number }).device_id) &&
+    (value as { device_id: number }).device_id > 0
+  )
 }
 
 function extractDeviceRecord(payload: unknown): DeviceRecord | null {
