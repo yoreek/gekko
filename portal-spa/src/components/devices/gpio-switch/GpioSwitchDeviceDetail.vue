@@ -1,37 +1,103 @@
 <template>
-  <v-sheet border class="pa-4" rounded="0">
-    <div class="d-flex align-center justify-space-between ga-3 mb-3">
-      <div>
-        <div class="text-subtitle-2">{{ t('device.type.gpioSwitch') }}</div>
-        <div class="text-caption text-medium-emphasis">{{ t('device.dialog.gpioSwitchHint') }}</div>
+  <v-row dense>
+    <v-col cols="12" md="6">
+      <div class="device-dialog__section-label-row">
+        <span>{{ t('device.fields.gpioPin') }}</span>
       </div>
-      <v-chip v-if="outputState" size="small" variant="tonal">
-        {{ t(outputStateLabelKey(outputState)) }}
-      </v-chip>
-    </div>
+      <div class="device-dialog__field-value">{{ config.gpio_pin }}</div>
+    </v-col>
 
-    <v-row dense class="mb-3">
-      <v-col v-for="field in fields" :key="field.key" cols="12" md="6">
-        <div class="text-caption text-medium-emphasis">{{ field.label }}</div>
-        <div class="font-weight-medium">{{ field.value }}</div>
-      </v-col>
-    </v-row>
+    <v-col cols="12" md="6">
+      <div class="device-dialog__section-label-row">
+        <span>{{ t('device.fields.outputState') }}</span>
+      </div>
+      <div class="device-dialog__field-value">
+        {{ outputState ? t(outputStateLabelKey(outputState)) : '—' }}
+      </div>
+    </v-col>
 
-    <div class="text-caption text-medium-emphasis mb-2">{{ t('device.dialog.quickCommands') }}</div>
-    <SwitchOutputControls
-      :state="outputState"
-      :loading="busy"
-      :disabled="!device.isReady"
-      @set-state="setOutputState"
-    />
-  </v-sheet>
+    <v-col cols="12">
+      <v-expansion-panels v-model="expandedPanel" flat variant="accordion">
+        <v-expansion-panel value="details">
+          <v-expansion-panel-title>
+            <div class="device-config-toggle">
+              <div class="device-config-toggle__copy">
+                <span class="device-config-toggle__title">{{ t('device.dialog.configDetails') }}</span>
+                <span class="device-config-toggle__subtitle">
+                  {{ expandedPanel === 'details' ? t('device.dialog.configDetailsOpen') : t('device.dialog.configDetailsClosed') }}
+                </span>
+              </div>
+            </div>
+            <template #actions="{ expanded }">
+              <AppIcon
+                class="device-config-toggle__icon"
+                :class="{ 'device-config-toggle__icon--expanded': expanded }"
+                name="chevron-right"
+              />
+            </template>
+          </v-expansion-panel-title>
+          <v-expansion-panel-text>
+            <v-row dense>
+              <v-col cols="12" md="6">
+                <div class="device-form-field">
+                  <div class="device-form-field__label-row">
+                    <span>{{ t('device.fields.startupState') }}</span>
+                    <DeviceFieldHint :text="t('device.dialog.startupStateHint')" />
+                  </div>
+                  <div class="device-dialog__field-value">{{ t(outputStateLabelKey(config.startup_state)) }}</div>
+                </div>
+              </v-col>
+              <v-col cols="12" md="6">
+                <div class="device-form-field">
+                  <div class="device-form-field__label-row">
+                    <span>{{ t('device.fields.safeState') }}</span>
+                    <DeviceFieldHint :text="t('device.dialog.safeStateHint')" />
+                  </div>
+                  <div class="device-dialog__field-value">{{ t(outputStateLabelKey(config.safe_state)) }}</div>
+                </div>
+              </v-col>
+              <v-col cols="12" md="6">
+                <div class="device-form-field">
+                  <div class="device-form-field__label-row">
+                    <span>{{ t('device.fields.restorePreviousState') }}</span>
+                    <DeviceFieldHint :text="t('device.dialog.restorePreviousStateHint')" />
+                  </div>
+                  <div class="device-dialog__field-value">{{ yesNo(config.restore_previous_state) }}</div>
+                </div>
+              </v-col>
+              <v-col cols="12" md="6">
+                <div class="device-form-field">
+                  <div class="device-form-field__label-row">
+                    <span>{{ t('device.fields.inverted') }}</span>
+                  </div>
+                  <div class="device-dialog__field-value">{{ yesNo(config.inverted) }}</div>
+                </div>
+              </v-col>
+            </v-row>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
+    </v-col>
+
+    <v-col cols="12">
+      <div class="device-dialog__section-label-row">{{ t('device.dialog.quickCommands') }}</div>
+      <SwitchOutputControls
+        :state="outputState"
+        :loading="busy"
+        :disabled="!device.isReady"
+        @set-state="setOutputState"
+      />
+    </v-col>
+  </v-row>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommandRequest } from '@/api'
+import AppIcon from '@/components/AppIcon.vue'
+import DeviceFieldHint from '@/components/device/DeviceFieldHint.vue'
 import SwitchOutputControls from '@/components/devices/switch/SwitchOutputControls.vue'
 import type { DashboardDevice } from '@/models/device'
 import { normalizeGpioSwitchConfig } from '@/models/devices/gpio-switch'
@@ -47,17 +113,9 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const expandedPanel = ref<string | null>(null)
 const config = computed(() => normalizeGpioSwitchConfig(props.device.detail.config))
 const outputState = computed(() => (isOutputState(props.device.output.state) ? props.device.output.state : undefined))
-
-const fields = computed(() => [
-  { key: 'gpio-pin', label: t('device.fields.gpioPin'), value: String(config.value.gpio_pin) },
-  { key: 'startup-state', label: t('device.fields.startupState'), value: t(outputStateLabelKey(config.value.startup_state)) },
-  { key: 'safe-state', label: t('device.fields.safeState'), value: t(outputStateLabelKey(config.value.safe_state)) },
-  { key: 'restore', label: t('device.fields.restorePreviousState'), value: yesNo(config.value.restore_previous_state) },
-  { key: 'inverted', label: t('device.fields.inverted'), value: yesNo(config.value.inverted) },
-  { key: 'output-state', label: t('device.fields.outputState'), value: outputState.value ? t(outputStateLabelKey(outputState.value)) : '-' },
-])
 
 function yesNo(value: boolean): string {
   return value ? t('labels.yes') : t('labels.no')

@@ -1,13 +1,10 @@
 <template>
   <v-card
     class="device-widget"
-    :class="{
-      'device-widget--ready': device.isReady,
-      'device-widget--dimmed': !device.isReady,
-      'device-widget--editable': editable,
-    }"
+    :class="{ 'device-widget--editable': editable }"
+    :color="device.isReady ? undefined : 'surface-variant'"
+    :variant="device.isReady ? 'outlined' : 'tonal'"
     elevation="0"
-    variant="outlined"
     role="button"
     tabindex="0"
     @click="handleOpen"
