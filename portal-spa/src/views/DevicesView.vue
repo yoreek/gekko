@@ -61,6 +61,7 @@
               <th>{{ t('device.actions.name') }}</th>
               <th>{{ t('device.fields.type') }}</th>
               <th>{{ t('device.fields.effectiveStatus') }}</th>
+              <th class="devices-table__actions">{{ t('devices.actions') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -79,6 +80,23 @@
                 <v-chip size="small" variant="tonal" :color="device.isReady ? 'success' : 'secondary'">
                   {{ device.effectiveStatus }}
                 </v-chip>
+              </td>
+              <td class="devices-table__actions">
+                <v-tooltip :text="t('device.actions.delete')" location="top">
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      icon
+                      size="small"
+                      variant="text"
+                      color="error"
+                      :aria-label="t('device.actions.delete')"
+                      @click.stop="openDeleteConfirm(device.deviceId)"
+                    >
+                      <AppIcon name="trash" />
+                    </v-btn>
+                  </template>
+                </v-tooltip>
               </td>
             </tr>
           </tbody>
@@ -99,15 +117,41 @@
 
     <DeviceDetailDialog
       v-model="detailOpen"
+      v-model:editing="detailEditing"
       :device="selectedDevice"
       :busy-action="detailBusyAction"
       :error-message="detailError"
       @refresh="refreshSelectedDevice"
-      @rename="renameDevice"
-      @toggle-enabled="toggleDeviceEnabled"
-      @delete="deleteSelectedDevice"
+      @save="saveDevice"
       @command="submitDeviceCommand"
     />
+
+    <v-dialog v-model="deleteDialogOpen" max-width="420">
+      <v-card class="device-dialog">
+        <v-card-title class="device-dialog__title">
+          <div>
+            <div class="device-dialog__headline">{{ t('device.dialog.deleteConfirmTitle') }}</div>
+          </div>
+          <v-btn class="device-dialog__icon-button" variant="text" @click="deleteDialogOpen = false">
+            <AppIcon name="close" />
+          </v-btn>
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="device-dialog__body">
+          {{ t('device.dialog.deleteConfirmBody') }}
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="device-dialog__footer">
+          <v-spacer />
+          <v-btn variant="text" @click="deleteDialogOpen = false">
+            {{ t('actions.cancel') }}
+          </v-btn>
+          <v-btn color="error" :loading="deleteBusy" @click="submitDeleteDevice">
+            {{ t('device.actions.delete') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -119,6 +163,8 @@ import { commandDevice, createDevice, deleteDevice, fetchDevice, type DeviceComm
 import AppIcon from '@/components/AppIcon.vue'
 import DeviceCreateDialog from '@/components/device/DeviceCreateDialog.vue'
 import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
+import { buildDeviceEditCommands } from '@/components/device/device-form'
+import type { DeviceEditSubmitPayload } from '@/components/device/device-form'
 import type { DashboardDevice } from '@/models/device'
 import { deviceTypeOptions } from '@/models/device-types'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
@@ -133,8 +179,12 @@ const createOpen = ref(false)
 const createLoading = ref(false)
 const createError = ref('')
 const detailOpen = ref(false)
-const detailBusyAction = ref<'refresh' | 'rename' | 'toggle' | 'delete' | 'command' | null>(null)
+const detailEditing = ref(false)
+const detailBusyAction = ref<'refresh' | 'save' | 'command' | null>(null)
 const detailError = ref('')
+const deleteDialogOpen = ref(false)
+const deleteTargetId = ref<number | null>(null)
+const deleteBusy = ref(false)
 const selectedDeviceId = ref<number | null>(null)
 const idFilter = ref('')
 const nameFilter = ref('')
@@ -206,6 +256,7 @@ async function submitCreateDevice(payload: Record<string, unknown>): Promise<voi
 async function openDevice(deviceId: number): Promise<void> {
   selectedDeviceId.value = deviceId
   detailOpen.value = true
+  detailEditing.value = false
   await refreshSelectedDevice()
 }
 
@@ -226,18 +277,22 @@ async function refreshSelectedDevice(): Promise<void> {
   }
 }
 
-async function renameDevice(name: string): Promise<void> {
-  if (selectedDeviceId.value === null) {
+async function saveDevice(payload: DeviceEditSubmitPayload): Promise<void> {
+  if (selectedDeviceId.value === null || selectedDevice.value === null) {
     return
   }
-  detailBusyAction.value = 'rename'
+  detailBusyAction.value = 'save'
   detailError.value = ''
   try {
-    const response = await commandDevice(selectedDeviceId.value, {
-      command: 'rename',
-      payload: name,
-    })
-    applyMutationResponse(response)
+    const commands = buildDeviceEditCommands(selectedDevice.value, payload)
+    for (const command of commands) {
+      const response = await commandDevice(selectedDeviceId.value, {
+        ...command,
+        device_id: selectedDeviceId.value,
+      })
+      applyMutationResponse(response)
+    }
+    detailEditing.value = false
   } catch (error) {
     detailError.value = formatError(error)
   } finally {
@@ -245,41 +300,32 @@ async function renameDevice(name: string): Promise<void> {
   }
 }
 
-async function toggleDeviceEnabled(enabled: boolean): Promise<void> {
-  if (selectedDeviceId.value === null) {
-    return
-  }
-  detailBusyAction.value = 'toggle'
-  detailError.value = ''
-  try {
-    const response = await commandDevice(selectedDeviceId.value, {
-      command: enabled ? 'enable' : 'disable',
-    })
-    applyMutationResponse(response)
-  } catch (error) {
-    detailError.value = formatError(error)
-  } finally {
-    detailBusyAction.value = null
-  }
+function openDeleteConfirm(deviceId: number): void {
+  deleteTargetId.value = deviceId
+  deleteDialogOpen.value = true
 }
 
-async function deleteSelectedDevice(): Promise<void> {
-  if (selectedDeviceId.value === null) {
+async function submitDeleteDevice(): Promise<void> {
+  if (deleteTargetId.value === null) {
     return
   }
-  detailBusyAction.value = 'delete'
-  detailError.value = ''
+  deleteBusy.value = true
   try {
-    const response = await deleteDevice(selectedDeviceId.value)
-    deviceStore.removeDevice(selectedDeviceId.value, response.registry_revision)
+    const response = await deleteDevice(deleteTargetId.value)
+    deviceStore.removeDevice(deleteTargetId.value, response.registry_revision)
     deviceStore.setPendingPersistence(response.pending_persistence)
-    panelStore.removeDevice(selectedDeviceId.value)
-    detailOpen.value = false
-    selectedDeviceId.value = null
+    panelStore.removeDevice(deleteTargetId.value)
+    if (selectedDeviceId.value === deleteTargetId.value) {
+      detailOpen.value = false
+      selectedDeviceId.value = null
+      detailEditing.value = false
+    }
+    deleteDialogOpen.value = false
+    deleteTargetId.value = null
   } catch (error) {
     detailError.value = formatError(error)
   } finally {
-    detailBusyAction.value = null
+    deleteBusy.value = false
   }
 }
 
@@ -295,12 +341,6 @@ async function submitDeviceCommand(payload: DeviceCommandRequest): Promise<void>
       device_id: selectedDeviceId.value,
     })
     applyMutationResponse(response)
-    if (payload.command === 'delete') {
-      const deviceId = selectedDeviceId.value
-      detailOpen.value = false
-      selectedDeviceId.value = null
-      panelStore.removeDevice(deviceId)
-    }
   } catch (error) {
     detailError.value = formatError(error)
   } finally {
@@ -325,4 +365,10 @@ watch(
     void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
   },
 )
+
+watch(detailOpen, value => {
+  if (!value) {
+    detailEditing.value = false
+  }
+})
 </script>

@@ -13,12 +13,14 @@ export type AppIconName =
   | 'refresh'
   | 'close'
   | 'edit'
+  | 'info'
   | 'trash'
   | 'menu'
   | 'plus'
   | 'power'
   | 'chevron-left'
   | 'chevron-right'
+  | 'chevron-down'
 
 type IconShape = {
   viewBox: string
@@ -82,6 +84,10 @@ export const iconRegistry: Record<AppIconName, IconShape> = {
     viewBox: '0 0 24 24',
     paths: ['M5 19l4.2-1 9.3-9.3-3.2-3.2L6 14.8z', 'M13.8 7l3.2 3.2', 'M5 19h14'],
   },
+  info: {
+    viewBox: '0 0 24 24',
+    paths: ['M12 17v-6', 'M12 8h.01', 'M12 21a9 9 0 100-18 9 9 0 000 18z'],
+  },
   trash: {
     viewBox: '0 0 24 24',
     paths: ['M4 7h16', 'M9 7V4h6v3', 'M7 7l1 13h8l1-13', 'M10 11v6', 'M14 11v6'],
@@ -105,5 +111,9 @@ export const iconRegistry: Record<AppIconName, IconShape> = {
   'chevron-right': {
     viewBox: '0 0 24 24',
     paths: ['M9 6l6 6-6 6'],
+  },
+  'chevron-down': {
+    viewBox: '0 0 24 24',
+    paths: ['M6 9l6 6 6-6'],
   },
 }

@@ -156,6 +156,32 @@ The SPA SHALL provide language switching and two themes, `light` and `dark`, fro
 - **WHEN** the user reloads the app after changing theme or language
 - **THEN** the SPA restores the previously selected theme and language
 
+### Requirement: Semantic theme colors are centralized
+The SPA SHALL define a shared semantic color palette for `light` and `dark` themes so that text, surfaces, borders, chips, dialogs, tables, and form controls stay readable against their backgrounds.
+
+#### Scenario: Theme switch updates semantic colors
+- **WHEN** the user switches between `light` and `dark` themes
+- **THEN** the portal updates the active semantic colors for backgrounds, surfaces, borders, primary accents, and status states
+
+#### Scenario: Surfaces remain readable
+- **WHEN** the portal renders app bars, drawers, dialogs, cards, tables, or form controls
+- **THEN** those surfaces use the active theme tokens instead of one-off hard-coded colors that only work in a single theme
+
+#### Scenario: Text color follows the current surface
+- **WHEN** the portal renders labels, subtitles, helper text, or icon buttons on themed surfaces
+- **THEN** the text and icon colors remain legible in both `light` and `dark` modes
+
+### Requirement: Theme control remains centralized
+The SPA SHALL keep theme selection behind the existing App bar toggle and SHALL persist the active theme across reloads.
+
+#### Scenario: Theme switcher remains the entry point
+- **WHEN** the user changes theme
+- **THEN** the SPA uses the existing toggle in the App bar rather than introducing a separate theme settings surface
+
+#### Scenario: Theme preference persists
+- **WHEN** the user reloads the app after changing theme
+- **THEN** the SPA restores the previously selected theme
+
 ### Requirement: Icons are managed locally
 The SPA SHALL keep UI icons in a local frontend registry and SHALL NOT add a separate icon package dependency.
 
@@ -242,6 +268,21 @@ The SPA SHALL provide a `mockMode` that lets developers run and test the fronten
 #### Scenario: Mock data can be reset
 - **WHEN** a developer opens the app with `?mockMode=1&mockReset=1`
 - **THEN** the mock data store is restored to deterministic seed data suitable for repeatable UI testing
+
+### Requirement: Realtime device store updates use canonical snapshots
+The SPA SHALL merge websocket `device.upsert` and `device.command_result` payloads directly into the Pinia device store when they contain a canonical device snapshot.
+
+#### Scenario: Snapshot update patches store
+- **WHEN** a realtime device update message arrives
+- **THEN** the SPA normalizes the payload into the device registry store and updates the affected device entry without refetching the full registry
+
+#### Scenario: Legacy nested payload remains tolerated during transition
+- **WHEN** a realtime device update arrives in a legacy nested form
+- **THEN** the SPA may still accept it during the transition period, but the canonical flat snapshot remains the preferred contract
+
+#### Scenario: Device removal updates the store
+- **WHEN** a `device.remove` realtime message arrives
+- **THEN** the SPA removes the device from the store using the device id in the payload without reloading `/api/devices`
 
 #### Scenario: Mock dashboard layout is persisted
 - **WHEN** a user changes dashboard panel order, panel names, active panel, or widget coordinates while mock mode is enabled

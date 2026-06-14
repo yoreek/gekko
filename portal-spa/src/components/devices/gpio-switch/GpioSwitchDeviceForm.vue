@@ -30,7 +30,9 @@
     <v-col cols="12">
       <v-expansion-panels flat variant="accordion">
         <v-expansion-panel value="details">
-          <v-expansion-panel-title>{{ t('device.dialog.configDetails') }}</v-expansion-panel-title>
+          <v-expansion-panel-title :expand-icon="expandIcon" :collapse-icon="collapseIcon">
+            {{ t('device.dialog.configDetails') }}
+          </v-expansion-panel-title>
           <v-expansion-panel-text>
             <v-row dense>
               <v-col cols="12" md="6">
@@ -95,6 +97,7 @@ import { outputStateLabelKey, type OutputState } from '@/models/devices/switch'
 import type { GpioSwitchConfigDraft } from '@/models/devices/gpio-switch'
 import SwitchStateSelect from '@/components/devices/switch/SwitchStateSelect.vue'
 import { isOutputState } from '@/models/devices/switch'
+import { iconRegistry } from '@/icons'
 
 const props = defineProps<{
   modelValue: GpioSwitchConfigDraft | undefined
@@ -108,6 +111,8 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const expandIcon = `svg:${iconRegistry['chevron-right'].paths[0]}`
+const collapseIcon = `svg:${iconRegistry['chevron-down'].paths[0]}`
 const fallbackValue: GpioSwitchConfigDraft = {
   restore_previous_state: false,
   startup_state: 'off',

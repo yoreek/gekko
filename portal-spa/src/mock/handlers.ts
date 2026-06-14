@@ -13,6 +13,7 @@ import type {
   WifiStatusResponse,
 } from '@/api'
 import { ApiClientError } from '@/api/http'
+import { decodeGpioSwitchConfigBlob } from '@/components/device/device-form'
 import { publishRealtimeMessage } from '@/realtime/bus'
 import { scheduleMockPersistenceFlush } from '@/realtime/mockRuntime'
 import { DUMMY_DEVICE_TYPE_ID, GPIO_SWITCH_DEVICE_TYPE_ID } from '@/models/device-types'
@@ -259,6 +260,21 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           pruneDashboardLayout(db)
           break
         case 'update_config':
+          if (device.type_id === GPIO_SWITCH_DEVICE_TYPE_ID) {
+            const config = decodeGpioSwitchConfigBlob(String(payload.payload ?? ''))
+            if (!config) {
+              throw new ApiClientError('invalid gpio switch config', 'BAD_ARGS', 400, null)
+            }
+            device.config = {
+              enabled: config.enabled,
+              restore_previous_state: config.restore_previous_state,
+              startup_state: config.startup_state,
+              safe_state: config.safe_state,
+              inverted: config.inverted,
+              gpio_pin: config.gpio_pin,
+            }
+            device.enabled = config.enabled
+          }
           device.config_revision += 1
           break
         case 'set_status':

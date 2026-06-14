@@ -140,13 +140,12 @@
 
     <DeviceDetailDialog
       v-model="detailOpen"
+      v-model:editing="detailEditing"
       :device="selectedDevice"
       :busy-action="detailBusyAction"
       :error-message="detailError"
       @refresh="refreshSelectedDevice"
-      @rename="renameDevice"
-      @toggle-enabled="toggleDeviceEnabled"
-      @delete="deleteSelectedDevice"
+      @save="saveDevice"
       @command="submitDeviceCommand"
     />
 
@@ -228,10 +227,12 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { commandDevice, deleteDevice, fetchDevice, type DeviceCommandRequest } from '@/api'
+import { commandDevice, fetchDevice, type DeviceCommandRequest } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
 import DashboardGrid from '@/components/dashboard/DashboardGrid.vue'
 import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
+import { buildDeviceEditCommands } from '@/components/device/device-form'
+import type { DeviceEditSubmitPayload } from '@/components/device/device-form'
 import type { DashboardDevice } from '@/models/device'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore, type DashboardPanelWidget } from '@/stores/panels'
@@ -244,7 +245,8 @@ const wsStore = useWebSocketStore()
 
 const devicesLoading = ref(false)
 const detailOpen = ref(false)
-const detailBusyAction = ref<'refresh' | 'rename' | 'toggle' | 'delete' | 'command' | null>(null)
+const detailEditing = ref(false)
+const detailBusyAction = ref<'refresh' | 'save' | 'command' | null>(null)
 const detailError = ref('')
 const selectedDeviceId = ref<number | null>(null)
 const editing = ref(false)
@@ -423,6 +425,7 @@ function applyMutationResponse(response: { registry_revision: number; pending_pe
 async function openDevice(deviceId: number): Promise<void> {
   selectedDeviceId.value = deviceId
   detailOpen.value = true
+  detailEditing.value = false
   await refreshSelectedDevice()
 }
 
@@ -480,56 +483,22 @@ function submitAddDevice(): void {
   addDeviceDialogOpen.value = false
 }
 
-async function renameDevice(name: string): Promise<void> {
-  if (selectedDeviceId.value === null) {
+async function saveDevice(payload: DeviceEditSubmitPayload): Promise<void> {
+  if (selectedDeviceId.value === null || selectedDevice.value === null) {
     return
   }
-  detailBusyAction.value = 'rename'
+  detailBusyAction.value = 'save'
   detailError.value = ''
   try {
-    const response = await commandDevice(selectedDeviceId.value, {
-      command: 'rename',
-      payload: name,
-    })
-    applyMutationResponse(response)
-  } catch (error) {
-    detailError.value = formatError(error)
-  } finally {
-    detailBusyAction.value = null
-  }
-}
-
-async function toggleDeviceEnabled(enabled: boolean): Promise<void> {
-  if (selectedDeviceId.value === null) {
-    return
-  }
-  detailBusyAction.value = 'toggle'
-  detailError.value = ''
-  try {
-    const response = await commandDevice(selectedDeviceId.value, {
-      command: enabled ? 'enable' : 'disable',
-    })
-    applyMutationResponse(response)
-  } catch (error) {
-    detailError.value = formatError(error)
-  } finally {
-    detailBusyAction.value = null
-  }
-}
-
-async function deleteSelectedDevice(): Promise<void> {
-  if (selectedDeviceId.value === null) {
-    return
-  }
-  detailBusyAction.value = 'delete'
-  detailError.value = ''
-  try {
-    const response = await deleteDevice(selectedDeviceId.value)
-    deviceStore.removeDevice(selectedDeviceId.value, response.registry_revision)
-    deviceStore.setPendingPersistence(response.pending_persistence)
-    panelStore.removeDevice(selectedDeviceId.value)
-    detailOpen.value = false
-    selectedDeviceId.value = null
+    const commands = buildDeviceEditCommands(selectedDevice.value, payload)
+    for (const command of commands) {
+      const response = await commandDevice(selectedDeviceId.value, {
+        ...command,
+        device_id: selectedDeviceId.value,
+      })
+      applyMutationResponse(response)
+    }
+    detailEditing.value = false
   } catch (error) {
     detailError.value = formatError(error)
   } finally {
@@ -549,12 +518,6 @@ async function submitDeviceCommand(payload: DeviceCommandRequest): Promise<void>
       device_id: selectedDeviceId.value,
     })
     applyMutationResponse(response)
-    if (payload.command === 'delete') {
-      const deviceId = selectedDeviceId.value
-      detailOpen.value = false
-      selectedDeviceId.value = null
-      panelStore.removeDevice(deviceId)
-    }
   } catch (error) {
     detailError.value = formatError(error)
   } finally {
@@ -628,4 +591,10 @@ watch(
     }
   },
 )
+
+watch(detailOpen, value => {
+  if (!value) {
+    detailEditing.value = false
+  }
+})
 </script>

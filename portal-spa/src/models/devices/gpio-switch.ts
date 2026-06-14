@@ -1,4 +1,4 @@
-import { isOutputState, type OutputState, type SwitchConfigDraft } from './switch'
+import { isOutputState, type OutputState, type SwitchConfigDraft } from '@/models/devices/switch'
 
 export interface GpioSwitchConfigDraft extends SwitchConfigDraft {
   gpio_pin: number

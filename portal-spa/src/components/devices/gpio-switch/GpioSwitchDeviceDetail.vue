@@ -19,7 +19,9 @@
     <v-col cols="12">
       <v-expansion-panels flat variant="accordion">
         <v-expansion-panel value="details">
-          <v-expansion-panel-title>{{ t('device.dialog.configDetails') }}</v-expansion-panel-title>
+          <v-expansion-panel-title :expand-icon="expandIcon" :collapse-icon="collapseIcon">
+            {{ t('device.dialog.configDetails') }}
+          </v-expansion-panel-title>
           <v-expansion-panel-text>
             <v-row dense>
               <v-col cols="12" md="6">
@@ -85,6 +87,7 @@ import SwitchOutputControls from '@/components/devices/switch/SwitchOutputContro
 import type { DashboardDevice } from '@/models/device'
 import { normalizeGpioSwitchConfig } from '@/models/devices/gpio-switch'
 import { isOutputState, outputStateLabelKey, switchCommandPayload, type OutputState } from '@/models/devices/switch'
+import { iconRegistry } from '@/icons'
 
 const props = defineProps<{
   device: DashboardDevice
@@ -96,6 +99,8 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const expandIcon = `svg:${iconRegistry['chevron-right'].paths[0]}`
+const collapseIcon = `svg:${iconRegistry['chevron-down'].paths[0]}`
 const config = computed(() => normalizeGpioSwitchConfig(props.device.detail.config))
 const outputState = computed(() => (isOutputState(props.device.output.state) ? props.device.output.state : undefined))
 

@@ -1,4 +1,4 @@
-import type { DeviceCommandRequest, DeviceOutputState } from '@/api'
+import type { DeviceCommandRequest, DeviceOutputState } from '../../api/contracts'
 
 export type OutputState = DeviceOutputState
 

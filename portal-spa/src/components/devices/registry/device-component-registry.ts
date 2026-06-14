@@ -10,7 +10,7 @@ import {
 interface DeviceUiRegistryEntry {
   typeId: DeviceTypeId
   detail: Component
-  createForm?: Component
+  form?: Component
 }
 
 const detailFallback = defineAsyncComponent(() => import('@/components/devices/dummy/DummyDeviceDetail.vue'))
@@ -23,7 +23,7 @@ const deviceUiRegistry: DeviceUiRegistryEntry[] = [
   {
     typeId: GPIO_SWITCH_DEVICE_TYPE_ID,
     detail: defineAsyncComponent(() => import('@/components/devices/gpio-switch/GpioSwitchDeviceDetail.vue')),
-    createForm: defineAsyncComponent(() => import('@/components/devices/gpio-switch/GpioSwitchDeviceForm.vue')),
+    form: defineAsyncComponent(() => import('@/components/devices/gpio-switch/GpioSwitchDeviceForm.vue')),
   },
 ]
 
@@ -35,6 +35,10 @@ export function resolveDeviceDetailComponent(typeId: number): Component {
   return deviceUiRegistry.find(entry => entry.typeId === typeId)?.detail ?? detailFallback
 }
 
+export function resolveDeviceFormComponent(typeId: number): Component | undefined {
+  return deviceUiRegistry.find(entry => entry.typeId === typeId)?.form
+}
+
 export function resolveDeviceCreateFormComponent(typeId: number): Component | undefined {
-  return deviceUiRegistry.find(entry => entry.typeId === typeId)?.createForm
+  return resolveDeviceFormComponent(typeId)
 }

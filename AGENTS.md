@@ -37,3 +37,14 @@
 - Run `scripts/test.sh` for local verification. It runs `scripts/check.sh` before `pio test -e native`.
 - `scripts/check.sh` requires `clang-format` and `cppcheck`.
 - Keep code formatted by `.clang-format`.
+
+## Vue And Vuetify UI Rules
+
+- Prefer standard Vuetify components, props, and slots before any custom markup or CSS.
+- If Vuetify already provides the behavior or visual pattern, use it directly and do not reimplement it in local HTML/CSS.
+- Do not add custom headers, icons, expand/collapse controls, status markers, or similar UI chrome when the Vuetify component already exposes them.
+- Keep `portal-spa/src/styles/main.css` minimal: reset, layout, spacing, and structure only.
+- Do not place colors, opacity, state styling, label styling, or component behavior overrides in `main.css`.
+- Use theme tokens and Vuetify defaults for color, contrast, labels, and surface styling.
+- For expansion panels, use the standard Vuetify accordion behavior and built-in expand/collapse UI.
+- If a UI change would deviate from a standard Vuetify pattern, state that explicitly before editing and get confirmation first.

@@ -1,46 +1,4 @@
-## Purpose
-
-Define the device dashboard widgets, shared device detail form, typed device details, and runtime command behavior in the portal SPA.
-
-## Requirements
-
-### Requirement: Device dashboard cards
-The SPA SHALL present the device dashboard as a panel widget surface of compact fixed-size device cards that show only the device display name, with readiness expressed through visual state only.
-
-### Requirement: Device widgets are split by component responsibility
-The SPA SHALL organize device widgets in a dedicated component area with a base device widget component and type-specific extensions.
-
-#### Card composition
-- The dashboard card MUST show only the device name.
-- The dashboard card MAY include an optional compact device-type icon only if it does not increase the card height or add extra metadata rows.
-- The dashboard card MUST NOT render `Ready` or `!Ready` text.
-- The dashboard card MUST dim the card when the backend status is not `ready`.
-- The dashboard card MUST use a fixed compact footprint and MUST NOT expose resize handles.
-- The dashboard card MAY be implemented as a reusable base card shell with type-specific specialized components layered on top.
-
-#### Scenario: Base widget is reused
-- **WHEN** a device type does not need custom rendering
-- **THEN** the SPA renders it with the base device widget component
-
-#### Scenario: Type-specific widget can extend base
-- **WHEN** a device type needs custom rendering in the future
-- **THEN** the SPA can render it with a type-specific component layered on top of the base widget component
-
-#### Scenario: Device widgets are rendered
-- **WHEN** the dashboard loads the active panel layout
-- **THEN** it renders one widget per device in the saved panel layout
-
-#### Scenario: Widgets show primary state only
-- **WHEN** a device widget is displayed
-- **THEN** it shows the device name
-
-#### Scenario: Not ready widgets are dimmed
-- **WHEN** a device widget has any backend status other than `ready`
-- **THEN** the card is visually dimmed to indicate that it is not working
-
-#### Scenario: Widgets reflect live updates
-- **WHEN** a realtime device update arrives
-- **THEN** the affected widget updates without requiring a full page reload
+## MODIFIED Requirements
 
 ### Requirement: Device detail modal
 The SPA SHALL open a modal dialog for a selected device and present a shared Device form surface with common fields first and type-specific details below.
@@ -61,24 +19,7 @@ The SPA SHALL open a modal dialog for a selected device and present a shared Dev
 - **WHEN** the selected device changes due to a realtime update while the modal is open
 - **THEN** the modal refreshes its visible state without closing
 
-### Requirement: Device detail modal supports edit and runtime commands
-The SPA SHALL allow the user to rename, enable, disable, and command a device from the detail modal, while destructive registry deletion stays outside the modal.
-
-#### Scenario: Device can be renamed
-- **WHEN** the user submits a new name from the modal
-- **THEN** the SPA sends the rename through the existing device API path and updates the view on success
-
-#### Scenario: Device can be enabled or disabled
-- **WHEN** the user toggles the enabled state from the modal
-- **THEN** the SPA sends the corresponding enable or disable action through the existing device API path and reflects the returned state
-
-#### Scenario: Device command can be executed
-- **WHEN** the user submits a command from the modal
-- **THEN** the SPA sends the command to `POST /api/devices/:id/command` and shows the returned result or validation error
-
-#### Scenario: Delete is not shown in the detail modal
-- **WHEN** the detail modal is open in View or Edit mode
-- **THEN** the modal does not render a delete button, `Actions` section, or destructive registry action
+## ADDED Requirements
 
 ### Requirement: Device detail field hints use inline info tooltips
 The SPA SHALL show compact `i` icon tooltips for the GPIO switch fields that need explanatory guidance.

@@ -13,7 +13,7 @@ The SPA MUST provide a dedicated Devices page that presents the registry as a co
 
 #### Scenario: Table shows core registry columns
 - **WHEN** a device row is displayed
-- **THEN** it shows the device ID, name, type, and `Effective_status`
+- **THEN** it shows the device ID, name, type, `Effective_status`, and an `Actions` column
 
 #### Scenario: Table uses ready-made Vuetify components
 - **WHEN** the Devices page renders the registry table
@@ -57,6 +57,21 @@ The SPA MUST expose inline control actions in the device table for device types 
 - **WHEN** a device does not support direct control
 - **THEN** its table row may omit the control element and present its status information only
 
+### Requirement: Devices table exposes registry deletion in an Actions column
+The SPA MUST expose device deletion from the Devices page table `Actions` column instead of the shared detail dialog.
+
+#### Scenario: Device row shows delete action
+- **WHEN** a device row is displayed on the Devices page
+- **THEN** the row `Actions` column contains a delete control for that device
+
+#### Scenario: Delete action does not open details
+- **WHEN** the user activates the delete control from the `Actions` column
+- **THEN** the SPA opens delete confirmation for that device without opening or switching the detail dialog
+
+#### Scenario: Device deletion updates registry views
+- **WHEN** the user confirms deletion from the Devices page
+- **THEN** the SPA sends the delete request, removes the device from the table, and removes any dashboard widget for that deleted device
+
 ### Requirement: Device registry rows can open device details
 The SPA MUST let the user open a device detail dialog from the Devices table.
 
@@ -64,6 +79,21 @@ The SPA MUST let the user open a device detail dialog from the Devices table.
 - **WHEN** the user selects a device row or its detail action
 - **THEN** the SPA opens the existing device detail dialog for that device
 
-#### Scenario: Detail dialog stays the source of richer actions
+#### Scenario: Detail dialog stays the source of non-destructive details
 - **WHEN** the device detail dialog opens from the Devices page
-- **THEN** the user can still access the richer rename, enable, disable, delete, and command actions there
+- **THEN** the user can still access the shared detail form, edit flow, and supported runtime commands there, but not the delete action
+
+### Requirement: Devices table opens the shared Device form
+The SPA SHALL use the same shared Device form behavior when a device is opened from the Devices table as when it is opened from the dashboard.
+
+#### Scenario: Table detail action opens shared form
+- **WHEN** the user opens device details from the Devices table
+- **THEN** the SPA opens the shared Device form in the detail modal with common fields first and type-specific details below
+
+#### Scenario: Table edit action uses shared edit layout
+- **WHEN** the user activates `Edit` for a device row
+- **THEN** the SPA opens or switches to the shared Device form Edit mode instead of a table-specific editor
+
+#### Scenario: Table create action uses shared create layout
+- **WHEN** the user starts creating a device from the Devices page
+- **THEN** the SPA shows the same shared Device form Create layout used by other create entry points
