@@ -11,3 +11,6 @@ gekko/
 GekkoFrontend/
 portal-spa/node_modules/
 portal-spa/dist/
+portal-spa/.vite/
+.vite/
+easy-iot-manager/
