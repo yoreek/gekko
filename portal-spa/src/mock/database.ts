@@ -1,4 +1,11 @@
-import type { DashboardLayoutRecord, DeviceRecord, OtaStatusResponse, WifiScanNetwork, WifiStatusResponse } from '@/api'
+import type {
+  DashboardLayoutRecord,
+  DashboardLayoutWidgetRecord,
+  DeviceRecord,
+  OtaStatusResponse,
+  WifiScanNetwork,
+  WifiStatusResponse,
+} from '@/api'
 import { safeReadStorage, safeWriteStorage } from '@/utils/storage'
 
 const storageKey = 'gekko.mockDb.v3'
@@ -34,8 +41,9 @@ const seedDatabase: MockDatabase = {
         name: 'Main panel',
         order: 0,
         widgets: [
-          { device_id: 670845748, x: 0, y: 0, w: 1, h: 1 },
-          { device_id: 670845749, x: 1, y: 0, w: 1, h: 1 },
+          [670845748, 0, 0, 1, 1],
+          [670845749, 1, 0, 1, 1],
+          [670845750, 2, 0, 1, 1],
         ],
       },
     ],
@@ -82,6 +90,36 @@ const seedDatabase: MockDatabase = {
       lifecycle_status: 'disabled',
       effective_status: 'disabled',
       status: 'disabled',
+    },
+    {
+      device_id: 670845750,
+      type_id: 2,
+      label: 'GPIO switch',
+      type: 'gpio_switch',
+      name: 'GPIO Relay',
+      enabled: true,
+      has_parent: false,
+      parent_device_id: 0,
+      config_version: 1,
+      config_revision: 1,
+      lifecycle_status: 'ready',
+      effective_status: 'ready',
+      status: 'ready',
+      retained_state_supported: true,
+      retained_startup_enabled: false,
+      retained_startup_fallback_output: false,
+      retained_state_in_config_payload: false,
+      config: {
+        enabled: true,
+        restore_previous_state: false,
+        startup_state: 'off',
+        safe_state: 'disabled',
+        inverted: false,
+        gpio_pin: 4,
+      },
+      output: {
+        state: 'off',
+      },
     },
   ],
   wifi: {
@@ -132,6 +170,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function normalizeWidgetRecord(value: unknown): DashboardLayoutWidgetRecord | null {
+  if (Array.isArray(value) && value.length >= 5) {
+    return [Number(value[0]), Number(value[1]), Number(value[2]), Number(value[3]), Number(value[4])]
+  }
+
+  if (isRecord(value)) {
+    return [
+      Number(value.device_id ?? 0),
+      Number(value.x ?? 0),
+      Number(value.y ?? 0),
+      Number(value.w ?? 1),
+      Number(value.h ?? 1),
+    ]
+  }
+
+  return null
+}
+
+function isWidgetRecord(value: DashboardLayoutWidgetRecord | null): value is DashboardLayoutWidgetRecord {
+  return value !== null
+}
+
 function isDashboardLayoutRecord(value: unknown): value is DashboardLayoutRecord {
   if (!isRecord(value)) {
     return false
@@ -148,13 +208,24 @@ function normalizeStoredDatabase(stored: unknown): MockDatabase {
   const wifi = isRecord(stored.wifi) ? stored.wifi : {}
   const ota = isRecord(stored.ota) ? stored.ota : {}
   const system = isRecord(stored.system) ? stored.system : {}
+  const dashboardLayout = isDashboardLayoutRecord(stored.dashboardLayout)
+    ? {
+        ...stored.dashboardLayout,
+        panels: stored.dashboardLayout.panels.map(panel => ({
+          ...panel,
+          widgets: Array.isArray(panel.widgets)
+            ? panel.widgets.map(widget => normalizeWidgetRecord(widget)).filter(isWidgetRecord)
+            : [],
+        })),
+      }
+    : seed.dashboardLayout
 
   return {
     ...seed,
     ...stored,
     registryRevision: typeof stored.registryRevision === 'number' ? stored.registryRevision : seed.registryRevision,
     dashboardLayoutRevision: typeof stored.dashboardLayoutRevision === 'number' ? stored.dashboardLayoutRevision : seed.dashboardLayoutRevision,
-    dashboardLayout: isDashboardLayoutRecord(stored.dashboardLayout) ? stored.dashboardLayout : seed.dashboardLayout,
+    dashboardLayout,
     pendingPersistence: typeof stored.pendingPersistence === 'boolean' ? stored.pendingPersistence : seed.pendingPersistence,
     devices: Array.isArray(stored.devices) ? (stored.devices as DeviceRecord[]) : seed.devices,
     wifi: {

@@ -34,7 +34,7 @@
               </section>
             </div>
             <div class="page-actions page-actions--spaced">
-              <v-btn :loading="loading" color="primary" variant="tonal" @click="refreshOverview">
+              <v-btn :loading="loading" color="primary" variant="tonal" @click="refreshOverview(true)">
                 {{ t('actions.refresh') }}
               </v-btn>
             </div>
@@ -123,7 +123,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { fetchDevices, fetchOtaStatus, fetchWifiStatus } from '@/api'
+import { fetchOtaStatus, fetchWifiStatus } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
 import { useAppStore } from '@/stores/app'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
@@ -144,11 +144,13 @@ const loading = ref(false)
 const modeLabel = computed(() => t(`status.mode.${appStore.mode}`))
 const wifiStatusLabel = computed(() => t(`status.wifi.${wifiStore.wifiStatus}`))
 
-async function refreshOverview(): Promise<void> {
+async function refreshOverview(forceReloadDevices = false): Promise<void> {
   loading.value = true
   try {
-    const [devices, wifi, ota] = await Promise.all([fetchDevices(), fetchWifiStatus(), fetchOtaStatus()])
-    deviceStore.replaceFromResponse(devices)
+    if (forceReloadDevices) {
+      await deviceStore.reload()
+    }
+    const [wifi, ota] = await Promise.all([fetchWifiStatus(), fetchOtaStatus()])
     wifiStore.replaceStatus(wifi)
     otaStore.replaceFromResponse(ota)
   } finally {

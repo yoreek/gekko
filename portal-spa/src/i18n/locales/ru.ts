@@ -119,6 +119,7 @@ export default {
     },
     type: {
       dummy: 'Dummy устройство',
+      gpioSwitch: 'GPIO выключатель',
       unknown: 'Неизвестный тип устройства',
     },
     fields: {
@@ -137,6 +138,11 @@ export default {
       restorePreviousState: 'Восстанавливать предыдущее состояние',
       currentOutput: 'Текущий выход',
       defaultOutput: 'Выход по умолчанию',
+      outputState: 'Состояние выхода',
+      startupState: 'Стартовое состояние',
+      safeState: 'Безопасное состояние',
+      inverted: 'Инверсия',
+      gpioPin: 'GPIO пин',
       freeSketchSpace: 'Свободная область прошивки',
       hasError: 'Есть ошибка',
     },
@@ -149,8 +155,10 @@ export default {
       actions: 'Действия',
       details: 'Детали типа',
       dummyHint: 'DummyDevice первым получает типизированную панель управления.',
+      gpioSwitchHint: 'GPIO выключатель использует явные состояния выхода.',
       outputOn: 'Выход включён',
       outputOff: 'Выход выключен',
+      outputDisabled: 'Выход отключён',
       quickCommands: 'Быстрые команды',
       deleteConfirmTitle: 'Удалить устройство?',
       deleteConfirmBody: 'Это удалит устройство из реестра и закроет окно деталей.',
@@ -181,12 +189,15 @@ export default {
       updateConfig: 'Обновить конфигурацию',
       outputOn: 'Выход включить',
       outputOff: 'Выход выключить',
+      outputDisabled: 'Выход отключить',
       fault: 'Ошибка',
       ready: 'Готово',
     },
     card: {
       outputOn: 'Выход включить',
       outputOff: 'Выход выключить',
+      power: 'Питание',
+      powerDisabled: 'Управление недоступно',
     },
   },
   status: {
@@ -222,6 +233,11 @@ export default {
     no: 'Нет',
     lightTheme: 'Светлая',
     darkTheme: 'Тёмная',
+    output: {
+      on: 'Вкл',
+      off: 'Выкл',
+      disabled: 'Отключено',
+    },
   },
   restart: {
     pending: 'Перезапуск запрошен',

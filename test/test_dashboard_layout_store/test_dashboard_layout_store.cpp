@@ -86,6 +86,14 @@ void test_dashboard_layout_default_generation_and_revisioned_save_load() {
     TEST_ASSERT_TRUE(firstSave.ok());
     TEST_ASSERT_EQUAL_UINT32(1, firstSave.revision);
 
+    std::vector<uint8_t> storedBlob;
+    TEST_ASSERT_TRUE(storage.getBlob("layout_blob", storedBlob));
+    TEST_ASSERT_TRUE(storedBlob.size() > 4);
+    TEST_ASSERT_EQUAL_CHAR('D', static_cast<char>(storedBlob[0]));
+    TEST_ASSERT_EQUAL_CHAR('L', static_cast<char>(storedBlob[1]));
+    TEST_ASSERT_EQUAL_CHAR('B', static_cast<char>(storedBlob[2]));
+    TEST_ASSERT_EQUAL_CHAR('1', static_cast<char>(storedBlob[3]));
+
     DashboardLayoutSaveResult secondSave = store.save(firstSave.layout);
     TEST_ASSERT_TRUE(secondSave.ok());
     TEST_ASSERT_EQUAL_UINT32(2, secondSave.revision);
@@ -171,6 +179,32 @@ void test_dashboard_layout_save_json_rejects_invalid_shape_and_schema() {
     DashboardLayoutSaveResult widgetResult = store.saveJson(doc.as<JsonVariantConst>());
     TEST_ASSERT_FALSE(widgetResult.ok());
     TEST_ASSERT_EQUAL(DashboardLayoutError::InvalidWidget, widgetResult.validation.error);
+
+    doc.clear();
+    doc["schema_version"] = DashboardLayoutStore::kSchemaVersion;
+    doc["active_panel_id"] = "main";
+    panels = doc.createNestedArray("panels");
+    panel = panels.createNestedObject();
+    panel["id"] = "main";
+    panel["name"] = "Main";
+    widgets = panel.createNestedArray("widgets");
+    JsonArray compactWidget = widgets.createNestedArray();
+    compactWidget.add(101);
+    compactWidget.add(0);
+    compactWidget.add(0);
+    compactWidget.add(1);
+    compactWidget.add(1);
+
+    DashboardLayoutSaveResult compactResult = store.saveJson(doc.as<JsonVariantConst>());
+    TEST_ASSERT_TRUE(compactResult.ok());
+    TEST_ASSERT_EQUAL_UINT32(101, compactResult.layout.panels[0].widgets[0].deviceId);
+
+    DynamicJsonDocument roundTripDoc(512);
+    JsonObject roundTripRoot = roundTripDoc.to<JsonObject>();
+    store.writeLayoutJson(roundTripRoot, compactResult.layout);
+    TEST_ASSERT_TRUE(roundTripRoot["panels"][0]["widgets"][0].is<JsonArrayConst>());
+    TEST_ASSERT_EQUAL_UINT32(101, roundTripRoot["panels"][0]["widgets"][0][0].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32(1, roundTripRoot["panels"][0]["widgets"][0][3].as<uint32_t>());
 }
 
 void test_dashboard_layout_prunes_stale_registry_devices() {
@@ -232,6 +266,43 @@ void test_dashboard_layout_full_prune_recovers_to_default() {
     TEST_ASSERT_EQUAL_UINT32(101, loaded.layout.panels[0].widgets[0].deviceId);
 }
 
+void test_dashboard_layout_legacy_json_storage_resets_to_default() {
+    MemoryConfigStorage storage;
+    TEST_ASSERT_TRUE(storage.begin("dashboard", false));
+
+    DynamicJsonDocument doc(512);
+    doc["schema_version"] = DashboardLayoutStore::kSchemaVersion;
+    doc["active_panel_id"] = "main";
+    JsonArray panels = doc.createNestedArray("panels");
+    JsonObject panel = panels.createNestedObject();
+    panel["id"] = "main";
+    panel["name"] = "Main";
+    panel["order"] = 0;
+    JsonArray widgets = panel.createNestedArray("widgets");
+    JsonObject widget = widgets.createNestedObject();
+    widget["device_id"] = 101;
+    widget["x"] = 0;
+    widget["y"] = 0;
+    widget["w"] = 1;
+    widget["h"] = 1;
+
+    std::string legacyJson;
+    serializeJson(doc, legacyJson);
+    TEST_ASSERT_TRUE(storage.putString("layout", legacyJson));
+    TEST_ASSERT_TRUE(storage.putUInt("revision", 7));
+
+    DashboardLayoutStore store(storage);
+    TEST_ASSERT_TRUE(store.begin());
+
+    DashboardLayoutLoadResult loaded = store.load();
+    TEST_ASSERT_TRUE(loaded.defaulted);
+    TEST_ASSERT_EQUAL_UINT32(7, loaded.revision);
+    TEST_ASSERT_EQUAL_UINT32(1, loaded.layout.panels.size());
+    TEST_ASSERT_EQUAL_UINT32(0, loaded.layout.panels[0].widgets.size());
+    TEST_ASSERT_FALSE(storage.hasKey("layout"));
+    TEST_ASSERT_FALSE(storage.hasKey("layout_blob"));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_dashboard_layout_default_generation_and_revisioned_save_load);
@@ -239,5 +310,6 @@ int main(int, char**) {
     RUN_TEST(test_dashboard_layout_save_json_rejects_invalid_shape_and_schema);
     RUN_TEST(test_dashboard_layout_prunes_stale_registry_devices);
     RUN_TEST(test_dashboard_layout_full_prune_recovers_to_default);
+    RUN_TEST(test_dashboard_layout_legacy_json_storage_resets_to_default);
     return UNITY_END();
 }

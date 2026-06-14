@@ -85,7 +85,7 @@ void test_dummy_device_api_adapter_serializes_record() {
     StaticJsonDocument<1024> doc;
     JsonObject output = doc.to<JsonObject>();
 
-    DummyDeviceApiAdapter::instance().writeDeviceJson(record, output);
+    DummyDeviceApiAdapter::instance().writeDeviceJson(record, nullptr, output);
 
     TEST_ASSERT_EQUAL_UINT32(42, output["device_id"].as<uint32_t>());
     TEST_ASSERT_EQUAL_STRING("dummy", output["type"].as<const char*>());

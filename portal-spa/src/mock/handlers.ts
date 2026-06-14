@@ -1,5 +1,6 @@
 import type {
   DashboardLayoutRecord,
+  DashboardLayoutWidgetRecord,
   DashboardLayoutResponse,
   DeviceCommandRequest,
   DeviceDetailResponse,
@@ -14,7 +15,7 @@ import type {
 import { ApiClientError } from '@/api/http'
 import { publishRealtimeMessage } from '@/realtime/bus'
 import { scheduleMockPersistenceFlush } from '@/realtime/mockRuntime'
-import { DUMMY_DEVICE_TYPE_ID } from '@/models/device-types'
+import { DUMMY_DEVICE_TYPE_ID, GPIO_SWITCH_DEVICE_TYPE_ID } from '@/models/device-types'
 import { createSeedMockDatabase, loadMockDatabase, saveMockDatabase } from './database'
 
 function ok<T extends object>(payload: T): T & { success: true } {
@@ -129,40 +130,37 @@ export function mockFetchDashboardLayout(): DashboardLayoutResponse {
   })
 }
 
-export function mockSaveDashboardLayout(layout: DashboardLayoutRecord): Promise<DashboardLayoutResponse> {
-  const response = mutateRegistry(db => {
+export function mockSaveDashboardLayout(layout: DashboardLayoutRecord): Promise<void> {
+  mutateRegistry(db => {
     validateDashboardLayout(layout)
     db.dashboardLayout = normalizeDashboardLayout(layout, db.devices.map(device => device.device_id))
     db.dashboardLayoutRevision += 1
-    return ok({
-      revision: db.dashboardLayoutRevision,
-      layout_defaulted: false,
-      layout: db.dashboardLayout,
-    })
   })
+  const revision = loadMockDatabase().dashboardLayoutRevision
   publishRealtimeMessage({
     topic: 'dashboard.layout',
-    revision: response.revision,
+    revision,
     payload: {
-      revision: response.revision,
+      revision,
     },
   })
-  return Promise.resolve(response)
+  return Promise.resolve()
 }
 
 export function mockCreateDevice(payload: Record<string, unknown>): Promise<DeviceMutationResponse> {
   const response = mutateRegistry(db => {
     const nextId = Math.max(1, ...db.devices.map(device => device.device_id)) + 1
     const typeId = payload.type_id
-    if (typeof typeId !== 'number' || typeId !== DUMMY_DEVICE_TYPE_ID) {
+    if (typeof typeId !== 'number' || (typeId !== DUMMY_DEVICE_TYPE_ID && typeId !== GPIO_SWITCH_DEVICE_TYPE_ID)) {
       throw new ApiClientError('unsupported device type', 'UNSUPPORTED_TYPE', 400, null)
     }
+    const isGpioSwitch = typeId === GPIO_SWITCH_DEVICE_TYPE_ID
 
     const device: DeviceRecord = {
       device_id: nextId,
       type_id: typeId,
-      label: 'Dummy device',
-      type: 'dummy',
+      label: isGpioSwitch ? 'GPIO switch' : 'Dummy device',
+      type: isGpioSwitch ? 'gpio_switch' : 'dummy',
       name: String(payload.name ?? 'New Device'),
       enabled: Boolean(payload.enabled ?? true),
       has_parent: false,
@@ -177,12 +175,28 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
       retained_startup_fallback_output: false,
       retained_state_in_config_payload: false,
       config: {
-        enabled: true,
-        restore_previous_state: false,
-        default_output: false,
-        current_output: false,
-        inverted: false,
+        ...(isGpioSwitch
+          ? {
+              enabled: true,
+              restore_previous_state: false,
+              startup_state: 'off',
+              safe_state: 'disabled',
+              inverted: false,
+              gpio_pin: 2,
+            }
+          : {
+              enabled: true,
+              restore_previous_state: false,
+              default_output: false,
+              current_output: false,
+              inverted: false,
+            }),
       },
+      output: isGpioSwitch
+        ? {
+            state: 'off',
+          }
+        : undefined,
     }
     if (isRecordPayload(payload.config)) {
       device.config = {
@@ -255,6 +269,15 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           if (!isRecordPayload(device.config)) {
             device.config = {}
           }
+          if (device.type_id === GPIO_SWITCH_DEVICE_TYPE_ID) {
+            if (payload.payload === 'state=on' || payload.payload === 'state=off' || payload.payload === 'state=disabled') {
+              device.output = {
+                state: payload.payload.replace('state=', '') as 'on' | 'off' | 'disabled',
+              }
+              break
+            }
+            throw new ApiClientError('unsupported gpio switch output state', 'BAD_ARGS', 400, null)
+          }
           if (payload.payload === 'output=1') {
             device.config = {
               ...device.config,
@@ -286,7 +309,7 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
   })
   const db = loadMockDatabase()
   publishRealtimeMessage({
-    topic: payload.command === 'delete' ? 'device.remove' : 'device.command_result',
+    topic: payload.command === 'delete' ? 'device.remove' : 'device.upsert',
     revision: db.registryRevision,
     payload: response.device ?? { device_id: deviceId },
   })
@@ -336,27 +359,21 @@ function normalizeDashboardLayout(layout: DashboardLayoutRecord, deviceIds: numb
     name: panel.name.slice(0, 32),
     order: index,
     widgets: panel.widgets
-      .filter(widget => allowedIds.has(widget.device_id))
-      .map(widget => ({
-        device_id: widget.device_id,
-        x: Math.max(0, widget.x),
-        y: Math.max(0, widget.y),
-        w: Math.max(1, widget.w),
-        h: Math.max(1, widget.h),
-      })),
+      .filter(widget => allowedIds.has(widget[0]))
+      .map(widget => [
+        widget[0],
+        Math.max(0, widget[1]),
+        Math.max(0, widget[2]),
+        Math.max(1, widget[3]),
+        Math.max(1, widget[4]),
+      ] as DashboardLayoutWidgetRecord),
   }))
   if (panels.length === 0) {
     panels.push({
       id: 'main',
       name: 'Main panel',
       order: 0,
-      widgets: deviceIds.map((deviceId, index) => ({
-        device_id: deviceId,
-        x: index % 6,
-        y: Math.floor(index / 6),
-        w: 1,
-        h: 1,
-      })),
+      widgets: deviceIds.map((deviceId, index) => [deviceId, index % 6, Math.floor(index / 6), 1, 1]),
     })
   }
   return {
@@ -400,16 +417,16 @@ function validateDashboardLayout(layout: DashboardLayoutRecord): void {
     const widgetDeviceIds = new Set<number>()
     for (const widget of panel.widgets) {
       if (
-        widget.device_id <= 0 ||
-        widget.x < 0 ||
-        widget.y < 0 ||
-        widget.w <= 0 ||
-        widget.h <= 0 ||
-        widgetDeviceIds.has(widget.device_id)
+        widget[0] <= 0 ||
+        widget[1] < 0 ||
+        widget[2] < 0 ||
+        widget[3] <= 0 ||
+        widget[4] <= 0 ||
+        widgetDeviceIds.has(widget[0])
       ) {
         throw new ApiClientError('dashboard widget coordinates are invalid', 'INVALID_WIDGET', 400, null)
       }
-      widgetDeviceIds.add(widget.device_id)
+      widgetDeviceIds.add(widget[0])
     }
   }
 

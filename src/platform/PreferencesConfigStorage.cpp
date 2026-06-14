@@ -51,6 +51,31 @@ bool PreferencesConfigStorage::getString(const char* key, std::string& value) co
 #endif
 }
 
+bool PreferencesConfigStorage::putBlob(const char* key, const std::vector<uint8_t>& value) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return preferences_.putBytes(key, value.data(), value.size()) == value.size();
+#else
+    (void)key;
+    (void)value;
+    return false;
+#endif
+}
+
+bool PreferencesConfigStorage::getBlob(const char* key, std::vector<uint8_t>& value) const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    const size_t size = preferences_.getBytesLength(key);
+    if (size == 0U) {
+        return false;
+    }
+    value.resize(size);
+    return preferences_.getBytes(key, value.data(), size) == size;
+#else
+    (void)key;
+    (void)value;
+    return false;
+#endif
+}
+
 bool PreferencesConfigStorage::putUInt(const char* key, uint32_t value) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     return preferences_.putUInt(key, value) == sizeof(uint32_t);

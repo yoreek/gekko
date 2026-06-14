@@ -1,6 +1,5 @@
 #include "devices/dummy/DummyDevice.h"
 
-#include <algorithm>
 #include <cstring>
 #include <type_traits>
 
@@ -122,7 +121,7 @@ void writeDummyDeviceConfigJson(const DummyDeviceConfigV2& config, JsonObject ou
     output["inverted"] = config.inverted != 0U;
 }
 
-DummyDevice::DummyDevice(const DeviceRecord& record) : StateMachine((PState)&DummyDevice::Idle) {
+DummyDevice::DummyDevice(const DeviceRecord& record) : DeviceRuntimeBase((PState)&DummyDevice::Idle) {
     config_.enabled = record.enabled;
     config_.currentOutput = false;
     (void)decodeDummyDeviceConfig(record.configPayload, config_);
@@ -130,72 +129,6 @@ DummyDevice::DummyDevice(const DeviceRecord& record) : StateMachine((PState)&Dum
     if (config_.inverted) {
         config_.currentOutput = !config_.currentOutput;
     }
-}
-
-void DummyDevice::begin(uint32_t now) {
-    startRequested_ = true;
-    StateMachine::tick(now);
-}
-
-void DummyDevice::tickFastLoop(uint32_t now) {
-    tickCadence(now);
-}
-
-void DummyDevice::tick100ms(uint32_t now) {
-    tickCadence(now);
-}
-
-void DummyDevice::tick1s(uint32_t now) {
-    tickCadence(now);
-}
-
-void DummyDevice::setParentRuntime(IDeviceRuntime* parentRuntime) {
-    parentRuntime_ = parentRuntime;
-}
-
-IDeviceRuntime* DummyDevice::parentRuntime() const {
-    return parentRuntime_;
-}
-
-void DummyDevice::attachChildRuntime(IDeviceRuntime* childRuntime) {
-    if (childRuntime == nullptr || hasChildRuntime(childRuntime)) {
-        return;
-    }
-    childRuntimes_.push_back(childRuntime);
-}
-
-void DummyDevice::detachChildRuntime(IDeviceRuntime* childRuntime) {
-    if (childRuntime == nullptr) {
-        return;
-    }
-    const auto it = std::remove(childRuntimes_.begin(), childRuntimes_.end(), childRuntime);
-    if (it != childRuntimes_.end()) {
-        childRuntimes_.erase(it, childRuntimes_.end());
-    }
-}
-
-const std::vector<IDeviceRuntime*>& DummyDevice::childRuntimes() const {
-    return childRuntimes_;
-}
-
-void DummyDevice::requestReconfigure() {
-    reconfigureRequested_ = true;
-    disableRequested_ = false;
-    status_ = DeviceStatus::Reconfiguring;
-}
-
-void DummyDevice::requestDisable() {
-    disableRequested_ = true;
-    status_ = DeviceStatus::Disabled;
-}
-
-void DummyDevice::requestDelete() {
-    deleteRequested_ = true;
-    status_ = DeviceStatus::Deleting;
-}
-
-DeviceStatus DummyDevice::status() const {
-    return status_;
 }
 
 bool DummyDevice::handleCommand(const DeviceCommand& command) {
@@ -281,21 +214,6 @@ DeviceValidationResult DummyDevice::validateConfig(const DeviceRecord& record) {
         return {DeviceError::InvalidConfig, "dummy device config is invalid"};
     }
     return {};
-}
-
-void DummyDevice::tickCadence(uint32_t now) {
-    StateMachine::tick(now);
-}
-
-bool DummyDevice::parentReady() const {
-    if (parentRuntime_ == nullptr) {
-        return true;
-    }
-    return parentRuntime_->status() == DeviceStatus::Ready;
-}
-
-bool DummyDevice::hasChildRuntime(const IDeviceRuntime* childRuntime) const {
-    return std::find(childRuntimes_.begin(), childRuntimes_.end(), childRuntime) != childRuntimes_.end();
 }
 
 SM_STATE(DummyDevice::Idle) {

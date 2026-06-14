@@ -51,6 +51,9 @@
               inset
             />
           </v-col>
+          <v-col v-if="createFormComponent" cols="12">
+            <component :is="createFormComponent" v-model="draft.config" />
+          </v-col>
         </v-row>
       </v-card-text>
 
@@ -74,12 +77,15 @@ import { computed, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import AppIcon from '@/components/AppIcon.vue'
-import { DUMMY_DEVICE_TYPE_ID, deviceTypeOptions } from '@/models/device-types'
+import { resolveDeviceCreateFormComponent } from '@/components/devices/registry/device-component-registry'
+import { createDefaultGpioSwitchConfig } from '@/models/devices/gpio-switch'
+import { DUMMY_DEVICE_TYPE_ID, GPIO_SWITCH_DEVICE_TYPE_ID, deviceTypeOptions } from '@/models/device-types'
 
 type CreatePayload = {
   name: string
   type_id: number
   enabled: boolean
+  config?: Record<string, unknown>
 }
 
 const props = defineProps<{
@@ -100,25 +106,39 @@ const draft = reactive<CreatePayload>({
   name: 'New Device',
   type_id: DUMMY_DEVICE_TYPE_ID,
   enabled: true,
+  config: {},
 })
 
 const canSubmit = computed(() => draft.name.trim().length > 0 && draft.type_id > 0)
+const createFormComponent = computed(() => resolveDeviceCreateFormComponent(draft.type_id))
+
+function defaultConfigForType(typeId: number): Record<string, unknown> {
+  if (typeId === GPIO_SWITCH_DEVICE_TYPE_ID) {
+    return { ...createDefaultGpioSwitchConfig() }
+  }
+  return {}
+}
 
 function resetDraft(): void {
   draft.name = 'New Device'
   draft.type_id = DUMMY_DEVICE_TYPE_ID
   draft.enabled = true
+  draft.config = defaultConfigForType(draft.type_id)
 }
 
 function submit(): void {
   if (!canSubmit.value) {
     return
   }
-  emit('submit', {
+  const payload: CreatePayload = {
     name: draft.name.trim(),
     type_id: draft.type_id,
     enabled: draft.enabled,
-  })
+  }
+  if (Object.keys(draft.config ?? {}).length > 0) {
+    payload.config = { ...draft.config }
+  }
+  emit('submit', payload)
 }
 
 watch(
@@ -128,5 +148,12 @@ watch(
       resetDraft()
     }
   }
+)
+
+watch(
+  () => draft.type_id,
+  typeId => {
+    draft.config = defaultConfigForType(typeId)
+  },
 )
 </script>

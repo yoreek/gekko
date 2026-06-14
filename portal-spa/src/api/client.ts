@@ -11,7 +11,7 @@ import type {
   WifiStatusResponse,
 } from './contracts'
 import { detectTransportMode } from './transport'
-import { requestForm, requestJson } from './http'
+import { requestEmpty, requestForm, requestJson } from './http'
 import {
   mockCommandDevice,
   mockFetchDashboardLayout,
@@ -119,11 +119,11 @@ export function fetchDashboardLayout(): Promise<DashboardLayoutResponse> {
   return requestJson<DashboardLayoutResponse>('/api/dashboard/layout')
 }
 
-export function saveDashboardLayout(layout: DashboardLayoutRecord): Promise<DashboardLayoutResponse> {
+export function saveDashboardLayout(layout: DashboardLayoutRecord): Promise<void> {
   if (useMockTransport()) {
     return mockSaveDashboardLayout(layout)
   }
-  return requestJson<DashboardLayoutResponse>('/api/dashboard/layout', {
+  return requestEmpty('/api/dashboard/layout', {
     method: 'PUT',
     body: JSON.stringify({ layout }),
     headers: {

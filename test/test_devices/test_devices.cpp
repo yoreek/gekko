@@ -194,6 +194,36 @@ void test_dummy_device_missing_retained_state_uses_configured_startup_state() {
     TEST_ASSERT_TRUE(device.outputState());
 }
 
+void test_dummy_device_parent_dependency_and_child_wiring_survive_base_refactor() {
+    DummyDeviceConfigV2 config{};
+    config.enabled = true;
+
+    DeviceRecord parentRecord = makeDummyRecord(5, 0, false, "parent", config);
+    DeviceRecord childRecord = makeDummyRecord(6, 5, true, "child", config);
+    DummyDevice parent(parentRecord);
+    DummyDevice child(childRecord);
+
+    child.setParentRuntime(&parent);
+    parent.attachChildRuntime(&child);
+    parent.attachChildRuntime(&child);
+    TEST_ASSERT_EQUAL_PTR(static_cast<IDeviceRuntime*>(&parent), child.parentRuntime());
+    TEST_ASSERT_EQUAL_UINT32(1, parent.childRuntimes().size());
+
+    child.begin(300);
+    child.tickFastLoop(301);
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(child.status()));
+
+    parent.begin(302);
+    parent.tickFastLoop(303);
+    child.tickFastLoop(304);
+    child.tickFastLoop(305);
+    child.tickFastLoop(306);
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(child.status()));
+
+    parent.detachChildRuntime(&child);
+    TEST_ASSERT_TRUE(parent.childRuntimes().empty());
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_default_device_type_registry_contains_dummy);
@@ -205,5 +235,6 @@ int main(int, char**) {
     RUN_TEST(test_retained_state_store_rejects_corrupt_payload);
     RUN_TEST(test_dummy_device_lifecycle_and_retained_restore);
     RUN_TEST(test_dummy_device_missing_retained_state_uses_configured_startup_state);
+    RUN_TEST(test_dummy_device_parent_dependency_and_child_wiring_survive_base_refactor);
     return UNITY_END();
 }

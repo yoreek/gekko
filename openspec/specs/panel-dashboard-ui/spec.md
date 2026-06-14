@@ -99,6 +99,10 @@ The SPA MUST allow dashboard widgets to be reordered within the active panel in 
 - **WHEN** the user opens the add-device dialog for the active panel
 - **THEN** the selector lists only devices that are not already present in that panel
 
+#### Scenario: Add-device can only target available devices
+- **WHEN** the active panel already contains a device
+- **THEN** the dashboard does not offer that device again in the same panel's add-device flow
+
 #### Scenario: Read mode stays stable
 - **WHEN** edit mode is disabled
 - **THEN** the widgets remain in their saved positions and cannot be dragged

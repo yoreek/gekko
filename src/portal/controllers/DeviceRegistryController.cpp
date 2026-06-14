@@ -327,8 +327,9 @@ void DeviceRegistryController::index() {
         first = false;
         StaticJsonDocument<512> item;
         JsonObject device = item.to<JsonObject>();
+        const IDeviceRuntime* runtime = registry_.runtime(record.header.deviceId);
         if (adapter != nullptr) {
-            adapter->writeDeviceJson(record, device);
+            adapter->writeDeviceJson(record, runtime, device);
         } else {
             device["device_id"] = record.header.deviceId;
             device["type_id"] = record.header.typeId;
@@ -336,9 +337,8 @@ void DeviceRegistryController::index() {
             device["enabled"] = record.enabled;
         }
         const DeviceRecord* persisted = registry_.find(record.header.deviceId);
-        const DeviceStatus lifecycleStatus = registry_.runtime(record.header.deviceId) != nullptr
-                                                 ? registry_.runtime(record.header.deviceId)->status()
-                                                 : (persisted != nullptr ? persisted->status : record.status);
+        const DeviceStatus lifecycleStatus =
+            runtime != nullptr ? runtime->status() : (persisted != nullptr ? persisted->status : record.status);
         device["device_id"] = record.header.deviceId;
         device["type_id"] = record.header.typeId;
         device["name"] = record.name;
@@ -372,17 +372,16 @@ void DeviceRegistryController::show() {
     const IDeviceApiAdapter* adapter = adapters_.find(record_->header.typeId);
     DeviceRecord effectiveRecord = *record_;
     effectiveRecord.status = registry_.effectiveStatus(record_->header.deviceId);
+    const IDeviceRuntime* runtime = registry_.runtime(effectiveRecord.header.deviceId);
     if (adapter != nullptr) {
-        adapter->writeDeviceJson(effectiveRecord, device);
+        adapter->writeDeviceJson(effectiveRecord, runtime, device);
     } else {
         device["device_id"] = effectiveRecord.header.deviceId;
         device["type_id"] = effectiveRecord.header.typeId;
         device["name"] = effectiveRecord.name;
         device["enabled"] = effectiveRecord.enabled;
     }
-    const DeviceStatus lifecycleStatus = registry_.runtime(effectiveRecord.header.deviceId) != nullptr
-                                             ? registry_.runtime(effectiveRecord.header.deviceId)->status()
-                                             : record_->status;
+    const DeviceStatus lifecycleStatus = runtime != nullptr ? runtime->status() : record_->status;
     device["device_id"] = effectiveRecord.header.deviceId;
     device["type_id"] = effectiveRecord.header.typeId;
     device["name"] = effectiveRecord.name;
@@ -431,7 +430,7 @@ void DeviceRegistryController::create() {
     doc["registry_revision"] = registry_.registryRevision();
     doc["pending_persistence"] = result.pendingPersistence;
     JsonObject device = doc.createNestedObject("device");
-    adapter->writeDeviceJson(*record, device);
+    adapter->writeDeviceJson(*record, registry_.runtime(record->header.deviceId), device);
     sendJson(201, doc);
 #endif
 }

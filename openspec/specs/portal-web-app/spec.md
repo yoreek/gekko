@@ -27,6 +27,21 @@ The project SHALL provide a `portal-spa/` Vue SPA that bundles all runtime depen
 - **WHEN** the first SPA milestone loads controller data
 - **THEN** it uses only `/api/wifi/status`, `/api/wifi/scan`, `/api/devices`, `/api/devices/:id/command`, `/api/dashboard/layout`, `/api/ota/status`, and `/api/system/restart` unless a later change adds new API requirements
 
+### Requirement: Device registry data is loaded on demand
+The SPA SHALL load the device registry only when a page or action actually needs it, keep the latest device list in the Pinia store, and reuse that cached data across navigation until an explicit refresh is requested.
+
+#### Scenario: First device-aware page initializes the cache
+- **WHEN** the user opens a page that needs device registry data
+- **THEN** the SPA loads `/api/devices` once and stores the result in the shared device registry store
+
+#### Scenario: Navigation reuses cached devices
+- **WHEN** the user navigates between device-aware pages such as Dashboard, Devices, Panels, or Overview after the cache is initialized
+- **THEN** the SPA reuses the existing store data instead of refetching `/api/devices` just because the route changed
+
+#### Scenario: Explicit refresh reloads the cache
+- **WHEN** the user presses a page refresh control that is meant to reload devices
+- **THEN** the SPA fetches `/api/devices` again and replaces the cached device list with the latest response
+
 #### Scenario: UI is localized
 - **WHEN** the SPA renders user-facing text
 - **THEN** it uses vue-i18n message keys with English `en` and Russian `ru` dictionaries

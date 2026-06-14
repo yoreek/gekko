@@ -1,3 +1,9 @@
+export type DeviceOutputState = 'off' | 'on' | 'disabled'
+
+export interface DeviceOutputSnapshot {
+  state?: DeviceOutputState
+}
+
 export interface WifiStatusResponse {
   wifi_status: 'connected' | 'connecting' | 'disconnected' | 'failed' | 'idle' | 'ble_config'
   station_ip: string
@@ -33,6 +39,7 @@ export interface DeviceRecord {
   effective_status: string
   status?: string
   config?: Record<string, unknown>
+  output?: DeviceOutputSnapshot
   retained_state_supported?: boolean
   retained_startup_enabled?: boolean
   retained_startup_fallback_output?: boolean
@@ -70,13 +77,7 @@ export interface DeviceDetailResponse {
   success?: boolean
 }
 
-export interface DashboardLayoutWidgetRecord {
-  device_id: number
-  x: number
-  y: number
-  w: number
-  h: number
-}
+export type DashboardLayoutWidgetRecord = [deviceId: number, x: number, y: number, w: number, h: number]
 
 export interface DashboardLayoutPanelRecord {
   id: string

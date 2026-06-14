@@ -110,7 +110,8 @@ bool DummyDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, Dev
     return true;
 }
 
-void DummyDeviceApiAdapter::writeDeviceJson(const DeviceRecord& record, JsonObject output) const {
+void DummyDeviceApiAdapter::writeDeviceJson(const DeviceRecord& record, const IDeviceRuntime* runtime, JsonObject output) const {
+    (void)runtime;
     output["device_id"] = record.header.deviceId;
     output["type_id"] = record.header.typeId;
     output["type"] = typeName();

@@ -1,6 +1,7 @@
 #include "devices/core/DeviceTypes.h"
 
 #include "devices/dummy/DummyDevice.h"
+#include "devices/switch/gpio/GpioSwitchDevice.h"
 
 namespace ewfm {
 
@@ -29,6 +30,7 @@ const DeviceTypeDescriptor* DeviceTypeRegistry::find(DeviceTypeId typeId) const 
 DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     DeviceTypeRegistry registry;
     (void)registry.registerDescriptor(DummyDevice::descriptor());
+    (void)registry.registerDescriptor(GpioSwitchDevice::descriptor());
     return registry;
 }
 

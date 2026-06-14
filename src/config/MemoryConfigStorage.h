@@ -32,6 +32,21 @@ public:
         value = it->second;
         return true;
     }
+    bool putBlob(const char* key, const std::vector<uint8_t>& value) override {
+        if (readOnly_) {
+            return false;
+        }
+        blobs_[key] = value;
+        return true;
+    }
+    bool getBlob(const char* key, std::vector<uint8_t>& value) const override {
+        const auto it = blobs_.find(key);
+        if (it == blobs_.end()) {
+            return false;
+        }
+        value = it->second;
+        return true;
+    }
     bool putUInt(const char* key, uint32_t value) override {
         if (readOnly_) {
             return false;
@@ -67,6 +82,7 @@ public:
             return false;
         }
         strings_.erase(key);
+        blobs_.erase(key);
         uints_.erase(key);
         bools_.erase(key);
         return true;
@@ -75,6 +91,7 @@ public:
 private:
     bool readOnly_{false};
     std::map<std::string, std::string> strings_;
+    std::map<std::string, std::vector<uint8_t>> blobs_;
     std::map<std::string, uint32_t> uints_;
     std::map<std::string, bool> bools_;
 };

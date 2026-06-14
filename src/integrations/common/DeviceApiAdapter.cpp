@@ -1,6 +1,7 @@
 #include "integrations/common/DeviceApiAdapter.h"
 
 #include "integrations/rest/dummy/DummyDeviceApiAdapter.h"
+#include "integrations/rest/gpio_switch/GpioSwitchDeviceApiAdapter.h"
 
 #include <cstring>
 
@@ -41,6 +42,7 @@ const IDeviceApiAdapter* DeviceApiAdapterRegistry::findByName(const char* name) 
 DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     DeviceApiAdapterRegistry registry;
     (void)registry.registerAdapter(DummyDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(GpioSwitchDeviceApiAdapter::instance());
     return registry;
 }
 

@@ -65,6 +65,10 @@ The firmware SHALL implement dashboard layout REST routes using the shared porta
 - **WHEN** a client sends `PUT /api/dashboard/layout`
 - **THEN** the controller parses the request body through bounded shared JSON parsing before invoking the layout storage mutation
 
+#### Scenario: Dashboard layout PUT returns no content on success
+- **WHEN** a client sends a valid `PUT /api/dashboard/layout`
+- **THEN** the controller persists the compact layout representation and returns `204 No Content`
+
 #### Scenario: Dashboard layout errors use shared error envelope
 - **WHEN** a dashboard layout request is invalid
 - **THEN** the controller returns `{"success":false,"code":"...","error":"..."}` with a stable machine-readable code
@@ -72,6 +76,21 @@ The firmware SHALL implement dashboard layout REST routes using the shared porta
 #### Scenario: Dashboard layout preflight is handled
 - **WHEN** a client sends `OPTIONS /api/dashboard/layout`
 - **THEN** the controller returns the shared no-content CORS preflight response without mutating stored layout
+
+#### Scenario: Dashboard layout keeps the compact widget contract
+- **WHEN** a client reads or writes `/api/dashboard/layout`
+- **THEN** the controller uses the compact tuple widget contract and does not require the old object-shaped widget payload
+
+### Requirement: Dashboard layout storage is binary
+The firmware SHALL store dashboard layout state as a compact binary blob and SHALL reset to a default layout when the binary data is absent or invalid instead of migrating old JSON snapshots.
+
+#### Scenario: Valid layout is stored as binary
+- **WHEN** the controller persists a valid dashboard layout
+- **THEN** it writes the layout to the binary-backed storage representation and updates the revision
+
+#### Scenario: Missing or invalid layout resets to default
+- **WHEN** the controller loads dashboard layout state and the stored binary data is missing or invalid
+- **THEN** it returns the default dashboard layout and does not preserve legacy JSON layout data
 
 ### Requirement: Streamed JSON for potentially large responses
 The firmware SHALL stream REST responses that can grow with device count instead of building one large intermediate payload string.

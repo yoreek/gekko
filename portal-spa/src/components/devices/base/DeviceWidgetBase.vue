@@ -28,6 +28,9 @@
 
     <div class="device-widget__header">
       <div class="device-widget__name">{{ device.name }}</div>
+      <div v-if="$slots.actions" class="device-widget__actions">
+        <slot name="actions" />
+      </div>
     </div>
   </v-card>
 </template>

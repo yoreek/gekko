@@ -23,6 +23,7 @@ private:
     static bool isApiPath(const String& path);
     static bool isWebSocketPath(const String& path);
     static String gzipAssetPath(const String& path);
+    static String stripGzipSuffix(const String& path);
     static const char* contentTypeForPath(const String& path);
     static void addNoCacheHeaders(AsyncWebServerResponse* response);
     static void addImmutableHeaders(AsyncWebServerResponse* response);

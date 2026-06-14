@@ -1,6 +1,7 @@
 import type {
   DeviceDetailResponse,
   DeviceMutationResponse,
+  DeviceOutputSnapshot,
   DeviceRecord,
   DeviceRegistryResponse,
 } from '@/api/contracts'
@@ -35,6 +36,7 @@ export interface DashboardDevice {
   status: string
   isReady: boolean
   detail: DeviceDetailSnapshot
+  output: DeviceOutputSnapshot
   raw: DeviceRecord
 }
 
@@ -119,6 +121,7 @@ export function normalizeDeviceRecord(
     status: record.status ?? backendEffectiveStatus,
     isReady: backendEffectiveStatus === 'ready',
     detail: normalizeDetail(record),
+    output: record.output ?? {},
     raw: record,
   }
 }

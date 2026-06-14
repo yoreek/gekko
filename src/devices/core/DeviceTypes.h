@@ -260,6 +260,18 @@ public:
     virtual void requestDelete() = 0;
     virtual DeviceStatus status() const = 0;
     virtual bool handleCommand(const DeviceCommand& command) = 0;
+    virtual bool retainedStateDirty() const {
+        return false;
+    }
+    virtual bool serializeRetainedState(RetainedStateRecord& record) const {
+        (void)record;
+        return false;
+    }
+    virtual bool applyRetainedStateRecord(const RetainedStateRecord& record) {
+        (void)record;
+        return false;
+    }
+    virtual void clearRetainedStateDirty() {}
 };
 
 class DeviceTypeDescriptor {

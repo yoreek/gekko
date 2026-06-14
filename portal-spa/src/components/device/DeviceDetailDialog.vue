@@ -96,26 +96,12 @@
 
           <section class="device-dialog__section">
             <div class="device-dialog__section-title">{{ t('device.dialog.details') }}</div>
-            <div class="typed-panel">
-              <div class="typed-panel__header">
-                <div>
-                  <div class="typed-panel__title">{{ t('device.type.dummy') }}</div>
-                  <div class="typed-panel__subtitle">{{ t('device.dialog.dummyHint') }}</div>
-                </div>
-              </div>
-
-              <div class="typed-panel__grid">
-                <div class="device-field">
-                  <span>{{ t('device.fields.retainedStateSupported') }}</span>
-                  <strong>{{ yesNo(device.detail.retainedStateSupported) }}</strong>
-                </div>
-                <div class="device-field">
-                  <span>{{ t('device.fields.restorePreviousState') }}</span>
-                  <strong>{{ yesNo(device.detail.restorePreviousState) }}</strong>
-                </div>
-              </div>
-            </div>
-
+            <component
+              :is="detailComponent"
+              :device="device"
+              :busy="busyAction === 'command'"
+              @command="$emit('command', $event)"
+            />
           </section>
         </template>
 
@@ -158,6 +144,7 @@ import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommandRequest } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
+import { resolveDeviceDetailComponent } from '@/components/devices/registry/device-component-registry'
 import type { DashboardDevice } from '@/models/device'
 import { deviceTypeLabelKey } from '@/models/device-types'
 
@@ -215,6 +202,13 @@ const typeLabelText = computed(() => {
     return ''
   }
   return t(deviceTypeLabelKey(device.value.typeId))
+})
+
+const detailComponent = computed(() => {
+  if (device.value === null) {
+    return null
+  }
+  return resolveDeviceDetailComponent(device.value.typeId)
 })
 
 const baseFieldRows = computed(() => {

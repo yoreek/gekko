@@ -170,6 +170,16 @@ struct ToggleConfigStorage final : public IConfigStorage {
     bool getString(const char* key, std::string& value) const override {
         return storage_.getString(key, value);
     }
+    bool putBlob(const char* key, const std::vector<uint8_t>& value) override {
+        if (failNextPutString_) {
+            failNextPutString_ = false;
+            return false;
+        }
+        return storage_.putBlob(key, value);
+    }
+    bool getBlob(const char* key, std::vector<uint8_t>& value) const override {
+        return storage_.getBlob(key, value);
+    }
     bool putUInt(const char* key, uint32_t value) override {
         return storage_.putUInt(key, value);
     }

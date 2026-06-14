@@ -6,10 +6,16 @@
           <div class="eyebrow">{{ t('devices.title') }}</div>
           <h1>{{ t('devices.subtitle') }}</h1>
         </div>
-        <v-btn :loading="devicesLoading" color="primary" size="small" variant="tonal" @click="refreshDevices">
-          <AppIcon class="me-1" name="refresh" />
-          {{ t('actions.refresh') }}
-        </v-btn>
+        <div class="d-flex ga-2">
+          <v-btn color="primary" size="small" variant="tonal" @click="createOpen = true">
+            <AppIcon class="me-1" name="plus" />
+            {{ t('device.dashboard.create') }}
+          </v-btn>
+          <v-btn :loading="devicesLoading" color="primary" size="small" variant="tonal" @click="refreshDevices">
+            <AppIcon class="me-1" name="refresh" />
+            {{ t('actions.refresh') }}
+          </v-btn>
+        </div>
       </v-card-title>
       <v-card-text>
         <p class="hero-copy">
@@ -84,6 +90,13 @@
       </v-card-text>
     </v-card>
 
+    <DeviceCreateDialog
+      v-model="createOpen"
+      :loading="createLoading"
+      :error-message="createError"
+      @submit="submitCreateDevice"
+    />
+
     <DeviceDetailDialog
       v-model="detailOpen"
       :device="selectedDevice"
@@ -102,8 +115,9 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { commandDevice, deleteDevice, fetchDevice, fetchDevices, type DeviceCommandRequest } from '@/api'
+import { commandDevice, createDevice, deleteDevice, fetchDevice, type DeviceCommandRequest } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
+import DeviceCreateDialog from '@/components/device/DeviceCreateDialog.vue'
 import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
 import type { DashboardDevice } from '@/models/device'
 import { deviceTypeOptions } from '@/models/device-types'
@@ -115,6 +129,9 @@ const deviceStore = useDeviceRegistryStore()
 const panelStore = usePanelStore()
 
 const devicesLoading = ref(false)
+const createOpen = ref(false)
+const createLoading = ref(false)
+const createError = ref('')
 const detailOpen = ref(false)
 const detailBusyAction = ref<'refresh' | 'rename' | 'toggle' | 'delete' | 'command' | null>(null)
 const detailError = ref('')
@@ -154,9 +171,8 @@ async function refreshDevices(silent = false): Promise<void> {
     devicesLoading.value = true
   }
   try {
-    const response = await fetchDevices()
-    deviceStore.replaceFromResponse(response)
-    await panelStore.syncDeviceIds(response.devices.map(device => device.device_id))
+    await deviceStore.reload()
+    await panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
   } finally {
     if (!silent) {
       devicesLoading.value = false
@@ -172,6 +188,20 @@ function applyMutationResponse(response: { registry_revision: number; pending_pe
     void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
   } else {
     void refreshDevices(true)
+  }
+}
+
+async function submitCreateDevice(payload: Record<string, unknown>): Promise<void> {
+  createLoading.value = true
+  createError.value = ''
+  try {
+    const response = await createDevice(payload)
+    applyMutationResponse(response)
+    createOpen.value = false
+  } catch (error) {
+    createError.value = formatError(error)
+  } finally {
+    createLoading.value = false
   }
 }
 
@@ -288,7 +318,7 @@ function formatError(error: unknown): string {
 }
 
 onMounted(() => {
-  void refreshDevices()
+  void deviceStore.initialize()
 })
 
 watch(

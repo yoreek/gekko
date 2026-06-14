@@ -16,6 +16,7 @@ export type AppIconName =
   | 'trash'
   | 'menu'
   | 'plus'
+  | 'power'
   | 'chevron-left'
   | 'chevron-right'
 
@@ -92,6 +93,10 @@ export const iconRegistry: Record<AppIconName, IconShape> = {
   plus: {
     viewBox: '0 0 24 24',
     paths: ['M12 5v14', 'M5 12h14'],
+  },
+  power: {
+    viewBox: '0 0 24 24',
+    paths: ['M12 3v8', 'M7.1 6.8a7 7 0 109.8 0'],
   },
   'chevron-left': {
     viewBox: '0 0 24 24',

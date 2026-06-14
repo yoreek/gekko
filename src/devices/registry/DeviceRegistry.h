@@ -106,6 +106,7 @@ private:
     void clearRuntime(DeviceId deviceId);
     void clearRuntimeIfDisabled(DeviceId deviceId);
     void emitRuntimeStatusChanges();
+    DeviceValidationResult captureRuntimeRetainedState(DeviceId deviceId, uint32_t now);
 
     DeviceRegistryStore& store_;
     const DeviceTypeRegistry& typeRegistry_;

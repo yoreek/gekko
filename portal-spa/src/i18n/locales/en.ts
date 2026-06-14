@@ -119,6 +119,7 @@ export default {
     },
     type: {
       dummy: 'Dummy device',
+      gpioSwitch: 'GPIO switch',
       unknown: 'Unknown device type',
     },
     fields: {
@@ -137,6 +138,11 @@ export default {
       restorePreviousState: 'Restore previous state',
       currentOutput: 'Current output',
       defaultOutput: 'Default output',
+      outputState: 'Output state',
+      startupState: 'Startup state',
+      safeState: 'Safe state',
+      inverted: 'Inverted',
+      gpioPin: 'GPIO pin',
       freeSketchSpace: 'Free sketch space',
       hasError: 'Has error',
     },
@@ -165,12 +171,15 @@ export default {
       updateConfig: 'Update config',
       outputOn: 'Output on',
       outputOff: 'Output off',
+      outputDisabled: 'Output disabled',
       fault: 'Fault',
       ready: 'Ready',
     },
     card: {
       outputOn: 'Output on',
       outputOff: 'Output off',
+      power: 'Power',
+      powerDisabled: 'Power unavailable',
     },
     dialog: {
       createTitle: 'Create device',
@@ -181,8 +190,10 @@ export default {
       actions: 'Actions',
       details: 'Type-specific details',
       dummyHint: 'DummyDevice exposes a typed control panel first.',
+      gpioSwitchHint: 'GPIO switch uses explicit output states.',
       outputOn: 'Output on',
       outputOff: 'Output off',
+      outputDisabled: 'Output disabled',
       quickCommands: 'Quick commands',
       deleteConfirmTitle: 'Delete device?',
       deleteConfirmBody: 'This will remove the device from the registry and close the detail view.',
@@ -222,6 +233,11 @@ export default {
     no: 'No',
     lightTheme: 'Light',
     darkTheme: 'Dark',
+    output: {
+      on: 'On',
+      off: 'Off',
+      disabled: 'Disabled',
+    },
   },
   restart: {
     pending: 'Restart requested',

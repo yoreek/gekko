@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 
 import { fetchDashboardLayout, saveDashboardLayout, type DashboardLayoutRecord } from '@/api'
-import { safeReadStorage, safeRemoveStorage } from '@/utils/storage'
+import { safeRemoveStorage } from '@/utils/storage'
 
 export interface DashboardPanelWidget {
   deviceId: number
@@ -179,30 +179,6 @@ function normalizeSnapshot(snapshot: Partial<PanelSnapshot> | null, deviceIds: n
   }
 }
 
-function readSnapshot(): PanelSnapshot | null {
-  const raw = safeReadStorage(storageKey)
-  if (!raw) {
-    return null
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as { panels?: Array<{ id: number | string; name: string; widgets: DashboardPanelWidget[] }>; activePanelId?: number | string }
-    if (!Array.isArray(parsed.panels)) {
-      return null
-    }
-    return {
-      panels: parsed.panels.map(panel => ({
-        id: String(panel.id),
-        name: panel.name,
-        widgets: panel.widgets,
-      })),
-      activePanelId: String(parsed.activePanelId ?? parsed.panels[0]?.id ?? 'main'),
-    }
-  } catch {
-    return null
-  }
-}
-
 function nextPanelId(panels: DashboardPanel[]): string {
   let suffix = panels.length + 1
   let candidate = `panel-${suffix}`
@@ -221,6 +197,10 @@ function removeDeviceFromPanels(panels: DashboardPanel[], deviceId: number): Das
   }))
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 function snapshotToApi(snapshot: PanelSnapshot): DashboardLayoutRecord {
   return {
     schema_version: 1,
@@ -229,14 +209,38 @@ function snapshotToApi(snapshot: PanelSnapshot): DashboardLayoutRecord {
       id: panel.id,
       name: panel.name,
       order,
-      widgets: panel.widgets.map(widget => ({
-        device_id: widget.deviceId,
-        x: widget.x,
-        y: widget.y,
-        w: widget.w,
-        h: widget.h,
-      })),
+      widgets: panel.widgets.map(widget => [widget.deviceId, widget.x, widget.y, widget.w, widget.h]),
     })),
+  }
+}
+
+function readWidgetRecord(widget: unknown): DashboardPanelWidget {
+  if (Array.isArray(widget) && widget.length >= 5) {
+    return {
+      deviceId: Number(widget[0]),
+      x: Number(widget[1]),
+      y: Number(widget[2]),
+      w: Number(widget[3]),
+      h: Number(widget[4]),
+    }
+  }
+
+  if (isRecord(widget)) {
+    return {
+      deviceId: Number(widget.device_id ?? 0),
+      x: Number(widget.x ?? 0),
+      y: Number(widget.y ?? 0),
+      w: Number(widget.w ?? 1),
+      h: Number(widget.h ?? 1),
+    }
+  }
+
+  return {
+    deviceId: 0,
+    x: 0,
+    y: 0,
+    w: 1,
+    h: 1,
   }
 }
 
@@ -248,13 +252,7 @@ function apiToSnapshot(layout: DashboardLayoutRecord): PanelSnapshot {
       .map(panel => ({
         id: panel.id,
         name: panel.name,
-        widgets: panel.widgets.map(widget => ({
-          deviceId: widget.device_id,
-          x: widget.x,
-          y: widget.y,
-          w: widget.w,
-          h: widget.h,
-        })),
+        widgets: panel.widgets.map(widget => readWidgetRecord(widget)),
       })),
   }
 }
@@ -268,6 +266,7 @@ export const usePanelStore = defineStore('panels', {
     panels: [] as DashboardPanel[],
     activePanelId: 'main',
     initialized: false,
+    initializePromise: null as Promise<void> | null,
     revision: 0,
     saving: false,
     errorMessage: '',
@@ -281,27 +280,51 @@ export const usePanelStore = defineStore('panels', {
     },
   },
   actions: {
-    async initialize(deviceIds: number[] = []): Promise<void> {
-      if (this.initialized) {
+    async initialize(deviceIds: number[] = [], forceReload = false): Promise<void> {
+      if (this.initialized && !forceReload) {
         await this.syncDeviceIds(deviceIds)
         return
+      }
+      if (this.initializePromise !== null) {
+        await this.initializePromise
+        if (this.initialized && !forceReload) {
+          await this.syncDeviceIds(deviceIds)
+        }
+        return
+      }
+
+      this.initializePromise = (async () => {
+        try {
+          const response = await fetchDashboardLayout()
+          const snapshot = normalizeSnapshot(apiToSnapshot(response.layout), deviceIds)
+          this.panels = snapshot.panels
+          this.activePanelId = snapshot.activePanelId
+          this.revision = response.revision
+          this.initialized = true
+          this.errorMessage = ''
+        } catch (error) {
+          const snapshot = normalizeSnapshot(null, deviceIds)
+          this.panels = snapshot.panels
+          this.activePanelId = snapshot.activePanelId
+          this.initialized = true
+          this.errorMessage = error instanceof Error ? error.message : 'dashboard layout unavailable'
+        } finally {
+          this.initializePromise = null
+        }
+      })()
+      await this.initializePromise
+    },
+    async reload(deviceIds: number[] = []): Promise<void> {
+      if (this.initializePromise !== null) {
+        await this.initializePromise
       }
 
       try {
         const response = await fetchDashboardLayout()
-        let snapshot = normalizeSnapshot(apiToSnapshot(response.layout), deviceIds)
-        const migrated = response.layout_defaulted ? normalizeSnapshot(readSnapshot(), deviceIds) : null
-        if (migrated !== null) {
-          snapshot = migrated
-          const saved = await saveDashboardLayout(snapshotToApi(snapshot))
-          this.revision = saved.revision
-          snapshot = normalizeSnapshot(apiToSnapshot(saved.layout), deviceIds)
-          resetStoredPanels()
-        } else {
-          this.revision = response.revision
-        }
+        const snapshot = normalizeSnapshot(apiToSnapshot(response.layout), deviceIds)
         this.panels = snapshot.panels
         this.activePanelId = snapshot.activePanelId
+        this.revision = response.revision
         this.initialized = true
         this.errorMessage = ''
       } catch (error) {
@@ -318,14 +341,11 @@ export const usePanelStore = defineStore('panels', {
       }
       this.saving = true
       try {
-        const response = await saveDashboardLayout(snapshotToApi({
+        await saveDashboardLayout(snapshotToApi({
           panels: clonePanels(this.panels),
           activePanelId: this.activePanelId,
         }))
-        const snapshot = normalizeSnapshot(apiToSnapshot(response.layout), this.panels.flatMap(panel => panel.widgets.map(widget => widget.deviceId)))
-        this.panels = snapshot.panels
-        this.activePanelId = snapshot.activePanelId
-        this.revision = response.revision
+        this.revision += 1
         this.errorMessage = ''
       } catch (error) {
         this.errorMessage = error instanceof Error ? error.message : 'dashboard layout save failed'
@@ -382,7 +402,6 @@ export const usePanelStore = defineStore('panels', {
       }
 
       this.activePanelId = panelId
-      void this.persistNow()
     },
     addPanel(name: string): DashboardPanel | null {
       if (this.panels.length >= maxPanels) {

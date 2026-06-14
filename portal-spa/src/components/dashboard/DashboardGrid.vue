@@ -26,6 +26,7 @@
         :editable="editable"
         @open="$emit('open', item.device.deviceId)"
         @remove="$emit('remove', item.device.deviceId)"
+        @command="$emit('command', item.device.deviceId, $event)"
       />
     </GridItem>
   </GridLayout>
@@ -35,6 +36,7 @@
 import { computed } from 'vue'
 import { GridItem, GridLayout } from 'vue-grid-layout-v3'
 
+import type { DeviceCommandRequest } from '@/api'
 import { resolveDashboardDeviceComponent } from '@/components/devices/registry/device-component-registry'
 import type { DashboardDevice } from '@/models/device'
 import type { DashboardPanelWidget } from '@/stores/panels'
@@ -61,6 +63,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   open: [deviceId: number]
   remove: [deviceId: number]
+  command: [deviceId: number, payload: DeviceCommandRequest]
   'layout-change': [widgets: DashboardPanelWidget[]]
 }>()
 

@@ -852,7 +852,8 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
         return remove(command.deviceId, now, command.persistencePolicy);
     case DeviceCommandType::UpdateConfig:
         return updateConfig(command.deviceId, std::string(command.payload.view()), 0, now, command.persistencePolicy);
-    case DeviceCommandType::SetStatus: {
+    case DeviceCommandType::SetStatus:
+    case DeviceCommandType::Custom: {
         DeviceMutationResult result{};
         auto runtime = this->runtime(command.deviceId);
         if (runtime == nullptr) {
@@ -878,6 +879,11 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
             eventReporter_.emit(rejected);
             return result;
         }
+        const DeviceValidationResult retainedResult = captureRuntimeRetainedState(command.deviceId, now);
+        if (!retainedResult.ok()) {
+            result.validation = retainedResult;
+            return result;
+        }
         refreshDependentRuntimeStates(now);
         emitRuntimeStatusChanges();
         DeviceEvent accepted{};
@@ -890,6 +896,7 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
         accepted.pendingPersistence = persistence_.hasPendingPersistence();
         DeviceRegistryEventReporter::setEventDetail(accepted, "runtime command");
         eventReporter_.emit(accepted);
+        result.pendingPersistence = persistence_.hasPendingPersistence();
         result.validation = {};
         return result;
     }
@@ -910,7 +917,6 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
         return setParent(command.deviceId, hasParent, parentId, now, command.persistencePolicy);
     }
     case DeviceCommandType::Create:
-    case DeviceCommandType::Custom:
     case DeviceCommandType::None:
         break;
     }
@@ -924,6 +930,26 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
     DeviceRegistryEventReporter::setEventDetail(rejected, result.validation.message);
     eventReporter_.emit(rejected);
     return result;
+}
+
+DeviceValidationResult DeviceRegistry::captureRuntimeRetainedState(DeviceId deviceId, uint32_t now) {
+    IDeviceRuntime* runtimeInstance = runtime(deviceId);
+    if (runtimeInstance == nullptr || !runtimeInstance->retainedStateDirty()) {
+        return {};
+    }
+
+    RetainedStateRecord retained{};
+    retained.deviceId = deviceId;
+    if (!runtimeInstance->serializeRetainedState(retained)) {
+        return {};
+    }
+
+    DeviceMutationResult result = setRetainedState(deviceId, retained.payload, now, DevicePersistencePolicy::Coalesced);
+    if (!result.ok()) {
+        return result.validation;
+    }
+    runtimeInstance->clearRetainedStateDirty();
+    return {};
 }
 
 DeviceValidationResult DeviceRegistry::flushNow() {
@@ -1229,6 +1255,15 @@ DeviceValidationResult DeviceRegistry::reloadRuntimeFor(DeviceId deviceId) {
     entry.runtime = descriptor->createRuntime(*record);
     if (entry.runtime == nullptr) {
         return {DeviceError::StorageError, "failed to create runtime"};
+    }
+    if (descriptor->supportsRetainedState && retainedStateStore_ != nullptr) {
+        RetainedStateRecord retained{};
+        const DeviceValidationResult retainedResult = retainedStateStore_->load(deviceId, retained);
+        if (retainedResult.ok()) {
+            (void)entry.runtime->applyRetainedStateRecord(retained);
+        } else if (retainedResult.error != DeviceError::MissingRecord) {
+            return retainedResult;
+        }
     }
     runtimes_[deviceId] = std::move(entry);
     return {};

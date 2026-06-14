@@ -44,6 +44,7 @@ The SPA MUST allow compact device widgets to be reordered within the active pane
 - The dashboard MUST recompute widget placement when the viewport size changes.
 - If a widget no longer fits the available grid width after resize, the dashboard MUST move it to the nearest valid grid position without overlap.
 - The dashboard MUST hide or defer widget grid presentation while restored coordinates are being applied, so users do not see intermediate positions.
+- The dashboard MUST expose add-device behavior that filters out devices already present in the active panel.
 
 #### Edit control
 - The dashboard MUST expose an `Edit` button for the active panel.
@@ -76,6 +77,21 @@ The SPA MUST allow compact device widgets to be reordered within the active pane
 #### Scenario: Layout can be reset
 - **WHEN** the user activates the dashboard reset layout control
 - **THEN** the SPA rebuilds the active panel widget positions from the default grid placement and persists the reset layout
+
+### Requirement: Dashboard layout reset does not preserve legacy storage
+The dashboard layout contract SHALL treat the stored layout as current state only and SHALL reset to the default panel layout when the backend layout data is absent or invalid instead of migrating old JSON snapshots.
+
+#### Scenario: Missing stored layout resets to default
+- **WHEN** the backend has no valid stored dashboard layout
+- **THEN** the dashboard shows the default panel layout rather than attempting to restore a legacy JSON snapshot
+
+#### Scenario: Invalid stored layout resets to default
+- **WHEN** the backend layout data is invalid or unreadable
+- **THEN** the dashboard falls back to the default panel layout and does not preserve the old malformed data
+
+#### Scenario: Add-device selector excludes current panel devices
+- **WHEN** the user opens the add-device dialog for the active panel
+- **THEN** the selector lists only devices that are not already present in that panel
 
 #### Scenario: Read mode is not draggable
 - **WHEN** edit mode is disabled

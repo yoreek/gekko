@@ -123,6 +123,7 @@
                   :editable="editing"
                   @open="openDevice"
                   @remove="removeWidget"
+                  @command="submitDashboardDeviceCommand"
                   @layout-change="saveWidgetLayout"
                 />
               </template>
@@ -227,7 +228,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { commandDevice, deleteDevice, fetchDevice, fetchDevices, type DeviceCommandRequest } from '@/api'
+import { commandDevice, deleteDevice, fetchDevice, type DeviceCommandRequest } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
 import DashboardGrid from '@/components/dashboard/DashboardGrid.vue'
 import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
@@ -394,10 +395,8 @@ async function refreshDevices(silent = false): Promise<void> {
     devicesLoading.value = true
   }
   try {
-    const response = await fetchDevices()
-    deviceStore.replaceFromResponse(response)
-    await panelStore.initialize(response.devices.map(device => device.device_id))
-    await panelStore.syncDeviceIds(response.devices.map(device => device.device_id))
+    await deviceStore.reload()
+    await panelStore.reload(deviceStore.devices.map(device => device.deviceId))
     await nextTick()
     updateColumns()
     showGridAfterLayout()
@@ -565,6 +564,21 @@ async function submitDeviceCommand(payload: DeviceCommandRequest): Promise<void>
   }
 }
 
+async function submitDashboardDeviceCommand(deviceId: number, payload: DeviceCommandRequest): Promise<void> {
+  if (editing.value) {
+    return
+  }
+  try {
+    const response = await commandDevice(deviceId, {
+      ...payload,
+      device_id: deviceId,
+    })
+    applyMutationResponse(response)
+  } catch {
+    await refreshDevices(true)
+  }
+}
+
 function formatError(error: unknown): string {
   if (error instanceof Error) {
     return error.message
@@ -577,7 +591,8 @@ function onResize(): void {
 }
 
 onMounted(async () => {
-  await refreshDevices()
+  await deviceStore.initialize()
+  await panelStore.initialize(deviceStore.devices.map(device => device.deviceId))
   await prepareVisibleGrid()
   if (typeof ResizeObserver === 'undefined' && typeof window !== 'undefined') {
     window.addEventListener('resize', onResize, { passive: true })
@@ -607,6 +622,9 @@ watch(
 watch(
   () => deviceStore.devices.map(device => device.deviceId).join(','),
   () => {
+    if (!panelStore.initialized) {
+      return
+    }
     void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
   },
 )

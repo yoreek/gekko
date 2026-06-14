@@ -29,6 +29,13 @@ export default defineConfig({
         drop_debugger: true,
       },
     },
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/i-[hash].js',
+        chunkFileNames: 'assets/c-[hash].js',
+        assetFileNames: 'assets/a-[hash][extname]',
+      },
+    },
   },
   resolve: {
     alias: {

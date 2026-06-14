@@ -11,7 +11,10 @@ namespace ewfm {
 namespace {
 constexpr const char* kNamespace = "dashboard";
 constexpr const char* kLayoutKey = "layout";
+constexpr const char* kLayoutBlobKey = "layout_blob";
 constexpr const char* kRevisionKey = "revision";
+constexpr char kStorageMagic[] = {'D', 'L', 'B', '1'};
+constexpr uint8_t kStorageFormatVersion = 1U;
 
 std::string toLowerAscii(const std::string& value) {
     std::string lowered = value;
@@ -24,12 +27,17 @@ std::string toLowerAscii(const std::string& value) {
 }
 
 bool readUInt32(JsonVariantConst value, uint32_t& output) {
-    if (!value.is<int>() && !value.is<unsigned int>() && !value.is<long>() && !value.is<unsigned long>()) {
+    if (!value.is<int>() && !value.is<unsigned int>() && !value.is<long>() && !value.is<unsigned long>() && !value.is<long long>() &&
+        !value.is<unsigned long long>()) {
         return false;
     }
 
-    const long raw = value.as<long>();
+    const long long raw = value.as<long long>();
     if (raw < 0) {
+        return false;
+    }
+
+    if (raw > UINT32_MAX) {
         return false;
     }
 
@@ -45,6 +53,182 @@ bool readUInt16(JsonVariantConst value, uint16_t& output) {
 
     output = static_cast<uint16_t>(raw);
     return true;
+}
+
+struct BinaryCursor {
+    const std::vector<uint8_t>& bytes;
+    size_t offset{0};
+
+    bool readBytes(void* output, const size_t size) {
+        if (offset + size > bytes.size()) {
+            return false;
+        }
+        std::memcpy(output, bytes.data() + offset, size);
+        offset += size;
+        return true;
+    }
+
+    bool readU8(uint8_t& value) {
+        return readBytes(&value, sizeof(value));
+    }
+
+    bool readU16(uint16_t& value) {
+        uint8_t raw[2]{};
+        if (!readBytes(raw, sizeof(raw))) {
+            return false;
+        }
+        value = static_cast<uint16_t>(static_cast<uint16_t>(raw[0]) | (static_cast<uint16_t>(raw[1]) << 8U));
+        return true;
+    }
+
+    bool readU32(uint32_t& value) {
+        uint8_t raw[4]{};
+        if (!readBytes(raw, sizeof(raw))) {
+            return false;
+        }
+        value = static_cast<uint32_t>(raw[0]) | (static_cast<uint32_t>(raw[1]) << 8U) | (static_cast<uint32_t>(raw[2]) << 16U) |
+                (static_cast<uint32_t>(raw[3]) << 24U);
+        return true;
+    }
+
+    bool readString(std::string& value) {
+        uint16_t length{0};
+        if (!readU16(length)) {
+            return false;
+        }
+        if (offset + length > bytes.size()) {
+            return false;
+        }
+        value.assign(reinterpret_cast<const char*>(bytes.data() + offset), length);
+        offset += length;
+        return true;
+    }
+
+    bool finished() const {
+        return offset == bytes.size();
+    }
+};
+
+bool appendU8(std::vector<uint8_t>& bytes, const uint8_t value) {
+    bytes.push_back(value);
+    return true;
+}
+
+bool appendU16(std::vector<uint8_t>& bytes, const uint16_t value) {
+    bytes.push_back(static_cast<uint8_t>(value & 0xFFU));
+    bytes.push_back(static_cast<uint8_t>((value >> 8U) & 0xFFU));
+    return true;
+}
+
+bool appendU32(std::vector<uint8_t>& bytes, const uint32_t value) {
+    bytes.push_back(static_cast<uint8_t>(value & 0xFFU));
+    bytes.push_back(static_cast<uint8_t>((value >> 8U) & 0xFFU));
+    bytes.push_back(static_cast<uint8_t>((value >> 16U) & 0xFFU));
+    bytes.push_back(static_cast<uint8_t>((value >> 24U) & 0xFFU));
+    return true;
+}
+
+bool appendString(std::vector<uint8_t>& bytes, const std::string& value) {
+    if (value.size() > UINT16_MAX) {
+        return false;
+    }
+    appendU16(bytes, static_cast<uint16_t>(value.size()));
+    bytes.insert(bytes.end(), value.begin(), value.end());
+    return true;
+}
+
+bool serializeLayoutBinary(const DashboardLayoutSnapshot& layout, std::vector<uint8_t>& bytes) {
+    bytes.clear();
+    bytes.reserve(128U + layout.panels.size() * 64U);
+    bytes.insert(bytes.end(), kStorageMagic, kStorageMagic + sizeof(kStorageMagic));
+    appendU8(bytes, kStorageFormatVersion);
+    appendU32(bytes, layout.schemaVersion);
+    if (!appendString(bytes, layout.activePanelId)) {
+        return false;
+    }
+    if (layout.panels.size() > UINT8_MAX) {
+        return false;
+    }
+    appendU8(bytes, static_cast<uint8_t>(layout.panels.size()));
+    for (const auto& panel : layout.panels) {
+        if (!appendString(bytes, panel.id) || !appendString(bytes, panel.name)) {
+            return false;
+        }
+        appendU8(bytes, panel.order);
+        if (panel.widgets.size() > UINT8_MAX) {
+            return false;
+        }
+        appendU8(bytes, static_cast<uint8_t>(panel.widgets.size()));
+        for (const auto& widget : panel.widgets) {
+            appendU32(bytes, widget.deviceId);
+            appendU16(bytes, widget.x);
+            appendU16(bytes, widget.y);
+            appendU16(bytes, widget.w);
+            appendU16(bytes, widget.h);
+        }
+    }
+    return bytes.size() <= DashboardLayoutStore::kMaxSerializedBytes;
+}
+
+bool deserializeLayoutBinary(const std::vector<uint8_t>& bytes, DashboardLayoutSnapshot& layout) {
+    layout = {};
+    BinaryCursor cursor{bytes};
+
+    char magic[4]{};
+    if (!cursor.readBytes(magic, sizeof(magic)) || std::memcmp(magic, kStorageMagic, sizeof(magic)) != 0) {
+        return false;
+    }
+
+    uint8_t storageVersion{0};
+    if (!cursor.readU8(storageVersion) || storageVersion != kStorageFormatVersion) {
+        return false;
+    }
+
+    if (!cursor.readU32(layout.schemaVersion)) {
+        return false;
+    }
+
+    if (!cursor.readString(layout.activePanelId)) {
+        return false;
+    }
+
+    uint8_t panelCount{0};
+    if (!cursor.readU8(panelCount)) {
+        return false;
+    }
+
+    layout.panels.reserve(panelCount);
+    for (uint8_t panelIndex = 0; panelIndex < panelCount; ++panelIndex) {
+        DashboardPanelLayout panel{};
+        if (!cursor.readString(panel.id) || !cursor.readString(panel.name)) {
+            return false;
+        }
+
+        if (!cursor.readU8(panel.order)) {
+            return false;
+        }
+
+        uint8_t widgetCount{0};
+        if (!cursor.readU8(widgetCount)) {
+            return false;
+        }
+
+        panel.widgets.reserve(widgetCount);
+        for (uint8_t widgetIndex = 0; widgetIndex < widgetCount; ++widgetIndex) {
+            DashboardLayoutWidget widget{};
+            uint32_t deviceId{0};
+            if (!cursor.readU32(deviceId) || !cursor.readU16(widget.x) || !cursor.readU16(widget.y) || !cursor.readU16(widget.w) ||
+                !cursor.readU16(widget.h)) {
+                return false;
+            }
+            widget.deviceId = static_cast<DeviceId>(deviceId);
+            panel.widgets.push_back(widget);
+        }
+
+        layout.panels.push_back(std::move(panel));
+    }
+
+    return cursor.finished();
 }
 } // namespace
 
@@ -84,27 +268,22 @@ DashboardLayoutLoadResult DashboardLayoutStore::load() {
     DashboardLayoutLoadResult result{};
     result.revision = readRevision();
 
-    std::string stored;
-    if (!storage_.getString(kLayoutKey, stored) || stored.empty() || stored.size() > kMaxSerializedBytes) {
-        result.layout = defaultLayout();
-        result.defaulted = true;
-        return result;
-    }
-
-    DynamicJsonDocument doc(kMaxSerializedBytes);
-    const DeserializationError error = deserializeJson(doc, stored.c_str());
-    if (error) {
-        result.layout = defaultLayout();
-        result.defaulted = true;
-        result.validation = {DashboardLayoutError::BadJson, "stored dashboard layout is invalid"};
-        return result;
-    }
-
     DashboardLayoutSnapshot parsed{};
-    if (!parseLayout(doc.as<JsonVariantConst>(), parsed)) {
+
+    std::vector<uint8_t> storedBlob;
+    if (storage_.getBlob(kLayoutBlobKey, storedBlob)) {
+        if (storedBlob.empty() || storedBlob.size() > kMaxSerializedBytes || !deserializeLayoutBinary(storedBlob, parsed)) {
+            result.layout = defaultLayout();
+            result.defaulted = true;
+            result.validation = {DashboardLayoutError::BadStorage, "stored dashboard layout is invalid"};
+            return result;
+        }
+    } else {
+        if (storage_.hasKey(kLayoutKey)) {
+            (void)storage_.remove(kLayoutKey);
+        }
         result.layout = defaultLayout();
         result.defaulted = true;
-        result.validation = {DashboardLayoutError::BadJson, "stored dashboard layout is invalid"};
         return result;
     }
 
@@ -190,23 +369,13 @@ bool DashboardLayoutStore::parseLayout(JsonVariantConst json, DashboardLayoutSna
         panel.order = static_cast<uint8_t>(panelJson["order"] | order);
 
         const JsonArrayConst widgets = panelJson["widgets"].as<JsonArrayConst>();
-        for (JsonObjectConst widgetJson : widgets) {
+        for (JsonVariantConst widgetJson : widgets) {
             DashboardLayoutWidget widget{};
-            uint32_t deviceId{0};
-            if (!readUInt32(widgetJson["device_id"], deviceId)) {
-                deviceId = 0;
-            }
-            widget.deviceId = static_cast<DeviceId>(deviceId);
-            if (!readUInt16(widgetJson["x"], widget.x)) {
+            if (!parseWidget(widgetJson, widget)) {
+                widget.deviceId = 0;
                 widget.x = UINT16_MAX;
-            }
-            if (!readUInt16(widgetJson["y"], widget.y)) {
                 widget.y = UINT16_MAX;
-            }
-            if (!readUInt16(widgetJson["w"], widget.w)) {
                 widget.w = 0;
-            }
-            if (!readUInt16(widgetJson["h"], widget.h)) {
                 widget.h = 0;
             }
             panel.widgets.push_back(widget);
@@ -216,6 +385,60 @@ bool DashboardLayoutStore::parseLayout(JsonVariantConst json, DashboardLayoutSna
         ++order;
     }
 
+    return true;
+}
+
+bool DashboardLayoutStore::parseWidget(JsonVariantConst json, DashboardLayoutWidget& widget) const {
+    if (json.is<JsonArrayConst>()) {
+        const JsonArrayConst tuple = json.as<JsonArrayConst>();
+        if (tuple.size() < 5) {
+            return false;
+        }
+
+        uint32_t deviceId{0};
+        if (!readUInt32(tuple[0], deviceId)) {
+            return false;
+        }
+        if (!readUInt16(tuple[1], widget.x)) {
+            return false;
+        }
+        if (!readUInt16(tuple[2], widget.y)) {
+            return false;
+        }
+        if (!readUInt16(tuple[3], widget.w)) {
+            return false;
+        }
+        if (!readUInt16(tuple[4], widget.h)) {
+            return false;
+        }
+
+        widget.deviceId = static_cast<DeviceId>(deviceId);
+        return true;
+    }
+
+    if (!json.is<JsonObjectConst>()) {
+        return false;
+    }
+    const JsonObjectConst object = json.as<JsonObjectConst>();
+
+    uint32_t deviceId{0};
+    if (!readUInt32(object["device_id"], deviceId)) {
+        return false;
+    }
+    if (!readUInt16(object["x"], widget.x)) {
+        return false;
+    }
+    if (!readUInt16(object["y"], widget.y)) {
+        return false;
+    }
+    if (!readUInt16(object["w"], widget.w)) {
+        return false;
+    }
+    if (!readUInt16(object["h"], widget.h)) {
+        return false;
+    }
+
+    widget.deviceId = static_cast<DeviceId>(deviceId);
     return true;
 }
 
@@ -299,12 +522,12 @@ void DashboardLayoutStore::writeLayoutJson(JsonObject target, const DashboardLay
         panelJson["order"] = panel.order;
         JsonArray widgets = panelJson.createNestedArray("widgets");
         for (const auto& widget : panel.widgets) {
-            JsonObject widgetJson = widgets.createNestedObject();
-            widgetJson["device_id"] = widget.deviceId;
-            widgetJson["x"] = widget.x;
-            widgetJson["y"] = widget.y;
-            widgetJson["w"] = widget.w;
-            widgetJson["h"] = widget.h;
+            JsonArray widgetJson = widgets.createNestedArray();
+            widgetJson.add(widget.deviceId);
+            widgetJson.add(widget.x);
+            widgetJson.add(widget.y);
+            widgetJson.add(widget.w);
+            widgetJson.add(widget.h);
         }
     }
 }
@@ -313,6 +536,8 @@ const char* DashboardLayoutStore::errorCode(DashboardLayoutError error) const {
     switch (error) {
     case DashboardLayoutError::BadJson:
         return "BAD_JSON";
+    case DashboardLayoutError::BadStorage:
+        return "BAD_STORAGE";
     case DashboardLayoutError::UnsupportedSchema:
         return "UNSUPPORTED_SCHEMA";
     case DashboardLayoutError::EmptyPanels:
@@ -340,17 +565,20 @@ const char* DashboardLayoutStore::errorCode(DashboardLayoutError error) const {
 }
 
 bool DashboardLayoutStore::persistLayout(const DashboardLayoutSnapshot& layout, const uint32_t revision) {
-    DynamicJsonDocument doc(kMaxSerializedBytes);
-    JsonObject root = doc.to<JsonObject>();
-    writeLayoutJson(root, layout);
-
-    std::string payload;
-    serializeJson(doc, payload);
-    if (payload.size() > kMaxSerializedBytes) {
+    std::vector<uint8_t> payload;
+    if (!serializeLayoutBinary(layout, payload)) {
         return false;
     }
 
-    return storage_.putString(kLayoutKey, payload) && storage_.putUInt(kRevisionKey, revision);
+    if (!storage_.putBlob(kLayoutBlobKey, payload) || !storage_.putUInt(kRevisionKey, revision)) {
+        return false;
+    }
+
+    if (storage_.hasKey(kLayoutKey)) {
+        (void)storage_.remove(kLayoutKey);
+    }
+
+    return true;
 }
 
 uint32_t DashboardLayoutStore::readRevision() const {

@@ -21,7 +21,7 @@ public:
     virtual DeviceTypeId typeId() const = 0;
     virtual const char* typeName() const = 0;
     virtual bool parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, std::string& error) const = 0;
-    virtual void writeDeviceJson(const DeviceRecord& record, JsonObject output) const = 0;
+    virtual void writeDeviceJson(const DeviceRecord& record, const IDeviceRuntime* runtime, JsonObject output) const = 0;
 };
 
 class DeviceApiAdapterRegistry {

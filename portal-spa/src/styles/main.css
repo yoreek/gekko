@@ -176,6 +176,7 @@ body {
 
 .device-widget--editable {
   cursor: move;
+  user-select: none;
 }
 
 .device-widget--dimmed {
@@ -212,10 +213,16 @@ body {
 .device-widget__header {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 12px;
   height: 100%;
   min-width: 0;
+}
+
+.device-widget__actions {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
 }
 
 .device-widget__name {

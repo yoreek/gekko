@@ -34,6 +34,7 @@ struct DashboardLayoutSnapshot {
 enum class DashboardLayoutError {
     None,
     BadJson,
+    BadStorage,
     UnsupportedSchema,
     EmptyPanels,
     TooManyPanels,
@@ -100,6 +101,7 @@ public:
 
 private:
     bool parseLayout(JsonVariantConst json, DashboardLayoutSnapshot& layout) const;
+    bool parseWidget(JsonVariantConst json, DashboardLayoutWidget& widget) const;
     bool persistLayout(const DashboardLayoutSnapshot& layout, uint32_t revision);
     uint32_t readRevision() const;
     bool deviceExists(DeviceId deviceId) const;

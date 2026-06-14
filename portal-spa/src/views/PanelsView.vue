@@ -20,16 +20,16 @@
 import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { fetchDevices } from '@/api'
 import PanelManager from '@/components/panels/PanelManager.vue'
+import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore } from '@/stores/panels'
 
 const { t } = useI18n()
+const deviceStore = useDeviceRegistryStore()
 const panelStore = usePanelStore()
 
 onMounted(async () => {
-  const response = await fetchDevices()
-  await panelStore.initialize(response.devices.map(device => device.device_id))
-  await panelStore.syncDeviceIds(response.devices.map(device => device.device_id))
+  await deviceStore.initialize()
+  await panelStore.initialize(deviceStore.devices.map(device => device.deviceId))
 })
 </script>

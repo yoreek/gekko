@@ -44,14 +44,20 @@ void PortalAssetController::handleAsset(AsyncWebServerRequest* request) {
     }
 
     const String path = request->url();
-    const String gzipPath = gzipAssetPath(path);
-    if (!LittleFS.exists(gzipPath)) {
+    const String normalizedPath = stripGzipSuffix(path);
+    const String gzipPath = gzipAssetPath(normalizedPath);
+    if (!LittleFS.exists(normalizedPath) && !LittleFS.exists(gzipPath)) {
         send404(request);
         return;
     }
 
-    AsyncWebServerResponse* response = request->beginResponse(LittleFS, gzipPath, contentTypeForPath(path));
-    response->addHeader("Content-Encoding", "gzip");
+    File asset = LittleFS.exists(gzipPath) ? LittleFS.open(gzipPath, "r") : LittleFS.open(normalizedPath, "r");
+    if (!asset) {
+        send404(request);
+        return;
+    }
+
+    AsyncWebServerResponse* response = request->beginResponse(asset, normalizedPath, contentTypeForPath(normalizedPath));
     addImmutableHeaders(response);
     request->send(response);
 }
@@ -80,6 +86,14 @@ bool PortalAssetController::isWebSocketPath(const String& path) {
 
 String PortalAssetController::gzipAssetPath(const String& path) {
     return path + ".gz";
+}
+
+String PortalAssetController::stripGzipSuffix(const String& path) {
+    if (!path.endsWith(".gz")) {
+        return path;
+    }
+
+    return path.substring(0, path.length() - 3);
 }
 
 const char* PortalAssetController::contentTypeForPath(const String& path) {

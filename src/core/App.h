@@ -5,6 +5,7 @@
 #include "devices/core/DeviceTypes.h"
 #include "devices/registry/DeviceRegistry.h"
 #include "devices/registry/DeviceRegistryStore.h"
+#include "devices/registry/RetainedStateStore.h"
 #include "integrations/common/DeviceEventDispatcher.h"
 #include "platform/ArduinoClock.h"
 #include "platform/ArduinoOtaService.h"
@@ -30,12 +31,14 @@ private:
     ArduinoClock clock_;
     PreferencesConfigStorage storage_;
     PreferencesConfigStorage deviceStorage_;
+    PreferencesConfigStorage retainedStateStorage_;
     PreferencesConfigStorage dashboardLayoutStorage_;
     ArduinoWifiDriver wifiDriver_;
     ConfigStore configStore_;
     WifiManager wifiManager_;
     DeviceTypeRegistry deviceTypeRegistry_{DeviceTypeRegistry::withDefaults()};
     DeviceRegistryStore deviceRegistryStore_;
+    RetainedStateStore retainedStateStore_;
     DeviceEventDispatcher deviceEventDispatcher_{};
 #if defined(ARDUINO)
     EspRandomDeviceIdSource deviceIdSource_;
