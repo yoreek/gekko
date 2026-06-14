@@ -7,7 +7,8 @@
 
 namespace ewfm {
 
-PortalWebSocketManager::PortalWebSocketManager(DeviceEventDispatcher* dispatcher) : dispatcher_(dispatcher) {}
+PortalWebSocketManager::PortalWebSocketManager(DeviceEventDispatcher* dispatcher, DeviceRegistry* deviceRegistry)
+    : dispatcher_(dispatcher), deviceRegistry_(deviceRegistry) {}
 
 PortalWebSocketManager::~PortalWebSocketManager() = default;
 
@@ -94,6 +95,18 @@ void PortalWebSocketManager::onDeviceEvent(const DeviceEvent& event) {
         return;
     case DeviceEventKind::CommandAccepted:
     case DeviceEventKind::CommandRejected:
+        if (deviceRegistry_ != nullptr) {
+            const DeviceRecord* record = deviceRegistry_->find(event.deviceId);
+            if (record != nullptr) {
+                DeviceRecord snapshot = *record;
+                snapshot.status = deviceRegistry_->effectiveStatus(event.deviceId);
+                const IDeviceRuntime* runtime = deviceRegistry_->runtime(event.deviceId);
+                const IDeviceApiAdapter* adapter = adapters_.find(snapshot.header.typeId);
+                sendText(PortalWebSocketMessages::buildDeviceCommandResult(snapshot, runtime, deviceRegistry_->registryRevision(),
+                                                                           deviceRegistry_->hasPendingPersistence(), adapter));
+                return;
+            }
+        }
         sendText(PortalWebSocketMessages::buildDeviceCommandResult(event));
         return;
     case DeviceEventKind::DeviceCreated:
@@ -103,6 +116,18 @@ void PortalWebSocketManager::onDeviceEvent(const DeviceEvent& event) {
     case DeviceEventKind::ConfigPersisted:
     case DeviceEventKind::RetainedStateChanged:
     case DeviceEventKind::PersistencePendingCleared:
+        if (deviceRegistry_ != nullptr) {
+            const DeviceRecord* record = deviceRegistry_->find(event.deviceId);
+            if (record != nullptr) {
+                DeviceRecord snapshot = *record;
+                snapshot.status = deviceRegistry_->effectiveStatus(event.deviceId);
+                const IDeviceRuntime* runtime = deviceRegistry_->runtime(event.deviceId);
+                const IDeviceApiAdapter* adapter = adapters_.find(snapshot.header.typeId);
+                sendText(PortalWebSocketMessages::buildDeviceUpsert(snapshot, runtime, deviceRegistry_->registryRevision(),
+                                                                    deviceRegistry_->hasPendingPersistence(), adapter));
+                return;
+            }
+        }
         sendText(PortalWebSocketMessages::buildDeviceUpsert(event));
         return;
     case DeviceEventKind::RegistryLoaded:

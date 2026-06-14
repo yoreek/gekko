@@ -109,7 +109,7 @@ private:
         OtaController::registerRoutes(*server_, deviceRegistry_);
         SystemController::registerRoutes(*server_, deviceRegistry_);
         if (!webSocketManager_) {
-            webSocketManager_ = std::make_unique<PortalWebSocketManager>(deviceEventDispatcher_);
+            webSocketManager_ = std::make_unique<PortalWebSocketManager>(deviceEventDispatcher_, deviceRegistry_);
         }
         if (webSocketManager_ != nullptr) {
             if (!webSocketManager_->begin(*server_)) {
@@ -122,7 +122,7 @@ private:
 #endif
 #if !defined(ARDUINO) || defined(UNIT_TEST)
         if (!webSocketManager_) {
-            webSocketManager_ = std::make_unique<PortalWebSocketManager>(deviceEventDispatcher_);
+            webSocketManager_ = std::make_unique<PortalWebSocketManager>(deviceEventDispatcher_, deviceRegistry_);
         }
         if (webSocketManager_ != nullptr) {
             webSocketManager_->attachDispatcher();

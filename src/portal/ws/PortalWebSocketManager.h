@@ -1,5 +1,7 @@
 #pragma once
 
+#include "devices/registry/DeviceRegistry.h"
+#include "integrations/common/DeviceApiAdapter.h"
 #include "integrations/common/DeviceEventBus.h"
 #include "integrations/common/DeviceEventDispatcher.h"
 #include "portal/ws/PortalWebSocketMessages.h"
@@ -16,7 +18,7 @@ namespace ewfm {
 
 class PortalWebSocketManager final : public IDeviceEventSink {
 public:
-    explicit PortalWebSocketManager(DeviceEventDispatcher* dispatcher = nullptr);
+    explicit PortalWebSocketManager(DeviceEventDispatcher* dispatcher = nullptr, DeviceRegistry* deviceRegistry = nullptr);
     ~PortalWebSocketManager() override;
 
     void attachDispatcher();
@@ -50,6 +52,8 @@ private:
     void publishSnapshotPayloads(const std::string& wifiPayload, const std::string& otaPayload);
 
     DeviceEventDispatcher* dispatcher_{nullptr};
+    DeviceRegistry* deviceRegistry_{nullptr};
+    DeviceApiAdapterRegistry adapters_{DeviceApiAdapterRegistry::withDefaults()};
     uint32_t lastRevision_{0};
     std::string lastWifiStatusPayload_{};
     std::string lastOtaStatusPayload_{};

@@ -214,10 +214,18 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
     })
   })
   const db = loadMockDatabase()
+  const createdDevice = response.device ?? db.devices.at(-1)
+  const deviceSnapshot = createdDevice
+    ? {
+        ...createdDevice,
+        registry_revision: db.registryRevision,
+        pending_persistence: db.pendingPersistence,
+      }
+    : { device_id: 0, registry_revision: db.registryRevision, pending_persistence: db.pendingPersistence }
   publishRealtimeMessage({
     topic: 'device.upsert',
     revision: db.registryRevision,
-    payload: response.device ?? {},
+    payload: deviceSnapshot,
   })
   scheduleMockPersistenceFlush()
   return Promise.resolve(response)
@@ -308,10 +316,17 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
       })
   })
   const db = loadMockDatabase()
+  const deviceSnapshot = response.device
+    ? {
+        ...response.device,
+        registry_revision: db.registryRevision,
+        pending_persistence: db.pendingPersistence,
+      }
+    : { device_id: deviceId, registry_revision: db.registryRevision, pending_persistence: db.pendingPersistence }
   publishRealtimeMessage({
-    topic: payload.command === 'delete' ? 'device.remove' : 'device.upsert',
+    topic: payload.command === 'delete' ? 'device.remove' : 'device.command_result',
     revision: db.registryRevision,
-    payload: response.device ?? { device_id: deviceId },
+    payload: deviceSnapshot,
   })
   scheduleMockPersistenceFlush()
   return Promise.resolve(response)

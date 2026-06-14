@@ -40,8 +40,11 @@ export function publishMockSnapshot(): void {
     publishRealtimeMessage({
       topic: 'device.upsert',
       revision: db.registryRevision,
-      payload: device,
+      payload: {
+        ...device,
+        registry_revision: db.registryRevision,
+        pending_persistence: db.pendingPersistence,
+      },
     })
   }
 }
-

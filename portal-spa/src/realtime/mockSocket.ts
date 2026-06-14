@@ -27,12 +27,14 @@ declare global {
 }
 
 function publishDeviceUpsert(device: DeviceRecord): void {
+  const db = loadMockDatabase()
   publishRealtimeMessage({
     topic: 'device.upsert',
-    revision: device.registry_revision ?? loadMockDatabase().registryRevision,
+    revision: device.registry_revision ?? db.registryRevision,
     payload: {
-      device,
-      pending_persistence: device.pending_persistence ?? false,
+      ...device,
+      registry_revision: device.registry_revision ?? db.registryRevision,
+      pending_persistence: device.pending_persistence ?? db.pendingPersistence,
     },
   })
 }
@@ -78,12 +80,9 @@ export function connectMockRealtimeSocket(pinia: Pinia): MockRealtimeSocketHandl
         topic: 'device.upsert',
         revision: db.registryRevision,
         payload: {
-          device: {
-            ...device,
-            pending_persistence: false,
-            registry_revision: db.registryRevision,
-          },
+          ...device,
           pending_persistence: false,
+          registry_revision: db.registryRevision,
         },
       })
     }

@@ -1,10 +1,37 @@
 #include "portal/ws/PortalWebSocketMessages.h"
 
 #include <ArduinoJson.h>
+#include <vector>
 
 namespace ewfm {
 
 namespace {
+const char* deviceStatusToString(const DeviceStatus status) {
+    switch (status) {
+    case DeviceStatus::Creating:
+        return "creating";
+    case DeviceStatus::Starting:
+        return "starting";
+    case DeviceStatus::Ready:
+        return "ready";
+    case DeviceStatus::Disabled:
+        return "disabled";
+    case DeviceStatus::Faulted:
+        return "faulted";
+    case DeviceStatus::DependencyBlocked:
+        return "dependency_blocked";
+    case DeviceStatus::Reconfiguring:
+        return "reconfiguring";
+    case DeviceStatus::Stopping:
+        return "stopping";
+    case DeviceStatus::Deleting:
+        return "deleting";
+    case DeviceStatus::Unknown:
+    default:
+        return "unknown";
+    }
+}
+
 void fillDeviceEventPayload(JsonDocument& payload, const DeviceEvent& event) {
     payload["device_id"] = event.deviceId;
     payload["type_id"] = event.typeId;
@@ -28,9 +55,10 @@ std::string PortalWebSocketMessages::buildEnvelope(const char* topic, const uint
     output += "\",\"revision\":";
     output += std::to_string(revision);
     output += ",\"payload\":";
-    char payloadBuffer[768];
-    const size_t payloadLength = serializeJson(payload, payloadBuffer, sizeof(payloadBuffer));
-    output.append(payloadBuffer, payloadLength);
+    const size_t payloadSize = measureJson(payload) + 1U;
+    std::vector<char> payloadBuffer(payloadSize);
+    const size_t payloadLength = serializeJson(payload, payloadBuffer.data(), payloadBuffer.size());
+    output.append(payloadBuffer.data(), payloadLength);
     output += '}';
     return output;
 }
@@ -41,6 +69,55 @@ std::string PortalWebSocketMessages::buildHello(const uint32_t revision, const u
     payload["clients"] = clientCount;
     payload["registry_revision"] = registryRevision;
     return buildEnvelope("hello", revision, payload);
+}
+
+void PortalWebSocketMessages::fillDeviceSnapshotPayload(JsonDocument& payload, const DeviceRecord& record, const IDeviceRuntime* runtime,
+                                                        const uint32_t revision, const bool pendingPersistence,
+                                                        const IDeviceApiAdapter* adapter) {
+    JsonObject output = payload.to<JsonObject>();
+    if (adapter != nullptr) {
+        adapter->writeDeviceJson(record, runtime, output);
+    } else {
+        output["device_id"] = record.header.deviceId;
+        output["type_id"] = record.header.typeId;
+        output["name"] = record.name.c_str();
+        output["enabled"] = record.enabled;
+        output["has_parent"] = record.hasParent;
+        output["parent_device_id"] = record.parentDeviceId;
+        output["config_version"] = record.header.configVersion;
+        output["config_revision"] = record.header.configRevision;
+        output["status"] = deviceStatusToString(record.status);
+    }
+
+    const DeviceStatus lifecycleStatus = runtime != nullptr ? runtime->status() : record.status;
+    output["device_id"] = record.header.deviceId;
+    output["type_id"] = record.header.typeId;
+    output["name"] = record.name.c_str();
+    output["enabled"] = record.enabled;
+    output["has_parent"] = record.hasParent;
+    output["parent_device_id"] = record.parentDeviceId;
+    output["config_version"] = record.header.configVersion;
+    output["config_revision"] = record.header.configRevision;
+    output["status"] = deviceStatusToString(record.status);
+    output["lifecycle_status"] = deviceStatusToString(lifecycleStatus);
+    output["effective_status"] = deviceStatusToString(record.status);
+    output["registry_revision"] = revision;
+    output["pending_persistence"] = pendingPersistence;
+}
+
+std::string PortalWebSocketMessages::buildDeviceUpsert(const DeviceRecord& record, const IDeviceRuntime* runtime, const uint32_t revision,
+                                                       const bool pendingPersistence, const IDeviceApiAdapter* adapter) {
+    DynamicJsonDocument payload(1536);
+    fillDeviceSnapshotPayload(payload, record, runtime, revision, pendingPersistence, adapter);
+    return buildEnvelope("device.upsert", revision, payload);
+}
+
+std::string PortalWebSocketMessages::buildDeviceCommandResult(const DeviceRecord& record, const IDeviceRuntime* runtime,
+                                                              const uint32_t revision, const bool pendingPersistence,
+                                                              const IDeviceApiAdapter* adapter) {
+    DynamicJsonDocument payload(1536);
+    fillDeviceSnapshotPayload(payload, record, runtime, revision, pendingPersistence, adapter);
+    return buildEnvelope("device.command_result", revision, payload);
 }
 
 std::string PortalWebSocketMessages::buildDeviceUpsert(const DeviceEvent& event) {

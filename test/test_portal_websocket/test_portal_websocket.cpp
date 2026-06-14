@@ -1,4 +1,6 @@
+#include "devices/core/DeviceTypes.h"
 #include "integrations/common/DeviceEventDispatcher.h"
+#include "integrations/rest/dummy/DummyDeviceApiAdapter.h"
 #include "portal/ws/PortalWebSocketManager.h"
 
 #include <ArduinoJson.h>
@@ -23,6 +25,21 @@ DeviceEvent makeDeviceEvent(const DeviceEventKind kind, const uint32_t revision,
     return event;
 }
 
+DeviceRecord makeDeviceRecord() {
+    DeviceRecord record{};
+    record.header.deviceId = 42;
+    record.header.typeId = DummyDeviceApiAdapter::instance().typeId();
+    record.header.configVersion = 2;
+    record.header.configRevision = 5;
+    record.name = "Living Room Lamp";
+    record.enabled = true;
+    record.hasParent = false;
+    record.parentDeviceId = 0;
+    record.persistencePolicy = DevicePersistencePolicy::Delayed;
+    record.status = DeviceStatus::Ready;
+    return record;
+}
+
 } // namespace
 
 void test_ws_message_builders_create_compact_envelopes() {
@@ -40,6 +57,18 @@ void test_ws_message_builders_create_compact_envelopes() {
     TEST_ASSERT_TRUE(upsertDoc["payload"]["pending_persistence"].as<bool>());
     TEST_ASSERT_FALSE(upsertDoc["payload"]["command_accepted"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("detail", upsertDoc["payload"]["detail"].as<const char*>());
+
+    const DeviceRecord record = makeDeviceRecord();
+    const std::string snapshot = PortalWebSocketMessages::buildDeviceUpsert(record, nullptr, 14, true, &DummyDeviceApiAdapter::instance());
+    DynamicJsonDocument snapshotDoc(1536);
+    TEST_ASSERT_FALSE(deserializeJson(snapshotDoc, snapshot));
+    TEST_ASSERT_EQUAL_STRING("device.upsert", snapshotDoc["topic"].as<const char*>());
+    TEST_ASSERT_EQUAL_UINT32(14, snapshotDoc["revision"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32(42, snapshotDoc["payload"]["device_id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("Living Room Lamp", snapshotDoc["payload"]["name"].as<const char*>());
+    TEST_ASSERT_TRUE(snapshotDoc["payload"]["device"].isNull());
+    TEST_ASSERT_EQUAL_STRING("ready", snapshotDoc["payload"]["effective_status"].as<const char*>());
+    TEST_ASSERT_TRUE(snapshotDoc["payload"]["pending_persistence"].as<bool>());
 
     DeviceEvent removedEvent = makeDeviceEvent(DeviceEventKind::DeviceDeleted, 13);
     const std::string removed = PortalWebSocketMessages::buildDeviceRemove(removedEvent);

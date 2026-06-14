@@ -14,6 +14,18 @@ function isDeviceRecord(value: unknown): value is DeviceRecord {
   return typeof value === 'object' && value !== null && typeof (value as { device_id?: unknown }).device_id === 'number'
 }
 
+function extractDeviceRecord(payload: unknown): DeviceRecord | null {
+  if (isDeviceRecord(payload)) {
+    return payload
+  }
+
+  if (typeof payload === 'object' && payload !== null && isDeviceRecord((payload as { device?: unknown }).device)) {
+    return (payload as { device: DeviceRecord }).device
+  }
+
+  return null
+}
+
 export function bindRealtimeBridge(
   pinia: Pinia,
   appStore: AppStore,
@@ -65,7 +77,7 @@ export function bindRealtimeBridge(
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
         const payload = message.payload as { pending_persistence?: boolean }
-        const devicePayload = (message.payload as { device?: unknown }).device
+        const devicePayload = extractDeviceRecord(message.payload)
         if (isDeviceRecord(devicePayload)) {
           deviceStore.upsertDevice(devicePayload, message.revision)
         }
@@ -92,6 +104,10 @@ export function bindRealtimeBridge(
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
         const payload = message.payload as { pending_persistence?: boolean }
+        const devicePayload = extractDeviceRecord(message.payload)
+        if (isDeviceRecord(devicePayload)) {
+          deviceStore.upsertDevice(devicePayload, message.revision)
+        }
         if (typeof payload.pending_persistence === 'boolean') {
           deviceStore.setPendingPersistence(payload.pending_persistence)
         }
