@@ -189,8 +189,6 @@ export default {
       edit: 'Edit',
       save: 'Save',
       configDetails: 'Config details',
-      configDetailsOpen: 'Shown',
-      configDetailsClosed: 'Hidden',
       fieldHint: 'More information',
       actions: 'Actions',
       details: 'Type-specific details',

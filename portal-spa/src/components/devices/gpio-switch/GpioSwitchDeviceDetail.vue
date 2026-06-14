@@ -17,25 +17,9 @@
     </v-col>
 
     <v-col cols="12">
-      <v-expansion-panels v-model="expandedPanel" flat variant="accordion">
+      <v-expansion-panels flat variant="accordion">
         <v-expansion-panel value="details">
-          <v-expansion-panel-title>
-            <div class="device-config-toggle">
-              <div class="device-config-toggle__copy">
-                <span class="device-config-toggle__title">{{ t('device.dialog.configDetails') }}</span>
-                <span class="device-config-toggle__subtitle">
-                  {{ expandedPanel === 'details' ? t('device.dialog.configDetailsOpen') : t('device.dialog.configDetailsClosed') }}
-                </span>
-              </div>
-            </div>
-            <template #actions="{ expanded }">
-              <AppIcon
-                class="device-config-toggle__icon"
-                :class="{ 'device-config-toggle__icon--expanded': expanded }"
-                name="chevron-right"
-              />
-            </template>
-          </v-expansion-panel-title>
+          <v-expansion-panel-title>{{ t('device.dialog.configDetails') }}</v-expansion-panel-title>
           <v-expansion-panel-text>
             <v-row dense>
               <v-col cols="12" md="6">
@@ -92,11 +76,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommandRequest } from '@/api'
-import AppIcon from '@/components/AppIcon.vue'
 import DeviceFieldHint from '@/components/device/DeviceFieldHint.vue'
 import SwitchOutputControls from '@/components/devices/switch/SwitchOutputControls.vue'
 import type { DashboardDevice } from '@/models/device'
@@ -113,7 +96,6 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const expandedPanel = ref<string | null>(null)
 const config = computed(() => normalizeGpioSwitchConfig(props.device.detail.config))
 const outputState = computed(() => (isOutputState(props.device.output.state) ? props.device.output.state : undefined))
 

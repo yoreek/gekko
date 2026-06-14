@@ -154,8 +154,6 @@ export default {
       edit: 'Редактировать',
       save: 'Сохранить',
       configDetails: 'Параметры конфигурации',
-      configDetailsOpen: 'Показано',
-      configDetailsClosed: 'Скрыто',
       fieldHint: 'Дополнительная информация',
       actions: 'Действия',
       details: 'Детали типа',
