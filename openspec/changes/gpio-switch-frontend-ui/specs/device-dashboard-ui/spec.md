@@ -66,11 +66,15 @@ The SPA SHALL organize device widgets in a dedicated component area with a base 
 
 #### Scenario: Widgets reflect live updates
 - **WHEN** a realtime device update arrives
-- **THEN** the affected widget updates without requiring a full page reload
+- **THEN** the affected widget updates from the existing store state without requiring a full device registry reload
 
 #### Scenario: Switch output updates use generic device update messages
 - **WHEN** a GPIO switch output state changes and the backend emits a realtime update
 - **THEN** the SPA receives the updated `output.state` through the generic device update payload without requiring a switch-specific topic
+
+#### Scenario: Device details can still refresh directly
+- **WHEN** the user explicitly refreshes a device detail view
+- **THEN** the SPA may issue a point `GET /api/devices/:id` request even though the device store already contains cached data
 
 ## ADDED Requirements
 

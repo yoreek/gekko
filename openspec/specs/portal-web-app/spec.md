@@ -42,6 +42,25 @@ The SPA SHALL load the device registry only when a page or action actually needs
 - **WHEN** the user presses a page refresh control that is meant to reload devices
 - **THEN** the SPA fetches `/api/devices` again and replaces the cached device list with the latest response
 
+### Requirement: Realtime device state merges into the store
+The SPA SHALL treat the device registry store as the UI source of truth after startup and SHALL merge realtime device updates into that store without forcing a full registry reload.
+
+#### Scenario: Initial bootstrap loads registry and layout once
+- **WHEN** the portal app starts for the first time in a session
+- **THEN** it loads `/api/devices` and `/api/dashboard/layout` once to seed the shared stores
+
+#### Scenario: Device websocket updates patch cached state
+- **WHEN** a `device.upsert` or `device.remove` realtime message arrives
+- **THEN** the SPA updates the Pinia device store from the message payload and does not automatically refetch the full device registry
+
+#### Scenario: Detail refresh remains explicit
+- **WHEN** the user requests a manual refresh from a device detail view
+- **THEN** the SPA may issue a point `GET /api/devices/:id` for that device only
+
+#### Scenario: Dashboard layout remains snapshot based
+- **WHEN** the active dashboard layout changes
+- **THEN** the SPA continues to use the current GET/PUT dashboard layout contract and does not require websocket-driven layout synchronization
+
 #### Scenario: UI is localized
 - **WHEN** the SPA renders user-facing text
 - **THEN** it uses vue-i18n message keys with English `en` and Russian `ru` dictionaries

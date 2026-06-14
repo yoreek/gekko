@@ -83,6 +83,10 @@ The SPA must remain Vuetify-first, keep the local icon registry, avoid custom CS
 
    Realtime updates should use the existing generic device snapshot flow. A `device.upsert` websocket message should carry the same device JSON shape as REST, including `output.state` when available. No separate switch-specific websocket topic is needed.
 
+7. Use snapshot bootstrap, then websocket-backed storage updates for device state.
+
+   The SPA should load the device registry and dashboard layout once on first open, then keep device state in Pinia stores as the primary UI source of truth. Realtime `device.upsert` and `device.remove` messages should merge into the device store without forcing a full `/api/devices` reload. A point `GET /api/devices/:id` remains available as an explicit refresh or fallback path on detail screens. Dashboard layout stays on the current GET/PUT contract for now and does not need websocket-driven sync.
+
 5. Keep dashboard widgets compact while allowing compact type-specific actions.
 
    The base dashboard card renders the shared card shell and device name, and uses `effective_status` only for visual dimming. It must not render `Ready`, `!Ready`, or raw `effective_status` text. Type-specific widgets reuse the base card and may add compact controls through composition/slots. GPIO switch may add one compact Power button without adding metadata rows or increasing the card height.
