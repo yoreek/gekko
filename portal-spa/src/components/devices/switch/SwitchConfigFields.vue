@@ -1,5 +1,5 @@
 <template>
-  <v-row dense>
+  <v-row>
     <v-col cols="12" md="6">
       <SwitchStateSelect
         :model-value="modelValue.startup_state"
@@ -18,7 +18,6 @@
       <v-switch
         :model-value="modelValue.restore_previous_state"
         :label="t('device.fields.restorePreviousState')"
-        hide-details
         inset
         @update:model-value="update('restore_previous_state', Boolean($event))"
       />
@@ -27,7 +26,6 @@
       <v-switch
         :model-value="modelValue.inverted"
         :label="t('device.fields.inverted')"
-        hide-details
         inset
         @update:model-value="update('inverted', Boolean($event))"
       />

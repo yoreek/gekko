@@ -2,16 +2,15 @@
   <v-dialog
     :model-value="modelValue"
     :max-width="maxWidth"
-    scrollable
     :fullscreen="fullscreen"
     @update:model-value="$emit('update:modelValue', $event)"
   >
     <v-card class="device-dialog">
       <v-card-title class="device-dialog__title">
         <div>
-          <div v-if="eyebrow" class="device-dialog__eyebrow">{{ eyebrow }}</div>
-          <div v-if="headline" class="device-dialog__headline">{{ headline }}</div>
-          <div v-if="subline" class="device-dialog__subline">{{ subline }}</div>
+          <div v-if="eyebrow" class="text-overline">{{ eyebrow }}</div>
+          <div v-if="headline" class="text-h6 font-weight-bold">{{ headline }}</div>
+          <div v-if="subline" class="text-body-2 text-medium-emphasis">{{ subline }}</div>
         </div>
         <div class="device-dialog__title-actions">
           <slot name="title-actions" />

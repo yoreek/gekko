@@ -6,14 +6,14 @@
           <div class="portal-drawer__title">{{ t('app.title') }}</div>
           <div class="portal-drawer__subtitle">{{ t('app.subtitle') }}</div>
         </div>
-        <v-btn class="portal-drawer__close" icon size="small" variant="text" @click="drawerOpen = false">
+        <v-btn class="portal-drawer__close" icon variant="text" @click="drawerOpen = false">
           <AppIcon class="portal-drawer__close-icon" name="close" />
         </v-btn>
       </div>
 
       <v-divider class="portal-drawer__divider" />
 
-      <v-list nav density="comfortable" class="portal-drawer__list">
+      <v-list nav class="portal-drawer__list">
         <v-list-item
           v-for="item in menuItems"
           :key="item.name"
@@ -34,7 +34,6 @@
       <v-btn
         class="app-bar__nav-icon"
         icon
-        size="small"
         variant="text"
         :aria-label="t('navigation.menu')"
         @click="drawerOpen = !drawerOpen"
@@ -49,17 +48,17 @@
 
       <v-spacer />
 
-      <v-chip v-if="activePanelName" class="me-2" color="primary" rounded="0" size="small" variant="tonal">
+      <v-chip v-if="activePanelName" class="me-2" color="primary" variant="tonal">
         {{ activePanelName }}
       </v-chip>
-      <v-chip class="me-2" size="small" variant="tonal" :color="syncChipColor">
+      <v-chip class="me-2" variant="tonal" :color="syncChipColor">
         {{ syncLabel }}
       </v-chip>
-      <v-chip class="me-2" :color="appStore.transportMode === 'mock' ? 'warning' : 'success'" size="small" variant="flat">
+      <v-chip class="me-2" :color="appStore.transportMode === 'mock' ? 'warning' : 'success'" variant="flat">
         {{ appStore.transportMode === 'mock' ? t('labels.mock') : t('labels.real') }}
       </v-chip>
 
-      <v-btn class="app-bar__icon-button" icon size="small" variant="text" @click="toggleTheme">
+      <v-btn class="app-bar__icon-button" icon variant="text" @click="toggleTheme">
         <AppIcon class="app-bar__menu-icon" :name="appStore.theme === 'dark' ? 'sun' : 'moon'" />
       </v-btn>
 
@@ -67,7 +66,6 @@
         v-for="locale in locales"
         :key="locale"
         class="ms-1"
-        size="small"
         :variant="locale === appStore.locale ? 'flat' : 'text'"
         @click="selectLocale(locale)"
       >

@@ -1,6 +1,6 @@
 <template>
   <v-container class="not-found" fluid>
-    <v-card class="not-found-card" elevation="2">
+    <v-card class="not-found-card">
       <v-card-title>{{ t('notFound.title') }}</v-card-title>
       <v-card-text>{{ t('notFound.body') }}</v-card-text>
     </v-card>

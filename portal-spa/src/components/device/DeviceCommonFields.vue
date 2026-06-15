@@ -1,58 +1,49 @@
 <template>
-  <v-row dense>
+  <v-row>
     <v-col cols="12" md="6">
-      <template v-if="mode === 'view'">
-        <div class="device-dialog__section-label-row">
-          <span>{{ t('device.actions.name') }}</span>
-        </div>
-        <div class="device-dialog__field-value">{{ modelValue.name }}</div>
-      </template>
-      <v-text-field
-        v-else
-        :model-value="modelValue.name"
-        :label="t('device.actions.name')"
-        :disabled="busy"
-        density="comfortable"
-        hide-details
-        @update:model-value="updateField('name', String($event))"
-      />
+      <DeviceField :label="t('device.actions.name')" :mode="mode === 'view' ? 'display' : 'control'" :value="modelValue.name">
+        <template #control>
+          <v-text-field
+            :model-value="modelValue.name"
+            :disabled="busy"
+            @update:model-value="updateField('name', String($event))"
+          />
+        </template>
+      </DeviceField>
     </v-col>
 
     <v-col cols="12" md="6">
-      <template v-if="mode === 'view' || mode === 'edit'">
-        <div class="device-dialog__section-label-row">
-          <span>{{ t('device.actions.type') }}</span>
-        </div>
-        <div class="device-dialog__field-value">{{ typeLabel }}</div>
-      </template>
-      <v-select
-        v-else
-        :model-value="modelValue.typeId"
-        :items="typeItems"
+      <DeviceField
         :label="t('device.actions.type')"
-        :disabled="busy"
-        density="comfortable"
-        hide-details
-        @update:model-value="updateField('typeId', Number($event))"
-      />
+        :mode="mode === 'create' ? 'control' : 'display'"
+        :value="typeLabel"
+      >
+        <template #control>
+          <v-select
+            :model-value="modelValue.typeId"
+            :items="typeItems"
+            :disabled="busy"
+            @update:model-value="updateField('typeId', Number($event))"
+          />
+        </template>
+      </DeviceField>
     </v-col>
 
     <v-col cols="12" md="6">
-      <template v-if="mode === 'view'">
-        <div class="device-dialog__section-label-row">
-          <span>{{ t('device.fields.enabled') }}</span>
-        </div>
-        <div class="device-dialog__field-value">{{ enabledLabel }}</div>
-      </template>
-      <v-switch
-        v-else
-        :model-value="modelValue.enabled"
+      <DeviceField
         :label="t('device.fields.enabled')"
-        :disabled="busy"
-        hide-details
-        inset
-        @update:model-value="updateField('enabled', Boolean($event))"
-      />
+        :mode="mode === 'view' ? 'display' : 'control'"
+        :value="enabledLabel"
+      >
+        <template #control>
+          <v-switch
+            :model-value="modelValue.enabled"
+            :disabled="busy"
+            inset
+            @update:model-value="updateField('enabled', Boolean($event))"
+          />
+        </template>
+      </DeviceField>
     </v-col>
   </v-row>
 </template>
@@ -61,6 +52,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import DeviceField from '@/components/device/DeviceField.vue'
 import type { DeviceCommonDraft } from '@/components/device/device-form'
 import { deviceTypeOptions } from '@/models/device-types'
 

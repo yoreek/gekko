@@ -1,36 +1,36 @@
 <template>
   <v-container class="page-shell" fluid>
-    <v-row density="comfortable">
+    <v-row>
       <v-col cols="12">
-        <v-card class="page-card page-hero" elevation="2">
+        <v-card class="page-card page-hero">
           <v-card-title class="page-title">
             <div>
-              <div class="eyebrow">{{ t('overview.title') }}</div>
-              <h1>{{ t('overview.subtitle') }}</h1>
+              <div class="text-overline">{{ t('overview.title') }}</div>
+              <h1 class="text-h4 font-weight-bold">{{ t('overview.subtitle') }}</h1>
             </div>
-            <v-chip variant="tonal" color="primary" size="small">
+            <v-chip variant="tonal" color="primary">
               {{ modeLabel }}
             </v-chip>
           </v-card-title>
           <v-card-text>
-            <p class="hero-copy">
+            <p class="text-body-1">
               {{ t('overview.copy') }}
             </p>
             <div class="page-grid page-grid--three">
               <section class="metric">
                 <AppIcon class="metric-icon" name="device" />
-                <span>{{ t('device.dashboard.title') }}</span>
-                <strong>{{ deviceStore.devices.length }}</strong>
+                <span class="text-body-2 font-weight-medium">{{ t('device.dashboard.title') }}</span>
+                <strong class="text-body-1">{{ deviceStore.devices.length }}</strong>
               </section>
               <section class="metric">
                 <AppIcon class="metric-icon" name="wifi" />
-                <span>{{ t('wifi.status') }}</span>
-                <strong>{{ wifiStatusLabel }}</strong>
+                <span class="text-body-2 font-weight-medium">{{ t('wifi.status') }}</span>
+                <strong class="text-body-1">{{ wifiStatusLabel }}</strong>
               </section>
               <section class="metric">
                 <AppIcon class="metric-icon" name="ota" />
-                <span>{{ t('ota.enabled') }}</span>
-                <strong>{{ otaStore.enabled ? t('status.enabled') : t('status.disabled') }}</strong>
+                <span class="text-body-2 font-weight-medium">{{ t('ota.enabled') }}</span>
+                <strong class="text-body-1">{{ otaStore.enabled ? t('status.enabled') : t('status.disabled') }}</strong>
               </section>
             </div>
             <div class="page-actions page-actions--spaced">
@@ -43,9 +43,9 @@
       </v-col>
     </v-row>
 
-    <v-row class="mt-2" density="comfortable">
+    <v-row class="mt-2">
       <v-col cols="12" md="6" xl="3">
-        <v-card class="page-card" elevation="1">
+        <v-card class="page-card">
           <v-card-title>{{ t('overview.registry') }}</v-card-title>
           <v-card-text>
             <div class="stack">
@@ -63,7 +63,7 @@
       </v-col>
 
       <v-col cols="12" md="6" xl="3">
-        <v-card class="page-card" elevation="1">
+        <v-card class="page-card">
           <v-card-title>{{ t('overview.wifi') }}</v-card-title>
           <v-card-text>
             <div class="stack">
@@ -81,7 +81,7 @@
       </v-col>
 
       <v-col cols="12" md="6" xl="3">
-        <v-card class="page-card" elevation="1">
+        <v-card class="page-card">
           <v-card-title>{{ t('overview.ota') }}</v-card-title>
           <v-card-text>
             <div class="stack">
@@ -99,7 +99,7 @@
       </v-col>
 
       <v-col cols="12" md="6" xl="3">
-        <v-card class="page-card" elevation="1">
+        <v-card class="page-card">
           <v-card-title>{{ t('overview.system') }}</v-card-title>
           <v-card-text>
             <div class="stack">

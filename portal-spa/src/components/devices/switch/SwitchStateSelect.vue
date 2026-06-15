@@ -1,24 +1,20 @@
 <template>
-  <div class="device-form-field">
-    <div class="device-form-field__label-row">
-      <span>{{ label }}</span>
-      <DeviceFieldHint v-if="hint" :text="hint" />
-    </div>
-    <v-select
-      :model-value="modelValue"
-      :items="items"
-      density="comfortable"
-      hide-details
-      @update:model-value="$emit('update:modelValue', $event as OutputState)"
-    />
-  </div>
+  <DeviceField :label="label" :hint="hint" mode="control">
+    <template #control>
+      <v-select
+        :model-value="modelValue"
+        :items="items"
+        @update:model-value="$emit('update:modelValue', $event as OutputState)"
+      />
+    </template>
+  </DeviceField>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import DeviceFieldHint from '@/components/device/DeviceFieldHint.vue'
+import DeviceField from '@/components/device/DeviceField.vue'
 import { outputStateLabelKey, outputStateOptions, type OutputState } from '@/models/devices/switch'
 
 defineProps<{

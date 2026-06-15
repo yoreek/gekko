@@ -7,7 +7,7 @@
         :aria-label="ariaLabel"
         icon
         size="x-small"
-        color="on-surface-variant"
+        color="on-surface"
         variant="text"
       >
         <AppIcon name="info" />

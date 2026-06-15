@@ -1,24 +1,24 @@
 <template>
   <v-container class="page-shell" fluid>
-    <v-card class="page-card page-hero" elevation="2">
+      <v-card class="page-card page-hero">
       <v-card-title class="page-title">
         <div>
-          <div class="eyebrow">{{ t('devices.title') }}</div>
-          <h1>{{ t('devices.subtitle') }}</h1>
+          <div class="text-overline">{{ t('devices.title') }}</div>
+          <h1 class="text-h4 font-weight-bold">{{ t('devices.subtitle') }}</h1>
         </div>
         <div class="d-flex ga-2">
-          <v-btn color="primary" size="small" variant="tonal" @click="createOpen = true">
+          <v-btn color="primary" variant="tonal" @click="createOpen = true">
             <AppIcon class="me-1" name="plus" />
             {{ t('device.dashboard.create') }}
           </v-btn>
-          <v-btn :loading="devicesLoading" color="primary" size="small" variant="tonal" @click="refreshDevices">
+          <v-btn :loading="devicesLoading" color="primary" variant="tonal" @click="refreshDevices">
             <AppIcon class="me-1" name="refresh" />
             {{ t('actions.refresh') }}
           </v-btn>
         </div>
       </v-card-title>
       <v-card-text>
-        <p class="hero-copy">
+        <p class="text-body-1">
           {{ t('devices.copy') }}
         </p>
         <v-row class="devices-toolbar">
@@ -26,8 +26,6 @@
             <v-text-field
               v-model="idFilter"
               :label="t('device.fields.deviceId')"
-              density="comfortable"
-              hide-details
               inputmode="numeric"
             />
           </v-col>
@@ -35,8 +33,6 @@
             <v-text-field
               v-model="nameFilter"
               :label="t('devices.search')"
-              density="comfortable"
-              hide-details
             />
           </v-col>
           <v-col cols="12" md="4">
@@ -44,15 +40,13 @@
               v-model="typeFilter"
               :items="typeFilterOptions"
               :label="t('devices.filterByType')"
-              density="comfortable"
-              hide-details
             />
           </v-col>
         </v-row>
       </v-card-text>
     </v-card>
 
-    <v-card class="page-card mt-4" elevation="1">
+    <v-card class="page-card mt-4">
       <v-card-text>
         <v-table class="devices-table">
           <thead>
@@ -73,11 +67,11 @@
             >
               <td>#{{ device.deviceId }}</td>
               <td>
-                <div class="devices-table__name">{{ device.name }}</div>
+                <strong class="text-body-1">{{ device.name }}</strong>
               </td>
               <td>{{ device.typeLabel }}</td>
               <td>
-                <v-chip size="small" variant="tonal" :color="device.isReady ? 'success' : 'secondary'">
+                <v-chip variant="tonal" :color="device.isReady ? 'success' : 'secondary'">
                   {{ device.effectiveStatus }}
                 </v-chip>
               </td>
@@ -87,7 +81,6 @@
                     <v-btn
                       v-bind="props"
                       icon
-                      size="small"
                       variant="text"
                       color="error"
                       :aria-label="t('device.actions.delete')"
@@ -130,7 +123,7 @@
       <v-card class="device-dialog">
         <v-card-title class="device-dialog__title">
           <div>
-            <div class="device-dialog__headline">{{ t('device.dialog.deleteConfirmTitle') }}</div>
+            <div class="text-h6 font-weight-bold">{{ t('device.dialog.deleteConfirmTitle') }}</div>
           </div>
           <v-btn class="device-dialog__icon-button" variant="text" @click="deleteDialogOpen = false">
             <AppIcon name="close" />

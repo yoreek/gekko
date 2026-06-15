@@ -13,7 +13,7 @@
   >
     <div class="device-card__row d-flex align-center justify-space-between ga-2 flex-wrap">
       <div class="device-card__copy d-flex flex-column ga-1 flex-grow-1 min-w-0">
-        <div class="device-card__name text-body-2 font-weight-bold text-truncate">{{ title }}</div>
+        <strong class="device-card__name text-body-2 text-high-emphasis text-truncate">{{ title }}</strong>
         <slot />
       </div>
       <span v-if="statusMarkerClass" class="device-card__status-dot" :class="statusMarkerClass" :title="statusTone" />
@@ -83,29 +83,3 @@ const statusMarkerClass = computed(() => {
   return ''
 })
 </script>
-
-<style scoped>
-.device-card {
-  position: relative;
-  cursor: pointer;
-}
-
-.device-card__row {
-  min-width: 0;
-}
-
-.device-card__status-dot {
-  width: 12px;
-  height: 12px;
-  margin-left: auto;
-  border-radius: 999px;
-  flex: 0 0 auto;
-  background: currentColor;
-}
-
-@media (max-width: 640px) {
-  .device-card__row {
-    flex-wrap: wrap;
-  }
-}
-</style>

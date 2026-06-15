@@ -1,63 +1,51 @@
 <template>
-  <v-row dense>
+  <v-row>
     <v-col cols="12" md="6">
-      <div class="device-dialog__section-label-row">
-        <span>{{ t('device.fields.gpioPin') }}</span>
-      </div>
-      <div class="device-dialog__field-value">{{ config.gpio_pin }}</div>
+      <DeviceField :label="t('device.fields.gpioPin')" :value="config.gpio_pin" mode="display" />
     </v-col>
 
     <v-col cols="12" md="6">
-      <div class="device-dialog__section-label-row">
-        <span>{{ t('device.fields.outputState') }}</span>
-      </div>
-      <div class="device-dialog__field-value">
-        {{ outputState ? t(outputStateLabelKey(outputState)) : '—' }}
-      </div>
+      <DeviceField
+        :label="t('device.fields.outputState')"
+        :value="outputState ? t(outputStateLabelKey(outputState)) : '—'"
+        mode="display"
+      />
     </v-col>
 
     <v-col cols="12">
-      <v-expansion-panels flat variant="accordion">
+      <v-expansion-panels>
         <v-expansion-panel value="details">
-          <v-expansion-panel-title :expand-icon="expandIcon" :collapse-icon="collapseIcon">
+          <v-expansion-panel-title expand-icon="expand" collapse-icon="collapse">
             {{ t('device.dialog.configDetails') }}
           </v-expansion-panel-title>
           <v-expansion-panel-text>
-            <v-row dense>
+            <v-row>
               <v-col cols="12" md="6">
-                <div class="device-form-field">
-                  <div class="device-form-field__label-row">
-                    <span>{{ t('device.fields.startupState') }}</span>
-                    <DeviceFieldHint :text="t('device.dialog.startupStateHint')" />
-                  </div>
-                  <div class="device-dialog__field-value">{{ t(outputStateLabelKey(config.startup_state)) }}</div>
-                </div>
+                <DeviceField
+                  :label="t('device.fields.startupState')"
+                  :hint="t('device.dialog.startupStateHint')"
+                  :value="t(outputStateLabelKey(config.startup_state))"
+                  mode="display"
+                />
               </v-col>
               <v-col cols="12" md="6">
-                <div class="device-form-field">
-                  <div class="device-form-field__label-row">
-                    <span>{{ t('device.fields.safeState') }}</span>
-                    <DeviceFieldHint :text="t('device.dialog.safeStateHint')" />
-                  </div>
-                  <div class="device-dialog__field-value">{{ t(outputStateLabelKey(config.safe_state)) }}</div>
-                </div>
+                <DeviceField
+                  :label="t('device.fields.safeState')"
+                  :hint="t('device.dialog.safeStateHint')"
+                  :value="t(outputStateLabelKey(config.safe_state))"
+                  mode="display"
+                />
               </v-col>
               <v-col cols="12" md="6">
-                <div class="device-form-field">
-                  <div class="device-form-field__label-row">
-                    <span>{{ t('device.fields.restorePreviousState') }}</span>
-                    <DeviceFieldHint :text="t('device.dialog.restorePreviousStateHint')" />
-                  </div>
-                  <div class="device-dialog__field-value">{{ yesNo(config.restore_previous_state) }}</div>
-                </div>
+                <DeviceField
+                  :label="t('device.fields.restorePreviousState')"
+                  :hint="t('device.dialog.restorePreviousStateHint')"
+                  :value="yesNo(config.restore_previous_state)"
+                  mode="display"
+                />
               </v-col>
               <v-col cols="12" md="6">
-                <div class="device-form-field">
-                  <div class="device-form-field__label-row">
-                    <span>{{ t('device.fields.inverted') }}</span>
-                  </div>
-                  <div class="device-dialog__field-value">{{ yesNo(config.inverted) }}</div>
-                </div>
+                <DeviceField :label="t('device.fields.inverted')" :value="yesNo(config.inverted)" mode="display" />
               </v-col>
             </v-row>
           </v-expansion-panel-text>
@@ -66,7 +54,7 @@
     </v-col>
 
     <v-col cols="12">
-      <div class="device-dialog__section-label-row">{{ t('device.dialog.quickCommands') }}</div>
+      <div class="text-overline">{{ t('device.dialog.quickCommands') }}</div>
       <SwitchOutputControls
         :state="outputState"
         :loading="busy"
@@ -82,12 +70,11 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommandRequest } from '@/api'
-import DeviceFieldHint from '@/components/device/DeviceFieldHint.vue'
+import DeviceField from '@/components/device/DeviceField.vue'
 import SwitchOutputControls from '@/components/devices/switch/SwitchOutputControls.vue'
 import type { DashboardDevice } from '@/models/device'
 import { normalizeGpioSwitchConfig } from '@/models/devices/gpio-switch'
 import { isOutputState, outputStateLabelKey, switchCommandPayload, type OutputState } from '@/models/devices/switch'
-import { iconRegistry } from '@/icons'
 
 const props = defineProps<{
   device: DashboardDevice
@@ -99,8 +86,6 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const expandIcon = `svg:${iconRegistry['chevron-right'].paths[0]}`
-const collapseIcon = `svg:${iconRegistry['chevron-down'].paths[0]}`
 const config = computed(() => normalizeGpioSwitchConfig(props.device.detail.config))
 const outputState = computed(() => (isOutputState(props.device.output.state) ? props.device.output.state : undefined))
 

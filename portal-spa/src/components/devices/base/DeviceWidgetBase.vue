@@ -3,7 +3,9 @@
     class="device-widget"
     :class="{ 'device-widget--editable': editable }"
     :color="device.isReady ? undefined : 'surface-variant'"
+    :border="device.isReady ? false : true"
     :variant="device.isReady ? 'outlined' : 'tonal'"
+    :style="{ borderColor: 'var(--portal-border)' }"
     elevation="0"
     role="button"
     tabindex="0"
@@ -15,7 +17,6 @@
       v-if="editable"
       class="device-widget__remove"
       icon
-      size="small"
       variant="text"
       :aria-label="t('device.actions.delete')"
       @click.stop="$emit('remove')"
@@ -24,7 +25,7 @@
     </v-btn>
 
     <div class="device-widget__header">
-      <div class="device-widget__name">{{ device.name }}</div>
+      <strong class="device-widget__name text-body-2 text-high-emphasis">{{ device.name }}</strong>
       <div v-if="$slots.actions" class="device-widget__actions">
         <slot name="actions" />
       </div>

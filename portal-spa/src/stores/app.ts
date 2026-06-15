@@ -17,6 +17,13 @@ export type WebSocketStatus = 'connected' | 'disconnected'
 export type AppTheme = 'light' | 'dark'
 
 function detectInitialTheme(): AppTheme {
+  if (typeof window !== 'undefined') {
+    const previewTheme = new URLSearchParams(window.location.search).get('theme')
+    if (previewTheme === 'dark' || previewTheme === 'light') {
+      return previewTheme
+    }
+  }
+
   const stored = safeReadStorage(themeStorageKey)
   if (stored === 'dark') {
     return 'dark'

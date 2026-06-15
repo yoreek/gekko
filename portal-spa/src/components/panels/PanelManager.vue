@@ -1,15 +1,15 @@
 <template>
   <div class="panel-manager">
-    <v-card class="page-card" elevation="1">
+    <v-card class="page-card">
       <v-card-title class="page-title">
         <div>
-          <div class="eyebrow">{{ t('panels.title') }}</div>
-          <h2>{{ t('panels.subtitle') }}</h2>
+          <div class="text-overline">{{ t('panels.title') }}</div>
+          <h2 class="text-h5 font-weight-bold">{{ t('panels.subtitle') }}</h2>
         </div>
       </v-card-title>
 
       <v-card-text>
-        <div class="panel-manager__hint">
+        <div class="panel-manager__hint text-body-2 mt-2">
           {{ t('panels.uniqueHint') }}
         </div>
 
@@ -19,38 +19,34 @@
             :key="panel.id"
             class="panel-manager__item"
             :class="{ 'panel-manager__item--active': panel.id === panelStore.activePanelId }"
-            variant="outlined"
           >
             <v-card-text class="panel-manager__row">
               <div class="panel-manager__main">
                 <v-text-field
                   :model-value="panelNameDrafts[panel.id] ?? panel.name"
                   :label="t('panels.name')"
-                  density="comfortable"
-                  hide-details
                   @update:model-value="value => updateDraft(panel.id, String(value))"
                 />
               </div>
               <div class="panel-manager__actions">
-                <v-btn icon size="small" variant="text" :disabled="panelStore.panels.indexOf(panel) === 0" @click="movePanel(panel.id, -1)">
+                <v-btn icon variant="text" :disabled="panelStore.panels.indexOf(panel) === 0" @click="movePanel(panel.id, -1)">
                   <AppIcon name="chevron-left" />
                 </v-btn>
                 <v-btn
                   icon
-                  size="small"
                   variant="text"
                   :disabled="panelStore.panels.indexOf(panel) === panelStore.panels.length - 1"
                   @click="movePanel(panel.id, 1)"
                 >
                   <AppIcon name="chevron-right" />
                 </v-btn>
-                <v-btn size="small" variant="tonal" @click="savePanelName(panel.id)">
+                <v-btn variant="tonal" @click="savePanelName(panel.id)">
                   {{ t('panels.rename') }}
                 </v-btn>
-                <v-btn size="small" variant="tonal" @click="activatePanel(panel.id)">
+                <v-btn variant="tonal" @click="activatePanel(panel.id)">
                   {{ t('panels.activate') }}
                 </v-btn>
-                <v-btn size="small" color="error" variant="text" :disabled="panelStore.panels.length <= 1" @click="deletePanel(panel.id)">
+                <v-btn color="error" variant="text" :disabled="panelStore.panels.length <= 1" @click="deletePanel(panel.id)">
                   <AppIcon name="trash" />
                   {{ t('panels.delete') }}
                 </v-btn>

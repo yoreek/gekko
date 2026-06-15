@@ -44,6 +44,8 @@ import {
   VTabsWindowItem,
 } from 'vuetify/components'
 
+import { portalDefaults, portalIconAliases, portalIconSet, portalThemes } from '@/theme/portal-ui'
+
 export function createAppVuetify() {
   return createVuetify({
     components: {
@@ -88,90 +90,19 @@ export function createAppVuetify() {
       VTabsWindow,
       VTabsWindowItem,
     },
-    defaults: {
-      VBtn: {
-        rounded: 0,
+    defaults: portalDefaults,
+    icons: {
+      defaultSet: 'portal',
+      aliases: {
+        ...portalIconAliases,
       },
-      VCard: {
-        rounded: 0,
+      sets: {
+        portal: portalIconSet,
       },
     },
     theme: {
       defaultTheme: 'appLight',
-      themes: {
-        appLight: {
-          dark: false,
-          colors: {
-            background: '#f6f7f9',
-            surface: '#ffffff',
-            surfaceVariant: '#eef1f4',
-            onSurfaceVariant: '#1f2937',
-            outline: '#c6ccd4',
-            outlineVariant: '#d8dee6',
-            primaryContainer: '#dbe4ff',
-            onPrimaryContainer: '#1e2f63',
-            secondaryContainer: '#e5eef2',
-            onSecondaryContainer: '#16343b',
-            infoContainer: '#e3eff9',
-            onInfoContainer: '#123a52',
-            successContainer: '#e2f1e7',
-            onSuccessContainer: '#173a24',
-            warningContainer: '#f5edd8',
-            onWarningContainer: '#5e4308',
-            errorContainer: '#f5e2e2',
-            onErrorContainer: '#7f1d1d',
-            primary: '#3256d6',
-            onPrimary: '#ffffff',
-            secondary: '#52606d',
-            onSecondary: '#ffffff',
-            accent: '#b36b00',
-            info: '#2f6f93',
-            onInfo: '#ffffff',
-            success: '#2f855a',
-            onSuccess: '#ffffff',
-            warning: '#a36507',
-            onWarning: '#111827',
-            error: '#c24141',
-            onError: '#ffffff',
-          },
-        },
-        appDark: {
-          dark: true,
-          colors: {
-            background: '#0e1116',
-            surface: '#151a22',
-            surfaceVariant: '#1d2430',
-            onSurfaceVariant: '#e5e7eb',
-            outline: '#39414d',
-            outlineVariant: '#4b5563',
-            primaryContainer: '#213b78',
-            onPrimaryContainer: '#dce6ff',
-            secondaryContainer: '#22343a',
-            onSecondaryContainer: '#e2ecef',
-            infoContainer: '#1c3f57',
-            onInfoContainer: '#e1eef8',
-            successContainer: '#1d3f2a',
-            onSuccessContainer: '#e3f1e8',
-            warningContainer: '#463013',
-            onWarningContainer: '#f9e8bf',
-            errorContainer: '#4a2020',
-            onErrorContainer: '#f6dddd',
-            primary: '#8ab4ff',
-            onPrimary: '#0e1116',
-            secondary: '#90a4ae',
-            onSecondary: '#0e1116',
-            accent: '#f4c66a',
-            info: '#82b7d6',
-            onInfo: '#0e1116',
-            success: '#7bc995',
-            onSuccess: '#0e1116',
-            warning: '#e0a44c',
-            onWarning: '#111111',
-            error: '#ef8f8f',
-            onError: '#0e1116',
-          },
-        },
-      },
+      themes: portalThemes,
     },
   })
 }

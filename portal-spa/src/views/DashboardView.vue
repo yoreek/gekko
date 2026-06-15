@@ -1,13 +1,12 @@
 <template>
   <v-container class="page-shell dashboard-page fill-height pa-0" fluid>
-    <v-sheet class="dashboard-surface d-flex flex-column" elevation="2" rounded="0">
-      <v-toolbar density="compact" flat>
+    <v-sheet class="dashboard-surface d-flex flex-column">
+      <v-toolbar>
         <div class="d-flex align-center flex-grow-1 overflow-hidden">
           <v-tabs
             v-model="activePanelId"
             class="flex-grow-1"
             color="primary"
-            density="compact"
             mandatory
             show-arrows="always"
           >
@@ -22,7 +21,6 @@
           <template #activator="{ props }">
             <v-btn
               v-bind="props"
-              size="small"
               variant="text"
               color="primary"
               :disabled="deviceStore.devices.length === 0 || !activePanel"
@@ -36,7 +34,7 @@
         </v-tooltip>
         <v-tooltip :text="t('dashboard.addPanel')" location="bottom">
           <template #activator="{ props }">
-            <v-btn v-bind="props" size="small" variant="text" color="primary" :aria-label="t('dashboard.addPanel')" @click="openCreatePanelDialog">
+            <v-btn v-bind="props" variant="text" color="primary" :aria-label="t('dashboard.addPanel')" @click="openCreatePanelDialog">
               <AppIcon class="me-1" name="plus" />
               {{ t('dashboard.addPanel') }}
             </v-btn>
@@ -47,7 +45,6 @@
             <v-btn
               v-bind="props"
               :loading="devicesLoading"
-              size="small"
               variant="text"
               color="primary"
               :aria-label="t('actions.refresh')"
@@ -62,7 +59,6 @@
           <template #activator="{ props }">
             <v-btn
               v-bind="props"
-              size="small"
               variant="text"
               :aria-label="t('dashboard.resetLayout')"
               @click="resetLayout"
@@ -76,7 +72,6 @@
           <template #activator="{ props }">
             <v-btn
               v-bind="props"
-              size="small"
               :variant="editing ? 'flat' : 'text'"
               :color="editing ? 'primary' : 'default'"
               :aria-label="editing ? t('dashboard.doneMode') : t('dashboard.editMode')"
@@ -92,13 +87,7 @@
 
       <v-divider />
 
-      <v-alert
-        v-if="panelStore.errorMessage"
-        class="ma-4 mb-0"
-        density="compact"
-        type="warning"
-        variant="tonal"
-      >
+      <v-alert v-if="panelStore.errorMessage" class="ma-4 mb-0" type="warning" variant="tonal">
         {{ panelStore.errorMessage }}
       </v-alert>
 
@@ -110,7 +99,7 @@
           :transition="false"
           :value="activePanel.id"
         >
-          <v-sheet class="fill-height pa-4" rounded="0">
+          <v-sheet class="fill-height pa-4">
             <div
               ref="gridHost"
               class="dashboard-panel-body"
@@ -129,8 +118,8 @@
               </template>
 
               <div v-else class="dashboard-empty">
-                <div class="dashboard-empty__title">{{ t('dashboard.panelEmpty') }}</div>
-                <div class="dashboard-empty__copy">{{ t('devices.copy') }}</div>
+                <div class="text-h6 font-weight-bold">{{ t('dashboard.panelEmpty') }}</div>
+                <div class="text-body-2 text-medium-emphasis">{{ t('devices.copy') }}</div>
               </div>
             </div>
           </v-sheet>
@@ -153,8 +142,8 @@
       <v-card class="device-dialog">
         <v-card-title class="device-dialog__title">
           <div>
-            <div class="device-dialog__eyebrow">{{ t('dashboard.addPanel') }}</div>
-            <div class="device-dialog__subline">
+            <div class="text-overline">{{ t('dashboard.addPanel') }}</div>
+            <div class="text-body-2 text-medium-emphasis">
               {{ t('dashboard.addPanelHint') }}
             </div>
           </div>
@@ -167,8 +156,6 @@
           <v-text-field
             v-model="panelNameDraft"
             :label="t('dashboard.panelName')"
-            density="comfortable"
-            hide-details
             autofocus
           />
         </v-card-text>
@@ -189,8 +176,8 @@
       <v-card class="device-dialog">
         <v-card-title class="device-dialog__title">
           <div>
-            <div class="device-dialog__eyebrow">{{ t('dashboard.addDevice') }}</div>
-            <div class="device-dialog__subline">
+            <div class="text-overline">{{ t('dashboard.addDevice') }}</div>
+            <div class="text-body-2 text-medium-emphasis">
               {{ t('dashboard.addDeviceHint') }}
             </div>
           </div>
@@ -204,8 +191,6 @@
             v-model="selectedAddDeviceId"
             :items="deviceOptions"
             :label="t('dashboard.deviceToAdd')"
-            density="comfortable"
-            hide-details
           />
         </v-card-text>
         <v-divider />

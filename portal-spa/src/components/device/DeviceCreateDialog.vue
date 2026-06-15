@@ -6,7 +6,7 @@
     :max-width="720"
     @update:model-value="$emit('update:modelValue', $event)"
   >
-    <v-alert v-if="errorMessage" type="error" variant="tonal" density="compact" class="mb-4">
+    <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-4">
       {{ errorMessage }}
     </v-alert>
 

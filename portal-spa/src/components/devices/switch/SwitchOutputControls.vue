@@ -3,8 +3,6 @@
     :model-value="state"
     divided
     mandatory="force"
-    density="comfortable"
-    variant="outlined"
     @update:model-value="emitState"
   >
     <v-btn value="on" :disabled="disabled || loading" color="success">

@@ -1,36 +1,36 @@
 <template>
   <v-container class="page-shell" fluid>
-    <v-row density="comfortable">
+    <v-row>
       <v-col cols="12">
-        <v-card class="page-card page-hero" elevation="2">
+        <v-card class="page-card page-hero">
           <v-card-title class="page-title">
             <div>
-              <div class="eyebrow">{{ t('wifi.title') }}</div>
-              <h1>{{ t('wifi.subtitle') }}</h1>
+              <div class="text-overline">{{ t('wifi.title') }}</div>
+              <h1 class="text-h4 font-weight-bold">{{ t('wifi.subtitle') }}</h1>
             </div>
-            <v-chip variant="tonal" color="primary" size="small">
+            <v-chip variant="tonal" color="primary">
               {{ wifiStatusLabel }}
             </v-chip>
           </v-card-title>
           <v-card-text>
-            <p class="hero-copy">
+            <p class="text-body-1">
               {{ t('wifi.scanHint') }}
             </p>
             <div class="page-grid page-grid--three">
               <section class="metric">
                 <AppIcon class="metric-icon" name="wifi" />
-                <span>{{ t('wifi.status') }}</span>
-                <strong>{{ wifiStatusLabel }}</strong>
+                <span class="text-body-2 font-weight-medium">{{ t('wifi.status') }}</span>
+                <strong class="text-body-1">{{ wifiStatusLabel }}</strong>
               </section>
               <section class="metric">
                 <AppIcon class="metric-icon" name="refresh" />
-                <span>{{ t('wifi.stationIp') }}</span>
-                <strong>{{ wifiStore.stationIp || '—' }}</strong>
+                <span class="text-body-2 font-weight-medium">{{ t('wifi.stationIp') }}</span>
+                <strong class="text-body-1">{{ wifiStore.stationIp || '—' }}</strong>
               </section>
               <section class="metric">
                 <AppIcon class="metric-icon" name="portal" />
-                <span>{{ t('wifi.setupApIp') }}</span>
-                <strong>{{ wifiStore.setupApIp || '—' }}</strong>
+                <span class="text-body-2 font-weight-medium">{{ t('wifi.setupApIp') }}</span>
+                <strong class="text-body-1">{{ wifiStore.setupApIp || '—' }}</strong>
               </section>
             </div>
             <div class="page-actions page-actions--spaced">
@@ -43,28 +43,28 @@
       </v-col>
     </v-row>
 
-    <v-row class="mt-2" density="comfortable">
+    <v-row class="mt-2">
       <v-col cols="12">
-        <v-card class="page-card" elevation="1">
+        <v-card class="page-card">
           <v-card-title class="page-title">
             <div>
-              <div class="eyebrow">{{ t('wifi.networks') }}</div>
-              <h2>{{ t('wifi.networksTitle') }}</h2>
+              <div class="text-overline">{{ t('wifi.networks') }}</div>
+              <h2 class="text-h5 font-weight-bold">{{ t('wifi.networksTitle') }}</h2>
             </div>
-            <v-chip size="small" variant="outlined">
+            <v-chip variant="outlined">
               {{ scanLoading ? t('wifi.scanning') : t('wifi.empty') }}
             </v-chip>
           </v-card-title>
           <v-card-text>
             <template v-if="wifiStore.scanNetworks.length > 0">
               <div class="stack">
-                <div
+              <div
                   v-for="network in wifiStore.scanNetworks"
                   :key="`${network.ssid}-${network.channel}`"
                   class="status-row"
                 >
-                  <span>{{ network.ssid }}</span>
-                  <strong>{{ network.rssi }} dBm · ch {{ network.channel }}</strong>
+                  <span class="text-body-2 font-weight-medium">{{ network.ssid }}</span>
+                  <strong class="text-body-1">{{ network.rssi }} dBm · ch {{ network.channel }}</strong>
                 </div>
               </div>
             </template>

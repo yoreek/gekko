@@ -8,7 +8,7 @@
     @update:model-value="$emit('update:modelValue', $event)"
   >
     <template #title-actions>
-      <v-chip v-if="device" size="small" variant="tonal" :color="statusColor">
+      <v-chip v-if="device" variant="tonal" :color="statusColor">
         {{ statusText }}
       </v-chip>
       <v-btn
@@ -45,7 +45,7 @@
       </section>
 
       <section v-if="editing && isGpioSwitch" class="device-dialog__section">
-        <div class="device-dialog__section-title">{{ t('device.dialog.details') }}</div>
+        <div class="text-overline">{{ t('device.dialog.details') }}</div>
         <GpioSwitchDeviceForm
           v-model="draft.gpioSwitchConfig"
           :output-state="outputState"
@@ -55,18 +55,18 @@
       </section>
 
       <section v-else-if="!editing && hasTypeDetails" class="device-dialog__section">
-        <div class="device-dialog__section-title">{{ t('device.dialog.details') }}</div>
+        <div class="text-overline">{{ t('device.dialog.details') }}</div>
         <component :is="detailComponent" :device="device" :busy="busyAction === 'command'" @command="$emit('command', $event)" />
       </section>
 
     </template>
 
-    <div v-else class="device-dialog__empty">
+    <div v-else class="device-dialog__empty text-body-1">
       <span>{{ t('device.dialog.noneSelected') }}</span>
     </div>
 
     <template #footer>
-      <v-alert v-if="errorMessage" class="device-dialog__error" type="error" variant="tonal" density="compact">
+      <v-alert v-if="errorMessage" class="device-dialog__error" type="error" variant="tonal">
         {{ errorMessage }}
       </v-alert>
       <v-spacer />
