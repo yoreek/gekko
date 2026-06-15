@@ -38,6 +38,16 @@
 - `scripts/check.sh` requires `clang-format` and `cppcheck`.
 - Keep code formatted by `.clang-format`.
 
+## UI Design Rules
+
+- Define typography, colors, borders, radius, and surface behavior globally first.
+- Do not add component-specific text styling when the same role can be expressed by the shared design system.
+- Use semantic text roles for headings, labels, table headers, card titles, dialog titles, secondary text, and muted text.
+- Avoid local CSS overrides for `color`, `font-weight`, `letter-spacing`, `border-radius`, or `opacity` unless the element is a documented exception.
+- Prefer Vuetify defaults, theme tokens, and shared classes over per-screen styling.
+- Keep component markup semantic and minimal; do not invent one-off styles for names, titles, or labels that should follow the global typography layer.
+- When describing UI work, specify the global rule, the forbidden local overrides, the scope, and the definition of done.
+
 ## Vue And Vuetify UI Rules
 
 - Prefer standard Vuetify components, props, and slots before any custom markup or CSS.
