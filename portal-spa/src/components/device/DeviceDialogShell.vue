@@ -88,10 +88,10 @@ const { t } = useI18n()
 }
 
 .device-dialog__body {
-  padding: 18px 20px 20px;
+  padding: 14px 16px 16px;
 }
 
 .device-dialog__footer {
-  padding: 14px 20px 18px;
+  padding: 12px 16px 14px;
 }
 </style>

@@ -235,6 +235,7 @@ export default {
   labels: {
     mock: 'Mock',
     real: 'Real',
+    view: 'View',
     yes: 'Yes',
     no: 'No',
     lightTheme: 'Light',

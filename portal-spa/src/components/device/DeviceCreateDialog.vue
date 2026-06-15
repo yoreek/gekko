@@ -10,19 +10,24 @@
       {{ errorMessage }}
     </v-alert>
 
-    <DeviceCommonFields
-      v-model="draft.common"
-      :mode="'create'"
-      :busy="loading"
-      :type-label="''"
-    />
+    <div class="device-dialog__content">
+      <section class="device-dialog__section">
+        <DeviceCommonFields
+          v-model="draft.common"
+          :mode="'create'"
+          :busy="loading"
+        />
+      </section>
 
-    <component
-      :is="createFormComponent"
-      v-if="createFormComponent"
-      v-model="draft.config"
-      :busy="loading"
-    />
+      <section v-if="createFormComponent" class="device-dialog__section">
+        <div class="device-dialog__section-heading text-overline">{{ t('device.dialog.details') }}</div>
+        <component
+          :is="createFormComponent"
+          v-model="draft.config"
+          :busy="loading"
+        />
+      </section>
+    </div>
 
     <template #footer>
       <v-spacer />
@@ -108,3 +113,24 @@ function submit(): void {
   emit('submit', payload)
 }
 </script>
+
+<style scoped>
+.device-dialog__content {
+  display: grid;
+  gap: 12px;
+}
+
+.device-dialog__section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgb(var(--v-theme-outline-variant));
+  border-radius: 10px;
+  background: var(--portal-surface);
+  box-shadow: var(--portal-shadow-sm);
+}
+
+.device-dialog__section-heading {
+  margin-bottom: 2px;
+}
+</style>

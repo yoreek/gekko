@@ -2,18 +2,37 @@
   <v-container class="page-shell dashboard-page fill-height pa-0" fluid>
     <v-sheet class="dashboard-surface d-flex flex-column">
       <v-toolbar>
-        <div class="d-flex align-center flex-grow-1 overflow-hidden">
+        <div class="dashboard-panel-tabs d-flex align-center flex-grow-1 min-w-0">
+          <v-btn
+            class="dashboard-panel-tabs__move"
+            icon
+            variant="text"
+            :disabled="!canMoveActivePanel(-1)"
+            :aria-label="t('panels.moveLeft')"
+            @click="moveActivePanel(-1)"
+          >
+            <AppIcon name="chevron-left" />
+          </v-btn>
           <v-tabs
             v-model="activePanelId"
             class="flex-grow-1"
             color="primary"
             mandatory
-            show-arrows="always"
           >
             <v-tab v-for="panel in panelStore.panels" :key="panel.id" :value="panel.id">
               {{ panel.name }}
             </v-tab>
           </v-tabs>
+          <v-btn
+            class="dashboard-panel-tabs__move"
+            icon
+            variant="text"
+            :disabled="!canMoveActivePanel(1)"
+            :aria-label="t('panels.moveRight')"
+            @click="moveActivePanel(1)"
+          >
+            <AppIcon name="chevron-right" />
+          </v-btn>
         </div>
 
         <div class="d-flex align-center flex-shrink-0">
@@ -276,6 +295,29 @@ const deviceOptions = computed(() =>
 function columnsForWidth(width: number): number {
   const columns = Math.floor((width - dashboardGridGap) / (dashboardCardWidth + dashboardGridGap))
   return Math.min(dashboardMaxColumns, Math.max(1, columns))
+}
+
+function activePanelIndex(): number {
+  if (!activePanel.value) {
+    return -1
+  }
+  return panelStore.panels.findIndex(panel => panel.id === activePanel.value?.id)
+}
+
+function canMoveActivePanel(direction: -1 | 1): boolean {
+  const index = activePanelIndex()
+  if (index < 0) {
+    return false
+  }
+  const targetIndex = index + direction
+  return targetIndex >= 0 && targetIndex < panelStore.panels.length
+}
+
+function moveActivePanel(direction: -1 | 1): void {
+  if (!activePanel.value || !canMoveActivePanel(direction)) {
+    return
+  }
+  panelStore.movePanel(activePanel.value.id, direction)
 }
 
 function resolveGridHost(): HTMLElement | null {
@@ -577,6 +619,14 @@ watch(detailOpen, value => {
   background: var(--portal-surface);
 }
 
+.dashboard-panel-tabs {
+  gap: 6px;
+}
+
+.dashboard-panel-tabs__move {
+  flex: 0 0 auto;
+}
+
 .dashboard-panel-body {
   min-width: 0;
 }
@@ -589,12 +639,10 @@ watch(detailOpen, value => {
   display: grid;
   place-items: center;
   min-height: 220px;
-  border: 1px dashed var(--portal-border);
-  border-radius: var(--portal-radius-md);
-  background: var(--portal-surface);
   text-align: center;
   gap: 6px;
   max-width: 520px;
   margin: 0 auto;
+  padding: 24px 16px;
 }
 </style>

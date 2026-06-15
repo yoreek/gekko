@@ -11,6 +11,9 @@
       <v-chip v-if="device" variant="tonal" :color="statusColor">
         {{ statusText }}
       </v-chip>
+      <v-chip v-if="device" variant="outlined" :color="editing ? 'primary' : 'secondary'">
+        {{ editing ? t('device.dialog.edit') : t('labels.view') }}
+      </v-chip>
       <v-btn
         v-if="device && !editing"
         class="device-dialog__icon-button"
@@ -35,29 +38,31 @@
     </template>
 
     <template v-if="device">
-      <section class="device-dialog__section">
-        <DeviceCommonFields
-          v-model="draft.common"
-          :mode="editing ? 'edit' : 'view'"
-          :type-label="typeLabelText"
-          :busy="busy"
-        />
-      </section>
+      <div class="device-dialog__content">
+        <section class="device-dialog__section">
+          <DeviceCommonFields
+            v-model="draft.common"
+            :mode="editing ? 'edit' : 'view'"
+            :busy="busy"
+          />
+        </section>
 
-      <section v-if="editing && isGpioSwitch" class="device-dialog__section">
-        <div class="text-overline">{{ t('device.dialog.details') }}</div>
         <GpioSwitchDeviceForm
+          v-if="editing && isGpioSwitch"
           v-model="draft.gpioSwitchConfig"
           :output-state="outputState"
           show-output-state
           :busy="busy"
         />
-      </section>
 
-      <section v-else-if="!editing && hasTypeDetails" class="device-dialog__section">
-        <div class="text-overline">{{ t('device.dialog.details') }}</div>
-        <component :is="detailComponent" :device="device" :busy="busyAction === 'command'" @command="$emit('command', $event)" />
-      </section>
+        <component
+          v-else-if="!editing && hasTypeDetails"
+          :is="detailComponent"
+          :device="device"
+          :busy="busyAction === 'command'"
+          @command="$emit('command', $event)"
+        />
+      </div>
 
     </template>
 
@@ -84,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useI18n } from 'vue-i18n'
 
@@ -96,7 +101,6 @@ import GpioSwitchDeviceForm from '@/components/devices/gpio-switch/GpioSwitchDev
 import { resolveDeviceDetailComponent } from '@/components/devices/registry/device-component-registry'
 import type { DashboardDevice } from '@/models/device'
 import { deviceTypeLabelKey, DUMMY_DEVICE_TYPE_ID } from '@/models/device-types'
-import type { GpioSwitchConfigDraft } from '@/models/devices/gpio-switch'
 import type { DeviceCommandRequest } from '@/api'
 import type { DeviceEditSubmitPayload } from '@/components/device/device-form'
 
@@ -257,10 +261,19 @@ function submitSave(): void {
 </script>
 
 <style scoped>
-.device-dialog__section {
+.device-dialog__content {
   display: grid;
   gap: 12px;
-  margin-bottom: 20px;
+}
+
+.device-dialog__section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgb(var(--v-theme-outline-variant));
+  border-radius: 10px;
+  background: var(--portal-surface);
+  box-shadow: var(--portal-shadow-sm);
 }
 
 .device-dialog__empty {

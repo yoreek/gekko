@@ -27,15 +27,15 @@ defineProps<{
 <style scoped>
 .device-field {
   display: grid;
-  gap: 4px;
-  padding: 14px 16px;
+  gap: 2px;
+  padding: 12px 14px;
 }
 
 .device-field__label-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 20px;
+  min-height: 18px;
   font-size: 0.86rem;
   font-weight: 600;
   letter-spacing: 0;
@@ -44,7 +44,7 @@ defineProps<{
 }
 
 .device-field__value {
-  margin-top: 4px;
+  margin-top: 2px;
   font-size: 0.96rem;
   word-break: break-word;
 }

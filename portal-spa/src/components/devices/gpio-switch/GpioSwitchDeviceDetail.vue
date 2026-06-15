@@ -1,68 +1,86 @@
 <template>
-  <v-row>
-    <v-col cols="12" md="6">
-      <DeviceField :label="t('device.fields.gpioPin')" :value="config.gpio_pin" mode="display" />
-    </v-col>
+  <div class="device-type-stack">
+    <section class="device-type-section">
+      <v-row class="device-type-section__grid">
+        <v-col cols="12" md="6">
+          <v-text-field
+            :label="t('device.fields.gpioPin')"
+            :hint="t('device.dialog.gpioPinHint')"
+            persistent-hint
+            :model-value="config.gpio_pin"
+            readonly
+          />
+        </v-col>
 
-    <v-col cols="12" md="6">
-      <DeviceField
-        :label="t('device.fields.outputState')"
-        :value="outputState ? t(outputStateLabelKey(outputState)) : '—'"
-        mode="display"
-      />
-    </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field
+            :label="t('device.fields.outputState')"
+            :model-value="outputState ? t(outputStateLabelKey(outputState)) : '—'"
+            readonly
+          />
+        </v-col>
+      </v-row>
+    </section>
 
-    <v-col cols="12">
+    <section class="device-type-section">
       <v-expansion-panels>
         <v-expansion-panel value="details">
-          <v-expansion-panel-title expand-icon="expand" collapse-icon="collapse">
+          <v-expansion-panel-title>
             {{ t('device.dialog.configDetails') }}
           </v-expansion-panel-title>
           <v-expansion-panel-text>
-            <v-row>
+            <v-row class="device-type-section__grid">
               <v-col cols="12" md="6">
-                <DeviceField
+                <SwitchStateSelect
+                  :model-value="config.startup_state"
                   :label="t('device.fields.startupState')"
                   :hint="t('device.dialog.startupStateHint')"
-                  :value="t(outputStateLabelKey(config.startup_state))"
-                  mode="display"
+                  readonly
                 />
               </v-col>
               <v-col cols="12" md="6">
-                <DeviceField
+                <SwitchStateSelect
+                  :model-value="config.safe_state"
                   :label="t('device.fields.safeState')"
                   :hint="t('device.dialog.safeStateHint')"
-                  :value="t(outputStateLabelKey(config.safe_state))"
-                  mode="display"
+                  readonly
                 />
               </v-col>
               <v-col cols="12" md="6">
-                <DeviceField
-                  :label="t('device.fields.restorePreviousState')"
-                  :hint="t('device.dialog.restorePreviousStateHint')"
-                  :value="yesNo(config.restore_previous_state)"
-                  mode="display"
-                />
+                <div class="device-switch-field">
+                  <v-switch
+                    :label="t('device.fields.restorePreviousState')"
+                    :model-value="config.restore_previous_state"
+                    readonly
+                  />
+                  <div class="device-switch-field__hint text-caption text-medium-emphasis">
+                    {{ t('device.dialog.restorePreviousStateHint') }}
+                  </div>
+                </div>
               </v-col>
               <v-col cols="12" md="6">
-                <DeviceField :label="t('device.fields.inverted')" :value="yesNo(config.inverted)" mode="display" />
+                <v-switch
+                  :label="t('device.fields.inverted')"
+                  :model-value="config.inverted"
+                  readonly
+                />
               </v-col>
             </v-row>
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
-    </v-col>
+    </section>
 
-    <v-col cols="12">
-      <div class="text-overline">{{ t('device.dialog.quickCommands') }}</div>
+    <section class="device-type-section">
+      <div class="device-type-section__heading text-overline">{{ t('device.dialog.quickCommands') }}</div>
       <SwitchOutputControls
         :state="outputState"
         :loading="busy"
         :disabled="!device.isReady"
         @set-state="setOutputState"
       />
-    </v-col>
-  </v-row>
+    </section>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -70,8 +88,8 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommandRequest } from '@/api'
-import DeviceField from '@/components/device/DeviceField.vue'
 import SwitchOutputControls from '@/components/devices/switch/SwitchOutputControls.vue'
+import SwitchStateSelect from '@/components/devices/switch/SwitchStateSelect.vue'
 import type { DashboardDevice } from '@/models/device'
 import { normalizeGpioSwitchConfig } from '@/models/devices/gpio-switch'
 import { isOutputState, outputStateLabelKey, switchCommandPayload, type OutputState } from '@/models/devices/switch'
@@ -89,11 +107,37 @@ const { t } = useI18n()
 const config = computed(() => normalizeGpioSwitchConfig(props.device.detail.config))
 const outputState = computed(() => (isOutputState(props.device.output.state) ? props.device.output.state : undefined))
 
-function yesNo(value: boolean): string {
-  return value ? t('labels.yes') : t('labels.no')
-}
-
 function setOutputState(state: OutputState): void {
   emit('command', switchCommandPayload(state))
 }
 </script>
+
+<style scoped>
+.device-type-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.device-type-section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgb(var(--v-theme-outline-variant));
+  border-radius: 10px;
+  background: var(--portal-surface);
+  box-shadow: var(--portal-shadow-sm);
+}
+
+.device-type-section__grid {
+  margin: 0;
+}
+
+.device-switch-field {
+  display: grid;
+  gap: 4px;
+}
+
+.device-switch-field__hint {
+  padding-inline-start: 14px;
+}
+</style>

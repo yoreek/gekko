@@ -37,6 +37,7 @@
 - Run `scripts/test.sh` for local verification. It runs `scripts/check.sh` before `pio test -e native`.
 - `scripts/check.sh` requires `clang-format` and `cppcheck`.
 - Keep code formatted by `.clang-format`.
+- Do not run or reopen `preview` servers for visual checks unless the user explicitly asks for them; browser validation through Playwright MCP is allowed only when explicitly requested or when the user has already approved a live browser check for the current task.
 
 ## UI Design Rules
 
