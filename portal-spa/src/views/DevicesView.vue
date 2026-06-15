@@ -119,32 +119,22 @@
       @command="submitDeviceCommand"
     />
 
-    <v-dialog v-model="deleteDialogOpen" max-width="420">
-      <v-card class="device-dialog">
-        <v-card-title class="device-dialog__title">
-          <div>
-            <div class="text-h6 font-weight-bold">{{ t('device.dialog.deleteConfirmTitle') }}</div>
-          </div>
-          <v-btn class="device-dialog__icon-button" variant="text" @click="deleteDialogOpen = false">
-            <AppIcon name="close" />
-          </v-btn>
-        </v-card-title>
-        <v-divider />
-        <v-card-text class="device-dialog__body">
-          {{ t('device.dialog.deleteConfirmBody') }}
-        </v-card-text>
-        <v-divider />
-        <v-card-actions class="device-dialog__footer">
-          <v-spacer />
-          <v-btn variant="text" @click="deleteDialogOpen = false">
-            {{ t('actions.cancel') }}
-          </v-btn>
-          <v-btn color="error" :loading="deleteBusy" @click="submitDeleteDevice">
-            {{ t('device.actions.delete') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <DeviceDialogShell
+      v-model="deleteDialogOpen"
+      :headline="t('device.dialog.deleteConfirmTitle')"
+      :subline="t('device.dialog.deleteConfirmBody')"
+      :max-width="420"
+    >
+      <template #footer>
+        <v-spacer />
+        <v-btn variant="text" @click="deleteDialogOpen = false">
+          {{ t('actions.cancel') }}
+        </v-btn>
+        <v-btn color="error" :loading="deleteBusy" @click="submitDeleteDevice">
+          {{ t('device.actions.delete') }}
+        </v-btn>
+      </template>
+    </DeviceDialogShell>
   </v-container>
 </template>
 
@@ -156,6 +146,7 @@ import { commandDevice, createDevice, deleteDevice, fetchDevice, type DeviceComm
 import AppIcon from '@/components/AppIcon.vue'
 import DeviceCreateDialog from '@/components/device/DeviceCreateDialog.vue'
 import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
+import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import { buildDeviceEditCommands } from '@/components/device/device-form'
 import type { DeviceEditSubmitPayload } from '@/components/device/device-form'
 import type { DashboardDevice } from '@/models/device'
@@ -365,3 +356,32 @@ watch(detailOpen, value => {
   }
 })
 </script>
+
+<style scoped>
+.devices-toolbar {
+  width: 100%;
+  max-width: 1120px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.devices-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--portal-surface);
+}
+
+.devices-table tbody tr {
+  cursor: pointer;
+}
+
+.devices-table tbody td {
+  border-bottom: 1px solid var(--portal-border);
+}
+
+.devices-table__actions,
+.devices-table__control {
+  width: 120px;
+  text-align: right;
+}
+</style>

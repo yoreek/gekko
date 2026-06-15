@@ -12,3 +12,13 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 </script>
+
+<style scoped>
+.not-found {
+  padding: 48px 24px;
+}
+
+.not-found-card {
+  padding: 24px;
+}
+</style>

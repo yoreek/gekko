@@ -110,3 +110,38 @@ function activatePanel(panelId: string): void {
   panelStore.setActivePanel(panelId)
 }
 </script>
+
+<style scoped>
+.panel-manager {
+  display: grid;
+  gap: 18px;
+}
+
+.panel-manager__hint {
+  margin-top: 8px;
+}
+
+.panel-manager__item--active {
+  border-color: rgb(var(--v-theme-primary));
+}
+
+.panel-manager__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.panel-manager__main {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.panel-manager__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+</style>

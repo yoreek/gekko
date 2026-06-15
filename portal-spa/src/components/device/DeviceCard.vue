@@ -83,3 +83,46 @@ const statusMarkerClass = computed(() => {
   return ''
 })
 </script>
+
+<style scoped>
+.device-card {
+  position: relative;
+  min-height: 44px;
+  height: 44px;
+  padding: 0 12px;
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.device-card:hover {
+  transform: translateY(-1px);
+}
+
+.device-card__row {
+  min-width: 0;
+}
+
+.device-card__copy {
+  min-width: 0;
+}
+
+.device-card__name {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 0.9rem;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.device-card__status-dot {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  background: currentColor;
+}
+</style>

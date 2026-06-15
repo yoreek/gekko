@@ -60,3 +60,38 @@ defineEmits<{
 
 const { t } = useI18n()
 </script>
+
+<style scoped>
+.device-dialog {
+  overflow: hidden;
+}
+
+.device-dialog__title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 14px;
+}
+
+.device-dialog__title-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.device-dialog__icon-button {
+  min-width: 36px;
+  width: 36px;
+  height: 36px;
+}
+
+.device-dialog__body {
+  padding: 18px 20px 20px;
+}
+
+.device-dialog__footer {
+  padding: 14px 20px 18px;
+}
+</style>

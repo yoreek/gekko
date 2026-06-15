@@ -104,3 +104,13 @@ function layoutUpdated(layout: GridLayoutItem[]): void {
   )
 }
 </script>
+
+<style scoped>
+.dashboard-grid,
+.dashboard-grid :deep(.vue-grid-item),
+.dashboard-grid :deep(.vue-grid-item.cssTransforms) {
+  transition: none;
+  transition-duration: 0s;
+  transition-property: none;
+}
+</style>

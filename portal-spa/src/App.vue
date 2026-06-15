@@ -151,3 +151,115 @@ watch(
   },
 )
 </script>
+
+<style scoped>
+.app-shell {
+  min-height: 100%;
+  background: var(--portal-page-bg);
+}
+
+.app-bar__nav-icon {
+  margin-left: 4px;
+  margin-right: 10px;
+}
+
+.app-bar__brand {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.app-bar__title {
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.12;
+}
+
+.app-bar__subtitle {
+  font-size: 0.76rem;
+  line-height: 1.2;
+}
+
+.app-main {
+  min-height: calc(100dvh - 64px);
+  min-width: 0;
+  background: var(--portal-page-bg);
+}
+
+.portal-drawer__brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 12px;
+}
+
+.portal-drawer__brand-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.portal-drawer__close-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.portal-drawer__title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.portal-drawer__subtitle {
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+.portal-drawer__divider {
+  margin: 0 16px 8px;
+}
+
+.portal-drawer__list {
+  padding: 8px 12px 16px;
+}
+
+.portal-drawer__item {
+  margin-bottom: 4px;
+}
+
+.portal-drawer__item :deep(.v-list-item-title) {
+  font-weight: 600;
+}
+
+.portal-drawer__item-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.app-bar,
+.portal-drawer {
+  background: var(--portal-surface);
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.app-bar {
+  border-bottom: 1px solid var(--portal-border);
+  box-shadow: none;
+}
+
+.portal-drawer {
+  border-right: 1px solid var(--portal-border);
+  box-shadow: var(--portal-shadow-sm);
+}
+
+.app-bar__icon-button {
+  margin-left: 4px;
+}
+
+@media (max-width: 640px) {
+  .app-bar__subtitle {
+    display: none;
+  }
+}
+</style>

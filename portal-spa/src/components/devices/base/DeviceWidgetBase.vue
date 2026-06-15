@@ -58,3 +58,63 @@ function handleOpen(): void {
   emit('open')
 }
 </script>
+
+<style scoped>
+.device-widget {
+  position: relative;
+  min-height: 44px;
+  height: 44px;
+  padding: 0 12px;
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.device-widget--editable {
+  cursor: move;
+  user-select: none;
+}
+
+.device-widget:not(.device-widget--editable):hover {
+  transform: translateY(-1px);
+}
+
+.device-widget__remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+}
+
+.device-widget__remove-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.device-widget__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 100%;
+  min-width: 0;
+}
+
+.device-widget__actions {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+
+.device-widget__name {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 0.9rem;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

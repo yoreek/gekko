@@ -138,73 +138,51 @@
       @command="submitDeviceCommand"
     />
 
-    <v-dialog v-model="panelDialogOpen" max-width="420">
-      <v-card class="device-dialog">
-        <v-card-title class="device-dialog__title">
-          <div>
-            <div class="text-overline">{{ t('dashboard.addPanel') }}</div>
-            <div class="text-body-2 text-medium-emphasis">
-              {{ t('dashboard.addPanelHint') }}
-            </div>
-          </div>
-          <v-btn variant="text" @click="panelDialogOpen = false">
-            <AppIcon name="close" />
-          </v-btn>
-        </v-card-title>
-        <v-divider />
-        <v-card-text class="device-dialog__body">
-          <v-text-field
-            v-model="panelNameDraft"
-            :label="t('dashboard.panelName')"
-            autofocus
-          />
-        </v-card-text>
-        <v-divider />
-        <v-card-actions class="device-dialog__footer">
-          <v-spacer />
-          <v-btn variant="text" @click="panelDialogOpen = false">
-            {{ t('actions.cancel') }}
-          </v-btn>
-          <v-btn color="primary" :disabled="panelNameDraft.trim().length === 0" @click="submitCreatePanel">
-            {{ t('dashboard.addPanel') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <DeviceDialogShell
+      v-model="panelDialogOpen"
+      :headline="t('dashboard.addPanel')"
+      :subline="t('dashboard.addPanelHint')"
+      :max-width="420"
+    >
+      <v-text-field
+        v-model="panelNameDraft"
+        :label="t('dashboard.panelName')"
+        autofocus
+      />
 
-    <v-dialog v-model="addDeviceDialogOpen" max-width="520">
-      <v-card class="device-dialog">
-        <v-card-title class="device-dialog__title">
-          <div>
-            <div class="text-overline">{{ t('dashboard.addDevice') }}</div>
-            <div class="text-body-2 text-medium-emphasis">
-              {{ t('dashboard.addDeviceHint') }}
-            </div>
-          </div>
-          <v-btn variant="text" @click="addDeviceDialogOpen = false">
-            <AppIcon name="close" />
-          </v-btn>
-        </v-card-title>
-        <v-divider />
-        <v-card-text class="device-dialog__body">
-          <v-select
-            v-model="selectedAddDeviceId"
-            :items="deviceOptions"
-            :label="t('dashboard.deviceToAdd')"
-          />
-        </v-card-text>
-        <v-divider />
-        <v-card-actions class="device-dialog__footer">
-          <v-spacer />
-          <v-btn variant="text" @click="addDeviceDialogOpen = false">
-            {{ t('actions.cancel') }}
-          </v-btn>
-          <v-btn color="primary" :disabled="selectedAddDeviceId === null" @click="submitAddDevice">
-            {{ t('dashboard.addDevice') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+      <template #footer>
+        <v-spacer />
+        <v-btn variant="text" @click="panelDialogOpen = false">
+          {{ t('actions.cancel') }}
+        </v-btn>
+        <v-btn color="primary" :disabled="panelNameDraft.trim().length === 0" @click="submitCreatePanel">
+          {{ t('dashboard.addPanel') }}
+        </v-btn>
+      </template>
+    </DeviceDialogShell>
+
+    <DeviceDialogShell
+      v-model="addDeviceDialogOpen"
+      :headline="t('dashboard.addDevice')"
+      :subline="t('dashboard.addDeviceHint')"
+      :max-width="520"
+    >
+      <v-select
+        v-model="selectedAddDeviceId"
+        :items="deviceOptions"
+        :label="t('dashboard.deviceToAdd')"
+      />
+
+      <template #footer>
+        <v-spacer />
+        <v-btn variant="text" @click="addDeviceDialogOpen = false">
+          {{ t('actions.cancel') }}
+        </v-btn>
+        <v-btn color="primary" :disabled="selectedAddDeviceId === null" @click="submitAddDevice">
+          {{ t('dashboard.addDevice') }}
+        </v-btn>
+      </template>
+    </DeviceDialogShell>
   </v-container>
 </template>
 
@@ -216,6 +194,7 @@ import { commandDevice, fetchDevice, type DeviceCommandRequest } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
 import DashboardGrid from '@/components/dashboard/DashboardGrid.vue'
 import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
+import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import { buildDeviceEditCommands } from '@/components/device/device-form'
 import type { DeviceEditSubmitPayload } from '@/components/device/device-form'
 import type { DashboardDevice } from '@/models/device'
@@ -583,3 +562,39 @@ watch(detailOpen, value => {
   }
 })
 </script>
+
+<style scoped>
+.dashboard-page {
+  max-width: none;
+}
+
+.dashboard-surface {
+  min-height: calc(100dvh - 64px);
+  background: var(--portal-page-bg);
+}
+
+.dashboard-surface > .v-toolbar {
+  background: var(--portal-surface);
+}
+
+.dashboard-panel-body {
+  min-width: 0;
+}
+
+.dashboard-panel-body--pending .dashboard-grid {
+  visibility: hidden;
+}
+
+.dashboard-empty {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  border: 1px dashed var(--portal-border);
+  border-radius: var(--portal-radius-md);
+  background: var(--portal-surface);
+  text-align: center;
+  gap: 6px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+</style>

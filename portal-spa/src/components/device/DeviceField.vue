@@ -23,3 +23,37 @@ defineProps<{
   mode?: 'display' | 'control'
 }>()
 </script>
+
+<style scoped>
+.device-field {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+}
+
+.device-field__label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.device-field__value {
+  margin-top: 4px;
+  font-size: 0.96rem;
+  word-break: break-word;
+}
+
+.device-field__control {
+  min-width: 0;
+}
+
+.device-field strong {
+  font-size: 0.96rem;
+}
+</style>

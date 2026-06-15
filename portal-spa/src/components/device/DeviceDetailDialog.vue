@@ -255,3 +255,20 @@ function submitSave(): void {
 }
 
 </script>
+
+<style scoped>
+.device-dialog__section {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.device-dialog__empty {
+  padding: 40px 16px;
+  text-align: center;
+}
+
+.device-dialog__error {
+  flex: 1 1 auto;
+}
+</style>
