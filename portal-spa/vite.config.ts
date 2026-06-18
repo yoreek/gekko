@@ -19,6 +19,7 @@ export default defineConfig({
   build: {
     assetsInlineLimit: 0,
     emptyOutDir: true,
+    cssCodeSplit: false,
     minify: 'terser',
     reportCompressedSize: true,
     sourcemap: false,

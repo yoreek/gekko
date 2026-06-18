@@ -23,6 +23,7 @@ protected:
     void index() override;
     void show() override;
     void create() override;
+    void destroy() override;
     void cmd() override;
 
 private:

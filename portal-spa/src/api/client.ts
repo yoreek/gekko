@@ -11,7 +11,7 @@ import type {
   WifiStatusResponse,
 } from './contracts'
 import { detectTransportMode } from './transport'
-import { requestEmpty, requestForm, requestJson } from './http'
+import { requestEmpty, requestJson } from './http'
 import {
   mockCommandDevice,
   mockFetchDashboardLayout,
@@ -25,6 +25,7 @@ import {
   mockFetchWifiStatus,
   mockRestartSystem,
   mockSaveDashboardLayout,
+  mockResetWifiCredentials,
   mockStartBleWifiConfig,
 } from '@/mock/handlers'
 
@@ -50,19 +51,33 @@ export function configureWifi(ssid: string, password = ''): Promise<{ status: st
   if (useMockTransport()) {
     return mockConfigureWifi(ssid, password)
   }
-  const form = new URLSearchParams()
-  form.set('ssid', ssid)
-  if (password.length > 0) {
-    form.set('password', password)
-  }
-  return requestForm<{ status: string }>('/api/wifi/configure', form)
+  return requestJson<{ status: string }>('/api/wifi/configure', {
+    method: 'POST',
+    body: JSON.stringify({ ssid, password }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
 }
 
 export function startBleWifiConfig(): Promise<{ status: string; action: string }> {
   if (useMockTransport()) {
     return mockStartBleWifiConfig()
   }
-  return requestJson<{ status: string; action: string }>('/api/wifi/ble-config', { method: 'POST' })
+  return requestJson<{ status: string; action: string }>('/api/wifi/ble-config', {
+    method: 'POST',
+    body: JSON.stringify({}),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+}
+
+export function resetWifiCredentials(): Promise<{ status: string; action: string }> {
+  if (useMockTransport()) {
+    return mockResetWifiCredentials()
+  }
+  return requestJson<{ status: string; action: string }>('/api/wifi/configure', { method: 'DELETE' })
 }
 
 export function fetchDevices(): Promise<DeviceRegistryResponse> {
@@ -143,5 +158,11 @@ export function restartSystem(): Promise<SystemRestartResponse> {
   if (useMockTransport()) {
     return mockRestartSystem()
   }
-  return requestJson<SystemRestartResponse>('/api/system/restart', { method: 'POST' })
+  return requestJson<SystemRestartResponse>('/api/system/restart', {
+    method: 'POST',
+    body: JSON.stringify({}),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
 }

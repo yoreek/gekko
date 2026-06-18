@@ -13,6 +13,8 @@ export type AppIconName =
   | 'refresh'
   | 'close'
   | 'edit'
+  | 'eye'
+  | 'eye-off'
   | 'info'
   | 'trash'
   | 'menu'
@@ -83,6 +85,14 @@ export const iconRegistry: Record<AppIconName, IconShape> = {
   edit: {
     viewBox: '0 0 24 24',
     paths: ['M5 19l4.2-1 9.3-9.3-3.2-3.2L6 14.8z', 'M13.8 7l3.2 3.2', 'M5 19h14'],
+  },
+  eye: {
+    viewBox: '0 0 24 24',
+    paths: ['M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z', 'M12 9a3 3 0 100 6 3 3 0 000-6z'],
+  },
+  'eye-off': {
+    viewBox: '0 0 24 24',
+    paths: ['M3 3l18 18', 'M10.6 10.6a2 2 0 002.8 2.8', 'M9.9 5.3A9.3 9.3 0 0112 5c6.5 0 10 7 10 7a16.3 16.3 0 01-3 4.1', 'M6.6 6.6C3.6 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 004.2-.9'],
   },
   info: {
     viewBox: '0 0 24 24',

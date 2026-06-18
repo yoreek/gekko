@@ -80,6 +80,33 @@ WifiManagerResult WifiManager::submitCredentials(const WiFiCredentials& credenti
     return WifiManagerResult::Accepted;
 }
 
+WifiManagerResult WifiManager::clearCredentials() {
+    if (configStore_ != nullptr && !configStore_->clearWifiCredentials()) {
+        EWFM_WIFI_LOG_WARN("wifi credentials clear failed");
+        return WifiManagerResult::StorageError;
+    }
+
+    if (configStore_ != nullptr) {
+        config_ = configStore_->config();
+    } else {
+        config_.wifi = {};
+    }
+
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    portENTER_CRITICAL(&controlMutex_);
+#endif
+    pendingCredentialsSubmit_ = false;
+    pendingSubmitSsid_[0] = '\0';
+    pendingSubmitPassword_[0] = '\0';
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    portEXIT_CRITICAL(&controlMutex_);
+#endif
+
+    updateCredentials(config_.wifi);
+    EWFM_WIFI_LOG_INFO("wifi credentials cleared");
+    return WifiManagerResult::Accepted;
+}
+
 bool WifiManager::requestBleConfig() {
     if (!config_.provisioning.mobileProvisioningEnabled) {
         EWFM_WIFI_LOG_WARN("BLE config mode rejected: disabled");
@@ -123,6 +150,11 @@ SM_STATE(Connecting) {
 }
 
 SM_STATE(CheckConnection) {
+    if (!credentials_.hasCredentials()) {
+        EWFM_WIFI_LOG_INFO("wifi credentials cleared, returning to idle");
+        SM_GOTO(Idle);
+    }
+
     if (bleConfigRequested()) {
         EWFM_WIFI_LOG_INFO("BLE config requested, leaving connection check");
         SM_GOTO(StartBleConfig);
@@ -162,6 +194,13 @@ SM_STATE(RetryDelay) {
 }
 
 SM_STATE(Connected) {
+    if (!credentials_.hasCredentials()) {
+        stationIpLogged_ = false;
+        retryCount_ = 0;
+        EWFM_WIFI_LOG_INFO("wifi credentials cleared, returning to idle");
+        SM_GOTO(Idle);
+    }
+
     if (bleConfigRequested()) {
         EWFM_WIFI_LOG_INFO("BLE config requested, leaving connected station mode");
         SM_GOTO(StartBleConfig);

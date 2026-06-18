@@ -217,9 +217,16 @@ bool ArduinoWifiDriver::scanComplete(std::vector<WifiNetwork>& networks, size_t 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     EWFM_WIFI_LOG_INFO("scanComplete requested maxResults=%u", static_cast<unsigned>(maxResults));
     int16_t count = WiFi.scanComplete();
-    if (count < 0) {
+    if (count == WIFI_SCAN_RUNNING) {
         EWFM_WIFI_LOG_DEBUG("scanComplete not ready count=%d", static_cast<int>(count));
         return false;
+    }
+    if (count == WIFI_SCAN_FAILED) {
+        EWFM_WIFI_LOG_WARN("scanComplete failed");
+        WiFi.scanDelete();
+        networks.clear();
+        logWifiSnapshot("scanComplete failed");
+        return true;
     }
     EWFM_WIFI_LOG_INFO("scanComplete count=%d", static_cast<int>(count));
     networks.clear();

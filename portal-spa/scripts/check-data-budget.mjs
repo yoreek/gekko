@@ -1,7 +1,8 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 
-const dataBudgetBytes = 250 * 1024
+// Keep this in sync with `littlefs` in `my_partitions.csv` (0x50000 = 320 KiB).
+const dataBudgetBytes = 320 * 1024
 const primaryJsBudgetBytes = 200 * 1024
 const dataDir = path.resolve(process.cwd(), '../data')
 

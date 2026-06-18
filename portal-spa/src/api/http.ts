@@ -96,18 +96,6 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
   }
 }
 
-export async function requestForm<T>(path: string, form: URLSearchParams, options: RequestOptions = {}): Promise<T> {
-  return requestJson<T>(path, {
-    ...options,
-    method: options.method ?? 'POST',
-    body: form.toString(),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-      ...(options.headers ?? {}),
-    },
-  })
-}
-
 export async function requestEmpty(path: string, options: RequestOptions = {}): Promise<void> {
   await requestJson<undefined>(path, options)
 }

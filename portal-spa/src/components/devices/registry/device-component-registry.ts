@@ -1,4 +1,4 @@
-import { defineAsyncComponent, type Component } from 'vue'
+import type { Component } from 'vue'
 
 import {
   DUMMY_DEVICE_TYPE_ID,
@@ -6,6 +6,9 @@ import {
   resolveDeviceComponent,
   type DeviceTypeId,
 } from '@/models/device-types'
+import DummyDeviceDetail from '@/components/devices/dummy/DummyDeviceDetail.vue'
+import GpioSwitchDeviceDetail from '@/components/devices/gpio-switch/GpioSwitchDeviceDetail.vue'
+import GpioSwitchDeviceForm from '@/components/devices/gpio-switch/GpioSwitchDeviceForm.vue'
 
 interface DeviceUiRegistryEntry {
   typeId: DeviceTypeId
@@ -13,17 +16,17 @@ interface DeviceUiRegistryEntry {
   form?: Component
 }
 
-const detailFallback = defineAsyncComponent(() => import('@/components/devices/dummy/DummyDeviceDetail.vue'))
+const detailFallback = DummyDeviceDetail
 
 const deviceUiRegistry: DeviceUiRegistryEntry[] = [
   {
     typeId: DUMMY_DEVICE_TYPE_ID,
-    detail: defineAsyncComponent(() => import('@/components/devices/dummy/DummyDeviceDetail.vue')),
+    detail: DummyDeviceDetail,
   },
   {
     typeId: GPIO_SWITCH_DEVICE_TYPE_ID,
-    detail: defineAsyncComponent(() => import('@/components/devices/gpio-switch/GpioSwitchDeviceDetail.vue')),
-    form: defineAsyncComponent(() => import('@/components/devices/gpio-switch/GpioSwitchDeviceForm.vue')),
+    detail: GpioSwitchDeviceDetail,
+    form: GpioSwitchDeviceForm,
   },
 ]
 

@@ -1,7 +1,9 @@
-import { defineAsyncComponent, type Component } from 'vue'
+import type { Component } from 'vue'
 
 import type { DeviceOutputState } from '@/api'
 import type { AppIconName } from '@/icons'
+import DummyDeviceWidget from '@/components/devices/dummy/DummyDeviceWidget.vue'
+import GpioSwitchDeviceWidget from '@/components/devices/gpio-switch/GpioSwitchDeviceWidget.vue'
 
 export const DUMMY_DEVICE_TYPE_ID = 1 as const
 export const GPIO_SWITCH_DEVICE_TYPE_ID = 2 as const
@@ -40,11 +42,11 @@ const deviceTypeLabelKeys: Record<number, string> = {
 export const deviceComponentRegistry: DeviceComponentRegistryEntry[] = [
   {
     typeId: DUMMY_DEVICE_TYPE_ID,
-    component: defineAsyncComponent(() => import('@/components/devices/dummy/DummyDeviceWidget.vue')),
+    component: DummyDeviceWidget,
   },
   {
     typeId: GPIO_SWITCH_DEVICE_TYPE_ID,
-    component: defineAsyncComponent(() => import('@/components/devices/gpio-switch/GpioSwitchDeviceWidget.vue')),
+    component: GpioSwitchDeviceWidget,
   },
 ]
 

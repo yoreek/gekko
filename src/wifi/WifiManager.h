@@ -24,6 +24,7 @@ public:
 
     void begin(const DeviceConfig& config);
     [[nodiscard]] WifiManagerResult submitCredentials(const WiFiCredentials& credentials);
+    [[nodiscard]] WifiManagerResult clearCredentials();
     [[nodiscard]] bool requestBleConfig();
 
     bool connected() const {

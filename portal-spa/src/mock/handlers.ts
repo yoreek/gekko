@@ -98,6 +98,30 @@ export function mockStartBleWifiConfig(): Promise<{ status: string; action: stri
   return Promise.resolve(response)
 }
 
+export function mockResetWifiCredentials(): Promise<{ status: string; action: string }> {
+  const response = mutateRegistry(db => {
+    db.wifi.status = 'idle'
+    db.wifi.stationIp = ''
+    db.registryRevision += 1
+    db.pendingPersistence = true
+    return ok({
+      status: 'accepted',
+      action: 'clear_wifi_credentials',
+    })
+  })
+  publishRealtimeMessage({
+    topic: 'wifi.status',
+    revision: loadMockDatabase().registryRevision,
+    payload: {
+      wifi_status: 'idle',
+      station_ip: loadMockDatabase().wifi.stationIp,
+      setup_ap_ip: loadMockDatabase().wifi.setupApIp,
+    },
+  })
+  scheduleMockPersistenceFlush()
+  return Promise.resolve(response)
+}
+
 export function mockFetchDevices(): DeviceRegistryResponse {
   const db = loadMockDatabase()
   return ok({
