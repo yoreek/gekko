@@ -7,6 +7,11 @@
 
 using namespace ewfm;
 
+void test_device_api_adapter_registry_resolves_onewire();
+void test_onewire_api_adapter_parses_create_request();
+void test_onewire_api_adapter_rejects_invalid_config_shape();
+void test_onewire_api_adapter_serializes_runtime_scan_snapshot();
+
 namespace {
 
 DeviceRecord makeDummyRecord() {
@@ -111,5 +116,9 @@ int main(int, char**) {
     RUN_TEST(test_dummy_device_api_adapter_parses_create_request);
     RUN_TEST(test_dummy_device_api_adapter_rejects_invalid_payload);
     RUN_TEST(test_dummy_device_api_adapter_serializes_record);
+    RUN_TEST(test_device_api_adapter_registry_resolves_onewire);
+    RUN_TEST(test_onewire_api_adapter_parses_create_request);
+    RUN_TEST(test_onewire_api_adapter_rejects_invalid_config_shape);
+    RUN_TEST(test_onewire_api_adapter_serializes_runtime_scan_snapshot);
     return UNITY_END();
 }

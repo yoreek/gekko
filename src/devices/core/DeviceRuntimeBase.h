@@ -43,6 +43,9 @@ protected:
     void clearDisableRequested();
     void clearDeleteRequested();
     void setDeleted();
+    void markRuntimeStateDirty();
+    bool runtimeStateDirty() const override;
+    void clearRuntimeStateDirty() override;
 
     DeviceStatus status_{DeviceStatus::Unknown};
     bool startRequested_{false};
@@ -51,6 +54,7 @@ protected:
     bool deleteRequested_{false};
     bool faultRequested_{false};
     bool deleted_{false};
+    bool runtimeStateDirty_{false};
 
 private:
     IDeviceRuntime* parentRuntime_{nullptr};

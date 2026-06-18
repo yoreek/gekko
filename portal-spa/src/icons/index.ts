@@ -2,6 +2,7 @@ export type AppIconName =
   | 'portal'
   | 'wifi'
   | 'device'
+  | 'bus'
   | 'devices'
   | 'panels'
   | 'ota'
@@ -41,6 +42,10 @@ export const iconRegistry: Record<AppIconName, IconShape> = {
   device: {
     viewBox: '0 0 24 24',
     paths: ['M7 4h10v16H7z', 'M10 7h4', 'M10 17h4', 'M9 10h6v4H9z'],
+  },
+  bus: {
+    viewBox: '0 0 24 24',
+    paths: ['M6 5h12v14H6z', 'M9 8h6', 'M9 12h6', 'M9 16h3', 'M15 16h0.01'],
   },
   devices: {
     viewBox: '0 0 24 24',

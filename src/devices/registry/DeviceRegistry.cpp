@@ -463,10 +463,13 @@ DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const std::
     DeviceRegistrySnapshot next = snapshot_;
     auto nextIt = std::find_if(next.records.begin(), next.records.end(),
                                [deviceId](const DeviceRecord& record) { return record.header.deviceId == deviceId; });
+    const bool enabled = nextIt->enabled;
+    const DeviceTypeId typeId = nextIt->header.typeId;
     nextIt->header.configVersion = configVersion != 0 ? configVersion : descriptor->currentConfigVersion;
     nextIt->header.configRevision += 1;
     nextIt->header.payloadLength = static_cast<uint32_t>(configPayload.size());
     nextIt->configPayload = configPayload;
+    const uint32_t nextConfigRevision = nextIt->header.configRevision;
 
     const DeviceValidationResult recordResult = validateRecord(*nextIt, *descriptor);
     if (!recordResult.ok()) {
@@ -492,8 +495,18 @@ DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const std::
 
     result.pendingPersistence = persistence_.hasPendingPersistence();
     result.validation = {};
-    if (const auto runtimeIt = runtimes_.find(deviceId); runtimeIt != runtimes_.end() && runtimeIt->second.runtime != nullptr) {
-        runtimeIt->second.runtime->requestReconfigure();
+    clearRuntime(deviceId);
+    result.validation = reloadRuntimeFor(deviceId);
+    if (!result.validation.ok()) {
+        return result;
+    }
+    syncRuntimeParentLink(deviceId);
+    if (auto* runtimePtr = runtime(deviceId); runtimePtr != nullptr) {
+        if (enabled) {
+            runtimePtr->begin(now);
+        } else {
+            runtimePtr->requestDisable();
+        }
     }
     refreshDependentRuntimeStates(now);
     emitRuntimeStatusChanges();
@@ -501,9 +514,9 @@ DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const std::
     DeviceEvent updated{};
     updated.kind = DeviceEventKind::DeviceUpdated;
     updated.registryRevision = registryRevision_;
-    updated.configRevision = nextIt->header.configRevision;
+    updated.configRevision = nextConfigRevision;
     updated.deviceId = deviceId;
-    updated.typeId = nextIt->header.typeId;
+    updated.typeId = typeId;
     updated.status = effectiveStatus(deviceId);
     updated.pendingPersistence = persistence_.hasPendingPersistence();
     DeviceRegistryEventReporter::setEventDetail(updated, "config updated");
@@ -512,9 +525,9 @@ DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const std::
     DeviceEvent accepted{};
     accepted.kind = DeviceEventKind::CommandAccepted;
     accepted.registryRevision = registryRevision_;
-    accepted.configRevision = nextIt->header.configRevision;
+    accepted.configRevision = nextConfigRevision;
     accepted.deviceId = deviceId;
-    accepted.typeId = nextIt->header.typeId;
+    accepted.typeId = typeId;
     accepted.status = updated.status;
     accepted.pendingPersistence = persistence_.hasPendingPersistence();
     accepted.commandAccepted = true;
@@ -1216,6 +1229,19 @@ void DeviceRegistry::emitRuntimeStatusChanges() {
         const DeviceTypeId typeId = record != nullptr ? record->header.typeId : 0;
         eventReporter_.emitRuntimeStatusChangeIfNeeded(entry.first, typeId, current, registryRevision_,
                                                        persistence_.hasPendingPersistence(), "runtime status changed");
+        if (entry.second.runtime->runtimeStateDirty()) {
+            DeviceEvent stateChanged{};
+            stateChanged.kind = DeviceEventKind::StateChanged;
+            stateChanged.registryRevision = registryRevision_;
+            stateChanged.configRevision = record != nullptr ? record->header.configRevision : 0;
+            stateChanged.deviceId = entry.first;
+            stateChanged.typeId = typeId;
+            stateChanged.status = current;
+            stateChanged.pendingPersistence = persistence_.hasPendingPersistence();
+            DeviceRegistryEventReporter::setEventDetail(stateChanged, "runtime state changed");
+            eventReporter_.emit(stateChanged);
+            entry.second.runtime->clearRuntimeStateDirty();
+        }
     }
 }
 

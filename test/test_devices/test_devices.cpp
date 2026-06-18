@@ -44,6 +44,15 @@ void test_default_device_type_registry_contains_dummy() {
     TEST_ASSERT_TRUE(descriptor->supportsRetainedState);
 }
 
+void test_default_device_type_registry_contains_onewire() {
+    DeviceTypeRegistry registry = DeviceTypeRegistry::withDefaults();
+    const DeviceTypeDescriptor* descriptor = registry.find(3);
+    TEST_ASSERT_NOT_NULL(descriptor);
+    TEST_ASSERT_EQUAL_STRING("OneWireBusDevice", descriptor->name);
+    TEST_ASSERT_TRUE(descriptor->supportsCommands);
+    TEST_ASSERT_FALSE(descriptor->supportsRetainedState);
+}
+
 void test_device_id_generation_skips_reserved_and_duplicates() {
     SequentialDeviceIdSource source(0);
     DeviceId out{0};
@@ -227,6 +236,7 @@ void test_dummy_device_parent_dependency_and_child_wiring_survive_base_refactor(
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_default_device_type_registry_contains_dummy);
+    RUN_TEST(test_default_device_type_registry_contains_onewire);
     RUN_TEST(test_device_id_generation_skips_reserved_and_duplicates);
     RUN_TEST(test_device_id_generation_exhaustion_fails);
     RUN_TEST(test_device_registry_store_round_trip);

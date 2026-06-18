@@ -3,10 +3,12 @@ import type { Component } from 'vue'
 import type { DeviceOutputState } from '@/api'
 import type { AppIconName } from '@/icons'
 import DummyDeviceWidget from '@/components/devices/dummy/DummyDeviceWidget.vue'
+import OneWireBusDeviceWidget from '@/components/devices/onewire-bus/OneWireBusDeviceWidget.vue'
 import GpioSwitchDeviceWidget from '@/components/devices/gpio-switch/GpioSwitchDeviceWidget.vue'
 
 export const DUMMY_DEVICE_TYPE_ID = 1 as const
 export const GPIO_SWITCH_DEVICE_TYPE_ID = 2 as const
+export const ONEWIRE_BUS_DEVICE_TYPE_ID = 3 as const
 
 export type DeviceTypeId = number
 
@@ -32,11 +34,18 @@ export const deviceTypeOptions: DeviceTypeOption[] = [
     componentKey: 'gpio-switch',
     supportedOutputStates: ['off', 'on', 'disabled'],
   },
+  {
+    id: ONEWIRE_BUS_DEVICE_TYPE_ID,
+    labelKey: 'device.type.onewireBus',
+    icon: 'bus',
+    componentKey: 'onewire-bus',
+  },
 ]
 
 const deviceTypeLabelKeys: Record<number, string> = {
   [DUMMY_DEVICE_TYPE_ID]: 'device.type.dummy',
   [GPIO_SWITCH_DEVICE_TYPE_ID]: 'device.type.gpioSwitch',
+  [ONEWIRE_BUS_DEVICE_TYPE_ID]: 'device.type.onewireBus',
 }
 
 export const deviceComponentRegistry: DeviceComponentRegistryEntry[] = [
@@ -47,6 +56,10 @@ export const deviceComponentRegistry: DeviceComponentRegistryEntry[] = [
   {
     typeId: GPIO_SWITCH_DEVICE_TYPE_ID,
     component: GpioSwitchDeviceWidget,
+  },
+  {
+    typeId: ONEWIRE_BUS_DEVICE_TYPE_ID,
+    component: OneWireBusDeviceWidget,
   },
 ]
 

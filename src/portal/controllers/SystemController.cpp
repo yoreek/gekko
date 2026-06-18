@@ -6,9 +6,9 @@
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
+#include <WiFi.h>
 #include <cstdlib>
 #include <cstring>
-#include <WiFi.h>
 #include <esp_timer.h>
 #endif
 

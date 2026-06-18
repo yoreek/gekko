@@ -16,7 +16,7 @@ import { ApiClientError } from '@/api/http'
 import { decodeGpioSwitchConfigBlob } from '@/components/device/device-form'
 import { publishRealtimeMessage } from '@/realtime/bus'
 import { scheduleMockPersistenceFlush } from '@/realtime/mockRuntime'
-import { DUMMY_DEVICE_TYPE_ID, GPIO_SWITCH_DEVICE_TYPE_ID } from '@/models/device-types'
+import { DUMMY_DEVICE_TYPE_ID, GPIO_SWITCH_DEVICE_TYPE_ID, ONEWIRE_BUS_DEVICE_TYPE_ID } from '@/models/device-types'
 import { createSeedMockDatabase, loadMockDatabase, saveMockDatabase } from './database'
 
 function ok<T extends object>(payload: T): T & { success: true } {
@@ -31,6 +31,37 @@ function mutateRegistry<T>(mutator: (db: ReturnType<typeof createSeedMockDatabas
   const result = mutator(db)
   saveMockDatabase(db)
   return result
+}
+
+function completeOneWireScan(deviceId: number): void {
+  const db = loadMockDatabase()
+  const device = db.devices.find(entry => entry.device_id === deviceId)
+  if (!device || device.type_id !== ONEWIRE_BUS_DEVICE_TYPE_ID) {
+    return
+  }
+  device.scan = {
+    in_progress: false,
+    ready: true,
+    device_count: 1,
+    truncated: false,
+    invalid_crc_seen: false,
+    devices: [
+      {
+        address: '28FF641D6216037C',
+        family_code: '28',
+      },
+    ],
+  }
+  saveMockDatabase(db)
+  publishRealtimeMessage({
+    topic: 'device.upsert',
+    revision: db.registryRevision,
+    payload: {
+      ...device,
+      registry_revision: db.registryRevision,
+      pending_persistence: db.pendingPersistence,
+    },
+  })
 }
 
 export function mockFetchWifiStatus(): WifiStatusResponse {
@@ -176,16 +207,20 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
   const response = mutateRegistry(db => {
     const nextId = Math.max(1, ...db.devices.map(device => device.device_id)) + 1
     const typeId = payload.type_id
-    if (typeof typeId !== 'number' || (typeId !== DUMMY_DEVICE_TYPE_ID && typeId !== GPIO_SWITCH_DEVICE_TYPE_ID)) {
+    if (
+      typeof typeId !== 'number' ||
+      (typeId !== DUMMY_DEVICE_TYPE_ID && typeId !== GPIO_SWITCH_DEVICE_TYPE_ID && typeId !== ONEWIRE_BUS_DEVICE_TYPE_ID)
+    ) {
       throw new ApiClientError('unsupported device type', 'UNSUPPORTED_TYPE', 400, null)
     }
     const isGpioSwitch = typeId === GPIO_SWITCH_DEVICE_TYPE_ID
+    const isOneWireBus = typeId === ONEWIRE_BUS_DEVICE_TYPE_ID
 
     const device: DeviceRecord = {
       device_id: nextId,
       type_id: typeId,
-      label: isGpioSwitch ? 'GPIO switch' : 'Dummy device',
-      type: isGpioSwitch ? 'gpio_switch' : 'dummy',
+      label: isGpioSwitch ? 'GPIO switch' : isOneWireBus ? 'OneWire bus' : 'Dummy device',
+      type: isGpioSwitch ? 'gpio_switch' : isOneWireBus ? 'onewire_bus' : 'dummy',
       name: String(payload.name ?? 'New Device'),
       enabled: Boolean(payload.enabled ?? true),
       has_parent: false,
@@ -195,7 +230,7 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
       lifecycle_status: 'ready',
       effective_status: 'ready',
       status: 'ready',
-      retained_state_supported: true,
+      retained_state_supported: !isOneWireBus,
       retained_startup_enabled: false,
       retained_startup_fallback_output: false,
       retained_state_in_config_payload: false,
@@ -209,6 +244,12 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
               inverted: false,
               gpio_pin: 2,
             }
+          : isOneWireBus
+            ? {
+                enabled: true,
+                gpio_pin: 4,
+                internal_pullup: false,
+              }
           : {
               enabled: true,
               restore_previous_state: false,
@@ -220,6 +261,16 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
       output: isGpioSwitch
         ? {
             state: 'off',
+          }
+        : undefined,
+      scan: isOneWireBus
+        ? {
+            in_progress: false,
+            ready: false,
+            device_count: 0,
+            truncated: false,
+            invalid_crc_seen: false,
+            devices: [],
           }
         : undefined,
     }
@@ -298,6 +349,22 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
               gpio_pin: config.gpio_pin,
             }
             device.enabled = config.enabled
+          } else if (device.type_id === ONEWIRE_BUS_DEVICE_TYPE_ID) {
+            const bytes = String(payload.payload ?? '')
+            if (bytes.length !== 7) {
+              throw new ApiClientError('invalid onewire bus config', 'BAD_ARGS', 400, null)
+            }
+            const raw = Uint8Array.from(bytes, char => char.charCodeAt(0))
+            const magicKey = raw[0] | (raw[1] << 8) | (raw[2] << 16) | (raw[3] << 24)
+            if (magicKey !== 0x4f573131) {
+              throw new ApiClientError('invalid onewire bus config', 'BAD_ARGS', 400, null)
+            }
+            device.config = {
+              enabled: raw[4] !== 0,
+              gpio_pin: raw[5],
+              internal_pullup: raw[6] !== 0,
+            }
+            device.enabled = raw[4] !== 0
           }
           device.config_revision += 1
           break
@@ -325,6 +392,27 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
               break
             }
             throw new ApiClientError('unsupported gpio switch output state', 'BAD_ARGS', 400, null)
+          }
+          if (device.type_id === ONEWIRE_BUS_DEVICE_TYPE_ID) {
+            if (payload.payload !== 'scan') {
+              throw new ApiClientError('unsupported onewire command', 'BAD_ARGS', 400, null)
+            }
+            if (isRecordPayload(device.scan) && device.scan.in_progress === true) {
+              throw new ApiClientError('scan already in progress', 'BAD_ARGS', 400, null)
+            }
+            device.scan = {
+              in_progress: true,
+              ready: false,
+              device_count: 0,
+              truncated: false,
+              invalid_crc_seen: false,
+              devices: [],
+            }
+            return ok({
+              registry_revision: db.registryRevision,
+              pending_persistence: db.pendingPersistence,
+              device,
+            })
           }
           if (payload.payload === 'output=1') {
             device.config = {
@@ -368,6 +456,16 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
     revision: db.registryRevision,
     payload: deviceSnapshot,
   })
+  if (
+    payload.command === 'custom' &&
+    payload.payload === 'scan' &&
+    response.device?.type_id === ONEWIRE_BUS_DEVICE_TYPE_ID &&
+    typeof window !== 'undefined'
+  ) {
+    window.setTimeout(() => {
+      completeOneWireScan(deviceId)
+    }, 100)
+  }
   scheduleMockPersistenceFlush()
   return Promise.resolve(response)
 }

@@ -1,7 +1,8 @@
 import type { DeviceCommandRequest } from '@/api'
 import type { DashboardDevice } from '@/models/device'
-import { DUMMY_DEVICE_TYPE_ID, GPIO_SWITCH_DEVICE_TYPE_ID } from '@/models/device-types'
+import { DUMMY_DEVICE_TYPE_ID, GPIO_SWITCH_DEVICE_TYPE_ID, ONEWIRE_BUS_DEVICE_TYPE_ID } from '@/models/device-types'
 import { createDefaultGpioSwitchConfig, normalizeGpioSwitchConfig, type GpioSwitchConfigDraft } from '@/models/devices/gpio-switch'
+import { createDefaultOneWireBusConfig, normalizeOneWireBusConfig, type OneWireBusConfigDraft } from '@/models/devices/onewire-bus'
 import type { OutputState } from '@/models/devices/switch'
 
 export interface DeviceCommonDraft {
@@ -13,11 +14,13 @@ export interface DeviceCommonDraft {
 export interface DeviceEditDraft {
   common: DeviceCommonDraft
   gpioSwitchConfig: GpioSwitchConfigDraft
+  oneWireBusConfig: OneWireBusConfigDraft
 }
 
 export interface DeviceEditSubmitPayload {
   common: DeviceCommonDraft
   gpioSwitchConfig?: GpioSwitchConfigDraft
+  oneWireBusConfig?: OneWireBusConfigDraft
 }
 
 export interface EncodedGpioSwitchConfigDraft extends GpioSwitchConfigDraft {
@@ -47,6 +50,9 @@ export function createDefaultDeviceConfigDraft(typeId: number): Record<string, u
   if (typeId === GPIO_SWITCH_DEVICE_TYPE_ID) {
     return { ...createDefaultGpioSwitchConfig() }
   }
+  if (typeId === ONEWIRE_BUS_DEVICE_TYPE_ID) {
+    return { ...createDefaultOneWireBusConfig() }
+  }
   return {}
 }
 
@@ -54,18 +60,25 @@ export function isGpioSwitchType(typeId: number): boolean {
   return typeId === GPIO_SWITCH_DEVICE_TYPE_ID
 }
 
+export function isOneWireBusType(typeId: number): boolean {
+  return typeId === ONEWIRE_BUS_DEVICE_TYPE_ID
+}
+
 export function createDeviceEditDraft(device: DashboardDevice | null): DeviceEditDraft {
   const gpioSwitchConfig = normalizeGpioSwitchConfig(device?.detail.config)
+  const oneWireBusConfig = normalizeOneWireBusConfig(device?.detail.config)
   if (device === null) {
     return {
       common: createDefaultDeviceCommonDraft(),
       gpioSwitchConfig,
+      oneWireBusConfig,
     }
   }
   const common = createDeviceCommonDraft(device)
   return {
     common,
     gpioSwitchConfig: isGpioSwitchType(device.typeId) ? gpioSwitchConfig : createDefaultGpioSwitchConfig(),
+    oneWireBusConfig: isOneWireBusType(device.typeId) ? oneWireBusConfig : createDefaultOneWireBusConfig(),
   }
 }
 
@@ -152,6 +165,24 @@ export function buildDeviceEditCommands(device: DashboardDevice, payload: Device
     }
   }
 
+  if (isOneWireBusType(device.typeId) && payload.oneWireBusConfig !== undefined) {
+    const current = normalizeOneWireBusConfig(device.detail.config)
+    if (
+      payload.common.enabled !== device.enabled ||
+      current.gpio_pin !== payload.oneWireBusConfig.gpio_pin ||
+      current.internal_pullup !== payload.oneWireBusConfig.internal_pullup ||
+      current.enabled !== payload.oneWireBusConfig.enabled
+    ) {
+      commands.push({
+        command: 'update_config',
+        payload: encodeOneWireBusConfigBlob({
+          ...payload.oneWireBusConfig,
+          enabled: payload.common.enabled,
+        }),
+      })
+    }
+  }
+
   return commands
 }
 
@@ -166,4 +197,17 @@ function byteToOutputState(value: number): OutputState | null {
     return 'disabled'
   }
   return null
+}
+
+function encodeOneWireBusConfigBlob(config: OneWireBusConfigDraft): string {
+  const bytes = new Uint8Array(7)
+  const magicKey = 0x4f573131
+  bytes[0] = magicKey & 0xff
+  bytes[1] = (magicKey >> 8) & 0xff
+  bytes[2] = (magicKey >> 16) & 0xff
+  bytes[3] = (magicKey >> 24) & 0xff
+  bytes[4] = config.enabled ? 1 : 0
+  bytes[5] = config.gpio_pin & 0xff
+  bytes[6] = config.internal_pullup ? 1 : 0
+  return Array.from(bytes, byte => String.fromCharCode(byte)).join('')
 }

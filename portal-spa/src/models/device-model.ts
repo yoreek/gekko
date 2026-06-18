@@ -4,6 +4,7 @@ import type {
   DeviceOutputSnapshot,
   DeviceRecord,
   DeviceRegistryResponse,
+  OneWireScanSnapshot,
 } from '@/api/contracts'
 
 export type DashboardEffectiveStatus = 'Ready' | '!Ready'
@@ -15,6 +16,7 @@ export interface DeviceDetailSnapshot {
   retainedStartupEnabled?: boolean
   retainedStartupFallbackOutput?: boolean
   retainedStateInConfigPayload?: boolean
+  scan?: OneWireScanSnapshot
 }
 
 export interface DashboardDevice {
@@ -80,6 +82,7 @@ function normalizeDetail(record: DeviceRecord): DeviceDetailSnapshot {
     retainedStartupEnabled: record.retained_startup_enabled,
     retainedStartupFallbackOutput: record.retained_startup_fallback_output,
     retainedStateInConfigPayload: record.retained_state_in_config_payload,
+    scan: record.scan,
   }
 
   const restorePreviousState = config.restore_previous_state

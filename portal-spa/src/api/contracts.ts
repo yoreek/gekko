@@ -4,6 +4,20 @@ export interface DeviceOutputSnapshot {
   state?: DeviceOutputState
 }
 
+export interface OneWireScanDeviceSnapshot {
+  address: string
+  family_code: string
+}
+
+export interface OneWireScanSnapshot {
+  in_progress: boolean
+  ready: boolean
+  device_count: number
+  truncated: boolean
+  invalid_crc_seen: boolean
+  devices: OneWireScanDeviceSnapshot[]
+}
+
 export interface WifiStatusResponse {
   wifi_status: 'connected' | 'connecting' | 'disconnected' | 'failed' | 'idle' | 'ble_config'
   station_ip: string
@@ -44,6 +58,7 @@ export interface DeviceRecord {
   retained_startup_enabled?: boolean
   retained_startup_fallback_output?: boolean
   retained_state_in_config_payload?: boolean
+  scan?: OneWireScanSnapshot
   registry_revision?: number
   pending_persistence?: boolean
 }

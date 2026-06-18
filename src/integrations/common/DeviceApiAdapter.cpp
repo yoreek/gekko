@@ -2,6 +2,7 @@
 
 #include "integrations/rest/dummy/DummyDeviceApiAdapter.h"
 #include "integrations/rest/gpio_switch/GpioSwitchDeviceApiAdapter.h"
+#include "integrations/rest/onewire_bus/OneWireBusDeviceApiAdapter.h"
 
 #include <cstring>
 
@@ -43,6 +44,7 @@ DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     DeviceApiAdapterRegistry registry;
     (void)registry.registerAdapter(DummyDeviceApiAdapter::instance());
     (void)registry.registerAdapter(GpioSwitchDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(OneWireBusDeviceApiAdapter::instance());
     return registry;
 }
 

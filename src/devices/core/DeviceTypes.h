@@ -263,6 +263,9 @@ public:
     virtual bool retainedStateDirty() const {
         return false;
     }
+    virtual bool runtimeStateDirty() const {
+        return false;
+    }
     virtual bool serializeRetainedState(RetainedStateRecord& record) const {
         (void)record;
         return false;
@@ -272,6 +275,7 @@ public:
         return false;
     }
     virtual void clearRetainedStateDirty() {}
+    virtual void clearRuntimeStateDirty() {}
 };
 
 class DeviceTypeDescriptor {

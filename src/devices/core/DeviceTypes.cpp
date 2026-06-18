@@ -1,5 +1,6 @@
 #include "devices/core/DeviceTypes.h"
 
+#include "devices/bus/onewire/OneWireBusDevice.h"
 #include "devices/dummy/DummyDevice.h"
 #include "devices/switch/gpio/GpioSwitchDevice.h"
 
@@ -31,6 +32,7 @@ DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     DeviceTypeRegistry registry;
     (void)registry.registerDescriptor(DummyDevice::descriptor());
     (void)registry.registerDescriptor(GpioSwitchDevice::descriptor());
+    (void)registry.registerDescriptor(OneWireBusDevice::descriptor());
     return registry;
 }
 

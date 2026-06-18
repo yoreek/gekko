@@ -3,12 +3,15 @@ import type { Component } from 'vue'
 import {
   DUMMY_DEVICE_TYPE_ID,
   GPIO_SWITCH_DEVICE_TYPE_ID,
+  ONEWIRE_BUS_DEVICE_TYPE_ID,
   resolveDeviceComponent,
   type DeviceTypeId,
 } from '@/models/device-types'
 import DummyDeviceDetail from '@/components/devices/dummy/DummyDeviceDetail.vue'
 import GpioSwitchDeviceDetail from '@/components/devices/gpio-switch/GpioSwitchDeviceDetail.vue'
 import GpioSwitchDeviceForm from '@/components/devices/gpio-switch/GpioSwitchDeviceForm.vue'
+import OneWireBusDeviceDetail from '@/components/devices/onewire-bus/OneWireBusDeviceDetail.vue'
+import OneWireBusDeviceForm from '@/components/devices/onewire-bus/OneWireBusDeviceForm.vue'
 
 interface DeviceUiRegistryEntry {
   typeId: DeviceTypeId
@@ -27,6 +30,11 @@ const deviceUiRegistry: DeviceUiRegistryEntry[] = [
     typeId: GPIO_SWITCH_DEVICE_TYPE_ID,
     detail: GpioSwitchDeviceDetail,
     form: GpioSwitchDeviceForm,
+  },
+  {
+    typeId: ONEWIRE_BUS_DEVICE_TYPE_ID,
+    detail: OneWireBusDeviceDetail,
+    form: OneWireBusDeviceForm,
   },
 ]
 

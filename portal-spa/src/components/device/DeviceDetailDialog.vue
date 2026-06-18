@@ -55,6 +55,12 @@
           :busy="busy"
         />
 
+        <OneWireBusDeviceForm
+          v-else-if="editing && isOneWireBus"
+          v-model="draft.oneWireBusConfig"
+          :busy="busy"
+        />
+
         <component
           v-else-if="!editing && hasTypeDetails"
           :is="detailComponent"
@@ -96,8 +102,14 @@ import { useI18n } from 'vue-i18n'
 import AppIcon from '@/components/AppIcon.vue'
 import DeviceCommonFields from '@/components/device/DeviceCommonFields.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
-import { buildDeviceEditCommands, createDeviceEditDraft, isGpioSwitchType } from '@/components/device/device-form'
+import {
+  buildDeviceEditCommands,
+  createDeviceEditDraft,
+  isGpioSwitchType,
+  isOneWireBusType,
+} from '@/components/device/device-form'
 import GpioSwitchDeviceForm from '@/components/devices/gpio-switch/GpioSwitchDeviceForm.vue'
+import OneWireBusDeviceForm from '@/components/devices/onewire-bus/OneWireBusDeviceForm.vue'
 import { resolveDeviceDetailComponent } from '@/components/devices/registry/device-component-registry'
 import type { DashboardDevice } from '@/models/device'
 import { deviceTypeLabelKey, DUMMY_DEVICE_TYPE_ID } from '@/models/device-types'
@@ -127,6 +139,7 @@ const busy = computed(() => props.busyAction !== null)
 const fullscreen = computed(() => smAndDown.value)
 const device = computed(() => props.device)
 const isGpioSwitch = computed(() => device.value !== null && isGpioSwitchType(device.value.typeId))
+const isOneWireBus = computed(() => device.value !== null && isOneWireBusType(device.value.typeId))
 const hasTypeDetails = computed(() => device.value !== null && device.value.typeId !== DUMMY_DEVICE_TYPE_ID)
 
 const detailComponent = computed(() => {
@@ -184,6 +197,9 @@ const canSave = computed(() => {
   if (isGpioSwitch.value) {
     return JSON.stringify(draft.gpioSwitchConfig) !== JSON.stringify(currentDraft.gpioSwitchConfig)
   }
+  if (isOneWireBus.value) {
+    return JSON.stringify(draft.oneWireBusConfig) !== JSON.stringify(currentDraft.oneWireBusConfig)
+  }
   return false
 })
 
@@ -215,6 +231,7 @@ function resetDrafts(current: DashboardDevice): void {
   draft.common.typeId = next.common.typeId
   draft.common.enabled = next.common.enabled
   draft.gpioSwitchConfig = next.gpioSwitchConfig
+  draft.oneWireBusConfig = next.oneWireBusConfig
 }
 
 function enterEditMode(): void {
@@ -243,6 +260,7 @@ function submitSave(): void {
       typeId: draft.common.typeId,
     },
     gpioSwitchConfig: isGpioSwitch.value ? draft.gpioSwitchConfig : undefined,
+    oneWireBusConfig: isOneWireBus.value ? draft.oneWireBusConfig : undefined,
   })
   if (commands.length === 0) {
     emit('update:editing', false)
@@ -255,6 +273,7 @@ function submitSave(): void {
       typeId: draft.common.typeId,
     },
     gpioSwitchConfig: isGpioSwitch.value ? draft.gpioSwitchConfig : undefined,
+    oneWireBusConfig: isOneWireBus.value ? draft.oneWireBusConfig : undefined,
   })
 }
 

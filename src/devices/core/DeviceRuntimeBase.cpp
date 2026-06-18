@@ -144,4 +144,16 @@ void DeviceRuntimeBase::setDeleted() {
     deleted_ = true;
 }
 
+void DeviceRuntimeBase::markRuntimeStateDirty() {
+    runtimeStateDirty_ = true;
+}
+
+bool DeviceRuntimeBase::runtimeStateDirty() const {
+    return runtimeStateDirty_;
+}
+
+void DeviceRuntimeBase::clearRuntimeStateDirty() {
+    runtimeStateDirty_ = false;
+}
+
 } // namespace ewfm
