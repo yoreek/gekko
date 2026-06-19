@@ -116,7 +116,8 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const Js
                                                                         DeviceConfigUpdateRequest& request, std::string& error) const {
     const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
     if (configObject.isNull()) {
-        return IDeviceApiAdapter::parseUpdateConfigRequest(input, record, request, error);
+        error = "ds18b20 config is required";
+        return false;
     }
 
     Ds18b20TemperatureSensorConfigV1 config{};

@@ -87,8 +87,7 @@ const scan = computed<OneWireScanSnapshot>(() => props.device.detail.scan ?? {
 
 function emitScan(): void {
   emit('command', {
-    command: 'custom',
-    payload: 'scan',
+    command: 'scan',
   })
 }
 </script>

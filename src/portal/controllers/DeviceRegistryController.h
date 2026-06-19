@@ -49,7 +49,6 @@ private:
     static const char* statusToString(DeviceStatus status);
     static const char* errorCodeForDeviceError(DeviceError error);
     static DevicePersistencePolicy parsePolicy(const JsonObjectConst& input);
-    static bool parseCommandType(const char* value, DeviceCommandType& type);
 };
 
 } // namespace ewfm

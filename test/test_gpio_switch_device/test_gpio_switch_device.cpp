@@ -154,7 +154,7 @@ void test_gpio_switch_reconfigure_reapplies_current_output() {
     GpioSwitchDevice device(config, driver);
     startToReady(device);
 
-    TEST_ASSERT_TRUE(device.handleCommand(DeviceCommand{DeviceCommandType::Custom, 1, "state=on"}));
+    TEST_ASSERT_TRUE(device.handleCommand(DeviceCommand{DeviceCommandType::SetOutput, 1, "on"}));
     device.clearRetainedStateDirty();
     device.requestReconfigure();
     device.tickFastLoop(12);

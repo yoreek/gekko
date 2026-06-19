@@ -38,6 +38,8 @@
 - `scripts/check.sh` requires `clang-format` and `cppcheck`.
 - Keep code formatted by `.clang-format`.
 - Do not run or reopen `preview` servers for visual checks unless the user explicitly asks for them; browser validation through Playwright MCP is allowed only when explicitly requested or when the user has already approved a live browser check for the current task.
+- Live HTTP checks against the ESP32, including repeated `curl` requests to `http://192.168.1.249/` and `/api/devices`, should be run outside the sandbox with escalated execution when the user asks for device verification.
+- Do not attribute successful or failed live `curl` checks to the sandbox unless the command itself was run under sandboxed execution.
 
 ## UI Design Rules
 

@@ -168,7 +168,7 @@ void test_onewire_runtime_scans_and_emits_state_dirty() {
     IDeviceRuntime* runtime = &device;
 
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(device.status()));
-    TEST_ASSERT_TRUE(device.handleCommand(DeviceCommand{DeviceCommandType::Custom, 44, "scan"}));
+    TEST_ASSERT_TRUE(device.handleCommand(DeviceCommand{DeviceCommandType::Scan, 44, ""}));
     TEST_ASSERT_TRUE(device.scan().inProgress);
     TEST_ASSERT_TRUE(runtime->runtimeStateDirty());
     runtime->clearRuntimeStateDirty();
@@ -220,8 +220,8 @@ void test_onewire_runtime_rejects_duplicate_scan_and_faults_on_begin_failure() {
     readyDriver.candidates = {};
     OneWireBusDevice device(makeConfig(), readyDriver);
     driveToReady(device);
-    TEST_ASSERT_TRUE(device.handleCommand(DeviceCommand{DeviceCommandType::Custom, 44, "scan"}));
-    TEST_ASSERT_FALSE(device.handleCommand(DeviceCommand{DeviceCommandType::Custom, 44, "scan"}));
+    TEST_ASSERT_TRUE(device.handleCommand(DeviceCommand{DeviceCommandType::Scan, 44, ""}));
+    TEST_ASSERT_FALSE(device.handleCommand(DeviceCommand{DeviceCommandType::Scan, 44, ""}));
 }
 
 void test_onewire_runtime_truncates_results_and_clears_on_disable_and_reconfigure() {
@@ -233,7 +233,7 @@ void test_onewire_runtime_truncates_results_and_clears_on_disable_and_reconfigur
 
     OneWireBusDevice device(makeConfig(), driver);
     driveToReady(device);
-    TEST_ASSERT_TRUE(device.handleCommand(DeviceCommand{DeviceCommandType::Custom, 44, "scan"}));
+    TEST_ASSERT_TRUE(device.handleCommand(DeviceCommand{DeviceCommandType::Scan, 44, ""}));
     for (int tick = 0; tick < 19; ++tick) {
         device.tick100ms(100 + tick);
     }

@@ -15,7 +15,6 @@ import {
 } from '@/models/devices/ds18b20'
 import { createDefaultGpioSwitchConfig, normalizeGpioSwitchConfig, type GpioSwitchConfigDraft } from '@/models/devices/gpio-switch'
 import { createDefaultOneWireBusConfig, normalizeOneWireBusConfig, type OneWireBusConfigDraft } from '@/models/devices/onewire-bus'
-import type { OutputState } from '@/models/devices/switch'
 
 export interface DeviceCommonDraft {
   name: string
@@ -35,10 +34,6 @@ export interface DeviceEditSubmitPayload {
   gpioSwitchConfig?: GpioSwitchConfigDraft
   oneWireBusConfig?: OneWireBusConfigDraft
   ds18b20Config?: Ds18b20TemperatureSensorConfigDraft
-}
-
-export interface EncodedGpioSwitchConfigDraft extends GpioSwitchConfigDraft {
-  enabled: boolean
 }
 
 export function createDefaultDeviceCommonDraft(): DeviceCommonDraft {
@@ -110,46 +105,6 @@ export function normalizeGpioSwitchDraft(value: unknown): GpioSwitchConfigDraft 
   return normalizeGpioSwitchConfig(value)
 }
 
-export function encodeGpioSwitchConfigBlob(config: EncodedGpioSwitchConfigDraft): string {
-  const bytes = new Uint8Array(10)
-  const magicKey = 0x47535731
-  bytes[0] = magicKey & 0xff
-  bytes[1] = (magicKey >> 8) & 0xff
-  bytes[2] = (magicKey >> 16) & 0xff
-  bytes[3] = (magicKey >> 24) & 0xff
-  bytes[4] = config.enabled ? 1 : 0
-  bytes[5] = config.restore_previous_state ? 1 : 0
-  bytes[6] = config.startup_state === 'on' ? 1 : config.startup_state === 'disabled' ? 2 : 0
-  bytes[7] = config.safe_state === 'on' ? 1 : config.safe_state === 'disabled' ? 2 : 0
-  bytes[8] = config.inverted ? 1 : 0
-  bytes[9] = config.gpio_pin & 0xff
-  return Array.from(bytes, byte => String.fromCharCode(byte)).join('')
-}
-
-export function decodeGpioSwitchConfigBlob(blob: string): EncodedGpioSwitchConfigDraft | null {
-  if (blob.length !== 10) {
-    return null
-  }
-  const bytes = Uint8Array.from(blob, char => char.charCodeAt(0))
-  const magicKey = bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24)
-  if (magicKey !== 0x47535731) {
-    return null
-  }
-  const startupState = byteToOutputState(bytes[6])
-  const safeState = byteToOutputState(bytes[7])
-  if (startupState === null || safeState === null) {
-    return null
-  }
-  return {
-    enabled: bytes[4] !== 0,
-    restore_previous_state: bytes[5] !== 0,
-    startup_state: startupState,
-    safe_state: safeState,
-    inverted: bytes[8] !== 0,
-    gpio_pin: bytes[9],
-  }
-}
-
 export function gpioSwitchConfigChanged(current: GpioSwitchConfigDraft, original: GpioSwitchConfigDraft): boolean {
   return (
     current.restore_previous_state !== original.restore_previous_state ||
@@ -166,7 +121,7 @@ export function buildDeviceEditCommands(device: DashboardDevice, payload: Device
   if (name !== device.name) {
     commands.push({
       command: 'rename',
-      payload: name,
+      name,
     })
   }
 
@@ -181,10 +136,10 @@ export function buildDeviceEditCommands(device: DashboardDevice, payload: Device
     if (payload.common.enabled !== device.enabled || gpioSwitchConfigChanged(payload.gpioSwitchConfig, current)) {
       commands.push({
         command: 'update_config',
-        payload: encodeGpioSwitchConfigBlob({
+        config: {
           ...payload.gpioSwitchConfig,
           enabled: payload.common.enabled,
-        }),
+        },
       })
     }
   }
@@ -199,10 +154,10 @@ export function buildDeviceEditCommands(device: DashboardDevice, payload: Device
     ) {
       commands.push({
         command: 'update_config',
-        payload: encodeOneWireBusConfigBlob({
+        config: {
           ...payload.oneWireBusConfig,
           enabled: payload.common.enabled,
-        }),
+        },
       })
     }
   }
@@ -224,29 +179,4 @@ export function buildDeviceEditCommands(device: DashboardDevice, payload: Device
   }
 
   return commands
-}
-
-function byteToOutputState(value: number): OutputState | null {
-  if (value === 0) {
-    return 'off'
-  }
-  if (value === 1) {
-    return 'on'
-  }
-  if (value === 2) {
-    return 'disabled'
-  }
-  return null
-}
-function encodeOneWireBusConfigBlob(config: OneWireBusConfigDraft): string {
-  const bytes = new Uint8Array(7)
-  const magicKey = 0x4f573131
-  bytes[0] = magicKey & 0xff
-  bytes[1] = (magicKey >> 8) & 0xff
-  bytes[2] = (magicKey >> 16) & 0xff
-  bytes[3] = (magicKey >> 24) & 0xff
-  bytes[4] = config.enabled ? 1 : 0
-  bytes[5] = config.gpio_pin & 0xff
-  bytes[6] = config.internal_pullup ? 1 : 0
-  return Array.from(bytes, byte => String.fromCharCode(byte)).join('')
 }

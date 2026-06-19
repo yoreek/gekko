@@ -84,8 +84,10 @@ export interface DeviceRegistryResponse {
 
 export interface DeviceCommandRequest {
   device_id?: number
-  command: 'rename' | 'enable' | 'disable' | 'delete' | 'update_config' | 'set_status' | 'custom' | 'set_parent'
-  payload?: string
+  command: 'rename' | 'enable' | 'disable' | 'delete' | 'update_config' | 'set_status' | 'scan' | 'set_output' | 'set_parent'
+  name?: string
+  status?: string
+  state?: DeviceOutputState
   config?: Record<string, unknown>
   has_parent?: boolean
   parent_device_id?: number

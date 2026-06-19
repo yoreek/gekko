@@ -104,7 +104,7 @@ void test_registry_custom_switch_command_marks_retained_state_without_config_rev
     const size_t dirtyConfigCountBefore = registry.dirtyConfigRecordIds().size();
 
     DeviceMutationResult result =
-        registry.command(DeviceCommand{DeviceCommandType::Custom, created.deviceId, "state=on", DevicePersistencePolicy::Immediate}, 20);
+        registry.command(DeviceCommand{DeviceCommandType::SetOutput, created.deviceId, "on", DevicePersistencePolicy::Immediate}, 20);
 
     TEST_ASSERT_TRUE(result.ok());
     TEST_ASSERT_TRUE(result.pendingPersistence);

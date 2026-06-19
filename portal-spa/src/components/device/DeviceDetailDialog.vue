@@ -222,7 +222,7 @@ const canSave = computed(() => {
 watch(
   () => props.device,
   current => {
-    if (current !== null) {
+    if (current !== null && !props.editing) {
       resetDrafts(current)
     }
   },

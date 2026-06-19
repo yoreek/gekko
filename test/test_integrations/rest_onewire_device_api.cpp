@@ -151,7 +151,7 @@ void test_onewire_api_adapter_serializes_runtime_scan_snapshot() {
     OneWireBusDevice runtime(config, driver);
     runtime.begin(1);
     runtime.tick100ms(2);
-    runtime.handleCommand(DeviceCommand{DeviceCommandType::Custom, 91, "scan"});
+    runtime.handleCommand(DeviceCommand{DeviceCommandType::Scan, 91, ""});
     runtime.tick100ms(3);
     runtime.tick100ms(4);
 
@@ -166,4 +166,33 @@ void test_onewire_api_adapter_serializes_runtime_scan_snapshot() {
     TEST_ASSERT_EQUAL_UINT8(1, output["scan"]["device_count"].as<uint8_t>());
     TEST_ASSERT_EQUAL_STRING("28FF641D621603AD", output["scan"]["devices"][0]["address"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("28", output["scan"]["devices"][0]["family_code"].as<const char*>());
+}
+
+void test_onewire_api_adapter_parses_update_config_request() {
+    StaticJsonDocument<256> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["enabled"] = false;
+    config["gpio_pin"] = 19;
+    config["internal_pullup"] = true;
+
+    DeviceRecord record = makeRecord(encodeOneWireBusDeviceConfig(OneWireBusDeviceConfigV1{}));
+    DeviceConfigUpdateRequest request{};
+    std::string error;
+    TEST_ASSERT_TRUE(OneWireBusDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), record, request, error));
+    TEST_ASSERT_EQUAL_UINT32(OneWireBusDevice::descriptor().currentConfigVersion, request.configVersion);
+
+    OneWireBusDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(decodeOneWireBusDeviceConfig(request.configPayload, parsed));
+    TEST_ASSERT_FALSE(parsed.enabled != 0U);
+    TEST_ASSERT_EQUAL_UINT8(19, parsed.gpioPin);
+    TEST_ASSERT_TRUE(parsed.internalPullup != 0U);
+}
+
+void test_onewire_api_adapter_rejects_missing_update_config() {
+    StaticJsonDocument<64> doc;
+    DeviceRecord record = makeRecord(encodeOneWireBusDeviceConfig(OneWireBusDeviceConfigV1{}));
+    DeviceConfigUpdateRequest request{};
+    std::string error;
+    TEST_ASSERT_FALSE(OneWireBusDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), record, request, error));
+    TEST_ASSERT_FALSE(error.empty());
 }

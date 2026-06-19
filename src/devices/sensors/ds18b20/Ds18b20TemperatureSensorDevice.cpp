@@ -13,6 +13,7 @@ namespace ewfm {
 namespace {
 constexpr uint32_t kPowerUpDelayMs = 20;
 constexpr uint32_t kRetryBackoffMs = 1000;
+constexpr uint32_t kFaultRetryBackoffMs = 30000;
 constexpr uint8_t kFaultErrorThreshold = 3;
 
 const char* kOutputOk = "ok";
@@ -216,7 +217,7 @@ void Ds18b20TemperatureSensorDevice::recordFailure(const char* status, uint32_t 
     if (consecutiveErrors_ < 255U) {
         ++consecutiveErrors_;
     }
-    retryDeadline_ = now + kRetryBackoffMs;
+    retryDeadline_ = consecutiveErrors_ >= kFaultErrorThreshold ? now + kFaultRetryBackoffMs : now + kRetryBackoffMs;
 }
 
 void Ds18b20TemperatureSensorDevice::deferRetry(uint32_t now) {

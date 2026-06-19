@@ -143,10 +143,13 @@ DeviceValidationResult OneWireBusDevice::validateConfig(const DeviceRecord& reco
 }
 
 bool OneWireBusDevice::handleCommand(const DeviceCommand& command) {
-    if (command.type != DeviceCommandType::Custom) {
+    if (command.type != DeviceCommandType::Scan && command.type != DeviceCommandType::Custom) {
         return false;
     }
-    if (!command.payload.equals("scan")) {
+    if (command.type == DeviceCommandType::Custom && !command.payload.equals("scan")) {
+        return false;
+    }
+    if (command.type == DeviceCommandType::Scan && !command.payload.empty()) {
         return false;
     }
     if (status_ != DeviceStatus::Ready || isScanning() || disableRequested_ || deleteRequested_ || reconfigureRequested_ ||

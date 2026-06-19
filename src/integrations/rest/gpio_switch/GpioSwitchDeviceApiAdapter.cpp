@@ -96,6 +96,26 @@ bool GpioSwitchDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
     return true;
 }
 
+bool GpioSwitchDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const DeviceRecord& record,
+                                                          DeviceConfigUpdateRequest& request, std::string& error) const {
+    (void)record;
+    const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
+    if (configObject.isNull()) {
+        error = "gpio switch config is required";
+        return false;
+    }
+
+    GpioSwitchDeviceConfigV1 config{};
+    if (!parseGpioSwitchDeviceConfigJson(configObject, config, error)) {
+        return false;
+    }
+
+    request = {};
+    request.configVersion = GpioSwitchDevice::descriptor().currentConfigVersion;
+    request.configPayload = encodeGpioSwitchDeviceConfig(config);
+    return true;
+}
+
 void GpioSwitchDeviceApiAdapter::writeDeviceJson(const DeviceRecord& record, const IDeviceRuntime* runtime, JsonObject output) const {
     output["device_id"] = record.header.deviceId;
     output["type_id"] = record.header.typeId;

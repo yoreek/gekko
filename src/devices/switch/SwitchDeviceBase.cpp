@@ -144,18 +144,30 @@ bool SwitchDeviceBase::applyConfiguredOutput(OutputState state, uint32_t now, bo
 }
 
 bool SwitchDeviceBase::parseSetStateCommand(const DeviceCommand& command, OutputState& state) const {
-    if (command.type != DeviceCommandType::Custom) {
+    if (command.type != DeviceCommandType::SetOutput && command.type != DeviceCommandType::Custom) {
         return false;
     }
-    if (command.payload.equals("state=on")) {
+    if (command.type == DeviceCommandType::Custom && command.payload.equals("state=on")) {
         state = OutputState::On;
         return true;
     }
-    if (command.payload.equals("state=off")) {
+    if (command.type == DeviceCommandType::Custom && command.payload.equals("state=off")) {
         state = OutputState::Off;
         return true;
     }
-    if (command.payload.equals("state=disabled")) {
+    if (command.type == DeviceCommandType::Custom && command.payload.equals("state=disabled")) {
+        state = OutputState::Disabled;
+        return true;
+    }
+    if (command.payload.equals("on")) {
+        state = OutputState::On;
+        return true;
+    }
+    if (command.payload.equals("off")) {
+        state = OutputState::Off;
+        return true;
+    }
+    if (command.payload.equals("disabled")) {
         state = OutputState::Disabled;
         return true;
     }

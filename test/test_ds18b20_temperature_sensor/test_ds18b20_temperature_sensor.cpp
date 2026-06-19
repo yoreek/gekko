@@ -2,6 +2,7 @@
 #include "devices/bus/onewire/OneWireBusDevice.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/registry/DeviceRegistry.h"
+#include "devices/registry/DeviceRegistryBinaryCodec.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
 #include "integrations/common/DeviceApiAdapter.h"
 #include "integrations/rest/ds18b20/Ds18b20TemperatureSensorDeviceApiAdapter.h"
@@ -366,6 +367,13 @@ void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input() {
     TEST_ASSERT_EQUAL_UINT8(12, parsed.resolution);
     TEST_ASSERT_EQUAL_UINT16(2, parsed.reportDeltaCentiCelsius);
 
+    StaticJsonDocument<128> missingUpdateConfigDoc;
+    missingUpdateConfigDoc["command"] = "update_config";
+    DeviceConfigUpdateRequest missingUpdateRequest{};
+    TEST_ASSERT_FALSE(Ds18b20TemperatureSensorDeviceApiAdapter::instance().parseUpdateConfigRequest(
+        missingUpdateConfigDoc.as<JsonObjectConst>(), record, missingUpdateRequest, error));
+    TEST_ASSERT_FALSE(error.empty());
+
     StaticJsonDocument<256> missingParentDoc;
     missingParentDoc["name"] = "bad";
     missingParentDoc["has_parent"] = false;
@@ -496,7 +504,13 @@ void test_ds18b20_runtime_publishes_invalid_crc_and_recovers() {
     TEST_ASSERT_EQUAL_STRING("crc_error", invalidOutput["output"]["temperature"]["status"].as<const char*>());
 
     driver.setTemperatureRaw(0x0180, 12);
-    for (uint32_t now = 5900; now < 9000 && !sensor.reading().valid; now += 100U) {
+    for (uint32_t now = 5900; now < 29000 && !sensor.reading().valid; now += 100U) {
+        sensor.tick100ms(now);
+    }
+    TEST_ASSERT_FALSE(sensor.reading().valid);
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Faulted), static_cast<int>(sensor.status()));
+
+    for (uint32_t now = 30000; now < 43000 && !sensor.reading().valid; now += 100U) {
         sensor.tick100ms(now);
     }
     TEST_ASSERT_TRUE(sensor.reading().valid);
@@ -585,7 +599,7 @@ void test_ds18b20_parent_scan_defers_child_transaction() {
     driver.candidates = {makeRom()};
     OneWireBusDevice parent(makeBusConfig(), driver);
     driveParentReady(parent);
-    TEST_ASSERT_TRUE(parent.handleCommand(DeviceCommand{DeviceCommandType::Custom, 1, "scan"}));
+    TEST_ASSERT_TRUE(parent.handleCommand(DeviceCommand{DeviceCommandType::Scan, 1, ""}));
 
     Ds18b20TemperatureSensorDevice sensor(makeSensorConfig());
     sensor.setParentRuntime(&parent);
@@ -652,6 +666,8 @@ void test_ds18b20_registry_update_config_and_parent_is_atomic() {
                                                                     60, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE_MESSAGE(validMove.ok(), validMove.validation.message);
     TEST_ASSERT_EQUAL_UINT32(parentA.deviceId, registry.find(second.deviceId)->parentDeviceId);
+    TEST_ASSERT_EQUAL_UINT32(DeviceRegistryBinaryCodec::payloadChecksum(encodeDs18b20TemperatureSensorConfig(addressB)),
+                             registry.find(second.deviceId)->header.payloadChecksum);
     Ds18b20TemperatureSensorConfigV1 decoded{};
     TEST_ASSERT_TRUE(decodeDs18b20TemperatureSensorConfig(registry.find(second.deviceId)->configPayload, decoded));
     TEST_ASSERT_EQUAL_MEMORY(addressB.address.bytes, decoded.address.bytes, sizeof(decoded.address.bytes));

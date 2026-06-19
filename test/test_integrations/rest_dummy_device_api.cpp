@@ -11,6 +11,8 @@ void test_device_api_adapter_registry_resolves_onewire();
 void test_onewire_api_adapter_parses_create_request();
 void test_onewire_api_adapter_rejects_invalid_config_shape();
 void test_onewire_api_adapter_serializes_runtime_scan_snapshot();
+void test_onewire_api_adapter_parses_update_config_request();
+void test_onewire_api_adapter_rejects_missing_update_config();
 
 namespace {
 
@@ -120,5 +122,7 @@ int main(int, char**) {
     RUN_TEST(test_onewire_api_adapter_parses_create_request);
     RUN_TEST(test_onewire_api_adapter_rejects_invalid_config_shape);
     RUN_TEST(test_onewire_api_adapter_serializes_runtime_scan_snapshot);
+    RUN_TEST(test_onewire_api_adapter_parses_update_config_request);
+    RUN_TEST(test_onewire_api_adapter_rejects_missing_update_config);
     return UNITY_END();
 }

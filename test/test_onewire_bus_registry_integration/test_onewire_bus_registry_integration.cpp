@@ -146,8 +146,8 @@ void test_onewire_registry_create_scan_reconfigure_disable_and_delete() {
 
     registry.tick100ms(11);
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(registry.effectiveStatus(created.deviceId)));
-    TEST_ASSERT_TRUE(registry.command(DeviceCommand{DeviceCommandType::Custom, created.deviceId, "scan"}, 20).ok());
-    TEST_ASSERT_FALSE(registry.command(DeviceCommand{DeviceCommandType::Custom, created.deviceId, "scan"}, 21).ok());
+    TEST_ASSERT_TRUE(registry.command(DeviceCommand{DeviceCommandType::Scan, created.deviceId, ""}, 20).ok());
+    TEST_ASSERT_FALSE(registry.command(DeviceCommand{DeviceCommandType::Scan, created.deviceId, ""}, 21).ok());
 
     registry.tick100ms(22);
     registry.tick100ms(23);

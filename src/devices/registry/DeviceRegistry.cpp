@@ -1,6 +1,7 @@
 #include "devices/registry/DeviceRegistry.h"
 
 #include "debug/Debug.h"
+#include "devices/registry/DeviceRegistryBinaryCodec.h"
 #include "devices/registry/DeviceRegistryRelationshipOrchestrator.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorConfig.h"
 
@@ -515,6 +516,7 @@ DeviceMutationResult DeviceRegistry::updateConfigAndParent(DeviceId deviceId, co
     nextIt->header.configVersion = configVersion != 0 ? configVersion : descriptor->currentConfigVersion;
     nextIt->header.configRevision += 1;
     nextIt->header.payloadLength = static_cast<uint32_t>(configPayload.size());
+    nextIt->header.payloadChecksum = DeviceRegistryBinaryCodec::payloadChecksum(configPayload);
     nextIt->configPayload = configPayload;
     if (parentFieldsProvided) {
         nextIt->hasParent = hasParent;
@@ -925,6 +927,8 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
     case DeviceCommandType::UpdateConfig:
         return updateConfig(command.deviceId, std::string(command.payload.view()), 0, now, command.persistencePolicy);
     case DeviceCommandType::SetStatus:
+    case DeviceCommandType::Scan:
+    case DeviceCommandType::SetOutput:
     case DeviceCommandType::Custom: {
         DeviceMutationResult result{};
         auto runtime = this->runtime(command.deviceId);

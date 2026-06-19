@@ -145,6 +145,17 @@ bool DummyDevice::handleCommand(const DeviceCommand& command) {
         }
     }
 
+    if (command.type == DeviceCommandType::SetOutput) {
+        if (command.payload.equals("on")) {
+            config_.currentOutput = true;
+            return true;
+        }
+        if (command.payload.equals("off") || command.payload.equals("disabled")) {
+            config_.currentOutput = false;
+            return true;
+        }
+    }
+
     if (command.type == DeviceCommandType::Custom) {
         if (command.payload.equals("output=1")) {
             config_.currentOutput = true;

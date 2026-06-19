@@ -102,8 +102,10 @@ enum class DeviceCommandType : uint8_t {
     Disable = 5,
     Delete = 6,
     SetStatus = 7,
-    Custom = 8,
-    SetParent = 9,
+    Scan = 8,
+    SetOutput = 9,
+    Custom = 10,
+    SetParent = 11,
 };
 
 enum class DevicePersistencePolicy : uint8_t {

@@ -21,8 +21,8 @@ export function outputStateLabelKey(state: OutputState): string {
 
 export function switchCommandPayload(state: OutputState): DeviceCommandRequest {
   return {
-    command: 'custom',
-    payload: `state=${state}`,
+    command: 'set_output',
+    state,
   }
 }
 

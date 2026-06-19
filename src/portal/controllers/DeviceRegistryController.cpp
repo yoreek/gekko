@@ -272,45 +272,6 @@ DevicePersistencePolicy DeviceRegistryController::parsePolicy(const JsonObjectCo
     return DevicePersistencePolicy::Immediate;
 }
 
-bool DeviceRegistryController::parseCommandType(const char* value, DeviceCommandType& type) {
-    if (value == nullptr || *value == '\0') {
-        return false;
-    }
-    if (std::strcmp(value, "rename") == 0) {
-        type = DeviceCommandType::Rename;
-        return true;
-    }
-    if (std::strcmp(value, "enable") == 0) {
-        type = DeviceCommandType::Enable;
-        return true;
-    }
-    if (std::strcmp(value, "disable") == 0) {
-        type = DeviceCommandType::Disable;
-        return true;
-    }
-    if (std::strcmp(value, "delete") == 0) {
-        type = DeviceCommandType::Delete;
-        return true;
-    }
-    if (std::strcmp(value, "update_config") == 0) {
-        type = DeviceCommandType::UpdateConfig;
-        return true;
-    }
-    if (std::strcmp(value, "set_status") == 0) {
-        type = DeviceCommandType::SetStatus;
-        return true;
-    }
-    if (std::strcmp(value, "custom") == 0) {
-        type = DeviceCommandType::Custom;
-        return true;
-    }
-    if (std::strcmp(value, "set_parent") == 0) {
-        type = DeviceCommandType::SetParent;
-        return true;
-    }
-    return false;
-}
-
 void DeviceRegistryController::index() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     AsyncResponseStream* response = request_->beginResponseStream("application/json");
@@ -471,59 +432,109 @@ void DeviceRegistryController::cmd() {
         return;
     }
 
-    DeviceCommandType commandType = DeviceCommandType::None;
     const char* commandName = input["command"] | "";
-    if (!parseCommandType(commandName, commandType)) {
+    if (commandName == nullptr || *commandName == '\0') {
         renderError(400, "BAD_ARGS", "unsupported command");
         return;
     }
 
-    if (commandType == DeviceCommandType::UpdateConfig) {
-        const IDeviceApiAdapter* adapter = record_ != nullptr ? adapters_.find(record_->header.typeId) : nullptr;
-        if (adapter != nullptr && record_ != nullptr) {
-            std::string error;
-            DeviceConfigUpdateRequest updateRequest{};
-            if (!adapter->parseUpdateConfigRequest(input, *record_, updateRequest, error)) {
-                renderError(400, "BAD_ARGS", error.c_str());
-                return;
-            }
-            const DeviceMutationResult result = registry_.updateConfigAndParent(
-                deviceId_, updateRequest.configPayload, updateRequest.configVersion, updateRequest.parentFieldsProvided,
-                updateRequest.hasParent, updateRequest.parentDeviceId, 0, parsePolicy(input));
-            if (!result.ok()) {
-                renderError(400, errorCodeForDeviceError(result.validation.error), result.validation.message);
-                return;
-            }
-
-            StaticJsonDocument<256> doc;
-            doc["registry_revision"] = registry_.registryRevision();
-            doc["pending_persistence"] = result.pendingPersistence;
-            renderOk(doc);
+    DeviceMutationResult mutationResult{};
+    if (std::strcmp(commandName, "enable") == 0) {
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Enable, deviceId_, "", parsePolicy(input)}, 0);
+        if (!mutationResult.ok()) {
+            renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
-    }
-
-    std::string payload;
-    if (commandType == DeviceCommandType::SetParent) {
-        if (input["has_parent"].is<bool>() && !(input["has_parent"].as<bool>())) {
-            payload = "parent=0";
-        } else {
-            const DeviceId parentId = static_cast<DeviceId>(input["parent_device_id"] | 0U);
-            payload = std::string("parent=") + std::to_string(parentId);
+    } else if (std::strcmp(commandName, "disable") == 0) {
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Disable, deviceId_, "", parsePolicy(input)}, 0);
+        if (!mutationResult.ok()) {
+            renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
+            return;
+        }
+    } else if (std::strcmp(commandName, "delete") == 0) {
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Delete, deviceId_, "", parsePolicy(input)}, 0);
+        if (!mutationResult.ok()) {
+            renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
+            return;
+        }
+    } else if (std::strcmp(commandName, "rename") == 0) {
+        const char* name = input["name"] | "";
+        if (*name == '\0') {
+            renderError(400, "BAD_ARGS", "name is required");
+            return;
+        }
+        mutationResult = registry_.rename(deviceId_, name, 0, parsePolicy(input));
+        if (!mutationResult.ok()) {
+            renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
+            return;
+        }
+    } else if (std::strcmp(commandName, "set_status") == 0) {
+        const char* status = input["status"] | "";
+        if (*status == '\0') {
+            renderError(400, "BAD_ARGS", "status is required");
+            return;
+        }
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetStatus, deviceId_, status, parsePolicy(input)}, 0);
+        if (!mutationResult.ok()) {
+            renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
+            return;
+        }
+    } else if (std::strcmp(commandName, "scan") == 0) {
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Scan, deviceId_, "", parsePolicy(input)}, 0);
+        if (!mutationResult.ok()) {
+            renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
+            return;
+        }
+    } else if (std::strcmp(commandName, "set_output") == 0) {
+        const char* state = input["state"] | "";
+        if (*state == '\0') {
+            renderError(400, "BAD_ARGS", "state is required");
+            return;
+        }
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetOutput, deviceId_, state, parsePolicy(input)}, 0);
+        if (!mutationResult.ok()) {
+            renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
+            return;
+        }
+    } else if (std::strcmp(commandName, "set_parent") == 0) {
+        if (input["has_parent"].isNull() || input["parent_device_id"].isNull()) {
+            renderError(400, "BAD_ARGS", "has_parent and parent_device_id are required");
+            return;
+        }
+        const bool hasParent = input["has_parent"].as<bool>();
+        const DeviceId parentDeviceId = static_cast<DeviceId>(input["parent_device_id"] | 0U);
+        mutationResult = registry_.setParent(deviceId_, hasParent, parentDeviceId, 0, parsePolicy(input));
+        if (!mutationResult.ok()) {
+            renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
+            return;
+        }
+    } else if (std::strcmp(commandName, "update_config") == 0) {
+        const IDeviceApiAdapter* adapter = record_ != nullptr ? adapters_.find(record_->header.typeId) : nullptr;
+        if (adapter == nullptr || record_ == nullptr) {
+            renderError(400, "BAD_ARGS", "unsupported device type");
+            return;
+        }
+        std::string error;
+        DeviceConfigUpdateRequest updateRequest{};
+        if (!adapter->parseUpdateConfigRequest(input, *record_, updateRequest, error)) {
+            renderError(400, "BAD_ARGS", error.c_str());
+            return;
+        }
+        mutationResult = registry_.updateConfigAndParent(deviceId_, updateRequest.configPayload, updateRequest.configVersion,
+                                                         updateRequest.parentFieldsProvided, updateRequest.hasParent,
+                                                         updateRequest.parentDeviceId, 0, parsePolicy(input));
+        if (!mutationResult.ok()) {
+            renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
+            return;
         }
     } else {
-        payload = input["payload"] | "";
-    }
-
-    const DeviceMutationResult result = registry_.command(DeviceCommand{commandType, deviceId_, payload.c_str(), parsePolicy(input)}, 0);
-    if (!result.ok()) {
-        renderError(400, errorCodeForDeviceError(result.validation.error), result.validation.message);
+        renderError(400, "BAD_ARGS", "unsupported command");
         return;
     }
 
     StaticJsonDocument<256> doc;
     doc["registry_revision"] = registry_.registryRevision();
-    doc["pending_persistence"] = result.pendingPersistence;
+    doc["pending_persistence"] = mutationResult.pendingPersistence;
     renderOk(doc);
 #endif
 }

@@ -188,14 +188,13 @@ async function scanSelectedParent(): Promise<void> {
   if (currentValue.value.parent_device_id === 0) {
     return
   }
-  scanBusy.value = true
-  scanError.value = ''
-  try {
-    const payload: DeviceCommandRequest = {
-      command: 'custom',
-      payload: 'scan',
-    }
-    const response = await commandDevice(currentValue.value.parent_device_id, payload)
+    scanBusy.value = true
+    scanError.value = ''
+    try {
+      const payload: DeviceCommandRequest = {
+        command: 'scan',
+      }
+      const response = await commandDevice(currentValue.value.parent_device_id, payload)
     if (response.device) {
       deviceStore.upsertDevice(response.device, response.registry_revision)
     }

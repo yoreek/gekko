@@ -143,6 +143,41 @@ void test_gpio_switch_api_adapter_serializes_runtime_output() {
     TEST_ASSERT_EQUAL_STRING("on", output["output"]["state"].as<const char*>());
 }
 
+void test_gpio_switch_api_adapter_parses_update_config_request() {
+    StaticJsonDocument<256> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["enabled"] = false;
+    config["restore_previous_state"] = true;
+    config["startup_state"] = "off";
+    config["safe_state"] = "disabled";
+    config["inverted"] = true;
+    config["gpio_pin"] = 19;
+
+    DeviceRecord record = makeGpioSwitchRecord();
+    DeviceConfigUpdateRequest request{};
+    std::string error;
+    TEST_ASSERT_TRUE(GpioSwitchDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), record, request, error));
+    TEST_ASSERT_EQUAL_UINT32(GpioSwitchDevice::descriptor().currentConfigVersion, request.configVersion);
+
+    GpioSwitchDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(decodeGpioSwitchDeviceConfig(request.configPayload, parsed));
+    TEST_ASSERT_FALSE(parsed.enabled != 0U);
+    TEST_ASSERT_TRUE(parsed.restorePreviousState != 0U);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(OutputState::Off), parsed.startupState);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(OutputState::Disabled), parsed.safeState);
+    TEST_ASSERT_TRUE(parsed.inverted != 0U);
+    TEST_ASSERT_EQUAL_UINT8(19, parsed.gpioPin);
+}
+
+void test_gpio_switch_api_adapter_rejects_missing_update_config() {
+    StaticJsonDocument<64> doc;
+    DeviceRecord record = makeGpioSwitchRecord();
+    DeviceConfigUpdateRequest request{};
+    std::string error;
+    TEST_ASSERT_FALSE(GpioSwitchDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), record, request, error));
+    TEST_ASSERT_FALSE(error.empty());
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_device_api_adapter_registry_resolves_gpio_switch);
@@ -150,5 +185,7 @@ int main(int, char**) {
     RUN_TEST(test_gpio_switch_api_adapter_rejects_invalid_pin);
     RUN_TEST(test_gpio_switch_api_adapter_serializes_record);
     RUN_TEST(test_gpio_switch_api_adapter_serializes_runtime_output);
+    RUN_TEST(test_gpio_switch_api_adapter_parses_update_config_request);
+    RUN_TEST(test_gpio_switch_api_adapter_rejects_missing_update_config);
     return UNITY_END();
 }

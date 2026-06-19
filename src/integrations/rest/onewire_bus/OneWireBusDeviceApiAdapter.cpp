@@ -109,6 +109,26 @@ bool OneWireBusDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
     return true;
 }
 
+bool OneWireBusDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const DeviceRecord& record,
+                                                          DeviceConfigUpdateRequest& request, std::string& error) const {
+    (void)record;
+    const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
+    if (configObject.isNull()) {
+        error = "onewire bus config is required";
+        return false;
+    }
+
+    OneWireBusDeviceConfigV1 config{};
+    if (!parseOneWireBusDeviceConfigJson(configObject, config, error)) {
+        return false;
+    }
+
+    request = {};
+    request.configVersion = OneWireBusDevice::descriptor().currentConfigVersion;
+    request.configPayload = encodeOneWireBusDeviceConfig(config);
+    return true;
+}
+
 void OneWireBusDeviceApiAdapter::writeDeviceJson(const DeviceRecord& record, const IDeviceRuntime* runtime, JsonObject output) const {
     output["device_id"] = record.header.deviceId;
     output["type_id"] = record.header.typeId;

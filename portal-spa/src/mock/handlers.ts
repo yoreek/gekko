@@ -13,7 +13,6 @@ import type {
   WifiStatusResponse,
 } from '@/api'
 import { ApiClientError } from '@/api/http'
-import { decodeGpioSwitchConfigBlob } from '@/components/device/device-form'
 import { publishRealtimeMessage } from '@/realtime/bus'
 import { scheduleMockPersistenceFlush } from '@/realtime/mockRuntime'
 import {
@@ -354,7 +353,10 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
 
       switch (payload.command) {
         case 'rename':
-          device.name = String(payload.payload ?? device.name)
+          if (typeof payload.name !== 'string' || payload.name.trim().length === 0) {
+            throw new ApiClientError('name is required', 'BAD_ARGS', 400, null)
+          }
+          device.name = payload.name
           break
         case 'enable':
           device.enabled = true
@@ -379,36 +381,36 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           pruneDashboardLayout(db)
           break
         case 'update_config':
+          if (!isRecordPayload(payload.config)) {
+            throw new ApiClientError('config is required', 'BAD_ARGS', 400, null)
+          }
           if (device.type_id === GPIO_SWITCH_DEVICE_TYPE_ID) {
-            const config = decodeGpioSwitchConfigBlob(String(payload.payload ?? ''))
-            if (!config) {
-              throw new ApiClientError('invalid gpio switch config', 'BAD_ARGS', 400, null)
-            }
+            const currentConfig = isRecordPayload(device.config) ? device.config : {}
             device.config = {
-              enabled: config.enabled,
-              restore_previous_state: config.restore_previous_state,
-              startup_state: config.startup_state,
-              safe_state: config.safe_state,
-              inverted: config.inverted,
-              gpio_pin: config.gpio_pin,
+              enabled: Boolean(payload.config.enabled ?? device.enabled),
+              restore_previous_state: Boolean(payload.config.restore_previous_state ?? false),
+              startup_state: payload.config.startup_state === 'on'
+                ? 'on'
+                : payload.config.startup_state === 'disabled'
+                  ? 'disabled'
+                  : 'off',
+              safe_state: payload.config.safe_state === 'on'
+                ? 'on'
+                : payload.config.safe_state === 'disabled'
+                  ? 'disabled'
+                  : 'off',
+              inverted: Boolean(payload.config.inverted ?? false),
+              gpio_pin: normalizeFiniteNumber(payload.config.gpio_pin, normalizeFiniteNumber(currentConfig.gpio_pin, 2)),
             }
-            device.enabled = config.enabled
+            device.enabled = Boolean(device.config.enabled)
           } else if (device.type_id === ONEWIRE_BUS_DEVICE_TYPE_ID) {
-            const bytes = String(payload.payload ?? '')
-            if (bytes.length !== 7) {
-              throw new ApiClientError('invalid onewire bus config', 'BAD_ARGS', 400, null)
-            }
-            const raw = Uint8Array.from(bytes, char => char.charCodeAt(0))
-            const magicKey = raw[0] | (raw[1] << 8) | (raw[2] << 16) | (raw[3] << 24)
-            if (magicKey !== 0x4f573131) {
-              throw new ApiClientError('invalid onewire bus config', 'BAD_ARGS', 400, null)
-            }
+            const currentConfig = isRecordPayload(device.config) ? device.config : {}
             device.config = {
-              enabled: raw[4] !== 0,
-              gpio_pin: raw[5],
-              internal_pullup: raw[6] !== 0,
+              enabled: Boolean(payload.config.enabled ?? device.enabled),
+              gpio_pin: normalizeFiniteNumber(payload.config.gpio_pin, normalizeFiniteNumber(currentConfig.gpio_pin, 4)),
+              internal_pullup: Boolean(payload.config.internal_pullup ?? false),
             }
-            device.enabled = raw[4] !== 0
+            device.enabled = Boolean(device.config.enabled)
           } else if (device.type_id === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID) {
             const parentDeviceId = normalizeParentDeviceId(payload.parent_device_id)
             if (payload.has_parent !== true || parentDeviceId <= 0) {
@@ -425,65 +427,65 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           device.config_revision += 1
           break
         case 'set_status':
-          if (payload.payload === 'fault') {
+          if (payload.status === 'fault') {
             device.lifecycle_status = 'faulted'
             device.effective_status = 'faulted'
             device.status = 'faulted'
           }
-          if (payload.payload === 'ready') {
+          if (payload.status === 'ready') {
             device.lifecycle_status = 'ready'
             device.effective_status = 'ready'
             device.status = 'ready'
           }
           break
-        case 'custom':
+        case 'scan':
+          if (device.type_id !== ONEWIRE_BUS_DEVICE_TYPE_ID) {
+            throw new ApiClientError('unsupported onewire command', 'BAD_ARGS', 400, null)
+          }
           if (!isRecordPayload(device.config)) {
             device.config = {}
           }
+          if (isRecordPayload(device.scan) && device.scan.in_progress === true) {
+            throw new ApiClientError('scan already in progress', 'BAD_ARGS', 400, null)
+          }
+          device.scan = {
+            in_progress: true,
+            ready: false,
+            device_count: 0,
+            truncated: false,
+            invalid_crc_seen: false,
+            devices: [],
+          }
+          return ok({
+            registry_revision: db.registryRevision,
+            pending_persistence: db.pendingPersistence,
+            device,
+          })
+        case 'set_output':
+          if (typeof payload.state !== 'string') {
+            throw new ApiClientError('state is required', 'BAD_ARGS', 400, null)
+          }
           if (device.type_id === GPIO_SWITCH_DEVICE_TYPE_ID) {
-            if (payload.payload === 'state=on' || payload.payload === 'state=off' || payload.payload === 'state=disabled') {
-              device.output = {
-                state: payload.payload.replace('state=', '') as 'on' | 'off' | 'disabled',
-              }
-              break
+          if (payload.state !== 'on' && payload.state !== 'off' && payload.state !== 'disabled') {
+              throw new ApiClientError('unsupported gpio switch output state', 'BAD_ARGS', 400, null)
             }
-            throw new ApiClientError('unsupported gpio switch output state', 'BAD_ARGS', 400, null)
-          }
-          if (device.type_id === ONEWIRE_BUS_DEVICE_TYPE_ID) {
-            if (payload.payload !== 'scan') {
-              throw new ApiClientError('unsupported onewire command', 'BAD_ARGS', 400, null)
+            device.output = {
+              state: payload.state,
             }
-            if (isRecordPayload(device.scan) && device.scan.in_progress === true) {
-              throw new ApiClientError('scan already in progress', 'BAD_ARGS', 400, null)
-            }
-            device.scan = {
-              in_progress: true,
-              ready: false,
-              device_count: 0,
-              truncated: false,
-              invalid_crc_seen: false,
-              devices: [],
-            }
-            return ok({
-              registry_revision: db.registryRevision,
-              pending_persistence: db.pendingPersistence,
-              device,
-            })
-          }
-          if (payload.payload === 'output=1') {
+          } else if (device.type_id === DUMMY_DEVICE_TYPE_ID) {
+            const currentConfig = isRecordPayload(device.config) ? device.config : {}
             device.config = {
-              ...device.config,
-              current_output: true,
+              ...currentConfig,
+              current_output: payload.state === 'on',
             }
-          }
-          if (payload.payload === 'output=0') {
-            device.config = {
-              ...device.config,
-              current_output: false,
-            }
+          } else {
+            throw new ApiClientError('unsupported output command', 'BAD_ARGS', 400, null)
           }
           break
         case 'set_parent':
+          if (payload.has_parent === undefined || payload.parent_device_id === undefined) {
+            throw new ApiClientError('has_parent and parent_device_id are required', 'BAD_ARGS', 400, null)
+          }
           if (device.type_id === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID) {
             const parentDeviceId = normalizeParentDeviceId(payload.parent_device_id)
             if (payload.has_parent !== true || parentDeviceId <= 0) {
@@ -496,8 +498,8 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
             device.has_parent = true
             device.parent_device_id = parentDeviceId
           } else {
-            device.has_parent = Boolean(payload.has_parent ?? true)
-            device.parent_device_id = Number(payload.parent_device_id ?? 0)
+            device.has_parent = Boolean(payload.has_parent)
+            device.parent_device_id = Number(payload.parent_device_id)
           }
           break
         default:
@@ -527,8 +529,7 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
     payload: deviceSnapshot,
   })
   if (
-    payload.command === 'custom' &&
-    payload.payload === 'scan' &&
+    payload.command === 'scan' &&
     response.device?.type_id === ONEWIRE_BUS_DEVICE_TYPE_ID &&
     typeof window !== 'undefined'
   ) {

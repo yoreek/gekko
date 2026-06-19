@@ -13,12 +13,12 @@ bool IDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, c
                                                  DeviceConfigUpdateRequest& request, std::string& error) const {
     (void)record;
     request = {};
-    request.configPayload = input["payload"] | "";
-    if (request.configPayload.empty()) {
-        error = "update_config payload is required";
+    if (input["config"].isNull()) {
+        error = "typed config update requires a config object";
         return false;
     }
-    return true;
+    error = "typed config update is unsupported";
+    return false;
 }
 
 bool DeviceApiAdapterRegistry::registerAdapter(const IDeviceApiAdapter& adapter) {

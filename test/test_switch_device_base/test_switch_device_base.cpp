@@ -132,7 +132,7 @@ void test_switch_set_state_command_marks_retained_dirty_only_when_restore_enable
     FakeTriStateSwitch device(config);
     startToReady(device);
 
-    TEST_ASSERT_TRUE(device.handleCommand(DeviceCommand{DeviceCommandType::Custom, 1, "state=on"}));
+    TEST_ASSERT_TRUE(device.handleCommand(DeviceCommand{DeviceCommandType::SetOutput, 1, "on"}));
     TEST_ASSERT_EQUAL(static_cast<int>(OutputState::On), static_cast<int>(device.outputState()));
     TEST_ASSERT_TRUE(device.retainedStateDirty());
 
@@ -141,7 +141,7 @@ void test_switch_set_state_command_marks_retained_dirty_only_when_restore_enable
     FakeTriStateSwitch noRestoreDevice(config);
     startToReady(noRestoreDevice);
 
-    TEST_ASSERT_TRUE(noRestoreDevice.handleCommand(DeviceCommand{DeviceCommandType::Custom, 1, "state=on"}));
+    TEST_ASSERT_TRUE(noRestoreDevice.handleCommand(DeviceCommand{DeviceCommandType::SetOutput, 1, "on"}));
     TEST_ASSERT_FALSE(noRestoreDevice.retainedStateDirty());
 }
 
@@ -150,8 +150,8 @@ void test_binary_switch_rejects_disabled_state_and_toggle_command() {
     FakeBinarySwitch device(config);
     startToReady(device);
 
-    TEST_ASSERT_FALSE(device.handleCommand(DeviceCommand{DeviceCommandType::Custom, 1, "state=disabled"}));
-    TEST_ASSERT_FALSE(device.handleCommand(DeviceCommand{DeviceCommandType::Custom, 1, "toggle"}));
+    TEST_ASSERT_FALSE(device.handleCommand(DeviceCommand{DeviceCommandType::SetOutput, 1, "disabled"}));
+    TEST_ASSERT_FALSE(device.handleCommand(DeviceCommand{DeviceCommandType::SetOutput, 1, "toggle"}));
     TEST_ASSERT_EQUAL(static_cast<int>(OutputState::Off), static_cast<int>(device.outputState()));
     TEST_ASSERT_EQUAL_UINT32(1, device.writes.size());
 }

@@ -51,7 +51,7 @@ void test_gpio_switch_registry_create_command_retain_reload_and_delete() {
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(registry.effectiveStatus(created.deviceId)));
 
     DeviceMutationResult command =
-        registry.command(DeviceCommand{DeviceCommandType::Custom, created.deviceId, "state=on", DevicePersistencePolicy::Delayed}, 20);
+        registry.command(DeviceCommand{DeviceCommandType::SetOutput, created.deviceId, "on", DevicePersistencePolicy::Delayed}, 20);
     TEST_ASSERT_TRUE_MESSAGE(command.ok(), command.validation.message);
     TEST_ASSERT_TRUE(command.pendingPersistence);
     TEST_ASSERT_EQUAL_UINT32(1, registry.dirtyRetainedStateIds().size());
