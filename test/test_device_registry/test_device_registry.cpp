@@ -78,12 +78,15 @@ struct CountingRuntime final : public IDeviceRuntime {
     }
     void requestReconfigure() override {
         reconfigureCount += 1;
+        status_ = DeviceStatus::Reconfiguring;
     }
     void requestDisable() override {
         disableCount += 1;
+        status_ = DeviceStatus::Disabled;
     }
     void requestDelete() override {
         deleteCount += 1;
+        status_ = DeviceStatus::Deleting;
     }
     DeviceStatus status() const override {
         return status_;
@@ -693,6 +696,8 @@ void test_registry_reassigns_parent_atomically() {
 
     DeviceCreateRequest childRequest = makeDummyCreateRequest("child");
     childRequest.typeId = 59;
+    childRequest.configVersion = 1;
+    childRequest.configPayload.clear();
     childRequest.hasParent = true;
     childRequest.parentDeviceId = firstParent.deviceId;
     DeviceCreateResult childResult = registry.create(childRequest, 30);
@@ -732,7 +737,6 @@ void test_registry_reassigns_parent_atomically() {
     ToggleConfigStorage failingStorage;
     DeviceRegistryStore failingStore(failingStorage);
     TEST_ASSERT_TRUE(failingStore.begin(false));
-    failingStorage.failNextPutString();
 
     FixedDeviceIdSource failingIdSource({241, 242, 243});
     DeviceRegistry failingRegistry(failingStore, types, failingIdSource);
@@ -744,16 +748,68 @@ void test_registry_reassigns_parent_atomically() {
     TEST_ASSERT_TRUE(failingParentB.ok());
 
     DeviceCreateRequest failingChild = makeDummyCreateRequest("child-fail");
+    failingChild.typeId = 59;
+    failingChild.configVersion = 1;
+    failingChild.configPayload.clear();
     failingChild.hasParent = true;
     failingChild.parentDeviceId = failingParentA.deviceId;
     DeviceCreateResult failingChildResult = failingRegistry.create(failingChild, 30);
     TEST_ASSERT_TRUE(failingChildResult.ok());
 
+    failingStorage.failNextPutString();
     DeviceMutationResult failingReparent =
         failingRegistry.setParent(failingChildResult.deviceId, true, failingParentB.deviceId, 40, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_FALSE(failingReparent.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::StorageError), static_cast<int>(failingReparent.validation.error));
     TEST_ASSERT_EQUAL_UINT32(failingParentA.deviceId, failingRegistry.find(failingChildResult.deviceId)->parentDeviceId);
+}
+
+void test_registry_parent_config_update_reconfigures_children() {
+    MemoryConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    FixedDeviceIdSource idSource({251, 252});
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceTypeDescriptor childDescriptor = makeChildDescriptor(59, 1);
+    childDescriptor.createRuntime = &createCountingRuntime;
+    TEST_ASSERT_TRUE(types.registerDescriptor(childDescriptor));
+
+    DeviceRegistry registry(store, types, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+
+    DeviceCreateResult parent = registry.create(makeDummyCreateRequest("parent-update"), 10);
+    TEST_ASSERT_TRUE(parent.ok());
+
+    DeviceCreateRequest childRequest{};
+    childRequest.typeId = 59;
+    childRequest.name = "child-update";
+    childRequest.enabled = true;
+    childRequest.configVersion = 1;
+    childRequest.hasParent = true;
+    childRequest.parentDeviceId = parent.deviceId;
+    childRequest.persistencePolicy = DevicePersistencePolicy::Delayed;
+    DeviceCreateResult child = registry.create(childRequest, 20);
+    TEST_ASSERT_TRUE_MESSAGE(child.ok(), child.validation.message);
+
+    auto* childRuntime = dynamic_cast<CountingRuntime*>(registry.runtime(child.deviceId));
+    TEST_ASSERT_NOT_NULL(childRuntime);
+    const uint32_t previousReconfigureCount = childRuntime->reconfigureCount;
+
+    DummyDeviceConfigV2 config{};
+    config.restorePreviousState = true;
+    config.defaultOutput = true;
+    config.currentOutput = true;
+    config.inverted = false;
+    DeviceMutationResult updated = registry.updateConfig(
+        parent.deviceId, encodeDummyConfig(config), DummyDevice::descriptor().currentConfigVersion, 30, DevicePersistencePolicy::Delayed);
+    TEST_ASSERT_TRUE_MESSAGE(updated.ok(), updated.validation.message);
+
+    auto* sameChildRuntime = dynamic_cast<CountingRuntime*>(registry.runtime(child.deviceId));
+    TEST_ASSERT_NOT_NULL(sameChildRuntime);
+    TEST_ASSERT_TRUE(sameChildRuntime == childRuntime);
+    TEST_ASSERT_EQUAL_UINT32(previousReconfigureCount + 1U, sameChildRuntime->reconfigureCount);
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(parent.deviceId), sameChildRuntime->parentRuntime());
 }
 
 void test_registry_propagates_parent_dependency_status_and_recovers() {
@@ -784,7 +840,7 @@ void test_registry_propagates_parent_dependency_status_and_recovers() {
         std::find_if(disabledRecords.begin(), disabledRecords.end(),
                      [childId = childResult.deviceId](const DeviceRecord& record) { return record.header.deviceId == childId; });
     TEST_ASSERT_TRUE(disabledChild != disabledRecords.end());
-    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(disabledChild->status));
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Disabled), static_cast<int>(disabledChild->status));
     TEST_ASSERT_EQUAL_PTR(registry.runtime(parentResult.deviceId), registry.runtime(childResult.deviceId)->parentRuntime());
     const auto& blockedParentChildren = registry.runtime(parentResult.deviceId)->childRuntimes();
     TEST_ASSERT_EQUAL_UINT32(1, blockedParentChildren.size());
@@ -1138,8 +1194,10 @@ int main(int, char**) {
     RUN_TEST(test_registry_rejects_max_device_count);
     RUN_TEST(test_registry_validates_parent_child_graph_rules);
     RUN_TEST(test_registry_rejects_parent_delete_with_children);
+    RUN_TEST(test_registry_reassigns_parent_atomically);
     RUN_TEST(test_registry_propagates_parent_dependency_status_and_recovers);
     RUN_TEST(test_registry_set_parent_command_normalization);
+    RUN_TEST(test_registry_parent_config_update_reconfigures_children);
     RUN_TEST(test_registry_emits_required_event_kinds);
     RUN_TEST(test_registry_invokes_only_declared_cadences);
     RUN_TEST(test_registry_coalesces_retained_state_updates);

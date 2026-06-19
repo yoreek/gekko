@@ -47,14 +47,26 @@ import { useI18n } from 'vue-i18n'
 
 import DeviceCommonFields from '@/components/device/DeviceCommonFields.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
-import { createDefaultDeviceCommonDraft, createDefaultDeviceConfigDraft, type DeviceCommonDraft } from '@/components/device/device-form'
+import {
+  createDefaultDeviceCommonDraft,
+  createDefaultDeviceConfigDraft,
+  isDs18b20Type,
+  type DeviceCommonDraft,
+} from '@/components/device/device-form'
 import { resolveDeviceCreateFormComponent } from '@/components/devices/registry/device-component-registry'
+import {
+  ds18b20AddressShapeValid,
+  encodeDs18b20Config,
+  normalizeDs18b20TemperatureSensorConfig,
+} from '@/models/devices/ds18b20'
 
 type CreatePayload = {
   name: string
   type_id: number
   enabled: boolean
   config?: Record<string, unknown>
+  has_parent?: boolean
+  parent_device_id?: number
 }
 
 const props = defineProps<{
@@ -78,7 +90,16 @@ const draft = reactive<{
   config: {},
 })
 
-const canSubmit = computed(() => draft.common.name.trim().length > 0 && draft.common.typeId > 0)
+const ds18b20Config = computed(() => normalizeDs18b20TemperatureSensorConfig(draft.config))
+const canSubmit = computed(() => {
+  if (draft.common.name.trim().length === 0 || draft.common.typeId <= 0) {
+    return false
+  }
+  if (!isDs18b20Type(draft.common.typeId)) {
+    return true
+  }
+  return ds18b20Config.value.parent_device_id > 0 && ds18b20AddressShapeValid(ds18b20Config.value.address)
+})
 const createFormComponent = computed(() => resolveDeviceCreateFormComponent(draft.common.typeId))
 
 watch(
@@ -107,7 +128,14 @@ function submit(): void {
     type_id: draft.common.typeId,
     enabled: draft.common.enabled,
   }
-  if (Object.keys(draft.config).length > 0) {
+  if (isDs18b20Type(draft.common.typeId)) {
+    payload.config = encodeDs18b20Config({
+      ...ds18b20Config.value,
+      enabled: draft.common.enabled,
+    })
+    payload.has_parent = true
+    payload.parent_device_id = ds18b20Config.value.parent_device_id
+  } else if (Object.keys(draft.config).length > 0) {
     payload.config = { ...draft.config }
   }
   emit('submit', payload)

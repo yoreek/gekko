@@ -2,9 +2,11 @@
 
 #include "debug/Debug.h"
 #include "devices/registry/DeviceRegistryRelationshipOrchestrator.h"
+#include "devices/sensors/ds18b20/Ds18b20TemperatureSensorConfig.h"
 
 #include <algorithm>
 #include <cstdlib>
+#include <cstring>
 
 namespace ewfm {
 
@@ -48,6 +50,40 @@ bool parseSetParentPayload(const BoundedText<kMaxDeviceEventBytes>& payload, boo
     hasParent = true;
     parentId = static_cast<DeviceId>(parsed);
     return true;
+}
+
+bool sameRomAddress(const OneWireRomAddress& left, const OneWireRomAddress& right) {
+    return std::memcmp(left.bytes, right.bytes, sizeof(left.bytes)) == 0;
+}
+
+DeviceValidationResult validateDuplicateDs18b20Addresses(const DeviceRegistrySnapshot& snapshot) {
+    for (size_t leftIndex = 0; leftIndex < snapshot.records.size(); ++leftIndex) {
+        const DeviceRecord& left = snapshot.records[leftIndex];
+        if (left.header.typeId != kDs18b20TemperatureSensorTypeId || !left.hasParent) {
+            continue;
+        }
+
+        Ds18b20TemperatureSensorConfigV1 leftConfig{};
+        if (!decodeDs18b20TemperatureSensorConfig(left.configPayload, leftConfig)) {
+            return {DeviceError::InvalidConfig, "ds18b20 config is invalid"};
+        }
+
+        for (size_t rightIndex = leftIndex + 1U; rightIndex < snapshot.records.size(); ++rightIndex) {
+            const DeviceRecord& right = snapshot.records[rightIndex];
+            if (right.header.typeId != kDs18b20TemperatureSensorTypeId || !right.hasParent || right.parentDeviceId != left.parentDeviceId) {
+                continue;
+            }
+
+            Ds18b20TemperatureSensorConfigV1 rightConfig{};
+            if (!decodeDs18b20TemperatureSensorConfig(right.configPayload, rightConfig)) {
+                return {DeviceError::InvalidConfig, "ds18b20 config is invalid"};
+            }
+            if (sameRomAddress(leftConfig.address, rightConfig.address)) {
+                return {DeviceError::InvalidRelationship, "duplicate ds18b20 address on parent"};
+            }
+        }
+    }
+    return {};
 }
 
 } // namespace
@@ -441,9 +477,20 @@ DeviceMutationResult DeviceRegistry::rename(DeviceId deviceId, const std::string
 
 DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const std::string& configPayload, uint32_t configVersion, uint32_t now,
                                                   DevicePersistencePolicy policy) {
+    return updateConfigAndParent(deviceId, configPayload, configVersion, false, false, 0, now, policy);
+}
+
+DeviceMutationResult DeviceRegistry::updateConfigAndParent(DeviceId deviceId, const std::string& configPayload, uint32_t configVersion,
+                                                           bool parentFieldsProvided, bool hasParent, DeviceId parentDeviceId, uint32_t now,
+                                                           DevicePersistencePolicy policy) {
     DeviceMutationResult result{};
     if (configPayload.size() > kMaxDeviceConfigBytes) {
         result.validation = {DeviceError::BoundsExceeded, "device config exceeds supported size"};
+        return result;
+    }
+
+    if (parentFieldsProvided && policy != DevicePersistencePolicy::Immediate) {
+        result.validation = {DeviceError::InvalidConfig, "parent reassignment requires immediate persistence"};
         return result;
     }
 
@@ -469,11 +516,15 @@ DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const std::
     nextIt->header.configRevision += 1;
     nextIt->header.payloadLength = static_cast<uint32_t>(configPayload.size());
     nextIt->configPayload = configPayload;
+    if (parentFieldsProvided) {
+        nextIt->hasParent = hasParent;
+        nextIt->parentDeviceId = hasParent ? parentDeviceId : 0;
+    }
     const uint32_t nextConfigRevision = nextIt->header.configRevision;
 
-    const DeviceValidationResult recordResult = validateRecord(*nextIt, *descriptor);
-    if (!recordResult.ok()) {
-        result.validation = recordResult;
+    const DeviceValidationResult structureResult = validateSnapshot(next);
+    if (!structureResult.ok()) {
+        result.validation = structureResult;
         return result;
     }
 
@@ -508,6 +559,14 @@ DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const std::
             runtimePtr->requestDisable();
         }
     }
+
+    for (const DeviceId childId : childDeviceIds(deviceId)) {
+        syncRuntimeParentLink(childId);
+        if (auto* childRuntime = runtime(childId); childRuntime != nullptr) {
+            childRuntime->requestReconfigure();
+        }
+    }
+
     refreshDependentRuntimeStates(now);
     emitRuntimeStatusChanges();
 
@@ -1104,6 +1163,11 @@ DeviceValidationResult DeviceRegistry::validateSnapshot(const DeviceRegistrySnap
         return graphResult;
     }
 
+    const DeviceValidationResult ds18b20AddressResult = validateDuplicateDs18b20Addresses(snapshot);
+    if (!ds18b20AddressResult.ok()) {
+        return ds18b20AddressResult;
+    }
+
     return {};
 }
 
@@ -1300,6 +1364,12 @@ void DeviceRegistry::clearRuntime(DeviceId deviceId) {
     if (it != runtimes_.end() && it->second.runtime != nullptr) {
         if (IDeviceRuntime* parent = it->second.runtime->parentRuntime(); parent != nullptr) {
             parent->detachChildRuntime(it->second.runtime.get());
+        }
+        const std::vector<IDeviceRuntime*> children = it->second.runtime->childRuntimes();
+        for (IDeviceRuntime* child : children) {
+            if (child != nullptr) {
+                child->setParentRuntime(nullptr);
+            }
         }
     }
     runtimes_.erase(deviceId);

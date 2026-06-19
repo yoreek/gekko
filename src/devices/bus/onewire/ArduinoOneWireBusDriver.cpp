@@ -27,6 +27,10 @@ public:
         }
     }
 
+    bool reset() override {
+        return bus_ != nullptr && bus_->reset() != 0U;
+    }
+
     void resetSearch() override {
         if (bus_ != nullptr) {
             bus_->reset_search();
@@ -40,11 +44,34 @@ public:
         return bus_->search(address.bytes);
     }
 
-    uint8_t crc8(const uint8_t* data, size_t len) const override {
-        if (bus_ == nullptr) {
-            return 0;
+    void select(const OneWireRomAddress& address) override {
+        if (bus_ != nullptr) {
+            bus_->select(address.bytes);
         }
-        return bus_->crc8(data, len);
+    }
+
+    void skip() override {
+        if (bus_ != nullptr) {
+            bus_->skip();
+        }
+    }
+
+    void write(uint8_t value, bool power = false) override {
+        if (bus_ != nullptr) {
+            bus_->write(value, power ? 1U : 0U);
+        }
+    }
+
+    uint8_t read() override {
+        return bus_ != nullptr ? bus_->read() : 0U;
+    }
+
+    uint8_t readBit() override {
+        return bus_ != nullptr ? bus_->read_bit() : 0U;
+    }
+
+    uint8_t crc8(const uint8_t* data, size_t len) const override {
+        return OneWire::crc8(data, len);
     }
 
 private:
@@ -55,6 +82,10 @@ IOneWireBusDriver& defaultArduinoOneWireBusDriver() {
     static ArduinoOneWireBusDriver driver;
     return driver;
 }
+
+std::unique_ptr<IOneWireBusDriver> createArduinoOneWireBusDriver() {
+    return std::unique_ptr<IOneWireBusDriver>(new ArduinoOneWireBusDriver());
+}
 #else
 class NullOneWireBusDriver final : public IOneWireBusDriver {
 public:
@@ -64,20 +95,42 @@ public:
 
     void depower() override {}
 
+    bool reset() override {
+        return false;
+    }
+
     void resetSearch() override {}
 
     bool search(OneWireRomAddress&) override {
         return false;
     }
 
-    uint8_t crc8(const uint8_t*, size_t) const override {
+    void select(const OneWireRomAddress&) override {}
+
+    void skip() override {}
+
+    void write(uint8_t, bool = false) override {}
+
+    uint8_t read() override {
         return 0;
+    }
+
+    uint8_t readBit() override {
+        return 0;
+    }
+
+    uint8_t crc8(const uint8_t* data, size_t len) const override {
+        return oneWireCrc8(data, len);
     }
 };
 
 IOneWireBusDriver& defaultArduinoOneWireBusDriver() {
     static NullOneWireBusDriver driver;
     return driver;
+}
+
+std::unique_ptr<IOneWireBusDriver> createArduinoOneWireBusDriver() {
+    return std::unique_ptr<IOneWireBusDriver>(new NullOneWireBusDriver());
 }
 #endif
 

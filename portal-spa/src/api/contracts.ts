@@ -2,6 +2,18 @@ export type DeviceOutputState = 'off' | 'on' | 'disabled'
 
 export interface DeviceOutputSnapshot {
   state?: DeviceOutputState
+  temperature?: TemperatureOutputSnapshot
+}
+
+export type TemperatureUnit = 'celsius' | 'fahrenheit'
+
+export interface TemperatureOutputSnapshot {
+  value: number
+  unit: TemperatureUnit
+  unit_symbol: string
+  measured_at_ms: number
+  valid: boolean
+  status?: string
 }
 
 export interface OneWireScanDeviceSnapshot {
@@ -74,6 +86,7 @@ export interface DeviceCommandRequest {
   device_id?: number
   command: 'rename' | 'enable' | 'disable' | 'delete' | 'update_config' | 'set_status' | 'custom' | 'set_parent'
   payload?: string
+  config?: Record<string, unknown>
   has_parent?: boolean
   parent_device_id?: number
 }

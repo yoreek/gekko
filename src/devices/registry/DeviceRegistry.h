@@ -76,6 +76,9 @@ public:
                                 DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
     DeviceMutationResult updateConfig(DeviceId deviceId, const std::string& configPayload, uint32_t configVersion, uint32_t now,
                                       DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
+    DeviceMutationResult updateConfigAndParent(DeviceId deviceId, const std::string& configPayload, uint32_t configVersion,
+                                               bool parentFieldsProvided, bool hasParent, DeviceId parentDeviceId, uint32_t now,
+                                               DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
     DeviceMutationResult setParent(DeviceId deviceId, bool hasParent, DeviceId parentDeviceId, uint32_t now,
                                    DevicePersistencePolicy policy = DevicePersistencePolicy::Immediate);
     DeviceMutationResult setEnabled(DeviceId deviceId, bool enabled, uint32_t now,

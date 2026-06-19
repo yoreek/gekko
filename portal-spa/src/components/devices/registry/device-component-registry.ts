@@ -1,6 +1,7 @@
 import type { Component } from 'vue'
 
 import {
+  DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
   DUMMY_DEVICE_TYPE_ID,
   GPIO_SWITCH_DEVICE_TYPE_ID,
   ONEWIRE_BUS_DEVICE_TYPE_ID,
@@ -8,6 +9,8 @@ import {
   type DeviceTypeId,
 } from '@/models/device-types'
 import DummyDeviceDetail from '@/components/devices/dummy/DummyDeviceDetail.vue'
+import Ds18b20TemperatureSensorDeviceDetail from '@/components/devices/ds18b20/Ds18b20TemperatureSensorDeviceDetail.vue'
+import Ds18b20TemperatureSensorDeviceForm from '@/components/devices/ds18b20/Ds18b20TemperatureSensorDeviceForm.vue'
 import GpioSwitchDeviceDetail from '@/components/devices/gpio-switch/GpioSwitchDeviceDetail.vue'
 import GpioSwitchDeviceForm from '@/components/devices/gpio-switch/GpioSwitchDeviceForm.vue'
 import OneWireBusDeviceDetail from '@/components/devices/onewire-bus/OneWireBusDeviceDetail.vue'
@@ -35,6 +38,11 @@ const deviceUiRegistry: DeviceUiRegistryEntry[] = [
     typeId: ONEWIRE_BUS_DEVICE_TYPE_ID,
     detail: OneWireBusDeviceDetail,
     form: OneWireBusDeviceForm,
+  },
+  {
+    typeId: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
+    detail: Ds18b20TemperatureSensorDeviceDetail,
+    form: Ds18b20TemperatureSensorDeviceForm,
   },
 ]
 

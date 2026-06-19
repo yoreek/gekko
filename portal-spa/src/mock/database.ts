@@ -8,7 +8,7 @@ import type {
 } from '@/api'
 import { safeReadStorage, safeWriteStorage } from '@/utils/storage'
 
-const storageKey = 'gekko.mockDb.v3'
+const storageKey = 'gekko.mockDb.v4'
 
 export interface MockDatabase {
   registryRevision: number
@@ -30,7 +30,7 @@ export interface MockDatabase {
 }
 
 const seedDatabase: MockDatabase = {
-  registryRevision: 18,
+  registryRevision: 19,
   dashboardLayoutRevision: 1,
   dashboardLayout: {
     schema_version: 1,
@@ -44,6 +44,7 @@ const seedDatabase: MockDatabase = {
           [670845748, 0, 0, 1, 1],
           [670845749, 1, 0, 1, 1],
           [670845750, 2, 0, 1, 1],
+          [670845752, 3, 0, 1, 1],
         ],
       },
     ],
@@ -144,15 +145,54 @@ const seedDatabase: MockDatabase = {
       scan: {
         in_progress: false,
         ready: true,
-        device_count: 1,
+        device_count: 2,
         truncated: false,
         invalid_crc_seen: false,
         devices: [
           {
-            address: '28FF641D6216037C',
+            address: '28FF641D621603AD',
             family_code: '28',
           },
+          {
+            address: '10FFAA0000000001',
+            family_code: '10',
+          },
         ],
+      },
+    },
+    {
+      device_id: 670845752,
+      type_id: 4,
+      label: 'DS18B20 temperature sensor',
+      type: 'ds18b20_temperature_sensor',
+      name: 'Water Temperature',
+      enabled: true,
+      has_parent: true,
+      parent_device_id: 670845751,
+      config_version: 1,
+      config_revision: 1,
+      lifecycle_status: 'ready',
+      effective_status: 'ready',
+      status: 'ready',
+      retained_state_supported: false,
+      config: {
+        enabled: true,
+        address: '28FF641D621603AD',
+        resolution: 12,
+        unit: 'celsius',
+        poll_ms: 5000,
+        report_delta_celsius: 0.25,
+        report_always: false,
+      },
+      output: {
+        temperature: {
+          value: 24.625,
+          unit: 'celsius',
+          unit_symbol: 'C',
+          measured_at_ms: 18500,
+          valid: true,
+          status: 'ok',
+        },
       },
     },
   ],

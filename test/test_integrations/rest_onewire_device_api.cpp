@@ -19,6 +19,11 @@ public:
     }
 
     void depower() override {}
+
+    bool reset() override {
+        return true;
+    }
+
     void resetSearch() override {
         searchIndex = 0;
     }
@@ -29,6 +34,20 @@ public:
         }
         address = candidates[searchIndex++];
         return true;
+    }
+
+    void select(const OneWireRomAddress&) override {}
+
+    void skip() override {}
+
+    void write(uint8_t, bool = false) override {}
+
+    uint8_t read() override {
+        return 0;
+    }
+
+    uint8_t readBit() override {
+        return 0;
     }
 
     uint8_t crc8(const uint8_t* data, size_t len) const override {

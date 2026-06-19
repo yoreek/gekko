@@ -1,0 +1,209 @@
+<template>
+  <div class="d-grid ga-3">
+    <v-alert v-if="parentItems.length === 0" type="warning" variant="tonal">
+      {{ t('device.dialog.ds18b20NoParent') }}
+    </v-alert>
+
+    <v-row>
+      <v-col cols="12" md="6">
+        <v-select
+          :label="t('device.fields.onewireParent')"
+          :items="parentItems"
+          :model-value="currentValue.parent_device_id"
+          :disabled="busy || parentItems.length === 0"
+          @update:model-value="updateNumber('parent_device_id', $event)"
+        />
+      </v-col>
+      <v-col cols="12" md="6">
+        <v-text-field
+          :label="t('device.fields.ds18b20Address')"
+          :model-value="currentValue.address"
+          :hint="t('device.dialog.ds18b20AddressHint')"
+          :rules="addressRules"
+          :disabled="busy"
+          persistent-hint
+          @update:model-value="updateAddress"
+        />
+      </v-col>
+    </v-row>
+
+    <v-row>
+      <v-col cols="12" md="6">
+        <v-btn
+          color="primary"
+          variant="tonal"
+          :loading="scanBusy || selectedParent?.detail.scan?.in_progress === true"
+          :disabled="busy || scanBusy || currentValue.parent_device_id === 0"
+          @click="scanSelectedParent"
+        >
+          <AppIcon class="me-1" name="refresh" />
+          {{ t('device.dialog.ds18b20ScanAction') }}
+        </v-btn>
+      </v-col>
+      <v-col cols="12" md="6">
+        <v-select
+          :label="t('device.fields.ds18b20ScanCandidate')"
+          :items="scanCandidateItems"
+          :disabled="busy || scanCandidateItems.length === 0"
+          :model-value="currentValue.address"
+          @update:model-value="updateAddress"
+        />
+      </v-col>
+    </v-row>
+
+    <v-alert v-if="scanError" type="error" variant="tonal">
+      {{ scanError }}
+    </v-alert>
+
+    <v-row>
+      <v-col cols="12" md="6">
+        <v-select
+          :label="t('device.fields.resolution')"
+          :items="resolutionItems"
+          :model-value="currentValue.resolution"
+          :disabled="busy"
+          @update:model-value="updateNumber('resolution', $event)"
+        />
+      </v-col>
+      <v-col cols="12" md="6">
+        <v-select
+          :label="t('device.fields.temperatureUnit')"
+          :items="unitItems"
+          :model-value="currentValue.unit"
+          :disabled="busy"
+          @update:model-value="update('unit', $event as 'celsius' | 'fahrenheit')"
+        />
+      </v-col>
+    </v-row>
+
+    <v-row>
+      <v-col cols="12" md="6">
+        <v-text-field
+          :label="t('device.fields.pollMs')"
+          :model-value="currentValue.poll_ms"
+          inputmode="numeric"
+          type="number"
+          min="1000"
+          :disabled="busy"
+          @update:model-value="updateNumber('poll_ms', $event)"
+        />
+      </v-col>
+      <v-col cols="12" md="6">
+        <v-text-field
+          :label="t('device.fields.reportDelta')"
+          :model-value="currentValue.report_delta_celsius"
+          inputmode="decimal"
+          type="number"
+          min="0.01"
+          step="0.01"
+          :disabled="busy"
+          @update:model-value="updateNumber('report_delta_celsius', $event)"
+        />
+      </v-col>
+    </v-row>
+
+    <v-switch
+      :label="t('device.fields.reportAlways')"
+      :model-value="currentValue.report_always"
+      :disabled="busy"
+      inset
+      @update:model-value="update('report_always', Boolean($event))"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+import type { DeviceCommandRequest } from '@/api'
+import { commandDevice } from '@/api'
+import AppIcon from '@/components/AppIcon.vue'
+import { ONEWIRE_BUS_DEVICE_TYPE_ID } from '@/models/device-types'
+import {
+  createDefaultDs18b20TemperatureSensorConfig,
+  ds18b20AddressShapeValid,
+  ds18b20ResolutionOptions,
+  isDs18b20ScanCandidate,
+  temperatureUnitOptions,
+  type Ds18b20TemperatureSensorConfigDraft,
+} from '@/models/devices/ds18b20'
+import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
+
+const props = defineProps<{
+  modelValue: Ds18b20TemperatureSensorConfigDraft | undefined
+  busy?: boolean
+}>()
+
+const emit = defineEmits<{
+  'update:modelValue': [value: Ds18b20TemperatureSensorConfigDraft]
+}>()
+
+const { t } = useI18n()
+const deviceStore = useDeviceRegistryStore()
+const scanBusy = ref(false)
+const scanError = ref('')
+const fallbackValue = createDefaultDs18b20TemperatureSensorConfig()
+const currentValue = computed<Ds18b20TemperatureSensorConfigDraft>(() => props.modelValue ?? fallbackValue)
+const parentDevices = computed(() => deviceStore.devices.filter(device => device.typeId === ONEWIRE_BUS_DEVICE_TYPE_ID))
+const selectedParent = computed(() => parentDevices.value.find(device => device.deviceId === currentValue.value.parent_device_id))
+const parentItems = computed(() => parentDevices.value.map(device => ({ title: `${device.name} #${device.deviceId}`, value: device.deviceId })))
+const resolutionItems = computed(() => ds18b20ResolutionOptions.map(value => ({ title: t('device.dialog.ds18b20Resolution', { value }), value })))
+const unitItems = computed(() => temperatureUnitOptions.map(value => ({ title: t(`device.dialog.temperatureUnit.${value}`), value })))
+const scanCandidateItems = computed(() => {
+  const devices = selectedParent.value?.detail.scan?.devices ?? []
+  return devices.filter(isDs18b20ScanCandidate).map(candidate => ({
+    title: `${candidate.address} · ${t('device.dialog.onewireFamilyCode', { family: candidate.family_code })}`,
+    value: candidate.address,
+  }))
+})
+const addressRules = computed(() => [
+  (value: string) => ds18b20AddressShapeValid(value) || t('device.dialog.ds18b20AddressInvalid'),
+])
+
+function emitUpdate(next: Ds18b20TemperatureSensorConfigDraft): void {
+  emit('update:modelValue', next)
+}
+
+function update<K extends keyof Ds18b20TemperatureSensorConfigDraft>(key: K, value: Ds18b20TemperatureSensorConfigDraft[K]): void {
+  emitUpdate({
+    ...currentValue.value,
+    [key]: value,
+  })
+}
+
+function updateNumber(key: 'parent_device_id' | 'resolution' | 'poll_ms' | 'report_delta_celsius', value: unknown): void {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) {
+    return
+  }
+  update(key, numeric as never)
+}
+
+function updateAddress(value: unknown): void {
+  update('address', String(value ?? '').trim().toUpperCase())
+}
+
+async function scanSelectedParent(): Promise<void> {
+  if (currentValue.value.parent_device_id === 0) {
+    return
+  }
+  scanBusy.value = true
+  scanError.value = ''
+  try {
+    const payload: DeviceCommandRequest = {
+      command: 'custom',
+      payload: 'scan',
+    }
+    const response = await commandDevice(currentValue.value.parent_device_id, payload)
+    if (response.device) {
+      deviceStore.upsertDevice(response.device, response.registry_revision)
+    }
+    deviceStore.setPendingPersistence(response.pending_persistence)
+  } catch (error) {
+    scanError.value = error instanceof Error ? error.message : t('device.dialog.unknownError')
+  } finally {
+    scanBusy.value = false
+  }
+}
+</script>

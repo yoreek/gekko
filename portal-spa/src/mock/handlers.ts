@@ -16,7 +16,12 @@ import { ApiClientError } from '@/api/http'
 import { decodeGpioSwitchConfigBlob } from '@/components/device/device-form'
 import { publishRealtimeMessage } from '@/realtime/bus'
 import { scheduleMockPersistenceFlush } from '@/realtime/mockRuntime'
-import { DUMMY_DEVICE_TYPE_ID, GPIO_SWITCH_DEVICE_TYPE_ID, ONEWIRE_BUS_DEVICE_TYPE_ID } from '@/models/device-types'
+import {
+  DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
+  DUMMY_DEVICE_TYPE_ID,
+  GPIO_SWITCH_DEVICE_TYPE_ID,
+  ONEWIRE_BUS_DEVICE_TYPE_ID,
+} from '@/models/device-types'
 import { createSeedMockDatabase, loadMockDatabase, saveMockDatabase } from './database'
 
 function ok<T extends object>(payload: T): T & { success: true } {
@@ -42,13 +47,17 @@ function completeOneWireScan(deviceId: number): void {
   device.scan = {
     in_progress: false,
     ready: true,
-    device_count: 1,
+    device_count: 2,
     truncated: false,
     invalid_crc_seen: false,
     devices: [
       {
-        address: '28FF641D6216037C',
+        address: '28FF641D621603AD',
         family_code: '28',
+      },
+      {
+        address: '10FFAA0000000001',
+        family_code: '10',
       },
     ],
   }
@@ -209,28 +218,43 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
     const typeId = payload.type_id
     if (
       typeof typeId !== 'number' ||
-      (typeId !== DUMMY_DEVICE_TYPE_ID && typeId !== GPIO_SWITCH_DEVICE_TYPE_ID && typeId !== ONEWIRE_BUS_DEVICE_TYPE_ID)
+      (
+        typeId !== DUMMY_DEVICE_TYPE_ID &&
+        typeId !== GPIO_SWITCH_DEVICE_TYPE_ID &&
+        typeId !== ONEWIRE_BUS_DEVICE_TYPE_ID &&
+        typeId !== DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID
+      )
     ) {
       throw new ApiClientError('unsupported device type', 'UNSUPPORTED_TYPE', 400, null)
     }
     const isGpioSwitch = typeId === GPIO_SWITCH_DEVICE_TYPE_ID
     const isOneWireBus = typeId === ONEWIRE_BUS_DEVICE_TYPE_ID
+    const isDs18b20 = typeId === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID
+    const parentDeviceId = isDs18b20 ? normalizeParentDeviceId(payload.parent_device_id) : 0
+    if (isDs18b20) {
+      requireOneWireParent(db, parentDeviceId)
+    }
+    const enabled = Boolean(payload.enabled ?? true)
+    const ds18b20Config = isDs18b20 ? normalizeDs18b20ConfigPayload(payload.config, enabled) : undefined
+    if (isDs18b20 && ds18b20Config !== undefined) {
+      ensureUniqueDs18b20Address(db, parentDeviceId, String(ds18b20Config.address), nextId)
+    }
 
     const device: DeviceRecord = {
       device_id: nextId,
       type_id: typeId,
-      label: isGpioSwitch ? 'GPIO switch' : isOneWireBus ? 'OneWire bus' : 'Dummy device',
-      type: isGpioSwitch ? 'gpio_switch' : isOneWireBus ? 'onewire_bus' : 'dummy',
+      label: isGpioSwitch ? 'GPIO switch' : isOneWireBus ? 'OneWire bus' : isDs18b20 ? 'DS18B20 temperature sensor' : 'Dummy device',
+      type: isGpioSwitch ? 'gpio_switch' : isOneWireBus ? 'onewire_bus' : isDs18b20 ? 'ds18b20_temperature_sensor' : 'dummy',
       name: String(payload.name ?? 'New Device'),
-      enabled: Boolean(payload.enabled ?? true),
-      has_parent: false,
-      parent_device_id: 0,
+      enabled,
+      has_parent: isDs18b20,
+      parent_device_id: parentDeviceId,
       config_version: 1,
       config_revision: 1,
       lifecycle_status: 'ready',
       effective_status: 'ready',
       status: 'ready',
-      retained_state_supported: !isOneWireBus,
+      retained_state_supported: !isOneWireBus && !isDs18b20,
       retained_startup_enabled: false,
       retained_startup_fallback_output: false,
       retained_state_in_config_payload: false,
@@ -250,6 +274,8 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
                 gpio_pin: 4,
                 internal_pullup: false,
               }
+          : isDs18b20 && ds18b20Config !== undefined
+            ? ds18b20Config
           : {
               enabled: true,
               restore_previous_state: false,
@@ -262,6 +288,17 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
         ? {
             state: 'off',
           }
+        : isDs18b20
+          ? {
+              temperature: {
+                value: 0,
+                unit: ds18b20Config?.unit === 'fahrenheit' ? 'fahrenheit' : 'celsius',
+                unit_symbol: ds18b20Config?.unit === 'fahrenheit' ? 'F' : 'C',
+                measured_at_ms: 0,
+                valid: false,
+                status: 'not_ready',
+              },
+            }
         : undefined,
       scan: isOneWireBus
         ? {
@@ -274,13 +311,14 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
           }
         : undefined,
     }
-    if (isRecordPayload(payload.config)) {
+    if (!isDs18b20 && isRecordPayload(payload.config)) {
       device.config = {
         ...device.config,
         ...payload.config,
       }
     }
     db.devices.push(device)
+    refreshChildEffectiveStatuses(db)
     db.registryRevision += 1
     db.pendingPersistence = true
     return ok({
@@ -323,12 +361,18 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           device.lifecycle_status = 'ready'
           device.effective_status = 'ready'
           device.status = 'ready'
+          if (isRecordPayload(device.config)) {
+            device.config.enabled = true
+          }
           break
         case 'disable':
           device.enabled = false
           device.lifecycle_status = 'disabled'
           device.effective_status = 'disabled'
           device.status = 'disabled'
+          if (isRecordPayload(device.config)) {
+            device.config.enabled = false
+          }
           break
         case 'delete':
           db.devices = db.devices.filter(entry => entry.device_id !== deviceId)
@@ -365,6 +409,18 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
               internal_pullup: raw[6] !== 0,
             }
             device.enabled = raw[4] !== 0
+          } else if (device.type_id === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID) {
+            const parentDeviceId = normalizeParentDeviceId(payload.parent_device_id)
+            if (payload.has_parent !== true || parentDeviceId <= 0) {
+              throw new ApiClientError('ds18b20 parent is required', 'BAD_ARGS', 400, null)
+            }
+            requireOneWireParent(db, parentDeviceId)
+            const config = normalizeDs18b20ConfigPayload(payload.config, device.enabled)
+            ensureUniqueDs18b20Address(db, parentDeviceId, String(config.address), device.device_id)
+            device.config = config
+            device.enabled = Boolean(config.enabled)
+            device.has_parent = true
+            device.parent_device_id = parentDeviceId
           }
           device.config_revision += 1
           break
@@ -428,13 +484,27 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           }
           break
         case 'set_parent':
-          device.has_parent = Boolean(payload.has_parent ?? true)
-          device.parent_device_id = Number(payload.parent_device_id ?? 0)
+          if (device.type_id === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID) {
+            const parentDeviceId = normalizeParentDeviceId(payload.parent_device_id)
+            if (payload.has_parent !== true || parentDeviceId <= 0) {
+              throw new ApiClientError('ds18b20 parent is required', 'BAD_ARGS', 400, null)
+            }
+            requireOneWireParent(db, parentDeviceId)
+            if (isRecordPayload(device.config) && typeof device.config.address === 'string') {
+              ensureUniqueDs18b20Address(db, parentDeviceId, device.config.address, device.device_id)
+            }
+            device.has_parent = true
+            device.parent_device_id = parentDeviceId
+          } else {
+            device.has_parent = Boolean(payload.has_parent ?? true)
+            device.parent_device_id = Number(payload.parent_device_id ?? 0)
+          }
           break
         default:
           break
       }
 
+      refreshChildEffectiveStatuses(db)
       db.registryRevision += 1
       db.pendingPersistence = true
       return ok({
@@ -503,6 +573,134 @@ export function mockRestartSystem(): Promise<SystemRestartResponse> {
 
 function isRecordPayload(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function normalizeParentDeviceId(value: unknown): number {
+  const numeric = Number(value)
+  return Number.isInteger(numeric) && numeric > 0 ? numeric : 0
+}
+
+function requireOneWireParent(db: ReturnType<typeof createSeedMockDatabase>, parentDeviceId: number): DeviceRecord {
+  const parent = db.devices.find(entry => entry.device_id === parentDeviceId)
+  if (!parent || parent.type_id !== ONEWIRE_BUS_DEVICE_TYPE_ID) {
+    throw new ApiClientError('valid onewire parent is required', 'BAD_ARGS', 400, null)
+  }
+  return parent
+}
+
+function ds18b20AddressShapeValid(address: string): boolean {
+  return /^[0-9A-Fa-f]{16}$/.test(address.trim())
+}
+
+function normalizeDs18b20Resolution(value: unknown): number {
+  return value === 9 || value === 10 || value === 11 || value === 12 ? value : 12
+}
+
+function normalizeDs18b20Unit(value: unknown): 'celsius' | 'fahrenheit' {
+  return value === 'fahrenheit' ? 'fahrenheit' : 'celsius'
+}
+
+function normalizeFiniteNumber(value: unknown, fallback: number): number {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : fallback
+}
+
+function normalizeDs18b20ConfigPayload(value: unknown, enabledFallback: boolean): Record<string, unknown> {
+  if (!isRecordPayload(value)) {
+    throw new ApiClientError('invalid ds18b20 config', 'BAD_ARGS', 400, null)
+  }
+  const address = typeof value.address === 'string' ? value.address.trim().toUpperCase() : ''
+  if (!ds18b20AddressShapeValid(address)) {
+    throw new ApiClientError('invalid ds18b20 address', 'BAD_ARGS', 400, null)
+  }
+  return {
+    enabled: typeof value.enabled === 'boolean' ? value.enabled : enabledFallback,
+    address,
+    resolution: normalizeDs18b20Resolution(value.resolution),
+    unit: normalizeDs18b20Unit(value.unit),
+    poll_ms: Math.max(1000, normalizeFiniteNumber(value.poll_ms, 5000)),
+    report_delta_celsius: Math.max(0.01, normalizeFiniteNumber(value.report_delta_celsius, 0.01)),
+    report_always: typeof value.report_always === 'boolean' ? value.report_always : false,
+  }
+}
+
+function ensureUniqueDs18b20Address(
+  db: ReturnType<typeof createSeedMockDatabase>,
+  parentDeviceId: number,
+  address: string,
+  currentDeviceId: number,
+): void {
+  const normalizedAddress = address.trim().toUpperCase()
+  const duplicate = db.devices.some(device => (
+    device.device_id !== currentDeviceId &&
+    device.type_id === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID &&
+    device.parent_device_id === parentDeviceId &&
+    isRecordPayload(device.config) &&
+    typeof device.config.address === 'string' &&
+    device.config.address.trim().toUpperCase() === normalizedAddress
+  ))
+  if (duplicate) {
+    throw new ApiClientError('ds18b20 address already exists on this parent', 'DUPLICATE_ADDRESS', 400, null)
+  }
+}
+
+function markTemperatureUnavailable(device: DeviceRecord, status: string): void {
+  const unit = isRecordPayload(device.config) && device.config.unit === 'fahrenheit' ? 'fahrenheit' : 'celsius'
+  device.output = {
+    ...device.output,
+    temperature: {
+      value: 0,
+      unit,
+      unit_symbol: unit === 'fahrenheit' ? 'F' : 'C',
+      measured_at_ms: 0,
+      valid: false,
+      status,
+    },
+  }
+}
+
+function refreshChildEffectiveStatuses(db: ReturnType<typeof createSeedMockDatabase>): void {
+  for (const device of db.devices) {
+    if (device.type_id !== DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID) {
+      continue
+    }
+    if (!device.enabled) {
+      device.lifecycle_status = 'disabled'
+      device.effective_status = 'disabled'
+      device.status = 'disabled'
+      markTemperatureUnavailable(device, 'disabled')
+      continue
+    }
+
+    if (device.lifecycle_status === 'disabled') {
+      device.lifecycle_status = 'ready'
+    }
+    const parent = db.devices.find(entry => entry.device_id === device.parent_device_id)
+    if (!parent || parent.type_id !== ONEWIRE_BUS_DEVICE_TYPE_ID) {
+      device.effective_status = 'dependency_blocked'
+      device.status = 'dependency_blocked'
+      markTemperatureUnavailable(device, 'missing_parent')
+      continue
+    }
+    if (!parent.enabled || parent.effective_status === 'disabled') {
+      device.effective_status = 'disabled'
+      device.status = 'disabled'
+      markTemperatureUnavailable(device, 'parent_disabled')
+      continue
+    }
+    if (parent.effective_status !== 'ready') {
+      device.effective_status = 'dependency_blocked'
+      device.status = 'dependency_blocked'
+      markTemperatureUnavailable(device, 'parent_not_ready')
+      continue
+    }
+
+    device.effective_status = device.lifecycle_status === 'faulted' ? 'faulted' : 'ready'
+    device.status = device.effective_status
+    if (!device.output?.temperature) {
+      markTemperatureUnavailable(device, 'not_ready')
+    }
+  }
 }
 
 function normalizeDashboardLayout(layout: DashboardLayoutRecord, deviceIds: number[]): DashboardLayoutRecord {

@@ -117,3 +117,13 @@ DebugLogger& debugLogger();
 #define EWFM_DEVICE_REGISTRY_LOG_WARN(fmt, ...)
 #define EWFM_DEVICE_REGISTRY_LOG_DEBUG(fmt, ...)
 #endif
+
+#if defined(WITH_DS18B20_TEMPERATURE_SENSOR_DEBUG)
+#define EWFM_DS18B20_LOG_INFO(fmt, ...) EWFM_LOG_INFO("ds18b20", fmt, ##__VA_ARGS__)
+#define EWFM_DS18B20_LOG_WARN(fmt, ...) EWFM_LOG_WARN("ds18b20", fmt, ##__VA_ARGS__)
+#define EWFM_DS18B20_LOG_DEBUG(fmt, ...) EWFM_LOG_DEBUG("ds18b20", fmt, ##__VA_ARGS__)
+#else
+#define EWFM_DS18B20_LOG_INFO(fmt, ...)
+#define EWFM_DS18B20_LOG_WARN(fmt, ...)
+#define EWFM_DS18B20_LOG_DEBUG(fmt, ...)
+#endif

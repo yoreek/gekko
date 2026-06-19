@@ -2,6 +2,7 @@
 
 #include "devices/bus/onewire/OneWireBusDevice.h"
 #include "devices/dummy/DummyDevice.h"
+#include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
 #include "devices/switch/gpio/GpioSwitchDevice.h"
 
 namespace ewfm {
@@ -33,6 +34,7 @@ DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     (void)registry.registerDescriptor(DummyDevice::descriptor());
     (void)registry.registerDescriptor(GpioSwitchDevice::descriptor());
     (void)registry.registerDescriptor(OneWireBusDevice::descriptor());
+    (void)registry.registerDescriptor(Ds18b20TemperatureSensorDevice::descriptor());
     return registry;
 }
 

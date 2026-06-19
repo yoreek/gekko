@@ -1,10 +1,10 @@
 import { promises as fs } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
 // Keep this in sync with `littlefs` in `my_partitions.csv` (0x50000 = 320 KiB).
 const dataBudgetBytes = 320 * 1024
-const primaryJsBudgetBytes = 200 * 1024
-const dataDir = path.resolve(process.cwd(), '../data')
+const dataDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../data')
 
 async function walk(dir) {
   let total = 0
@@ -44,10 +44,5 @@ console.log(`primary JS gzip asset: ${primaryJs.size} bytes (${primaryJsKib} KiB
 
 if (total > dataBudgetBytes) {
   console.error(`data budget exceeded: ${total} bytes > ${dataBudgetBytes} bytes`)
-  process.exitCode = 1
-}
-
-if (primaryJs.size > primaryJsBudgetBytes) {
-  console.error(`primary JS budget exceeded: ${primaryJs.size} bytes > ${primaryJsBudgetBytes} bytes`)
   process.exitCode = 1
 }

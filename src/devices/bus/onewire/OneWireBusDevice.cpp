@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <type_traits>
+#include <utility>
 
 namespace ewfm {
 
@@ -17,6 +18,56 @@ static_assert(std::is_trivially_copyable<OneWireBusDeviceConfigV1>::value, "OneW
 static_assert(sizeof(OneWireBusDeviceConfigV1::kMagicKey) + sizeof(OneWireBusDeviceConfigV1) <= kMaxDeviceConfigBytes,
               "OneWireBusDeviceConfigV1 exceeds device config bound");
 
+OneWireBusDevice::ChildTransaction::ChildTransaction(OneWireBusDevice* parent, IOneWireBusDriver* driver, uint32_t generation)
+    : parent_(parent), driver_(driver), generation_(generation) {}
+
+OneWireBusDevice::ChildTransaction::ChildTransaction(ChildTransaction&& other) noexcept
+    : parent_(other.parent_), driver_(other.driver_), generation_(other.generation_) {
+    other.parent_ = nullptr;
+    other.driver_ = nullptr;
+    other.generation_ = 0;
+}
+
+OneWireBusDevice::ChildTransaction& OneWireBusDevice::ChildTransaction::operator=(ChildTransaction&& other) noexcept {
+    if (this == &other) {
+        return *this;
+    }
+
+    release();
+    parent_ = other.parent_;
+    driver_ = other.driver_;
+    generation_ = other.generation_;
+    other.parent_ = nullptr;
+    other.driver_ = nullptr;
+    other.generation_ = 0;
+    return *this;
+}
+
+OneWireBusDevice::ChildTransaction::~ChildTransaction() {
+    release();
+}
+
+OneWireBusDevice::ChildTransaction::operator bool() const {
+    return parent_ != nullptr && driver_ != nullptr;
+}
+
+IOneWireBusDriver* OneWireBusDevice::ChildTransaction::driver() const {
+    return driver_;
+}
+
+uint32_t OneWireBusDevice::ChildTransaction::generation() const {
+    return generation_;
+}
+
+void OneWireBusDevice::ChildTransaction::release() {
+    if (parent_ != nullptr) {
+        parent_->releaseChildTransaction();
+    }
+    parent_ = nullptr;
+    driver_ = nullptr;
+    generation_ = 0;
+}
+
 OneWireBusDevice::OneWireBusDevice(const DeviceRecord& record)
     : OneWireBusDevice(
           [&record]() {
@@ -25,10 +76,14 @@ OneWireBusDevice::OneWireBusDevice(const DeviceRecord& record)
               config.enabled = record.enabled ? 1U : 0U;
               return config;
           }(),
-          defaultArduinoOneWireBusDriver()) {}
+          createArduinoOneWireBusDriver()) {}
 
 OneWireBusDevice::OneWireBusDevice(const OneWireBusDeviceConfigV1& config, IOneWireBusDriver& driver)
     : DeviceRuntimeBase((PState)&OneWireBusDevice::Idle), config_(config), driver_(driver) {}
+
+OneWireBusDevice::OneWireBusDevice(const OneWireBusDeviceConfigV1& config, std::unique_ptr<IOneWireBusDriver> ownedDriver)
+    : DeviceRuntimeBase((PState)&OneWireBusDevice::Idle), config_(config), ownedDriver_(std::move(ownedDriver)),
+      driver_(ownedDriver_ != nullptr ? *ownedDriver_ : defaultArduinoOneWireBusDriver()) {}
 
 const OneWireBusDeviceConfigV1& OneWireBusDevice::config() const {
     return config_;
@@ -36,6 +91,24 @@ const OneWireBusDeviceConfigV1& OneWireBusDevice::config() const {
 
 const OneWireScanResult& OneWireBusDevice::scan() const {
     return scan_;
+}
+
+uint32_t OneWireBusDevice::generation() const {
+    return generation_;
+}
+
+bool OneWireBusDevice::childTransactionActive() const {
+    return childTransactionActive_;
+}
+
+OneWireBusDevice::ChildTransaction OneWireBusDevice::beginChildTransaction() {
+    if (status_ != DeviceStatus::Ready || isScanning() || childTransactionActive_ || disableRequested_ || deleteRequested_ ||
+        reconfigureRequested_ || config_.enabled == 0U) {
+        return {};
+    }
+
+    childTransactionActive_ = true;
+    return ChildTransaction(this, &driver_, generation_);
 }
 
 DeviceTypeDescriptor OneWireBusDevice::descriptor() {
@@ -111,7 +184,7 @@ void OneWireBusDevice::finishScan() {
 }
 
 void OneWireBusDevice::appendScanCandidate(const OneWireRomAddress& address) {
-    if (!oneWireRomCrcValid(driver_, address)) {
+    if (!oneWireRomCrcValid(address)) {
         scan_.invalidCandidateSeen = true;
         markRuntimeStateDirty();
         return;
@@ -129,13 +202,22 @@ void OneWireBusDevice::appendScanCandidate(const OneWireRomAddress& address) {
 }
 
 void OneWireBusDevice::releaseHardware() {
+    childTransactionActive_ = false;
     driver_.depower();
+}
+
+void OneWireBusDevice::releaseChildTransaction() {
+    childTransactionActive_ = false;
 }
 
 DeviceValidationResult OneWireBusDevice::initializeHardware(uint32_t now) {
     (void)now;
     if (!driver_.begin(config_.gpioPin, config_.internalPullup != 0U)) {
         return {DeviceError::StorageError, "onewire bus driver initialization failed"};
+    }
+    ++generation_;
+    if (generation_ == 0U) {
+        ++generation_;
     }
     return {};
 }

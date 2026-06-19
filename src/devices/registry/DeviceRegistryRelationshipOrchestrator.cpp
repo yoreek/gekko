@@ -77,7 +77,11 @@ DeviceStatus DeviceRegistryRelationshipOrchestrator::effectiveStatusForRecord(co
         return DeviceStatus::DependencyBlocked;
     }
 
-    if (parentBlocksChildren(effectiveStatusForRecord(*parent, snapshot, runtimes))) {
+    const DeviceStatus parentStatus = effectiveStatusForRecord(*parent, snapshot, runtimes);
+    if (parentStatus == DeviceStatus::Disabled) {
+        return DeviceStatus::Disabled;
+    }
+    if (parentBlocksChildren(parentStatus)) {
         return DeviceStatus::DependencyBlocked;
     }
     return rawStatus;
@@ -100,12 +104,19 @@ void DeviceRegistryRelationshipOrchestrator::refreshDependentRuntimeStates(const
 
         if (record.hasParent) {
             const DeviceRecord* parent = findRecord(snapshot, record.parentDeviceId);
-            if (parent != nullptr && parentBlocksChildren(effectiveStatusForRecord(*parent, snapshot, runtimes))) {
+            const DeviceStatus parentStatus =
+                parent != nullptr ? effectiveStatusForRecord(*parent, snapshot, runtimes) : DeviceStatus::DependencyBlocked;
+            if (parentStatus == DeviceStatus::Disabled) {
+                runtimeIt->second.runtime->requestDisable();
+                continue;
+            }
+            if (parentBlocksChildren(parentStatus)) {
                 continue;
             }
         }
 
-        if (runtimeIt->second.runtime->status() == DeviceStatus::DependencyBlocked) {
+        const DeviceStatus runtimeStatus = runtimeIt->second.runtime->status();
+        if (runtimeStatus == DeviceStatus::DependencyBlocked || runtimeStatus == DeviceStatus::Disabled) {
             runtimeIt->second.runtime->requestReconfigure();
         }
     }

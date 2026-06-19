@@ -478,6 +478,31 @@ void DeviceRegistryController::cmd() {
         return;
     }
 
+    if (commandType == DeviceCommandType::UpdateConfig) {
+        const IDeviceApiAdapter* adapter = record_ != nullptr ? adapters_.find(record_->header.typeId) : nullptr;
+        if (adapter != nullptr && record_ != nullptr) {
+            std::string error;
+            DeviceConfigUpdateRequest updateRequest{};
+            if (!adapter->parseUpdateConfigRequest(input, *record_, updateRequest, error)) {
+                renderError(400, "BAD_ARGS", error.c_str());
+                return;
+            }
+            const DeviceMutationResult result = registry_.updateConfigAndParent(
+                deviceId_, updateRequest.configPayload, updateRequest.configVersion, updateRequest.parentFieldsProvided,
+                updateRequest.hasParent, updateRequest.parentDeviceId, 0, parsePolicy(input));
+            if (!result.ok()) {
+                renderError(400, errorCodeForDeviceError(result.validation.error), result.validation.message);
+                return;
+            }
+
+            StaticJsonDocument<256> doc;
+            doc["registry_revision"] = registry_.registryRevision();
+            doc["pending_persistence"] = result.pendingPersistence;
+            renderOk(doc);
+            return;
+        }
+    }
+
     std::string payload;
     if (commandType == DeviceCommandType::SetParent) {
         if (input["has_parent"].is<bool>() && !(input["has_parent"].as<bool>())) {

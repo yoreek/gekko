@@ -61,6 +61,12 @@
           :busy="busy"
         />
 
+        <Ds18b20TemperatureSensorDeviceForm
+          v-else-if="editing && isDs18b20"
+          v-model="draft.ds18b20Config"
+          :busy="busy"
+        />
+
         <component
           v-else-if="!editing && hasTypeDetails"
           :is="detailComponent"
@@ -105,14 +111,17 @@ import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import {
   buildDeviceEditCommands,
   createDeviceEditDraft,
+  isDs18b20Type,
   isGpioSwitchType,
   isOneWireBusType,
 } from '@/components/device/device-form'
+import Ds18b20TemperatureSensorDeviceForm from '@/components/devices/ds18b20/Ds18b20TemperatureSensorDeviceForm.vue'
 import GpioSwitchDeviceForm from '@/components/devices/gpio-switch/GpioSwitchDeviceForm.vue'
 import OneWireBusDeviceForm from '@/components/devices/onewire-bus/OneWireBusDeviceForm.vue'
 import { resolveDeviceDetailComponent } from '@/components/devices/registry/device-component-registry'
 import type { DashboardDevice } from '@/models/device'
 import { deviceTypeLabelKey, DUMMY_DEVICE_TYPE_ID } from '@/models/device-types'
+import { ds18b20AddressShapeValid, ds18b20ConfigChanged } from '@/models/devices/ds18b20'
 import type { DeviceCommandRequest } from '@/api'
 import type { DeviceEditSubmitPayload } from '@/components/device/device-form'
 
@@ -140,6 +149,7 @@ const fullscreen = computed(() => smAndDown.value)
 const device = computed(() => props.device)
 const isGpioSwitch = computed(() => device.value !== null && isGpioSwitchType(device.value.typeId))
 const isOneWireBus = computed(() => device.value !== null && isOneWireBusType(device.value.typeId))
+const isDs18b20 = computed(() => device.value !== null && isDs18b20Type(device.value.typeId))
 const hasTypeDetails = computed(() => device.value !== null && device.value.typeId !== DUMMY_DEVICE_TYPE_ID)
 
 const detailComponent = computed(() => {
@@ -189,6 +199,9 @@ const canSave = computed(() => {
   if (draft.common.name.trim().length === 0) {
     return false
   }
+  if (isDs18b20.value && (draft.ds18b20Config.parent_device_id <= 0 || !ds18b20AddressShapeValid(draft.ds18b20Config.address))) {
+    return false
+  }
   const nextName = draft.common.name.trim()
   const currentDraft = createDeviceEditDraft(device.value)
   if (nextName !== currentDraft.common.name || draft.common.enabled !== currentDraft.common.enabled) {
@@ -199,6 +212,9 @@ const canSave = computed(() => {
   }
   if (isOneWireBus.value) {
     return JSON.stringify(draft.oneWireBusConfig) !== JSON.stringify(currentDraft.oneWireBusConfig)
+  }
+  if (isDs18b20.value) {
+    return ds18b20ConfigChanged(draft.ds18b20Config, currentDraft.ds18b20Config)
   }
   return false
 })
@@ -232,6 +248,7 @@ function resetDrafts(current: DashboardDevice): void {
   draft.common.enabled = next.common.enabled
   draft.gpioSwitchConfig = next.gpioSwitchConfig
   draft.oneWireBusConfig = next.oneWireBusConfig
+  draft.ds18b20Config = next.ds18b20Config
 }
 
 function enterEditMode(): void {
@@ -261,6 +278,7 @@ function submitSave(): void {
     },
     gpioSwitchConfig: isGpioSwitch.value ? draft.gpioSwitchConfig : undefined,
     oneWireBusConfig: isOneWireBus.value ? draft.oneWireBusConfig : undefined,
+    ds18b20Config: isDs18b20.value ? draft.ds18b20Config : undefined,
   })
   if (commands.length === 0) {
     emit('update:editing', false)
@@ -274,6 +292,7 @@ function submitSave(): void {
     },
     gpioSwitchConfig: isGpioSwitch.value ? draft.gpioSwitchConfig : undefined,
     oneWireBusConfig: isOneWireBus.value ? draft.oneWireBusConfig : undefined,
+    ds18b20Config: isDs18b20.value ? draft.ds18b20Config : undefined,
   })
 }
 

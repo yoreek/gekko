@@ -33,9 +33,11 @@ struct LinkRuntime final : public IDeviceRuntime {
     }
     void requestReconfigure() override {
         reconfigureCount += 1;
+        status_ = DeviceStatus::Reconfiguring;
     }
     void requestDisable() override {
         disableCount += 1;
+        status_ = DeviceStatus::Disabled;
     }
     void requestDelete() override {}
     DeviceStatus status() const override {
@@ -105,6 +107,21 @@ void test_relationship_orchestrator_syncs_links_and_dependency_states() {
     snapshot.records[1].enabled = false;
     DeviceRegistryRelationshipOrchestrator::refreshDependentRuntimeStates(snapshot, runtimes);
     TEST_ASSERT_EQUAL_UINT32(1, childPtr->disableCount);
+
+    snapshot.records[1].enabled = true;
+    snapshot.records[0].enabled = false;
+    parentPtr->status_ = DeviceStatus::Disabled;
+    const DeviceStatus disabledParentChildEffective =
+        DeviceRegistryRelationshipOrchestrator::effectiveStatusForRecord(snapshot.records[1], snapshot, runtimes);
+    TEST_ASSERT_EQUAL_UINT32(static_cast<uint32_t>(DeviceStatus::Disabled), static_cast<uint32_t>(disabledParentChildEffective));
+
+    DeviceRegistryRelationshipOrchestrator::refreshDependentRuntimeStates(snapshot, runtimes);
+    TEST_ASSERT_EQUAL_UINT32(2, childPtr->disableCount);
+
+    snapshot.records[0].enabled = true;
+    parentPtr->status_ = DeviceStatus::Ready;
+    DeviceRegistryRelationshipOrchestrator::refreshDependentRuntimeStates(snapshot, runtimes);
+    TEST_ASSERT_EQUAL_UINT32(2, childPtr->reconfigureCount);
 }
 
 int main(int, char**) {

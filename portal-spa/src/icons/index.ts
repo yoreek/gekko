@@ -3,6 +3,7 @@ export type AppIconName =
   | 'wifi'
   | 'device'
   | 'bus'
+  | 'temperature'
   | 'devices'
   | 'panels'
   | 'ota'
@@ -46,6 +47,10 @@ export const iconRegistry: Record<AppIconName, IconShape> = {
   bus: {
     viewBox: '0 0 24 24',
     paths: ['M6 5h12v14H6z', 'M9 8h6', 'M9 12h6', 'M9 16h3', 'M15 16h0.01'],
+  },
+  temperature: {
+    viewBox: '0 0 24 24',
+    paths: ['M10 4a2 2 0 114 0v8.2a4 4 0 11-4 0z', 'M12 14v3', 'M12 4v8'],
   },
   devices: {
     viewBox: '0 0 24 24',

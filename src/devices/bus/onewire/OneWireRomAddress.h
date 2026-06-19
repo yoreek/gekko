@@ -22,13 +22,21 @@ public:
 
     virtual bool begin(uint8_t pin, bool internalPullup) = 0;
     virtual void depower() = 0;
+    virtual bool reset() = 0;
     virtual void resetSearch() = 0;
     virtual bool search(OneWireRomAddress& address) = 0;
+    virtual void select(const OneWireRomAddress& address) = 0;
+    virtual void skip() = 0;
+    virtual void write(uint8_t value, bool power = false) = 0;
+    virtual uint8_t read() = 0;
+    virtual uint8_t readBit() = 0;
     virtual uint8_t crc8(const uint8_t* data, size_t len) const = 0;
 };
 
 bool formatOneWireRomAddress(const OneWireRomAddress& address, char (&out)[17]);
 bool parseOneWireRomAddress(const char* input, OneWireRomAddress& address);
+uint8_t oneWireCrc8(const uint8_t* data, size_t len);
+bool oneWireRomCrcValid(const OneWireRomAddress& address);
 bool oneWireRomCrcValid(const IOneWireBusDriver& driver, const OneWireRomAddress& address);
 
 } // namespace ewfm

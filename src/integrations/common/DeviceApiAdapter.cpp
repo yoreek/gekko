@@ -1,5 +1,6 @@
 #include "integrations/common/DeviceApiAdapter.h"
 
+#include "integrations/rest/ds18b20/Ds18b20TemperatureSensorDeviceApiAdapter.h"
 #include "integrations/rest/dummy/DummyDeviceApiAdapter.h"
 #include "integrations/rest/gpio_switch/GpioSwitchDeviceApiAdapter.h"
 #include "integrations/rest/onewire_bus/OneWireBusDeviceApiAdapter.h"
@@ -7,6 +8,18 @@
 #include <cstring>
 
 namespace ewfm {
+
+bool IDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const DeviceRecord& record,
+                                                 DeviceConfigUpdateRequest& request, std::string& error) const {
+    (void)record;
+    request = {};
+    request.configPayload = input["payload"] | "";
+    if (request.configPayload.empty()) {
+        error = "update_config payload is required";
+        return false;
+    }
+    return true;
+}
 
 bool DeviceApiAdapterRegistry::registerAdapter(const IDeviceApiAdapter& adapter) {
     if (adapter.typeId() == 0 || adapter.typeName() == nullptr) {
@@ -45,6 +58,7 @@ DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(DummyDeviceApiAdapter::instance());
     (void)registry.registerAdapter(GpioSwitchDeviceApiAdapter::instance());
     (void)registry.registerAdapter(OneWireBusDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(Ds18b20TemperatureSensorDeviceApiAdapter::instance());
     return registry;
 }
 

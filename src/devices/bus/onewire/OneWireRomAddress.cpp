@@ -51,6 +51,30 @@ bool parseOneWireRomAddress(const char* input, OneWireRomAddress& address) {
     return true;
 }
 
+uint8_t oneWireCrc8(const uint8_t* data, size_t len) {
+    if (data == nullptr) {
+        return 0;
+    }
+
+    uint8_t crc = 0;
+    for (size_t index = 0; index < len; ++index) {
+        uint8_t inbyte = data[index];
+        for (uint8_t bit = 0; bit < 8; ++bit) {
+            const uint8_t mix = static_cast<uint8_t>((crc ^ inbyte) & 0x01U);
+            crc >>= 1U;
+            if (mix != 0U) {
+                crc ^= 0x8CU;
+            }
+            inbyte >>= 1U;
+        }
+    }
+    return crc;
+}
+
+bool oneWireRomCrcValid(const OneWireRomAddress& address) {
+    return oneWireCrc8(address.bytes, 7U) == address.bytes[7];
+}
+
 bool oneWireRomCrcValid(const IOneWireBusDriver& driver, const OneWireRomAddress& address) {
     return driver.crc8(address.bytes, 7U) == address.bytes[7];
 }
