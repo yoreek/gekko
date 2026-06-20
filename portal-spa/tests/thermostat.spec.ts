@@ -92,3 +92,19 @@ test('realtime thermostat updates merge temperature and control state', async ({
   await expect(page.getByLabel('Desired switch state')).toHaveValue('Off')
   await expect(page.getByText('Control status: Idle')).toBeVisible()
 })
+
+test('enables save after editing thermostat config', async ({ page }) => {
+  await page.goto(mockPath)
+
+  await page.getByText('Grow Room Thermostat').click()
+  await page.getByRole('button', { name: 'Edit' }).click()
+
+  const saveButton = page.getByRole('button', { name: 'Save' })
+  await expect(saveButton).toBeDisabled()
+
+  await page.getByLabel('Target temperature').fill('29')
+  await expect(saveButton).toBeEnabled()
+
+  await page.getByLabel('Hysteresis').fill('0.7')
+  await expect(saveButton).toBeEnabled()
+})

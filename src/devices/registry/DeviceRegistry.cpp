@@ -107,6 +107,11 @@ DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
         }
     }
 
+    // Run a second pass after all runtimes exist so late-loaded dependencies are wired back into earlier dependents.
+    for (const auto& record : loadedSnapshot.records) {
+        syncRuntimeDependencyLinks(record.header.deviceId);
+    }
+
     refreshDependentRuntimeStates(now);
 
     return {};

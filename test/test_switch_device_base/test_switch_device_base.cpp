@@ -15,7 +15,7 @@ struct OutputWrite {
     uint32_t now{0};
 };
 
-class FakeTriStateSwitch final : public TriStateSwitchDeviceBase {
+class FakeTriStateSwitch : public TriStateSwitchDeviceBase {
 public:
     explicit FakeTriStateSwitch(const SwitchDeviceConfigV1& config) : TriStateSwitchDeviceBase(config) {}
 
@@ -24,6 +24,10 @@ public:
     bool configureOk{true};
     bool applyOk{true};
     std::vector<OutputWrite> writes{};
+
+    bool isRuntimeStateDirty() const {
+        return runtimeStateDirty();
+    }
 
 private:
     DeviceValidationResult configureHardware(uint32_t now) override {
@@ -157,6 +161,16 @@ void test_switch_set_state_command_marks_retained_dirty_only_when_restore_enable
     TEST_ASSERT_FALSE(noRestoreDevice.retainedStateDirty());
 }
 
+void test_switch_output_changes_mark_runtime_dirty() {
+    SwitchDeviceConfigV1 config = makeConfig(OutputState::Off);
+    FakeTriStateSwitch device(config);
+    startToReady(device);
+
+    TEST_ASSERT_FALSE(device.isRuntimeStateDirty());
+    TEST_ASSERT_TRUE(device.handleCommand(DeviceCommand{DeviceCommandType::SetOutput, 1, "on"}));
+    TEST_ASSERT_TRUE(device.isRuntimeStateDirty());
+}
+
 void test_binary_switch_rejects_disabled_state_and_toggle_command() {
     SwitchDeviceConfigV1 config = makeConfig(OutputState::Off);
     FakeBinarySwitch device(config);
@@ -187,6 +201,7 @@ int main(int, char**) {
     RUN_TEST(test_tri_state_switch_applies_startup_state_and_inversion);
     RUN_TEST(test_tri_state_switch_restores_retained_output_state_without_dirty_write);
     RUN_TEST(test_switch_set_state_command_marks_retained_dirty_only_when_restore_enabled);
+    RUN_TEST(test_switch_output_changes_mark_runtime_dirty);
     RUN_TEST(test_binary_switch_rejects_disabled_state_and_toggle_command);
     RUN_TEST(test_disable_applies_safe_state_and_disabled_can_be_ready_capable_output);
     return UNITY_END();

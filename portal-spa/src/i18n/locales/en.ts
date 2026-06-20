@@ -178,7 +178,6 @@ export default {
       currentTemperature: 'Current temperature',
       desiredSwitchState: 'Desired switch state',
       actualSwitchState: 'Actual switch state',
-      lastCheckAt: 'Last check at (ms)',
       controlStatus: 'Control status',
       hysteresis: 'Hysteresis',
       safeMinTemperature: 'Safe min temperature',
@@ -260,6 +259,7 @@ export default {
         hysteresis: 'Hysteresis',
       },
       thermostatStatus: {
+        ok: 'OK',
         ready: 'Ready',
         heating: 'Heating',
         cooling: 'Cooling',

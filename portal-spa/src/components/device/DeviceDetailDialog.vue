@@ -227,9 +227,7 @@ const canSave = computed(() => {
     return ds18b20ConfigChanged(draft.ds18b20Config, currentDraft.ds18b20Config)
   }
   if (isThermostat.value) {
-    const next = normalizeThermostatConfig(draft.thermostatConfig)
-    const current = normalizeThermostatConfig(currentDraft.thermostatConfig, device.value.deps)
-    return thermostatConfigChanged(next, current)
+    return thermostatConfigChanged(draft.thermostatConfig, currentDraft.thermostatConfig)
   }
   return false
 })

@@ -47,7 +47,7 @@ private:
     bool dependenciesReady() const;
     bool dependencyIsDisabled() const;
     bool dependencyBlocked() const;
-    bool sensorReadingFresh(const TemperatureReading& reading, uint32_t now) const;
+    bool sensorReadingTimedOut(uint32_t now) const;
     bool sensorReadingInRange(const TemperatureReading& reading) const;
     OutputState desiredStateForTemperature(const TemperatureReading& reading) const;
     bool requestSwitchOutput(OutputState state, uint32_t now, bool safetyOff);
@@ -69,6 +69,7 @@ private:
     const char* controlStatus_{"not_ready"};
     uint32_t lastCheckAtMs_{0};
     uint32_t nextCheckAtMs_{0};
+    uint32_t sensorInvalidSinceMs_{0};
     uint32_t retryDeadlineMs_{0};
     uint32_t lastOrdinarySwitchChangeAtMs_{0};
     bool pendingSafetyOff_{false};

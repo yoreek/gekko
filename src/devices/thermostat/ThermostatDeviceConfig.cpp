@@ -78,6 +78,65 @@ bool parseDuration(const JsonVariantConst& variant, uint32_t& value, const char*
     value = static_cast<uint32_t>(parsed);
     return true;
 }
+
+bool parseMilliCelsiusField(const JsonVariantConst& variant, int32_t& milliCelsius, const char*& error) {
+    if (variant.isNull()) {
+        return true;
+    }
+    if (!variant.is<float>() && !variant.is<double>() && !variant.is<int>() && !variant.is<long>() && !variant.is<unsigned long>() &&
+        !variant.is<unsigned int>()) {
+        error = "temperature value must be numeric";
+        return false;
+    }
+    const double milli = variant.as<double>();
+    if (milli < static_cast<double>(INT32_MIN) || milli > static_cast<double>(INT32_MAX)) {
+        error = "temperature value is out of range";
+        return false;
+    }
+    milliCelsius = static_cast<int32_t>(std::round(milli));
+    return true;
+}
+
+bool parseTemperatureField(const JsonObjectConst& input, const char* milliKey, const char* celsiusKey, int32_t& milliCelsius, const char*& error) {
+    const JsonVariantConst milliVariant = input[milliKey];
+    if (!milliVariant.isNull()) {
+        return parseMilliCelsiusField(milliVariant, milliCelsius, error);
+    }
+    return parseTemperatureMilliCelsius(input[celsiusKey], milliCelsius, error);
+}
+
+bool parseHysteresisField(const JsonObjectConst& input, uint16_t& centiCelsius, const char*& error) {
+    const JsonVariantConst centiVariant = input["hysteresis_centi_celsius"];
+    if (!centiVariant.isNull()) {
+        if (!centiVariant.is<float>() && !centiVariant.is<double>() && !centiVariant.is<int>() && !centiVariant.is<long>()) {
+            error = "thermostat hysteresis must be numeric";
+            return false;
+        }
+        const long parsed = centiVariant.as<long>();
+        if (parsed <= 0 || parsed > static_cast<long>(kThermostatMaxHysteresisCentiCelsius)) {
+            error = "thermostat hysteresis is invalid";
+            return false;
+        }
+        centiCelsius = static_cast<uint16_t>(parsed);
+        return true;
+    }
+
+    const JsonVariantConst celsiusVariant = input["hysteresis_celsius"];
+    if (celsiusVariant.isNull()) {
+        return true;
+    }
+    if (!celsiusVariant.is<float>() && !celsiusVariant.is<double>() && !celsiusVariant.is<int>() && !celsiusVariant.is<long>()) {
+        error = "thermostat hysteresis must be numeric";
+        return false;
+    }
+    const double hysteresis = celsiusVariant.as<double>();
+    if (hysteresis <= 0.0 || hysteresis > static_cast<double>(kThermostatMaxHysteresisCentiCelsius) / 100.0) {
+        error = "thermostat hysteresis is invalid";
+        return false;
+    }
+    centiCelsius = static_cast<uint16_t>(std::round(hysteresis * 100.0));
+    return centiCelsius != 0U;
+}
 } // namespace
 
 static_assert(std::is_trivially_copyable<ThermostatDeviceConfigV1>::value, "ThermostatDeviceConfigV1 must be POD");
@@ -211,25 +270,14 @@ bool parseThermostatDeviceConfigJson(const JsonObjectConst& input, ThermostatDev
     config.mode = static_cast<uint8_t>(mode);
     config.algorithm = static_cast<uint8_t>(algorithm);
 
-    if (!parseTemperatureMilliCelsius(input["target_celsius"], config.targetMilliCelsius, error) ||
-        !parseTemperatureMilliCelsius(input["min_safe_celsius"], config.minSafeMilliCelsius, error) ||
-        !parseTemperatureMilliCelsius(input["max_safe_celsius"], config.maxSafeMilliCelsius, error)) {
+    if (!parseTemperatureField(input, "target_milli_celsius", "target_celsius", config.targetMilliCelsius, error) ||
+        !parseTemperatureField(input, "min_safe_milli_celsius", "min_safe_celsius", config.minSafeMilliCelsius, error) ||
+        !parseTemperatureField(input, "max_safe_milli_celsius", "max_safe_celsius", config.maxSafeMilliCelsius, error)) {
         return false;
     }
 
-    const JsonVariantConst hysteresisVariant = input["hysteresis_celsius"];
-    if (!hysteresisVariant.isNull()) {
-        if (!hysteresisVariant.is<float>() && !hysteresisVariant.is<double>() && !hysteresisVariant.is<int>() &&
-            !hysteresisVariant.is<long>()) {
-            error = "thermostat hysteresis must be numeric";
-            return false;
-        }
-        const double hysteresis = hysteresisVariant.as<double>();
-        if (hysteresis <= 0.0 || hysteresis > static_cast<double>(kThermostatMaxHysteresisCentiCelsius) / 100.0) {
-            error = "thermostat hysteresis is invalid";
-            return false;
-        }
-        config.hysteresisCentiCelsius = static_cast<uint16_t>(std::round(hysteresis * 100.0));
+    if (!parseHysteresisField(input, config.hysteresisCentiCelsius, error)) {
+        return false;
     }
 
     if (!parseDuration(input["check_interval_ms"], config.checkIntervalMs, error) ||

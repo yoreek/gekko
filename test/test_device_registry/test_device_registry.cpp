@@ -970,6 +970,70 @@ void test_registry_propagates_dependency_status_and_recovers() {
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(faultedDependent->status));
 }
 
+void test_registry_backfills_dependency_links_after_begin() {
+    MemoryConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    FixedDeviceIdSource idSource({261, 262});
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    TEST_ASSERT_TRUE(types.registerDescriptor(makeCommandableDescriptor(58)));
+    DeviceTypeDescriptor dependentDescriptor = makeDependentDescriptor(59, 58);
+    dependentDescriptor.createRuntime = &createCountingRuntime;
+    TEST_ASSERT_TRUE(types.registerDescriptor(dependentDescriptor));
+
+    DeviceRegistrySnapshot snapshot{};
+    DeviceConfigBlobMap configBlobs{};
+
+    DummyDeviceConfigV1 dependentConfig{};
+    dependentConfig.enabled = true;
+    std::snprintf(dependentConfig.name, sizeof(dependentConfig.name), "%s", "dependent");
+    const DeviceConfigBlob dependentBlob = encodeDummyConfig(dependentConfig);
+
+    DeviceRegistryEntry dependentRecord{};
+    dependentRecord.header.recordVersion = kDeviceRecordHeaderVersion;
+    dependentRecord.header.deviceId = 261;
+    dependentRecord.header.typeId = 59;
+    dependentRecord.header.configVersion = 1U;
+    dependentRecord.header.configRevision = 1U;
+    dependentRecord.header.payloadLength = static_cast<uint32_t>(dependentBlob.size());
+    dependentRecord.depCount = 1U;
+    dependentRecord.deps[0] = {DeviceDependencyRole::OneWireBus, 262};
+    dependentRecord.status = DeviceStatus::Ready;
+    snapshot.indexEntries.push_back({261, 59});
+    snapshot.records.push_back(dependentRecord);
+    configBlobs[261] = dependentBlob;
+
+    DummyDeviceConfigV1 dependencyConfig{};
+    dependencyConfig.enabled = true;
+    std::snprintf(dependencyConfig.name, sizeof(dependencyConfig.name), "%s", "dependency");
+    const DeviceConfigBlob dependencyBlob = encodeDummyConfig(dependencyConfig);
+
+    DeviceRegistryEntry dependencyRecord{};
+    dependencyRecord.header.recordVersion = kDeviceRecordHeaderVersion;
+    dependencyRecord.header.deviceId = 262;
+    dependencyRecord.header.typeId = 58;
+    dependencyRecord.header.configVersion = 1U;
+    dependencyRecord.header.configRevision = 1U;
+    dependencyRecord.header.payloadLength = static_cast<uint32_t>(dependencyBlob.size());
+    dependencyRecord.status = DeviceStatus::Ready;
+    snapshot.indexEntries.push_back({262, 58});
+    snapshot.records.push_back(dependencyRecord);
+    configBlobs[262] = dependencyBlob;
+
+    TEST_ASSERT_TRUE(store.save(snapshot, configBlobs).ok());
+
+    DeviceRegistry registry(store, types, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+
+    auto* dependentRuntime = dynamic_cast<CountingRuntime*>(registry.runtime(261));
+    TEST_ASSERT_NOT_NULL(dependentRuntime);
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(262), dependentRuntime->dependencyRuntime(DeviceDependencyRole::OneWireBus));
+    const auto& dependencyDependents = registry.runtime(262)->dependentRuntimes();
+    TEST_ASSERT_EQUAL_UINT32(1, dependencyDependents.size());
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(261), dependencyDependents[0]);
+}
+
 void test_registry_set_deps_command_normalization() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
@@ -1485,6 +1549,7 @@ int main(int, char**) {
     RUN_TEST(test_registry_rejects_dependency_delete_with_dependents);
     RUN_TEST(test_registry_reassigns_dependency_atomically);
     RUN_TEST(test_registry_propagates_dependency_status_and_recovers);
+    RUN_TEST(test_registry_backfills_dependency_links_after_begin);
     RUN_TEST(test_registry_set_deps_command_normalization);
     RUN_TEST(test_registry_dependency_config_update_reconfigures_dependents);
     RUN_TEST(test_registry_emits_required_event_kinds);

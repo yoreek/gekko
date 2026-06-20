@@ -178,7 +178,6 @@ export default {
       currentTemperature: 'Текущая температура',
       desiredSwitchState: 'Желаемое состояние выключателя',
       actualSwitchState: 'Фактическое состояние выключателя',
-      lastCheckAt: 'Последняя проверка (мс)',
       controlStatus: 'Статус управления',
       hysteresis: 'Гистерезис',
       safeMinTemperature: 'Безопасный минимум температуры',
@@ -228,6 +227,7 @@ export default {
         hysteresis: 'Гистерезис',
       },
       thermostatStatus: {
+        ok: 'ОК',
         ready: 'Готов',
         heating: 'Нагрев',
         cooling: 'Охлаждение',

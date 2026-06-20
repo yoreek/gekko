@@ -170,7 +170,8 @@ bool SwitchDeviceBase::applyConfiguredOutput(OutputState state, uint32_t now, bo
     }
 
     const bool physicalLevel = state == OutputState::On ? !inverted() : inverted();
-    if (status_ == DeviceStatus::Ready && state == outputState_ && physicalLevel == physicalOutputState_) {
+    const bool outputChanged = state != outputState_ || (state != OutputState::Disabled && physicalLevel != physicalOutputState_);
+    if (status_ == DeviceStatus::Ready && !outputChanged) {
         return true;
     }
     DeviceValidationResult result = applyHardwareOutput(state, physicalLevel, now);
@@ -182,6 +183,9 @@ bool SwitchDeviceBase::applyConfiguredOutput(OutputState state, uint32_t now, bo
     outputState_ = state;
     if (state != OutputState::Disabled) {
         physicalOutputState_ = physicalLevel;
+    }
+    if (outputChanged) {
+        markRuntimeStateDirty();
     }
     if (markRetainedDirty) {
         retainedStateDirty_ = true;

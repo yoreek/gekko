@@ -28,9 +28,6 @@
         <v-col cols="12" md="4">
           <v-text-field :label="t('device.fields.currentTemperature')" :model-value="temperatureText" readonly />
         </v-col>
-        <v-col cols="12" md="4">
-          <v-text-field :label="t('device.fields.lastCheckAt')" :model-value="lastCheckText" readonly />
-        </v-col>
       </v-row>
 
       <v-row class="device-type-section__grid">
@@ -135,7 +132,6 @@ const statusText = computed(() => t(thermostatStatusLabelKey(props.device.output
 const controlText = computed(() => `${t('device.fields.controlStatus')}: ${statusText.value}`)
 const desiredSwitchText = computed(() => t(`labels.output.${props.device.output.desired_switch_state ?? 'off'}`))
 const actualSwitchText = computed(() => t(`labels.output.${props.device.output.actual_switch_state ?? 'off'}`))
-const lastCheckText = computed(() => (props.device.output.last_check_at_ms ? String(props.device.output.last_check_at_ms) : '—'))
 const sensorLabel = computed(() =>
   sensorDevice.value ? `${sensorDevice.value.name} #${sensorDevice.value.deviceId}` : `#${config.value.temperature_sensor_device_id || '—'}`,
 )

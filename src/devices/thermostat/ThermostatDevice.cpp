@@ -183,14 +183,8 @@ bool ThermostatDevice::dependencyBlocked() const {
            switchRuntime->status() != DeviceStatus::Ready;
 }
 
-bool ThermostatDevice::sensorReadingFresh(const TemperatureReading& reading, uint32_t now) const {
-    if (!reading.valid) {
-        return false;
-    }
-    if (reading.measuredAtMs == 0U) {
-        return false;
-    }
-    return static_cast<uint32_t>(now - reading.measuredAtMs) <= config_.sensorTimeoutMs;
+bool ThermostatDevice::sensorReadingTimedOut(uint32_t now) const {
+    return sensorInvalidSinceMs_ != 0U && static_cast<uint32_t>(now - sensorInvalidSinceMs_) >= config_.sensorTimeoutMs;
 }
 
 bool ThermostatDevice::sensorReadingInRange(const TemperatureReading& reading) const {
@@ -438,17 +432,20 @@ SM_STATE(ThermostatDevice::CheckTemperature) {
     const uint32_t now = uptime();
     TemperatureReading reading{};
     if (temperatureSensor_ == nullptr || !temperatureSensor_->latestTemperatureReading(reading) || !reading.valid) {
+        if (sensorInvalidSinceMs_ == 0U) {
+            sensorInvalidSinceMs_ = now;
+        }
         invalidateTemperature(kControlSensorTimeout);
-        retryDeadlineMs_ = now + config_.retryAfterErrorMs;
-        status_ = DeviceStatus::Faulted;
-        SM_GOTO(Faulted);
+        lastCheckAtMs_ = now;
+        if (sensorReadingTimedOut(now)) {
+            retryDeadlineMs_ = now + config_.retryAfterErrorMs;
+            status_ = DeviceStatus::Faulted;
+            SM_GOTO(Faulted);
+        }
+        scheduleNextCheck(now);
+        SM_GOTO(Ready);
     }
-    if (!sensorReadingFresh(reading, now)) {
-        invalidateTemperature(kControlSensorTimeout);
-        retryDeadlineMs_ = now + config_.retryAfterErrorMs;
-        status_ = DeviceStatus::Faulted;
-        SM_GOTO(Faulted);
-    }
+    sensorInvalidSinceMs_ = 0U;
     if (!sensorReadingInRange(reading)) {
         invalidateTemperature(kControlOutOfRange);
         retryDeadlineMs_ = now + config_.retryAfterErrorMs;
@@ -458,6 +455,7 @@ SM_STATE(ThermostatDevice::CheckTemperature) {
 
     publishTemperature(reading, kControlOk);
     lastCheckAtMs_ = now;
+    sensorInvalidSinceMs_ = 0U;
     pendingOutputState_ = desiredStateForTemperature(reading);
     pendingSafetyOff_ = false;
 

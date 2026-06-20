@@ -5,7 +5,9 @@
 #include "devices/switch/BinarySwitchDeviceBase.h"
 #include "devices/switch/TriStateSwitchDeviceBase.h"
 #include "devices/thermostat/ThermostatDevice.h"
+#include "devices/thermostat/ThermostatDeviceConfig.h"
 
+#include <ArduinoJson.h>
 #include <cstdio>
 #include <unity.h>
 
@@ -249,6 +251,30 @@ void test_thermostat_config_codec_and_validation() {
     TEST_ASSERT_FALSE(validateThermostatDeviceConfig(decoded).ok());
 }
 
+void test_thermostat_parser_accepts_spa_milli_celsius_fields() {
+    DynamicJsonDocument doc(512);
+    JsonObject input = doc.to<JsonObject>();
+    input["mode"] = "heat";
+    input["algorithm"] = "hysteresis";
+    input["target_milli_celsius"] = 28000;
+    input["min_safe_milli_celsius"] = 0;
+    input["max_safe_milli_celsius"] = 50000;
+    input["hysteresis_centi_celsius"] = 50;
+    input["check_interval_ms"] = 1000;
+    input["sensor_timeout_ms"] = 6000;
+    input["retry_after_error_ms"] = 30000;
+    input["min_switch_interval_ms"] = 5000;
+
+    ThermostatDeviceConfigV1 config = makeThermostatConfig(ThermostatMode::Heat, 25000);
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(parseThermostatDeviceConfigJson(input, config, error));
+    TEST_ASSERT_NULL(error);
+    TEST_ASSERT_EQUAL_INT32(28000, config.targetMilliCelsius);
+    TEST_ASSERT_EQUAL_INT32(0, config.minSafeMilliCelsius);
+    TEST_ASSERT_EQUAL_INT32(50000, config.maxSafeMilliCelsius);
+    TEST_ASSERT_EQUAL_UINT16(50, config.hysteresisCentiCelsius);
+}
+
 void test_device_type_registry_contains_thermostat() {
     DeviceTypeRegistry registry = DeviceTypeRegistry::withDefaults();
     const DeviceTypeDescriptor* descriptor = registry.find(kThermostatDeviceTypeId);
@@ -352,7 +378,7 @@ void test_thermostat_heats_holds_and_cools() {
     TEST_ASSERT_EQUAL(static_cast<int>(OutputState::Off), static_cast<int>(switchDevice.outputState()));
 }
 
-void test_thermostat_safes_off_on_stale_sensor_and_rejects_missing_capability() {
+void test_thermostat_waits_for_sensor_timeout_and_resets_on_valid_reading() {
     ThermostatDevice thermostat(makeThermostatConfig(ThermostatMode::Cool, 22000));
     FakeTemperatureSensor sensor;
     FakeTriStateSwitch switchDevice(makeSwitchConfig());
@@ -361,13 +387,33 @@ void test_thermostat_safes_off_on_stale_sensor_and_rejects_missing_capability() 
     thermostat.setDependencyRuntime(DeviceDependencyRole::TemperatureSensor, &sensor);
     thermostat.setDependencyRuntime(DeviceDependencyRole::Switch, &switchDevice);
     startSwitch(switchDevice);
+    sensor.setReading(24000, 0, false);
     startThermostat(thermostat, 100);
+    auto tickRange = [&](uint32_t from, uint32_t to) {
+        for (uint32_t now = from; now <= to; ++now) {
+            thermostat.tick100ms(now);
+        }
+    };
 
-    sensor.setReading(24000, 0);
-    thermostat.tick100ms(500);
-    thermostat.tick100ms(501);
-    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Faulted), static_cast<int>(thermostat.status()));
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(thermostat.status()));
+    TEST_ASSERT_TRUE(std::strcmp(thermostat.controlStatus(), "not_ready") == 0);
+    TEST_ASSERT_EQUAL(static_cast<int>(OutputState::Off), static_cast<int>(switchDevice.outputState()));
+
+    tickRange(200, 210);
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(thermostat.status()));
     TEST_ASSERT_TRUE(std::strcmp(thermostat.controlStatus(), "sensor_timeout") == 0);
+    TEST_ASSERT_EQUAL(static_cast<int>(OutputState::Off), static_cast<int>(switchDevice.outputState()));
+
+    sensor.setReading(24000, 250, true);
+    tickRange(301, 305);
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(thermostat.status()));
+    TEST_ASSERT_TRUE(std::strcmp(thermostat.controlStatus(), "ok") == 0);
+    TEST_ASSERT_EQUAL(static_cast<int>(OutputState::On), static_cast<int>(switchDevice.outputState()));
+
+    sensor.setReading(24000, 0, false);
+    tickRange(402, 700);
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Faulted), static_cast<int>(thermostat.status()));
+    TEST_ASSERT_TRUE(std::strcmp(thermostat.controlStatus(), "retry_backoff") == 0);
     TEST_ASSERT_EQUAL(static_cast<int>(OutputState::Off), static_cast<int>(switchDevice.outputState()));
 
     ThermostatDevice blocked(makeThermostatConfig(ThermostatMode::Heat, 25000));
@@ -384,10 +430,11 @@ void test_thermostat_safes_off_on_stale_sensor_and_rejects_missing_capability() 
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_thermostat_config_codec_and_validation);
+    RUN_TEST(test_thermostat_parser_accepts_spa_milli_celsius_fields);
     RUN_TEST(test_device_type_registry_contains_thermostat);
     RUN_TEST(test_runtime_capabilities_are_exposed);
     RUN_TEST(test_registry_captures_retained_state_after_internal_switch_output_change);
     RUN_TEST(test_thermostat_heats_holds_and_cools);
-    RUN_TEST(test_thermostat_safes_off_on_stale_sensor_and_rejects_missing_capability);
+    RUN_TEST(test_thermostat_waits_for_sensor_timeout_and_resets_on_valid_reading);
     return UNITY_END();
 }
