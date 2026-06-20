@@ -13,11 +13,11 @@ The project SHALL provide a `portal-spa/` Vue SPA that bundles all runtime depen
 
 #### Scenario: JavaScript bundle stays size constrained
 - **WHEN** the SPA production build is generated
-- **THEN** the primary gzipped JavaScript bundle stays below `200 kB`
+- **THEN** the build reports the primary gzipped JavaScript bundle size so growth remains visible during deployment checks
 
 #### Scenario: LittleFS data output stays bounded
 - **WHEN** the SPA deploy data output is generated
-- **THEN** the git-tracked gzip assets in `data/` stay at or below `250 KiB`
+- **THEN** the git-tracked gzip assets in `data/` stay at or below the `320 KiB` LittleFS partition budget from `my_partitions.csv`
 
 #### Scenario: Current Vue ecosystem is pinned
 - **WHEN** frontend dependencies are installed for implementation
@@ -66,7 +66,7 @@ The SPA SHALL treat the device registry store as the UI source of truth after st
 - **THEN** it uses vue-i18n message keys with English `en` and Russian `ru` dictionaries
 
 ### Requirement: Size-conscious frontend build
-The frontend build SHALL minimize LittleFS storage usage while preserving a usable Vuetify-based interface, keeping git-tracked deployable `data/` output at or below 250 KiB and the primary gzipped JavaScript asset below 200 KiB.
+The frontend build SHALL minimize LittleFS storage usage while preserving a usable Vuetify-based interface, keeping git-tracked deployable `data/` output at or below the `320 KiB` LittleFS partition budget from `my_partitions.csv` and reporting the primary gzipped JavaScript asset size.
 
 #### Scenario: Vuetify is imported manually
 - **WHEN** the frontend initializes Vuetify
@@ -82,7 +82,7 @@ The frontend build SHALL minimize LittleFS storage usage while preserving a usab
 
 #### Scenario: Bundle size is measured
 - **WHEN** the frontend build completes
-- **THEN** the build output reports compressed asset sizes and fails or flags the build when git-tracked deployable `data/` output exceeds 250 KiB or the primary gzipped JavaScript asset exceeds 200 KiB
+- **THEN** the build output reports compressed asset sizes and fails when git-tracked deployable `data/` output exceeds the `320 KiB` LittleFS partition budget
 
 ### Requirement: Compact portal shell navigation
 The SPA SHALL provide a compact navigation shell where the sidebar is opened from the top toolbar instead of consuming a permanent wide content column.

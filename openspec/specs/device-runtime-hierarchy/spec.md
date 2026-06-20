@@ -22,23 +22,23 @@ The firmware SHALL provide a reusable base runtime class for dynamic devices so 
 - **THEN** the derived runtime can use shared parent readiness behavior instead of duplicating parent status checks
 
 ### Requirement: DummyDevice inherits from the base runtime
-The firmware SHALL refactor `DummyDevice` to inherit from the reusable runtime base while preserving its existing descriptor, configuration compatibility, lifecycle behavior, command behavior, retained state support, and tests.
+The firmware SHALL keep `DummyDevice` inherited from the reusable runtime base while preserving its stable type id, base configuration compatibility, and lifecycle behavior, without preserving old command or retained-output simulation behavior.
 
 #### Scenario: DummyDevice descriptor stays stable
 - **WHEN** the default device type registry is created
-- **THEN** `DummyDevice` remains registered with its existing stable type id and descriptor behavior
+- **THEN** `DummyDevice` remains registered with stable `type_id = 1` and current config version
+
+#### Scenario: DummyDevice descriptor exposes simple capabilities
+- **WHEN** callers inspect the `DummyDevice` type descriptor
+- **THEN** `DummyDevice` reports no command support and no retained-state support
 
 #### Scenario: DummyDevice config remains compatible
 - **WHEN** an existing `DummyDevice` binary config payload is loaded
 - **THEN** the firmware decodes it using the existing supported Dummy config versions and creates the runtime successfully
 
-#### Scenario: DummyDevice lifecycle remains equivalent
-- **WHEN** `DummyDevice` is started, disabled, reconfigured, faulted, dependency-blocked, or deleted
-- **THEN** it reports the same lifecycle statuses as before the base-runtime refactor
-
-#### Scenario: DummyDevice retained state remains supported
-- **WHEN** `DummyDevice` starts with restore-previous-state enabled
-- **THEN** it applies valid retained output state the same way it did before the base-runtime refactor
+#### Scenario: DummyDevice lifecycle remains available
+- **WHEN** `DummyDevice` is started, disabled, reconfigured, dependency-blocked, or deleted
+- **THEN** it reports lifecycle statuses through the base runtime lifecycle hooks without adding type-specific command simulation
 
 ### Requirement: Runtime base does not own type-specific config
 The firmware SHALL keep device-type configuration parsing, validation, JSON conversion, and descriptor registration owned by the concrete device type rather than the generic runtime base.

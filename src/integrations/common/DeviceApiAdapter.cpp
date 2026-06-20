@@ -13,6 +13,8 @@ void IDeviceApiAdapter::writeCommonDeviceJson(const IDeviceRuntime& runtime, con
     output["device_id"] = runtime.deviceId();
     output["type_id"] = runtime.typeId();
     output["type"] = typeName;
+    output["name"] = JsonString(runtime.name() != nullptr ? runtime.name() : "", JsonString::Copied);
+    output["enabled"] = runtime.enabled();
     output["status"] = status;
     output["config_version"] = runtime.configVersion();
     output["config_revision"] = runtime.configRevision();

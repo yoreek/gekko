@@ -65,16 +65,11 @@ const seedDatabase: MockDatabase = {
       lifecycle_status: 'ready',
       effective_status: 'ready',
       status: 'ready',
-      retained_state_supported: true,
-      retained_startup_enabled: true,
-      retained_startup_fallback_output: false,
+      retained_state_supported: false,
       retained_state_in_config_payload: false,
       config: {
         enabled: true,
-        restore_previous_state: true,
-        default_output: false,
-        current_output: true,
-        inverted: false,
+        name: 'Aquarium Lamp',
       },
     },
     {
@@ -91,6 +86,12 @@ const seedDatabase: MockDatabase = {
       lifecycle_status: 'disabled',
       effective_status: 'disabled',
       status: 'disabled',
+      retained_state_supported: false,
+      retained_state_in_config_payload: false,
+      config: {
+        enabled: true,
+        name: 'Temperature Sensor',
+      },
     },
     {
       device_id: 670845750,

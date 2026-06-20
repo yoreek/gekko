@@ -142,7 +142,17 @@ struct CountingRuntime final : public IDeviceRuntime {
     DevicePersistencePolicy persistencePolicy() const override {
         return persistencePolicy_;
     }
-    bool handleCommand(const DeviceCommand&) override {
+    bool handleCommand(const DeviceCommand& command) override {
+        if (command.type == DeviceCommandType::SetStatus) {
+            if (command.payload.equals("fault")) {
+                status_ = DeviceStatus::Faulted;
+                return true;
+            }
+            if (command.payload.equals("ready")) {
+                status_ = DeviceStatus::Ready;
+                return true;
+            }
+        }
         return false;
     }
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override {
@@ -201,6 +211,30 @@ DeviceTypeDescriptor makeChildDescriptor(DeviceTypeId typeId, DeviceTypeId paren
     descriptor.ticks100ms = false;
     descriptor.ticks1s = false;
     descriptor.compatibleParentTypes.push_back(parentTypeId);
+    return descriptor;
+}
+
+DeviceTypeDescriptor makeCommandableDescriptor(DeviceTypeId typeId) {
+    DeviceTypeDescriptor descriptor;
+    descriptor.typeId = typeId;
+    descriptor.name = "CommandableDevice";
+    descriptor.currentConfigVersion = 1;
+    descriptor.canHaveChildren = true;
+    descriptor.supportsCommands = true;
+    descriptor.supportsRetainedState = false;
+    descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Immediate;
+    descriptor.ticksFastLoop = false;
+    descriptor.ticks100ms = false;
+    descriptor.ticks1s = false;
+    descriptor.createRuntime = &createCountingRuntime;
+    return descriptor;
+}
+
+DeviceTypeDescriptor makeRetainedDescriptor(DeviceTypeId typeId) {
+    DeviceTypeDescriptor descriptor = makeCommandableDescriptor(typeId);
+    descriptor.name = "RetainedDevice";
+    descriptor.supportsCommands = false;
+    descriptor.supportsRetainedState = true;
     return descriptor;
 }
 
@@ -522,6 +556,7 @@ void test_registry_revisions_and_runtime_status_do_not_mix_with_config() {
 
     FixedDeviceIdSource idSource({111, 112});
     DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    TEST_ASSERT_TRUE(types.registerDescriptor(makeCommandableDescriptor(58)));
     DeviceRegistry registry(store, types, idSource);
     TEST_ASSERT_TRUE(registry.begin(0).ok());
 
@@ -546,22 +581,24 @@ void test_registry_revisions_and_runtime_status_do_not_mix_with_config() {
     TEST_ASSERT_EQUAL_UINT32(3, registry.registryRevision());
     TEST_ASSERT_EQUAL_UINT32(2, registry.runtime(111)->configRevision());
 
-    DeviceCreateResult statusCreate = registry.create(makeDummyCreateRequest("status-dummy"), 40);
+    DeviceCreateRequest statusRequest = makeDummyCreateRequest("status-dummy");
+    statusRequest.typeId = 58;
+    DeviceCreateResult statusCreate = registry.create(statusRequest, 40);
     TEST_ASSERT_TRUE(statusCreate.ok());
     TEST_ASSERT_EQUAL_UINT32(112, statusCreate.deviceId);
     TEST_ASSERT_EQUAL_UINT32(1, registry.runtime(112)->configRevision());
 
+    IDeviceRuntime* runtime = registry.runtime(112);
+    TEST_ASSERT_NOT_NULL(runtime);
+    const int statusBeforeCommand = static_cast<int>(runtime->status());
     const DeviceMutationResult commandResult =
         registry.command(DeviceCommand{DeviceCommandType::SetStatus, 112, "fault", DevicePersistencePolicy::Delayed}, 50);
     TEST_ASSERT_TRUE(commandResult.ok());
     TEST_ASSERT_EQUAL_UINT32(1, registry.runtime(112)->configRevision());
-    IDeviceRuntime* runtime = registry.runtime(112);
-    TEST_ASSERT_NOT_NULL(runtime);
-    const int statusBeforeTick = static_cast<int>(runtime->status());
     registry.tickFastLoop(51);
     registry.tickFastLoop(52);
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Faulted), static_cast<int>(runtime->status()));
-    TEST_ASSERT_NOT_EQUAL(statusBeforeTick, static_cast<int>(runtime->status()));
+    TEST_ASSERT_NOT_EQUAL(statusBeforeCommand, static_cast<int>(runtime->status()));
     TEST_ASSERT_EQUAL_UINT32(1, registry.runtime(112)->configRevision());
 }
 
@@ -844,10 +881,13 @@ void test_registry_propagates_parent_dependency_status_and_recovers() {
 
     FixedDeviceIdSource idSource({221, 222});
     DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    TEST_ASSERT_TRUE(types.registerDescriptor(makeCommandableDescriptor(58)));
     DeviceRegistry registry(store, types, idSource);
     TEST_ASSERT_TRUE(registry.begin(0).ok());
 
-    DeviceCreateResult parentResult = registry.create(makeDummyCreateRequest("parent"), 10);
+    DeviceCreateRequest parentRequest = makeDummyCreateRequest("parent");
+    parentRequest.typeId = 58;
+    DeviceCreateResult parentResult = registry.create(parentRequest, 10);
     TEST_ASSERT_TRUE(parentResult.ok());
 
     DeviceCreateRequest childRequest = makeDummyCreateRequest("child");
@@ -959,8 +999,9 @@ void test_registry_emits_required_event_kinds() {
     RecordingSink sink{};
     TEST_ASSERT_TRUE(dispatcher.registerSink(sink));
 
-    FixedDeviceIdSource idSource({321, 322});
+    FixedDeviceIdSource idSource({321, 322, 323});
     DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    TEST_ASSERT_TRUE(types.registerDescriptor(makeRetainedDescriptor(57)));
     DeviceRegistry registry(registryStore, types, idSource, &retainedStore, &dispatcher);
     TEST_ASSERT_TRUE(registry.begin(0).ok());
 
@@ -978,17 +1019,24 @@ void test_registry_emits_required_event_kinds() {
     TEST_ASSERT_FALSE(rejected.ok());
     dispatcher.tickFastLoop(23);
 
-    DeviceMutationResult retained = registry.setRetainedState(created.deviceId, "output=1", 24, DevicePersistencePolicy::Coalesced);
-    TEST_ASSERT_TRUE(retained.ok());
+    DeviceCreateRequest retainedRequest = makeDummyCreateRequest("retained-events");
+    retainedRequest.typeId = 57;
+    retainedRequest.persistencePolicy = DevicePersistencePolicy::Delayed;
+    DeviceCreateResult retainedCreated = registry.command(retainedRequest, 24);
+    TEST_ASSERT_TRUE(retainedCreated.ok());
     dispatcher.tickFastLoop(25);
 
+    DeviceMutationResult retained = registry.setRetainedState(retainedCreated.deviceId, "output=1", 26, DevicePersistencePolicy::Coalesced);
+    TEST_ASSERT_TRUE(retained.ok());
+    dispatcher.tickFastLoop(27);
+
     TEST_ASSERT_TRUE(registry.flushNow().ok());
-    dispatcher.tickFastLoop(26);
+    dispatcher.tickFastLoop(28);
 
     DeviceMutationResult deleted =
-        registry.command(DeviceCommand{DeviceCommandType::Delete, created.deviceId, "", DevicePersistencePolicy::Immediate}, 27);
+        registry.command(DeviceCommand{DeviceCommandType::Delete, created.deviceId, "", DevicePersistencePolicy::Immediate}, 29);
     TEST_ASSERT_TRUE(deleted.ok());
-    dispatcher.tickFastLoop(28);
+    dispatcher.tickFastLoop(30);
 
     TEST_ASSERT_TRUE(hasEventKind(sink.events, DeviceEventKind::DeviceCreated));
     TEST_ASSERT_TRUE(hasEventKind(sink.events, DeviceEventKind::DeviceUpdated));
@@ -1362,10 +1410,13 @@ void test_registry_coalesces_retained_state_updates() {
     TEST_ASSERT_TRUE(retainedStore.begin(false));
     FixedDeviceIdSource idSource({501, 502});
     DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    TEST_ASSERT_TRUE(types.registerDescriptor(makeRetainedDescriptor(57)));
     DeviceRegistry registry(registryStore, types, idSource, &retainedStore);
     TEST_ASSERT_TRUE(registry.begin(0).ok());
 
-    TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("retained-dummy"), 10).ok());
+    DeviceCreateRequest retainedRequest = makeDummyCreateRequest("retained-dummy");
+    retainedRequest.typeId = 57;
+    TEST_ASSERT_TRUE(registry.create(retainedRequest, 10).ok());
 
     DeviceMutationResult firstResult = registry.setRetainedState(501, "output=0", 20, DevicePersistencePolicy::Coalesced);
     TEST_ASSERT_TRUE(firstResult.ok());

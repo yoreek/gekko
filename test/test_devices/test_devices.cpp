@@ -51,8 +51,11 @@ void test_default_device_type_registry_contains_dummy() {
     TEST_ASSERT_NOT_NULL(descriptor);
     TEST_ASSERT_EQUAL_STRING("DummyDevice", descriptor->name);
     TEST_ASSERT_EQUAL_UINT32(1, descriptor->currentConfigVersion);
-    TEST_ASSERT_TRUE(descriptor->supportsCommands);
-    TEST_ASSERT_TRUE(descriptor->supportsRetainedState);
+    TEST_ASSERT_FALSE(descriptor->supportsCommands);
+    TEST_ASSERT_FALSE(descriptor->supportsRetainedState);
+    TEST_ASSERT_TRUE(descriptor->ticksFastLoop);
+    TEST_ASSERT_FALSE(descriptor->ticks100ms);
+    TEST_ASSERT_FALSE(descriptor->ticks1s);
 }
 
 void test_default_device_type_registry_contains_onewire() {
@@ -211,10 +214,7 @@ void test_dummy_device_lifecycle_and_command_output() {
 
     device.tickFastLoop(101);
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(device.status()));
-    TEST_ASSERT_FALSE(device.outputState());
-
-    TEST_ASSERT_TRUE(device.handleCommand(DeviceCommand{DeviceCommandType::Custom, 3, "output=0", DevicePersistencePolicy::Delayed}));
-    TEST_ASSERT_FALSE(device.outputState());
+    TEST_ASSERT_FALSE(device.handleCommand(DeviceCommand{DeviceCommandType::Custom, 3, "output=0", DevicePersistencePolicy::Delayed}));
 
     device.requestDisable();
     device.tick100ms(102);
@@ -235,7 +235,6 @@ void test_dummy_device_base_config_is_loaded_and_runtime_starts_disabled() {
     device.begin(200);
     device.tickFastLoop(201);
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(device.status()));
-    TEST_ASSERT_FALSE(device.outputState());
 }
 
 void test_dummy_device_parent_dependency_and_child_wiring_survive_base_refactor() {

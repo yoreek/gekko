@@ -108,7 +108,7 @@ void test_dummy_device_api_adapter_serializes_record() {
     TEST_ASSERT_EQUAL_STRING("ready", output["status"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT32(DummyDevice::descriptor().currentConfigVersion, output["config_version"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(3, output["config_revision"].as<uint32_t>());
-    TEST_ASSERT_TRUE(output["retained_state_supported"].as<bool>());
+    TEST_ASSERT_FALSE(output["retained_state_supported"].as<bool>());
 
     JsonObject config = output["config"].as<JsonObject>();
     TEST_ASSERT_TRUE(config["enabled"].as<bool>());

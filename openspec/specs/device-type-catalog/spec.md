@@ -9,7 +9,7 @@ The portal SHALL define a canonical numeric catalog of supported device types fo
 
 #### Scenario: Catalog contains the supported DummyDevice type
 - **WHEN** the frontend renders the device type catalog
-- **THEN** it exposes `DummyDevice` with `type_id = 1` as a supported catalog entry
+- **THEN** it exposes `DummyDevice` with `type_id = 1` as a simple supported catalog entry with no type-specific settings
 
 #### Scenario: Catalog contains the GPIO switch type
 - **WHEN** the frontend renders the device type catalog after GPIO switch support is added

@@ -231,15 +231,19 @@ The firmware SHALL expose lifecycle status for each dynamic device from creation
 - **THEN** the firmware stops the runtime instance, removes the persisted record, and no longer lists the device as active
 
 ### Requirement: DummyDevice first implementation
-The firmware SHALL include a `DummyDevice` type that exercises registry persistence, lifecycle status, commands, and integration events without requiring hardware.
+The firmware SHALL include a `DummyDevice` type that exercises registry persistence, base configuration, lifecycle status, parent-child relationships, and integration events without requiring hardware.
 
 #### Scenario: DummyDevice survives reboot
 - **WHEN** a `DummyDevice` is created and the firmware restarts
 - **THEN** the firmware restores the `DummyDevice` from NVS with the same device ID, name, enabled state, and configuration revision
 
-#### Scenario: DummyDevice status command
-- **WHEN** a caller sends a supported `DummyDevice` command that changes its simulated state
-- **THEN** the firmware validates the command, updates the runtime status cooperatively, and emits the corresponding device event
+#### Scenario: DummyDevice has no commands
+- **WHEN** a caller sends a runtime command to a `DummyDevice`
+- **THEN** the firmware rejects it as unsupported and does not change Dummy runtime state
+
+#### Scenario: DummyDevice has no retained state
+- **WHEN** the registry creates or reloads a `DummyDevice`
+- **THEN** the type descriptor reports no retained-state support and the registry does not persist retained output for it
 
 ### Requirement: Cooperative device runtime
 The firmware SHALL keep dynamic device runtime work cooperative, timing-aware, and scheduled by cadence.

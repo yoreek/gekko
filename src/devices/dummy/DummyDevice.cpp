@@ -26,6 +26,8 @@ bool decodeDummyDeviceConfig(const uint8_t* blob, size_t size, DummyDeviceConfig
 }
 
 bool parseDummyDeviceConfigJson(const JsonObjectConst& input, uint32_t configVersion, DummyDeviceConfigV1& config, const char*& error) {
+    (void)input;
+    (void)config;
     if (configVersion == 0U) {
         configVersion = DummyDevice::descriptor().currentConfigVersion;
     }
@@ -45,63 +47,6 @@ DummyDevice::DummyDevice(const DeviceRegistryEntry& record, const DeviceConfigBl
     : DeviceRuntimeBase((PState)&DummyDevice::Idle) {
     bindDeviceIdentity(record, configBlob);
     (void)decodeDummyDeviceConfig(configBlob.data(), configBlob.size(), config_);
-    restorePreviousState_ = false;
-    currentOutput_ = false;
-}
-
-bool DummyDevice::handleCommand(const DeviceCommand& command) {
-    if (command.type == DeviceCommandType::SetStatus) {
-        if (command.payload.equals("fault")) {
-            faultRequested_ = true;
-            return true;
-        }
-        if (command.payload.equals("ready")) {
-            faultRequested_ = false;
-            reconfigureRequested_ = false;
-            disableRequested_ = false;
-            return true;
-        }
-    }
-
-    if (command.type == DeviceCommandType::SetOutput) {
-        if (command.payload.equals("on")) {
-            currentOutput_ = true;
-            return true;
-        }
-        if (command.payload.equals("off") || command.payload.equals("disabled")) {
-            currentOutput_ = false;
-            return true;
-        }
-    }
-
-    if (command.type == DeviceCommandType::Custom) {
-        if (command.payload.equals("output=1")) {
-            currentOutput_ = true;
-            return true;
-        }
-        if (command.payload.equals("output=0")) {
-            currentOutput_ = false;
-            return true;
-        }
-    }
-
-    return false;
-}
-
-void DummyDevice::applyRetainedState(bool output) {
-    retainedStateAvailable_ = true;
-    retainedOutput_ = output;
-    if (restorePreviousState_ && is((PState)&DummyDevice::Ready)) {
-        currentOutput_ = retainedOutput_;
-    }
-}
-
-bool DummyDevice::outputState() const {
-    return currentOutput_;
-}
-
-bool DummyDevice::restorePreviousState() const {
-    return restorePreviousState_;
 }
 
 const DummyDeviceConfigV1& DummyDevice::config() const {
@@ -125,8 +70,6 @@ bool DummyDevice::replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBa
 }
 
 void DummyDevice::writeDeviceJson(JsonObject output) const {
-    output["name"] = config_.name;
-    output["enabled"] = config_.enabled != 0U;
     JsonObject configObject = output.createNestedObject("config");
     writeDeviceBaseConfigJson(config_, configObject);
 }
@@ -138,12 +81,12 @@ DeviceTypeDescriptor DummyDevice::descriptor() {
     descriptor.currentConfigVersion = kDummyDeviceConfigVersion;
     descriptor.canHaveChildren = true;
     descriptor.maxChildren = 16;
-    descriptor.supportsCommands = true;
-    descriptor.supportsRetainedState = true;
+    descriptor.supportsCommands = false;
+    descriptor.supportsRetainedState = false;
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
     descriptor.ticksFastLoop = true;
-    descriptor.ticks100ms = true;
-    descriptor.ticks1s = true;
+    descriptor.ticks100ms = false;
+    descriptor.ticks1s = false;
     descriptor.createRuntime = &DummyDevice::createRuntime;
     descriptor.validateConfig = &DummyDevice::validateConfig;
     return descriptor;
@@ -190,10 +133,6 @@ SM_STATE(DummyDevice::Starting) {
     if (reconfigureRequested_) {
         status_ = DeviceStatus::Reconfiguring;
         SM_GOTO(Reconfiguring);
-    }
-
-    if (restorePreviousState_ && retainedStateAvailable_) {
-        currentOutput_ = retainedOutput_;
     }
 
     startRequested_ = false;

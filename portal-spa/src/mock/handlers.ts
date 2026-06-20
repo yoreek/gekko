@@ -229,6 +229,7 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
     const isGpioSwitch = typeId === GPIO_SWITCH_DEVICE_TYPE_ID
     const isOneWireBus = typeId === ONEWIRE_BUS_DEVICE_TYPE_ID
     const isDs18b20 = typeId === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID
+    const isDummy = typeId === DUMMY_DEVICE_TYPE_ID
     const parentDeviceId = isDs18b20 ? normalizeParentDeviceId(payload.parent_device_id) : 0
     if (isDs18b20) {
       requireOneWireParent(db, parentDeviceId)
@@ -253,7 +254,7 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
       lifecycle_status: 'ready',
       effective_status: 'ready',
       status: 'ready',
-      retained_state_supported: !isOneWireBus && !isDs18b20,
+      retained_state_supported: isGpioSwitch,
       retained_startup_enabled: false,
       retained_startup_fallback_output: false,
       retained_state_in_config_payload: false,
@@ -275,13 +276,18 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
               }
           : isDs18b20 && ds18b20Config !== undefined
             ? ds18b20Config
-          : {
-              enabled: true,
-              restore_previous_state: false,
-              default_output: false,
-              current_output: false,
-              inverted: false,
-            }),
+          : isDummy
+            ? {
+                enabled,
+                name: String(payload.name ?? 'New Device'),
+              }
+            : {
+                enabled: true,
+                restore_previous_state: false,
+                default_output: false,
+                current_output: false,
+                inverted: false,
+              }),
       },
       output: isGpioSwitch
         ? {
@@ -310,7 +316,7 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
           }
         : undefined,
     }
-    if (!isDs18b20 && isRecordPayload(payload.config)) {
+    if (!isDs18b20 && !isDummy && isRecordPayload(payload.config)) {
       device.config = {
         ...device.config,
         ...payload.config,
@@ -427,6 +433,9 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           device.config_revision += 1
           break
         case 'set_status':
+          if (device.type_id === DUMMY_DEVICE_TYPE_ID) {
+            throw new ApiClientError('unsupported dummy command', 'BAD_ARGS', 400, null)
+          }
           if (payload.status === 'fault') {
             device.lifecycle_status = 'faulted'
             device.effective_status = 'faulted'
@@ -471,12 +480,6 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
             }
             device.output = {
               state: payload.state,
-            }
-          } else if (device.type_id === DUMMY_DEVICE_TYPE_ID) {
-            const currentConfig = isRecordPayload(device.config) ? device.config : {}
-            device.config = {
-              ...currentConfig,
-              current_output: payload.state === 'on',
             }
           } else {
             throw new ApiClientError('unsupported output command', 'BAD_ARGS', 400, null)

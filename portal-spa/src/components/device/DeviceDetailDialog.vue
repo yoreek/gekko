@@ -120,7 +120,7 @@ import GpioSwitchDeviceForm from '@/components/devices/gpio-switch/GpioSwitchDev
 import OneWireBusDeviceForm from '@/components/devices/onewire-bus/OneWireBusDeviceForm.vue'
 import { resolveDeviceDetailComponent } from '@/components/devices/registry/device-component-registry'
 import type { DashboardDevice } from '@/models/device'
-import { deviceTypeLabelKey, DUMMY_DEVICE_TYPE_ID } from '@/models/device-types'
+import { deviceTypeLabelKey } from '@/models/device-types'
 import { ds18b20AddressShapeValid, ds18b20ConfigChanged } from '@/models/devices/ds18b20'
 import type { DeviceCommandRequest } from '@/api'
 import type { DeviceEditSubmitPayload } from '@/components/device/device-form'
@@ -150,7 +150,7 @@ const device = computed(() => props.device)
 const isGpioSwitch = computed(() => device.value !== null && isGpioSwitchType(device.value.typeId))
 const isOneWireBus = computed(() => device.value !== null && isOneWireBusType(device.value.typeId))
 const isDs18b20 = computed(() => device.value !== null && isDs18b20Type(device.value.typeId))
-const hasTypeDetails = computed(() => device.value !== null && device.value.typeId !== DUMMY_DEVICE_TYPE_ID)
+const hasTypeDetails = computed(() => device.value !== null)
 
 const detailComponent = computed(() => {
   if (device.value === null) {

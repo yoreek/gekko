@@ -109,24 +109,14 @@ void test_integration_sink_observes_order_revisions_and_pending_flags() {
     TEST_ASSERT_TRUE(renamed.pendingPersistence);
     dispatcher.tickFastLoop(21);
 
-    const IDeviceRuntime* beforeRuntime = registry.runtime(created.deviceId);
-    TEST_ASSERT_NOT_NULL(beforeRuntime);
-    const uint32_t configRevisionBeforeRetained = beforeRuntime->configRevision();
-    DeviceMutationResult retained = registry.setRetainedState(created.deviceId, "output=1", 22, DevicePersistencePolicy::Coalesced);
-    TEST_ASSERT_TRUE(retained.ok());
-    dispatcher.tickFastLoop(23);
-    const IDeviceRuntime* afterRuntime = registry.runtime(created.deviceId);
-    TEST_ASSERT_NOT_NULL(afterRuntime);
-    TEST_ASSERT_EQUAL_UINT32(configRevisionBeforeRetained, afterRuntime->configRevision());
-
     TEST_ASSERT_TRUE(registry.flushNow().ok());
-    dispatcher.tickFastLoop(24);
+    dispatcher.tickFastLoop(23);
 
     DeviceMutationResult rejected =
-        registry.command(DeviceCommand{DeviceCommandType::SetStatus, 9999, "fault", DevicePersistencePolicy::Immediate}, 30);
+        registry.command(DeviceCommand{DeviceCommandType::SetStatus, 9999, "fault", DevicePersistencePolicy::Immediate}, 24);
     TEST_ASSERT_FALSE(rejected.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::MissingRecord), static_cast<int>(rejected.validation.error));
-    dispatcher.tickFastLoop(31);
+    dispatcher.tickFastLoop(25);
 
     const int createdIndex = findEventIndex(sink.events, DeviceEventKind::DeviceCreated);
     const int updatedIndex = findEventIndex(sink.events, DeviceEventKind::DeviceUpdated, createdIndex + 1);
@@ -151,10 +141,6 @@ void test_integration_sink_observes_order_revisions_and_pending_flags() {
     const DeviceEvent* persistedEvent = findLastEvent(sink.events, DeviceEventKind::ConfigPersisted);
     TEST_ASSERT_NOT_NULL(persistedEvent);
     TEST_ASSERT_FALSE(persistedEvent->pendingPersistence);
-
-    const DeviceEvent* retainedEvent = findLastEvent(sink.events, DeviceEventKind::RetainedStateChanged);
-    TEST_ASSERT_NOT_NULL(retainedEvent);
-    TEST_ASSERT_EQUAL_UINT32(created.deviceId, retainedEvent->deviceId);
 
     const DeviceEvent* rejectedEvent = findLastEvent(sink.events, DeviceEventKind::CommandRejected);
     TEST_ASSERT_NOT_NULL(rejectedEvent);

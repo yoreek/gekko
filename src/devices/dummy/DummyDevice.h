@@ -25,11 +25,6 @@ class DummyDevice final : public DeviceRuntimeBase {
 public:
     DummyDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
 
-    bool handleCommand(const DeviceCommand& command) override;
-
-    void applyRetainedState(bool output);
-    bool outputState() const;
-    bool restorePreviousState() const;
     const DummyDeviceConfigV1& config() const;
     bool deleted() const;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
@@ -51,10 +46,6 @@ private:
     State Deleting();
 
     DummyDeviceConfigV1 config_{};
-    bool restorePreviousState_{false};
-    bool currentOutput_{false};
-    bool retainedStateAvailable_{false};
-    bool retainedOutput_{false};
 };
 
 } // namespace ewfm
