@@ -42,6 +42,7 @@ public:
     const std::vector<std::string>& sentMessages() const;
     size_t sentMessageCount() const;
     void setClientCountForTest(size_t clientCount);
+    void publishDeviceSnapshotsForTest();
     void publishSnapshotPayloadsForTest(const std::string& wifiPayload, const std::string& otaPayload);
 #endif
 
@@ -49,6 +50,7 @@ private:
     void sendText(const std::string& payload);
     void broadcastHello();
     void resyncSnapshots();
+    void publishDeviceSnapshots();
     void publishSnapshotPayloads(const std::string& wifiPayload, const std::string& otaPayload);
 
     DeviceEventDispatcher* dispatcher_{nullptr};

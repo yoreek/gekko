@@ -1,6 +1,7 @@
 #include "devices/bus/onewire/OneWireBusDevice.h"
 
 #include <array>
+#include <cstdio>
 #include <unity.h>
 #include <vector>
 
@@ -88,10 +89,19 @@ OneWireRomAddress makeRom(uint8_t family, std::array<uint8_t, 6> serial, const F
 
 OneWireBusDeviceConfigV1 makeConfig() {
     OneWireBusDeviceConfigV1 config{};
-    config.enabled = 1;
+    config.base.enabled = 1;
+    std::snprintf(config.base.name, sizeof(config.base.name), "%s", "onewire");
     config.gpioPin = 23;
     config.internalPullup = 1;
     return config;
+}
+
+BoundedBlob<kMaxDeviceConfigBytes> encodeOneWirePayload(const OneWireBusDeviceConfigV1& config) {
+    BoundedBlob<kMaxDeviceConfigBytes> payload{};
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(encodeOneWireBusDeviceConfig(config, buffer, oneWireBusDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(payload.assign(buffer, oneWireBusDeviceConfigSize(config)));
+    return payload;
 }
 
 void driveToReady(OneWireBusDevice& device, uint32_t startNow = 10) {
@@ -120,11 +130,12 @@ void test_onewire_rom_address_format_parse_and_crc() {
 
 void test_onewire_config_codec_and_json_helpers() {
     OneWireBusDeviceConfigV1 config = makeConfig();
-    const std::string blob = encodeOneWireBusDeviceConfig(config);
+    const BoundedBlob<kMaxDeviceConfigBytes> blob = encodeOneWirePayload(config);
 
     OneWireBusDeviceConfigV1 decoded{};
-    TEST_ASSERT_TRUE(decodeOneWireBusDeviceConfig(blob, decoded));
-    TEST_ASSERT_EQUAL_UINT8(config.enabled, decoded.enabled);
+    TEST_ASSERT_TRUE(decodeOneWireBusDeviceConfig(blob.data(), blob.size(), decoded));
+    TEST_ASSERT_EQUAL_UINT8(config.base.enabled, decoded.base.enabled);
+    TEST_ASSERT_EQUAL_STRING(config.base.name, decoded.base.name);
     TEST_ASSERT_EQUAL_UINT8(config.gpioPin, decoded.gpioPin);
     TEST_ASSERT_EQUAL_UINT8(config.internalPullup, decoded.internalPullup);
 
@@ -133,7 +144,7 @@ void test_onewire_config_codec_and_json_helpers() {
     writeOneWireBusDeviceConfigJson(config, configJson);
 
     OneWireBusDeviceConfigV1 parsed{};
-    std::string error;
+    const char* error = nullptr;
     TEST_ASSERT_TRUE(parseOneWireBusDeviceConfigJson(configJson, parsed, error));
     TEST_ASSERT_EQUAL_UINT8(config.gpioPin, parsed.gpioPin);
     TEST_ASSERT_EQUAL_UINT8(config.internalPullup, parsed.internalPullup);
@@ -141,9 +152,9 @@ void test_onewire_config_codec_and_json_helpers() {
     StaticJsonDocument<64> badDoc;
     JsonObject badJson = badDoc.to<JsonObject>();
     badJson["gpio_pin"] = "not-a-number";
-    error.clear();
+    error = nullptr;
     TEST_ASSERT_FALSE(parseOneWireBusDeviceConfigJson(badJson, parsed, error));
-    TEST_ASSERT_FALSE(error.empty());
+    TEST_ASSERT_NOT_NULL(error);
 }
 
 void test_default_device_type_registry_contains_onewire() {

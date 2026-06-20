@@ -1,38 +1,37 @@
 #include "devices/switch/SwitchDeviceConfig.h"
 
-#include <cstring>
+#include "devices/core/ConfigCodec.h"
+
 #include <type_traits>
 
 namespace ewfm {
 
 static_assert(std::is_trivially_copyable<SwitchDeviceConfigV1>::value, "SwitchDeviceConfigV1 must be POD");
-static_assert(sizeof(SwitchDeviceConfigV1) == 5, "SwitchDeviceConfigV1 layout changed");
-static_assert(sizeof(SwitchDeviceConfigV1::kMagicKey) + sizeof(SwitchDeviceConfigV1) <= kMaxDeviceConfigBytes,
+static_assert(sizeof(SwitchDeviceConfigV1) == 38, "SwitchDeviceConfigV1 layout changed");
+static_assert(sizeof(SwitchDeviceConfigV1::kMagic) - 1U + sizeof(SwitchDeviceConfigV1) <= kMaxDeviceConfigBytes,
               "SwitchDeviceConfigV1 exceeds device config bound");
 
-std::string encodeSwitchDeviceConfig(const SwitchDeviceConfigV1& config) {
-    std::string blob;
-    blob.resize(sizeof(SwitchDeviceConfigV1::kMagicKey) + sizeof(SwitchDeviceConfigV1));
-    std::memcpy(blob.data(), &SwitchDeviceConfigV1::kMagicKey, sizeof(SwitchDeviceConfigV1::kMagicKey));
-    std::memcpy(blob.data() + sizeof(SwitchDeviceConfigV1::kMagicKey), &config, sizeof(SwitchDeviceConfigV1));
-    return blob;
+bool encodeSwitchDeviceConfig(const SwitchDeviceConfigV1& config, uint8_t* blob, size_t capacity) {
+    return encodeFixedConfigBlob(SwitchDeviceConfigV1::kMagic, config, blob, capacity);
 }
 
-bool decodeSwitchDeviceConfig(const std::string& blob, SwitchDeviceConfigV1& config) {
-    constexpr size_t kBlobSize = sizeof(SwitchDeviceConfigV1::kMagicKey) + sizeof(SwitchDeviceConfigV1);
-    if (blob.size() != kBlobSize) {
-        return false;
-    }
+bool decodeSwitchDeviceConfig(const uint8_t* blob, size_t size, SwitchDeviceConfigV1& config) {
+    return decodeFixedConfigBlob(SwitchDeviceConfigV1::kMagic, blob, size, config) && validateSwitchDeviceConfig(config).ok();
+}
 
-    uint32_t magicKey{0};
-    std::memcpy(&magicKey, blob.data(), sizeof(magicKey));
-    if (magicKey != SwitchDeviceConfigV1::kMagicKey) {
-        return false;
+DeviceValidationResult validateSwitchDeviceConfig(const SwitchDeviceConfigV1& config) {
+    const DeviceValidationResult baseValidation = validateDeviceBaseConfig(config.base);
+    if (!baseValidation.ok()) {
+        return baseValidation;
     }
-
-    std::memcpy(&config, blob.data() + sizeof(magicKey), sizeof(SwitchDeviceConfigV1));
     OutputState state{};
-    return outputStateFromByte(config.startupState, state) && outputStateFromByte(config.safeState, state);
+    if (!outputStateFromByte(config.startupState, state)) {
+        return {DeviceError::InvalidConfig, "switch startup state is invalid"};
+    }
+    if (!outputStateFromByte(config.safeState, state)) {
+        return {DeviceError::InvalidConfig, "switch safe state is invalid"};
+    }
+    return {};
 }
 
 bool switchConfigStartupState(const SwitchDeviceConfigV1& config, OutputState& state) {

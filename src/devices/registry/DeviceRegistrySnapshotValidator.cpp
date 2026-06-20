@@ -44,23 +44,10 @@ DeviceValidationResult DeviceRegistrySnapshotValidator::validateStructure(const 
         return {DeviceError::DuplicateDeviceId, "duplicate device ids found in registry snapshot"};
     }
 
-    std::map<DeviceId, const DeviceRecord*> recordById;
+    std::map<DeviceId, const DeviceRegistryEntry*> recordById;
     for (const auto& record : snapshot.records) {
         if (record.header.deviceId == 0 || record.header.typeId == 0) {
             return {DeviceError::InvalidDeviceId, "device id or type id is invalid"};
-        }
-        if (record.name.size() > kMaxDynamicDeviceNameLength) {
-            return {DeviceError::BoundsExceeded, "device name exceeds supported length"};
-        }
-        if (record.configPayload.size() > kMaxDeviceConfigBytes) {
-            return {DeviceError::BoundsExceeded, "device config exceeds supported size"};
-        }
-        if (record.header.payloadLength != 0 && record.header.payloadLength != record.configPayload.size()) {
-            return {DeviceError::InvalidConfig, "payload length does not match payload"};
-        }
-        if (record.header.payloadChecksum != 0 &&
-            record.header.payloadChecksum != DeviceRegistryBinaryCodec::payloadChecksum(record.configPayload)) {
-            return {DeviceError::InvalidConfig, "payload checksum does not match payload"};
         }
         if (record.header.recordVersion != 0 && record.header.recordVersion != kDeviceRecordHeaderVersion) {
             return {DeviceError::InvalidVersion, "unsupported device record version"};
@@ -86,7 +73,7 @@ DeviceValidationResult DeviceRegistrySnapshotValidator::validateStructure(const 
         if (it == recordById.end()) {
             return {DeviceError::MissingRecord, "missing device record for index entry"};
         }
-        const DeviceRecord& record = *it->second;
+        const DeviceRegistryEntry& record = *it->second;
         if (record.header.typeId != entry.typeId) {
             return {DeviceError::InvalidConfig, "index entry type does not match device record"};
         }
@@ -112,7 +99,7 @@ DeviceValidationResult DeviceRegistrySnapshotValidator::validateStructure(const 
         if (childIt == recordById.end()) {
             continue;
         }
-        const DeviceRecord& child = *childIt->second;
+        const DeviceRegistryEntry& child = *childIt->second;
         if (!child.hasParent) {
             continue;
         }
@@ -128,7 +115,7 @@ DeviceValidationResult DeviceRegistrySnapshotValidator::validateStructure(const 
             if (current == recordById.end()) {
                 break;
             }
-            const DeviceRecord& parentRecord = *current->second;
+            const DeviceRegistryEntry& parentRecord = *current->second;
             if (!parentRecord.hasParent) {
                 break;
             }
@@ -145,7 +132,7 @@ DeviceValidationResult DeviceRegistrySnapshotValidator::validateTypedRelationshi
         return {};
     }
 
-    std::map<DeviceId, const DeviceRecord*> recordsById;
+    std::map<DeviceId, const DeviceRegistryEntry*> recordsById;
     for (const auto& record : snapshot.records) {
         recordsById.emplace(record.header.deviceId, &record);
     }
@@ -157,7 +144,7 @@ DeviceValidationResult DeviceRegistrySnapshotValidator::validateTypedRelationshi
             return {DeviceError::MissingRecord, "missing device record for index entry"};
         }
 
-        const DeviceRecord& childRecord = *childIt->second;
+        const DeviceRegistryEntry& childRecord = *childIt->second;
         const DeviceTypeDescriptor* childDescriptor = typeRegistry->find(childRecord.header.typeId);
         if (childDescriptor == nullptr) {
             return {DeviceError::UnsupportedType, "unsupported device type"};
@@ -175,7 +162,7 @@ DeviceValidationResult DeviceRegistrySnapshotValidator::validateTypedRelationshi
             return {DeviceError::InvalidRelationship, "missing parent record"};
         }
 
-        const DeviceRecord& parentRecord = *parentIt->second;
+        const DeviceRegistryEntry& parentRecord = *parentIt->second;
         const DeviceTypeDescriptor* parentDescriptor = typeRegistry->find(parentRecord.header.typeId);
         if (parentDescriptor == nullptr) {
             return {DeviceError::UnsupportedType, "unsupported device type"};

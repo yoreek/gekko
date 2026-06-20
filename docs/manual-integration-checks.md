@@ -58,3 +58,10 @@ These checks require a real ESP32 device and are intentionally not part of the h
 
 - When adding or changing portal REST behavior, follow [controller-ruleschain.md](controller-ruleschain.md) so new endpoints keep the shared `BaseController` and `RulesChain` contract.
 - Validate that `OPTIONS` preflight still returns CORS headers, non-API paths still fall back correctly, and path-guard hooks reject invalid ids with the expected JSON envelope.
+
+## Dynamic Device Registry
+
+- See [device-registry-persistence.md](device-registry-persistence.md) for the NVS storage format, boot reset behavior, and record-before-index commit order.
+- After changing the registry format version, flash without erasing NVS over a firmware that used the previous format and confirm the device still boots, the portal remains reachable, and `/api/devices` returns a valid empty or rebuilt registry instead of crashing.
+- Create a OneWire bus on GPIO4, run the `scan` command, and confirm a connected DS18B20 appears with family code `28`, a valid 16-character ROM address, and no invalid CRC flag.
+- Create a DS18B20 child device using the scan result and confirm the device reaches `ready` with `output.temperature.valid = true`.

@@ -40,12 +40,11 @@ private:
     DeviceRegistry& registry_;
     const DeviceApiAdapterRegistry& adapters_;
     DeviceId deviceId_{0};
-    const DeviceRecord* record_{nullptr};
 
     static bool parseDeviceIdPath(const char* url, bool requireCommandSuffix, DeviceId& deviceId);
     static bool requireId(BaseController& self);
     static bool requireEntity(BaseController& self);
-    bool parseCreateAdapter(const JsonVariantConst& json, std::string& error, const IDeviceApiAdapter*& adapter) const;
+    bool parseCreateAdapter(const JsonVariantConst& json, const char*& error, const IDeviceApiAdapter*& adapter) const;
     static const char* statusToString(DeviceStatus status);
     static const char* errorCodeForDeviceError(DeviceError error);
     static DevicePersistencePolicy parsePolicy(const JsonObjectConst& input);

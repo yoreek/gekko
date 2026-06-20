@@ -1,11 +1,15 @@
 #include "devices/switch/gpio/GpioSwitchDevice.h"
 
+#include "devices/core/ConfigCodec.h"
 #include "devices/switch/gpio/ArduinoGpioOutputDriver.h"
 
 #include <cstring>
 #include <type_traits>
 
 namespace ewfm {
+
+#undef SM_CLASS
+#define SM_CLASS GpioSwitchDevice
 
 namespace {
 constexpr DeviceTypeId kGpioSwitchDeviceTypeId = 2;
@@ -14,107 +18,83 @@ constexpr uint8_t kMaxEsp32OutputPin = 33;
 constexpr uint8_t kFlashPinStart = 6;
 constexpr uint8_t kFlashPinEnd = 11;
 
-bool copyConfigFromBlob(const std::string& blob, GpioSwitchDeviceConfigV1& config) {
-    constexpr size_t kBlobSize = sizeof(GpioSwitchDeviceConfigV1::kMagicKey) + sizeof(GpioSwitchDeviceConfigV1);
-    if (blob.size() != kBlobSize) {
-        return false;
+bool parseOutputState(const char* value, OutputState& state, const char*& error) {
+    if (value == nullptr || std::strcmp(value, "off") == 0) {
+        state = OutputState::Off;
+        return true;
     }
-
-    uint32_t magicKey{0};
-    std::memcpy(&magicKey, blob.data(), sizeof(magicKey));
-    if (magicKey != GpioSwitchDeviceConfigV1::kMagicKey) {
-        return false;
+    if (std::strcmp(value, "on") == 0) {
+        state = OutputState::On;
+        return true;
     }
-    std::memcpy(&config, blob.data() + sizeof(magicKey), sizeof(GpioSwitchDeviceConfigV1));
-    return true;
-}
-
-bool stateFromConfigByte(uint8_t value) {
-    OutputState state{};
-    return outputStateFromByte(value, state);
+    if (std::strcmp(value, "disabled") == 0) {
+        state = OutputState::Disabled;
+        return true;
+    }
+    error = "unsupported gpio switch output state";
+    return false;
 }
 
 } // namespace
 
+static_assert(std::is_trivially_copyable<SwitchDeviceConfigV1>::value, "SwitchDeviceConfigV1 must be POD");
 static_assert(std::is_trivially_copyable<GpioSwitchDeviceConfigV1>::value, "GpioSwitchDeviceConfigV1 must be POD");
-static_assert(sizeof(GpioSwitchDeviceConfigV1) == 6, "GpioSwitchDeviceConfigV1 layout changed");
-static_assert(sizeof(GpioSwitchDeviceConfigV1::kMagicKey) + sizeof(GpioSwitchDeviceConfigV1) <= kMaxDeviceConfigBytes,
+static_assert(sizeof(SwitchDeviceConfigV1) == 38, "SwitchDeviceConfigV1 layout changed");
+static_assert(sizeof(GpioSwitchDeviceConfigV1) == 1, "GpioSwitchDeviceConfigV1 layout changed");
+static_assert(sizeof(SwitchDeviceConfigV1::kMagic) - 1U + sizeof(SwitchDeviceConfigV1) + sizeof(GpioSwitchDeviceConfigV1::kMagic) - 1U +
+                      sizeof(GpioSwitchDeviceConfigV1) <=
+                  kMaxDeviceConfigBytes,
               "GpioSwitchDeviceConfigV1 exceeds device config bound");
 
-std::string encodeGpioSwitchDeviceConfig(const GpioSwitchDeviceConfigV1& config) {
-    std::string blob;
-    blob.resize(sizeof(GpioSwitchDeviceConfigV1::kMagicKey) + sizeof(GpioSwitchDeviceConfigV1));
-    std::memcpy(blob.data(), &GpioSwitchDeviceConfigV1::kMagicKey, sizeof(GpioSwitchDeviceConfigV1::kMagicKey));
-    std::memcpy(blob.data() + sizeof(GpioSwitchDeviceConfigV1::kMagicKey), &config, sizeof(GpioSwitchDeviceConfigV1));
-    return blob;
-}
-
-bool decodeGpioSwitchDeviceConfig(const std::string& blob, GpioSwitchDeviceConfigV1& config) {
-    if (!copyConfigFromBlob(blob, config)) {
+bool encodeGpioSwitchDeviceConfig(const GpioSwitchDevicePersistedConfigV1& config, uint8_t* blob, size_t capacity) {
+    size_t pos = 0;
+    if (!appendFixedConfigSegment(SwitchDeviceConfigV1::kMagic, config.switchConfig, blob, capacity, pos) ||
+        !appendFixedConfigSegment(GpioSwitchDeviceConfigV1::kMagic, config.gpioConfig, blob, capacity, pos)) {
         return false;
     }
-    return stateFromConfigByte(config.startupState) && stateFromConfigByte(config.safeState);
+    return true;
 }
 
-bool parseGpioSwitchDeviceConfigJson(const JsonObjectConst& input, GpioSwitchDeviceConfigV1& config, std::string& error) {
-    auto parseState = [&error](const char* value, OutputState& state) {
-        if (value == nullptr || std::strcmp(value, "off") == 0) {
-            state = OutputState::Off;
-            return true;
-        }
-        if (std::strcmp(value, "on") == 0) {
-            state = OutputState::On;
-            return true;
-        }
-        if (std::strcmp(value, "disabled") == 0) {
-            state = OutputState::Disabled;
-            return true;
-        }
-        error = "unsupported gpio switch output state";
+bool decodeGpioSwitchDeviceConfig(const uint8_t* blob, size_t size, GpioSwitchDevicePersistedConfigV1& config) {
+    size_t pos = 0;
+    if (!readFixedConfigSegment(SwitchDeviceConfigV1::kMagic, blob, size, pos, config.switchConfig) ||
+        !readFixedConfigSegment(GpioSwitchDeviceConfigV1::kMagic, blob, size, pos, config.gpioConfig)) {
         return false;
-    };
+    }
+    return validateSwitchDeviceConfig(config.switchConfig).ok() && gpioSwitchPinIsValid(config.gpioConfig.gpioPin);
+}
 
-    config.enabled = (input["enabled"] | true) ? 1U : 0U;
-    config.restorePreviousState = (input["restore_previous_state"] | false) ? 1U : 0U;
-    config.inverted = (input["inverted"] | false) ? 1U : 0U;
-    config.gpioPin = static_cast<uint8_t>(input["gpio_pin"] | static_cast<int>(config.gpioPin));
+bool parseGpioSwitchDeviceConfigJson(const JsonObjectConst& input, GpioSwitchDevicePersistedConfigV1& config, const char*& error) {
+    config.switchConfig.restorePreviousState = (input["restore_previous_state"] | false) ? 1U : 0U;
+    config.switchConfig.inverted = (input["inverted"] | false) ? 1U : 0U;
 
     OutputState startup{};
     OutputState safe{};
-    if (!parseState(input["startup_state"] | "off", startup) || !parseState(input["safe_state"] | "off", safe)) {
+    if (!parseOutputState(input["startup_state"] | "off", startup, error) || !parseOutputState(input["safe_state"] | "off", safe, error)) {
         return false;
     }
-    config.startupState = static_cast<uint8_t>(startup);
-    config.safeState = static_cast<uint8_t>(safe);
+    config.switchConfig.startupState = static_cast<uint8_t>(startup);
+    config.switchConfig.safeState = static_cast<uint8_t>(safe);
 
-    if (!gpioSwitchPinIsValid(config.gpioPin)) {
+    config.gpioConfig.gpioPin = static_cast<uint8_t>(input["gpio_pin"] | static_cast<int>(config.gpioConfig.gpioPin));
+    if (!gpioSwitchPinIsValid(config.gpioConfig.gpioPin)) {
         error = "gpio switch pin is invalid";
         return false;
     }
     return true;
 }
 
-void writeGpioSwitchDeviceConfigJson(const GpioSwitchDeviceConfigV1& config, JsonObject output) {
+void writeGpioSwitchDeviceConfigJson(const GpioSwitchDevicePersistedConfigV1& config, JsonObject output) {
     OutputState startup{};
     OutputState safe{};
-    (void)outputStateFromByte(config.startupState, startup);
-    (void)outputStateFromByte(config.safeState, safe);
-    output["enabled"] = config.enabled != 0U;
-    output["restore_previous_state"] = config.restorePreviousState != 0U;
+    (void)outputStateFromByte(config.switchConfig.startupState, startup);
+    (void)outputStateFromByte(config.switchConfig.safeState, safe);
+    writeDeviceBaseConfigJson(config.switchConfig.base, output);
+    output["restore_previous_state"] = config.switchConfig.restorePreviousState != 0U;
     output["startup_state"] = outputStateName(startup);
     output["safe_state"] = outputStateName(safe);
-    output["inverted"] = config.inverted != 0U;
-    output["gpio_pin"] = config.gpioPin;
-}
-
-SwitchDeviceConfigV1 toSwitchDeviceConfig(const GpioSwitchDeviceConfigV1& config) {
-    SwitchDeviceConfigV1 switchConfig{};
-    switchConfig.enabled = config.enabled;
-    switchConfig.restorePreviousState = config.restorePreviousState;
-    switchConfig.startupState = config.startupState;
-    switchConfig.safeState = config.safeState;
-    switchConfig.inverted = config.inverted;
-    return switchConfig;
+    output["inverted"] = config.switchConfig.inverted != 0U;
+    output["gpio_pin"] = config.gpioConfig.gpioPin;
 }
 
 bool gpioSwitchPinIsValid(uint8_t pin) {
@@ -124,18 +104,19 @@ bool gpioSwitchPinIsValid(uint8_t pin) {
     return pin < kFlashPinStart || pin > kFlashPinEnd;
 }
 
-GpioSwitchDevice::GpioSwitchDevice(const DeviceRecord& record)
+GpioSwitchDevice::GpioSwitchDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob)
     : GpioSwitchDevice(
-          [&record]() {
-              GpioSwitchDeviceConfigV1 config{};
-              (void)decodeGpioSwitchDeviceConfig(record.configPayload, config);
-              config.enabled = record.enabled ? 1U : 0U;
+          [&configBlob]() {
+              GpioSwitchDevicePersistedConfigV1 config{};
+              (void)decodeGpioSwitchDeviceConfig(configBlob.data(), configBlob.size(), config);
               return config;
           }(),
-          defaultArduinoGpioOutputDriver()) {}
+          defaultArduinoGpioOutputDriver()) {
+    bindDeviceIdentity(record, configBlob);
+}
 
-GpioSwitchDevice::GpioSwitchDevice(const GpioSwitchDeviceConfigV1& config, IGpioOutputDriver& driver)
-    : TriStateSwitchDeviceBase(toSwitchDeviceConfig(config)), config_(config), driver_(driver) {}
+GpioSwitchDevice::GpioSwitchDevice(const GpioSwitchDevicePersistedConfigV1& config, IGpioOutputDriver& driver)
+    : TriStateSwitchDeviceBase(config.switchConfig), config_(config.gpioConfig), driver_(driver) {}
 
 uint8_t GpioSwitchDevice::gpioPin() const {
     return config_.gpioPin;
@@ -143,6 +124,31 @@ uint8_t GpioSwitchDevice::gpioPin() const {
 
 const GpioSwitchDeviceConfigV1& GpioSwitchDevice::gpioConfig() const {
     return config_;
+}
+
+bool GpioSwitchDevice::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
+    GpioSwitchDevicePersistedConfigV1 config{};
+    config.switchConfig = switchConfig();
+    config.gpioConfig = config_;
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = gpioSwitchDeviceConfigSize(config);
+    return encodeGpioSwitchDeviceConfig(config, buffer, size) && configBlob.assign(buffer, size);
+}
+
+bool GpioSwitchDevice::replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const {
+    GpioSwitchDevicePersistedConfigV1 config{};
+    config.switchConfig = switchConfig();
+    config.switchConfig.base = baseConfig;
+    config.gpioConfig = config_;
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = gpioSwitchDeviceConfigSize(config);
+    return encodeGpioSwitchDeviceConfig(config, buffer, size) && configBlob.assign(buffer, size);
+}
+
+void GpioSwitchDevice::writeDeviceJson(JsonObject output) const {
+    SwitchDeviceBase::writeDeviceJson(output);
+    JsonObject configObject = output["config"].isNull() ? output.createNestedObject("config") : output["config"].as<JsonObject>();
+    configObject["gpio_pin"] = config_.gpioPin;
 }
 
 DeviceTypeDescriptor GpioSwitchDevice::descriptor() {
@@ -161,21 +167,18 @@ DeviceTypeDescriptor GpioSwitchDevice::descriptor() {
     return descriptor;
 }
 
-std::unique_ptr<IDeviceRuntime> GpioSwitchDevice::createRuntime(const DeviceRecord& record) {
-    return std::unique_ptr<IDeviceRuntime>(new GpioSwitchDevice(record));
+std::unique_ptr<IDeviceRuntime> GpioSwitchDevice::createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+    return std::unique_ptr<IDeviceRuntime>(new GpioSwitchDevice(record, configBlob));
 }
 
-DeviceValidationResult GpioSwitchDevice::validateConfig(const DeviceRecord& record) {
-    if (record.configPayload.size() > kMaxDeviceConfigBytes) {
+DeviceValidationResult GpioSwitchDevice::validateConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+    (void)record;
+    if (configBlob.size() > kMaxDeviceConfigBytes) {
         return {DeviceError::BoundsExceeded, "gpio switch config exceeds supported size"};
     }
-
-    GpioSwitchDeviceConfigV1 config{};
-    if (!decodeGpioSwitchDeviceConfig(record.configPayload, config)) {
+    GpioSwitchDevicePersistedConfigV1 config{};
+    if (!decodeGpioSwitchDeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "gpio switch config is invalid"};
-    }
-    if (!gpioSwitchPinIsValid(config.gpioPin)) {
-        return {DeviceError::InvalidConfig, "gpio switch pin is invalid"};
     }
     return {};
 }

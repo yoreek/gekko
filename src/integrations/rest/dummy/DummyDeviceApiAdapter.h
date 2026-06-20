@@ -10,8 +10,8 @@ public:
 
     DeviceTypeId typeId() const override;
     const char* typeName() const override;
-    bool parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, std::string& error) const override;
-    void writeDeviceJson(const DeviceRecord& record, const IDeviceRuntime* runtime, JsonObject output) const override;
+    bool parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, const char*& error) const override;
+    void writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const override;
 };
 
 } // namespace ewfm

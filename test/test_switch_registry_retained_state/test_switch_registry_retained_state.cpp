@@ -3,6 +3,7 @@
 #include "devices/registry/DeviceRegistry.h"
 #include "devices/switch/TriStateSwitchDeviceBase.h"
 
+#include <cstdio>
 #include <unity.h>
 
 using namespace ewfm;
@@ -33,15 +34,26 @@ private:
     }
 };
 
-std::unique_ptr<IDeviceRuntime> createRegistrySwitchRuntime(const DeviceRecord& record) {
-    SwitchDeviceConfigV1 config{};
-    (void)decodeSwitchDeviceConfig(record.configPayload, config);
-    return std::unique_ptr<IDeviceRuntime>(new RegistrySwitch(config));
+BoundedBlob<kMaxDeviceConfigBytes> encodeSwitchPayload(const SwitchDeviceConfigV1& config) {
+    BoundedBlob<kMaxDeviceConfigBytes> payload{};
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(encodeSwitchDeviceConfig(config, buffer, switchDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(payload.assign(buffer, switchDeviceConfigSize(config)));
+    return payload;
 }
 
-DeviceValidationResult validateRegistrySwitchConfig(const DeviceRecord& record) {
+std::unique_ptr<IDeviceRuntime> createRegistrySwitchRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
     SwitchDeviceConfigV1 config{};
-    if (!decodeSwitchDeviceConfig(record.configPayload, config)) {
+    (void)decodeSwitchDeviceConfig(reinterpret_cast<const uint8_t*>(configBlob.data()), configBlob.size(), config);
+    std::unique_ptr<IDeviceRuntime> runtime(new RegistrySwitch(config));
+    runtime->bindDeviceIdentity(record, configBlob);
+    return runtime;
+}
+
+DeviceValidationResult validateRegistrySwitchConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+    (void)record;
+    SwitchDeviceConfigV1 config{};
+    if (!decodeSwitchDeviceConfig(reinterpret_cast<const uint8_t*>(configBlob.data()), configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "switch config is invalid"};
     }
     return {};
@@ -65,7 +77,8 @@ DeviceTypeRegistry makeRegistry() {
 
 DeviceCreateRequest makeCreateRequest() {
     SwitchDeviceConfigV1 config{};
-    config.enabled = true;
+    config.base.enabled = true;
+    std::snprintf(config.base.name, sizeof(config.base.name), "%s", "switch");
     config.restorePreviousState = true;
     config.startupState = static_cast<uint8_t>(OutputState::Off);
     config.safeState = static_cast<uint8_t>(OutputState::Disabled);
@@ -74,7 +87,7 @@ DeviceCreateRequest makeCreateRequest() {
     DeviceCreateRequest request{};
     request.typeId = kFakeSwitchTypeId;
     request.name = "switch";
-    request.configPayload = encodeSwitchDeviceConfig(config);
+    request.configBlob = encodeSwitchPayload(config);
     request.configVersion = 1;
     request.enabled = true;
     request.persistencePolicy = DevicePersistencePolicy::Delayed;
@@ -98,9 +111,9 @@ void test_registry_custom_switch_command_marks_retained_state_without_config_rev
     TEST_ASSERT_TRUE_MESSAGE(created.ok(), created.validation.message);
     registry.tickFastLoop(11);
 
-    const DeviceRecord* before = registry.find(created.deviceId);
+    const IDeviceRuntime* before = registry.runtime(created.deviceId);
     TEST_ASSERT_NOT_NULL(before);
-    const DeviceRevision revisionBefore = before->header.configRevision;
+    const DeviceRevision revisionBefore = before->configRevision();
     const size_t dirtyConfigCountBefore = registry.dirtyConfigRecordIds().size();
 
     DeviceMutationResult result =
@@ -112,9 +125,9 @@ void test_registry_custom_switch_command_marks_retained_state_without_config_rev
     TEST_ASSERT_EQUAL_UINT32(created.deviceId, registry.dirtyRetainedStateIds()[0]);
     TEST_ASSERT_EQUAL_UINT32(dirtyConfigCountBefore, registry.dirtyConfigRecordIds().size());
 
-    const DeviceRecord* after = registry.find(created.deviceId);
+    const IDeviceRuntime* after = registry.runtime(created.deviceId);
     TEST_ASSERT_NOT_NULL(after);
-    TEST_ASSERT_EQUAL_UINT32(revisionBefore, after->header.configRevision);
+    TEST_ASSERT_EQUAL_UINT32(revisionBefore, after->configRevision());
 }
 
 int main(int, char**) {

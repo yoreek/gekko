@@ -1,5 +1,6 @@
 #include "devices/switch/gpio/GpioSwitchDevice.h"
 
+#include <cstdio>
 #include <unity.h>
 #include <vector>
 
@@ -47,15 +48,24 @@ public:
     std::vector<GpioCall> calls{};
 };
 
-GpioSwitchDeviceConfigV1 makeGpioConfig(OutputState startup = OutputState::Off, OutputState safe = OutputState::Off) {
-    GpioSwitchDeviceConfigV1 config{};
-    config.enabled = true;
-    config.restorePreviousState = true;
-    config.startupState = static_cast<uint8_t>(startup);
-    config.safeState = static_cast<uint8_t>(safe);
-    config.inverted = false;
-    config.gpioPin = 13;
+GpioSwitchDevicePersistedConfigV1 makeGpioConfig(OutputState startup = OutputState::Off, OutputState safe = OutputState::Off) {
+    GpioSwitchDevicePersistedConfigV1 config{};
+    config.switchConfig.base.enabled = true;
+    std::snprintf(config.switchConfig.base.name, sizeof(config.switchConfig.base.name), "%s", "relay");
+    config.switchConfig.restorePreviousState = true;
+    config.switchConfig.startupState = static_cast<uint8_t>(startup);
+    config.switchConfig.safeState = static_cast<uint8_t>(safe);
+    config.switchConfig.inverted = false;
+    config.gpioConfig.gpioPin = 13;
     return config;
+}
+
+BoundedBlob<kMaxDeviceConfigBytes> encodeGpioPayload(const GpioSwitchDevicePersistedConfigV1& config) {
+    BoundedBlob<kMaxDeviceConfigBytes> payload{};
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(encodeGpioSwitchDeviceConfig(config, buffer, gpioSwitchDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(payload.assign(buffer, gpioSwitchDeviceConfigSize(config)));
+    return payload;
 }
 
 void startToReady(GpioSwitchDevice& device) {
@@ -66,18 +76,20 @@ void startToReady(GpioSwitchDevice& device) {
 } // namespace
 
 void test_gpio_switch_config_round_trip() {
-    GpioSwitchDeviceConfigV1 config = makeGpioConfig(OutputState::On, OutputState::Disabled);
-    config.inverted = true;
-    config.gpioPin = 21;
+    GpioSwitchDevicePersistedConfigV1 config = makeGpioConfig(OutputState::On, OutputState::Disabled);
+    config.switchConfig.inverted = true;
+    config.gpioConfig.gpioPin = 21;
 
-    GpioSwitchDeviceConfigV1 decoded{};
-    TEST_ASSERT_TRUE(decodeGpioSwitchDeviceConfig(encodeGpioSwitchDeviceConfig(config), decoded));
-    TEST_ASSERT_EQUAL_UINT8(config.enabled, decoded.enabled);
-    TEST_ASSERT_EQUAL_UINT8(config.restorePreviousState, decoded.restorePreviousState);
-    TEST_ASSERT_EQUAL_UINT8(config.startupState, decoded.startupState);
-    TEST_ASSERT_EQUAL_UINT8(config.safeState, decoded.safeState);
-    TEST_ASSERT_EQUAL_UINT8(config.inverted, decoded.inverted);
-    TEST_ASSERT_EQUAL_UINT8(config.gpioPin, decoded.gpioPin);
+    GpioSwitchDevicePersistedConfigV1 decoded{};
+    const BoundedBlob<kMaxDeviceConfigBytes> payload = encodeGpioPayload(config);
+    TEST_ASSERT_TRUE(decodeGpioSwitchDeviceConfig(payload.data(), payload.size(), decoded));
+    TEST_ASSERT_EQUAL_UINT8(config.switchConfig.base.enabled, decoded.switchConfig.base.enabled);
+    TEST_ASSERT_EQUAL_STRING(config.switchConfig.base.name, decoded.switchConfig.base.name);
+    TEST_ASSERT_EQUAL_UINT8(config.switchConfig.restorePreviousState, decoded.switchConfig.restorePreviousState);
+    TEST_ASSERT_EQUAL_UINT8(config.switchConfig.startupState, decoded.switchConfig.startupState);
+    TEST_ASSERT_EQUAL_UINT8(config.switchConfig.safeState, decoded.switchConfig.safeState);
+    TEST_ASSERT_EQUAL_UINT8(config.switchConfig.inverted, decoded.switchConfig.inverted);
+    TEST_ASSERT_EQUAL_UINT8(config.gpioConfig.gpioPin, decoded.gpioConfig.gpioPin);
 }
 
 void test_default_device_type_registry_contains_gpio_switch() {
@@ -90,8 +102,8 @@ void test_default_device_type_registry_contains_gpio_switch() {
 }
 
 void test_gpio_switch_startup_applies_inverted_physical_level() {
-    GpioSwitchDeviceConfigV1 config = makeGpioConfig(OutputState::On);
-    config.inverted = true;
+    GpioSwitchDevicePersistedConfigV1 config = makeGpioConfig(OutputState::On);
+    config.switchConfig.inverted = true;
     FakeGpioOutputDriver driver;
     GpioSwitchDevice device(config, driver);
 
@@ -107,7 +119,7 @@ void test_gpio_switch_startup_applies_inverted_physical_level() {
 }
 
 void test_gpio_switch_disabled_output_uses_driver_disable() {
-    GpioSwitchDeviceConfigV1 config = makeGpioConfig(OutputState::Disabled, OutputState::Disabled);
+    GpioSwitchDevicePersistedConfigV1 config = makeGpioConfig(OutputState::Disabled, OutputState::Disabled);
     FakeGpioOutputDriver driver;
     GpioSwitchDevice device(config, driver);
 
@@ -121,7 +133,7 @@ void test_gpio_switch_disabled_output_uses_driver_disable() {
 }
 
 void test_gpio_switch_disable_request_applies_safe_state() {
-    GpioSwitchDeviceConfigV1 config = makeGpioConfig(OutputState::On, OutputState::Disabled);
+    GpioSwitchDevicePersistedConfigV1 config = makeGpioConfig(OutputState::On, OutputState::Disabled);
     FakeGpioOutputDriver driver;
     GpioSwitchDevice device(config, driver);
     startToReady(device);
@@ -135,21 +147,21 @@ void test_gpio_switch_disable_request_applies_safe_state() {
 }
 
 void test_gpio_switch_rejects_invalid_pin_config() {
-    GpioSwitchDeviceConfigV1 config = makeGpioConfig();
-    config.gpioPin = 36;
+    GpioSwitchDevicePersistedConfigV1 config = makeGpioConfig();
+    config.gpioConfig.gpioPin = 36;
 
-    DeviceRecord record{};
+    DeviceRegistryEntry record{};
     record.header.typeId = 2;
     record.header.configVersion = 1;
-    record.configPayload = encodeGpioSwitchDeviceConfig(config);
+    const DeviceConfigBlob configBlob = encodeGpioPayload(config);
 
-    DeviceValidationResult result = GpioSwitchDevice::validateConfig(record);
+    DeviceValidationResult result = GpioSwitchDevice::validateConfig(record, configBlob);
     TEST_ASSERT_FALSE(result.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::InvalidConfig), static_cast<int>(result.error));
 }
 
 void test_gpio_switch_reconfigure_reapplies_current_output() {
-    GpioSwitchDeviceConfigV1 config = makeGpioConfig(OutputState::Off);
+    GpioSwitchDevicePersistedConfigV1 config = makeGpioConfig(OutputState::Off);
     FakeGpioOutputDriver driver;
     GpioSwitchDevice device(config, driver);
     startToReady(device);

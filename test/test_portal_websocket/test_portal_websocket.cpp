@@ -1,14 +1,32 @@
-#include "devices/core/DeviceTypes.h"
+#include "config/MemoryConfigStorage.h"
+#include "devices/dummy/DummyDevice.h"
 #include "integrations/common/DeviceEventDispatcher.h"
 #include "integrations/rest/dummy/DummyDeviceApiAdapter.h"
 #include "portal/ws/PortalWebSocketManager.h"
 
 #include <ArduinoJson.h>
+#include <cstdio>
 #include <unity.h>
 
 using namespace ewfm;
 
 namespace {
+
+struct FixedDeviceIdSource final : public IDeviceIdSource {
+    FixedDeviceIdSource(DeviceId firstId, DeviceId secondId) : ids_{firstId, secondId} {}
+    explicit FixedDeviceIdSource(DeviceId id) : ids_{id, 0} {}
+
+    bool next(DeviceId& out) override {
+        if (index_ >= 2 || ids_[index_] == 0) {
+            return false;
+        }
+        out = ids_[index_++];
+        return true;
+    }
+
+    DeviceId ids_[2]{};
+    size_t index_{0};
+};
 
 DeviceEvent makeDeviceEvent(const DeviceEventKind kind, const uint32_t revision, const DeviceId deviceId = 42) {
     DeviceEvent event{};
@@ -25,19 +43,48 @@ DeviceEvent makeDeviceEvent(const DeviceEventKind kind, const uint32_t revision,
     return event;
 }
 
-DeviceRecord makeDeviceRecord() {
-    DeviceRecord record{};
+DeviceRegistryEntry makeDeviceRecord() {
+    DeviceRegistryEntry record{};
+    record.header.recordVersion = kDeviceRecordHeaderVersion;
     record.header.deviceId = 42;
     record.header.typeId = DummyDeviceApiAdapter::instance().typeId();
-    record.header.configVersion = 2;
+    record.header.configVersion = DummyDevice::descriptor().currentConfigVersion;
     record.header.configRevision = 5;
-    record.name = "Living Room Lamp";
-    record.enabled = true;
+    DummyDeviceConfigV1 config{};
+    config.enabled = 1;
+    std::snprintf(config.name, sizeof(config.name), "%s", "Living Room Lamp");
+    record.header.payloadLength = static_cast<uint32_t>(dummyDeviceConfigSize(config));
     record.hasParent = false;
     record.parentDeviceId = 0;
     record.persistencePolicy = DevicePersistencePolicy::Delayed;
     record.status = DeviceStatus::Ready;
     return record;
+}
+
+DeviceConfigBlob makeDeviceConfigBlob(const char* name = "Living Room Lamp") {
+    DummyDeviceConfigV1 config{};
+    config.enabled = 1;
+    std::snprintf(config.name, sizeof(config.name), "%s", name);
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(encodeDummyDeviceConfig(config, buffer, dummyDeviceConfigSize(config)));
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(blob.assign(buffer, dummyDeviceConfigSize(config)));
+    return blob;
+}
+
+DeviceCreateRequest makeCreateRequest(const char* name = "Living Room Lamp") {
+    DummyDeviceConfigV1 config{};
+    config.enabled = 1;
+    std::snprintf(config.name, sizeof(config.name), "%s", name);
+
+    DeviceCreateRequest request{};
+    request.typeId = DummyDevice::descriptor().typeId;
+    request.name = config.name;
+    request.enabled = true;
+    request.configVersion = DummyDevice::descriptor().currentConfigVersion;
+    request.configBlob = makeDeviceConfigBlob(name);
+    request.persistencePolicy = DevicePersistencePolicy::Immediate;
+    return request;
 }
 
 } // namespace
@@ -58,8 +105,13 @@ void test_ws_message_builders_create_compact_envelopes() {
     TEST_ASSERT_FALSE(upsertDoc["payload"]["command_accepted"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("detail", upsertDoc["payload"]["detail"].as<const char*>());
 
-    const DeviceRecord record = makeDeviceRecord();
-    const std::string snapshot = PortalWebSocketMessages::buildDeviceUpsert(record, nullptr, 14, true, &DummyDeviceApiAdapter::instance());
+    const DeviceRegistryEntry record = makeDeviceRecord();
+    const DeviceConfigBlob configBlob = makeDeviceConfigBlob();
+    DummyDevice runtime(record, configBlob);
+    runtime.begin(0);
+    runtime.tickFastLoop(1);
+    const std::string snapshot =
+        PortalWebSocketMessages::buildDeviceUpsert(runtime, runtime.status(), 14, true, &DummyDeviceApiAdapter::instance());
     DynamicJsonDocument snapshotDoc(1536);
     TEST_ASSERT_FALSE(deserializeJson(snapshotDoc, snapshot));
     TEST_ASSERT_EQUAL_STRING("device.upsert", snapshotDoc["topic"].as<const char*>());
@@ -183,6 +235,47 @@ void test_ws_manager_broadcasts_snapshots_only_when_clients_are_connected() {
     TEST_ASSERT_EQUAL_UINT32(4, static_cast<uint32_t>(manager.sentMessageCount()));
 }
 
+void test_ws_manager_resyncs_all_device_snapshots_for_new_clients() {
+    MemoryConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+    FixedDeviceIdSource idSource(42, 43);
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(store, types, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+    TEST_ASSERT_TRUE(registry.create(makeCreateRequest(), 10).ok());
+    TEST_ASSERT_TRUE(registry.create(makeCreateRequest("Kitchen Lamp"), 20).ok());
+    registry.tickFastLoop(21);
+
+    PortalWebSocketManager manager(nullptr, &registry);
+    manager.setClientCountForTest(1);
+    manager.publishDeviceSnapshotsForTest();
+
+#if defined(UNIT_TEST)
+    TEST_ASSERT_EQUAL_UINT32(2, static_cast<uint32_t>(manager.sentMessageCount()));
+    bool sawFirst = false;
+    bool sawSecond = false;
+    for (const std::string& message : manager.sentMessages()) {
+        DynamicJsonDocument doc(1536);
+        TEST_ASSERT_FALSE(deserializeJson(doc, message));
+        TEST_ASSERT_EQUAL_STRING("device.upsert", doc["topic"].as<const char*>());
+        TEST_ASSERT_EQUAL_STRING("ready", doc["payload"]["effective_status"].as<const char*>());
+        const DeviceId deviceId = doc["payload"]["device_id"].as<DeviceId>();
+        if (deviceId == 42) {
+            sawFirst = true;
+            TEST_ASSERT_EQUAL_STRING("Living Room Lamp", doc["payload"]["name"].as<const char*>());
+        } else if (deviceId == 43) {
+            sawSecond = true;
+            TEST_ASSERT_EQUAL_STRING("Kitchen Lamp", doc["payload"]["name"].as<const char*>());
+        } else {
+            TEST_FAIL_MESSAGE("unexpected device snapshot");
+        }
+    }
+    TEST_ASSERT_TRUE(sawFirst);
+    TEST_ASSERT_TRUE(sawSecond);
+#endif
+}
+
 void test_ws_status_messages_are_serializable() {
     const std::string ota = PortalWebSocketMessages::buildOtaStatus(true, false, 1234, 17);
     DynamicJsonDocument otaDoc(1024);
@@ -210,6 +303,7 @@ int main(int, char**) {
     RUN_TEST(test_ws_manager_stops_receiving_after_detach);
     RUN_TEST(test_ws_manager_ignores_registry_persistence_cleared_events);
     RUN_TEST(test_ws_manager_broadcasts_snapshots_only_when_clients_are_connected);
+    RUN_TEST(test_ws_manager_resyncs_all_device_snapshots_for_new_clients);
     RUN_TEST(test_ws_status_messages_are_serializable);
     return UNITY_END();
 }

@@ -4,6 +4,7 @@
 
 #include <ArduinoJson.h>
 #include <array>
+#include <cstdio>
 #include <unity.h>
 
 using namespace ewfm;
@@ -82,17 +83,23 @@ OneWireRomAddress makeRom(uint8_t family, const std::array<uint8_t, 6>& serial, 
     return address;
 }
 
-DeviceRecord makeRecord(const std::string& payload) {
-    DeviceRecord record{};
+DeviceRegistryEntry makeRecord(const BoundedBlob<kMaxDeviceConfigBytes>& payload) {
+    DeviceRegistryEntry record{};
     record.header.deviceId = 91;
     record.header.typeId = OneWireBusDevice::descriptor().typeId;
     record.header.configVersion = OneWireBusDevice::descriptor().currentConfigVersion;
+    record.header.configRevision = 1;
     record.header.payloadLength = static_cast<uint32_t>(payload.size());
-    record.name = "bus-api";
-    record.enabled = true;
     record.status = DeviceStatus::Ready;
-    record.configPayload = payload;
     return record;
+}
+
+BoundedBlob<kMaxDeviceConfigBytes> encodeOneWirePayload(const OneWireBusDeviceConfigV1& config) {
+    BoundedBlob<kMaxDeviceConfigBytes> payload{};
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(encodeOneWireBusDeviceConfig(config, buffer, oneWireBusDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(payload.assign(buffer, oneWireBusDeviceConfigSize(config)));
+    return payload;
 }
 
 } // namespace
@@ -114,14 +121,15 @@ void test_onewire_api_adapter_parses_create_request() {
     config["internal_pullup"] = true;
 
     DeviceCreateRequest request{};
-    std::string error;
+    const char* error = nullptr;
     TEST_ASSERT_TRUE(OneWireBusDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error));
     TEST_ASSERT_EQUAL_UINT32(OneWireBusDevice::descriptor().typeId, request.typeId);
     TEST_ASSERT_EQUAL_STRING("onewire", request.name.c_str());
     TEST_ASSERT_TRUE(request.enabled);
 
     OneWireBusDeviceConfigV1 parsed{};
-    TEST_ASSERT_TRUE(decodeOneWireBusDeviceConfig(request.configPayload, parsed));
+    TEST_ASSERT_TRUE(
+        decodeOneWireBusDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
     TEST_ASSERT_EQUAL_UINT8(18, parsed.gpioPin);
     TEST_ASSERT_TRUE(parsed.internalPullup != 0U);
 }
@@ -133,9 +141,9 @@ void test_onewire_api_adapter_rejects_invalid_config_shape() {
     config["gpio_pin"] = "bad";
 
     DeviceCreateRequest request{};
-    std::string error;
+    const char* error = nullptr;
     TEST_ASSERT_FALSE(OneWireBusDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error));
-    TEST_ASSERT_FALSE(error.empty());
+    TEST_ASSERT_NOT_NULL(error);
 }
 
 void test_onewire_api_adapter_serializes_runtime_scan_snapshot() {
@@ -143,12 +151,14 @@ void test_onewire_api_adapter_serializes_runtime_scan_snapshot() {
     const OneWireRomAddress valid = makeRom(0x28, {0xFF, 0x64, 0x1D, 0x62, 0x16, 0x03}, driver);
     driver.candidates = {valid};
     OneWireBusDeviceConfigV1 config{};
-    config.enabled = true;
+    config.base.enabled = true;
+    std::snprintf(config.base.name, sizeof(config.base.name), "%s", "onewire");
     config.gpioPin = 4;
     config.internalPullup = 0;
-    const std::string payload = encodeOneWireBusDeviceConfig(config);
-    DeviceRecord record = makeRecord(payload);
+    const BoundedBlob<kMaxDeviceConfigBytes> payload = encodeOneWirePayload(config);
+    DeviceRegistryEntry record = makeRecord(payload);
     OneWireBusDevice runtime(config, driver);
+    runtime.bindDeviceIdentity(record, payload);
     runtime.begin(1);
     runtime.tick100ms(2);
     runtime.handleCommand(DeviceCommand{DeviceCommandType::Scan, 91, ""});
@@ -157,7 +167,7 @@ void test_onewire_api_adapter_serializes_runtime_scan_snapshot() {
 
     StaticJsonDocument<1024> doc;
     JsonObject output = doc.to<JsonObject>();
-    OneWireBusDeviceApiAdapter::instance().writeDeviceJson(record, &runtime, output);
+    OneWireBusDeviceApiAdapter::instance().writeDeviceJson(runtime, output);
 
     TEST_ASSERT_EQUAL_STRING("onewire_bus", output["type"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT8(4, output["config"]["gpio_pin"].as<uint8_t>());
@@ -175,24 +185,44 @@ void test_onewire_api_adapter_parses_update_config_request() {
     config["gpio_pin"] = 19;
     config["internal_pullup"] = true;
 
-    DeviceRecord record = makeRecord(encodeOneWireBusDeviceConfig(OneWireBusDeviceConfigV1{}));
+    OneWireBusDeviceConfigV1 current{};
+    current.base.enabled = true;
+    std::snprintf(current.base.name, sizeof(current.base.name), "%s", "onewire");
+    current.gpioPin = 4;
+    current.internalPullup = 0;
+    const DeviceConfigBlob currentBlob = encodeOneWirePayload(current);
+    DeviceRegistryEntry record = makeRecord(currentBlob);
+    FakeOneWireBusDriver driver;
+    OneWireBusDevice runtime(current, driver);
+    runtime.bindDeviceIdentity(record, currentBlob);
     DeviceConfigUpdateRequest request{};
-    std::string error;
-    TEST_ASSERT_TRUE(OneWireBusDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), record, request, error));
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(OneWireBusDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error));
     TEST_ASSERT_EQUAL_UINT32(OneWireBusDevice::descriptor().currentConfigVersion, request.configVersion);
 
     OneWireBusDeviceConfigV1 parsed{};
-    TEST_ASSERT_TRUE(decodeOneWireBusDeviceConfig(request.configPayload, parsed));
-    TEST_ASSERT_FALSE(parsed.enabled != 0U);
+    TEST_ASSERT_TRUE(
+        decodeOneWireBusDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_TRUE(parsed.base.enabled != 0U);
+    TEST_ASSERT_EQUAL_STRING("onewire", parsed.base.name);
     TEST_ASSERT_EQUAL_UINT8(19, parsed.gpioPin);
     TEST_ASSERT_TRUE(parsed.internalPullup != 0U);
 }
 
 void test_onewire_api_adapter_rejects_missing_update_config() {
     StaticJsonDocument<64> doc;
-    DeviceRecord record = makeRecord(encodeOneWireBusDeviceConfig(OneWireBusDeviceConfigV1{}));
+    OneWireBusDeviceConfigV1 current{};
+    current.base.enabled = true;
+    std::snprintf(current.base.name, sizeof(current.base.name), "%s", "onewire");
+    current.gpioPin = 4;
+    current.internalPullup = 0;
+    const DeviceConfigBlob currentBlob = encodeOneWirePayload(current);
+    DeviceRegistryEntry record = makeRecord(currentBlob);
+    FakeOneWireBusDriver driver;
+    OneWireBusDevice runtime(current, driver);
+    runtime.bindDeviceIdentity(record, currentBlob);
     DeviceConfigUpdateRequest request{};
-    std::string error;
-    TEST_ASSERT_FALSE(OneWireBusDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), record, request, error));
-    TEST_ASSERT_FALSE(error.empty());
+    const char* error = nullptr;
+    TEST_ASSERT_FALSE(OneWireBusDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error));
+    TEST_ASSERT_NOT_NULL(error);
 }

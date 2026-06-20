@@ -6,6 +6,7 @@
 #include "integrations/common/DeviceEventDispatcher.h"
 #include "integrations/common/DeviceIntegrationIdentity.h"
 
+#include <cstdio>
 #include <unity.h>
 
 using namespace ewfm;
@@ -39,20 +40,25 @@ struct RecordingSink final : public IDeviceEventSink {
     std::vector<DeviceEvent> events{};
 };
 
+BoundedBlob<kMaxDeviceConfigBytes> encodeDummyPayload(const DummyDeviceConfigV1& config) {
+    BoundedBlob<kMaxDeviceConfigBytes> payload{};
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(encodeDummyDeviceConfig(config, buffer, dummyDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(payload.assign(buffer, dummyDeviceConfigSize(config)));
+    return payload;
+}
+
 DeviceCreateRequest makeDummyCreateRequest(const std::string& name) {
-    DummyDeviceConfigV2 config{};
+    DummyDeviceConfigV1 config{};
     config.enabled = true;
-    config.restorePreviousState = true;
-    config.defaultOutput = false;
-    config.currentOutput = false;
-    config.inverted = false;
+    std::snprintf(config.name, sizeof(config.name), "%s", name.c_str());
 
     DeviceCreateRequest request{};
     request.typeId = 1;
     request.name = name;
     request.enabled = true;
     request.configVersion = DummyDevice::descriptor().currentConfigVersion;
-    request.configPayload = encodeDummyDeviceConfig(config);
+    request.configBlob = encodeDummyPayload(config);
     request.persistencePolicy = DevicePersistencePolicy::Immediate;
     return request;
 }
@@ -103,11 +109,15 @@ void test_integration_sink_observes_order_revisions_and_pending_flags() {
     TEST_ASSERT_TRUE(renamed.pendingPersistence);
     dispatcher.tickFastLoop(21);
 
-    const uint32_t configRevisionBeforeRetained = registry.find(created.deviceId)->header.configRevision;
+    const IDeviceRuntime* beforeRuntime = registry.runtime(created.deviceId);
+    TEST_ASSERT_NOT_NULL(beforeRuntime);
+    const uint32_t configRevisionBeforeRetained = beforeRuntime->configRevision();
     DeviceMutationResult retained = registry.setRetainedState(created.deviceId, "output=1", 22, DevicePersistencePolicy::Coalesced);
     TEST_ASSERT_TRUE(retained.ok());
     dispatcher.tickFastLoop(23);
-    TEST_ASSERT_EQUAL_UINT32(configRevisionBeforeRetained, registry.find(created.deviceId)->header.configRevision);
+    const IDeviceRuntime* afterRuntime = registry.runtime(created.deviceId);
+    TEST_ASSERT_NOT_NULL(afterRuntime);
+    TEST_ASSERT_EQUAL_UINT32(configRevisionBeforeRetained, afterRuntime->configRevision());
 
     TEST_ASSERT_TRUE(registry.flushNow().ok());
     dispatcher.tickFastLoop(24);

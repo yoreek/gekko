@@ -4,32 +4,43 @@
 #include "devices/registry/DeviceRegistryStore.h"
 #include "devices/registry/RetainedStateStore.h"
 
+#include <cstdio>
 #include <unity.h>
 
 using namespace ewfm;
 
 namespace {
 
-std::string encodeDummyConfig(const DummyDeviceConfigV2& config) {
-    return ewfm::encodeDummyDeviceConfig(config);
+BoundedBlob<kMaxDeviceConfigBytes> encodeDummyConfig(const DummyDeviceConfigV1& config) {
+    BoundedBlob<kMaxDeviceConfigBytes> payload{};
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(ewfm::encodeDummyDeviceConfig(config, buffer, dummyDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(payload.assign(buffer, dummyDeviceConfigSize(config)));
+    return payload;
 }
 
-DeviceRecord makeDummyRecord(DeviceId id, DeviceId parentId, bool hasParent, const std::string& name, const DummyDeviceConfigV2& config) {
-    DeviceRecord record{};
+DeviceRegistryEntry makeDummyRecord(DeviceId id, DeviceId parentId, bool hasParent, const std::string& name,
+                                    const DummyDeviceConfigV1& config) {
+    DeviceRegistryEntry record{};
     record.header.recordVersion = kDeviceRecordHeaderVersion;
     record.header.deviceId = id;
     record.header.typeId = 1;
-    record.header.configVersion = 2;
+    record.header.configVersion = DummyDevice::descriptor().currentConfigVersion;
     record.header.configRevision = 7;
-    record.header.payloadLength = static_cast<uint32_t>(encodeDummyConfig(config).size());
-    record.name = name;
-    record.enabled = true;
+    record.header.payloadLength = static_cast<uint32_t>(dummyDeviceConfigSize(config));
+    (void)name;
     record.hasParent = hasParent;
     record.parentDeviceId = parentId;
     record.persistencePolicy = DevicePersistencePolicy::Delayed;
     record.status = DeviceStatus::Ready;
-    record.configPayload = encodeDummyConfig(config);
     return record;
+}
+
+DummyDeviceConfigV1 makeDummyConfig(const char* name, bool enabled) {
+    DummyDeviceConfigV1 config{};
+    config.enabled = enabled;
+    std::snprintf(config.name, sizeof(config.name), "%s", name);
+    return config;
 }
 
 } // namespace
@@ -39,7 +50,7 @@ void test_default_device_type_registry_contains_dummy() {
     const DeviceTypeDescriptor* descriptor = registry.find(1);
     TEST_ASSERT_NOT_NULL(descriptor);
     TEST_ASSERT_EQUAL_STRING("DummyDevice", descriptor->name);
-    TEST_ASSERT_EQUAL_UINT32(2, descriptor->currentConfigVersion);
+    TEST_ASSERT_EQUAL_UINT32(1, descriptor->currentConfigVersion);
     TEST_ASSERT_TRUE(descriptor->supportsCommands);
     TEST_ASSERT_TRUE(descriptor->supportsRetainedState);
 }
@@ -74,50 +85,83 @@ void test_device_registry_store_round_trip() {
     DeviceRegistryStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
 
-    DummyDeviceConfigV2 config{};
-    config.restorePreviousState = true;
-    config.defaultOutput = false;
-    config.currentOutput = true;
-    config.inverted = false;
+    DummyDeviceConfigV1 config = makeDummyConfig("bus", true);
 
     DeviceRegistrySnapshot snapshot;
     snapshot.indexEntries.push_back({1, 1});
     snapshot.indexEntries.push_back({2, 1});
     snapshot.records.push_back(makeDummyRecord(1, 0, false, "bus", config));
+    DeviceConfigBlobMap configBlobs;
+    configBlobs[1] = encodeDummyConfig(config);
 
-    DummyDeviceConfigV2 childConfig = config;
-    childConfig.currentOutput = false;
+    DummyDeviceConfigV1 childConfig = makeDummyConfig("sensor", true);
     snapshot.records.push_back(makeDummyRecord(2, 1, true, "sensor", childConfig));
+    configBlobs[2] = encodeDummyConfig(childConfig);
 
-    DeviceValidationResult saveResult = store.save(snapshot);
+    DeviceValidationResult saveResult = store.save(snapshot, configBlobs);
     TEST_ASSERT_TRUE(saveResult.ok());
 
     DeviceRegistrySnapshot loaded;
+    DeviceConfigBlobMap loadedConfigBlobs;
     DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
-    DeviceValidationResult loadResult = store.load(loaded, &types);
+    DeviceValidationResult loadResult = store.load(loaded, loadedConfigBlobs, &types);
     TEST_ASSERT_TRUE(loadResult.ok());
     TEST_ASSERT_EQUAL_UINT32(2, loaded.records.size());
     TEST_ASSERT_EQUAL_UINT32(2, loaded.indexEntries.size());
     TEST_ASSERT_EQUAL_UINT32(1, loaded.records[0].header.deviceId);
     TEST_ASSERT_EQUAL_UINT32(2, loaded.records[1].header.deviceId);
-    TEST_ASSERT_EQUAL_STRING("bus", loaded.records[0].name.c_str());
-    TEST_ASSERT_EQUAL_STRING("sensor", loaded.records[1].name.c_str());
+    DummyDeviceConfigV1 loadedParentConfig{};
+    DummyDeviceConfigV1 loadedChildConfig{};
+    TEST_ASSERT_TRUE(decodeDummyDeviceConfig(loadedConfigBlobs[1].data(), loadedConfigBlobs[1].size(), loadedParentConfig));
+    TEST_ASSERT_TRUE(decodeDummyDeviceConfig(loadedConfigBlobs[2].data(), loadedConfigBlobs[2].size(), loadedChildConfig));
+    TEST_ASSERT_EQUAL_STRING("bus", loadedParentConfig.name);
+    TEST_ASSERT_EQUAL_STRING("sensor", loadedChildConfig.name);
     TEST_ASSERT_TRUE(loaded.records[1].hasParent);
     TEST_ASSERT_EQUAL_UINT32(1, loaded.records[1].parentDeviceId);
-    TEST_ASSERT_EQUAL_STRING(snapshot.records[1].configPayload.c_str(), loaded.records[1].configPayload.c_str());
+    TEST_ASSERT_EQUAL_UINT32(configBlobs[2].size(), loadedConfigBlobs[2].size());
+    TEST_ASSERT_EQUAL_MEMORY(configBlobs[2].data(), loadedConfigBlobs[2].data(), configBlobs[2].size());
 }
 
-void test_device_registry_store_rejects_corrupt_index() {
+void test_device_registry_store_resets_on_missing_registry_version() {
     MemoryConfigStorage storage;
     TEST_ASSERT_TRUE(storage.putString("index", "zz"));
 
     DeviceRegistryStore store(storage);
-    TEST_ASSERT_TRUE(store.begin(true));
+    TEST_ASSERT_TRUE(store.begin(false));
 
     DeviceRegistrySnapshot loaded;
-    DeviceValidationResult result = store.load(loaded, nullptr);
-    TEST_ASSERT_FALSE(result.ok());
-    TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::CorruptRecord), static_cast<int>(result.error));
+    DeviceConfigBlobMap loadedConfigBlobs;
+    DeviceValidationResult result = store.load(loaded, loadedConfigBlobs, nullptr);
+    TEST_ASSERT_TRUE(result.ok());
+    TEST_ASSERT_TRUE(loaded.records.empty());
+    TEST_ASSERT_TRUE(loaded.indexEntries.empty());
+    TEST_ASSERT_FALSE(storage.hasKey("index"));
+    TEST_ASSERT_FALSE(storage.hasKey("version"));
+}
+
+void test_device_registry_store_resets_on_registry_version_mismatch() {
+    MemoryConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    DummyDeviceConfigV1 config = makeDummyConfig("bus", true);
+    DeviceRegistrySnapshot snapshot;
+    snapshot.indexEntries.push_back({1, 1});
+    snapshot.records.push_back(makeDummyRecord(1, 0, false, "bus", config));
+    DeviceConfigBlobMap configBlobs;
+    configBlobs[1] = encodeDummyConfig(config);
+    TEST_ASSERT_TRUE(store.save(snapshot, configBlobs).ok());
+    TEST_ASSERT_TRUE(storage.putUInt("version", 999));
+
+    DeviceRegistrySnapshot loaded;
+    DeviceConfigBlobMap loadedConfigBlobs;
+    DeviceValidationResult result = store.load(loaded, loadedConfigBlobs, nullptr);
+    TEST_ASSERT_TRUE(result.ok());
+    TEST_ASSERT_TRUE(loaded.records.empty());
+    TEST_ASSERT_TRUE(loaded.indexEntries.empty());
+    TEST_ASSERT_FALSE(storage.hasKey("index"));
+    TEST_ASSERT_FALSE(storage.hasKey("record_00000001"));
+    TEST_ASSERT_FALSE(storage.hasKey("version"));
 }
 
 void test_retained_state_store_round_trip_and_remove() {
@@ -156,23 +200,18 @@ void test_retained_state_store_rejects_corrupt_payload() {
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::CorruptRecord), static_cast<int>(result.error));
 }
 
-void test_dummy_device_lifecycle_and_retained_restore() {
-    DummyDeviceConfigV2 config{};
-    config.enabled = true;
-    config.restorePreviousState = true;
-    config.defaultOutput = false;
-    config.currentOutput = false;
+void test_dummy_device_lifecycle_and_command_output() {
+    DummyDeviceConfigV1 config = makeDummyConfig("dummy", true);
 
-    DeviceRecord record = makeDummyRecord(3, 0, false, "dummy", config);
-    DummyDevice device(record);
+    DeviceRegistryEntry record = makeDummyRecord(3, 0, false, "dummy", config);
+    DummyDevice device(record, encodeDummyConfig(config));
 
-    device.applyRetainedState(true);
     device.begin(100);
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Creating), static_cast<int>(device.status()));
 
     device.tickFastLoop(101);
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(device.status()));
-    TEST_ASSERT_TRUE(device.outputState());
+    TEST_ASSERT_FALSE(device.outputState());
 
     TEST_ASSERT_TRUE(device.handleCommand(DeviceCommand{DeviceCommandType::Custom, 3, "output=0", DevicePersistencePolicy::Delayed}));
     TEST_ASSERT_FALSE(device.outputState());
@@ -187,30 +226,25 @@ void test_dummy_device_lifecycle_and_retained_restore() {
     TEST_ASSERT_TRUE(device.deleted());
 }
 
-void test_dummy_device_missing_retained_state_uses_configured_startup_state() {
-    DummyDeviceConfigV2 config{};
-    config.enabled = true;
-    config.restorePreviousState = true;
-    config.defaultOutput = false;
-    config.currentOutput = true;
+void test_dummy_device_base_config_is_loaded_and_runtime_starts_disabled() {
+    DummyDeviceConfigV1 config = makeDummyConfig("dummy-fallback", true);
 
-    DeviceRecord record = makeDummyRecord(4, 0, false, "dummy-fallback", config);
-    DummyDevice device(record);
+    DeviceRegistryEntry record = makeDummyRecord(4, 0, false, "dummy-fallback", config);
+    DummyDevice device(record, encodeDummyConfig(config));
 
     device.begin(200);
     device.tickFastLoop(201);
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(device.status()));
-    TEST_ASSERT_TRUE(device.outputState());
+    TEST_ASSERT_FALSE(device.outputState());
 }
 
 void test_dummy_device_parent_dependency_and_child_wiring_survive_base_refactor() {
-    DummyDeviceConfigV2 config{};
-    config.enabled = true;
+    DummyDeviceConfigV1 config = makeDummyConfig("parent", true);
 
-    DeviceRecord parentRecord = makeDummyRecord(5, 0, false, "parent", config);
-    DeviceRecord childRecord = makeDummyRecord(6, 5, true, "child", config);
-    DummyDevice parent(parentRecord);
-    DummyDevice child(childRecord);
+    DeviceRegistryEntry parentRecord = makeDummyRecord(5, 0, false, "parent", config);
+    DeviceRegistryEntry childRecord = makeDummyRecord(6, 5, true, "child", config);
+    DummyDevice parent(parentRecord, encodeDummyConfig(config));
+    DummyDevice child(childRecord, encodeDummyConfig(config));
 
     child.setParentRuntime(&parent);
     parent.attachChildRuntime(&child);
@@ -240,11 +274,12 @@ int main(int, char**) {
     RUN_TEST(test_device_id_generation_skips_reserved_and_duplicates);
     RUN_TEST(test_device_id_generation_exhaustion_fails);
     RUN_TEST(test_device_registry_store_round_trip);
-    RUN_TEST(test_device_registry_store_rejects_corrupt_index);
+    RUN_TEST(test_device_registry_store_resets_on_missing_registry_version);
+    RUN_TEST(test_device_registry_store_resets_on_registry_version_mismatch);
     RUN_TEST(test_retained_state_store_round_trip_and_remove);
     RUN_TEST(test_retained_state_store_rejects_corrupt_payload);
-    RUN_TEST(test_dummy_device_lifecycle_and_retained_restore);
-    RUN_TEST(test_dummy_device_missing_retained_state_uses_configured_startup_state);
+    RUN_TEST(test_dummy_device_lifecycle_and_command_output);
+    RUN_TEST(test_dummy_device_base_config_is_loaded_and_runtime_starts_disabled);
     RUN_TEST(test_dummy_device_parent_dependency_and_child_wiring_survive_base_refactor);
     return UNITY_END();
 }

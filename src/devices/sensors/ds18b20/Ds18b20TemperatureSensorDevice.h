@@ -6,11 +6,13 @@
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorConfig.h"
 #include "devices/sensors/temperature/TemperatureSensorTypes.h"
 
+#include <ArduinoJson.h>
+
 namespace ewfm {
 
 class Ds18b20TemperatureSensorDevice final : public DeviceRuntimeBase {
 public:
-    explicit Ds18b20TemperatureSensorDevice(const DeviceRecord& record);
+    Ds18b20TemperatureSensorDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
     explicit Ds18b20TemperatureSensorDevice(const Ds18b20TemperatureSensorConfigV1& config);
 
     const Ds18b20TemperatureSensorConfigV1& config() const;
@@ -18,10 +20,16 @@ public:
     const char* outputStatus() const;
     uint8_t consecutiveErrors() const;
     uint32_t lastParentGeneration() const;
+    void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
+    bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
+    bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override;
+    void writeDeviceJson(JsonObject output) const;
 
     static DeviceTypeDescriptor descriptor();
-    static std::unique_ptr<IDeviceRuntime> createRuntime(const DeviceRecord& record);
-    static DeviceValidationResult validateConfig(const DeviceRecord& record);
+    static std::unique_ptr<IDeviceRuntime> createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
+    static DeviceValidationResult validateConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
+
+    bool oneWireRomAddress(OneWireRomAddress& address) const override;
 
 private:
     enum class ParentAccessResult : uint8_t {
@@ -53,6 +61,7 @@ private:
     bool configureSensor(IOneWireBusDriver& driver, const char*& error) const;
     bool requestConversion(IOneWireBusDriver& driver, const char*& error) const;
     bool readTemperature(IOneWireBusDriver& driver, int32_t& milliCelsius, const char*& error) const;
+    bool hasDuplicateOneWireAddress() const;
     void publishReading(int32_t milliCelsius, uint32_t now);
     void invalidateReading(const char* status);
     void recordFailure(const char* status, uint32_t now);

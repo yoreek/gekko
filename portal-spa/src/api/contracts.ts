@@ -2,6 +2,7 @@ export type DeviceOutputState = 'off' | 'on' | 'disabled'
 
 export interface DeviceOutputSnapshot {
   state?: DeviceOutputState
+  physical_level?: boolean
   temperature?: TemperatureOutputSnapshot
 }
 

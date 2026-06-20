@@ -1,6 +1,7 @@
 #include "devices/switch/BinarySwitchDeviceBase.h"
 #include "devices/switch/TriStateSwitchDeviceBase.h"
 
+#include <cstdio>
 #include <unity.h>
 #include <vector>
 
@@ -66,12 +67,21 @@ private:
 
 SwitchDeviceConfigV1 makeConfig(OutputState startup = OutputState::Off, OutputState safe = OutputState::Off) {
     SwitchDeviceConfigV1 config{};
-    config.enabled = true;
+    config.base.enabled = true;
+    std::snprintf(config.base.name, sizeof(config.base.name), "%s", "switch");
     config.restorePreviousState = false;
     config.startupState = static_cast<uint8_t>(startup);
     config.safeState = static_cast<uint8_t>(safe);
     config.inverted = false;
     return config;
+}
+
+BoundedBlob<kMaxDeviceConfigBytes> encodeSwitchPayload(const SwitchDeviceConfigV1& config) {
+    BoundedBlob<kMaxDeviceConfigBytes> payload{};
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(encodeSwitchDeviceConfig(config, buffer, switchDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(payload.assign(buffer, switchDeviceConfigSize(config)));
+    return payload;
 }
 
 void startToReady(SwitchDeviceBase& device) {
@@ -87,8 +97,10 @@ void test_switch_config_round_trip_validates_output_states() {
     config.inverted = true;
 
     SwitchDeviceConfigV1 decoded{};
-    TEST_ASSERT_TRUE(decodeSwitchDeviceConfig(encodeSwitchDeviceConfig(config), decoded));
-    TEST_ASSERT_EQUAL_UINT8(config.enabled, decoded.enabled);
+    const BoundedBlob<kMaxDeviceConfigBytes> payload = encodeSwitchPayload(config);
+    TEST_ASSERT_TRUE(decodeSwitchDeviceConfig(payload.data(), payload.size(), decoded));
+    TEST_ASSERT_EQUAL_UINT8(config.base.enabled, decoded.base.enabled);
+    TEST_ASSERT_EQUAL_STRING(config.base.name, decoded.base.name);
     TEST_ASSERT_EQUAL_UINT8(config.restorePreviousState, decoded.restorePreviousState);
     TEST_ASSERT_EQUAL_UINT8(config.startupState, decoded.startupState);
     TEST_ASSERT_EQUAL_UINT8(config.safeState, decoded.safeState);

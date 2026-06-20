@@ -1,5 +1,7 @@
 #include "devices/switch/SwitchDeviceBase.h"
 
+#include <cstring>
+
 namespace ewfm {
 
 #undef SM_CLASS
@@ -33,6 +35,13 @@ bool SwitchDeviceBase::restorePreviousState() const {
 
 bool SwitchDeviceBase::retainedStateDirty() const {
     return retainedStateDirty_;
+}
+
+void SwitchDeviceBase::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
+    DeviceRuntimeBase::bindDeviceIdentity(record, config);
+    enabled_ = config_.base.enabled != 0U;
+    std::memcpy(name_, config_.base.name, sizeof(name_));
+    name_[sizeof(name_) - 1U] = '\0';
 }
 
 bool SwitchDeviceBase::serializeRetainedState(RetainedStateRecord& record) const {
@@ -121,6 +130,24 @@ bool SwitchDeviceBase::inverted() const {
     return config_.inverted != 0U;
 }
 
+const SwitchDeviceConfigV1& SwitchDeviceBase::switchConfig() const {
+    return config_;
+}
+
+void SwitchDeviceBase::writeDeviceJson(JsonObject output) const {
+    output["name"] = config_.base.name;
+    output["enabled"] = config_.base.enabled != 0U;
+    JsonObject configObject = output.createNestedObject("config");
+    writeDeviceBaseConfigJson(config_.base, configObject);
+    configObject["restore_previous_state"] = config_.restorePreviousState != 0U;
+    configObject["startup_state"] = outputStateName(startupState());
+    configObject["safe_state"] = outputStateName(safeState());
+    configObject["inverted"] = config_.inverted != 0U;
+    JsonObject outputObject = output.createNestedObject("output");
+    outputObject["state"] = outputStateName(outputState_);
+    outputObject["physical_level"] = physicalOutputState_;
+}
+
 bool SwitchDeviceBase::applyConfiguredOutput(OutputState state, uint32_t now, bool markRetainedDirty) {
     if (!supportsOutputState(state)) {
         return false;
@@ -201,7 +228,7 @@ SM_STATE(SwitchDeviceBase::Starting) {
         status_ = DeviceStatus::Faulted;
         SM_GOTO(Faulted);
     }
-    if (disableRequested_ || config_.enabled == 0U) {
+    if (disableRequested_ || config_.base.enabled == 0U) {
         (void)applyConfiguredOutput(safeState(), uptime(), false);
         status_ = DeviceStatus::Disabled;
         SM_GOTO(Disabled);
@@ -230,7 +257,7 @@ SM_STATE(SwitchDeviceBase::Ready) {
         releaseHardware(uptime());
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.enabled == 0U) {
+    if (disableRequested_ || config_.base.enabled == 0U) {
         (void)applyConfiguredOutput(safeState(), uptime(), false);
         status_ = DeviceStatus::Disabled;
         SM_GOTO(Disabled);

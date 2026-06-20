@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstring>
 #include <type_traits>
+#include <vector>
 
 namespace ewfm {
 
@@ -19,6 +20,27 @@ template <typename T> void appendLE(std::string& out, T value) {
     }
 }
 
+template <typename T> void appendLE(std::vector<uint8_t>& out, T value) {
+    using Unsigned = typename std::make_unsigned<T>::type;
+    const Unsigned v = static_cast<Unsigned>(value);
+    for (size_t index = 0; index < sizeof(T); ++index) {
+        out.push_back(static_cast<uint8_t>((v >> (index * 8)) & 0xFFU));
+    }
+}
+
+template <typename T> bool appendLE(uint8_t* out, size_t capacity, size_t& pos, T value) {
+    using Unsigned = typename std::make_unsigned<T>::type;
+    if (pos + sizeof(T) > capacity) {
+        return false;
+    }
+    const Unsigned v = static_cast<Unsigned>(value);
+    for (size_t index = 0; index < sizeof(T); ++index) {
+        out[pos + index] = static_cast<uint8_t>((v >> (index * 8)) & 0xFFU);
+    }
+    pos += sizeof(T);
+    return true;
+}
+
 template <typename T> bool readLE(const std::string& blob, size_t& pos, T& value) {
     using Unsigned = typename std::make_unsigned<T>::type;
     if (pos + sizeof(T) > blob.size()) {
@@ -33,16 +55,44 @@ template <typename T> bool readLE(const std::string& blob, size_t& pos, T& value
     return true;
 }
 
-void appendBytes(std::string& out, const std::string& bytes) {
-    out.append(bytes.data(), bytes.size());
-}
-
-bool readBytes(const std::string& blob, size_t& pos, size_t length, std::string& out) {
-    if (pos + length > blob.size()) {
+template <typename T> bool readLE(const std::vector<uint8_t>& blob, size_t& pos, T& value) {
+    using Unsigned = typename std::make_unsigned<T>::type;
+    if (pos + sizeof(T) > blob.size()) {
         return false;
     }
-    out.assign(blob.data() + pos, length);
-    pos += length;
+    Unsigned v{0};
+    for (size_t index = 0; index < sizeof(T); ++index) {
+        v |= static_cast<Unsigned>(blob[pos + index]) << (index * 8);
+    }
+    value = static_cast<T>(v);
+    pos += sizeof(T);
+    return true;
+}
+
+template <typename T> bool readLE(const uint8_t* blob, size_t size, size_t& pos, T& value) {
+    using Unsigned = typename std::make_unsigned<T>::type;
+    if (pos + sizeof(T) > size) {
+        return false;
+    }
+    Unsigned v{0};
+    for (size_t index = 0; index < sizeof(T); ++index) {
+        v |= static_cast<Unsigned>(blob[pos + index]) << (index * 8);
+    }
+    value = static_cast<T>(v);
+    pos += sizeof(T);
+    return true;
+}
+
+void appendBytes(std::vector<uint8_t>& out, const uint8_t* bytes, size_t size) {
+    out.insert(out.end(), bytes, bytes + size);
+}
+
+bool appendBytes(uint8_t* out, size_t capacity, size_t& pos, const uint8_t* bytes, size_t size) {
+    if (pos + size > capacity) {
+        return false;
+    }
+    std::memcpy(out + pos, bytes, size);
+    pos += size;
     return true;
 }
 
@@ -58,6 +108,16 @@ int fromHexDigit(char ch) {
     }
     return -1;
 }
+
+bool readBytes(const uint8_t* blob, size_t size, size_t& pos, size_t length, BoundedBlob<kMaxDeviceConfigBytes>& out) {
+    if (pos + length > size) {
+        return false;
+    }
+    const bool ok = out.assign(blob + pos, length);
+    pos += length;
+    return ok;
+}
+
 } // namespace
 
 std::string DeviceRegistryBinaryCodec::makeRecordKey(DeviceId deviceId) {
@@ -91,15 +151,6 @@ std::string DeviceRegistryBinaryCodec::toHex(const std::string& bytes) {
         hex.push_back(kHexDigits[byte & 0x0F]);
     }
     return hex;
-}
-
-uint32_t DeviceRegistryBinaryCodec::payloadChecksum(const std::string& payload) {
-    uint32_t hash = 2166136261UL;
-    for (unsigned char byte : payload) {
-        hash ^= byte;
-        hash *= 16777619UL;
-    }
-    return hash;
 }
 
 std::string DeviceRegistryBinaryCodec::serializeIndex(const DeviceRegistrySnapshot& snapshot) {
@@ -148,80 +199,117 @@ DeviceValidationResult DeviceRegistryBinaryCodec::parseIndex(const std::string& 
     return {};
 }
 
-std::string DeviceRegistryBinaryCodec::serializeRecord(const DeviceRecord& record) {
-    const uint32_t payloadLength =
-        record.configPayload.size() > kMaxDeviceConfigBytes ? 0U : static_cast<uint32_t>(record.configPayload.size());
-    std::string blob;
-    blob.reserve(48 + record.name.size() + record.configPayload.size());
+std::string DeviceRegistryBinaryCodec::serializeRecord(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+    const std::vector<uint8_t> blob = serializeRecordBlob(record, configBlob);
+    return std::string(blob.begin(), blob.end());
+}
+
+std::vector<uint8_t> DeviceRegistryBinaryCodec::serializeRecordBlob(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+    std::vector<uint8_t> blob;
+    blob.reserve(40 + configBlob.size());
     appendLE<uint32_t>(blob, kRecordMagic);
     appendLE<uint16_t>(blob, kDeviceRecordHeaderVersion);
     appendLE<uint16_t>(blob, 0);
     appendLE<DeviceId>(blob, record.header.deviceId);
     appendLE<DeviceTypeId>(blob, record.header.typeId);
-    appendLE<uint16_t>(blob, record.enabled ? 1U : 0U);
+    appendLE<uint16_t>(blob, 0U);
     appendLE<uint32_t>(blob, record.header.configVersion);
     appendLE<uint32_t>(blob, record.header.configRevision);
-    appendLE<uint32_t>(blob, payloadLength);
-    appendLE<uint32_t>(blob, payloadChecksum(record.configPayload));
-    appendLE<uint32_t>(blob, static_cast<uint32_t>(record.name.size()));
+    appendLE<uint32_t>(blob, static_cast<uint32_t>(configBlob.size()));
+    appendLE<uint32_t>(blob, record.header.payloadChecksum);
     appendLE<uint8_t>(blob, record.hasParent ? 1U : 0U);
     appendLE<uint8_t>(blob, static_cast<uint8_t>(record.status));
     appendLE<uint8_t>(blob, static_cast<uint8_t>(record.persistencePolicy));
     appendLE<uint8_t>(blob, 0U);
     appendLE<DeviceId>(blob, record.parentDeviceId);
-    appendBytes(blob, record.name);
-    appendBytes(blob, record.configPayload);
+    appendBytes(blob, configBlob.data(), configBlob.size());
     return blob;
 }
 
-DeviceValidationResult DeviceRegistryBinaryCodec::parseRecord(const std::string& blob, DeviceRecord& record) {
+size_t DeviceRegistryBinaryCodec::serializeRecord(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob, uint8_t* out,
+                                                  size_t capacity) {
+    size_t pos = 0;
+    if (!appendLE<uint32_t>(out, capacity, pos, kRecordMagic) || !appendLE<uint16_t>(out, capacity, pos, kDeviceRecordHeaderVersion) ||
+        !appendLE<uint16_t>(out, capacity, pos, 0) || !appendLE<DeviceId>(out, capacity, pos, record.header.deviceId) ||
+        !appendLE<DeviceTypeId>(out, capacity, pos, record.header.typeId) || !appendLE<uint16_t>(out, capacity, pos, 0U) ||
+        !appendLE<uint32_t>(out, capacity, pos, record.header.configVersion) ||
+        !appendLE<uint32_t>(out, capacity, pos, record.header.configRevision) ||
+        !appendLE<uint32_t>(out, capacity, pos, static_cast<uint32_t>(configBlob.size())) ||
+        !appendLE<uint32_t>(out, capacity, pos, record.header.payloadChecksum) ||
+        !appendLE<uint8_t>(out, capacity, pos, record.hasParent ? 1U : 0U) ||
+        !appendLE<uint8_t>(out, capacity, pos, static_cast<uint8_t>(record.status)) ||
+        !appendLE<uint8_t>(out, capacity, pos, static_cast<uint8_t>(record.persistencePolicy)) ||
+        !appendLE<uint8_t>(out, capacity, pos, 0U) || !appendLE<DeviceId>(out, capacity, pos, record.parentDeviceId) ||
+        !appendBytes(out, capacity, pos, configBlob.data(), configBlob.size())) {
+        return 0U;
+    }
+    return pos;
+}
+
+DeviceValidationResult DeviceRegistryBinaryCodec::parseRecord(const std::string& blob, DeviceRegistryEntry& record,
+                                                              DeviceConfigBlob& configBlob) {
+    std::vector<uint8_t> bytes(blob.begin(), blob.end());
+    return parseRecordBlob(bytes, record, configBlob);
+}
+
+DeviceValidationResult DeviceRegistryBinaryCodec::parseRecord(const uint8_t* blob, size_t size, DeviceRegistryEntry& record,
+                                                              DeviceConfigBlob& configBlob) {
     size_t pos = 0;
     uint32_t magic{0};
     uint16_t version{0};
     uint16_t reserved16{0};
-    uint16_t enabled{0};
-    uint32_t nameLength{0};
+    uint16_t reservedRecordFlags{0};
+    uint32_t payloadLength{0};
     uint8_t hasParent{0};
     uint8_t status{0};
     uint8_t persistence{0};
     uint8_t reserved8{0};
-    if (!readLE(blob, pos, magic) || !readLE(blob, pos, version) || !readLE(blob, pos, reserved16)) {
+    if (!readLE(blob, size, pos, magic) || !readLE(blob, size, pos, version) || !readLE(blob, size, pos, reserved16)) {
         return {DeviceError::CorruptRecord, "device record is truncated"};
     }
     if (magic != kRecordMagic || version != kDeviceRecordHeaderVersion) {
         return {DeviceError::InvalidVersion, "unsupported device record version"};
     }
 
-    if (!readLE(blob, pos, record.header.deviceId) || !readLE(blob, pos, record.header.typeId) || !readLE(blob, pos, enabled) ||
-        !readLE(blob, pos, record.header.configVersion) || !readLE(blob, pos, record.header.configRevision) ||
-        !readLE(blob, pos, record.header.payloadLength) || !readLE(blob, pos, record.header.payloadChecksum) ||
-        !readLE(blob, pos, nameLength) || !readLE(blob, pos, hasParent) || !readLE(blob, pos, status) || !readLE(blob, pos, persistence) ||
-        !readLE(blob, pos, reserved8) || !readLE(blob, pos, record.parentDeviceId)) {
+    record = {};
+    if (!readLE(blob, size, pos, record.header.deviceId) || !readLE(blob, size, pos, record.header.typeId) ||
+        !readLE(blob, size, pos, reservedRecordFlags) || !readLE(blob, size, pos, record.header.configVersion) ||
+        !readLE(blob, size, pos, record.header.configRevision) || !readLE(blob, size, pos, payloadLength) ||
+        !readLE(blob, size, pos, record.header.payloadChecksum) || !readLE(blob, size, pos, hasParent) ||
+        !readLE(blob, size, pos, status) || !readLE(blob, size, pos, persistence) || !readLE(blob, size, pos, reserved8) ||
+        !readLE(blob, size, pos, record.parentDeviceId)) {
         return {DeviceError::CorruptRecord, "device record header is truncated"};
     }
 
-    if (nameLength > kMaxDynamicDeviceNameLength || record.header.payloadLength > kMaxDeviceConfigBytes) {
+    if (payloadLength > kMaxDeviceConfigBytes) {
         return {DeviceError::BoundsExceeded, "device record exceeds supported size"};
     }
 
-    if (!readBytes(blob, pos, nameLength, record.name) || !readBytes(blob, pos, record.header.payloadLength, record.configPayload)) {
+    if (pos + payloadLength > size) {
+        return {DeviceError::CorruptRecord, "device record payload is truncated"};
+    }
+    if (!readBytes(blob, size, pos, payloadLength, configBlob)) {
         return {DeviceError::CorruptRecord, "device record payload is truncated"};
     }
 
-    if (pos != blob.size()) {
+    if (pos != size) {
         return {DeviceError::CorruptRecord, "device record has trailing data"};
     }
 
-    if (record.header.payloadChecksum != payloadChecksum(record.configPayload)) {
-        return {DeviceError::InvalidConfig, "device record payload checksum mismatch"};
-    }
-
+    (void)reserved16;
+    (void)reservedRecordFlags;
+    (void)reserved8;
     record.header.recordVersion = version;
-    record.enabled = enabled != 0;
-    record.hasParent = hasParent != 0;
+    record.header.payloadLength = payloadLength;
+    record.hasParent = hasParent != 0U;
     record.status = static_cast<DeviceStatus>(status);
     record.persistencePolicy = static_cast<DevicePersistencePolicy>(persistence);
     return {};
+}
+
+DeviceValidationResult DeviceRegistryBinaryCodec::parseRecordBlob(const std::vector<uint8_t>& blob, DeviceRegistryEntry& record,
+                                                                  DeviceConfigBlob& configBlob) {
+    return parseRecord(blob.data(), blob.size(), record, configBlob);
 }
 
 } // namespace ewfm

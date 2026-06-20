@@ -4,6 +4,7 @@
 #include "devices/registry/DeviceRegistry.h"
 #include "portal/DashboardLayoutStore.h"
 
+#include <cstdio>
 #include <unity.h>
 
 using namespace ewfm;
@@ -24,24 +25,25 @@ struct FixedDeviceIdSource final : public IDeviceIdSource {
     size_t index_{0};
 };
 
-std::string encodeDummyConfig(const DummyDeviceConfigV2& config) {
-    return ewfm::encodeDummyDeviceConfig(config);
+BoundedBlob<kMaxDeviceConfigBytes> encodeDummyConfig(const DummyDeviceConfigV1& config) {
+    BoundedBlob<kMaxDeviceConfigBytes> payload{};
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(ewfm::encodeDummyDeviceConfig(config, buffer, dummyDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(payload.assign(buffer, dummyDeviceConfigSize(config)));
+    return payload;
 }
 
 DeviceCreateRequest makeDummyCreateRequest(const std::string& name) {
-    DummyDeviceConfigV2 config{};
+    DummyDeviceConfigV1 config{};
     config.enabled = true;
-    config.restorePreviousState = true;
-    config.defaultOutput = false;
-    config.currentOutput = false;
-    config.inverted = false;
+    std::snprintf(config.name, sizeof(config.name), "%s", name.c_str());
 
     DeviceCreateRequest request{};
     request.typeId = DummyDevice::descriptor().typeId;
     request.name = name;
     request.enabled = true;
     request.configVersion = DummyDevice::descriptor().currentConfigVersion;
-    request.configPayload = encodeDummyConfig(config);
+    request.configBlob = encodeDummyConfig(config);
     request.persistencePolicy = DevicePersistencePolicy::Immediate;
     return request;
 }

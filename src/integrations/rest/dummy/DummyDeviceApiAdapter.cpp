@@ -1,5 +1,6 @@
 #include "integrations/rest/dummy/DummyDeviceApiAdapter.h"
 
+#include "devices/core/DeviceBaseConfig.h"
 #include "devices/dummy/DummyDevice.h"
 
 #include <cstring>
@@ -71,68 +72,48 @@ const char* DummyDeviceApiAdapter::typeName() const {
     return "dummy";
 }
 
-bool DummyDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, std::string& error) const {
+bool DummyDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, const char*& error) const {
     request = {};
     request.typeId = typeId();
-    request.name = input["name"] | "";
-    request.enabled = input["enabled"] | true;
     request.persistencePolicy = parsePersistencePolicy(input);
     request.configVersion = DummyDevice::descriptor().currentConfigVersion;
 
-    if (request.name.empty()) {
-        error = "device name is required";
+    DeviceBaseConfigV1 base{};
+    if (!parseDeviceBaseConfigJson(input, base, error)) {
         return false;
     }
+    request.name = base.name;
+    request.enabled = base.enabled != 0U;
 
-    DummyDeviceConfigV2 config{};
+    DummyDeviceConfigV1 config{};
     const uint32_t configVersion = input["config_version"] | request.configVersion;
     const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
     if (!configObject.isNull()) {
         if (!parseDummyDeviceConfigJson(configObject, configVersion, config, error)) {
             return false;
         }
-    } else {
-        config.enabled = request.enabled;
     }
 
-    config.enabled = request.enabled;
+    config = base;
     request.configVersion = configVersion;
-    if (configVersion == 1U) {
-        DummyDeviceConfigV1 legacy{};
-        legacy.enabled = config.enabled;
-        legacy.restorePreviousState = config.restorePreviousState;
-        legacy.defaultOutput = config.defaultOutput;
-        legacy.currentOutput = config.currentOutput;
-        request.configPayload = encodeDummyDeviceConfig(legacy);
-    } else {
-        request.configPayload = encodeDummyDeviceConfig(config);
+    if (configVersion != 1U) {
+        error = "unsupported DummyDevice config version";
+        return false;
+    }
+
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = dummyDeviceConfigSize(config);
+    if (!encodeDummyDeviceConfig(config, buffer, size) || !request.configBlob.assign(buffer, size)) {
+        error = "failed to encode dummy config";
+        return false;
     }
     return true;
 }
 
-void DummyDeviceApiAdapter::writeDeviceJson(const DeviceRecord& record, const IDeviceRuntime* runtime, JsonObject output) const {
-    (void)runtime;
-    output["device_id"] = record.header.deviceId;
-    output["type_id"] = record.header.typeId;
-    output["type"] = typeName();
-    output["name"] = record.name;
-    output["enabled"] = record.enabled;
-    output["status"] = deviceStatusToString(record.status);
-    output["config_version"] = record.header.configVersion;
-    output["config_revision"] = record.header.configRevision;
-    output["persistence_policy"] = persistencePolicyToString(record.persistencePolicy);
-    output["has_parent"] = record.hasParent;
-    output["parent_device_id"] = record.parentDeviceId;
-    output["retained_state_supported"] = DummyDevice::descriptor().supportsRetainedState;
-
-    DummyDeviceConfigV2 config{};
-    if (decodeDummyDeviceConfig(record.configPayload, config)) {
-        JsonObject configObject = output.createNestedObject("config");
-        writeDummyDeviceConfigJson(config, configObject);
-        output["retained_startup_enabled"] = config.restorePreviousState != 0U;
-        output["retained_startup_fallback_output"] = config.defaultOutput != 0U;
-        output["retained_state_in_config_payload"] = false;
-    }
+void DummyDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const {
+    writeCommonDeviceJson(runtime, typeName(), deviceStatusToString(runtime.status()),
+                          persistencePolicyToString(runtime.persistencePolicy()), DummyDevice::descriptor().supportsRetainedState, output);
+    static_cast<const DummyDevice&>(runtime).writeDeviceJson(output);
 }
 
 } // namespace ewfm

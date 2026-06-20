@@ -1,6 +1,7 @@
 #include "integrations/rest/onewire_bus/OneWireBusDeviceApiAdapter.h"
 
 #include "devices/bus/onewire/OneWireBusDevice.h"
+#include "devices/core/DeviceBaseConfig.h"
 
 #include <cstring>
 
@@ -83,18 +84,18 @@ const char* OneWireBusDeviceApiAdapter::typeName() const {
     return "onewire_bus";
 }
 
-bool OneWireBusDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, std::string& error) const {
+bool OneWireBusDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, const char*& error) const {
     request = {};
     request.typeId = typeId();
-    request.name = input["name"] | "";
-    request.enabled = input["enabled"] | true;
     request.persistencePolicy = parsePersistencePolicy(input);
     request.configVersion = OneWireBusDevice::descriptor().currentConfigVersion;
 
-    if (request.name.empty()) {
-        error = "device name is required";
+    DeviceBaseConfigV1 base{};
+    if (!parseDeviceBaseConfigJson(input, base, error)) {
         return false;
     }
+    request.name = base.name;
+    request.enabled = base.enabled != 0U;
 
     OneWireBusDeviceConfigV1 config{};
     const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
@@ -104,17 +105,28 @@ bool OneWireBusDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
         }
     }
 
-    config.enabled = request.enabled ? 1U : 0U;
-    request.configPayload = encodeOneWireBusDeviceConfig(config);
+    config.base = base;
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = oneWireBusDeviceConfigSize(config);
+    if (!encodeOneWireBusDeviceConfig(config, buffer, size) || !request.configBlob.assign(buffer, size)) {
+        error = "failed to encode onewire bus config";
+        return false;
+    }
     return true;
 }
 
-bool OneWireBusDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const DeviceRecord& record,
-                                                          DeviceConfigUpdateRequest& request, std::string& error) const {
-    (void)record;
+bool OneWireBusDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
+                                                          DeviceConfigUpdateRequest& request, const char*& error) const {
     const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
     if (configObject.isNull()) {
         error = "onewire bus config is required";
+        return false;
+    }
+
+    DeviceBaseConfigV1 base{};
+    base.enabled = runtime.enabled() ? 1U : 0U;
+    if (!copyBoundedText(base.name, runtime.name())) {
+        error = "device base config is invalid";
         return false;
     }
 
@@ -122,47 +134,24 @@ bool OneWireBusDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst&
     if (!parseOneWireBusDeviceConfigJson(configObject, config, error)) {
         return false;
     }
+    config.base = base;
 
     request = {};
     request.configVersion = OneWireBusDevice::descriptor().currentConfigVersion;
-    request.configPayload = encodeOneWireBusDeviceConfig(config);
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = oneWireBusDeviceConfigSize(config);
+    if (!encodeOneWireBusDeviceConfig(config, buffer, size) || !request.configBlob.assign(buffer, size)) {
+        error = "failed to encode onewire bus config";
+        return false;
+    }
     return true;
 }
 
-void OneWireBusDeviceApiAdapter::writeDeviceJson(const DeviceRecord& record, const IDeviceRuntime* runtime, JsonObject output) const {
-    output["device_id"] = record.header.deviceId;
-    output["type_id"] = record.header.typeId;
-    output["type"] = typeName();
-    output["name"] = record.name;
-    output["enabled"] = record.enabled;
-    output["status"] = deviceStatusToString(record.status);
-    output["config_version"] = record.header.configVersion;
-    output["config_revision"] = record.header.configRevision;
-    output["persistence_policy"] = persistencePolicyToString(record.persistencePolicy);
-    output["has_parent"] = record.hasParent;
-    output["parent_device_id"] = record.parentDeviceId;
-    output["retained_state_supported"] = OneWireBusDevice::descriptor().supportsRetainedState;
-
-    OneWireBusDeviceConfigV1 config{};
-    if (decodeOneWireBusDeviceConfig(record.configPayload, config)) {
-        JsonObject configObject = output.createNestedObject("config");
-        writeOneWireBusDeviceConfigJson(config, configObject);
-    }
-
-    if (runtime != nullptr) {
-        const auto* oneWireRuntime = static_cast<const OneWireBusDevice*>(runtime);
-        const OneWireScanResult& scan = oneWireRuntime->scan();
-        JsonObject scanObject = output.createNestedObject("scan");
-        scanObject["in_progress"] = scan.inProgress;
-        scanObject["ready"] = scan.ready;
-        scanObject["device_count"] = scan.deviceCount;
-        scanObject["truncated"] = scan.truncated;
-        scanObject["invalid_crc_seen"] = scan.invalidCandidateSeen;
-        JsonArray devices = scanObject.createNestedArray("devices");
-        for (uint8_t index = 0; index < scan.deviceCount; ++index) {
-            writeScanDevice(devices, scan.devices[index]);
-        }
-    }
+void OneWireBusDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const {
+    writeCommonDeviceJson(runtime, typeName(), deviceStatusToString(runtime.status()),
+                          persistencePolicyToString(runtime.persistencePolicy()), OneWireBusDevice::descriptor().supportsRetainedState,
+                          output);
+    static_cast<const OneWireBusDevice&>(runtime).writeDeviceJson(output);
 }
 
 } // namespace ewfm

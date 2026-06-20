@@ -24,6 +24,16 @@ public:
     void requestDisable() override;
     void requestDelete() override;
     DeviceStatus status() const override;
+    void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
+    DeviceId deviceId() const override;
+    DeviceTypeId typeId() const override;
+    uint32_t configVersion() const override;
+    uint32_t configRevision() const override;
+    bool hasParent() const override;
+    DeviceId parentDeviceId() const override;
+    bool enabled() const override;
+    const char* name() const override;
+    DevicePersistencePolicy persistencePolicy() const override;
     bool handleCommand(const DeviceCommand& command) override;
 
 protected:
@@ -55,6 +65,15 @@ protected:
     bool faultRequested_{false};
     bool deleted_{false};
     bool runtimeStateDirty_{false};
+    DeviceId deviceId_{0};
+    DeviceTypeId typeId_{0};
+    uint32_t configVersion_{0};
+    uint32_t configRevision_{0};
+    bool hasParent_{false};
+    DeviceId parentDeviceId_{0};
+    bool enabled_{true};
+    char name_[kMaxDeviceBaseNameLength + 1]{};
+    DevicePersistencePolicy persistencePolicy_{DevicePersistencePolicy::Delayed};
 
 private:
     IDeviceRuntime* parentRuntime_{nullptr};

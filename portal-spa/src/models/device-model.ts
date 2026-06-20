@@ -103,7 +103,7 @@ export function normalizeDeviceRecord(
   pendingPersistence = record.pending_persistence ?? false,
 ): DashboardDevice {
   const typeName = normalizeTypeName(record)
-  const backendEffectiveStatus = record.effective_status ?? record.lifecycle_status ?? 'unknown'
+  const backendEffectiveStatus = record.effective_status ?? record.lifecycle_status ?? record.status ?? 'unknown'
 
   return {
     deviceId: record.device_id,

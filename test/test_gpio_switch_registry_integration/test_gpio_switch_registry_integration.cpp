@@ -3,25 +3,35 @@
 #include "devices/registry/DeviceRegistry.h"
 #include "devices/switch/gpio/GpioSwitchDevice.h"
 
+#include <cstdio>
 #include <unity.h>
 
 using namespace ewfm;
 
 namespace {
 
+BoundedBlob<kMaxDeviceConfigBytes> encodeGpioPayload(const GpioSwitchDevicePersistedConfigV1& config) {
+    BoundedBlob<kMaxDeviceConfigBytes> payload{};
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(encodeGpioSwitchDeviceConfig(config, buffer, gpioSwitchDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(payload.assign(buffer, gpioSwitchDeviceConfigSize(config)));
+    return payload;
+}
+
 DeviceCreateRequest makeGpioSwitchCreateRequest() {
-    GpioSwitchDeviceConfigV1 config{};
-    config.enabled = true;
-    config.restorePreviousState = true;
-    config.startupState = static_cast<uint8_t>(OutputState::Off);
-    config.safeState = static_cast<uint8_t>(OutputState::Disabled);
-    config.inverted = false;
-    config.gpioPin = 13;
+    GpioSwitchDevicePersistedConfigV1 config{};
+    config.switchConfig.base.enabled = true;
+    std::snprintf(config.switchConfig.base.name, sizeof(config.switchConfig.base.name), "%s", "relay");
+    config.switchConfig.restorePreviousState = true;
+    config.switchConfig.startupState = static_cast<uint8_t>(OutputState::Off);
+    config.switchConfig.safeState = static_cast<uint8_t>(OutputState::Disabled);
+    config.switchConfig.inverted = false;
+    config.gpioConfig.gpioPin = 13;
 
     DeviceCreateRequest request{};
     request.typeId = GpioSwitchDevice::descriptor().typeId;
     request.name = "relay";
-    request.configPayload = encodeGpioSwitchDeviceConfig(config);
+    request.configBlob = encodeGpioPayload(config);
     request.configVersion = GpioSwitchDevice::descriptor().currentConfigVersion;
     request.enabled = true;
     request.persistencePolicy = DevicePersistencePolicy::Delayed;

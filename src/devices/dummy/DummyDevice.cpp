@@ -1,6 +1,7 @@
 #include "devices/dummy/DummyDevice.h"
 
-#include <cstring>
+#include "devices/core/ConfigCodec.h"
+
 #include <type_traits>
 
 namespace ewfm {
@@ -10,125 +11,42 @@ namespace ewfm {
 
 namespace {
 constexpr DeviceTypeId kDummyDeviceTypeId = 1;
-constexpr uint32_t kDummyDeviceConfigVersion = 2;
-
+constexpr uint32_t kDummyDeviceConfigVersion = 1;
 } // namespace
 
 static_assert(std::is_trivially_copyable<DummyDeviceConfigV1>::value, "DummyDeviceConfigV1 must be POD");
-static_assert(std::is_trivially_copyable<DummyDeviceConfigV2>::value, "DummyDeviceConfigV2 must be POD");
-static_assert(sizeof(DummyDeviceConfigV1) == 4, "DummyDeviceConfigV1 layout changed");
-static_assert(sizeof(DummyDeviceConfigV2) == 5, "DummyDeviceConfigV2 layout changed");
+static_assert(sizeof(DummyDeviceConfigV1) == 34, "DummyDeviceConfigV1 layout changed");
 
-void DummyDeviceConfigV2::migrateFrom(const DummyDeviceConfigV1& orig) {
-    enabled = orig.enabled;
-    restorePreviousState = orig.restorePreviousState;
-    defaultOutput = orig.defaultOutput;
-    currentOutput = orig.currentOutput;
-    inverted = false;
+bool encodeDummyDeviceConfig(const DummyDeviceConfigV1& config, uint8_t* blob, size_t capacity) {
+    return encodeDeviceBaseConfig(config, blob, capacity);
 }
 
-void DummyDeviceConfigV2::migrateFrom(const DummyDeviceConfigV2& orig) {
-    enabled = orig.enabled;
-    restorePreviousState = orig.restorePreviousState;
-    defaultOutput = orig.defaultOutput;
-    currentOutput = orig.currentOutput;
-    inverted = orig.inverted;
+bool decodeDummyDeviceConfig(const uint8_t* blob, size_t size, DummyDeviceConfigV1& config) {
+    return decodeDeviceBaseConfig(blob, size, config);
 }
 
-namespace {
-template <typename T> std::string encodeDeviceConfigBlob(uint32_t magicKey, const T& config) {
-    std::string blob;
-    blob.resize(sizeof(magicKey) + sizeof(T));
-    std::memcpy(blob.data(), &magicKey, sizeof(magicKey));
-    std::memcpy(blob.data() + sizeof(magicKey), &config, sizeof(T));
-    return blob;
-}
-
-template <typename T> bool decodeDeviceConfigBlob(const std::string& blob, uint32_t expectedMagicKey, T& config, size_t legacySize = 0) {
-    const size_t compactSize = sizeof(expectedMagicKey) + sizeof(T);
-    if (blob.size() != compactSize && blob.size() != legacySize) {
-        return false;
-    }
-
-    uint32_t magicKey{0};
-    std::memcpy(&magicKey, blob.data(), sizeof(magicKey));
-    if (magicKey != expectedMagicKey) {
-        return false;
-    }
-
-    std::memcpy(&config, blob.data() + sizeof(magicKey), sizeof(T));
-    return true;
-}
-} // namespace
-
-std::string encodeDummyDeviceConfig(const DummyDeviceConfigV1& config) {
-    return encodeDeviceConfigBlob(DummyDeviceConfigV1::kMagicKey, config);
-}
-
-std::string encodeDummyDeviceConfig(const DummyDeviceConfigV2& config) {
-    return encodeDeviceConfigBlob(DummyDeviceConfigV2::kMagicKey, config);
-}
-
-bool decodeDummyDeviceConfig(const std::string& blob, DummyDeviceConfigV2& config) {
-    if (blob.size() < sizeof(uint32_t)) {
-        return false;
-    }
-
-    uint32_t magicKey{0};
-    std::memcpy(&magicKey, blob.data(), sizeof(magicKey));
-    if (magicKey == DummyDeviceConfigV1::kMagicKey) {
-        DummyDeviceConfigV1 legacy{};
-        if (!decodeDeviceConfigBlob(blob, DummyDeviceConfigV1::kMagicKey, legacy)) {
-            return false;
-        }
-        config.migrateFrom(legacy);
-        return true;
-    }
-
-    if (magicKey == DummyDeviceConfigV2::kMagicKey) {
-        return decodeDeviceConfigBlob(blob, DummyDeviceConfigV2::kMagicKey, config, sizeof(uint32_t) + sizeof(DummyDeviceConfigV2) + 3U);
-    }
-
-    return false;
-}
-
-bool parseDummyDeviceConfigJson(const JsonObjectConst& input, uint32_t configVersion, DummyDeviceConfigV2& config, std::string& error) {
+bool parseDummyDeviceConfigJson(const JsonObjectConst& input, uint32_t configVersion, DummyDeviceConfigV1& config, const char*& error) {
     if (configVersion == 0U) {
         configVersion = DummyDevice::descriptor().currentConfigVersion;
     }
 
-    if (configVersion != 1U && configVersion != 2U) {
+    if (configVersion != 1U) {
         error = "unsupported DummyDevice config version";
         return false;
-    }
-
-    config.enabled = (input["enabled"] | true) ? 1U : 0U;
-    config.restorePreviousState = (input["restore_previous_state"] | false) ? 1U : 0U;
-    config.defaultOutput = (input["default_output"] | false) ? 1U : 0U;
-    config.currentOutput = (input["current_output"] | (config.defaultOutput != 0U)) ? 1U : 0U;
-    config.inverted = (input["inverted"] | false) ? 1U : 0U;
-    if (configVersion == 1U) {
-        config.inverted = false;
     }
     return true;
 }
 
-void writeDummyDeviceConfigJson(const DummyDeviceConfigV2& config, JsonObject output) {
-    output["enabled"] = config.enabled != 0U;
-    output["restore_previous_state"] = config.restorePreviousState != 0U;
-    output["default_output"] = config.defaultOutput != 0U;
-    output["current_output"] = config.currentOutput != 0U;
-    output["inverted"] = config.inverted != 0U;
+void writeDummyDeviceConfigJson(const DummyDeviceConfigV1& config, JsonObject output) {
+    writeDeviceBaseConfigJson(config, output);
 }
 
-DummyDevice::DummyDevice(const DeviceRecord& record) : DeviceRuntimeBase((PState)&DummyDevice::Idle) {
-    config_.enabled = record.enabled;
-    config_.currentOutput = false;
-    (void)decodeDummyDeviceConfig(record.configPayload, config_);
-    config_.enabled = record.enabled;
-    if (config_.inverted) {
-        config_.currentOutput = !config_.currentOutput;
-    }
+DummyDevice::DummyDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob)
+    : DeviceRuntimeBase((PState)&DummyDevice::Idle) {
+    bindDeviceIdentity(record, configBlob);
+    (void)decodeDummyDeviceConfig(configBlob.data(), configBlob.size(), config_);
+    restorePreviousState_ = false;
+    currentOutput_ = false;
 }
 
 bool DummyDevice::handleCommand(const DeviceCommand& command) {
@@ -147,22 +65,22 @@ bool DummyDevice::handleCommand(const DeviceCommand& command) {
 
     if (command.type == DeviceCommandType::SetOutput) {
         if (command.payload.equals("on")) {
-            config_.currentOutput = true;
+            currentOutput_ = true;
             return true;
         }
         if (command.payload.equals("off") || command.payload.equals("disabled")) {
-            config_.currentOutput = false;
+            currentOutput_ = false;
             return true;
         }
     }
 
     if (command.type == DeviceCommandType::Custom) {
         if (command.payload.equals("output=1")) {
-            config_.currentOutput = true;
+            currentOutput_ = true;
             return true;
         }
         if (command.payload.equals("output=0")) {
-            config_.currentOutput = false;
+            currentOutput_ = false;
             return true;
         }
     }
@@ -173,25 +91,44 @@ bool DummyDevice::handleCommand(const DeviceCommand& command) {
 void DummyDevice::applyRetainedState(bool output) {
     retainedStateAvailable_ = true;
     retainedOutput_ = output;
-    if (config_.restorePreviousState && is((PState)&DummyDevice::Ready)) {
-        config_.currentOutput = retainedOutput_;
+    if (restorePreviousState_ && is((PState)&DummyDevice::Ready)) {
+        currentOutput_ = retainedOutput_;
     }
 }
 
 bool DummyDevice::outputState() const {
-    return config_.currentOutput;
+    return currentOutput_;
 }
 
 bool DummyDevice::restorePreviousState() const {
-    return config_.restorePreviousState;
+    return restorePreviousState_;
 }
 
-const DummyDeviceConfigV2& DummyDevice::config() const {
+const DummyDeviceConfigV1& DummyDevice::config() const {
     return config_;
 }
 
 bool DummyDevice::deleted() const {
     return deleted_;
+}
+
+bool DummyDevice::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = dummyDeviceConfigSize(config_);
+    return encodeDummyDeviceConfig(config_, buffer, size) && configBlob.assign(buffer, size);
+}
+
+bool DummyDevice::replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const {
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = dummyDeviceConfigSize(baseConfig);
+    return encodeDummyDeviceConfig(baseConfig, buffer, size) && configBlob.assign(buffer, size);
+}
+
+void DummyDevice::writeDeviceJson(JsonObject output) const {
+    output["name"] = config_.name;
+    output["enabled"] = config_.enabled != 0U;
+    JsonObject configObject = output.createNestedObject("config");
+    writeDeviceBaseConfigJson(config_, configObject);
 }
 
 DeviceTypeDescriptor DummyDevice::descriptor() {
@@ -212,16 +149,17 @@ DeviceTypeDescriptor DummyDevice::descriptor() {
     return descriptor;
 }
 
-std::unique_ptr<IDeviceRuntime> DummyDevice::createRuntime(const DeviceRecord& record) {
-    return std::unique_ptr<IDeviceRuntime>(new DummyDevice(record));
+std::unique_ptr<IDeviceRuntime> DummyDevice::createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+    return std::unique_ptr<IDeviceRuntime>(new DummyDevice(record, configBlob));
 }
 
-DeviceValidationResult DummyDevice::validateConfig(const DeviceRecord& record) {
-    if (record.configPayload.size() > kMaxDeviceConfigBytes) {
+DeviceValidationResult DummyDevice::validateConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+    (void)record;
+    if (configBlob.size() > kMaxDeviceConfigBytes) {
         return {DeviceError::BoundsExceeded, "dummy device config exceeds supported size"};
     }
-    DummyDeviceConfigV2 config;
-    if (!decodeDummyDeviceConfig(record.configPayload, config)) {
+    DummyDeviceConfigV1 config{};
+    if (!decodeDummyDeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "dummy device config is invalid"};
     }
     return {};
@@ -254,8 +192,8 @@ SM_STATE(DummyDevice::Starting) {
         SM_GOTO(Reconfiguring);
     }
 
-    if (config_.restorePreviousState && retainedStateAvailable_) {
-        config_.currentOutput = retainedOutput_;
+    if (restorePreviousState_ && retainedStateAvailable_) {
+        currentOutput_ = retainedOutput_;
     }
 
     startRequested_ = false;

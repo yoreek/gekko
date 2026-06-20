@@ -1,5 +1,6 @@
 #include "integrations/rest/gpio_switch/GpioSwitchDeviceApiAdapter.h"
 
+#include "devices/core/DeviceBaseConfig.h"
 #include "devices/switch/gpio/GpioSwitchDevice.h"
 
 #include <cstring>
@@ -70,20 +71,20 @@ const char* GpioSwitchDeviceApiAdapter::typeName() const {
     return "gpio_switch";
 }
 
-bool GpioSwitchDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, std::string& error) const {
+bool GpioSwitchDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, const char*& error) const {
     request = {};
     request.typeId = typeId();
-    request.name = input["name"] | "";
-    request.enabled = input["enabled"] | true;
     request.persistencePolicy = parsePersistencePolicy(input);
     request.configVersion = GpioSwitchDevice::descriptor().currentConfigVersion;
 
-    if (request.name.empty()) {
-        error = "device name is required";
+    DeviceBaseConfigV1 base{};
+    if (!parseDeviceBaseConfigJson(input, base, error)) {
         return false;
     }
+    request.name = base.name;
+    request.enabled = base.enabled != 0U;
 
-    GpioSwitchDeviceConfigV1 config{};
+    GpioSwitchDevicePersistedConfigV1 config{};
     const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
     if (!configObject.isNull()) {
         if (!parseGpioSwitchDeviceConfigJson(configObject, config, error)) {
@@ -91,58 +92,61 @@ bool GpioSwitchDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
         }
     }
 
-    config.enabled = request.enabled ? 1U : 0U;
-    request.configPayload = encodeGpioSwitchDeviceConfig(config);
+    config.switchConfig.base = base;
+    if (!validateSwitchDeviceConfig(config.switchConfig).ok()) {
+        error = "gpio switch config is invalid";
+        return false;
+    }
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = gpioSwitchDeviceConfigSize(config);
+    if (!encodeGpioSwitchDeviceConfig(config, buffer, size) || !request.configBlob.assign(buffer, size)) {
+        error = "failed to encode gpio switch config";
+        return false;
+    }
     return true;
 }
 
-bool GpioSwitchDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const DeviceRecord& record,
-                                                          DeviceConfigUpdateRequest& request, std::string& error) const {
-    (void)record;
+bool GpioSwitchDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
+                                                          DeviceConfigUpdateRequest& request, const char*& error) const {
     const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
     if (configObject.isNull()) {
         error = "gpio switch config is required";
         return false;
     }
 
-    GpioSwitchDeviceConfigV1 config{};
+    DeviceBaseConfigV1 base{};
+    base.enabled = runtime.enabled() ? 1U : 0U;
+    if (!copyBoundedText(base.name, runtime.name())) {
+        error = "device base config is invalid";
+        return false;
+    }
+
+    GpioSwitchDevicePersistedConfigV1 config{};
     if (!parseGpioSwitchDeviceConfigJson(configObject, config, error)) {
+        return false;
+    }
+    config.switchConfig.base = base;
+    if (!validateSwitchDeviceConfig(config.switchConfig).ok()) {
+        error = "gpio switch config is invalid";
         return false;
     }
 
     request = {};
     request.configVersion = GpioSwitchDevice::descriptor().currentConfigVersion;
-    request.configPayload = encodeGpioSwitchDeviceConfig(config);
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = gpioSwitchDeviceConfigSize(config);
+    if (!encodeGpioSwitchDeviceConfig(config, buffer, size) || !request.configBlob.assign(buffer, size)) {
+        error = "failed to encode gpio switch config";
+        return false;
+    }
     return true;
 }
 
-void GpioSwitchDeviceApiAdapter::writeDeviceJson(const DeviceRecord& record, const IDeviceRuntime* runtime, JsonObject output) const {
-    output["device_id"] = record.header.deviceId;
-    output["type_id"] = record.header.typeId;
-    output["type"] = typeName();
-    output["name"] = record.name;
-    output["enabled"] = record.enabled;
-    output["status"] = deviceStatusToString(record.status);
-    output["config_version"] = record.header.configVersion;
-    output["config_revision"] = record.header.configRevision;
-    output["persistence_policy"] = persistencePolicyToString(record.persistencePolicy);
-    output["has_parent"] = record.hasParent;
-    output["parent_device_id"] = record.parentDeviceId;
-    output["retained_state_supported"] = GpioSwitchDevice::descriptor().supportsRetainedState;
-
-    GpioSwitchDeviceConfigV1 config{};
-    if (decodeGpioSwitchDeviceConfig(record.configPayload, config)) {
-        JsonObject configObject = output.createNestedObject("config");
-        writeGpioSwitchDeviceConfigJson(config, configObject);
-        output["retained_startup_enabled"] = config.restorePreviousState != 0U;
-        output["retained_state_in_config_payload"] = false;
-    }
-
-    if (runtime != nullptr) {
-        const auto* gpioRuntime = static_cast<const GpioSwitchDevice*>(runtime);
-        JsonObject outputObject = output.createNestedObject("output");
-        outputObject["state"] = outputStateName(gpioRuntime->outputState());
-    }
+void GpioSwitchDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const {
+    writeCommonDeviceJson(runtime, typeName(), deviceStatusToString(runtime.status()),
+                          persistencePolicyToString(runtime.persistencePolicy()), GpioSwitchDevice::descriptor().supportsRetainedState,
+                          output);
+    static_cast<const GpioSwitchDevice&>(runtime).writeDeviceJson(output);
 }
 
 } // namespace ewfm

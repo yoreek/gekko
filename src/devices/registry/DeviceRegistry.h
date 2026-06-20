@@ -19,7 +19,7 @@ class DeviceEventDispatcher;
 struct DeviceCreateRequest {
     DeviceTypeId typeId{0};
     std::string name{};
-    std::string configPayload{};
+    BoundedBlob<kMaxDeviceConfigBytes> configBlob{};
     uint32_t configVersion{0};
     bool enabled{true};
     bool hasParent{false};
@@ -61,24 +61,30 @@ public:
     void tick100ms(uint32_t now);
     void tick1s(uint32_t now);
 
-    const DeviceRegistrySnapshot& snapshot() const;
     uint32_t registryRevision() const;
     bool hasPendingPersistence() const;
 
-    std::vector<DeviceRecord> list() const;
-    const DeviceRecord* find(DeviceId deviceId) const;
+    std::vector<DeviceRegistryEntry> list() const;
+    template <typename Fn> void forEachRuntime(Fn&& visitor) const {
+        for (const auto& entry : runtimes_) {
+            if (entry.second.runtime != nullptr) {
+                visitor(*entry.second.runtime);
+            }
+        }
+    }
     DeviceStatus effectiveStatus(DeviceId deviceId) const;
     IDeviceRuntime* runtime(DeviceId deviceId);
+    const IDeviceRuntime* runtime(DeviceId deviceId) const;
 
     DeviceCreateResult create(const DeviceCreateRequest& request, uint32_t now);
     DeviceCreateResult command(const DeviceCreateRequest& request, uint32_t now);
     DeviceMutationResult rename(DeviceId deviceId, const std::string& name, uint32_t now,
                                 DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
-    DeviceMutationResult updateConfig(DeviceId deviceId, const std::string& configPayload, uint32_t configVersion, uint32_t now,
-                                      DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
-    DeviceMutationResult updateConfigAndParent(DeviceId deviceId, const std::string& configPayload, uint32_t configVersion,
-                                               bool parentFieldsProvided, bool hasParent, DeviceId parentDeviceId, uint32_t now,
-                                               DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
+    DeviceMutationResult updateConfig(DeviceId deviceId, const BoundedBlob<kMaxDeviceConfigBytes>& configBlob, uint32_t configVersion,
+                                      uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
+    DeviceMutationResult updateConfigAndParent(DeviceId deviceId, const BoundedBlob<kMaxDeviceConfigBytes>& configBlob,
+                                               uint32_t configVersion, bool parentFieldsProvided, bool hasParent, DeviceId parentDeviceId,
+                                               uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
     DeviceMutationResult setParent(DeviceId deviceId, bool hasParent, DeviceId parentDeviceId, uint32_t now,
                                    DevicePersistencePolicy policy = DevicePersistencePolicy::Immediate);
     DeviceMutationResult setEnabled(DeviceId deviceId, bool enabled, uint32_t now,
@@ -97,17 +103,20 @@ public:
 
 private:
     DeviceValidationResult validateSnapshot(const DeviceRegistrySnapshot& snapshot) const;
-    DeviceValidationResult validateRecord(const DeviceRecord& record, const DeviceTypeDescriptor& descriptor) const;
-    DeviceValidationResult validateParent(const DeviceRegistrySnapshot& snapshot, const DeviceRecord& record) const;
+    DeviceValidationResult validateSnapshot(const DeviceRegistrySnapshot& snapshot, const DeviceConfigBlobMap& configBlobs) const;
+    DeviceValidationResult validateRecord(const DeviceRegistryEntry& record, const DeviceTypeDescriptor& descriptor,
+                                          const DeviceConfigBlob& configBlob) const;
+    DeviceValidationResult validateParent(const DeviceRegistrySnapshot& snapshot, const DeviceRegistryEntry& record) const;
     DeviceValidationResult validateAcyclicParentGraph(const DeviceRegistrySnapshot& snapshot) const;
     std::vector<DeviceId> childDeviceIds(DeviceId parentId) const;
     void syncRuntimeParentLink(DeviceId deviceId);
-    DeviceStatus effectiveStatusForRecord(const DeviceRecord& record) const;
+    DeviceStatus effectiveStatusForRuntime(const IDeviceRuntime& runtime) const;
     void refreshDependentRuntimeStates(uint32_t now);
-    DeviceValidationResult persistIfNeeded(const DeviceRegistrySnapshot& snapshot, DevicePersistencePolicy policy);
-    DeviceValidationResult reloadRuntimeFor(DeviceId deviceId);
+    DeviceValidationResult persistIfNeeded(DevicePersistencePolicy policy);
+    DeviceValidationResult reloadRuntimeFor(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
+    DeviceValidationResult replaceRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
+    DeviceValidationResult buildSnapshot(DeviceRegistrySnapshot& snapshot, DeviceConfigBlobMap& configBlobs) const;
     void clearRuntime(DeviceId deviceId);
-    void clearRuntimeIfDisabled(DeviceId deviceId);
     void emitRuntimeStatusChanges();
     DeviceValidationResult captureRuntimeRetainedState(DeviceId deviceId, uint32_t now);
 
@@ -117,7 +126,6 @@ private:
     RetainedStateStore* retainedStateStore_{nullptr};
     DeviceRegistryEventReporter eventReporter_{};
     DeviceRegistryPersistenceCoordinator persistence_{};
-    DeviceRegistrySnapshot snapshot_{};
     DeviceRuntimeMap runtimes_{};
     uint32_t registryRevision_{0};
 };

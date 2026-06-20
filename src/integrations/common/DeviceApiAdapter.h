@@ -10,7 +10,7 @@
 namespace ewfm {
 
 struct DeviceConfigUpdateRequest {
-    std::string configPayload{};
+    BoundedBlob<kMaxDeviceConfigBytes> configBlob{};
     uint32_t configVersion{0};
     bool parentFieldsProvided{false};
     bool hasParent{false};
@@ -28,10 +28,19 @@ public:
 
     virtual DeviceTypeId typeId() const = 0;
     virtual const char* typeName() const = 0;
-    virtual bool parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, std::string& error) const = 0;
-    virtual bool parseUpdateConfigRequest(const JsonObjectConst& input, const DeviceRecord& record, DeviceConfigUpdateRequest& request,
-                                          std::string& error) const;
-    virtual void writeDeviceJson(const DeviceRecord& record, const IDeviceRuntime* runtime, JsonObject output) const = 0;
+    virtual bool parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, const char*& error) const = 0;
+    virtual bool parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime, DeviceConfigUpdateRequest& request,
+                                          const char*& error) const;
+    virtual DeviceValidationResult validateCreateRequest(const DeviceCreateRequest& request, const DeviceRegistry& registry) const;
+    virtual DeviceValidationResult validateUpdateConfigRequest(const IDeviceRuntime& runtime, const DeviceConfigUpdateRequest& request,
+                                                               const DeviceRegistry& registry) const;
+    virtual DeviceValidationResult validateSetParentRequest(const IDeviceRuntime& runtime, bool hasParent, DeviceId parentDeviceId,
+                                                            const DeviceRegistry& registry) const;
+    virtual void writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const = 0;
+
+protected:
+    static void writeCommonDeviceJson(const IDeviceRuntime& runtime, const char* typeName, const char* status,
+                                      const char* persistencePolicy, bool retainedStateSupported, JsonObject output);
 };
 
 class DeviceApiAdapterRegistry {

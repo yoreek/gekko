@@ -44,6 +44,7 @@ bool PortalWebSocketManager::begin(AsyncWebServer& server) {
                 const std::string hello = PortalWebSocketMessages::buildHello(lastRevision_, lastRevision_, socket_->count());
                 client->text(hello.c_str(), hello.length());
                 resyncSnapshots();
+                publishDeviceSnapshots();
             }
             break;
         case WS_EVT_DISCONNECT:
@@ -96,13 +97,11 @@ void PortalWebSocketManager::onDeviceEvent(const DeviceEvent& event) {
     case DeviceEventKind::CommandAccepted:
     case DeviceEventKind::CommandRejected:
         if (deviceRegistry_ != nullptr) {
-            const DeviceRecord* record = deviceRegistry_->find(event.deviceId);
-            if (record != nullptr) {
-                DeviceRecord snapshot = *record;
-                snapshot.status = deviceRegistry_->effectiveStatus(event.deviceId);
-                const IDeviceRuntime* runtime = deviceRegistry_->runtime(event.deviceId);
-                const IDeviceApiAdapter* adapter = adapters_.find(snapshot.header.typeId);
-                sendText(PortalWebSocketMessages::buildDeviceCommandResult(snapshot, runtime, deviceRegistry_->registryRevision(),
+            const IDeviceRuntime* runtime = deviceRegistry_->runtime(event.deviceId);
+            if (runtime != nullptr) {
+                const IDeviceApiAdapter* adapter = adapters_.find(runtime->typeId());
+                sendText(PortalWebSocketMessages::buildDeviceCommandResult(*runtime, deviceRegistry_->effectiveStatus(event.deviceId),
+                                                                           deviceRegistry_->registryRevision(),
                                                                            deviceRegistry_->hasPendingPersistence(), adapter));
                 return;
             }
@@ -118,13 +117,11 @@ void PortalWebSocketManager::onDeviceEvent(const DeviceEvent& event) {
     case DeviceEventKind::ConfigPersisted:
     case DeviceEventKind::RetainedStateChanged:
         if (deviceRegistry_ != nullptr) {
-            const DeviceRecord* record = deviceRegistry_->find(event.deviceId);
-            if (record != nullptr) {
-                DeviceRecord snapshot = *record;
-                snapshot.status = deviceRegistry_->effectiveStatus(event.deviceId);
-                const IDeviceRuntime* runtime = deviceRegistry_->runtime(event.deviceId);
-                const IDeviceApiAdapter* adapter = adapters_.find(snapshot.header.typeId);
-                sendText(PortalWebSocketMessages::buildDeviceUpsert(snapshot, runtime, deviceRegistry_->registryRevision(),
+            const IDeviceRuntime* runtime = deviceRegistry_->runtime(event.deviceId);
+            if (runtime != nullptr) {
+                const IDeviceApiAdapter* adapter = adapters_.find(runtime->typeId());
+                sendText(PortalWebSocketMessages::buildDeviceUpsert(*runtime, deviceRegistry_->effectiveStatus(event.deviceId),
+                                                                    deviceRegistry_->registryRevision(),
                                                                     deviceRegistry_->hasPendingPersistence(), adapter));
                 return;
             }
@@ -177,6 +174,19 @@ void PortalWebSocketManager::resyncSnapshots() {
     resyncSnapshots_ = true;
 }
 
+void PortalWebSocketManager::publishDeviceSnapshots() {
+    if (deviceRegistry_ == nullptr) {
+        return;
+    }
+
+    deviceRegistry_->forEachRuntime([this](const IDeviceRuntime& runtime) {
+        const IDeviceApiAdapter* adapter = adapters_.find(runtime.typeId());
+        sendText(PortalWebSocketMessages::buildDeviceUpsert(runtime, deviceRegistry_->effectiveStatus(runtime.deviceId()),
+                                                            deviceRegistry_->registryRevision(), deviceRegistry_->hasPendingPersistence(),
+                                                            adapter));
+    });
+}
+
 void PortalWebSocketManager::publishSnapshotPayloads(const std::string& wifiPayload, const std::string& otaPayload) {
     if (resyncSnapshots_ || wifiPayload != lastWifiStatusPayload_) {
         lastWifiStatusPayload_ = wifiPayload;
@@ -203,6 +213,10 @@ size_t PortalWebSocketManager::sentMessageCount() const {
 void PortalWebSocketManager::setClientCountForTest(const size_t clientCount) {
     connectedClientCount_ = clientCount;
     resyncSnapshots_ = clientCount > 0U;
+}
+
+void PortalWebSocketManager::publishDeviceSnapshotsForTest() {
+    publishDeviceSnapshots();
 }
 
 void PortalWebSocketManager::publishSnapshotPayloadsForTest(const std::string& wifiPayload, const std::string& otaPayload) {

@@ -50,6 +50,7 @@ private:
     PortalServer portalServer_;
     uint32_t lastTick100ms_{0};
     uint32_t lastTick1s_{0};
+    bool begun_{false};
 #if defined(WITH_ARDUINO_OTA)
     ArduinoOtaService otaService_;
 #endif

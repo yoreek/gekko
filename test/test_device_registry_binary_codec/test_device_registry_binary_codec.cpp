@@ -1,28 +1,32 @@
 #include "devices/registry/DeviceRegistryBinaryCodec.h"
 
+#include <cstring>
 #include <unity.h>
 
 using namespace ewfm;
 
 namespace {
 
-DeviceRecord makeRecord(DeviceId id, DeviceTypeId typeId, const char* name, const std::string& payload) {
-    DeviceRecord record{};
+DeviceRegistryEntry makeRecord(DeviceId id, DeviceTypeId typeId, const DeviceConfigBlob& payload) {
+    DeviceRegistryEntry record{};
     record.header.recordVersion = kDeviceRecordHeaderVersion;
     record.header.deviceId = id;
     record.header.typeId = typeId;
     record.header.configVersion = 2;
     record.header.configRevision = 7;
     record.header.payloadLength = static_cast<uint32_t>(payload.size());
-    record.header.payloadChecksum = DeviceRegistryBinaryCodec::payloadChecksum(payload);
-    record.name = name;
-    record.enabled = true;
+    record.header.payloadChecksum = 0;
     record.hasParent = false;
     record.parentDeviceId = 0;
     record.status = DeviceStatus::Ready;
     record.persistencePolicy = DevicePersistencePolicy::Delayed;
-    record.configPayload = payload;
     return record;
+}
+
+DeviceConfigBlob makePayload(const char* value) {
+    DeviceConfigBlob payload{};
+    TEST_ASSERT_TRUE(payload.assign(reinterpret_cast<const uint8_t*>(value), std::strlen(value)));
+    return payload;
 }
 
 } // namespace
@@ -53,42 +57,42 @@ void test_codec_index_round_trip() {
 }
 
 void test_codec_record_round_trip() {
-    DeviceRecord record = makeRecord(501, 7, "sensor", "payload-v1");
+    DeviceConfigBlob configBlob = makePayload("payload-v1");
+    DeviceRegistryEntry record = makeRecord(501, 7, configBlob);
     record.hasParent = true;
     record.parentDeviceId = 500;
-    record.enabled = false;
     record.status = DeviceStatus::DependencyBlocked;
     record.persistencePolicy = DevicePersistencePolicy::Coalesced;
 
-    const std::string blob = DeviceRegistryBinaryCodec::serializeRecord(record);
-    DeviceRecord decoded{};
-    DeviceValidationResult result = DeviceRegistryBinaryCodec::parseRecord(blob, decoded);
+    const std::string blob = DeviceRegistryBinaryCodec::serializeRecord(record, configBlob);
+    DeviceRegistryEntry decoded{};
+    DeviceConfigBlob decodedConfigBlob{};
+    DeviceValidationResult result = DeviceRegistryBinaryCodec::parseRecord(blob, decoded, decodedConfigBlob);
     TEST_ASSERT_TRUE(result.ok());
     TEST_ASSERT_EQUAL_UINT32(record.header.deviceId, decoded.header.deviceId);
     TEST_ASSERT_EQUAL_UINT32(record.header.typeId, decoded.header.typeId);
     TEST_ASSERT_EQUAL_UINT32(record.header.configVersion, decoded.header.configVersion);
     TEST_ASSERT_EQUAL_UINT32(record.header.configRevision, decoded.header.configRevision);
-    TEST_ASSERT_EQUAL_UINT32(record.header.payloadLength, decoded.header.payloadLength);
-    TEST_ASSERT_EQUAL_UINT32(record.header.payloadChecksum, decoded.header.payloadChecksum);
-    TEST_ASSERT_EQUAL_STRING(record.name.c_str(), decoded.name.c_str());
-    TEST_ASSERT_FALSE(decoded.enabled);
-    TEST_ASSERT_TRUE(decoded.hasParent);
+    TEST_ASSERT_EQUAL_UINT32(configBlob.size(), decoded.header.payloadLength);
+    TEST_ASSERT_EQUAL(record.hasParent, decoded.hasParent);
     TEST_ASSERT_EQUAL_UINT32(record.parentDeviceId, decoded.parentDeviceId);
-    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(decoded.status));
-    TEST_ASSERT_EQUAL(static_cast<int>(DevicePersistencePolicy::Coalesced), static_cast<int>(decoded.persistencePolicy));
-    TEST_ASSERT_EQUAL_STRING(record.configPayload.c_str(), decoded.configPayload.c_str());
+    TEST_ASSERT_EQUAL(static_cast<int>(record.status), static_cast<int>(decoded.status));
+    TEST_ASSERT_EQUAL(static_cast<int>(record.persistencePolicy), static_cast<int>(decoded.persistencePolicy));
+    TEST_ASSERT_EQUAL_UINT32(configBlob.size(), decodedConfigBlob.size());
+    TEST_ASSERT_EQUAL_MEMORY(configBlob.data(), decodedConfigBlob.data(), configBlob.size());
 }
 
-void test_codec_record_rejects_checksum_mismatch() {
-    const DeviceRecord record = makeRecord(701, 9, "node", "abcdef");
-    std::string blob = DeviceRegistryBinaryCodec::serializeRecord(record);
+void test_codec_record_rejects_trailing_data() {
+    const DeviceConfigBlob configBlob = makePayload("abcdef");
+    const DeviceRegistryEntry record = makeRecord(701, 9, configBlob);
+    std::string blob = DeviceRegistryBinaryCodec::serializeRecord(record, configBlob);
     TEST_ASSERT_TRUE(blob.size() > 0);
-
-    blob[blob.size() - 1] = static_cast<char>(blob.back() ^ 0x01);
-    DeviceRecord decoded{};
-    DeviceValidationResult result = DeviceRegistryBinaryCodec::parseRecord(blob, decoded);
+    blob.push_back('\0');
+    DeviceRegistryEntry decoded{};
+    DeviceConfigBlob decodedConfigBlob{};
+    DeviceValidationResult result = DeviceRegistryBinaryCodec::parseRecord(blob, decoded, decodedConfigBlob);
     TEST_ASSERT_FALSE(result.ok());
-    TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::InvalidConfig), static_cast<int>(result.error));
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::CorruptRecord), static_cast<int>(result.error));
 }
 
 int main(int, char**) {
@@ -96,6 +100,6 @@ int main(int, char**) {
     RUN_TEST(test_codec_hex_round_trip);
     RUN_TEST(test_codec_index_round_trip);
     RUN_TEST(test_codec_record_round_trip);
-    RUN_TEST(test_codec_record_rejects_checksum_mismatch);
+    RUN_TEST(test_codec_record_rejects_trailing_data);
     return UNITY_END();
 }

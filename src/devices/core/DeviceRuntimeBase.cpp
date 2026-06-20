@@ -1,10 +1,29 @@
 #include "devices/core/DeviceRuntimeBase.h"
 
+#include "devices/core/DeviceBaseConfig.h"
+
 #include <algorithm>
+#include <cstring>
 
 namespace ewfm {
 
 DeviceRuntimeBase::DeviceRuntimeBase(PState initialState) : StateMachine(initialState) {}
+
+void DeviceRuntimeBase::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
+    DeviceBaseConfigV1 base{};
+    if (readDeviceBaseConfig(config, base)) {
+        enabled_ = base.enabled != 0U;
+        std::memcpy(name_, base.name, sizeof(name_));
+        name_[sizeof(name_) - 1U] = '\0';
+    }
+    deviceId_ = record.header.deviceId;
+    typeId_ = record.header.typeId;
+    configVersion_ = record.header.configVersion;
+    configRevision_ = record.header.configRevision;
+    hasParent_ = record.hasParent;
+    parentDeviceId_ = record.parentDeviceId;
+    persistencePolicy_ = record.persistencePolicy;
+}
 
 void DeviceRuntimeBase::begin(uint32_t now) {
     startRequested_ = true;
@@ -70,6 +89,42 @@ void DeviceRuntimeBase::requestDelete() {
 
 DeviceStatus DeviceRuntimeBase::status() const {
     return status_;
+}
+
+DeviceId DeviceRuntimeBase::deviceId() const {
+    return deviceId_;
+}
+
+DeviceTypeId DeviceRuntimeBase::typeId() const {
+    return typeId_;
+}
+
+uint32_t DeviceRuntimeBase::configVersion() const {
+    return configVersion_;
+}
+
+uint32_t DeviceRuntimeBase::configRevision() const {
+    return configRevision_;
+}
+
+bool DeviceRuntimeBase::hasParent() const {
+    return hasParent_;
+}
+
+DeviceId DeviceRuntimeBase::parentDeviceId() const {
+    return parentDeviceId_;
+}
+
+bool DeviceRuntimeBase::enabled() const {
+    return enabled_;
+}
+
+const char* DeviceRuntimeBase::name() const {
+    return name_;
+}
+
+DevicePersistencePolicy DeviceRuntimeBase::persistencePolicy() const {
+    return persistencePolicy_;
 }
 
 bool DeviceRuntimeBase::handleCommand(const DeviceCommand& command) {

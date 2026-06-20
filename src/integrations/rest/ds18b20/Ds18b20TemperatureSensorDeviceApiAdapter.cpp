@@ -1,5 +1,6 @@
 #include "integrations/rest/ds18b20/Ds18b20TemperatureSensorDeviceApiAdapter.h"
 
+#include "devices/core/DeviceBaseConfig.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
 
 #include <cstring>
@@ -56,7 +57,7 @@ DevicePersistencePolicy parsePersistencePolicy(const JsonObjectConst& input) {
     return DevicePersistencePolicy::Immediate;
 }
 
-bool parseParentFields(const JsonObjectConst& input, bool requireParent, bool& hasParent, DeviceId& parentDeviceId, std::string& error) {
+bool parseParentFields(const JsonObjectConst& input, bool requireParent, bool& hasParent, DeviceId& parentDeviceId, const char*& error) {
     hasParent = input["has_parent"] | true;
     parentDeviceId = static_cast<DeviceId>(input["parent_device_id"] | 0U);
     if (requireParent && (!hasParent || parentDeviceId == 0U)) {
@@ -64,6 +65,22 @@ bool parseParentFields(const JsonObjectConst& input, bool requireParent, bool& h
         return false;
     }
     return true;
+}
+
+DeviceValidationResult validateUniqueParentAddress(const DeviceRegistry& registry, const IDeviceRuntime* childRuntime,
+                                                   const OneWireRomAddress& address, bool hasParent, DeviceId parentDeviceId) {
+    if (!hasParent || parentDeviceId == 0U) {
+        return {DeviceError::InvalidRelationship, "ds18b20 requires a onewire parent"};
+    }
+
+    const IDeviceRuntime* parentRuntime = registry.runtime(parentDeviceId);
+    if (parentRuntime == nullptr) {
+        return {DeviceError::InvalidRelationship, "ds18b20 parent is missing or invalid"};
+    }
+    if (parentRuntime->hasDuplicateChildRomAddress(address, childRuntime)) {
+        return {DeviceError::InvalidRelationship, "duplicate ds18b20 address on parent"};
+    }
+    return {};
 }
 } // namespace
 
@@ -81,18 +98,18 @@ const char* Ds18b20TemperatureSensorDeviceApiAdapter::typeName() const {
 }
 
 bool Ds18b20TemperatureSensorDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request,
-                                                                  std::string& error) const {
+                                                                  const char*& error) const {
     request = {};
     request.typeId = typeId();
-    request.name = input["name"] | "";
-    request.enabled = input["enabled"] | true;
     request.persistencePolicy = parsePersistencePolicy(input);
     request.configVersion = kDs18b20TemperatureSensorConfigVersion;
 
-    if (request.name.empty()) {
-        error = "device name is required";
+    DeviceBaseConfigV1 base{};
+    if (!parseDeviceBaseConfigJson(input, base, error)) {
         return false;
     }
+    request.name = base.name;
+    request.enabled = base.enabled != 0U;
     if (!parseParentFields(input, true, request.hasParent, request.parentDeviceId, error)) {
         return false;
     }
@@ -107,16 +124,32 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseCreateRequest(const JsonObje
     if (!parseDs18b20TemperatureSensorConfigJson(configObject, config, error)) {
         return false;
     }
-    config.enabled = request.enabled ? 1U : 0U;
-    request.configPayload = encodeDs18b20TemperatureSensorConfig(config);
+    config.base = base;
+    if (!validateDs18b20TemperatureSensorConfig(config).ok()) {
+        error = "ds18b20 config is invalid";
+        return false;
+    }
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = ds18b20TemperatureSensorConfigSize(config);
+    if (!encodeDs18b20TemperatureSensorConfig(config, buffer, size) || !request.configBlob.assign(buffer, size)) {
+        error = "failed to encode ds18b20 config";
+        return false;
+    }
     return true;
 }
 
-bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const DeviceRecord& record,
-                                                                        DeviceConfigUpdateRequest& request, std::string& error) const {
+bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
+                                                                        DeviceConfigUpdateRequest& request, const char*& error) const {
     const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
     if (configObject.isNull()) {
         error = "ds18b20 config is required";
+        return false;
+    }
+
+    DeviceBaseConfigV1 base{};
+    base.enabled = runtime.enabled() ? 1U : 0U;
+    if (!copyBoundedText(base.name, runtime.name())) {
+        error = "device base config is invalid";
         return false;
     }
 
@@ -124,11 +157,20 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const Js
     if (!parseDs18b20TemperatureSensorConfigJson(configObject, config, error)) {
         return false;
     }
-    config.enabled = record.enabled ? 1U : 0U;
+    config.base = base;
+    if (!validateDs18b20TemperatureSensorConfig(config).ok()) {
+        error = "ds18b20 config is invalid";
+        return false;
+    }
 
     request = {};
     request.configVersion = kDs18b20TemperatureSensorConfigVersion;
-    request.configPayload = encodeDs18b20TemperatureSensorConfig(config);
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = ds18b20TemperatureSensorConfigSize(config);
+    if (!encodeDs18b20TemperatureSensorConfig(config, buffer, size) || !request.configBlob.assign(buffer, size)) {
+        error = "failed to encode ds18b20 config";
+        return false;
+    }
     request.parentFieldsProvided = !input["has_parent"].isNull() || !input["parent_device_id"].isNull();
     if (request.parentFieldsProvided && !parseParentFields(input, true, request.hasParent, request.parentDeviceId, error)) {
         return false;
@@ -136,42 +178,49 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const Js
     return true;
 }
 
-void Ds18b20TemperatureSensorDeviceApiAdapter::writeDeviceJson(const DeviceRecord& record, const IDeviceRuntime* runtime,
-                                                               JsonObject output) const {
-    output["device_id"] = record.header.deviceId;
-    output["type_id"] = record.header.typeId;
-    output["type"] = typeName();
-    output["name"] = record.name;
-    output["enabled"] = record.enabled;
-    output["status"] = deviceStatusToString(record.status);
-    output["config_version"] = record.header.configVersion;
-    output["config_revision"] = record.header.configRevision;
-    output["persistence_policy"] = persistencePolicyToString(record.persistencePolicy);
-    output["has_parent"] = record.hasParent;
-    output["parent_device_id"] = record.parentDeviceId;
-    output["retained_state_supported"] = false;
+DeviceValidationResult Ds18b20TemperatureSensorDeviceApiAdapter::validateCreateRequest(const DeviceCreateRequest& request,
+                                                                                       const DeviceRegistry& registry) const {
+    if (!request.hasParent || request.parentDeviceId == 0U) {
+        return {DeviceError::InvalidRelationship, "ds18b20 requires a onewire parent"};
+    }
 
     Ds18b20TemperatureSensorConfigV1 config{};
-    const bool hasConfig = decodeDs18b20TemperatureSensorConfig(record.configPayload, config);
-    if (hasConfig) {
-        JsonObject configObject = output.createNestedObject("config");
-        writeDs18b20TemperatureSensorConfigJson(config, configObject);
+    if (!decodeDs18b20TemperatureSensorConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(),
+                                              config)) {
+        return {DeviceError::InvalidConfig, "ds18b20 config is invalid"};
     }
 
-    JsonObject outputObject = output.createNestedObject("output");
-    JsonObject temperature = outputObject.createNestedObject("temperature");
-    TemperatureReading reading{};
-    const char* status = "not_ready";
-    if (runtime != nullptr) {
-        const auto* sensorRuntime = static_cast<const Ds18b20TemperatureSensorDevice*>(runtime);
-        reading = sensorRuntime->reading();
-        status = sensorRuntime->outputStatus();
+    return validateUniqueParentAddress(registry, nullptr, config.address, request.hasParent, request.parentDeviceId);
+}
+
+DeviceValidationResult Ds18b20TemperatureSensorDeviceApiAdapter::validateUpdateConfigRequest(const IDeviceRuntime& runtime,
+                                                                                             const DeviceConfigUpdateRequest& request,
+                                                                                             const DeviceRegistry& registry) const {
+    Ds18b20TemperatureSensorConfigV1 config{};
+    if (!decodeDs18b20TemperatureSensorConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(),
+                                              config)) {
+        return {DeviceError::InvalidConfig, "ds18b20 config is invalid"};
     }
-    TemperatureUnit unit{TemperatureUnit::Celsius};
-    if (hasConfig) {
-        (void)temperatureUnitFromByte(config.outputUnit, unit);
+
+    const bool hasParent = request.parentFieldsProvided ? request.hasParent : runtime.hasParent();
+    const DeviceId parentDeviceId = request.parentFieldsProvided ? request.parentDeviceId : runtime.parentDeviceId();
+    return validateUniqueParentAddress(registry, &runtime, config.address, hasParent, parentDeviceId);
+}
+
+DeviceValidationResult Ds18b20TemperatureSensorDeviceApiAdapter::validateSetParentRequest(const IDeviceRuntime& runtime, bool hasParent,
+                                                                                          DeviceId parentDeviceId,
+                                                                                          const DeviceRegistry& registry) const {
+    OneWireRomAddress address{};
+    if (!runtime.oneWireRomAddress(address)) {
+        return {DeviceError::InvalidConfig, "ds18b20 config is invalid"};
     }
-    writeTemperatureOutputJson(reading, unit, status, temperature);
+    return validateUniqueParentAddress(registry, &runtime, address, hasParent, parentDeviceId);
+}
+
+void Ds18b20TemperatureSensorDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const {
+    writeCommonDeviceJson(runtime, typeName(), deviceStatusToString(runtime.status()),
+                          persistencePolicyToString(runtime.persistencePolicy()), false, output);
+    static_cast<const Ds18b20TemperatureSensorDevice&>(runtime).writeDeviceJson(output);
 }
 
 } // namespace ewfm

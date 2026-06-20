@@ -15,12 +15,15 @@ using DeviceId = uint32_t;
 using DeviceTypeId = uint16_t;
 using DeviceRevision = uint32_t;
 
+struct OneWireRomAddress;
+
 constexpr uint32_t kDeviceRegistrySchemaVersion = 1;
-constexpr uint16_t kDeviceRegistryIndexVersion = 1;
-constexpr uint16_t kDeviceRecordHeaderVersion = 1;
+constexpr uint16_t kDeviceRegistryIndexVersion = 2;
+constexpr uint16_t kDeviceRecordHeaderVersion = 3;
 constexpr uint16_t kRetainedStateRecordVersion = 1;
 constexpr size_t kMaxDynamicDevices = 200;
 constexpr size_t kMaxDynamicDeviceNameLength = 32;
+constexpr size_t kMaxDeviceBaseNameLength = kMaxDynamicDeviceNameLength;
 constexpr size_t kMaxDeviceConfigBytes = 512;
 constexpr size_t kMaxRetainedStateBytes = 64;
 constexpr size_t kMaxDeviceEventBytes = 256;
@@ -79,6 +82,74 @@ private:
     size_t length_{0};
     bool overflow_{false};
 };
+
+template <size_t kCapacity> struct BoundedBlob {
+    BoundedBlob() = default;
+
+    bool assign(const uint8_t* value, size_t size) {
+        if (size > kCapacity) {
+            clear();
+            overflow_ = true;
+            return false;
+        }
+        if (value != nullptr && size != 0U) {
+            std::memcpy(data_.data(), value, size);
+        }
+        length_ = size;
+        overflow_ = false;
+        return true;
+    }
+
+    bool assign(const std::vector<uint8_t>& value) {
+        return assign(value.data(), value.size());
+    }
+
+    void clear() {
+        length_ = 0;
+        overflow_ = false;
+        if (!data_.empty()) {
+            data_[0] = 0U;
+        }
+    }
+
+    bool valid() const {
+        return !overflow_;
+    }
+
+    bool empty() const {
+        return length_ == 0;
+    }
+
+    bool setSize(size_t size) {
+        if (size > kCapacity) {
+            clear();
+            overflow_ = true;
+            return false;
+        }
+        length_ = size;
+        overflow_ = false;
+        return true;
+    }
+
+    const uint8_t* data() const {
+        return data_.data();
+    }
+
+    uint8_t* data() {
+        return data_.data();
+    }
+
+    size_t size() const {
+        return length_;
+    }
+
+private:
+    std::array<uint8_t, kCapacity> data_{};
+    size_t length_{0};
+    bool overflow_{false};
+};
+
+using DeviceConfigBlob = BoundedBlob<kMaxDeviceConfigBytes>;
 
 enum class DeviceStatus : uint8_t {
     Unknown = 0,
@@ -173,21 +244,26 @@ struct DeviceIndexEntry {
     DeviceTypeId typeId{0};
 };
 
-struct DeviceRecord {
+#pragma pack(push, 1)
+struct DeviceBaseConfigV1 {
+    static constexpr char kMagic[] = "BASE-1";
+    uint8_t enabled{1};
+    char name[kMaxDeviceBaseNameLength + 1]{};
+};
+#pragma pack(pop)
+
+struct DeviceRegistryEntry {
     DeviceRecordHeader header{};
-    std::string name{};
-    bool enabled{true};
     bool hasParent{false};
     DeviceId parentDeviceId{0};
     DevicePersistencePolicy persistencePolicy{DevicePersistencePolicy::Delayed};
     DeviceStatus status{DeviceStatus::Unknown};
-    std::string configPayload{};
 };
 
 struct DeviceRegistrySnapshot {
     uint32_t schemaVersion{kDeviceRegistrySchemaVersion};
     std::vector<DeviceIndexEntry> indexEntries{};
-    std::vector<DeviceRecord> records{};
+    std::vector<DeviceRegistryEntry> records{};
 };
 
 struct RetainedStateRecord {
@@ -197,9 +273,16 @@ struct RetainedStateRecord {
 };
 
 struct DeviceCommand {
+    struct ParentPayload {
+        bool hasParent{false};
+        DeviceId parentDeviceId{0};
+    };
+
     DeviceCommandType type{DeviceCommandType::None};
     DeviceId deviceId{0};
     BoundedText<kMaxDeviceEventBytes> payload{};
+    ParentPayload parentPayload{};
+    bool parentPayloadValid{false};
     DevicePersistencePolicy persistencePolicy{DevicePersistencePolicy::Delayed};
 
     DeviceCommand() = default;
@@ -210,8 +293,13 @@ struct DeviceCommand {
         (void)payload.assign(commandPayload);
     }
 
+    DeviceCommand(DeviceCommandType commandType, DeviceId commandDeviceId, ParentPayload commandParentPayload,
+                  DevicePersistencePolicy commandPolicy = DevicePersistencePolicy::Delayed)
+        : type(commandType), deviceId(commandDeviceId), parentPayload(commandParentPayload), parentPayloadValid(true),
+          persistencePolicy(commandPolicy) {}
+
     bool valid() const {
-        return payload.valid();
+        return type == DeviceCommandType::SetParent ? parentPayloadValid : payload.valid();
     }
 };
 
@@ -261,11 +349,51 @@ public:
     virtual void requestDisable() = 0;
     virtual void requestDelete() = 0;
     virtual DeviceStatus status() const = 0;
+    virtual void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
+        (void)record;
+        (void)config;
+    }
+    virtual DeviceId deviceId() const {
+        return 0;
+    }
+    virtual DeviceTypeId typeId() const {
+        return 0;
+    }
+    virtual uint32_t configVersion() const {
+        return 0;
+    }
+    virtual uint32_t configRevision() const {
+        return 0;
+    }
+    virtual bool hasParent() const {
+        return false;
+    }
+    virtual DeviceId parentDeviceId() const {
+        return 0;
+    }
+    virtual bool enabled() const {
+        return true;
+    }
+    virtual const char* name() const {
+        return nullptr;
+    }
+    virtual DevicePersistencePolicy persistencePolicy() const {
+        return DevicePersistencePolicy::Delayed;
+    }
     virtual bool handleCommand(const DeviceCommand& command) = 0;
     virtual bool retainedStateDirty() const {
         return false;
     }
     virtual bool runtimeStateDirty() const {
+        return false;
+    }
+    virtual bool serializeConfigBlob(DeviceConfigBlob& configBlob) const {
+        (void)configBlob;
+        return false;
+    }
+    virtual bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const {
+        (void)configBlob;
+        (void)baseConfig;
         return false;
     }
     virtual bool serializeRetainedState(RetainedStateRecord& record) const {
@@ -278,12 +406,21 @@ public:
     }
     virtual void clearRetainedStateDirty() {}
     virtual void clearRuntimeStateDirty() {}
+    virtual bool oneWireRomAddress(OneWireRomAddress& address) const {
+        (void)address;
+        return false;
+    }
+    virtual bool hasDuplicateChildRomAddress(const OneWireRomAddress& address, const IDeviceRuntime* ignoreChild = nullptr) const {
+        (void)address;
+        (void)ignoreChild;
+        return false;
+    }
 };
 
 class DeviceTypeDescriptor {
 public:
-    using RuntimeFactory = std::unique_ptr<IDeviceRuntime> (*)(const DeviceRecord&);
-    using ConfigValidator = DeviceValidationResult (*)(const DeviceRecord&);
+    using RuntimeFactory = std::unique_ptr<IDeviceRuntime> (*)(const DeviceRegistryEntry&, const DeviceConfigBlob&);
+    using ConfigValidator = DeviceValidationResult (*)(const DeviceRegistryEntry&, const DeviceConfigBlob&);
 
     DeviceTypeId typeId{0};
     const char* name{nullptr};

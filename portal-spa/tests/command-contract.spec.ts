@@ -22,6 +22,26 @@ test('switch commands use structured output state fields', async ({ page }) => {
   }).toBe('on')
 })
 
+test('dashboard switch power remains enabled when snapshot only has ready status', async ({ page }) => {
+  await page.goto('/?mockMode=1&mockReset=1')
+
+  await page.evaluate(key => {
+    const db = JSON.parse(localStorage.getItem(key) || '{}')
+    const device = db.devices?.find((entry: { device_id: number }) => entry.device_id === 670845750)
+    window.__gekkoMockRealtime?.upsertDevice({
+      ...device,
+      lifecycle_status: undefined,
+      effective_status: undefined,
+      status: 'ready',
+      output: {
+        state: 'off',
+      },
+    })
+  }, storageKey)
+
+  await expect(page.getByRole('button', { name: 'Power', exact: true })).toBeEnabled()
+})
+
 test('onewire scan commands use the named scan action', async ({ page }) => {
   await page.goto(mockPath)
 

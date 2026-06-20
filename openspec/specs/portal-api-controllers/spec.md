@@ -97,7 +97,7 @@ The firmware SHALL stream REST responses that can grow with device count instead
 
 #### Scenario: Device list is serialized incrementally
 - **WHEN** a client requests the device registry list
-- **THEN** the controller writes the response incrementally to an async response stream and avoids concatenating the full device list into a temporary `String`
+- **THEN** the controller writes the response incrementally to an async response stream from the registry snapshot iterator and avoids materializing a copied device vector or concatenating the full device list into a temporary `String`
 
 #### Scenario: Empty list remains valid JSON
 - **WHEN** a streamed list response contains no items

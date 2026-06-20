@@ -7,22 +7,19 @@ using namespace ewfm;
 
 namespace {
 
-DeviceRecord makeRecord(DeviceId id, DeviceTypeId typeId, uint32_t configVersion, const char* name, const std::string& payload) {
-    DeviceRecord record{};
+DeviceRegistryEntry makeRecord(DeviceId id, DeviceTypeId typeId, uint32_t configVersion, const char* name, const std::string& payload) {
+    DeviceRegistryEntry record{};
     record.header.recordVersion = kDeviceRecordHeaderVersion;
     record.header.deviceId = id;
     record.header.typeId = typeId;
     record.header.configVersion = configVersion;
     record.header.configRevision = 1;
     record.header.payloadLength = static_cast<uint32_t>(payload.size());
-    record.header.payloadChecksum = DeviceRegistryBinaryCodec::payloadChecksum(payload);
-    record.name = name;
-    record.enabled = true;
+    (void)name;
     record.hasParent = false;
     record.parentDeviceId = 0;
     record.status = DeviceStatus::Ready;
     record.persistencePolicy = DevicePersistencePolicy::Delayed;
-    record.configPayload = payload;
     return record;
 }
 
@@ -31,8 +28,8 @@ DeviceRegistrySnapshot makeParentChildSnapshot() {
     snapshot.indexEntries.push_back({10, 1});
     snapshot.indexEntries.push_back({11, 1});
 
-    DeviceRecord parent = makeRecord(10, 1, 2, "bus", "p1");
-    DeviceRecord child = makeRecord(11, 1, 2, "sensor", "c1");
+    DeviceRegistryEntry parent = makeRecord(10, 1, 2, "bus", "p1");
+    DeviceRegistryEntry child = makeRecord(11, 1, 2, "sensor", "c1");
     child.hasParent = true;
     child.parentDeviceId = 10;
 
@@ -63,8 +60,8 @@ void test_validator_rejects_cycle() {
     snapshot.indexEntries.push_back({1, 1});
     snapshot.indexEntries.push_back({2, 1});
 
-    DeviceRecord first = makeRecord(1, 1, 2, "first", "a");
-    DeviceRecord second = makeRecord(2, 1, 2, "second", "b");
+    DeviceRegistryEntry first = makeRecord(1, 1, 2, "first", "a");
+    DeviceRegistryEntry second = makeRecord(2, 1, 2, "second", "b");
     first.hasParent = true;
     first.parentDeviceId = 2;
     second.hasParent = true;
@@ -83,9 +80,9 @@ void test_validator_typed_relationship_checks() {
     snapshot.indexEntries.push_back({101, 11});
     snapshot.indexEntries.push_back({102, 11});
 
-    DeviceRecord parent = makeRecord(100, 10, 1, "parent", "p");
-    DeviceRecord childA = makeRecord(101, 11, 1, "child-a", "a");
-    DeviceRecord childB = makeRecord(102, 11, 1, "child-b", "b");
+    DeviceRegistryEntry parent = makeRecord(100, 10, 1, "parent", "p");
+    DeviceRegistryEntry childA = makeRecord(101, 11, 1, "child-a", "a");
+    DeviceRegistryEntry childB = makeRecord(102, 11, 1, "child-b", "b");
     childA.hasParent = true;
     childA.parentDeviceId = 100;
     childB.hasParent = true;

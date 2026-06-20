@@ -51,9 +51,36 @@ bool PreferencesConfigStorage::getString(const char* key, std::string& value) co
 #endif
 }
 
+bool PreferencesConfigStorage::putBlob(const char* key, const uint8_t* value, size_t size) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return preferences_.putBytes(key, value, size) == size;
+#else
+    (void)key;
+    (void)value;
+    (void)size;
+    return false;
+#endif
+}
+
+bool PreferencesConfigStorage::getBlob(const char* key, uint8_t* value, size_t& size) const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    const size_t available = preferences_.getBytesLength(key);
+    if (available == 0U || size < available) {
+        return false;
+    }
+    size = available;
+    return preferences_.getBytes(key, value, available) == available;
+#else
+    (void)key;
+    (void)value;
+    (void)size;
+    return false;
+#endif
+}
+
 bool PreferencesConfigStorage::putBlob(const char* key, const std::vector<uint8_t>& value) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    return preferences_.putBytes(key, value.data(), value.size()) == value.size();
+    return putBlob(key, value.data(), value.size());
 #else
     (void)key;
     (void)value;
@@ -63,12 +90,12 @@ bool PreferencesConfigStorage::putBlob(const char* key, const std::vector<uint8_
 
 bool PreferencesConfigStorage::getBlob(const char* key, std::vector<uint8_t>& value) const {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    const size_t size = preferences_.getBytesLength(key);
+    size_t size = preferences_.getBytesLength(key);
     if (size == 0U) {
         return false;
     }
     value.resize(size);
-    return preferences_.getBytes(key, value.data(), size) == size;
+    return getBlob(key, value.data(), size);
 #else
     (void)key;
     (void)value;
@@ -129,6 +156,14 @@ bool PreferencesConfigStorage::remove(const char* key) {
     return preferences_.remove(key);
 #else
     (void)key;
+    return false;
+#endif
+}
+
+bool PreferencesConfigStorage::clear() {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return preferences_.clear();
+#else
     return false;
 #endif
 }

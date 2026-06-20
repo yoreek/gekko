@@ -5,13 +5,21 @@
 #include "integrations/common/DeviceEventDispatcher.h"
 
 #include <algorithm>
+#include <cstdio>
+#include <cstring>
+#include <map>
+#include <string>
 #include <unity.h>
 
 using namespace ewfm;
 
 namespace {
-std::string encodeDummyConfig(const DummyDeviceConfigV2& config) {
-    return ewfm::encodeDummyDeviceConfig(config);
+BoundedBlob<kMaxDeviceConfigBytes> encodeDummyConfig(const DummyDeviceConfigV1& config) {
+    BoundedBlob<kMaxDeviceConfigBytes> payload{};
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(ewfm::encodeDummyDeviceConfig(config, buffer, dummyDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(payload.assign(buffer, dummyDeviceConfigSize(config)));
+    return payload;
 }
 
 struct FixedDeviceIdSource final : public IDeviceIdSource {
@@ -30,12 +38,14 @@ struct FixedDeviceIdSource final : public IDeviceIdSource {
 };
 
 struct CountingRuntime final : public IDeviceRuntime {
-    explicit CountingRuntime(const DeviceRecord&) {}
+    CountingRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+        bindDeviceIdentity(record, configBlob);
+    }
 
     void begin(uint32_t now) override {
         beginCount += 1;
         beginNow = now;
-        status_ = DeviceStatus::Starting;
+        status_ = DeviceStatus::Ready;
     }
     void tickFastLoop(uint32_t now) override {
         tickFastLoopCount += 1;
@@ -91,8 +101,58 @@ struct CountingRuntime final : public IDeviceRuntime {
     DeviceStatus status() const override {
         return status_;
     }
+    void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override {
+        DeviceBaseConfigV1 base{};
+        TEST_ASSERT_TRUE(readDeviceBaseConfig(config, base));
+        deviceId_ = record.header.deviceId;
+        typeId_ = record.header.typeId;
+        configVersion_ = record.header.configVersion;
+        configRevision_ = record.header.configRevision;
+        hasParent_ = record.hasParent;
+        parentDeviceId_ = record.parentDeviceId;
+        persistencePolicy_ = record.persistencePolicy;
+        enabled_ = base.enabled != 0U;
+        std::snprintf(name_, sizeof(name_), "%s", base.name);
+        configBlob_ = config;
+    }
+    DeviceId deviceId() const override {
+        return deviceId_;
+    }
+    DeviceTypeId typeId() const override {
+        return typeId_;
+    }
+    uint32_t configVersion() const override {
+        return configVersion_;
+    }
+    uint32_t configRevision() const override {
+        return configRevision_;
+    }
+    bool hasParent() const override {
+        return hasParent_;
+    }
+    DeviceId parentDeviceId() const override {
+        return parentDeviceId_;
+    }
+    bool enabled() const override {
+        return enabled_;
+    }
+    const char* name() const override {
+        return name_;
+    }
+    DevicePersistencePolicy persistencePolicy() const override {
+        return persistencePolicy_;
+    }
     bool handleCommand(const DeviceCommand&) override {
         return false;
+    }
+    bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override {
+        configBlob = configBlob_;
+        return true;
+    }
+    bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override {
+        uint8_t buffer[kMaxDeviceConfigBytes]{};
+        const size_t size = deviceBaseConfigSize(baseConfig);
+        return encodeDeviceBaseConfig(baseConfig, buffer, size) && configBlob.assign(buffer, size);
     }
 
     bool hasChildRuntime(const IDeviceRuntime* childRuntime) const {
@@ -109,12 +169,22 @@ struct CountingRuntime final : public IDeviceRuntime {
     uint32_t beginNow{0};
     uint32_t lastNow{0};
     DeviceStatus status_{DeviceStatus::Unknown};
+    DeviceId deviceId_{0};
+    DeviceTypeId typeId_{0};
+    uint32_t configVersion_{0};
+    uint32_t configRevision_{0};
+    bool hasParent_{false};
+    DeviceId parentDeviceId_{0};
+    bool enabled_{true};
+    char name_[kMaxDeviceBaseNameLength + 1]{};
+    DevicePersistencePolicy persistencePolicy_{DevicePersistencePolicy::Delayed};
+    DeviceConfigBlob configBlob_{};
     IDeviceRuntime* parentRuntime_{nullptr};
     std::vector<IDeviceRuntime*> childRuntimes_{};
 };
 
-std::unique_ptr<IDeviceRuntime> createCountingRuntime(const DeviceRecord& record) {
-    return std::unique_ptr<IDeviceRuntime>(new CountingRuntime(record));
+std::unique_ptr<IDeviceRuntime> createCountingRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+    return std::unique_ptr<IDeviceRuntime>(new CountingRuntime(record, configBlob));
 }
 
 DeviceTypeDescriptor makeChildDescriptor(DeviceTypeId typeId, DeviceTypeId parentTypeId, uint8_t maxChildren = 0) {
@@ -132,25 +202,6 @@ DeviceTypeDescriptor makeChildDescriptor(DeviceTypeId typeId, DeviceTypeId paren
     descriptor.ticks1s = false;
     descriptor.compatibleParentTypes.push_back(parentTypeId);
     return descriptor;
-}
-
-DeviceRecord makeDummyRecord(DeviceId id, DeviceTypeId typeId, uint32_t configVersion, DeviceId parentId, bool hasParent,
-                             const std::string& name, const DummyDeviceConfigV2& config) {
-    DeviceRecord record{};
-    record.header.recordVersion = kDeviceRecordHeaderVersion;
-    record.header.deviceId = id;
-    record.header.typeId = typeId;
-    record.header.configVersion = configVersion;
-    record.header.configRevision = 1;
-    record.header.payloadLength = static_cast<uint32_t>(encodeDummyConfig(config).size());
-    record.name = name;
-    record.enabled = true;
-    record.hasParent = hasParent;
-    record.parentDeviceId = parentId;
-    record.persistencePolicy = DevicePersistencePolicy::Delayed;
-    record.status = DeviceStatus::Ready;
-    record.configPayload = encodeDummyConfig(config);
-    return record;
 }
 
 struct ToggleConfigStorage final : public IConfigStorage {
@@ -172,6 +223,16 @@ struct ToggleConfigStorage final : public IConfigStorage {
     }
     bool getString(const char* key, std::string& value) const override {
         return storage_.getString(key, value);
+    }
+    bool putBlob(const char* key, const uint8_t* value, size_t size) override {
+        if (failNextPutString_) {
+            failNextPutString_ = false;
+            return false;
+        }
+        return storage_.putBlob(key, value, size);
+    }
+    bool getBlob(const char* key, uint8_t* value, size_t& size) const override {
+        return storage_.getBlob(key, value, size);
     }
     bool putBlob(const char* key, const std::vector<uint8_t>& value) override {
         if (failNextPutString_) {
@@ -202,6 +263,9 @@ struct ToggleConfigStorage final : public IConfigStorage {
         }
         return storage_.remove(key);
     }
+    bool clear() override {
+        return storage_.clear();
+    }
 
     void failNextPutString() {
         failNextPutString_ = true;
@@ -213,6 +277,116 @@ struct ToggleConfigStorage final : public IConfigStorage {
     MemoryConfigStorage storage_;
     bool failNextPutString_{false};
     bool failNextRemove_{false};
+};
+
+struct RecordingConfigStorage final : public IConfigStorage {
+    bool begin(const char* namespaceName, bool readOnly) override {
+        return storage_.begin(namespaceName, readOnly);
+    }
+    void end() override {
+        storage_.end();
+    }
+    bool hasKey(const char* key) const override {
+        return storage_.hasKey(key);
+    }
+    bool putString(const char* key, const std::string& value) override {
+        putStringKeys.push_back(key);
+        if (shouldFail(key)) {
+            return false;
+        }
+        return storage_.putString(key, value);
+    }
+    bool getString(const char* key, std::string& value) const override {
+        return storage_.getString(key, value);
+    }
+    bool putBlob(const char* key, const uint8_t* value, size_t size) override {
+        putBlobKeys.push_back(key);
+        putBlobSizes[key] = size;
+        if (shouldFail(key)) {
+            return false;
+        }
+        return storage_.putBlob(key, value, size);
+    }
+    bool getBlob(const char* key, uint8_t* value, size_t& size) const override {
+        return storage_.getBlob(key, value, size);
+    }
+    bool putBlob(const char* key, const std::vector<uint8_t>& value) override {
+        return putBlob(key, value.data(), value.size());
+    }
+    bool getBlob(const char* key, std::vector<uint8_t>& value) const override {
+        return storage_.getBlob(key, value);
+    }
+    bool putUInt(const char* key, uint32_t value) override {
+        putUIntKeys.push_back(key);
+        if (shouldFail(key)) {
+            return false;
+        }
+        return storage_.putUInt(key, value);
+    }
+    bool getUInt(const char* key, uint32_t& value) const override {
+        return storage_.getUInt(key, value);
+    }
+    bool putBool(const char* key, bool value) override {
+        putBoolKeys.push_back(key);
+        if (shouldFail(key)) {
+            return false;
+        }
+        return storage_.putBool(key, value);
+    }
+    bool getBool(const char* key, bool& value) const override {
+        return storage_.getBool(key, value);
+    }
+    bool remove(const char* key) override {
+        removeKeys.push_back(key);
+        if (shouldFail(key)) {
+            return false;
+        }
+        return storage_.remove(key);
+    }
+    bool clear() override {
+        clearCount += 1;
+        return storage_.clear();
+    }
+
+    void failNextWriteFor(const char* key) {
+        failKey = key;
+    }
+    void clearLog() {
+        putStringKeys.clear();
+        putBlobKeys.clear();
+        putBlobSizes.clear();
+        putUIntKeys.clear();
+        putBoolKeys.clear();
+        removeKeys.clear();
+        clearCount = 0;
+    }
+    size_t countBlobWrites(const char* key) const {
+        return static_cast<size_t>(std::count(putBlobKeys.begin(), putBlobKeys.end(), std::string(key)));
+    }
+    size_t countUIntWrites(const char* key) const {
+        return static_cast<size_t>(std::count(putUIntKeys.begin(), putUIntKeys.end(), std::string(key)));
+    }
+    bool removed(const char* key) const {
+        return std::find(removeKeys.begin(), removeKeys.end(), std::string(key)) != removeKeys.end();
+    }
+
+    bool shouldFail(const char* key) {
+        if (!failKey.empty() && failKey == key) {
+            failKey.clear();
+            return true;
+        }
+        return false;
+    }
+
+    MemoryConfigStorage storage_;
+    std::string failKey{};
+    std::vector<std::string> putStringKeys{};
+    std::vector<std::string> putBlobKeys{};
+    std::map<std::string, size_t> putBlobSizes{};
+    std::vector<std::string> putUIntKeys{};
+    std::vector<std::string> putBoolKeys{};
+    std::vector<std::string> removeKeys{};
+    uint32_t clearCount{0};
 };
 
 struct RecordingSink final : public IDeviceEventSink {
@@ -239,21 +413,30 @@ bool hasEventKind(const std::vector<DeviceEvent>& events, DeviceEventKind kind) 
 }
 
 DeviceCreateRequest makeDummyCreateRequest(const std::string& name, bool enabled = true) {
-    DummyDeviceConfigV2 config{};
+    DummyDeviceConfigV1 config{};
     config.enabled = enabled;
-    config.restorePreviousState = true;
-    config.defaultOutput = false;
-    config.currentOutput = false;
-    config.inverted = false;
+    std::snprintf(config.name, sizeof(config.name), "%s", name.c_str());
 
     DeviceCreateRequest request{};
     request.typeId = 1;
     request.name = name;
     request.enabled = enabled;
     request.configVersion = DummyDevice::descriptor().currentConfigVersion;
-    request.configPayload = encodeDummyConfig(config);
+    request.configBlob = encodeDummyConfig(config);
     request.persistencePolicy = DevicePersistencePolicy::Immediate;
     return request;
+}
+
+void assertDummyConfigName(const DeviceConfigBlobMap& configBlobs, DeviceId deviceId, const char* expected) {
+    const auto it = configBlobs.find(deviceId);
+    TEST_ASSERT_TRUE(it != configBlobs.end());
+    DummyDeviceConfigV1 config{};
+    TEST_ASSERT_TRUE(decodeDummyDeviceConfig(it->second.data(), it->second.size(), config));
+    TEST_ASSERT_EQUAL_STRING(expected, config.name);
+}
+
+void makeRecordKey(DeviceId deviceId, char (&out)[32]) {
+    std::snprintf(out, sizeof(out), "record_%08x", static_cast<unsigned>(deviceId));
 }
 
 } // namespace
@@ -264,20 +447,22 @@ void test_registry_begin_loads_runtime_devices() {
     TEST_ASSERT_TRUE(store.begin(false));
 
     DeviceRegistrySnapshot snapshot;
-    DeviceRecord record{};
+    DeviceRegistryEntry record{};
     record.header.recordVersion = kDeviceRecordHeaderVersion;
     record.header.deviceId = 11;
     record.header.typeId = 1;
     record.header.configVersion = DummyDevice::descriptor().currentConfigVersion;
     record.header.configRevision = 1;
-    record.header.payloadLength = static_cast<uint32_t>(encodeDummyConfig(DummyDeviceConfigV2{}).size());
-    record.name = "dummy";
-    record.enabled = true;
+    DummyDeviceConfigV1 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "dummy");
+    record.header.payloadLength = static_cast<uint32_t>(encodeDummyConfig(config).size());
     record.status = DeviceStatus::Ready;
-    record.configPayload = encodeDummyConfig(DummyDeviceConfigV2{});
     snapshot.indexEntries.push_back({11, 1});
     snapshot.records.push_back(record);
-    TEST_ASSERT_TRUE(store.save(snapshot).ok());
+    DeviceConfigBlobMap configBlobs;
+    configBlobs[11] = encodeDummyConfig(config);
+    TEST_ASSERT_TRUE(store.save(snapshot, configBlobs).ok());
 
     FixedDeviceIdSource idSource({21, 22});
     DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
@@ -285,7 +470,7 @@ void test_registry_begin_loads_runtime_devices() {
 
     TEST_ASSERT_TRUE(registry.begin(100).ok());
     TEST_ASSERT_EQUAL_UINT32(1, registry.list().size());
-    TEST_ASSERT_NOT_NULL(registry.find(11));
+    TEST_ASSERT_NOT_NULL(registry.runtime(11));
     TEST_ASSERT_NOT_NULL(registry.runtime(11));
     TEST_ASSERT_EQUAL_UINT32(0, registry.registryRevision());
     TEST_ASSERT_FALSE(registry.hasPendingPersistence());
@@ -305,27 +490,29 @@ void test_registry_create_rename_and_flush() {
     TEST_ASSERT_TRUE(createResult.ok());
     TEST_ASSERT_EQUAL_UINT32(101, createResult.deviceId);
     TEST_ASSERT_FALSE(createResult.pendingPersistence);
-    TEST_ASSERT_NOT_NULL(registry.find(101));
+    TEST_ASSERT_NOT_NULL(registry.runtime(101));
     TEST_ASSERT_NOT_NULL(registry.runtime(101));
 
     DeviceRegistrySnapshot createdSnapshot;
-    TEST_ASSERT_TRUE(store.load(createdSnapshot, &types).ok());
+    DeviceConfigBlobMap createdConfigBlobs;
+    TEST_ASSERT_TRUE(store.load(createdSnapshot, createdConfigBlobs, &types).ok());
     TEST_ASSERT_EQUAL_UINT32(1, createdSnapshot.records.size());
-    TEST_ASSERT_EQUAL_STRING("dummy-a", createdSnapshot.records[0].name.c_str());
+    assertDummyConfigName(createdConfigBlobs, 101, "dummy-a");
 
     DeviceMutationResult renameResult = registry.rename(101, "dummy-b", 20, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE(renameResult.ok());
     TEST_ASSERT_TRUE(renameResult.pendingPersistence);
     TEST_ASSERT_TRUE(registry.hasPendingPersistence());
-    TEST_ASSERT_EQUAL_STRING("dummy-b", registry.find(101)->name.c_str());
+    TEST_ASSERT_EQUAL_STRING("dummy-b", registry.runtime(101)->name());
 
     TEST_ASSERT_TRUE(registry.flushNow().ok());
     TEST_ASSERT_FALSE(registry.hasPendingPersistence());
 
     DeviceRegistrySnapshot loaded;
-    TEST_ASSERT_TRUE(store.load(loaded, &types).ok());
+    DeviceConfigBlobMap loadedConfigBlobs;
+    TEST_ASSERT_TRUE(store.load(loaded, loadedConfigBlobs, &types).ok());
     TEST_ASSERT_EQUAL_UINT32(1, loaded.records.size());
-    TEST_ASSERT_EQUAL_STRING("dummy-b", loaded.records[0].name.c_str());
+    assertDummyConfigName(loadedConfigBlobs, 101, "dummy-b");
 }
 
 void test_registry_revisions_and_runtime_status_do_not_mix_with_config() {
@@ -342,34 +529,32 @@ void test_registry_revisions_and_runtime_status_do_not_mix_with_config() {
     TEST_ASSERT_TRUE(createResult.ok());
     TEST_ASSERT_EQUAL_UINT32(111, createResult.deviceId);
     TEST_ASSERT_EQUAL_UINT32(1, registry.registryRevision());
-    TEST_ASSERT_EQUAL_UINT32(1, registry.find(111)->header.configRevision);
+    TEST_ASSERT_EQUAL_UINT32(1, registry.runtime(111)->configRevision());
 
     DeviceMutationResult renameResult = registry.rename(111, "revision-dummy-renamed", 20, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE(renameResult.ok());
     TEST_ASSERT_EQUAL_UINT32(2, registry.registryRevision());
-    TEST_ASSERT_EQUAL_UINT32(1, registry.find(111)->header.configRevision);
+    TEST_ASSERT_EQUAL_UINT32(1, registry.runtime(111)->configRevision());
 
-    DummyDeviceConfigV2 updatedConfig{};
-    updatedConfig.restorePreviousState = true;
-    updatedConfig.defaultOutput = true;
-    updatedConfig.currentOutput = true;
-    updatedConfig.inverted = false;
-    const std::string updatedPayload = encodeDummyConfig(updatedConfig);
+    DummyDeviceConfigV1 updatedConfig{};
+    updatedConfig.enabled = true;
+    std::snprintf(updatedConfig.name, sizeof(updatedConfig.name), "%s", "revision-dummy");
+    const BoundedBlob<kMaxDeviceConfigBytes> updatedPayload = encodeDummyConfig(updatedConfig);
     DeviceMutationResult updateResult =
         registry.updateConfig(111, updatedPayload, DummyDevice::descriptor().currentConfigVersion, 30, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE(updateResult.ok());
     TEST_ASSERT_EQUAL_UINT32(3, registry.registryRevision());
-    TEST_ASSERT_EQUAL_UINT32(2, registry.find(111)->header.configRevision);
+    TEST_ASSERT_EQUAL_UINT32(2, registry.runtime(111)->configRevision());
 
     DeviceCreateResult statusCreate = registry.create(makeDummyCreateRequest("status-dummy"), 40);
     TEST_ASSERT_TRUE(statusCreate.ok());
     TEST_ASSERT_EQUAL_UINT32(112, statusCreate.deviceId);
-    TEST_ASSERT_EQUAL_UINT32(1, registry.find(112)->header.configRevision);
+    TEST_ASSERT_EQUAL_UINT32(1, registry.runtime(112)->configRevision());
 
     const DeviceMutationResult commandResult =
         registry.command(DeviceCommand{DeviceCommandType::SetStatus, 112, "fault", DevicePersistencePolicy::Delayed}, 50);
     TEST_ASSERT_TRUE(commandResult.ok());
-    TEST_ASSERT_EQUAL_UINT32(1, registry.find(112)->header.configRevision);
+    TEST_ASSERT_EQUAL_UINT32(1, registry.runtime(112)->configRevision());
     IDeviceRuntime* runtime = registry.runtime(112);
     TEST_ASSERT_NOT_NULL(runtime);
     const int statusBeforeTick = static_cast<int>(runtime->status());
@@ -377,7 +562,7 @@ void test_registry_revisions_and_runtime_status_do_not_mix_with_config() {
     registry.tickFastLoop(52);
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Faulted), static_cast<int>(runtime->status()));
     TEST_ASSERT_NOT_EQUAL(statusBeforeTick, static_cast<int>(runtime->status()));
-    TEST_ASSERT_EQUAL_UINT32(1, registry.find(112)->header.configRevision);
+    TEST_ASSERT_EQUAL_UINT32(1, registry.runtime(112)->configRevision());
 }
 
 void test_registry_duplicate_generated_id_retries() {
@@ -394,8 +579,8 @@ void test_registry_duplicate_generated_id_retries() {
     DeviceCreateResult secondResult = registry.create(makeDummyCreateRequest("second"), 20);
     TEST_ASSERT_TRUE(secondResult.ok());
     TEST_ASSERT_EQUAL_UINT32(202, secondResult.deviceId);
-    TEST_ASSERT_NOT_NULL(registry.find(201));
-    TEST_ASSERT_NOT_NULL(registry.find(202));
+    TEST_ASSERT_NOT_NULL(registry.runtime(201));
+    TEST_ASSERT_NOT_NULL(registry.runtime(202));
 }
 
 void test_registry_rejects_invalid_device_id() {
@@ -418,28 +603,28 @@ void test_registry_rejects_max_device_count() {
     DeviceRegistryStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
 
-    DummyDeviceConfigV2 config{};
-    config.restorePreviousState = true;
-    config.defaultOutput = false;
-    config.currentOutput = false;
+    DummyDeviceConfigV1 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "device");
 
     DeviceRegistrySnapshot snapshot;
     for (uint32_t index = 1; index <= kMaxDynamicDevices; ++index) {
-        DeviceRecord record{};
+        DeviceRegistryEntry record{};
         record.header.recordVersion = kDeviceRecordHeaderVersion;
         record.header.deviceId = index;
         record.header.typeId = 1;
         record.header.configVersion = DummyDevice::descriptor().currentConfigVersion;
         record.header.configRevision = 1;
         record.header.payloadLength = static_cast<uint32_t>(encodeDummyConfig(config).size());
-        record.name = "device-" + std::to_string(index);
-        record.enabled = true;
         record.status = DeviceStatus::Ready;
-        record.configPayload = encodeDummyConfig(config);
         snapshot.indexEntries.push_back({index, 1});
         snapshot.records.push_back(record);
     }
-    TEST_ASSERT_TRUE(store.save(snapshot).ok());
+    DeviceConfigBlobMap configBlobs;
+    for (uint32_t index = 1; index <= kMaxDynamicDevices; ++index) {
+        configBlobs[index] = encodeDummyConfig(config);
+    }
+    TEST_ASSERT_TRUE(store.save(snapshot, configBlobs).ok());
 
     FixedDeviceIdSource idSource({401});
     DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
@@ -449,165 +634,6 @@ void test_registry_rejects_max_device_count() {
     DeviceCreateResult createResult = registry.create(makeDummyCreateRequest("overflow"), 10);
     TEST_ASSERT_FALSE(createResult.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::BoundsExceeded), static_cast<int>(createResult.validation.error));
-}
-
-void test_registry_validates_parent_child_graph_rules() {
-    {
-        MemoryConfigStorage storage;
-        DeviceRegistryStore store(storage);
-        TEST_ASSERT_TRUE(store.begin(false));
-
-        FixedDeviceIdSource idSource({901});
-        DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
-        DeviceTypeDescriptor childDescriptor = makeChildDescriptor(55, 1);
-        TEST_ASSERT_TRUE(types.registerDescriptor(childDescriptor));
-
-        DeviceRegistry registry(store, types, idSource);
-        TEST_ASSERT_TRUE(registry.begin(0).ok());
-
-        DeviceCreateRequest missingParent = makeDummyCreateRequest("missing-parent");
-        missingParent.typeId = 55;
-        missingParent.configVersion = 1;
-        missingParent.configPayload.clear();
-        missingParent.parentDeviceId = 12345;
-        missingParent.hasParent = true;
-        DeviceCreateResult missingParentResult = registry.create(missingParent, 10);
-        TEST_ASSERT_FALSE(missingParentResult.ok());
-        TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::InvalidRelationship), static_cast<int>(missingParentResult.validation.error));
-    }
-
-    {
-        MemoryConfigStorage storage;
-        DeviceRegistryStore store(storage);
-        TEST_ASSERT_TRUE(store.begin(false));
-
-        FixedDeviceIdSource idSource({902});
-        DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
-        DeviceTypeDescriptor childDescriptor = makeChildDescriptor(55, 1);
-        TEST_ASSERT_TRUE(types.registerDescriptor(childDescriptor));
-
-        DeviceRegistry registry(store, types, idSource);
-        TEST_ASSERT_TRUE(registry.begin(0).ok());
-
-        DeviceCreateRequest selfParent = makeDummyCreateRequest("self-parent");
-        selfParent.typeId = 55;
-        selfParent.configVersion = 1;
-        selfParent.configPayload.clear();
-        selfParent.hasParent = true;
-        selfParent.parentDeviceId = 902;
-        DeviceCreateResult selfParentResult = registry.create(selfParent, 20);
-        TEST_ASSERT_FALSE(selfParentResult.ok());
-        TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::InvalidRelationship), static_cast<int>(selfParentResult.validation.error));
-    }
-
-    {
-        MemoryConfigStorage storage;
-        DeviceRegistryStore store(storage);
-        TEST_ASSERT_TRUE(store.begin(false));
-
-        FixedDeviceIdSource idSource({903, 904, 905});
-        DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
-        DeviceTypeDescriptor parentDescriptor;
-        parentDescriptor.typeId = 57;
-        parentDescriptor.name = "BusDevice";
-        parentDescriptor.currentConfigVersion = 1;
-        parentDescriptor.canHaveChildren = true;
-        parentDescriptor.maxChildren = 1;
-        parentDescriptor.createRuntime = nullptr;
-        TEST_ASSERT_TRUE(types.registerDescriptor(parentDescriptor));
-        DeviceTypeDescriptor incompatibleChildDescriptor = makeChildDescriptor(56, 58);
-        TEST_ASSERT_TRUE(types.registerDescriptor(incompatibleChildDescriptor));
-        DeviceTypeDescriptor childDescriptor = makeChildDescriptor(59, 57);
-        TEST_ASSERT_TRUE(types.registerDescriptor(childDescriptor));
-
-        DeviceRegistry registry(store, types, idSource);
-        TEST_ASSERT_TRUE(registry.begin(0).ok());
-
-        DeviceCreateRequest parentRequest = makeDummyCreateRequest("parent");
-        parentRequest.typeId = 57;
-        parentRequest.configPayload.clear();
-        parentRequest.configVersion = 1;
-        parentRequest.persistencePolicy = DevicePersistencePolicy::Immediate;
-        DeviceCreateResult parentResult = registry.create(parentRequest, 30);
-        TEST_ASSERT_TRUE(parentResult.ok());
-
-        DeviceCreateRequest incompatible = makeDummyCreateRequest("incompatible");
-        incompatible.typeId = 56;
-        incompatible.configVersion = 1;
-        incompatible.configPayload.clear();
-        incompatible.hasParent = true;
-        incompatible.parentDeviceId = parentResult.deviceId;
-        DeviceCreateResult incompatibleResult = registry.create(incompatible, 40);
-        TEST_ASSERT_FALSE(incompatibleResult.ok());
-        TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::InvalidRelationship), static_cast<int>(incompatibleResult.validation.error));
-
-        DeviceCreateRequest childOne = makeDummyCreateRequest("child-one");
-        childOne.typeId = 59;
-        childOne.configVersion = 1;
-        childOne.configPayload.clear();
-        childOne.hasParent = true;
-        childOne.parentDeviceId = parentResult.deviceId;
-        DeviceCreateResult childOneResult = registry.create(childOne, 50);
-        TEST_ASSERT_TRUE(childOneResult.ok());
-    }
-
-    {
-        MemoryConfigStorage storage;
-        DeviceRegistryStore store(storage);
-        TEST_ASSERT_TRUE(store.begin(false));
-
-        DummyDeviceConfigV2 config{};
-        config.restorePreviousState = true;
-        config.defaultOutput = false;
-        config.currentOutput = false;
-
-        DeviceRegistrySnapshot maxChildSnapshot;
-        maxChildSnapshot.indexEntries.push_back({903, 57});
-        maxChildSnapshot.indexEntries.push_back({904, 59});
-        maxChildSnapshot.indexEntries.push_back({905, 59});
-        maxChildSnapshot.records.push_back(makeDummyRecord(903, 57, 1, 0, false, "parent", config));
-        maxChildSnapshot.records.push_back(makeDummyRecord(904, 59, 1, 903, true, "child-one", config));
-        maxChildSnapshot.records.push_back(makeDummyRecord(905, 59, 1, 903, true, "child-two", config));
-        TEST_ASSERT_TRUE(store.save(maxChildSnapshot).ok());
-
-        FixedDeviceIdSource idSource({906});
-        DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
-        DeviceTypeDescriptor parentDescriptor;
-        parentDescriptor.typeId = 57;
-        parentDescriptor.name = "BusDevice";
-        parentDescriptor.currentConfigVersion = 1;
-        parentDescriptor.canHaveChildren = true;
-        parentDescriptor.maxChildren = 1;
-        parentDescriptor.createRuntime = nullptr;
-        TEST_ASSERT_TRUE(types.registerDescriptor(parentDescriptor));
-        DeviceTypeDescriptor childDescriptor = makeChildDescriptor(59, 57);
-        TEST_ASSERT_TRUE(types.registerDescriptor(childDescriptor));
-
-        DeviceRegistry registry(store, types, idSource);
-        DeviceValidationResult beginResult = registry.begin(0);
-        TEST_ASSERT_FALSE(beginResult.ok());
-        TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::InvalidRelationship), static_cast<int>(beginResult.error));
-    }
-
-    {
-        MemoryConfigStorage storage;
-        DeviceRegistryStore store(storage);
-        TEST_ASSERT_TRUE(store.begin(false));
-
-        DummyDeviceConfigV2 config{};
-        config.restorePreviousState = true;
-        config.defaultOutput = false;
-        config.currentOutput = false;
-
-        DeviceRegistrySnapshot cyclicSnapshot;
-        cyclicSnapshot.indexEntries.push_back({904, 1});
-        cyclicSnapshot.indexEntries.push_back({905, 1});
-        cyclicSnapshot.records.push_back(
-            makeDummyRecord(904, 1, DummyDevice::descriptor().currentConfigVersion, 905, true, "cycle-a", config));
-        cyclicSnapshot.records.push_back(
-            makeDummyRecord(905, 1, DummyDevice::descriptor().currentConfigVersion, 904, true, "cycle-b", config));
-        TEST_ASSERT_FALSE(store.save(cyclicSnapshot).ok());
-    }
 }
 
 void test_registry_disable_enable_and_delete() {
@@ -634,7 +660,7 @@ void test_registry_disable_enable_and_delete() {
 
     DeviceMutationResult deleteResult = registry.remove(201, 40, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE(deleteResult.ok());
-    TEST_ASSERT_NULL(registry.find(201));
+    TEST_ASSERT_NULL(registry.runtime(201));
     TEST_ASSERT_NULL(registry.runtime(201));
 }
 
@@ -662,8 +688,8 @@ void test_registry_rejects_parent_delete_with_children() {
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::InvalidRelationship), static_cast<int>(deleteResult.validation.error));
     TEST_ASSERT_EQUAL_UINT32(1, deleteResult.dependentChildDeviceIds.size());
     TEST_ASSERT_EQUAL_UINT32(childResult.deviceId, deleteResult.dependentChildDeviceIds[0]);
-    TEST_ASSERT_NOT_NULL(registry.find(parentResult.deviceId));
-    TEST_ASSERT_NOT_NULL(registry.find(childResult.deviceId));
+    TEST_ASSERT_NOT_NULL(registry.runtime(parentResult.deviceId));
+    TEST_ASSERT_NOT_NULL(registry.runtime(childResult.deviceId));
     TEST_ASSERT_NOT_NULL(registry.runtime(parentResult.deviceId));
     TEST_ASSERT_NOT_NULL(registry.runtime(childResult.deviceId));
     TEST_ASSERT_EQUAL_PTR(registry.runtime(parentResult.deviceId), registry.runtime(childResult.deviceId)->parentRuntime());
@@ -693,11 +719,12 @@ void test_registry_reassigns_parent_atomically() {
     TEST_ASSERT_TRUE(firstParent.ok());
     DeviceCreateResult secondParent = registry.create(makeDummyCreateRequest("parent-b"), 20);
     TEST_ASSERT_TRUE(secondParent.ok());
+    registry.tickFastLoop(21);
+    registry.tickFastLoop(22);
 
     DeviceCreateRequest childRequest = makeDummyCreateRequest("child");
     childRequest.typeId = 59;
     childRequest.configVersion = 1;
-    childRequest.configPayload.clear();
     childRequest.hasParent = true;
     childRequest.parentDeviceId = firstParent.deviceId;
     DeviceCreateResult childResult = registry.create(childRequest, 30);
@@ -712,7 +739,7 @@ void test_registry_reassigns_parent_atomically() {
         registry.setParent(childResult.deviceId, true, secondParent.deviceId, 40, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE(reparentResult.ok());
     TEST_ASSERT_FALSE(reparentResult.pendingPersistence);
-    TEST_ASSERT_EQUAL_UINT32(secondParent.deviceId, registry.find(childResult.deviceId)->parentDeviceId);
+    TEST_ASSERT_EQUAL_UINT32(secondParent.deviceId, registry.runtime(childResult.deviceId)->parentDeviceId());
     auto* sameChildRuntime = dynamic_cast<CountingRuntime*>(registry.runtime(childResult.deviceId));
     TEST_ASSERT_NOT_NULL(sameChildRuntime);
     TEST_ASSERT_TRUE(sameChildRuntime == childRuntime);
@@ -727,10 +754,11 @@ void test_registry_reassigns_parent_atomically() {
     TEST_ASSERT_TRUE(registry.remove(firstParent.deviceId, 50, DevicePersistencePolicy::Immediate).ok());
 
     DeviceRegistrySnapshot loaded;
-    TEST_ASSERT_TRUE(store.load(loaded, &types).ok());
+    DeviceConfigBlobMap loadedConfigBlobs;
+    TEST_ASSERT_TRUE(store.load(loaded, loadedConfigBlobs, &types).ok());
     const auto loadedChild =
         std::find_if(loaded.records.begin(), loaded.records.end(),
-                     [childId = childResult.deviceId](const DeviceRecord& record) { return record.header.deviceId == childId; });
+                     [childId = childResult.deviceId](const DeviceRegistryEntry& record) { return record.header.deviceId == childId; });
     TEST_ASSERT_TRUE(loadedChild != loaded.records.end());
     TEST_ASSERT_EQUAL_UINT32(secondParent.deviceId, loadedChild->parentDeviceId);
 
@@ -746,11 +774,12 @@ void test_registry_reassigns_parent_atomically() {
     TEST_ASSERT_TRUE(failingParentA.ok());
     DeviceCreateResult failingParentB = failingRegistry.create(makeDummyCreateRequest("parent-d"), 20);
     TEST_ASSERT_TRUE(failingParentB.ok());
+    failingRegistry.tickFastLoop(21);
+    failingRegistry.tickFastLoop(22);
 
     DeviceCreateRequest failingChild = makeDummyCreateRequest("child-fail");
     failingChild.typeId = 59;
     failingChild.configVersion = 1;
-    failingChild.configPayload.clear();
     failingChild.hasParent = true;
     failingChild.parentDeviceId = failingParentA.deviceId;
     DeviceCreateResult failingChildResult = failingRegistry.create(failingChild, 30);
@@ -761,7 +790,7 @@ void test_registry_reassigns_parent_atomically() {
         failingRegistry.setParent(failingChildResult.deviceId, true, failingParentB.deviceId, 40, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_FALSE(failingReparent.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::StorageError), static_cast<int>(failingReparent.validation.error));
-    TEST_ASSERT_EQUAL_UINT32(failingParentA.deviceId, failingRegistry.find(failingChildResult.deviceId)->parentDeviceId);
+    TEST_ASSERT_EQUAL_UINT32(failingParentA.deviceId, failingRegistry.runtime(failingChildResult.deviceId)->parentDeviceId());
 }
 
 void test_registry_parent_config_update_reconfigures_children() {
@@ -781,10 +810,8 @@ void test_registry_parent_config_update_reconfigures_children() {
     DeviceCreateResult parent = registry.create(makeDummyCreateRequest("parent-update"), 10);
     TEST_ASSERT_TRUE(parent.ok());
 
-    DeviceCreateRequest childRequest{};
+    DeviceCreateRequest childRequest = makeDummyCreateRequest("child-update");
     childRequest.typeId = 59;
-    childRequest.name = "child-update";
-    childRequest.enabled = true;
     childRequest.configVersion = 1;
     childRequest.hasParent = true;
     childRequest.parentDeviceId = parent.deviceId;
@@ -796,11 +823,9 @@ void test_registry_parent_config_update_reconfigures_children() {
     TEST_ASSERT_NOT_NULL(childRuntime);
     const uint32_t previousReconfigureCount = childRuntime->reconfigureCount;
 
-    DummyDeviceConfigV2 config{};
-    config.restorePreviousState = true;
-    config.defaultOutput = true;
-    config.currentOutput = true;
-    config.inverted = false;
+    DummyDeviceConfigV1 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "parent");
     DeviceMutationResult updated = registry.updateConfig(
         parent.deviceId, encodeDummyConfig(config), DummyDevice::descriptor().currentConfigVersion, 30, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE_MESSAGE(updated.ok(), updated.validation.message);
@@ -838,9 +863,9 @@ void test_registry_propagates_parent_dependency_status_and_recovers() {
     auto disabledRecords = registry.list();
     const auto disabledChild =
         std::find_if(disabledRecords.begin(), disabledRecords.end(),
-                     [childId = childResult.deviceId](const DeviceRecord& record) { return record.header.deviceId == childId; });
+                     [childId = childResult.deviceId](const DeviceRegistryEntry& record) { return record.header.deviceId == childId; });
     TEST_ASSERT_TRUE(disabledChild != disabledRecords.end());
-    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Disabled), static_cast<int>(disabledChild->status));
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(disabledChild->status));
     TEST_ASSERT_EQUAL_PTR(registry.runtime(parentResult.deviceId), registry.runtime(childResult.deviceId)->parentRuntime());
     const auto& blockedParentChildren = registry.runtime(parentResult.deviceId)->childRuntimes();
     TEST_ASSERT_EQUAL_UINT32(1, blockedParentChildren.size());
@@ -856,7 +881,7 @@ void test_registry_propagates_parent_dependency_status_and_recovers() {
     auto recoveredRecords = registry.list();
     const auto recoveredChild =
         std::find_if(recoveredRecords.begin(), recoveredRecords.end(),
-                     [childId = childResult.deviceId](const DeviceRecord& record) { return record.header.deviceId == childId; });
+                     [childId = childResult.deviceId](const DeviceRegistryEntry& record) { return record.header.deviceId == childId; });
     TEST_ASSERT_TRUE(recoveredChild != recoveredRecords.end());
     TEST_ASSERT_NOT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(recoveredChild->status));
     const auto& recoveredParentChildren = registry.runtime(parentResult.deviceId)->childRuntimes();
@@ -872,7 +897,7 @@ void test_registry_propagates_parent_dependency_status_and_recovers() {
     auto faultedRecords = registry.list();
     const auto faultedChild =
         std::find_if(faultedRecords.begin(), faultedRecords.end(),
-                     [childId = childResult.deviceId](const DeviceRecord& record) { return record.header.deviceId == childId; });
+                     [childId = childResult.deviceId](const DeviceRegistryEntry& record) { return record.header.deviceId == childId; });
     TEST_ASSERT_TRUE(faultedChild != faultedRecords.end());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(faultedChild->status));
 }
@@ -899,21 +924,28 @@ void test_registry_set_parent_command_normalization() {
     TEST_ASSERT_TRUE(child.ok());
 
     DeviceMutationResult commandResult =
-        registry.command(DeviceCommand{DeviceCommandType::SetParent, child.deviceId, "parent=312", DevicePersistencePolicy::Immediate}, 40);
+        registry.command(DeviceCommand{DeviceCommandType::SetParent, child.deviceId, DeviceCommand::ParentPayload{true, parentB.deviceId},
+                                       DevicePersistencePolicy::Immediate},
+                         40);
     TEST_ASSERT_TRUE(commandResult.ok());
-    TEST_ASSERT_EQUAL_UINT32(parentB.deviceId, registry.find(child.deviceId)->parentDeviceId);
+    TEST_ASSERT_EQUAL_UINT32(parentB.deviceId, registry.runtime(child.deviceId)->parentDeviceId());
     TEST_ASSERT_EQUAL_PTR(registry.runtime(parentB.deviceId), registry.runtime(child.deviceId)->parentRuntime());
 
     DeviceMutationResult clearParentResult =
-        registry.command(DeviceCommand{DeviceCommandType::SetParent, child.deviceId, "parent=0", DevicePersistencePolicy::Immediate}, 41);
+        registry.command(DeviceCommand{DeviceCommandType::SetParent, child.deviceId, DeviceCommand::ParentPayload{false, 0},
+                                       DevicePersistencePolicy::Immediate},
+                         41);
     TEST_ASSERT_TRUE(clearParentResult.ok());
-    TEST_ASSERT_FALSE(registry.find(child.deviceId)->hasParent);
+    TEST_ASSERT_FALSE(registry.runtime(child.deviceId)->hasParent());
     TEST_ASSERT_NULL(registry.runtime(child.deviceId)->parentRuntime());
 
-    DeviceMutationResult invalidPayload =
-        registry.command(DeviceCommand{DeviceCommandType::SetParent, child.deviceId, "invalid", DevicePersistencePolicy::Immediate}, 42);
-    TEST_ASSERT_FALSE(invalidPayload.ok());
-    TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::InvalidCommand), static_cast<int>(invalidPayload.validation.error));
+    DeviceCommand invalidPayload{};
+    invalidPayload.type = DeviceCommandType::SetParent;
+    invalidPayload.deviceId = child.deviceId;
+    invalidPayload.persistencePolicy = DevicePersistencePolicy::Immediate;
+    DeviceMutationResult invalidPayloadResult = registry.command(invalidPayload, 42);
+    TEST_ASSERT_FALSE(invalidPayloadResult.ok());
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::BoundsExceeded), static_cast<int>(invalidPayloadResult.validation.error));
 }
 
 void test_registry_emits_required_event_kinds() {
@@ -1016,8 +1048,9 @@ void test_registry_delayed_flushes_on_tick() {
     TEST_ASSERT_FALSE(registry.hasPendingPersistence());
 
     DeviceRegistrySnapshot loaded;
-    TEST_ASSERT_TRUE(store.load(loaded, &types).ok());
-    TEST_ASSERT_EQUAL_STRING("tick-dummy-2", loaded.records[0].name.c_str());
+    DeviceConfigBlobMap loadedConfigBlobs;
+    TEST_ASSERT_TRUE(store.load(loaded, loadedConfigBlobs, &types).ok());
+    assertDummyConfigName(loadedConfigBlobs, 401, "tick-dummy-2");
 }
 
 void test_registry_invokes_only_declared_cadences() {
@@ -1038,11 +1071,9 @@ void test_registry_invokes_only_declared_cadences() {
     DeviceRegistry registry(store, types, idSource);
     TEST_ASSERT_TRUE(registry.begin(0).ok());
 
-    DeviceCreateRequest request{};
+    DeviceCreateRequest request = makeDummyCreateRequest("counting");
     request.typeId = 55;
-    request.name = "counting";
     request.configVersion = 1;
-    request.configPayload = "x";
     request.persistencePolicy = DevicePersistencePolicy::Immediate;
 
     DeviceCreateResult createResult = registry.create(request, 10);
@@ -1076,7 +1107,7 @@ void test_registry_immediate_persistence_failure_rolls_back_create() {
     DeviceCreateResult createResult = registry.create(makeDummyCreateRequest("rollback"), 10);
     TEST_ASSERT_FALSE(createResult.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::StorageError), static_cast<int>(createResult.validation.error));
-    TEST_ASSERT_NULL(registry.find(601));
+    TEST_ASSERT_NULL(registry.runtime(601));
     TEST_ASSERT_FALSE(registry.hasPendingPersistence());
     TEST_ASSERT_EQUAL_UINT32(0, registry.registryRevision());
 }
@@ -1096,7 +1127,7 @@ void test_registry_delayed_dirty_state_and_forced_flush() {
     DeviceMutationResult renameResult = registry.rename(701, "dirty-dummy-2", 20, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE(renameResult.ok());
     TEST_ASSERT_TRUE(registry.hasPendingPersistence());
-    TEST_ASSERT_TRUE(registry.dirtyIndex());
+    TEST_ASSERT_FALSE(registry.dirtyIndex());
     TEST_ASSERT_EQUAL_UINT32(1, registry.dirtyConfigRecordIds().size());
     TEST_ASSERT_EQUAL_UINT32(20, registry.firstDirtyAt());
     TEST_ASSERT_EQUAL_UINT32(20, registry.lastChangeAt());
@@ -1105,15 +1136,192 @@ void test_registry_delayed_dirty_state_and_forced_flush() {
     DeviceValidationResult flushResult = registry.flushNow();
     TEST_ASSERT_FALSE(flushResult.ok());
     TEST_ASSERT_TRUE(registry.hasPendingPersistence());
-    TEST_ASSERT_TRUE(registry.dirtyIndex());
+    TEST_ASSERT_FALSE(registry.dirtyIndex());
     TEST_ASSERT_EQUAL_UINT32(1, registry.dirtyConfigRecordIds().size());
 
     TEST_ASSERT_TRUE(registry.flushNow().ok());
     TEST_ASSERT_FALSE(registry.hasPendingPersistence());
 
     DeviceRegistrySnapshot loaded;
-    TEST_ASSERT_TRUE(store.load(loaded, &types).ok());
-    TEST_ASSERT_EQUAL_STRING("dirty-dummy-2", loaded.records[0].name.c_str());
+    DeviceConfigBlobMap loadedConfigBlobs;
+    TEST_ASSERT_TRUE(store.load(loaded, loadedConfigBlobs, &types).ok());
+    assertDummyConfigName(loadedConfigBlobs, 701, "dirty-dummy-2");
+}
+
+void test_registry_index_persistence_uses_bounded_blob_not_string() {
+    RecordingConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    DeviceRegistrySnapshot snapshot{};
+    DeviceConfigBlobMap configBlobs{};
+    DummyDeviceConfigV1 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "bounded");
+    const DeviceConfigBlob configBlob = encodeDummyConfig(config);
+
+    for (uint32_t index = 1; index <= 3; ++index) {
+        DeviceRegistryEntry record{};
+        record.header.recordVersion = kDeviceRecordHeaderVersion;
+        record.header.deviceId = index;
+        record.header.typeId = 1;
+        record.header.configVersion = DummyDevice::descriptor().currentConfigVersion;
+        record.header.configRevision = 1;
+        record.header.payloadLength = static_cast<uint32_t>(configBlob.size());
+        record.status = DeviceStatus::Ready;
+        snapshot.indexEntries.push_back({index, 1});
+        snapshot.records.push_back(record);
+        configBlobs[index] = configBlob;
+    }
+
+    TEST_ASSERT_TRUE(store.save(snapshot, configBlobs).ok());
+    TEST_ASSERT_EQUAL_UINT32(0, storage.putStringKeys.size());
+    TEST_ASSERT_EQUAL_UINT32(1, storage.countBlobWrites("index"));
+    TEST_ASSERT_TRUE(storage.putBlobSizes["index"] <= kMaxRegistryIndexBytes);
+}
+
+void test_registry_failed_index_commit_keeps_previous_registry_recoverable() {
+    RecordingConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    FixedDeviceIdSource idSource({901, 902});
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(store, types, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+    TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("stable"), 10).ok());
+
+    DeviceCreateRequest delayed = makeDummyCreateRequest("orphan");
+    delayed.persistencePolicy = DevicePersistencePolicy::Delayed;
+    DeviceCreateResult created = registry.create(delayed, 20);
+    TEST_ASSERT_TRUE(created.ok());
+    storage.clearLog();
+    storage.failNextWriteFor("index");
+
+    DeviceValidationResult flushResult = registry.flushNow();
+    TEST_ASSERT_FALSE(flushResult.ok());
+    TEST_ASSERT_TRUE(registry.hasPendingPersistence());
+
+    char orphanKey[32]{};
+    makeRecordKey(created.deviceId, orphanKey);
+    TEST_ASSERT_EQUAL_UINT32(1, storage.countBlobWrites(orphanKey));
+    TEST_ASSERT_EQUAL_UINT32(1, storage.countBlobWrites("index"));
+    TEST_ASSERT_EQUAL_UINT32(0, storage.countUIntWrites("version"));
+
+    DeviceRegistrySnapshot loaded{};
+    DeviceConfigBlobMap loadedConfigBlobs{};
+    TEST_ASSERT_TRUE(store.load(loaded, loadedConfigBlobs, &types).ok());
+    TEST_ASSERT_EQUAL_UINT32(1, loaded.records.size());
+    TEST_ASSERT_EQUAL_UINT32(901, loaded.records[0].header.deviceId);
+    assertDummyConfigName(loadedConfigBlobs, 901, "stable");
+}
+
+void test_registry_load_resets_unsupported_registry_format_without_crashing() {
+    RecordingConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+    TEST_ASSERT_TRUE(storage.putUInt("version", 2));
+    TEST_ASSERT_TRUE(storage.putBlob("index", reinterpret_cast<const uint8_t*>("old"), 3));
+    storage.clearLog();
+
+    DeviceRegistrySnapshot loaded{};
+    DeviceConfigBlobMap loadedConfigBlobs{};
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    TEST_ASSERT_TRUE(store.load(loaded, loadedConfigBlobs, &types).ok());
+    TEST_ASSERT_TRUE(loaded.records.empty());
+    TEST_ASSERT_TRUE(loaded.indexEntries.empty());
+    TEST_ASSERT_TRUE(loadedConfigBlobs.empty());
+    TEST_ASSERT_EQUAL_UINT32(1, storage.clearCount);
+}
+
+void test_registry_selective_flush_writes_only_dirty_record_and_not_index() {
+    RecordingConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    FixedDeviceIdSource idSource({911, 912});
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(store, types, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+    TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("first"), 10).ok());
+    TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("second"), 20).ok());
+
+    TEST_ASSERT_TRUE(registry.rename(911, "first-renamed", 30, DevicePersistencePolicy::Delayed).ok());
+    storage.clearLog();
+    TEST_ASSERT_TRUE(registry.flushNow().ok());
+
+    char firstKey[32]{};
+    char secondKey[32]{};
+    makeRecordKey(911, firstKey);
+    makeRecordKey(912, secondKey);
+    TEST_ASSERT_EQUAL_UINT32(1, storage.countBlobWrites(firstKey));
+    TEST_ASSERT_EQUAL_UINT32(0, storage.countBlobWrites(secondKey));
+    TEST_ASSERT_EQUAL_UINT32(0, storage.countBlobWrites("index"));
+    TEST_ASSERT_EQUAL_UINT32(0, storage.countUIntWrites("version"));
+}
+
+void test_registry_delayed_rename_does_not_dirty_or_rewrite_index() {
+    RecordingConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    FixedDeviceIdSource idSource({921});
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(store, types, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+    TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("rename-source"), 10).ok());
+
+    TEST_ASSERT_TRUE(registry.rename(921, "rename-target", 20, DevicePersistencePolicy::Delayed).ok());
+    TEST_ASSERT_FALSE(registry.dirtyIndex());
+    TEST_ASSERT_EQUAL_UINT32(1, registry.dirtyConfigRecordIds().size());
+    TEST_ASSERT_EQUAL_UINT32(921, registry.dirtyConfigRecordIds()[0]);
+
+    storage.clearLog();
+    TEST_ASSERT_TRUE(registry.flushNow().ok());
+    TEST_ASSERT_EQUAL_UINT32(0, storage.countBlobWrites("index"));
+    TEST_ASSERT_EQUAL_UINT32(0, storage.countUIntWrites("version"));
+}
+
+void test_registry_create_orphan_and_delete_cleanup_ordering() {
+    RecordingConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    FixedDeviceIdSource idSource({931, 932});
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(store, types, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+    TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("keep"), 10).ok());
+
+    DeviceCreateRequest orphanRequest = makeDummyCreateRequest("orphan");
+    orphanRequest.persistencePolicy = DevicePersistencePolicy::Delayed;
+    DeviceCreateResult orphanCreate = registry.create(orphanRequest, 20);
+    TEST_ASSERT_TRUE(orphanCreate.ok());
+    storage.failNextWriteFor("index");
+    TEST_ASSERT_FALSE(registry.flushNow().ok());
+
+    DeviceRegistrySnapshot loadedAfterFailedCreate{};
+    DeviceConfigBlobMap blobsAfterFailedCreate{};
+    TEST_ASSERT_TRUE(store.load(loadedAfterFailedCreate, blobsAfterFailedCreate, &types).ok());
+    TEST_ASSERT_EQUAL_UINT32(1, loadedAfterFailedCreate.records.size());
+    TEST_ASSERT_EQUAL_UINT32(931, loadedAfterFailedCreate.records[0].header.deviceId);
+
+    TEST_ASSERT_TRUE(registry.flushNow().ok());
+    TEST_ASSERT_TRUE(registry.remove(orphanCreate.deviceId, 30, DevicePersistencePolicy::Delayed).ok());
+    storage.clearLog();
+    TEST_ASSERT_TRUE(registry.flushNow().ok());
+
+    char removedKey[32]{};
+    makeRecordKey(orphanCreate.deviceId, removedKey);
+    TEST_ASSERT_EQUAL_UINT32(1, storage.countBlobWrites("index"));
+    TEST_ASSERT_EQUAL_UINT32(1, storage.countUIntWrites("version"));
+    TEST_ASSERT_TRUE(storage.removed(removedKey));
+
+    DeviceRegistrySnapshot loadedAfterDelete{};
+    DeviceConfigBlobMap blobsAfterDelete{};
+    TEST_ASSERT_TRUE(store.load(loadedAfterDelete, blobsAfterDelete, &types).ok());
+    TEST_ASSERT_EQUAL_UINT32(1, loadedAfterDelete.records.size());
+    TEST_ASSERT_EQUAL_UINT32(931, loadedAfterDelete.records[0].header.deviceId);
 }
 
 void test_registry_max_delay_flushes_after_repeated_dirty_updates() {
@@ -1141,8 +1349,9 @@ void test_registry_max_delay_flushes_after_repeated_dirty_updates() {
     TEST_ASSERT_FALSE(registry.hasPendingPersistence());
 
     DeviceRegistrySnapshot loaded;
-    TEST_ASSERT_TRUE(store.load(loaded, &types).ok());
-    TEST_ASSERT_EQUAL_STRING("delay-dummy-3", loaded.records[0].name.c_str());
+    DeviceConfigBlobMap loadedConfigBlobs;
+    TEST_ASSERT_TRUE(store.load(loaded, loadedConfigBlobs, &types).ok());
+    assertDummyConfigName(loadedConfigBlobs, 801, "delay-dummy-3");
 }
 
 void test_registry_coalesces_retained_state_updates() {
@@ -1192,7 +1401,6 @@ int main(int, char**) {
     RUN_TEST(test_registry_duplicate_generated_id_retries);
     RUN_TEST(test_registry_rejects_invalid_device_id);
     RUN_TEST(test_registry_rejects_max_device_count);
-    RUN_TEST(test_registry_validates_parent_child_graph_rules);
     RUN_TEST(test_registry_rejects_parent_delete_with_children);
     RUN_TEST(test_registry_reassigns_parent_atomically);
     RUN_TEST(test_registry_propagates_parent_dependency_status_and_recovers);
@@ -1200,6 +1408,15 @@ int main(int, char**) {
     RUN_TEST(test_registry_parent_config_update_reconfigures_children);
     RUN_TEST(test_registry_emits_required_event_kinds);
     RUN_TEST(test_registry_invokes_only_declared_cadences);
+    RUN_TEST(test_registry_immediate_persistence_failure_rolls_back_create);
+    RUN_TEST(test_registry_delayed_dirty_state_and_forced_flush);
+    RUN_TEST(test_registry_index_persistence_uses_bounded_blob_not_string);
+    RUN_TEST(test_registry_failed_index_commit_keeps_previous_registry_recoverable);
+    RUN_TEST(test_registry_load_resets_unsupported_registry_format_without_crashing);
+    RUN_TEST(test_registry_selective_flush_writes_only_dirty_record_and_not_index);
+    RUN_TEST(test_registry_delayed_rename_does_not_dirty_or_rewrite_index);
+    RUN_TEST(test_registry_create_orphan_and_delete_cleanup_ordering);
+    RUN_TEST(test_registry_max_delay_flushes_after_repeated_dirty_updates);
     RUN_TEST(test_registry_coalesces_retained_state_updates);
     return UNITY_END();
 }

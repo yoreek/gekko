@@ -1,17 +1,30 @@
 #include "integrations/common/DeviceApiAdapter.h"
 
+#include "devices/core/DeviceBaseConfig.h"
 #include "integrations/rest/ds18b20/Ds18b20TemperatureSensorDeviceApiAdapter.h"
 #include "integrations/rest/dummy/DummyDeviceApiAdapter.h"
 #include "integrations/rest/gpio_switch/GpioSwitchDeviceApiAdapter.h"
 #include "integrations/rest/onewire_bus/OneWireBusDeviceApiAdapter.h"
 
-#include <cstring>
-
 namespace ewfm {
 
-bool IDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const DeviceRecord& record,
-                                                 DeviceConfigUpdateRequest& request, std::string& error) const {
-    (void)record;
+void IDeviceApiAdapter::writeCommonDeviceJson(const IDeviceRuntime& runtime, const char* typeName, const char* status,
+                                              const char* persistencePolicy, bool retainedStateSupported, JsonObject output) {
+    output["device_id"] = runtime.deviceId();
+    output["type_id"] = runtime.typeId();
+    output["type"] = typeName;
+    output["status"] = status;
+    output["config_version"] = runtime.configVersion();
+    output["config_revision"] = runtime.configRevision();
+    output["persistence_policy"] = persistencePolicy;
+    output["has_parent"] = runtime.hasParent();
+    output["parent_device_id"] = runtime.parentDeviceId();
+    output["retained_state_supported"] = retainedStateSupported;
+}
+
+bool IDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
+                                                 DeviceConfigUpdateRequest& request, const char*& error) const {
+    (void)runtime;
     request = {};
     if (input["config"].isNull()) {
         error = "typed config update requires a config object";
@@ -19,6 +32,30 @@ bool IDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, c
     }
     error = "typed config update is unsupported";
     return false;
+}
+
+DeviceValidationResult IDeviceApiAdapter::validateCreateRequest(const DeviceCreateRequest& request, const DeviceRegistry& registry) const {
+    (void)request;
+    (void)registry;
+    return {};
+}
+
+DeviceValidationResult IDeviceApiAdapter::validateUpdateConfigRequest(const IDeviceRuntime& runtime,
+                                                                      const DeviceConfigUpdateRequest& request,
+                                                                      const DeviceRegistry& registry) const {
+    (void)runtime;
+    (void)request;
+    (void)registry;
+    return {};
+}
+
+DeviceValidationResult IDeviceApiAdapter::validateSetParentRequest(const IDeviceRuntime& runtime, bool hasParent, DeviceId parentDeviceId,
+                                                                   const DeviceRegistry& registry) const {
+    (void)runtime;
+    (void)hasParent;
+    (void)parentDeviceId;
+    (void)registry;
+    return {};
 }
 
 bool DeviceApiAdapterRegistry::registerAdapter(const IDeviceApiAdapter& adapter) {

@@ -42,7 +42,7 @@ void fillDeviceEventPayload(JsonDocument& payload, const DeviceEvent& event) {
     payload["pending_persistence"] = event.pendingPersistence;
     payload["command_accepted"] = event.commandAccepted;
     if (!event.detail.empty()) {
-        payload["detail"] = event.detail.c_str();
+        payload["detail"] = JsonString(event.detail.c_str(), JsonString::Copied);
     }
 }
 } // namespace
@@ -71,52 +71,51 @@ std::string PortalWebSocketMessages::buildHello(const uint32_t revision, const u
     return buildEnvelope("hello", revision, payload);
 }
 
-void PortalWebSocketMessages::fillDeviceSnapshotPayload(JsonDocument& payload, const DeviceRecord& record, const IDeviceRuntime* runtime,
-                                                        const uint32_t revision, const bool pendingPersistence,
-                                                        const IDeviceApiAdapter* adapter) {
+void PortalWebSocketMessages::fillDeviceRuntimePayload(JsonDocument& payload, const IDeviceRuntime& runtime,
+                                                       const DeviceStatus effectiveStatus, const uint32_t revision,
+                                                       const bool pendingPersistence, const IDeviceApiAdapter* adapter) {
     JsonObject output = payload.to<JsonObject>();
     if (adapter != nullptr) {
-        adapter->writeDeviceJson(record, runtime, output);
+        adapter->writeDeviceJson(runtime, output);
     } else {
-        output["device_id"] = record.header.deviceId;
-        output["type_id"] = record.header.typeId;
-        output["name"] = record.name.c_str();
-        output["enabled"] = record.enabled;
-        output["has_parent"] = record.hasParent;
-        output["parent_device_id"] = record.parentDeviceId;
-        output["config_version"] = record.header.configVersion;
-        output["config_revision"] = record.header.configRevision;
-        output["status"] = deviceStatusToString(record.status);
+        output["device_id"] = runtime.deviceId();
+        output["type_id"] = runtime.typeId();
+        output["has_parent"] = runtime.hasParent();
+        output["parent_device_id"] = runtime.parentDeviceId();
+        output["config_version"] = runtime.configVersion();
+        output["config_revision"] = runtime.configRevision();
+        output["enabled"] = runtime.enabled();
+        output["name"] = JsonString(runtime.name(), JsonString::Copied);
+        output["status"] = deviceStatusToString(runtime.status());
     }
 
-    const DeviceStatus lifecycleStatus = runtime != nullptr ? runtime->status() : record.status;
-    output["device_id"] = record.header.deviceId;
-    output["type_id"] = record.header.typeId;
-    output["name"] = record.name.c_str();
-    output["enabled"] = record.enabled;
-    output["has_parent"] = record.hasParent;
-    output["parent_device_id"] = record.parentDeviceId;
-    output["config_version"] = record.header.configVersion;
-    output["config_revision"] = record.header.configRevision;
-    output["status"] = deviceStatusToString(record.status);
+    const DeviceStatus lifecycleStatus = runtime.status();
+    output["device_id"] = runtime.deviceId();
+    output["type_id"] = runtime.typeId();
+    output["has_parent"] = runtime.hasParent();
+    output["parent_device_id"] = runtime.parentDeviceId();
+    output["config_version"] = runtime.configVersion();
+    output["config_revision"] = runtime.configRevision();
+    output["status"] = deviceStatusToString(runtime.status());
     output["lifecycle_status"] = deviceStatusToString(lifecycleStatus);
-    output["effective_status"] = deviceStatusToString(record.status);
+    output["effective_status"] = deviceStatusToString(effectiveStatus);
     output["registry_revision"] = revision;
     output["pending_persistence"] = pendingPersistence;
 }
 
-std::string PortalWebSocketMessages::buildDeviceUpsert(const DeviceRecord& record, const IDeviceRuntime* runtime, const uint32_t revision,
-                                                       const bool pendingPersistence, const IDeviceApiAdapter* adapter) {
+std::string PortalWebSocketMessages::buildDeviceUpsert(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus,
+                                                       const uint32_t revision, const bool pendingPersistence,
+                                                       const IDeviceApiAdapter* adapter) {
     DynamicJsonDocument payload(1536);
-    fillDeviceSnapshotPayload(payload, record, runtime, revision, pendingPersistence, adapter);
+    fillDeviceRuntimePayload(payload, runtime, effectiveStatus, revision, pendingPersistence, adapter);
     return buildEnvelope("device.upsert", revision, payload);
 }
 
-std::string PortalWebSocketMessages::buildDeviceCommandResult(const DeviceRecord& record, const IDeviceRuntime* runtime,
+std::string PortalWebSocketMessages::buildDeviceCommandResult(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus,
                                                               const uint32_t revision, const bool pendingPersistence,
                                                               const IDeviceApiAdapter* adapter) {
     DynamicJsonDocument payload(1536);
-    fillDeviceSnapshotPayload(payload, record, runtime, revision, pendingPersistence, adapter);
+    fillDeviceRuntimePayload(payload, runtime, effectiveStatus, revision, pendingPersistence, adapter);
     return buildEnvelope("device.command_result", revision, payload);
 }
 
@@ -132,7 +131,7 @@ std::string PortalWebSocketMessages::buildDeviceRemove(const DeviceEvent& event)
     payload["registry_revision"] = event.registryRevision;
     payload["pending_persistence"] = event.pendingPersistence;
     if (!event.detail.empty()) {
-        payload["detail"] = event.detail.c_str();
+        payload["detail"] = JsonString(event.detail.c_str(), JsonString::Copied);
     }
     return buildEnvelope("device.remove", event.registryRevision, payload);
 }
@@ -156,8 +155,8 @@ std::string PortalWebSocketMessages::buildWifiStatus(const WifiManager& wifiMana
     payload["wifi_interface_up"] = wifiManager.networkStackReady();
     payload["station_ready"] = wifiManager.stationReady();
     payload["setup_ap_ready"] = wifiManager.setupApReady();
-    payload["station_ip"] = stationIp;
-    payload["setup_ap_ip"] = setupApIp;
+    payload["station_ip"] = JsonString(stationIp.c_str(), JsonString::Copied);
+    payload["setup_ap_ip"] = JsonString(setupApIp.c_str(), JsonString::Copied);
     payload["retry_count"] = wifiManager.retryCount();
     return buildEnvelope("wifi.status", revision, payload);
 }

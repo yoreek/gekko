@@ -4,6 +4,8 @@
 #include "devices/bus/onewire/OneWireBusConfig.h"
 #include "devices/core/DeviceRuntimeBase.h"
 
+#include <ArduinoJson.h>
+
 namespace ewfm {
 
 constexpr size_t kMaxOneWireScanDevices = 16;
@@ -40,7 +42,7 @@ public:
         uint32_t generation_{0};
     };
 
-    explicit OneWireBusDevice(const DeviceRecord& record);
+    OneWireBusDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
     OneWireBusDevice(const OneWireBusDeviceConfigV1& config, IOneWireBusDriver& driver);
 
     const OneWireBusDeviceConfigV1& config() const;
@@ -48,12 +50,17 @@ public:
     uint32_t generation() const;
     bool childTransactionActive() const;
     ChildTransaction beginChildTransaction();
+    void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
+    bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
+    bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override;
+    void writeDeviceJson(JsonObject output) const;
 
     static DeviceTypeDescriptor descriptor();
-    static std::unique_ptr<IDeviceRuntime> createRuntime(const DeviceRecord& record);
-    static DeviceValidationResult validateConfig(const DeviceRecord& record);
+    static std::unique_ptr<IDeviceRuntime> createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
+    static DeviceValidationResult validateConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
 
     bool handleCommand(const DeviceCommand& command) override;
+    bool hasDuplicateChildRomAddress(const OneWireRomAddress& address, const IDeviceRuntime* ignoreChild = nullptr) const override;
 
 private:
     OneWireBusDevice(const OneWireBusDeviceConfigV1& config, std::unique_ptr<IOneWireBusDriver> ownedDriver);

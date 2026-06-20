@@ -4,6 +4,7 @@
 #include "devices/registry/DeviceRegistry.h"
 
 #include <array>
+#include <cstdio>
 #include <unity.h>
 
 using namespace ewfm;
@@ -80,9 +81,18 @@ public:
 
 FakeOneWireBusDriver* gDriver = nullptr;
 
-std::unique_ptr<IDeviceRuntime> createRuntime(const DeviceRecord& record) {
+BoundedBlob<kMaxDeviceConfigBytes> encodeOneWirePayload(const OneWireBusDeviceConfigV1& config) {
+    BoundedBlob<kMaxDeviceConfigBytes> payload{};
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(encodeOneWireBusDeviceConfig(config, buffer, oneWireBusDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(payload.assign(buffer, oneWireBusDeviceConfigSize(config)));
+    return payload;
+}
+
+std::unique_ptr<IDeviceRuntime> createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+    (void)record;
     OneWireBusDeviceConfigV1 config{};
-    TEST_ASSERT_TRUE(decodeOneWireBusDeviceConfig(record.configPayload, config));
+    TEST_ASSERT_TRUE(decodeOneWireBusDeviceConfig(reinterpret_cast<const uint8_t*>(configBlob.data()), configBlob.size(), config));
     return std::unique_ptr<IDeviceRuntime>(new OneWireBusDevice(config, *gDriver));
 }
 
@@ -98,7 +108,8 @@ OneWireRomAddress makeRom(uint8_t family, const std::array<uint8_t, 6>& serial, 
 
 OneWireBusDeviceConfigV1 makeConfig(uint8_t pin) {
     OneWireBusDeviceConfigV1 config{};
-    config.enabled = 1;
+    config.base.enabled = 1;
+    std::snprintf(config.base.name, sizeof(config.base.name), "%s", "onewire");
     config.gpioPin = pin;
     config.internalPullup = 0;
     return config;
@@ -110,7 +121,7 @@ DeviceCreateRequest makeCreateRequest(uint8_t pin) {
     request.name = "onewire";
     request.enabled = true;
     request.configVersion = OneWireBusDevice::descriptor().currentConfigVersion;
-    request.configPayload = encodeOneWireBusDeviceConfig(makeConfig(pin));
+    request.configBlob = encodeOneWirePayload(makeConfig(pin));
     request.persistencePolicy = DevicePersistencePolicy::Delayed;
     return request;
 }
@@ -166,8 +177,8 @@ void test_onewire_registry_create_scan_reconfigure_disable_and_delete() {
     TEST_ASSERT_EQUAL_UINT8(0, runtime->scan().deviceCount);
 
     DeviceMutationResult updated =
-        registry.updateConfig(created.deviceId, encodeOneWireBusDeviceConfig(makeConfig(17)),
-                              OneWireBusDevice::descriptor().currentConfigVersion, 40, DevicePersistencePolicy::Delayed);
+        registry.updateConfig(created.deviceId, encodeOneWirePayload(makeConfig(17)), OneWireBusDevice::descriptor().currentConfigVersion,
+                              40, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE_MESSAGE(updated.ok(), updated.validation.message);
     registry.tick100ms(41);
     runtime = runtimeAsOneWire(registry, created.deviceId);

@@ -46,12 +46,10 @@ void PortalAssetController::handleAsset(AsyncWebServerRequest* request) {
     const String path = request->url();
     const String normalizedPath = stripGzipSuffix(path);
     const String gzipPath = gzipAssetPath(normalizedPath);
-    if (!LittleFS.exists(normalizedPath) && !LittleFS.exists(gzipPath)) {
-        send404(request);
-        return;
+    File asset = LittleFS.open(gzipPath, "r");
+    if (!asset) {
+        asset = LittleFS.open(normalizedPath, "r");
     }
-
-    File asset = LittleFS.exists(gzipPath) ? LittleFS.open(gzipPath, "r") : LittleFS.open(normalizedPath, "r");
     if (!asset) {
         send404(request);
         return;

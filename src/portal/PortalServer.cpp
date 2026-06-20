@@ -316,40 +316,44 @@ bool PortalServer::begin() {
 }
 
 void PortalServer::end() {
-    impl_->end();
+    if (impl_) {
+        impl_->end();
+    }
 }
 
 void PortalServer::tick(uint32_t now) {
-    impl_->tick(now);
+    if (impl_) {
+        impl_->tick(now);
+    }
 }
 
 PortalRuntimeState PortalServer::state() const {
-    return impl_->state();
+    return impl_ ? impl_->state() : PortalRuntimeState::Idle;
 }
 
 bool PortalServer::httpRunning() const {
-    return impl_->httpRunning();
+    return impl_ ? impl_->httpRunning() : false;
 }
 
 bool PortalServer::dnsRunning() const {
-    return impl_->dnsRunning();
+    return impl_ ? impl_->dnsRunning() : false;
 }
 
 #if defined(UNIT_TEST)
 uint16_t PortalServer::httpStartCount() const {
-    return impl_->httpStartCount();
+    return impl_ ? impl_->httpStartCount() : 0U;
 }
 
 uint16_t PortalServer::httpStopCount() const {
-    return impl_->httpStopCount();
+    return impl_ ? impl_->httpStopCount() : 0U;
 }
 
 uint16_t PortalServer::dnsStartCount() const {
-    return impl_->dnsStartCount();
+    return impl_ ? impl_->dnsStartCount() : 0U;
 }
 
 uint16_t PortalServer::dnsStopCount() const {
-    return impl_->dnsStopCount();
+    return impl_ ? impl_->dnsStopCount() : 0U;
 }
 #endif
 

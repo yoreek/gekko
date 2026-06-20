@@ -26,7 +26,16 @@
 
     <div class="device-widget__header">
       <strong class="device-widget__name text-body-2 text-high-emphasis">{{ device.name }}</strong>
-      <div v-if="$slots.actions" class="device-widget__actions">
+      <div
+        v-if="$slots.actions"
+        class="device-widget__actions"
+        @click.stop
+        @pointerdown.stop
+        @mousedown.stop
+        @touchstart.stop
+        @keydown.enter.stop
+        @keydown.space.stop
+      >
         <slot name="actions" />
       </div>
     </div>

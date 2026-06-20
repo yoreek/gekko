@@ -1,20 +1,13 @@
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorConfig.h"
 
+#include "devices/core/ConfigCodec.h"
 #include "devices/sensors/ds18b20/Ds18b20OneWireProtocol.h"
 
-#include <cstring>
 #include <type_traits>
 
 namespace ewfm {
 
 namespace {
-template <typename T> std::string encodeConfigBlob(uint32_t magicKey, const T& config) {
-    std::string blob;
-    blob.resize(sizeof(magicKey) + sizeof(T));
-    std::memcpy(blob.data(), &magicKey, sizeof(magicKey));
-    std::memcpy(blob.data() + sizeof(magicKey), &config, sizeof(T));
-    return blob;
-}
 
 bool parseBoolField(const JsonObjectConst& input, const char* key, bool defaultValue) {
     return (input[key] | defaultValue) ? true : false;
@@ -67,31 +60,24 @@ bool parseReportDelta(const JsonObjectConst& input, uint16_t& centiCelsius) {
 } // namespace
 
 static_assert(std::is_trivially_copyable<Ds18b20TemperatureSensorConfigV1>::value, "Ds18b20TemperatureSensorConfigV1 must be POD");
-static_assert(sizeof(Ds18b20TemperatureSensorConfigV1) == 18, "Ds18b20TemperatureSensorConfigV1 layout changed");
-static_assert(sizeof(Ds18b20TemperatureSensorConfigV1::kMagicKey) + sizeof(Ds18b20TemperatureSensorConfigV1) <= kMaxDeviceConfigBytes,
+static_assert(sizeof(Ds18b20TemperatureSensorConfigV1) == 51, "Ds18b20TemperatureSensorConfigV1 layout changed");
+static_assert(sizeof(Ds18b20TemperatureSensorConfigV1::kMagic) - 1U + sizeof(Ds18b20TemperatureSensorConfigV1) <= kMaxDeviceConfigBytes,
               "Ds18b20TemperatureSensorConfigV1 exceeds device config bound");
 
-std::string encodeDs18b20TemperatureSensorConfig(const Ds18b20TemperatureSensorConfigV1& config) {
-    return encodeConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagicKey, config);
+bool encodeDs18b20TemperatureSensorConfig(const Ds18b20TemperatureSensorConfigV1& config, uint8_t* blob, size_t capacity) {
+    return encodeFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic, config, blob, capacity);
 }
 
-bool decodeDs18b20TemperatureSensorConfig(const std::string& blob, Ds18b20TemperatureSensorConfigV1& config) {
-    constexpr size_t kBlobSize = sizeof(Ds18b20TemperatureSensorConfigV1::kMagicKey) + sizeof(Ds18b20TemperatureSensorConfigV1);
-    if (blob.size() != kBlobSize) {
-        return false;
-    }
-
-    uint32_t magicKey{0};
-    std::memcpy(&magicKey, blob.data(), sizeof(magicKey));
-    if (magicKey != Ds18b20TemperatureSensorConfigV1::kMagicKey) {
-        return false;
-    }
-
-    std::memcpy(&config, blob.data() + sizeof(magicKey), sizeof(Ds18b20TemperatureSensorConfigV1));
-    return validateDs18b20TemperatureSensorConfig(config).ok();
+bool decodeDs18b20TemperatureSensorConfig(const uint8_t* blob, size_t size, Ds18b20TemperatureSensorConfigV1& config) {
+    return decodeFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic, blob, size, config) &&
+           validateDs18b20TemperatureSensorConfig(config).ok();
 }
 
 DeviceValidationResult validateDs18b20TemperatureSensorConfig(const Ds18b20TemperatureSensorConfigV1& config) {
+    const DeviceValidationResult baseValidation = validateDeviceBaseConfig(config.base);
+    if (!baseValidation.ok()) {
+        return baseValidation;
+    }
     if (!ds18b20AddressIsValid(config.address)) {
         return {DeviceError::InvalidConfig, "ds18b20 address is invalid"};
     }
@@ -114,8 +100,7 @@ DeviceValidationResult validateDs18b20TemperatureSensorConfig(const Ds18b20Tempe
     return {};
 }
 
-bool parseDs18b20TemperatureSensorConfigJson(const JsonObjectConst& input, Ds18b20TemperatureSensorConfigV1& config, std::string& error) {
-    config.enabled = parseBoolField(input, "enabled", true) ? 1U : 0U;
+bool parseDs18b20TemperatureSensorConfigJson(const JsonObjectConst& input, Ds18b20TemperatureSensorConfigV1& config, const char*& error) {
     config.reportAlways = parseBoolField(input, "report_always", false) ? 1U : 0U;
 
     const char* address = input["address"] | "";
@@ -158,10 +143,29 @@ bool parseDs18b20TemperatureSensorConfigJson(const JsonObjectConst& input, Ds18b
         return false;
     }
     config.reportDeltaCentiCelsius = reportDelta;
-
-    const DeviceValidationResult validation = validateDs18b20TemperatureSensorConfig(config);
-    if (!validation.ok()) {
-        error = validation.message;
+    if (!ds18b20AddressIsValid(config.address)) {
+        error = "ds18b20 address is invalid";
+        return false;
+    }
+    if (!ds18b20ResolutionIsValid(config.resolution)) {
+        error = "ds18b20 resolution is invalid";
+        return false;
+    }
+    TemperatureUnit validatedUnit{};
+    if (!temperatureUnitFromByte(config.outputUnit, validatedUnit)) {
+        error = "ds18b20 output unit is invalid";
+        return false;
+    }
+    if (config.reportAlways > 1U) {
+        error = "ds18b20 report policy is invalid";
+        return false;
+    }
+    if (config.reportDeltaCentiCelsius == 0U) {
+        error = "ds18b20 report delta is invalid";
+        return false;
+    }
+    if (config.pollMs < kDs18b20MinPollMs || config.pollMs > kDs18b20MaxPollMs) {
+        error = "ds18b20 poll period is invalid";
         return false;
     }
     return true;
@@ -173,7 +177,7 @@ void writeDs18b20TemperatureSensorConfigJson(const Ds18b20TemperatureSensorConfi
     TemperatureUnit unit{TemperatureUnit::Celsius};
     (void)temperatureUnitFromByte(config.outputUnit, unit);
 
-    output["enabled"] = config.enabled != 0U;
+    writeDeviceBaseConfigJson(config.base, output);
     output["address"] = address;
     output["resolution"] = config.resolution;
     output["unit"] = temperatureUnitName(unit);

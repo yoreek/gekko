@@ -12,10 +12,14 @@ namespace ewfm {
 namespace {
 constexpr DeviceTypeId kOneWireBusDeviceTypeId = 3;
 constexpr uint32_t kOneWireBusDeviceConfigVersion = 1;
+
+bool sameRomAddress(const OneWireRomAddress& left, const OneWireRomAddress& right) {
+    return std::memcmp(left.bytes, right.bytes, sizeof(left.bytes)) == 0;
+}
 } // namespace
 
 static_assert(std::is_trivially_copyable<OneWireBusDeviceConfigV1>::value, "OneWireBusDeviceConfigV1 must be POD");
-static_assert(sizeof(OneWireBusDeviceConfigV1::kMagicKey) + sizeof(OneWireBusDeviceConfigV1) <= kMaxDeviceConfigBytes,
+static_assert(sizeof(OneWireBusDeviceConfigV1::kMagic) - 1U + sizeof(OneWireBusDeviceConfigV1) <= kMaxDeviceConfigBytes,
               "OneWireBusDeviceConfigV1 exceeds device config bound");
 
 OneWireBusDevice::ChildTransaction::ChildTransaction(OneWireBusDevice* parent, IOneWireBusDriver* driver, uint32_t generation)
@@ -68,15 +72,16 @@ void OneWireBusDevice::ChildTransaction::release() {
     generation_ = 0;
 }
 
-OneWireBusDevice::OneWireBusDevice(const DeviceRecord& record)
+OneWireBusDevice::OneWireBusDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob)
     : OneWireBusDevice(
-          [&record]() {
+          [&configBlob]() {
               OneWireBusDeviceConfigV1 config{};
-              (void)decodeOneWireBusDeviceConfig(record.configPayload, config);
-              config.enabled = record.enabled ? 1U : 0U;
+              (void)decodeOneWireBusDeviceConfig(configBlob.data(), configBlob.size(), config);
               return config;
           }(),
-          createArduinoOneWireBusDriver()) {}
+          createArduinoOneWireBusDriver()) {
+    bindDeviceIdentity(record, configBlob);
+}
 
 OneWireBusDevice::OneWireBusDevice(const OneWireBusDeviceConfigV1& config, IOneWireBusDriver& driver)
     : DeviceRuntimeBase((PState)&OneWireBusDevice::Idle), config_(config), driver_(driver) {}
@@ -101,14 +106,77 @@ bool OneWireBusDevice::childTransactionActive() const {
     return childTransactionActive_;
 }
 
+void OneWireBusDevice::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
+    DeviceRuntimeBase::bindDeviceIdentity(record, config);
+    enabled_ = config_.base.enabled != 0U;
+    std::memcpy(name_, config_.base.name, sizeof(name_));
+    name_[sizeof(name_) - 1U] = '\0';
+}
+
+bool OneWireBusDevice::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = oneWireBusDeviceConfigSize(config_);
+    return encodeOneWireBusDeviceConfig(config_, buffer, size) && configBlob.assign(buffer, size);
+}
+
+bool OneWireBusDevice::replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const {
+    OneWireBusDeviceConfigV1 config = config_;
+    config.base = baseConfig;
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = oneWireBusDeviceConfigSize(config);
+    return encodeOneWireBusDeviceConfig(config, buffer, size) && configBlob.assign(buffer, size);
+}
+
+void OneWireBusDevice::writeDeviceJson(JsonObject output) const {
+    output["name"] = config_.base.name;
+    output["enabled"] = config_.base.enabled != 0U;
+    JsonObject configObject = output.createNestedObject("config");
+    writeOneWireBusDeviceConfigJson(config_, configObject);
+    JsonObject scanObject = output.createNestedObject("scan");
+    scanObject["in_progress"] = scan_.inProgress;
+    scanObject["ready"] = scan_.ready;
+    scanObject["device_count"] = scan_.deviceCount;
+    scanObject["truncated"] = scan_.truncated;
+    scanObject["invalid_crc_seen"] = scan_.invalidCandidateSeen;
+    JsonArray devices = scanObject.createNestedArray("devices");
+    for (uint8_t index = 0; index < scan_.deviceCount; ++index) {
+        JsonObject item = devices.createNestedObject();
+        char rom[17]{};
+        char family[3]{};
+        (void)formatOneWireRomAddress(scan_.devices[index], rom);
+        family[0] = "0123456789ABCDEF"[(scan_.devices[index].bytes[0] >> 4) & 0x0F];
+        family[1] = "0123456789ABCDEF"[scan_.devices[index].bytes[0] & 0x0F];
+        family[2] = '\0';
+        item["address"] = rom;
+        item["family_code"] = family;
+    }
+}
+
 OneWireBusDevice::ChildTransaction OneWireBusDevice::beginChildTransaction() {
     if (status_ != DeviceStatus::Ready || isScanning() || childTransactionActive_ || disableRequested_ || deleteRequested_ ||
-        reconfigureRequested_ || config_.enabled == 0U) {
+        reconfigureRequested_ || config_.base.enabled == 0U) {
         return {};
     }
 
     childTransactionActive_ = true;
     return ChildTransaction(this, &driver_, generation_);
+}
+
+bool OneWireBusDevice::hasDuplicateChildRomAddress(const OneWireRomAddress& address, const IDeviceRuntime* ignoreChild) const {
+    for (const IDeviceRuntime* child : childRuntimes()) {
+        if (child == nullptr || child == ignoreChild) {
+            continue;
+        }
+
+        OneWireRomAddress childAddress{};
+        if (!child->oneWireRomAddress(childAddress)) {
+            continue;
+        }
+        if (sameRomAddress(address, childAddress)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 DeviceTypeDescriptor OneWireBusDevice::descriptor() {
@@ -127,16 +195,17 @@ DeviceTypeDescriptor OneWireBusDevice::descriptor() {
     return descriptor;
 }
 
-std::unique_ptr<IDeviceRuntime> OneWireBusDevice::createRuntime(const DeviceRecord& record) {
-    return std::unique_ptr<IDeviceRuntime>(new OneWireBusDevice(record));
+std::unique_ptr<IDeviceRuntime> OneWireBusDevice::createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+    return std::unique_ptr<IDeviceRuntime>(new OneWireBusDevice(record, configBlob));
 }
 
-DeviceValidationResult OneWireBusDevice::validateConfig(const DeviceRecord& record) {
-    if (record.configPayload.size() > kMaxDeviceConfigBytes) {
+DeviceValidationResult OneWireBusDevice::validateConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+    (void)record;
+    if (configBlob.size() > kMaxDeviceConfigBytes) {
         return {DeviceError::BoundsExceeded, "onewire bus config exceeds supported size"};
     }
     OneWireBusDeviceConfigV1 config{};
-    if (!decodeOneWireBusDeviceConfig(record.configPayload, config)) {
+    if (!decodeOneWireBusDeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "onewire bus config is invalid"};
     }
     return {};
@@ -153,7 +222,7 @@ bool OneWireBusDevice::handleCommand(const DeviceCommand& command) {
         return false;
     }
     if (status_ != DeviceStatus::Ready || isScanning() || disableRequested_ || deleteRequested_ || reconfigureRequested_ ||
-        !config_.enabled) {
+        !config_.base.enabled) {
         return false;
     }
 
@@ -238,7 +307,7 @@ SM_STATE(OneWireBusDevice::Idle) {
         releaseHardware();
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || !config_.enabled) {
+    if (disableRequested_ || !config_.base.enabled) {
         resetScanResult();
         releaseHardware();
         status_ = DeviceStatus::Disabled;
@@ -269,7 +338,7 @@ SM_STATE(OneWireBusDevice::Starting) {
         releaseHardware();
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || !config_.enabled) {
+    if (disableRequested_ || !config_.base.enabled) {
         if (hasVisibleScanState()) {
             markRuntimeStateDirty();
         }
@@ -309,7 +378,7 @@ SM_STATE(OneWireBusDevice::Ready) {
         releaseHardware();
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || !config_.enabled) {
+    if (disableRequested_ || !config_.base.enabled) {
         if (hasVisibleScanState()) {
             markRuntimeStateDirty();
         }
@@ -343,7 +412,7 @@ SM_STATE(OneWireBusDevice::Scanning) {
         releaseHardware();
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || !config_.enabled) {
+    if (disableRequested_ || !config_.base.enabled) {
         if (hasVisibleScanState()) {
             markRuntimeStateDirty();
         }

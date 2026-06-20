@@ -57,12 +57,14 @@ bool App::begin() {
     const DeviceValidationResult registryResult = deviceRegistry_.begin(now);
     if (!registryResult.ok()) {
         EWFM_APP_LOG_INFO("Device registry load failed: %s", registryResult.message);
-        return false;
     }
     lastTick100ms_ = now;
     lastTick1s_ = now;
     wifiManager_.begin(config);
-    portalServer_.begin();
+    begun_ = true;
+    if (!portalServer_.begin()) {
+        EWFM_APP_LOG_INFO("PortalServer begin failed");
+    }
 #if defined(WITH_ARDUINO_OTA)
     otaService_.begin(config.deviceName, wifiManager_);
 #endif
@@ -71,6 +73,9 @@ bool App::begin() {
 }
 
 void App::tick() {
+    if (!begun_) {
+        return;
+    }
     const uint32_t now = clock_.millis();
 
     wifiManager_.tick(now);

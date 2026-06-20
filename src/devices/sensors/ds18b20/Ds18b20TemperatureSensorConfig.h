@@ -1,12 +1,12 @@
 #pragma once
 
 #include "devices/bus/onewire/OneWireRomAddress.h"
-#include "devices/core/DeviceTypes.h"
+#include "devices/core/DeviceBaseConfig.h"
 #include "devices/sensors/temperature/TemperatureSensorTypes.h"
 
 #include <ArduinoJson.h>
+#include <cstddef>
 #include <cstdint>
-#include <string>
 
 namespace ewfm {
 
@@ -19,8 +19,8 @@ constexpr uint16_t kDs18b20DefaultReportDeltaCentiCelsius = 1;
 
 #pragma pack(push, 1)
 struct Ds18b20TemperatureSensorConfigV1 {
-    static constexpr uint32_t kMagicKey = 0x44533138UL;
-    uint8_t enabled{1};
+    static constexpr char kMagic[] = "DS18B20-1";
+    DeviceBaseConfigV1 base{};
     OneWireRomAddress address{};
     uint8_t resolution{12};
     uint8_t outputUnit{static_cast<uint8_t>(TemperatureUnit::Celsius)};
@@ -30,10 +30,14 @@ struct Ds18b20TemperatureSensorConfigV1 {
 };
 #pragma pack(pop)
 
-std::string encodeDs18b20TemperatureSensorConfig(const Ds18b20TemperatureSensorConfigV1& config);
-bool decodeDs18b20TemperatureSensorConfig(const std::string& blob, Ds18b20TemperatureSensorConfigV1& config);
+constexpr size_t ds18b20TemperatureSensorConfigSize(const Ds18b20TemperatureSensorConfigV1&) {
+    return sizeof(Ds18b20TemperatureSensorConfigV1::kMagic) - 1U + sizeof(Ds18b20TemperatureSensorConfigV1);
+}
+
+bool encodeDs18b20TemperatureSensorConfig(const Ds18b20TemperatureSensorConfigV1& config, uint8_t* blob, size_t capacity);
+bool decodeDs18b20TemperatureSensorConfig(const uint8_t* blob, size_t size, Ds18b20TemperatureSensorConfigV1& config);
 DeviceValidationResult validateDs18b20TemperatureSensorConfig(const Ds18b20TemperatureSensorConfigV1& config);
-bool parseDs18b20TemperatureSensorConfigJson(const JsonObjectConst& input, Ds18b20TemperatureSensorConfigV1& config, std::string& error);
+bool parseDs18b20TemperatureSensorConfigJson(const JsonObjectConst& input, Ds18b20TemperatureSensorConfigV1& config, const char*& error);
 void writeDs18b20TemperatureSensorConfigJson(const Ds18b20TemperatureSensorConfigV1& config, JsonObject output);
 
 } // namespace ewfm

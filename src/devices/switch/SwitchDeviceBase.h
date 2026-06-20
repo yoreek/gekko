@@ -3,6 +3,8 @@
 #include "devices/core/DeviceRuntimeBase.h"
 #include "devices/switch/SwitchDeviceConfig.h"
 
+#include <ArduinoJson.h>
+
 namespace ewfm {
 
 class SwitchDeviceBase : public DeviceRuntimeBase {
@@ -14,7 +16,9 @@ public:
     bool serializeRetainedState(RetainedStateRecord& record) const override;
     bool applyRetainedStateRecord(const RetainedStateRecord& record) override;
     void clearRetainedStateDirty() override;
+    void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
     void applyRetainedState(OutputState state);
+    void writeDeviceJson(JsonObject output) const;
     bool handleCommand(const DeviceCommand& command) override;
 
 protected:
@@ -25,6 +29,7 @@ protected:
     OutputState startupState() const;
     OutputState safeState() const;
     bool inverted() const;
+    const SwitchDeviceConfigV1& switchConfig() const;
 
     virtual DeviceValidationResult configureHardware(uint32_t now) = 0;
     virtual DeviceValidationResult applyHardwareOutput(OutputState state, bool physicalLevel, uint32_t now) = 0;

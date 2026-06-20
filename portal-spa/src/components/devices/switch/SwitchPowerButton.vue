@@ -30,8 +30,8 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const nextState = computed(() => nextDashboardPowerState(props.state))
 const isDisabled = computed(() => props.disabled === true || nextState.value === null)
-const buttonColor = computed(() => (props.state === 'on' ? 'success' : 'secondary'))
-const buttonVariant = computed(() => (props.state === 'on' ? 'flat' : 'outlined'))
+const buttonColor = computed(() => (props.state === 'on' ? 'success' : 'primary'))
+const buttonVariant = computed(() => (props.state === 'on' ? 'flat' : 'tonal'))
 const ariaLabel = computed(() => (isDisabled.value ? t('device.card.powerDisabled') : t('device.card.power')))
 
 function emitToggle(): void {

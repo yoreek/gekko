@@ -1,7 +1,10 @@
 #include "portal/controllers/DeviceRegistryController.h"
 
+#include "devices/core/DeviceBaseConfig.h"
+
 #include <cstdlib>
 #include <cstring>
+#include <string>
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 #include <ArduinoJson.h>
@@ -167,8 +170,7 @@ bool DeviceRegistryController::requireEntity(BaseController& self) {
         return false;
     }
 
-    ctl.record_ = ctl.registry_.find(ctl.deviceId_);
-    if (ctl.record_ == nullptr) {
+    if (ctl.registry_.runtime(ctl.deviceId_) == nullptr) {
         ctl.renderError(404, "NOT_FOUND", "device not found");
         return false;
     }
@@ -179,7 +181,7 @@ bool DeviceRegistryController::requireEntity(BaseController& self) {
 #endif
 }
 
-bool DeviceRegistryController::parseCreateAdapter(const JsonVariantConst& json, std::string& error,
+bool DeviceRegistryController::parseCreateAdapter(const JsonVariantConst& json, const char*& error,
                                                   const IDeviceApiAdapter*& adapter) const {
     if (json.isNull()) {
         error = "device payload is missing";
@@ -272,56 +274,94 @@ DevicePersistencePolicy DeviceRegistryController::parsePolicy(const JsonObjectCo
     return DevicePersistencePolicy::Immediate;
 }
 
-void DeviceRegistryController::index() {
+namespace {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    AsyncResponseStream* response = request_->beginResponseStream("application/json");
+const char* statusToString(DeviceStatus status) {
+    switch (status) {
+    case DeviceStatus::Creating:
+        return "creating";
+    case DeviceStatus::Starting:
+        return "starting";
+    case DeviceStatus::Ready:
+        return "ready";
+    case DeviceStatus::Disabled:
+        return "disabled";
+    case DeviceStatus::Faulted:
+        return "faulted";
+    case DeviceStatus::DependencyBlocked:
+        return "dependency_blocked";
+    case DeviceStatus::Reconfiguring:
+        return "reconfiguring";
+    case DeviceStatus::Stopping:
+        return "stopping";
+    case DeviceStatus::Deleting:
+        return "deleting";
+    case DeviceStatus::Unknown:
+    default:
+        return "unknown";
+    }
+}
+
+void writeIndexResponse(AsyncResponseStream* response, DeviceRegistry& registry, const DeviceApiAdapterRegistry& adapters) {
+    if (response == nullptr) {
+        return;
+    }
+
     response->print("{\"success\":true,");
-    response->printf("\"registry_revision\":%lu,", static_cast<unsigned long>(registry_.registryRevision()));
-    response->printf("\"pending_persistence\":%s,", registry_.hasPendingPersistence() ? "true" : "false");
+    response->printf("\"registry_revision\":%lu,", static_cast<unsigned long>(registry.registryRevision()));
+    response->printf("\"pending_persistence\":%s,", registry.hasPendingPersistence() ? "true" : "false");
     response->print("\"devices\":[");
+
     bool first = true;
-    for (const auto& record : registry_.list()) {
-        const IDeviceApiAdapter* adapter = adapters_.find(record.header.typeId);
+    registry.forEachRuntime([&](const IDeviceRuntime& runtime) {
         if (!first) {
             response->print(',');
         }
         first = false;
-        StaticJsonDocument<512> item;
+
+        StaticJsonDocument<1024> item;
         JsonObject device = item.to<JsonObject>();
-        const IDeviceRuntime* runtime = registry_.runtime(record.header.deviceId);
+        const IDeviceApiAdapter* adapter = adapters.find(runtime.typeId());
         if (adapter != nullptr) {
-            adapter->writeDeviceJson(record, runtime, device);
+            adapter->writeDeviceJson(runtime, device);
         } else {
-            device["device_id"] = record.header.deviceId;
-            device["type_id"] = record.header.typeId;
-            device["name"] = record.name;
-            device["enabled"] = record.enabled;
+            device["device_id"] = runtime.deviceId();
+            device["type_id"] = runtime.typeId();
+            device["name"] = runtime.name();
+            device["enabled"] = runtime.enabled();
+            device["has_parent"] = runtime.hasParent();
+            device["parent_device_id"] = runtime.parentDeviceId();
+            device["config_version"] = runtime.configVersion();
+            device["config_revision"] = runtime.configRevision();
+            device["lifecycle_status"] = statusToString(runtime.status());
+            device["effective_status"] = statusToString(registry.effectiveStatus(runtime.deviceId()));
         }
-        const DeviceRecord* persisted = registry_.find(record.header.deviceId);
-        const DeviceStatus lifecycleStatus =
-            runtime != nullptr ? runtime->status() : (persisted != nullptr ? persisted->status : record.status);
-        device["device_id"] = record.header.deviceId;
-        device["type_id"] = record.header.typeId;
-        device["name"] = record.name;
-        device["enabled"] = record.enabled;
-        device["has_parent"] = record.hasParent;
-        device["parent_device_id"] = record.parentDeviceId;
-        device["config_version"] = record.header.configVersion;
-        device["config_revision"] = record.header.configRevision;
+        const DeviceStatus lifecycleStatus = runtime.status();
+        const DeviceStatus effectiveStatus = registry.effectiveStatus(runtime.deviceId());
         device["lifecycle_status"] = statusToString(lifecycleStatus);
-        device["effective_status"] = statusToString(record.status);
-        device["registry_revision"] = registry_.registryRevision();
-        device["pending_persistence"] = registry_.hasPendingPersistence();
+        device["effective_status"] = statusToString(effectiveStatus);
+        device["registry_revision"] = registry.registryRevision();
+        device["pending_persistence"] = registry.hasPendingPersistence();
         serializeJson(item, *response);
-    }
+    });
+
     response->print("]}");
+}
+#endif
+} // namespace
+
+void DeviceRegistryController::index() {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    AsyncResponseStream* response = request_->beginResponseStream("application/json");
+    writeIndexResponse(response, registry_, adapters_);
     send(response);
 #endif
 }
 
 void DeviceRegistryController::show() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    if (record_ == nullptr) {
+    const IDeviceRuntime* runtime = registry_.runtime(deviceId_);
+    if (runtime == nullptr) {
         renderError(404, "NOT_FOUND", "device not found");
         return;
     }
@@ -330,29 +370,23 @@ void DeviceRegistryController::show() {
     doc["registry_revision"] = registry_.registryRevision();
     doc["pending_persistence"] = registry_.hasPendingPersistence();
     JsonObject device = doc.createNestedObject("device");
-    const IDeviceApiAdapter* adapter = adapters_.find(record_->header.typeId);
-    DeviceRecord effectiveRecord = *record_;
-    effectiveRecord.status = registry_.effectiveStatus(record_->header.deviceId);
-    const IDeviceRuntime* runtime = registry_.runtime(effectiveRecord.header.deviceId);
+    const IDeviceApiAdapter* adapter = adapters_.find(runtime->typeId());
+    const DeviceStatus effectiveStatus = registry_.effectiveStatus(runtime->deviceId());
     if (adapter != nullptr) {
-        adapter->writeDeviceJson(effectiveRecord, runtime, device);
+        adapter->writeDeviceJson(*runtime, device);
     } else {
-        device["device_id"] = effectiveRecord.header.deviceId;
-        device["type_id"] = effectiveRecord.header.typeId;
-        device["name"] = effectiveRecord.name;
-        device["enabled"] = effectiveRecord.enabled;
+        device["device_id"] = runtime->deviceId();
+        device["type_id"] = runtime->typeId();
+        device["name"] = runtime->name();
+        device["enabled"] = runtime->enabled();
     }
-    const DeviceStatus lifecycleStatus = runtime != nullptr ? runtime->status() : record_->status;
-    device["device_id"] = effectiveRecord.header.deviceId;
-    device["type_id"] = effectiveRecord.header.typeId;
-    device["name"] = effectiveRecord.name;
-    device["enabled"] = effectiveRecord.enabled;
-    device["has_parent"] = effectiveRecord.hasParent;
-    device["parent_device_id"] = effectiveRecord.parentDeviceId;
-    device["config_version"] = effectiveRecord.header.configVersion;
-    device["config_revision"] = effectiveRecord.header.configRevision;
+    const DeviceStatus lifecycleStatus = runtime->status();
+    device["has_parent"] = runtime->hasParent();
+    device["parent_device_id"] = runtime->parentDeviceId();
+    device["config_version"] = runtime->configVersion();
+    device["config_revision"] = runtime->configRevision();
     device["lifecycle_status"] = statusToString(lifecycleStatus);
-    device["effective_status"] = statusToString(effectiveRecord.status);
+    device["effective_status"] = statusToString(effectiveStatus);
     device["registry_revision"] = registry_.registryRevision();
     device["pending_persistence"] = registry_.hasPendingPersistence();
     renderOk(doc);
@@ -361,17 +395,22 @@ void DeviceRegistryController::show() {
 
 void DeviceRegistryController::create() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    std::string error;
+    const char* error = nullptr;
     const JsonObjectConst input = getDoc()->as<JsonObjectConst>();
     const IDeviceApiAdapter* adapter = nullptr;
     if (!parseCreateAdapter(input, error, adapter)) {
-        renderError(400, "BAD_ARGS", error.c_str());
+        renderError(400, "BAD_ARGS", error);
         return;
     }
 
     DeviceCreateRequest createRequest;
     if (!adapter->parseCreateRequest(input, createRequest, error)) {
-        renderError(400, "BAD_ARGS", error.c_str());
+        renderError(400, "BAD_ARGS", error);
+        return;
+    }
+    const DeviceValidationResult createValidation = adapter->validateCreateRequest(createRequest, registry_);
+    if (!createValidation.ok()) {
+        renderError(400, errorCodeForDeviceError(createValidation.error), createValidation.message);
         return;
     }
 
@@ -381,23 +420,23 @@ void DeviceRegistryController::create() {
         return;
     }
 
-    const DeviceRecord* record = registry_.find(result.deviceId);
-    if (record == nullptr) {
-        renderError(500, "INTERNAL", "created device not found");
-        return;
-    }
-
     StaticJsonDocument<1024> doc;
     doc["registry_revision"] = registry_.registryRevision();
     doc["pending_persistence"] = result.pendingPersistence;
     JsonObject device = doc.createNestedObject("device");
-    adapter->writeDeviceJson(*record, registry_.runtime(record->header.deviceId), device);
+    if (const IDeviceRuntime* runtime = registry_.runtime(result.deviceId); runtime != nullptr) {
+        adapter->writeDeviceJson(*runtime, device);
+    }
     sendJson(201, doc);
 #endif
 }
 
 void DeviceRegistryController::destroy() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+    if (registry_.runtime(deviceId_) == nullptr) {
+        renderError(404, "NOT_FOUND", "device not found");
+        return;
+    }
     const DeviceMutationResult result =
         registry_.command(DeviceCommand{DeviceCommandType::Delete, deviceId_, "", DevicePersistencePolicy::Immediate}, 0);
     if (!result.ok()) {
@@ -425,6 +464,11 @@ void DeviceRegistryController::destroy() {
 
 void DeviceRegistryController::cmd() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+    const IDeviceRuntime* currentRuntime = registry_.runtime(deviceId_);
+    if (currentRuntime == nullptr) {
+        renderError(404, "NOT_FOUND", "device not found");
+        return;
+    }
     const JsonObjectConst input = getDoc()->as<JsonObjectConst>();
     const DeviceId bodyDeviceId = static_cast<DeviceId>(input["device_id"] | 0U);
     if (bodyDeviceId != 0U && bodyDeviceId != deviceId_) {
@@ -503,24 +547,46 @@ void DeviceRegistryController::cmd() {
         }
         const bool hasParent = input["has_parent"].as<bool>();
         const DeviceId parentDeviceId = static_cast<DeviceId>(input["parent_device_id"] | 0U);
-        mutationResult = registry_.setParent(deviceId_, hasParent, parentDeviceId, 0, parsePolicy(input));
+        const IDeviceApiAdapter* adapter = adapters_.find(currentRuntime->typeId());
+        const IDeviceRuntime* runtime = registry_.runtime(deviceId_);
+        if (adapter != nullptr && runtime != nullptr) {
+            const DeviceValidationResult parentValidation =
+                adapter->validateSetParentRequest(*runtime, hasParent, parentDeviceId, registry_);
+            if (!parentValidation.ok()) {
+                renderError(400, errorCodeForDeviceError(parentValidation.error), parentValidation.message);
+                return;
+            }
+        }
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetParent, deviceId_,
+                                                         DeviceCommand::ParentPayload{hasParent, parentDeviceId}, parsePolicy(input)},
+                                           0);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
     } else if (std::strcmp(commandName, "update_config") == 0) {
-        const IDeviceApiAdapter* adapter = record_ != nullptr ? adapters_.find(record_->header.typeId) : nullptr;
-        if (adapter == nullptr || record_ == nullptr) {
+        const IDeviceApiAdapter* adapter = adapters_.find(currentRuntime->typeId());
+        if (adapter == nullptr) {
             renderError(400, "BAD_ARGS", "unsupported device type");
             return;
         }
-        std::string error;
+        const char* error = nullptr;
         DeviceConfigUpdateRequest updateRequest{};
-        if (!adapter->parseUpdateConfigRequest(input, *record_, updateRequest, error)) {
-            renderError(400, "BAD_ARGS", error.c_str());
+        const IDeviceRuntime* runtime = registry_.runtime(deviceId_);
+        if (runtime == nullptr) {
+            renderError(404, "NOT_FOUND", "device not found");
             return;
         }
-        mutationResult = registry_.updateConfigAndParent(deviceId_, updateRequest.configPayload, updateRequest.configVersion,
+        if (!adapter->parseUpdateConfigRequest(input, *runtime, updateRequest, error)) {
+            renderError(400, "BAD_ARGS", error);
+            return;
+        }
+        const DeviceValidationResult updateValidation = adapter->validateUpdateConfigRequest(*runtime, updateRequest, registry_);
+        if (!updateValidation.ok()) {
+            renderError(400, errorCodeForDeviceError(updateValidation.error), updateValidation.message);
+            return;
+        }
+        mutationResult = registry_.updateConfigAndParent(deviceId_, updateRequest.configBlob, updateRequest.configVersion,
                                                          updateRequest.parentFieldsProvided, updateRequest.hasParent,
                                                          updateRequest.parentDeviceId, 0, parsePolicy(input));
         if (!mutationResult.ok()) {
@@ -532,9 +598,31 @@ void DeviceRegistryController::cmd() {
         return;
     }
 
-    StaticJsonDocument<256> doc;
+    StaticJsonDocument<1536> doc;
     doc["registry_revision"] = registry_.registryRevision();
     doc["pending_persistence"] = mutationResult.pendingPersistence;
+    if (const IDeviceRuntime* runtime = registry_.runtime(deviceId_); runtime != nullptr) {
+        JsonObject device = doc.createNestedObject("device");
+        const IDeviceApiAdapter* adapter = adapters_.find(runtime->typeId());
+        if (adapter != nullptr) {
+            adapter->writeDeviceJson(*runtime, device);
+        } else {
+            device["device_id"] = runtime->deviceId();
+            device["type_id"] = runtime->typeId();
+            device["name"] = runtime->name();
+            device["enabled"] = runtime->enabled();
+        }
+        const DeviceStatus lifecycleStatus = runtime->status();
+        const DeviceStatus effectiveStatus = registry_.effectiveStatus(runtime->deviceId());
+        device["has_parent"] = runtime->hasParent();
+        device["parent_device_id"] = runtime->parentDeviceId();
+        device["config_version"] = runtime->configVersion();
+        device["config_revision"] = runtime->configRevision();
+        device["lifecycle_status"] = statusToString(lifecycleStatus);
+        device["effective_status"] = statusToString(effectiveStatus);
+        device["registry_revision"] = registry_.registryRevision();
+        device["pending_persistence"] = mutationResult.pendingPersistence;
+    }
     renderOk(doc);
 #endif
 }

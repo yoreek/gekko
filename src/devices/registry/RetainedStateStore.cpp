@@ -1,154 +1,39 @@
 #include "devices/registry/RetainedStateStore.h"
 
+#include <array>
 #include <cstdio>
+#include <cstring>
 #include <type_traits>
 
 namespace ewfm {
 
 namespace {
 constexpr const char* kNamespace = "device_retained";
-constexpr uint32_t kRetainedMagic = 0x44525444UL;
-constexpr char kHexDigits[] = "0123456789abcdef";
 
-template <typename T> void appendLE(std::string& out, T value) {
-    using Unsigned = typename std::make_unsigned<T>::type;
-    const Unsigned v = static_cast<Unsigned>(value);
-    for (size_t index = 0; index < sizeof(T); ++index) {
-        out.push_back(static_cast<char>((v >> (index * 8)) & 0xFFU));
-    }
+struct RetainedStateStorage {
+    uint16_t recordVersion{kRetainedStateRecordVersion};
+    uint16_t reserved{0};
+    DeviceId deviceId{0};
+    uint32_t payloadLength{0};
+    uint32_t payloadChecksum{0};
+    std::array<uint8_t, kMaxRetainedStateBytes> payload{};
+};
+
+static_assert(std::is_trivially_copyable<RetainedStateStorage>::value, "retained state storage must be trivially copyable");
+static_assert(sizeof(RetainedStateStorage) <= kMaxRetainedStateBytes + 32, "retained state storage unexpectedly large");
+
+bool makeStateKey(char* buffer, size_t bufferSize, DeviceId deviceId) {
+    return std::snprintf(buffer, bufferSize, "state_%08x", static_cast<unsigned>(deviceId)) >= 0;
 }
 
-template <typename T> bool readLE(const std::string& blob, size_t& pos, T& value) {
-    using Unsigned = typename std::make_unsigned<T>::type;
-    if (pos + sizeof(T) > blob.size()) {
-        return false;
-    }
-    Unsigned v{0};
-    for (size_t index = 0; index < sizeof(T); ++index) {
-        v |= static_cast<Unsigned>(static_cast<unsigned char>(blob[pos + index])) << (index * 8);
-    }
-    value = static_cast<T>(v);
-    pos += sizeof(T);
-    return true;
-}
-
-void appendBytes(std::string& out, const std::string& bytes) {
-    out.append(bytes.data(), bytes.size());
-}
-
-std::string toHex(const std::string& bytes) {
-    std::string hex;
-    hex.reserve(bytes.size() * 2);
-    for (unsigned char byte : bytes) {
-        hex.push_back(kHexDigits[(byte >> 4) & 0x0F]);
-        hex.push_back(kHexDigits[byte & 0x0F]);
-    }
-    return hex;
-}
-
-int fromHexDigit(char ch) {
-    if (ch >= '0' && ch <= '9') {
-        return ch - '0';
-    }
-    if (ch >= 'a' && ch <= 'f') {
-        return 10 + (ch - 'a');
-    }
-    if (ch >= 'A' && ch <= 'F') {
-        return 10 + (ch - 'A');
-    }
-    return -1;
-}
-
-bool fromHex(const std::string& hex, std::string& bytes) {
-    if ((hex.size() % 2) != 0) {
-        return false;
-    }
-    bytes.clear();
-    bytes.reserve(hex.size() / 2);
-    for (size_t index = 0; index < hex.size(); index += 2) {
-        const int hi = fromHexDigit(hex[index]);
-        const int lo = fromHexDigit(hex[index + 1]);
-        if (hi < 0 || lo < 0) {
-            return false;
-        }
-        bytes.push_back(static_cast<char>((hi << 4) | lo));
-    }
-    return true;
-}
-
-bool readBytes(const std::string& blob, size_t& pos, size_t length, std::string& out) {
-    if (pos + length > blob.size()) {
-        return false;
-    }
-    out.assign(blob.data() + pos, length);
-    pos += length;
-    return true;
-}
-
-uint32_t fnv1a32(const std::string& bytes) {
+uint32_t fnv1a32(const uint8_t* data, size_t size) {
     uint32_t hash = 2166136261UL;
-    for (unsigned char byte : bytes) {
-        hash ^= byte;
+    for (size_t index = 0; index < size; ++index) {
+        hash ^= data[index];
         hash *= 16777619UL;
     }
     return hash;
 }
-
-std::string makeStateKey(DeviceId deviceId) {
-    char buffer[32];
-    std::snprintf(buffer, sizeof(buffer), "state_%08x", static_cast<unsigned>(deviceId));
-    return buffer;
-}
-
-std::string serializeRecord(const RetainedStateRecord& record) {
-    std::string blob;
-    blob.reserve(24 + record.payload.size());
-    appendLE<uint32_t>(blob, kRetainedMagic);
-    appendLE<uint16_t>(blob, record.recordVersion == 0 ? kRetainedStateRecordVersion : record.recordVersion);
-    appendLE<uint16_t>(blob, 0);
-    appendLE<DeviceId>(blob, record.deviceId);
-    appendLE<uint32_t>(blob, static_cast<uint32_t>(record.payload.size()));
-    appendLE<uint32_t>(blob, fnv1a32(record.payload));
-    appendBytes(blob, record.payload);
-    return blob;
-}
-
-DeviceValidationResult parseRecord(const std::string& blob, RetainedStateRecord& record) {
-    size_t pos = 0;
-    uint32_t magic{0};
-    uint16_t version{0};
-    uint16_t reserved{0};
-    uint32_t payloadLength{0};
-    uint32_t checksum{0};
-    if (!readLE(blob, pos, magic) || !readLE(blob, pos, version) || !readLE(blob, pos, reserved) || !readLE(blob, pos, record.deviceId) ||
-        !readLE(blob, pos, payloadLength) || !readLE(blob, pos, checksum)) {
-        return {DeviceError::CorruptRecord, "retained state record is truncated"};
-    }
-
-    if (magic != kRetainedMagic || version != kRetainedStateRecordVersion) {
-        return {DeviceError::InvalidVersion, "unsupported retained state version"};
-    }
-    if (record.deviceId == 0) {
-        return {DeviceError::InvalidDeviceId, "retained state device id is invalid"};
-    }
-    if (payloadLength > kMaxRetainedStateBytes) {
-        return {DeviceError::BoundsExceeded, "retained state exceeds supported size"};
-    }
-
-    if (!readBytes(blob, pos, payloadLength, record.payload)) {
-        return {DeviceError::CorruptRecord, "retained state record is truncated"};
-    }
-    if (pos != blob.size()) {
-        return {DeviceError::CorruptRecord, "retained state record has trailing data"};
-    }
-    if (checksum != fnv1a32(record.payload)) {
-        return {DeviceError::InvalidConfig, "retained state checksum mismatch"};
-    }
-
-    record.recordVersion = version;
-    return {};
-}
-
 } // namespace
 
 RetainedStateStore::RetainedStateStore(IConfigStorage& storage) : storage_(storage) {}
@@ -161,28 +46,32 @@ DeviceValidationResult RetainedStateStore::load(DeviceId deviceId, RetainedState
     record = {};
     record.deviceId = deviceId;
 
-    const std::string key = makeStateKey(deviceId);
-    if (!storage_.hasKey(key.c_str())) {
+    char key[32];
+    if (!makeStateKey(key, sizeof(key), deviceId) || !storage_.hasKey(key)) {
         return {DeviceError::MissingRecord, "retained state is missing"};
     }
 
-    std::string blob;
-    if (!storage_.getString(key.c_str(), blob)) {
-        return {DeviceError::StorageError, "failed to read retained state"};
-    }
-    std::string decoded;
-    if (!fromHex(blob, decoded)) {
-        return {DeviceError::CorruptRecord, "retained state is not valid hex"};
-    }
-    blob = std::move(decoded);
-
-    DeviceValidationResult result = parseRecord(blob, record);
-    if (!result.ok()) {
-        record = {};
-        record.deviceId = deviceId;
-        return result;
+    RetainedStateStorage storage{};
+    if (!getStruct(storage_, key, storage)) {
+        return {DeviceError::CorruptRecord, "retained state storage is invalid"};
     }
 
+    if (storage.recordVersion != kRetainedStateRecordVersion) {
+        return {DeviceError::InvalidVersion, "unsupported retained state version"};
+    }
+    if (storage.deviceId == 0) {
+        return {DeviceError::InvalidDeviceId, "retained state device id is invalid"};
+    }
+    if (storage.payloadLength > kMaxRetainedStateBytes) {
+        return {DeviceError::BoundsExceeded, "retained state exceeds supported size"};
+    }
+    if (storage.payloadChecksum != fnv1a32(storage.payload.data(), storage.payloadLength)) {
+        return {DeviceError::InvalidConfig, "retained state checksum mismatch"};
+    }
+
+    record.recordVersion = storage.recordVersion;
+    record.deviceId = storage.deviceId;
+    record.payload.assign(reinterpret_cast<const char*>(storage.payload.data()), storage.payloadLength);
     return {};
 }
 
@@ -194,8 +83,17 @@ DeviceValidationResult RetainedStateStore::save(const RetainedStateRecord& recor
         return {DeviceError::BoundsExceeded, "retained state exceeds supported size"};
     }
 
-    const std::string blob = serializeRecord(record);
-    if (!storage_.putString(makeStateKey(record.deviceId).c_str(), toHex(blob))) {
+    RetainedStateStorage storage{};
+    storage.recordVersion = record.recordVersion == 0 ? kRetainedStateRecordVersion : record.recordVersion;
+    storage.deviceId = record.deviceId;
+    storage.payloadLength = static_cast<uint32_t>(record.payload.size());
+    storage.payloadChecksum = fnv1a32(reinterpret_cast<const uint8_t*>(record.payload.data()), record.payload.size());
+    if (!record.payload.empty()) {
+        std::memcpy(storage.payload.data(), record.payload.data(), record.payload.size());
+    }
+
+    char key[32];
+    if (!makeStateKey(key, sizeof(key), record.deviceId) || !putStruct(storage_, key, storage)) {
         return {DeviceError::StorageError, "failed to persist retained state"};
     }
 
@@ -203,7 +101,8 @@ DeviceValidationResult RetainedStateStore::save(const RetainedStateRecord& recor
 }
 
 bool RetainedStateStore::remove(DeviceId deviceId) {
-    return storage_.remove(makeStateKey(deviceId).c_str());
+    char key[32];
+    return makeStateKey(key, sizeof(key), deviceId) && storage_.remove(key);
 }
 
 } // namespace ewfm

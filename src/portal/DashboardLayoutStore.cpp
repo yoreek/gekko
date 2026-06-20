@@ -248,16 +248,16 @@ DashboardLayoutSnapshot DashboardLayoutStore::defaultLayout() const {
 
     if (registry_ != nullptr) {
         uint16_t index = 0;
-        for (const auto& record : registry_->list()) {
+        registry_->forEachRuntime([&](const IDeviceRuntime& runtime) {
             DashboardLayoutWidget widget{};
-            widget.deviceId = record.header.deviceId;
+            widget.deviceId = runtime.deviceId();
             widget.x = static_cast<uint16_t>(index % 6U);
             widget.y = static_cast<uint16_t>(index / 6U);
             widget.w = 1;
             widget.h = 1;
             panel.widgets.push_back(widget);
             ++index;
-        }
+        });
     }
 
     layout.panels.push_back(panel);
@@ -299,7 +299,11 @@ DashboardLayoutLoadResult DashboardLayoutStore::load() {
         for (const auto& panel : parsed.panels) {
             hasWidgets = hasWidgets || !panel.widgets.empty();
         }
-        if (!hasWidgets && registry_ != nullptr && !registry_->list().empty()) {
+        bool hasDevices = false;
+        if (registry_ != nullptr) {
+            registry_->forEachRuntime([&](const IDeviceRuntime&) { hasDevices = true; });
+        }
+        if (!hasWidgets && hasDevices) {
             result.layout = defaultLayout();
             result.defaulted = true;
             return result;
@@ -588,7 +592,7 @@ uint32_t DashboardLayoutStore::readRevision() const {
 }
 
 bool DashboardLayoutStore::deviceExists(const DeviceId deviceId) const {
-    return registry_ == nullptr || registry_->find(deviceId) != nullptr;
+    return registry_ == nullptr || registry_->runtime(deviceId) != nullptr;
 }
 
 } // namespace ewfm
