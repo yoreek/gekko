@@ -1,18 +1,18 @@
 <template>
   <div class="device-type-stack">
     <section class="device-type-section">
-      <v-alert v-if="parentItems.length === 0" type="warning" variant="tonal">
-        {{ t('device.dialog.ds18b20NoParent') }}
+      <v-alert v-if="dependencyItems.length === 0" type="warning" variant="tonal">
+        {{ t('device.dialog.ds18b20NoDependency') }}
       </v-alert>
 
       <v-row class="device-type-section__grid">
         <v-col cols="12" md="6">
           <v-select
-            :label="t('device.fields.onewireParent')"
-            :items="parentItems"
-            :model-value="currentValue.parent_device_id"
-            :disabled="busy || parentItems.length === 0"
-            @update:model-value="updateNumber('parent_device_id', $event)"
+            :label="t('device.fields.onewireDependency')"
+            :items="dependencyItems"
+            :model-value="currentValue.dependency_device_id"
+            :disabled="busy || dependencyItems.length === 0"
+            @update:model-value="updateNumber('dependency_device_id', $event)"
           />
         </v-col>
         <v-col cols="12" md="6">
@@ -33,9 +33,9 @@
           <v-btn
             color="primary"
             variant="tonal"
-            :loading="scanBusy || selectedParent?.detail.scan?.in_progress === true"
-            :disabled="busy || scanBusy || currentValue.parent_device_id === 0"
-            @click="scanSelectedParent"
+            :loading="scanBusy || selectedDependency?.detail.scan?.in_progress === true"
+            :disabled="busy || scanBusy || currentValue.dependency_device_id === 0"
+            @click="scanSelectedDependency"
           >
             <AppIcon class="me-1" name="refresh" />
             {{ t('device.dialog.ds18b20ScanAction') }}
@@ -147,13 +147,13 @@ const scanBusy = ref(false)
 const scanError = ref('')
 const fallbackValue = createDefaultDs18b20TemperatureSensorConfig()
 const currentValue = computed<Ds18b20TemperatureSensorConfigDraft>(() => props.modelValue ?? fallbackValue)
-const parentDevices = computed(() => deviceStore.devices.filter(device => device.typeId === ONEWIRE_BUS_DEVICE_TYPE_ID))
-const selectedParent = computed(() => parentDevices.value.find(device => device.deviceId === currentValue.value.parent_device_id))
-const parentItems = computed(() => parentDevices.value.map(device => ({ title: `${device.name} #${device.deviceId}`, value: device.deviceId })))
+const dependencyDevices = computed(() => deviceStore.devices.filter(device => device.typeId === ONEWIRE_BUS_DEVICE_TYPE_ID))
+const selectedDependency = computed(() => dependencyDevices.value.find(device => device.deviceId === currentValue.value.dependency_device_id))
+const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ title: `${device.name} #${device.deviceId}`, value: device.deviceId })))
 const resolutionItems = computed(() => ds18b20ResolutionOptions.map(value => ({ title: t('device.dialog.ds18b20Resolution', { value }), value })))
 const unitItems = computed(() => temperatureUnitOptions.map(value => ({ title: t(`device.dialog.temperatureUnit.${value}`), value })))
 const scanCandidateItems = computed(() => {
-  const devices = selectedParent.value?.detail.scan?.devices ?? []
+  const devices = selectedDependency.value?.detail.scan?.devices ?? []
   return devices.filter(isDs18b20ScanCandidate).map(candidate => ({
     title: `${candidate.address} · ${t('device.dialog.onewireFamilyCode', { family: candidate.family_code })}`,
     value: candidate.address,
@@ -174,7 +174,7 @@ function update<K extends keyof Ds18b20TemperatureSensorConfigDraft>(key: K, val
   })
 }
 
-function updateNumber(key: 'parent_device_id' | 'resolution' | 'poll_ms' | 'report_delta_celsius', value: unknown): void {
+function updateNumber(key: 'dependency_device_id' | 'resolution' | 'poll_ms' | 'report_delta_celsius', value: unknown): void {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) {
     return
@@ -186,17 +186,17 @@ function updateAddress(value: unknown): void {
   update('address', String(value ?? '').trim().toUpperCase())
 }
 
-async function scanSelectedParent(): Promise<void> {
-  if (currentValue.value.parent_device_id === 0) {
+async function scanSelectedDependency(): Promise<void> {
+  if (currentValue.value.dependency_device_id === 0) {
     return
   }
-    scanBusy.value = true
-    scanError.value = ''
-    try {
-      const payload: DeviceCommandRequest = {
-        command: 'scan',
-      }
-      const response = await commandDevice(currentValue.value.parent_device_id, payload)
+  scanBusy.value = true
+  scanError.value = ''
+  try {
+    const payload: DeviceCommandRequest = {
+      command: 'scan',
+    }
+    const response = await commandDevice(currentValue.value.dependency_device_id, payload)
     if (response.device) {
       deviceStore.upsertDevice(response.device, response.registry_revision)
     }

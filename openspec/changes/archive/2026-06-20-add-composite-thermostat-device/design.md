@@ -1,6 +1,6 @@
 ## Context
 
-This change assumes `replace-parent-with-deps` has already replaced parent/child relationships with stored `deps`, computed `has_deps`, and derived `dependents`. Thermostat builds on that model instead of introducing relationship storage itself.
+This change assumes the deps-based relationship model is already in place with stored `deps`, computed `has_deps`, and derived `dependents`. Thermostat builds on that model instead of introducing relationship storage itself.
 
 Useful existing pieces:
 
@@ -29,13 +29,13 @@ The ReefDuino thermostat code is domain reference only. The parts to port are mo
 - Do not merge sensor and switch hardware into one thermostat device config.
 - Do not add thermostat-specific REST routes outside generic device registry endpoints.
 - Do not change an existing device's type after creation.
-- Do not reintroduce parent/child compatibility aliases in this change.
+- Do not reintroduce legacy compatibility aliases in this change.
 
 ## Decisions
 
 ### Use deps roles `temperature_sensor` and `switch`
 
-Thermostat uses the deps contract established by `replace-parent-with-deps`:
+Thermostat uses the deps contract established by the registry model:
 
 ```json
 {
@@ -140,7 +140,7 @@ Control rules:
 
 ### API and UI shape
 
-Thermostat create/update uses `deps`, not parent fields:
+Thermostat create/update uses `deps`, not legacy relationship fields:
 
 ```json
 {
@@ -178,7 +178,7 @@ The SPA should filter dependency selectors by capability:
 
 ## Migration Plan
 
-1. Implement or depend on `replace-parent-with-deps`.
+1. Ensure the deps-based relationship model is in place.
 2. Add runtime capability APIs and implement them in DS18B20 and switch base.
 3. Implement thermostat config codec and validation.
 4. Implement thermostat runtime state machine and type descriptor.

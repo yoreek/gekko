@@ -1,4 +1,4 @@
-# device-runtime-hierarchy Specification
+#device - runtime - hierarchy Specification
 
 ## Purpose
 
@@ -22,7 +22,7 @@ The firmware SHALL provide a reusable base runtime class for dynamic devices so 
 - **THEN** the derived runtime can use shared dependency readiness behavior instead of duplicating dependency status checks
 
 ### Requirement: Runtime API uses dependency terminology
-The runtime boundary SHALL use dependency/dependent naming rather than parent/child naming.
+The runtime boundary SHALL use dependency/dependent naming rather than legacy relationship naming.
 
 #### Scenario: Dependency runtime is assigned
 - **WHEN** the registry wires a device dependency
@@ -32,9 +32,9 @@ The runtime boundary SHALL use dependency/dependent naming rather than parent/ch
 - **WHEN** a dependency runtime is wired to a dependent runtime
 - **THEN** the dependency runtime exposes the dependent through a live dependent runtime list
 
-#### Scenario: Old parent methods are removed
+#### Scenario: Legacy dependency aliases are removed
 - **WHEN** firmware code is updated for the dependency model
-- **THEN** domain code no longer calls `parentRuntime()`, `setParentRuntime()`, or `childRuntimes()`
+- **THEN** domain code no longer calls legacy dependency aliases
 
 ### Requirement: DummyDevice inherits from the base runtime
 The firmware SHALL keep `DummyDevice` inherited from the reusable runtime base while preserving its stable type id, base configuration compatibility, and lifecycle behavior, without preserving old command or retained-output simulation behavior.
@@ -65,3 +65,18 @@ The firmware SHALL keep device-type configuration parsing, validation, JSON conv
 #### Scenario: Base runtime avoids hardware assumptions
 - **WHEN** a hardware-backed runtime inherits from the base runtime
 - **THEN** the base runtime does not require GPIO, I2C, or any other hardware-specific dependency
+
+### Requirement: Runtime capabilities support composite devices
+The runtime boundary SHALL expose narrow optional capabilities for temperature readings and switch-like output control without requiring concrete class casts.
+
+#### Scenario: Temperature sensor exposes reading capability
+- **WHEN** a runtime represents a temperature sensor with a latest reading
+- **THEN** it can provide the reading and reading status through the generic runtime boundary
+
+#### Scenario: Switch runtime exposes output capability
+- **WHEN** a runtime represents a switch-like device
+- **THEN** it can report supported output states, current output state, and accept an internal output request with the provided `now`
+
+#### Scenario: Thermostat rejects missing capability
+- **WHEN** a thermostat dep role references a runtime that does not expose the required capability
+- **THEN** runtime validation rejects the dep before thermostat control starts

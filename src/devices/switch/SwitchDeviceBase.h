@@ -7,12 +7,16 @@
 
 namespace ewfm {
 
-class SwitchDeviceBase : public DeviceRuntimeBase {
+class SwitchDeviceBase : public DeviceRuntimeBase, public ISwitchOutputRuntime {
 public:
     OutputState outputState() const;
     bool physicalOutputState() const;
     bool restorePreviousState() const;
     bool retainedStateDirty() const override;
+    const ISwitchOutputRuntime* switchOutputRuntime() const override;
+    OutputStateMask supportedOutputStateMask() const override;
+    OutputState currentOutputState() const override;
+    bool requestOutputState(OutputState state, uint32_t now) override;
     bool serializeRetainedState(RetainedStateRecord& record) const override;
     bool applyRetainedStateRecord(const RetainedStateRecord& record) override;
     void clearRetainedStateDirty() override;
@@ -34,7 +38,7 @@ protected:
     virtual DeviceValidationResult configureHardware(uint32_t now) = 0;
     virtual DeviceValidationResult applyHardwareOutput(OutputState state, bool physicalLevel, uint32_t now) = 0;
     virtual void releaseHardware(uint32_t now) = 0;
-    virtual OutputStateMask supportedOutputStateMask() const = 0;
+    virtual OutputStateMask supportedOutputStateMaskImpl() const = 0;
 
 private:
     State Idle();

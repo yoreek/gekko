@@ -9,7 +9,7 @@ The firmware SHALL provide a `Ds18b20TemperatureSensorDevice` dynamic device typ
 
 #### Scenario: Type descriptor is registered
 - **WHEN** the default device type registry is created
-- **THEN** it contains `Ds18b20TemperatureSensorDevice` with stable `type_id = 4`, current config version `1`, retained-state support disabled, child support disabled, 100 ms ticking enabled, and `compatibleDependencyTypes` containing only the OneWire bus type id
+- **THEN** it contains `Ds18b20TemperatureSensorDevice` with stable `type_id = 4`, current config version `1`, retained-state support disabled, dependent support disabled, 100 ms ticking enabled, and `compatibleDependencyTypes` containing only the OneWire bus type id
 
 #### Scenario: Dependency relationship is required
 - **WHEN** a caller creates a DS18B20 temperature sensor without a compatible OneWire dependency in `deps`

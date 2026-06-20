@@ -118,6 +118,21 @@ The firmware SHALL support immediate, delayed, and coalesced persistence policie
 
 #### Scenario: Runtime-control restart flush fails
 - **WHEN** a runtime-control restart API request cannot flush pending registry persistence
+
+### Requirement: Registry captures runtime-driven retained state
+The firmware SHALL capture retained runtime state changes caused by internal runtime interactions, not only by public REST commands.
+
+#### Scenario: Thermostat changes switch output
+- **WHEN** a thermostat runtime changes a switch-like dep output and the switch marks retained state dirty
+- **THEN** the registry records the switch retained state through the coalesced retained-state persistence path
+
+#### Scenario: Failed internal output does not persist retained state
+- **WHEN** a runtime-driven switch output request fails
+- **THEN** the registry does not persist a retained output state for that failed request
+
+#### Scenario: Retained capture remains bounded
+- **WHEN** runtime-driven output changes occur repeatedly before the flush policy is due
+- **THEN** the registry coalesces retained-state persistence using the existing retained-state bounds and dirty tracking
 - **THEN** the firmware rejects the restart action and keeps running without initiating reboot
 
 ### Requirement: Type-specific config version migration
@@ -144,7 +159,7 @@ The firmware SHALL persist dependency links in each device record as bounded rol
 
 #### Scenario: Record stores deps
 - **WHEN** a device with dependencies is persisted
-- **THEN** its device record contains a bounded `deps` array and does not contain `hasParent` or `parentDeviceId`
+- **THEN** its device record contains a bounded `deps` array and does not contain legacy relationship fields
 
 #### Scenario: Registry builds dependents
 - **WHEN** the registry loads or mutates records

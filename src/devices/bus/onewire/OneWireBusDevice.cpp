@@ -22,52 +22,52 @@ static_assert(std::is_trivially_copyable<OneWireBusDeviceConfigV1>::value, "OneW
 static_assert(sizeof(OneWireBusDeviceConfigV1::kMagic) - 1U + sizeof(OneWireBusDeviceConfigV1) <= kMaxDeviceConfigBytes,
               "OneWireBusDeviceConfigV1 exceeds device config bound");
 
-OneWireBusDevice::ChildTransaction::ChildTransaction(OneWireBusDevice* parent, IOneWireBusDriver* driver, uint32_t generation)
-    : parent_(parent), driver_(driver), generation_(generation) {}
+OneWireBusDevice::DependencyTransaction::DependencyTransaction(OneWireBusDevice* bus, IOneWireBusDriver* driver, uint32_t generation)
+    : bus_(bus), driver_(driver), generation_(generation) {}
 
-OneWireBusDevice::ChildTransaction::ChildTransaction(ChildTransaction&& other) noexcept
-    : parent_(other.parent_), driver_(other.driver_), generation_(other.generation_) {
-    other.parent_ = nullptr;
+OneWireBusDevice::DependencyTransaction::DependencyTransaction(DependencyTransaction&& other) noexcept
+    : bus_(other.bus_), driver_(other.driver_), generation_(other.generation_) {
+    other.bus_ = nullptr;
     other.driver_ = nullptr;
     other.generation_ = 0;
 }
 
-OneWireBusDevice::ChildTransaction& OneWireBusDevice::ChildTransaction::operator=(ChildTransaction&& other) noexcept {
+OneWireBusDevice::DependencyTransaction& OneWireBusDevice::DependencyTransaction::operator=(DependencyTransaction&& other) noexcept {
     if (this == &other) {
         return *this;
     }
 
     release();
-    parent_ = other.parent_;
+    bus_ = other.bus_;
     driver_ = other.driver_;
     generation_ = other.generation_;
-    other.parent_ = nullptr;
+    other.bus_ = nullptr;
     other.driver_ = nullptr;
     other.generation_ = 0;
     return *this;
 }
 
-OneWireBusDevice::ChildTransaction::~ChildTransaction() {
+OneWireBusDevice::DependencyTransaction::~DependencyTransaction() {
     release();
 }
 
-OneWireBusDevice::ChildTransaction::operator bool() const {
-    return parent_ != nullptr && driver_ != nullptr;
+OneWireBusDevice::DependencyTransaction::operator bool() const {
+    return bus_ != nullptr && driver_ != nullptr;
 }
 
-IOneWireBusDriver* OneWireBusDevice::ChildTransaction::driver() const {
+IOneWireBusDriver* OneWireBusDevice::DependencyTransaction::driver() const {
     return driver_;
 }
 
-uint32_t OneWireBusDevice::ChildTransaction::generation() const {
+uint32_t OneWireBusDevice::DependencyTransaction::generation() const {
     return generation_;
 }
 
-void OneWireBusDevice::ChildTransaction::release() {
-    if (parent_ != nullptr) {
-        parent_->releaseChildTransaction();
+void OneWireBusDevice::DependencyTransaction::release() {
+    if (bus_ != nullptr) {
+        bus_->releaseDependencyTransaction();
     }
-    parent_ = nullptr;
+    bus_ = nullptr;
     driver_ = nullptr;
     generation_ = 0;
 }
@@ -102,8 +102,8 @@ uint32_t OneWireBusDevice::generation() const {
     return generation_;
 }
 
-bool OneWireBusDevice::childTransactionActive() const {
-    return childTransactionActive_;
+bool OneWireBusDevice::dependencyTransactionActive() const {
+    return dependencyTransactionActive_;
 }
 
 void OneWireBusDevice::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
@@ -152,27 +152,27 @@ void OneWireBusDevice::writeDeviceJson(JsonObject output) const {
     }
 }
 
-OneWireBusDevice::ChildTransaction OneWireBusDevice::beginChildTransaction() {
-    if (status_ != DeviceStatus::Ready || isScanning() || childTransactionActive_ || disableRequested_ || deleteRequested_ ||
+OneWireBusDevice::DependencyTransaction OneWireBusDevice::beginDependencyTransaction() {
+    if (status_ != DeviceStatus::Ready || isScanning() || dependencyTransactionActive_ || disableRequested_ || deleteRequested_ ||
         reconfigureRequested_ || config_.base.enabled == 0U) {
         return {};
     }
 
-    childTransactionActive_ = true;
-    return ChildTransaction(this, &driver_, generation_);
+    dependencyTransactionActive_ = true;
+    return DependencyTransaction(this, &driver_, generation_);
 }
 
-bool OneWireBusDevice::hasDuplicateChildRomAddress(const OneWireRomAddress& address, const IDeviceRuntime* ignoreChild) const {
-    for (const IDeviceRuntime* child : dependentRuntimes()) {
-        if (child == nullptr || child == ignoreChild) {
+bool OneWireBusDevice::hasDuplicateDependentRomAddress(const OneWireRomAddress& address, const IDeviceRuntime* ignoreDependent) const {
+    for (const IDeviceRuntime* dependent : dependentRuntimes()) {
+        if (dependent == nullptr || dependent == ignoreDependent) {
             continue;
         }
 
-        OneWireRomAddress childAddress{};
-        if (!child->oneWireRomAddress(childAddress)) {
+        OneWireRomAddress dependentAddress{};
+        if (!dependent->oneWireRomAddress(dependentAddress)) {
             continue;
         }
-        if (sameRomAddress(address, childAddress)) {
+        if (sameRomAddress(address, dependentAddress)) {
             return true;
         }
     }
@@ -184,7 +184,6 @@ DeviceTypeDescriptor OneWireBusDevice::descriptor() {
     descriptor.typeId = kOneWireBusDeviceTypeId;
     descriptor.name = "OneWireBusDevice";
     descriptor.currentConfigVersion = kOneWireBusDeviceConfigVersion;
-    descriptor.canHaveDependents = true;
     descriptor.maxDependents = 16;
     descriptor.supportsCommands = true;
     descriptor.supportsRetainedState = false;
@@ -274,12 +273,12 @@ void OneWireBusDevice::appendScanCandidate(const OneWireRomAddress& address) {
 }
 
 void OneWireBusDevice::releaseHardware() {
-    childTransactionActive_ = false;
+    dependencyTransactionActive_ = false;
     driver_.depower();
 }
 
-void OneWireBusDevice::releaseChildTransaction() {
-    childTransactionActive_ = false;
+void OneWireBusDevice::releaseDependencyTransaction() {
+    dependencyTransactionActive_ = false;
 }
 
 DeviceValidationResult OneWireBusDevice::initializeHardware(uint32_t now) {

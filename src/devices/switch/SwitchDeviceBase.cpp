@@ -37,6 +37,22 @@ bool SwitchDeviceBase::retainedStateDirty() const {
     return retainedStateDirty_;
 }
 
+const ISwitchOutputRuntime* SwitchDeviceBase::switchOutputRuntime() const {
+    return this;
+}
+
+OutputStateMask SwitchDeviceBase::supportedOutputStateMask() const {
+    return supportedOutputStateMaskImpl();
+}
+
+OutputState SwitchDeviceBase::currentOutputState() const {
+    return outputState_;
+}
+
+bool SwitchDeviceBase::requestOutputState(OutputState state, uint32_t now) {
+    return applyConfiguredOutput(state, now, shouldSaveRetainedState());
+}
+
 void SwitchDeviceBase::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
     DeviceRuntimeBase::bindDeviceIdentity(record, config);
     enabled_ = config_.base.enabled != 0U;
@@ -154,6 +170,9 @@ bool SwitchDeviceBase::applyConfiguredOutput(OutputState state, uint32_t now, bo
     }
 
     const bool physicalLevel = state == OutputState::On ? !inverted() : inverted();
+    if (status_ == DeviceStatus::Ready && state == outputState_ && physicalLevel == physicalOutputState_) {
+        return true;
+    }
     DeviceValidationResult result = applyHardwareOutput(state, physicalLevel, now);
     if (!result.ok()) {
         status_ = DeviceStatus::Faulted;

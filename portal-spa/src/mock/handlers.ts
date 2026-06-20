@@ -20,6 +20,7 @@ import {
   DUMMY_DEVICE_TYPE_ID,
   GPIO_SWITCH_DEVICE_TYPE_ID,
   ONEWIRE_BUS_DEVICE_TYPE_ID,
+  THERMOSTAT_DEVICE_TYPE_ID,
 } from '@/models/device-types'
 import { createSeedMockDatabase, loadMockDatabase, saveMockDatabase } from './database'
 
@@ -70,6 +71,30 @@ function completeOneWireScan(deviceId: number): void {
       pending_persistence: db.pendingPersistence,
     },
   })
+}
+
+function publishDeviceSnapshot(db: ReturnType<typeof createSeedMockDatabase>, device: DeviceRecord): void {
+  publishRealtimeMessage({
+    topic: 'device.upsert',
+    revision: db.registryRevision,
+    payload: {
+      ...device,
+      registry_revision: db.registryRevision,
+      pending_persistence: db.pendingPersistence,
+    },
+  })
+}
+
+function publishDependentThermostats(db: ReturnType<typeof createSeedMockDatabase>, sourceDeviceId: number): void {
+  for (const device of db.devices) {
+    if (device.type_id !== THERMOSTAT_DEVICE_TYPE_ID) {
+      continue
+    }
+    const deps = Array.isArray(device.deps) ? device.deps : []
+    if (deps.some(dep => dep.device_id === sourceDeviceId)) {
+      publishDeviceSnapshot(db, device)
+    }
+  }
 }
 
 export function mockFetchWifiStatus(): WifiStatusResponse {
@@ -221,7 +246,8 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
         typeId !== DUMMY_DEVICE_TYPE_ID &&
         typeId !== GPIO_SWITCH_DEVICE_TYPE_ID &&
         typeId !== ONEWIRE_BUS_DEVICE_TYPE_ID &&
-        typeId !== DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID
+        typeId !== DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID &&
+        typeId !== THERMOSTAT_DEVICE_TYPE_ID
       )
     ) {
       throw new ApiClientError('unsupported device type', 'UNSUPPORTED_TYPE', 400, null)
@@ -229,29 +255,53 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
     const isGpioSwitch = typeId === GPIO_SWITCH_DEVICE_TYPE_ID
     const isOneWireBus = typeId === ONEWIRE_BUS_DEVICE_TYPE_ID
     const isDs18b20 = typeId === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID
+    const isThermostat = typeId === THERMOSTAT_DEVICE_TYPE_ID
     const isDummy = typeId === DUMMY_DEVICE_TYPE_ID
-    const dependencyLinks = isDs18b20 ? normalizeDependencyLinks(payload.deps, payload.parent_device_id) : []
-    const parentDeviceId = isDs18b20 ? dependencyDeviceIdForRole(dependencyLinks, 'onewire_bus') : 0
+    const dependencyLinks = isDs18b20 ? normalizeDependencyLinks(payload.deps) : []
+    const thermostatDependencyLinks = isThermostat ? normalizeThermostatDependencyLinks(payload.deps, payload.config) : []
+    const dependencyDeviceId = isDs18b20 ? dependencyDeviceIdForRole(dependencyLinks, 'onewire_bus') : 0
     if (isDs18b20) {
-      requireOneWireParent(db, parentDeviceId)
+      requireOneWireDependency(db, dependencyDeviceId)
     }
     const enabled = Boolean(payload.enabled ?? true)
     const ds18b20Config = isDs18b20 ? normalizeDs18b20ConfigPayload(payload.config, enabled) : undefined
+    const thermostatConfig = isThermostat ? normalizeThermostatConfigPayload(payload.config, enabled, thermostatDependencyLinks) : undefined
     if (isDs18b20 && ds18b20Config !== undefined) {
-      ensureUniqueDs18b20Address(db, parentDeviceId, String(ds18b20Config.address), nextId)
+      ensureUniqueDs18b20Address(db, dependencyDeviceId, String(ds18b20Config.address), nextId)
+    }
+    if (isThermostat && thermostatConfig !== undefined) {
+      requireThermostatDependencies(
+        db,
+        normalizeDependencyDeviceId(thermostatConfig.temperature_sensor_device_id),
+        normalizeDependencyDeviceId(thermostatConfig.switch_device_id),
+      )
     }
 
     const device: DeviceRecord = {
       device_id: nextId,
       type_id: typeId,
-      label: isGpioSwitch ? 'GPIO switch' : isOneWireBus ? 'OneWire bus' : isDs18b20 ? 'DS18B20 temperature sensor' : 'Dummy device',
-      type: isGpioSwitch ? 'gpio_switch' : isOneWireBus ? 'onewire_bus' : isDs18b20 ? 'ds18b20_temperature_sensor' : 'dummy',
+      label: isGpioSwitch
+        ? 'GPIO switch'
+        : isOneWireBus
+          ? 'OneWire bus'
+          : isDs18b20
+            ? 'DS18B20 temperature sensor'
+            : isThermostat
+              ? 'Thermostat'
+              : 'Dummy device',
+      type: isGpioSwitch
+        ? 'gpio_switch'
+        : isOneWireBus
+          ? 'onewire_bus'
+          : isDs18b20
+            ? 'ds18b20_temperature_sensor'
+            : isThermostat
+              ? 'thermostat'
+              : 'dummy',
       name: String(payload.name ?? 'New Device'),
       enabled,
-      deps: dependencyLinks,
-      has_deps: dependencyLinks.length > 0,
-      has_parent: isDs18b20,
-      parent_device_id: parentDeviceId,
+      deps: isThermostat ? thermostatDependencyLinks : dependencyLinks,
+      has_deps: isThermostat ? thermostatDependencyLinks.length > 0 : dependencyLinks.length > 0,
       config_version: 1,
       config_revision: 1,
       lifecycle_status: 'ready',
@@ -284,6 +334,8 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
                 enabled,
                 name: String(payload.name ?? 'New Device'),
               }
+            : isThermostat && thermostatConfig !== undefined
+              ? thermostatConfig
             : {
                 enabled: true,
                 restore_previous_state: false,
@@ -307,6 +359,8 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
                 status: 'not_ready',
               },
             }
+          : isThermostat && thermostatConfig !== undefined
+            ? buildThermostatOutput(db, thermostatConfig, nextId)
         : undefined,
       scan: isOneWireBus
         ? {
@@ -319,7 +373,7 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
           }
         : undefined,
     }
-    if (!isDs18b20 && !isDummy && isRecordPayload(payload.config)) {
+    if (!isDs18b20 && !isDummy && !isThermostat && isRecordPayload(payload.config)) {
       device.config = {
         ...device.config,
         ...payload.config,
@@ -421,20 +475,30 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
             }
             device.enabled = Boolean(device.config.enabled)
           } else if (device.type_id === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID) {
-            const dependencyLinks = normalizeDependencyLinks(payload.deps, device.parent_device_id)
-            const parentDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'onewire_bus')
-            if (parentDeviceId <= 0) {
+            const dependencyLinks = normalizeDependencyLinks(payload.deps)
+            const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'onewire_bus')
+            if (dependencyDeviceId <= 0) {
               throw new ApiClientError('ds18b20 dependency is required', 'BAD_ARGS', 400, null)
             }
-            requireOneWireParent(db, parentDeviceId)
+            requireOneWireDependency(db, dependencyDeviceId)
             const config = normalizeDs18b20ConfigPayload(payload.config, device.enabled)
-            ensureUniqueDs18b20Address(db, parentDeviceId, String(config.address), device.device_id)
+            ensureUniqueDs18b20Address(db, dependencyDeviceId, String(config.address), device.device_id)
             device.config = config
             device.enabled = Boolean(config.enabled)
             device.deps = dependencyLinks
             device.has_deps = dependencyLinks.length > 0
-            device.has_parent = true
-            device.parent_device_id = parentDeviceId
+          } else if (device.type_id === THERMOSTAT_DEVICE_TYPE_ID) {
+            const dependencyLinks = normalizeThermostatDependencyLinks(payload.deps, payload.config)
+            const config = normalizeThermostatConfigPayload(payload.config, device.enabled, dependencyLinks)
+            requireThermostatDependencies(
+              db,
+              normalizeDependencyDeviceId(config.temperature_sensor_device_id),
+              normalizeDependencyDeviceId(config.switch_device_id),
+            )
+            device.config = config
+            device.enabled = Boolean(config.enabled)
+            device.deps = dependencyLinks
+            device.has_deps = dependencyLinks.length > 0
           }
           device.config_revision += 1
           break
@@ -517,6 +581,7 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
     revision: db.registryRevision,
     payload: deviceSnapshot,
   })
+  publishDependentThermostats(db, deviceId)
   if (
     payload.command === 'scan' &&
     response.device?.type_id === ONEWIRE_BUS_DEVICE_TYPE_ID &&
@@ -565,32 +630,21 @@ function isRecordPayload(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function normalizeParentDeviceId(value: unknown): number {
+function normalizeDependencyDeviceId(value: unknown): number {
   const numeric = Number(value)
   return Number.isInteger(numeric) && numeric > 0 ? numeric : 0
 }
 
-function normalizeDependencyLinks(value: unknown, fallbackDeviceId: unknown = 0): Array<{ role: string; device_id: number }> {
+function normalizeDependencyLinks(value: unknown): Array<{ role: string; device_id: number }> {
   if (Array.isArray(value)) {
     return value
       .filter(isRecordPayload)
       .map(item => ({
         role: typeof item.role === 'string' ? item.role.trim() : '',
-        device_id: normalizeParentDeviceId(item.device_id),
+        device_id: normalizeDependencyDeviceId(item.device_id),
       }))
       .filter(item => item.role.length > 0 && item.device_id > 0)
   }
-
-  const deviceId = normalizeParentDeviceId(fallbackDeviceId)
-  if (deviceId > 0) {
-    return [
-      {
-        role: 'onewire_bus',
-        device_id: deviceId,
-      },
-    ]
-  }
-
   return []
 }
 
@@ -599,12 +653,163 @@ function dependencyDeviceIdForRole(deps: Array<{ role: string; device_id: number
   return dependency?.device_id ?? 0
 }
 
-function requireOneWireParent(db: ReturnType<typeof createSeedMockDatabase>, parentDeviceId: number): DeviceRecord {
-  const parent = db.devices.find(entry => entry.device_id === parentDeviceId)
-  if (!parent || parent.type_id !== ONEWIRE_BUS_DEVICE_TYPE_ID) {
-    throw new ApiClientError('valid onewire parent is required', 'BAD_ARGS', 400, null)
+function normalizeThermostatDependencyLinks(value: unknown, fallbackConfig: unknown = null): Array<{ role: string; device_id: number }> {
+  if (Array.isArray(value)) {
+    const links = value
+      .filter(isRecordPayload)
+      .map(item => ({
+        role: typeof item.role === 'string' ? item.role.trim() : '',
+        device_id: normalizeDependencyDeviceId(item.device_id),
+      }))
+      .filter(item => item.role.length > 0 && item.device_id > 0)
+    if (links.length > 0) {
+      return links.filter(item => item.role === 'temperature_sensor' || item.role === 'switch')
+    }
   }
-  return parent
+
+  if (isRecordPayload(fallbackConfig)) {
+    const temperatureSensorId = normalizeDependencyDeviceId(fallbackConfig.temperature_sensor_device_id)
+    const switchDeviceId = normalizeDependencyDeviceId(fallbackConfig.switch_device_id)
+    const links: Array<{ role: string; device_id: number }> = []
+    if (temperatureSensorId > 0) {
+      links.push({ role: 'temperature_sensor', device_id: temperatureSensorId })
+    }
+    if (switchDeviceId > 0) {
+      links.push({ role: 'switch', device_id: switchDeviceId })
+    }
+    return links
+  }
+
+  return []
+}
+
+function normalizeThermostatMode(value: unknown): 'off' | 'heat' | 'cool' {
+  return value === 'heat' || value === 'cool' ? value : 'off'
+}
+
+function normalizeThermostatAlgorithm(value: unknown): 'hysteresis' {
+  return 'hysteresis'
+}
+
+function normalizeThermostatConfigPayload(
+  value: unknown,
+  enabledFallback: boolean,
+  deps: Array<{ role: string; device_id: number }>,
+): Record<string, unknown> {
+  const current = isRecordPayload(value) ? value : {}
+  const temperatureSensorId = normalizeDependencyDeviceId(current.temperature_sensor_device_id ?? dependencyDeviceIdForRole(deps, 'temperature_sensor'))
+  const switchDeviceId = normalizeDependencyDeviceId(current.switch_device_id ?? dependencyDeviceIdForRole(deps, 'switch'))
+  return {
+    enabled: typeof current.enabled === 'boolean' ? current.enabled : enabledFallback,
+    mode: normalizeThermostatMode(current.mode),
+    algorithm: normalizeThermostatAlgorithm(current.algorithm),
+    target_milli_celsius: Math.round(normalizeFiniteNumber(current.target_milli_celsius, 25000)),
+    min_safe_milli_celsius: Math.round(normalizeFiniteNumber(current.min_safe_milli_celsius, 0)),
+    max_safe_milli_celsius: Math.round(normalizeFiniteNumber(current.max_safe_milli_celsius, 50000)),
+    hysteresis_centi_celsius: Math.max(0, Math.round(normalizeFiniteNumber(current.hysteresis_centi_celsius, 50))),
+    check_interval_ms: Math.max(250, Math.round(normalizeFiniteNumber(current.check_interval_ms, 1000))),
+    sensor_timeout_ms: Math.max(250, Math.round(normalizeFiniteNumber(current.sensor_timeout_ms, 6000))),
+    retry_after_error_ms: Math.max(250, Math.round(normalizeFiniteNumber(current.retry_after_error_ms, 30000))),
+    min_switch_interval_ms: Math.max(0, Math.round(normalizeFiniteNumber(current.min_switch_interval_ms, 5000))),
+    temperature_sensor_device_id: temperatureSensorId,
+    switch_device_id: switchDeviceId,
+  }
+}
+
+function requireThermostatDependencies(db: ReturnType<typeof createSeedMockDatabase>, sensorDeviceId: number, switchDeviceId: number): void {
+  const sensor = db.devices.find(entry => entry.device_id === sensorDeviceId)
+  if (!sensor || sensor.type_id !== DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID) {
+    throw new ApiClientError('thermostat temperature sensor dependency is required', 'BAD_ARGS', 400, null)
+  }
+  const switchDevice = db.devices.find(entry => entry.device_id === switchDeviceId)
+  if (!switchDevice || switchDevice.type_id !== GPIO_SWITCH_DEVICE_TYPE_ID) {
+    throw new ApiClientError('thermostat switch dependency is required', 'BAD_ARGS', 400, null)
+  }
+}
+
+function buildThermostatOutput(
+  db: ReturnType<typeof createSeedMockDatabase>,
+  config: Record<string, unknown>,
+  currentDeviceId: number,
+): DeviceRecord['output'] {
+  const sensorDeviceId = normalizeDependencyDeviceId(config.temperature_sensor_device_id)
+  const switchDeviceId = normalizeDependencyDeviceId(config.switch_device_id)
+  const sensor = db.devices.find(entry => entry.device_id === sensorDeviceId)
+  const switchDevice = db.devices.find(entry => entry.device_id === switchDeviceId)
+  const temperature = sensor?.output?.temperature
+  const measuredAtMs = temperature?.measured_at_ms ?? 0
+  const validTemperature = Boolean(temperature?.valid)
+  const currentTemperature = validTemperature ? Number(temperature?.value ?? 0) : 0
+  const hysteresis = Math.max(0, normalizeFiniteNumber(config.hysteresis_centi_celsius, 50)) / 100
+  const target = normalizeFiniteNumber(config.target_milli_celsius, 25000) / 1000
+  const mode = normalizeThermostatMode(config.mode)
+  let desiredSwitchState: 'off' | 'on' | 'disabled' = 'off'
+  let controlStatus = 'ready'
+
+  if (!Boolean(config.enabled)) {
+    desiredSwitchState = 'disabled'
+    controlStatus = 'disabled'
+  } else if (!sensor || sensor.type_id !== DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID || !switchDevice || switchDevice.type_id !== GPIO_SWITCH_DEVICE_TYPE_ID) {
+    desiredSwitchState = 'off'
+    controlStatus = 'dependency_blocked'
+  } else if (!sensor.enabled || sensor.effective_status !== 'ready' || !validTemperature) {
+    desiredSwitchState = 'off'
+    controlStatus = 'sensor_timeout'
+  } else if (mode === 'off') {
+    desiredSwitchState = 'off'
+    controlStatus = 'idle'
+  } else if (mode === 'heat') {
+    if (currentTemperature <= target - hysteresis) {
+      desiredSwitchState = 'on'
+      controlStatus = 'heating'
+    } else if (currentTemperature >= target + hysteresis) {
+      desiredSwitchState = 'off'
+      controlStatus = 'idle'
+    } else {
+      desiredSwitchState = switchDevice.output?.state === 'on' ? 'on' : 'off'
+      controlStatus = desiredSwitchState === 'on' ? 'heating' : 'idle'
+    }
+  } else {
+    if (currentTemperature >= target + hysteresis) {
+      desiredSwitchState = 'on'
+      controlStatus = 'cooling'
+    } else if (currentTemperature <= target - hysteresis) {
+      desiredSwitchState = 'off'
+      controlStatus = 'idle'
+    } else {
+      desiredSwitchState = switchDevice.output?.state === 'on' ? 'on' : 'off'
+      controlStatus = desiredSwitchState === 'on' ? 'cooling' : 'idle'
+    }
+  }
+
+  const actualSwitchState = switchDevice?.output?.state ?? 'off'
+  if (desiredSwitchState !== 'disabled' && actualSwitchState !== desiredSwitchState && controlStatus !== 'dependency_blocked' && controlStatus !== 'sensor_timeout') {
+    controlStatus = 'switch_error'
+  }
+
+  return {
+    ...((db.devices.find(entry => entry.device_id === currentDeviceId)?.output ?? {}) as Record<string, unknown>),
+    temperature: temperature ?? {
+      value: 0,
+      unit: 'celsius',
+      unit_symbol: 'C',
+      measured_at_ms: 0,
+      valid: false,
+      status: 'not_ready',
+    },
+    desired_switch_state: desiredSwitchState,
+    actual_switch_state: actualSwitchState,
+    control_status: controlStatus,
+    last_check_at_ms: measuredAtMs,
+  }
+}
+
+function requireOneWireDependency(db: ReturnType<typeof createSeedMockDatabase>, dependencyDeviceId: number): DeviceRecord {
+  const dependency = db.devices.find(entry => entry.device_id === dependencyDeviceId)
+  if (!dependency || dependency.type_id !== ONEWIRE_BUS_DEVICE_TYPE_ID) {
+    throw new ApiClientError('valid onewire dependency is required', 'BAD_ARGS', 400, null)
+  }
+  return dependency
 }
 
 function ds18b20AddressShapeValid(address: string): boolean {
@@ -645,7 +850,7 @@ function normalizeDs18b20ConfigPayload(value: unknown, enabledFallback: boolean)
 
 function ensureUniqueDs18b20Address(
   db: ReturnType<typeof createSeedMockDatabase>,
-  parentDeviceId: number,
+  dependencyDeviceId: number,
   address: string,
   currentDeviceId: number,
 ): void {
@@ -653,13 +858,13 @@ function ensureUniqueDs18b20Address(
   const duplicate = db.devices.some(device => (
     device.device_id !== currentDeviceId &&
     device.type_id === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID &&
-    device.parent_device_id === parentDeviceId &&
+    dependencyDeviceIdForRole(device.deps ?? [], 'onewire_bus') === dependencyDeviceId &&
     isRecordPayload(device.config) &&
     typeof device.config.address === 'string' &&
     device.config.address.trim().toUpperCase() === normalizedAddress
   ))
   if (duplicate) {
-    throw new ApiClientError('ds18b20 address already exists on this parent', 'DUPLICATE_ADDRESS', 400, null)
+    throw new ApiClientError('ds18b20 address already exists on this dependency', 'DUPLICATE_ADDRESS', 400, null)
   }
 }
 
@@ -694,23 +899,24 @@ function refreshChildEffectiveStatuses(db: ReturnType<typeof createSeedMockDatab
     if (device.lifecycle_status === 'disabled') {
       device.lifecycle_status = 'ready'
     }
-    const parent = db.devices.find(entry => entry.device_id === device.parent_device_id)
-    if (!parent || parent.type_id !== ONEWIRE_BUS_DEVICE_TYPE_ID) {
+    const dependencyDeviceId = dependencyDeviceIdForRole(device.deps ?? [], 'onewire_bus')
+    const dependency = db.devices.find(entry => entry.device_id === dependencyDeviceId)
+    if (!dependency || dependency.type_id !== ONEWIRE_BUS_DEVICE_TYPE_ID) {
       device.effective_status = 'dependency_blocked'
       device.status = 'dependency_blocked'
-      markTemperatureUnavailable(device, 'missing_parent')
+      markTemperatureUnavailable(device, 'missing_dependency')
       continue
     }
-    if (!parent.enabled || parent.effective_status === 'disabled') {
+    if (!dependency.enabled || dependency.effective_status === 'disabled') {
       device.effective_status = 'disabled'
       device.status = 'disabled'
-      markTemperatureUnavailable(device, 'parent_disabled')
+      markTemperatureUnavailable(device, 'dependency_disabled')
       continue
     }
-    if (parent.effective_status !== 'ready') {
+    if (dependency.effective_status !== 'ready') {
       device.effective_status = 'dependency_blocked'
       device.status = 'dependency_blocked'
-      markTemperatureUnavailable(device, 'parent_not_ready')
+      markTemperatureUnavailable(device, 'dependency_not_ready')
       continue
     }
 
@@ -720,6 +926,51 @@ function refreshChildEffectiveStatuses(db: ReturnType<typeof createSeedMockDatab
       markTemperatureUnavailable(device, 'not_ready')
     }
   }
+
+  for (const device of db.devices) {
+    if (device.type_id !== THERMOSTAT_DEVICE_TYPE_ID) {
+      continue
+    }
+    const config = isRecordPayload(device.config) ? device.config : {}
+    const sensor = db.devices.find(entry => entry.device_id === normalizeDependencyDeviceId(config.temperature_sensor_device_id))
+    const switchDevice = db.devices.find(entry => entry.device_id === normalizeDependencyDeviceId(config.switch_device_id))
+
+    if (!device.enabled) {
+      device.lifecycle_status = 'disabled'
+      device.effective_status = 'disabled'
+      device.status = 'disabled'
+      device.output = buildThermostatOutput(db, config, device.device_id)
+      continue
+    }
+
+    if (device.lifecycle_status === 'disabled') {
+      device.lifecycle_status = 'ready'
+    }
+    if (!sensor || sensor.type_id !== DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID || !switchDevice || switchDevice.type_id !== GPIO_SWITCH_DEVICE_TYPE_ID) {
+      device.effective_status = 'dependency_blocked'
+      device.status = 'dependency_blocked'
+      device.output = buildThermostatOutput(db, config, device.device_id)
+      continue
+    }
+    if (!sensor.enabled || sensor.effective_status === 'disabled') {
+      device.effective_status = 'disabled'
+      device.status = 'disabled'
+      device.output = buildThermostatOutput(db, config, device.device_id)
+      continue
+    }
+
+    device.effective_status = device.lifecycle_status === 'faulted' ? 'faulted' : 'ready'
+    device.status = device.effective_status
+    device.output = buildThermostatOutput(db, config, device.device_id)
+  }
+}
+
+export function refreshMockDerivedDeviceState(db: ReturnType<typeof createSeedMockDatabase>): void {
+  refreshChildEffectiveStatuses(db)
+}
+
+export function publishThermostatDependents(db: ReturnType<typeof createSeedMockDatabase>, sourceDeviceId: number): void {
+  publishDependentThermostats(db, sourceDeviceId)
 }
 
 function normalizeDashboardLayout(layout: DashboardLayoutRecord, deviceIds: number[]): DashboardLayoutRecord {

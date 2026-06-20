@@ -75,7 +75,7 @@ void test_device_runtime_base_begin_and_cadence_tick_state_machine() {
     TEST_ASSERT_EQUAL_UINT32(13, runtime.lastNow);
 }
 
-void test_device_runtime_base_parent_and_child_wiring() {
+void test_device_runtime_base_dependency_wiring() {
     TestRuntime runtime;
     StatusRuntime dependency;
     StatusRuntime dependent;
@@ -126,7 +126,7 @@ void test_device_runtime_base_request_status_defaults() {
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_device_runtime_base_begin_and_cadence_tick_state_machine);
-    RUN_TEST(test_device_runtime_base_parent_and_child_wiring);
+    RUN_TEST(test_device_runtime_base_dependency_wiring);
     RUN_TEST(test_device_runtime_base_request_status_defaults);
     return UNITY_END();
 }

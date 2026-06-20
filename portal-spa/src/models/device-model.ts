@@ -29,8 +29,6 @@ export interface DashboardDevice {
   enabled: boolean
   deps: DeviceDependencyLink[]
   hasDeps: boolean
-  hasParent: boolean
-  parentDeviceId: number
   configVersion: number
   configRevision: number
   registryRevision: number
@@ -106,22 +104,7 @@ function normalizeDeps(record: DeviceRecord): DeviceDependencyLink[] {
       }))
       .filter(dep => dep.role.length > 0 && Number.isInteger(dep.device_id) && dep.device_id > 0)
   }
-
-  if (typeof record.parent_device_id === 'number' && record.parent_device_id > 0) {
-    return [
-      {
-        role: 'onewire_bus',
-        device_id: record.parent_device_id,
-      },
-    ]
-  }
-
   return []
-}
-
-function normalizeDependencyDeviceId(deps: DeviceDependencyLink[]): number {
-  const dependency = deps.find(dep => dep.role === 'onewire_bus')
-  return dependency?.device_id ?? deps[0]?.device_id ?? 0
 }
 
 export function normalizeDashboardStatus(effectiveStatus: string | undefined | null): DashboardEffectiveStatus {
@@ -136,7 +119,6 @@ export function normalizeDeviceRecord(
   const typeName = normalizeTypeName(record)
   const backendEffectiveStatus = record.effective_status ?? record.lifecycle_status ?? record.status ?? 'unknown'
   const deps = normalizeDeps(record)
-  const parentDeviceId = normalizeDependencyDeviceId(deps)
 
   return {
     deviceId: record.device_id,
@@ -147,8 +129,6 @@ export function normalizeDeviceRecord(
     enabled: record.enabled,
     deps,
     hasDeps: deps.length > 0,
-    hasParent: deps.length > 0,
-    parentDeviceId,
     configVersion: record.config_version,
     configRevision: record.config_revision,
     registryRevision,

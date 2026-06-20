@@ -39,27 +39,6 @@ public:
     bool handleCommand(const DeviceCommand& command) override;
 
 #ifdef UNIT_TEST
-    void setParentRuntime(IDeviceRuntime* parentRuntime) {
-        setDependencyRuntime(DeviceDependencyRole::OneWireBus, parentRuntime);
-    }
-    IDeviceRuntime* parentRuntime() const {
-        return dependencyRuntime(DeviceDependencyRole::OneWireBus);
-    }
-    void attachChildRuntime(IDeviceRuntime* childRuntime) {
-        attachDependentRuntime(childRuntime);
-    }
-    void detachChildRuntime(IDeviceRuntime* childRuntime) {
-        detachDependentRuntime(childRuntime);
-    }
-    const std::vector<IDeviceRuntime*>& childRuntimes() const {
-        return dependentRuntimes();
-    }
-    bool hasParent() const {
-        return hasDependencies();
-    }
-    DeviceId parentDeviceId() const {
-        return dependencyDeviceId(DeviceDependencyRole::OneWireBus);
-    }
 #endif
 
 protected:

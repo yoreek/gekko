@@ -4,7 +4,7 @@ namespace ewfm {
 
 BinarySwitchDeviceBase::BinarySwitchDeviceBase(const SwitchDeviceConfigV1& config) : SwitchDeviceBase(config) {}
 
-OutputStateMask BinarySwitchDeviceBase::supportedOutputStateMask() const {
+OutputStateMask BinarySwitchDeviceBase::supportedOutputStateMaskImpl() const {
     return kOutputStateMaskBinary;
 }
 

@@ -15,11 +15,6 @@ struct DeviceConfigUpdateRequest {
     bool depsProvided{false};
     std::array<DeviceDependencyLink, kMaxDeviceDependencies> deps{};
     uint8_t depCount{0};
-#ifdef UNIT_TEST
-    bool parentFieldsProvided{false};
-    bool hasParent{false};
-    DeviceId parentDeviceId{0};
-#endif
 };
 
 class IDeviceApiAdapter {

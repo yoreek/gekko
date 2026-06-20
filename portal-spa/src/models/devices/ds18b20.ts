@@ -1,10 +1,10 @@
-import type { OneWireScanDeviceSnapshot, TemperatureOutputSnapshot, TemperatureUnit } from '@/api/contracts'
+import type { DeviceDependencyLink, OneWireScanDeviceSnapshot, TemperatureOutputSnapshot, TemperatureUnit } from '@/api/contracts'
 
 export type Ds18b20Resolution = 9 | 10 | 11 | 12
 
 export interface Ds18b20TemperatureSensorConfigDraft {
   enabled: boolean
-  parent_device_id: number
+  dependency_device_id: number
   address: string
   resolution: Ds18b20Resolution
   unit: TemperatureUnit
@@ -19,7 +19,7 @@ export const temperatureUnitOptions: TemperatureUnit[] = ['celsius', 'fahrenheit
 export function createDefaultDs18b20TemperatureSensorConfig(): Ds18b20TemperatureSensorConfigDraft {
   return {
     enabled: true,
-    parent_device_id: 0,
+    dependency_device_id: 0,
     address: '',
     resolution: 12,
     unit: 'celsius',
@@ -41,27 +41,34 @@ function normalizeUnit(value: unknown): TemperatureUnit {
   return temperatureUnitOptions.includes(value as TemperatureUnit) ? value as TemperatureUnit : 'celsius'
 }
 
-function normalizeParentDeviceId(value: unknown): number {
+function normalizeDependencyDeviceId(value: unknown): number {
   const numeric = Number(value)
   return Number.isFinite(numeric) && numeric > 0 ? numeric : 0
 }
 
 export function normalizeDs18b20TemperatureSensorConfig(
   value: unknown,
-  parentDeviceId?: number,
+  dependencyDeviceOrDeps?: number | DeviceDependencyLink[],
 ): Ds18b20TemperatureSensorConfigDraft {
   const defaults = createDefaultDs18b20TemperatureSensorConfig()
+  const dependencyDeviceId = Array.isArray(dependencyDeviceOrDeps)
+    ? dependencyDeviceOrDeps.find(dep => dep.role === 'onewire_bus')?.device_id ?? 0
+    : typeof dependencyDeviceOrDeps === 'number'
+      ? dependencyDeviceOrDeps
+      : 0
   if (!isRecord(value)) {
     return {
       ...defaults,
-      parent_device_id: normalizeParentDeviceId(parentDeviceId),
+      dependency_device_id: normalizeDependencyDeviceId(dependencyDeviceId),
     }
   }
   const reportDeltaCenti = typeof value.report_delta_centi_celsius === 'number' ? value.report_delta_centi_celsius / 100 : undefined
-  const normalizedParentDeviceId = normalizeParentDeviceId(parentDeviceId ?? value.parent_device_id)
+  const normalizedDependencyDeviceId = normalizeDependencyDeviceId(
+    dependencyDeviceId ?? value.dependency_device_id,
+  )
   return {
     enabled: typeof value.enabled === 'boolean' ? value.enabled : defaults.enabled,
-    parent_device_id: normalizedParentDeviceId,
+    dependency_device_id: normalizedDependencyDeviceId,
     address: typeof value.address === 'string' ? value.address.toUpperCase() : defaults.address,
     resolution: normalizeResolution(value.resolution),
     unit: normalizeUnit(value.unit),
@@ -78,7 +85,7 @@ export function ds18b20ConfigChanged(
   original: Ds18b20TemperatureSensorConfigDraft,
 ): boolean {
   return (
-    current.parent_device_id !== original.parent_device_id ||
+    current.dependency_device_id !== original.dependency_device_id ||
     current.address.toUpperCase() !== original.address.toUpperCase() ||
     current.resolution !== original.resolution ||
     current.unit !== original.unit ||

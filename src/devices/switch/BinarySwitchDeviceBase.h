@@ -8,7 +8,7 @@ class BinarySwitchDeviceBase : public SwitchDeviceBase {
 protected:
     explicit BinarySwitchDeviceBase(const SwitchDeviceConfigV1& config);
 
-    OutputStateMask supportedOutputStateMask() const override;
+    OutputStateMask supportedOutputStateMaskImpl() const override;
 };
 
 } // namespace ewfm

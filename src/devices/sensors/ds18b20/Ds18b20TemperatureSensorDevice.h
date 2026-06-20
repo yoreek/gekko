@@ -10,7 +10,7 @@
 
 namespace ewfm {
 
-class Ds18b20TemperatureSensorDevice final : public DeviceRuntimeBase {
+class Ds18b20TemperatureSensorDevice final : public DeviceRuntimeBase, public ITemperatureReadingRuntime {
 public:
     Ds18b20TemperatureSensorDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
     explicit Ds18b20TemperatureSensorDevice(const Ds18b20TemperatureSensorConfigV1& config);
@@ -20,6 +20,9 @@ public:
     const char* outputStatus() const;
     uint8_t consecutiveErrors() const;
     uint32_t lastDependencyGeneration() const;
+    bool latestTemperatureReading(TemperatureReading& reading) const override;
+    const char* latestTemperatureStatus() const override;
+    const ITemperatureReadingRuntime* temperatureReadingRuntime() const override;
     void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override;
@@ -32,7 +35,7 @@ public:
     bool oneWireRomAddress(OneWireRomAddress& address) const override;
 
 private:
-    enum class ParentAccessResult : uint8_t {
+    enum class DependencyAccessResult : uint8_t {
         Ready = 0,
         Missing = 1,
         Busy = 2,
@@ -56,7 +59,7 @@ private:
     OneWireBusDevice* dependencyBus() const;
     bool dependencyBusReady() const;
     bool dependencyGenerationChanged() const;
-    ParentAccessResult beginDependencyTransaction(OneWireBusDevice::ChildTransaction& transaction) const;
+    DependencyAccessResult beginDependencyTransaction(OneWireBusDevice::DependencyTransaction& transaction) const;
     bool readScratchpad(IOneWireBusDriver& driver, uint8_t (&scratchpad)[kDs18b20ScratchpadSize], const char*& error) const;
     bool configureSensor(IOneWireBusDriver& driver, const char*& error) const;
     bool requestConversion(IOneWireBusDriver& driver, const char*& error) const;

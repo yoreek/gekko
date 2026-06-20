@@ -104,7 +104,7 @@ DeviceValidationResult validateUniqueDependencyAddress(const DeviceRegistry& reg
     if (dependencyRuntime == nullptr) {
         return {DeviceError::InvalidRelationship, "ds18b20 dependency is missing or invalid"};
     }
-    if (dependencyRuntime->hasDuplicateChildRomAddress(address, childRuntime)) {
+    if (dependencyRuntime->hasDuplicateDependentRomAddress(address, childRuntime)) {
         return {DeviceError::InvalidRelationship, "duplicate ds18b20 address on dependency"};
     }
     return {};

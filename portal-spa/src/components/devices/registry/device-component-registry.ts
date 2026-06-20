@@ -5,6 +5,7 @@ import {
   DUMMY_DEVICE_TYPE_ID,
   GPIO_SWITCH_DEVICE_TYPE_ID,
   ONEWIRE_BUS_DEVICE_TYPE_ID,
+  THERMOSTAT_DEVICE_TYPE_ID,
   resolveDeviceComponent,
   type DeviceTypeId,
 } from '@/models/device-types'
@@ -15,6 +16,8 @@ import GpioSwitchDeviceDetail from '@/components/devices/gpio-switch/GpioSwitchD
 import GpioSwitchDeviceForm from '@/components/devices/gpio-switch/GpioSwitchDeviceForm.vue'
 import OneWireBusDeviceDetail from '@/components/devices/onewire-bus/OneWireBusDeviceDetail.vue'
 import OneWireBusDeviceForm from '@/components/devices/onewire-bus/OneWireBusDeviceForm.vue'
+import ThermostatDeviceDetail from '@/components/devices/thermostat/ThermostatDeviceDetail.vue'
+import ThermostatDeviceForm from '@/components/devices/thermostat/ThermostatDeviceForm.vue'
 
 interface DeviceUiRegistryEntry {
   typeId: DeviceTypeId
@@ -43,6 +46,11 @@ const deviceUiRegistry: DeviceUiRegistryEntry[] = [
     typeId: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
     detail: Ds18b20TemperatureSensorDeviceDetail,
     form: Ds18b20TemperatureSensorDeviceForm,
+  },
+  {
+    typeId: THERMOSTAT_DEVICE_TYPE_ID,
+    detail: ThermostatDeviceDetail,
+    form: ThermostatDeviceForm,
   },
 ]
 

@@ -6,11 +6,13 @@ import DummyDeviceWidget from '@/components/devices/dummy/DummyDeviceWidget.vue'
 import GpioSwitchDeviceWidget from '@/components/devices/gpio-switch/GpioSwitchDeviceWidget.vue'
 import OneWireBusDeviceWidget from '@/components/devices/onewire-bus/OneWireBusDeviceWidget.vue'
 import Ds18b20TemperatureSensorDeviceWidget from '@/components/devices/ds18b20/Ds18b20TemperatureSensorDeviceWidget.vue'
+import ThermostatDeviceWidget from '@/components/devices/thermostat/ThermostatDeviceWidget.vue'
 
 export const DUMMY_DEVICE_TYPE_ID = 1 as const
 export const GPIO_SWITCH_DEVICE_TYPE_ID = 2 as const
 export const ONEWIRE_BUS_DEVICE_TYPE_ID = 3 as const
 export const DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID = 4 as const
+export const THERMOSTAT_DEVICE_TYPE_ID = 5 as const
 
 export type DeviceTypeId = number
 
@@ -48,6 +50,12 @@ export const deviceTypeOptions: DeviceTypeOption[] = [
     icon: 'temperature',
     componentKey: 'ds18b20-temperature-sensor',
   },
+  {
+    id: THERMOSTAT_DEVICE_TYPE_ID,
+    labelKey: 'device.type.thermostat',
+    icon: 'temperature',
+    componentKey: 'thermostat',
+  },
 ]
 
 const deviceTypeLabelKeys: Record<number, string> = {
@@ -55,6 +63,7 @@ const deviceTypeLabelKeys: Record<number, string> = {
   [GPIO_SWITCH_DEVICE_TYPE_ID]: 'device.type.gpioSwitch',
   [ONEWIRE_BUS_DEVICE_TYPE_ID]: 'device.type.onewireBus',
   [DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID]: 'device.type.ds18b20TemperatureSensor',
+  [THERMOSTAT_DEVICE_TYPE_ID]: 'device.type.thermostat',
 }
 
 export const deviceComponentRegistry: DeviceComponentRegistryEntry[] = [
@@ -73,6 +82,10 @@ export const deviceComponentRegistry: DeviceComponentRegistryEntry[] = [
   {
     typeId: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
     component: Ds18b20TemperatureSensorDeviceWidget,
+  },
+  {
+    typeId: THERMOSTAT_DEVICE_TYPE_ID,
+    component: ThermostatDeviceWidget,
   },
 ]
 

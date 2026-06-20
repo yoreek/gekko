@@ -5,6 +5,7 @@ import { publishRealtimeMessage } from './bus'
 import type { RealtimeMessage } from './messages'
 import { publishMockSnapshot } from '@/mock/snapshot'
 import { loadMockDatabase, saveMockDatabase } from '@/mock/database'
+import { publishThermostatDependents, refreshMockDerivedDeviceState } from '@/mock/handlers'
 import { useAppStore } from '@/stores/app'
 import { useWebSocketStore } from '@/stores/websocket'
 
@@ -127,6 +128,7 @@ export function connectMockRealtimeSocket(pinia: Pinia): MockRealtimeSocketHandl
       } else {
         db.devices.push(device)
       }
+      refreshMockDerivedDeviceState(db)
       db.registryRevision += 1
       db.pendingPersistence = true
       saveMockDatabase(db)
@@ -135,14 +137,17 @@ export function connectMockRealtimeSocket(pinia: Pinia): MockRealtimeSocketHandl
         registry_revision: db.registryRevision,
         pending_persistence: db.pendingPersistence,
       })
+      publishThermostatDependents(db, device.device_id)
     },
     removeDevice(deviceId: number): void {
       const db = loadMockDatabase()
       db.devices = db.devices.filter(entry => entry.device_id !== deviceId)
+      refreshMockDerivedDeviceState(db)
       db.registryRevision += 1
       db.pendingPersistence = true
       saveMockDatabase(db)
       publishDeviceRemove(deviceId, db.registryRevision, db.pendingPersistence)
+      publishThermostatDependents(db, deviceId)
     },
     refreshSnapshot(): void {
       publishMockSnapshot()

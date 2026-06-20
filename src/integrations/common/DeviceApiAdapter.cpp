@@ -5,6 +5,7 @@
 #include "integrations/rest/dummy/DummyDeviceApiAdapter.h"
 #include "integrations/rest/gpio_switch/GpioSwitchDeviceApiAdapter.h"
 #include "integrations/rest/onewire_bus/OneWireBusDeviceApiAdapter.h"
+#include "integrations/rest/thermostat/ThermostatDeviceApiAdapter.h"
 
 namespace ewfm {
 
@@ -106,6 +107,7 @@ DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(GpioSwitchDeviceApiAdapter::instance());
     (void)registry.registerAdapter(OneWireBusDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Ds18b20TemperatureSensorDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(ThermostatDeviceApiAdapter::instance());
     return registry;
 }
 

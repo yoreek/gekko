@@ -22,31 +22,31 @@ DeviceRegistryEntry makeRecord(DeviceId id, DeviceTypeId typeId, uint32_t config
     return record;
 }
 
-DeviceRegistrySnapshot makeParentChildSnapshot() {
+DeviceRegistrySnapshot makeDependencySnapshot() {
     DeviceRegistrySnapshot snapshot{};
     snapshot.indexEntries.push_back({10, 1});
     snapshot.indexEntries.push_back({11, 1});
 
-    DeviceRegistryEntry parent = makeRecord(10, 1, 2, "bus", "p1");
-    DeviceRegistryEntry child = makeRecord(11, 1, 2, "sensor", "c1");
-    child.depCount = 1;
-    child.deps[0] = {DeviceDependencyRole::OneWireBus, 10};
+    DeviceRegistryEntry dependency = makeRecord(10, 1, 2, "bus", "d1");
+    DeviceRegistryEntry dependent = makeRecord(11, 1, 2, "sensor", "s1");
+    dependent.depCount = 1;
+    dependent.deps[0] = {DeviceDependencyRole::OneWireBus, 10};
 
-    snapshot.records.push_back(parent);
-    snapshot.records.push_back(child);
+    snapshot.records.push_back(dependency);
+    snapshot.records.push_back(dependent);
     return snapshot;
 }
 
 } // namespace
 
 void test_validator_accepts_valid_structure() {
-    const DeviceRegistrySnapshot snapshot = makeParentChildSnapshot();
+    const DeviceRegistrySnapshot snapshot = makeDependencySnapshot();
     const DeviceValidationResult result = DeviceRegistrySnapshotValidator::validateStructure(snapshot);
     TEST_ASSERT_TRUE(result.ok());
 }
 
 void test_validator_rejects_duplicate_device_id() {
-    DeviceRegistrySnapshot snapshot = makeParentChildSnapshot();
+    DeviceRegistrySnapshot snapshot = makeDependencySnapshot();
     snapshot.indexEntries[1].deviceId = snapshot.indexEntries[0].deviceId;
 
     const DeviceValidationResult result = DeviceRegistrySnapshotValidator::validateStructure(snapshot);
@@ -79,32 +79,31 @@ void test_validator_typed_relationship_checks() {
     snapshot.indexEntries.push_back({101, 11});
     snapshot.indexEntries.push_back({102, 11});
 
-    DeviceRegistryEntry parent = makeRecord(100, 10, 1, "parent", "p");
-    DeviceRegistryEntry childA = makeRecord(101, 11, 1, "child-a", "a");
-    DeviceRegistryEntry childB = makeRecord(102, 11, 1, "child-b", "b");
-    childA.depCount = 1;
-    childA.deps[0] = {DeviceDependencyRole::OneWireBus, 100};
-    childB.depCount = 1;
-    childB.deps[0] = {DeviceDependencyRole::OneWireBus, 100};
-    snapshot.records.push_back(parent);
-    snapshot.records.push_back(childA);
-    snapshot.records.push_back(childB);
+    DeviceRegistryEntry dependency = makeRecord(100, 10, 1, "dependency", "d");
+    DeviceRegistryEntry dependentA = makeRecord(101, 11, 1, "dependent-a", "a");
+    DeviceRegistryEntry dependentB = makeRecord(102, 11, 1, "dependent-b", "b");
+    dependentA.depCount = 1;
+    dependentA.deps[0] = {DeviceDependencyRole::OneWireBus, 100};
+    dependentB.depCount = 1;
+    dependentB.deps[0] = {DeviceDependencyRole::OneWireBus, 100};
+    snapshot.records.push_back(dependency);
+    snapshot.records.push_back(dependentA);
+    snapshot.records.push_back(dependentB);
 
     DeviceTypeRegistry types{};
-    DeviceTypeDescriptor parentDescriptor{};
-    parentDescriptor.typeId = 10;
-    parentDescriptor.name = "Parent";
-    parentDescriptor.currentConfigVersion = 1;
-    parentDescriptor.canHaveDependents = true;
-    parentDescriptor.maxDependents = 1;
-    TEST_ASSERT_TRUE(types.registerDescriptor(parentDescriptor));
+    DeviceTypeDescriptor dependencyDescriptor{};
+    dependencyDescriptor.typeId = 10;
+    dependencyDescriptor.name = "Dependency";
+    dependencyDescriptor.currentConfigVersion = 1;
+    dependencyDescriptor.maxDependents = 1;
+    TEST_ASSERT_TRUE(types.registerDescriptor(dependencyDescriptor));
 
-    DeviceTypeDescriptor childDescriptor{};
-    childDescriptor.typeId = 11;
-    childDescriptor.name = "Child";
-    childDescriptor.currentConfigVersion = 1;
-    childDescriptor.dependencyRequirements.push_back({DeviceDependencyRole::OneWireBus, true, {10}});
-    TEST_ASSERT_TRUE(types.registerDescriptor(childDescriptor));
+    DeviceTypeDescriptor dependentDescriptor{};
+    dependentDescriptor.typeId = 11;
+    dependentDescriptor.name = "Dependent";
+    dependentDescriptor.currentConfigVersion = 1;
+    dependentDescriptor.dependencyRequirements.push_back({DeviceDependencyRole::OneWireBus, true, {10}});
+    TEST_ASSERT_TRUE(types.registerDescriptor(dependentDescriptor));
 
     const DeviceValidationResult structure = DeviceRegistrySnapshotValidator::validateStructure(snapshot);
     TEST_ASSERT_TRUE(structure.ok());

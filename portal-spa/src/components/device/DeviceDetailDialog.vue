@@ -67,6 +67,12 @@
           :busy="busy"
         />
 
+        <ThermostatDeviceForm
+          v-else-if="editing && isThermostat"
+          v-model="draft.thermostatConfig"
+          :busy="busy"
+        />
+
         <component
           v-else-if="!editing && hasTypeDetails"
           :is="detailComponent"
@@ -114,14 +120,17 @@ import {
   isDs18b20Type,
   isGpioSwitchType,
   isOneWireBusType,
+  isThermostatType,
 } from '@/components/device/device-form'
 import Ds18b20TemperatureSensorDeviceForm from '@/components/devices/ds18b20/Ds18b20TemperatureSensorDeviceForm.vue'
 import GpioSwitchDeviceForm from '@/components/devices/gpio-switch/GpioSwitchDeviceForm.vue'
 import OneWireBusDeviceForm from '@/components/devices/onewire-bus/OneWireBusDeviceForm.vue'
+import ThermostatDeviceForm from '@/components/devices/thermostat/ThermostatDeviceForm.vue'
 import { resolveDeviceDetailComponent } from '@/components/devices/registry/device-component-registry'
 import type { DashboardDevice } from '@/models/device'
 import { deviceTypeLabelKey } from '@/models/device-types'
 import { ds18b20AddressShapeValid, ds18b20ConfigChanged } from '@/models/devices/ds18b20'
+import { normalizeThermostatConfig, thermostatConfigChanged } from '@/models/devices/thermostat'
 import type { DeviceCommandRequest } from '@/api'
 import type { DeviceEditSubmitPayload } from '@/components/device/device-form'
 
@@ -150,6 +159,7 @@ const device = computed(() => props.device)
 const isGpioSwitch = computed(() => device.value !== null && isGpioSwitchType(device.value.typeId))
 const isOneWireBus = computed(() => device.value !== null && isOneWireBusType(device.value.typeId))
 const isDs18b20 = computed(() => device.value !== null && isDs18b20Type(device.value.typeId))
+const isThermostat = computed(() => device.value !== null && isThermostatType(device.value.typeId))
 const hasTypeDetails = computed(() => device.value !== null)
 
 const detailComponent = computed(() => {
@@ -199,7 +209,7 @@ const canSave = computed(() => {
   if (draft.common.name.trim().length === 0) {
     return false
   }
-  if (isDs18b20.value && (draft.ds18b20Config.parent_device_id <= 0 || !ds18b20AddressShapeValid(draft.ds18b20Config.address))) {
+  if (isDs18b20.value && (draft.ds18b20Config.dependency_device_id <= 0 || !ds18b20AddressShapeValid(draft.ds18b20Config.address))) {
     return false
   }
   const nextName = draft.common.name.trim()
@@ -215,6 +225,11 @@ const canSave = computed(() => {
   }
   if (isDs18b20.value) {
     return ds18b20ConfigChanged(draft.ds18b20Config, currentDraft.ds18b20Config)
+  }
+  if (isThermostat.value) {
+    const next = normalizeThermostatConfig(draft.thermostatConfig)
+    const current = normalizeThermostatConfig(currentDraft.thermostatConfig, device.value.deps)
+    return thermostatConfigChanged(next, current)
   }
   return false
 })
@@ -249,6 +264,7 @@ function resetDrafts(current: DashboardDevice): void {
   draft.gpioSwitchConfig = next.gpioSwitchConfig
   draft.oneWireBusConfig = next.oneWireBusConfig
   draft.ds18b20Config = next.ds18b20Config
+  draft.thermostatConfig = next.thermostatConfig
 }
 
 function enterEditMode(): void {
@@ -279,6 +295,7 @@ function submitSave(): void {
     gpioSwitchConfig: isGpioSwitch.value ? draft.gpioSwitchConfig : undefined,
     oneWireBusConfig: isOneWireBus.value ? draft.oneWireBusConfig : undefined,
     ds18b20Config: isDs18b20.value ? draft.ds18b20Config : undefined,
+    thermostatConfig: isThermostat.value ? draft.thermostatConfig : undefined,
   })
   if (commands.length === 0) {
     emit('update:editing', false)
@@ -293,6 +310,7 @@ function submitSave(): void {
     gpioSwitchConfig: isGpioSwitch.value ? draft.gpioSwitchConfig : undefined,
     oneWireBusConfig: isOneWireBus.value ? draft.oneWireBusConfig : undefined,
     ds18b20Config: isDs18b20.value ? draft.ds18b20Config : undefined,
+    thermostatConfig: isThermostat.value ? draft.thermostatConfig : undefined,
   })
 }
 

@@ -115,12 +115,12 @@ void test_device_registry_store_round_trip() {
     TEST_ASSERT_EQUAL_UINT32(2, loaded.indexEntries.size());
     TEST_ASSERT_EQUAL_UINT32(1, loaded.records[0].header.deviceId);
     TEST_ASSERT_EQUAL_UINT32(2, loaded.records[1].header.deviceId);
-    DummyDeviceConfigV1 loadedParentConfig{};
-    DummyDeviceConfigV1 loadedChildConfig{};
-    TEST_ASSERT_TRUE(decodeDummyDeviceConfig(loadedConfigBlobs[1].data(), loadedConfigBlobs[1].size(), loadedParentConfig));
-    TEST_ASSERT_TRUE(decodeDummyDeviceConfig(loadedConfigBlobs[2].data(), loadedConfigBlobs[2].size(), loadedChildConfig));
-    TEST_ASSERT_EQUAL_STRING("bus", loadedParentConfig.name);
-    TEST_ASSERT_EQUAL_STRING("sensor", loadedChildConfig.name);
+    DummyDeviceConfigV1 loadedDependencyConfig{};
+    DummyDeviceConfigV1 loadedDependentConfig{};
+    TEST_ASSERT_TRUE(decodeDummyDeviceConfig(loadedConfigBlobs[1].data(), loadedConfigBlobs[1].size(), loadedDependencyConfig));
+    TEST_ASSERT_TRUE(decodeDummyDeviceConfig(loadedConfigBlobs[2].data(), loadedConfigBlobs[2].size(), loadedDependentConfig));
+    TEST_ASSERT_EQUAL_STRING("bus", loadedDependencyConfig.name);
+    TEST_ASSERT_EQUAL_STRING("sensor", loadedDependentConfig.name);
     TEST_ASSERT_EQUAL_UINT32(configBlobs[2].size(), loadedConfigBlobs[2].size());
     TEST_ASSERT_EQUAL_MEMORY(configBlobs[2].data(), loadedConfigBlobs[2].data(), configBlobs[2].size());
 }
@@ -237,33 +237,33 @@ void test_dummy_device_base_config_is_loaded_and_runtime_starts_disabled() {
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(device.status()));
 }
 
-void test_dummy_device_parent_dependency_and_child_wiring_survive_base_refactor() {
-    DummyDeviceConfigV1 config = makeDummyConfig("parent", true);
+void test_dummy_device_dependency_wiring_survive_base_refactor() {
+    DummyDeviceConfigV1 config = makeDummyConfig("dependency", true);
 
-    DeviceRegistryEntry parentRecord = makeDummyRecord(5, 0, false, "parent", config);
-    DeviceRegistryEntry childRecord = makeDummyRecord(6, 5, true, "child", config);
-    DummyDevice parent(parentRecord, encodeDummyConfig(config));
-    DummyDevice child(childRecord, encodeDummyConfig(config));
+    DeviceRegistryEntry dependencyRecord = makeDummyRecord(5, 0, false, "dependency", config);
+    DeviceRegistryEntry dependentRecord = makeDummyRecord(6, 5, true, "dependent", config);
+    DummyDevice dependency(dependencyRecord, encodeDummyConfig(config));
+    DummyDevice dependent(dependentRecord, encodeDummyConfig(config));
 
-    child.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &parent);
-    parent.attachDependentRuntime(&child);
-    parent.attachDependentRuntime(&child);
-    TEST_ASSERT_EQUAL_PTR(static_cast<IDeviceRuntime*>(&parent), child.dependencyRuntime(DeviceDependencyRole::OneWireBus));
-    TEST_ASSERT_EQUAL_UINT32(1, parent.dependentRuntimes().size());
+    dependent.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &dependency);
+    dependency.attachDependentRuntime(&dependent);
+    dependency.attachDependentRuntime(&dependent);
+    TEST_ASSERT_EQUAL_PTR(static_cast<IDeviceRuntime*>(&dependency), dependent.dependencyRuntime(DeviceDependencyRole::OneWireBus));
+    TEST_ASSERT_EQUAL_UINT32(1, dependency.dependentRuntimes().size());
 
-    child.begin(300);
-    child.tickFastLoop(301);
-    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(child.status()));
+    dependent.begin(300);
+    dependent.tickFastLoop(301);
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(dependent.status()));
 
-    parent.begin(302);
-    parent.tickFastLoop(303);
-    child.tickFastLoop(304);
-    child.tickFastLoop(305);
-    child.tickFastLoop(306);
-    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(child.status()));
+    dependency.begin(302);
+    dependency.tickFastLoop(303);
+    dependent.tickFastLoop(304);
+    dependent.tickFastLoop(305);
+    dependent.tickFastLoop(306);
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(dependent.status()));
 
-    parent.detachDependentRuntime(&child);
-    TEST_ASSERT_TRUE(parent.dependentRuntimes().empty());
+    dependency.detachDependentRuntime(&dependent);
+    TEST_ASSERT_TRUE(dependency.dependentRuntimes().empty());
 }
 
 int main(int, char**) {
@@ -279,6 +279,6 @@ int main(int, char**) {
     RUN_TEST(test_retained_state_store_rejects_corrupt_payload);
     RUN_TEST(test_dummy_device_lifecycle_and_command_output);
     RUN_TEST(test_dummy_device_base_config_is_loaded_and_runtime_starts_disabled);
-    RUN_TEST(test_dummy_device_parent_dependency_and_child_wiring_survive_base_refactor);
+    RUN_TEST(test_dummy_device_dependency_wiring_survive_base_refactor);
     return UNITY_END();
 }

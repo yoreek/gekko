@@ -25,8 +25,8 @@
       <v-row class="device-type-section__grid">
         <v-col cols="12" md="6">
           <v-text-field
-            :label="t('device.fields.onewireParent')"
-            :model-value="parentLabel"
+            :label="t('device.fields.onewireDependency')"
+            :model-value="dependencyLabel"
             readonly
           />
         </v-col>
@@ -90,15 +90,16 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
-const config = computed(() => normalizeDs18b20TemperatureSensorConfig(props.device.detail.config, props.device.parentDeviceId))
+const dependencyDeviceId = computed(() => props.device.deps.find(dep => dep.role === 'onewire_bus')?.device_id ?? 0)
+const config = computed(() => normalizeDs18b20TemperatureSensorConfig(props.device.detail.config, props.device.deps))
 const temperature = computed(() => {
   const value = props.device.output.temperature
   return temperatureOutputValid(value) ? value : undefined
 })
 const temperatureText = computed(() => formatTemperatureOutput(temperature.value) || t('device.dialog.temperatureUnavailableShort'))
-const parentLabel = computed(() => {
-  const parent = deviceStore.devices.find(device => device.deviceId === props.device.parentDeviceId)
-  return parent ? `${parent.name} #${parent.deviceId}` : `#${props.device.parentDeviceId}`
+const dependencyLabel = computed(() => {
+  const dependency = deviceStore.devices.find(device => device.deviceId === dependencyDeviceId.value)
+  return dependency ? `${dependency.name} #${dependency.deviceId}` : `#${dependencyDeviceId.value}`
 })
 </script>
 

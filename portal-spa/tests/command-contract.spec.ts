@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 const mockPath = '/devices?mockMode=1&mockReset=1'
-const storageKey = 'gekko.mockDb.v5'
+const storageKey = 'gekko.mockDb.v6'
 
 test('switch commands use structured output state fields', async ({ page }) => {
   await page.goto(mockPath)

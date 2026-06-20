@@ -1,8 +1,10 @@
 import { publishRealtimeMessage } from '@/realtime/bus'
 import { loadMockDatabase } from './database'
+import { refreshMockDerivedDeviceState } from './handlers'
 
 export function publishMockSnapshot(): void {
   const db = loadMockDatabase()
+  refreshMockDerivedDeviceState(db)
 
   publishRealtimeMessage({
     topic: 'hello',

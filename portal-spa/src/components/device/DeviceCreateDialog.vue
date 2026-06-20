@@ -3,7 +3,7 @@
     :model-value="modelValue"
     :eyebrow="t('device.dialog.createTitle')"
     :subline="t('device.dialog.createHint')"
-    :max-width="720"
+    :max-width="920"
     @update:model-value="$emit('update:modelValue', $event)"
   >
     <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-4">
@@ -51,14 +51,26 @@ import {
   createDefaultDeviceCommonDraft,
   createDefaultDeviceConfigDraft,
   isDs18b20Type,
+  isThermostatType,
   type DeviceCommonDraft,
 } from '@/components/device/device-form'
 import { resolveDeviceCreateFormComponent } from '@/components/devices/registry/device-component-registry'
+import {
+  DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
+  GPIO_SWITCH_DEVICE_TYPE_ID,
+} from '@/models/device-types'
 import {
   ds18b20AddressShapeValid,
   encodeDs18b20Config,
   normalizeDs18b20TemperatureSensorConfig,
 } from '@/models/devices/ds18b20'
+import {
+  encodeThermostatConfig,
+  normalizeThermostatConfig,
+  thermostatDependencyLinks,
+  type ThermostatConfigDraft,
+} from '@/models/devices/thermostat'
+import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import type { DeviceDependencyLink } from '@/api'
 
 type CreatePayload = {
@@ -81,6 +93,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const deviceStore = useDeviceRegistryStore()
 
 const draft = reactive<{
   common: DeviceCommonDraft
@@ -91,14 +104,25 @@ const draft = reactive<{
 })
 
 const ds18b20Config = computed(() => normalizeDs18b20TemperatureSensorConfig(draft.config))
+const thermostatConfig = computed<ThermostatConfigDraft>(() => normalizeThermostatConfig(draft.config))
+const thermostatSensorCount = computed(() => deviceStore.devices.filter(device => device.typeId === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID).length)
+const thermostatSwitchCount = computed(() => deviceStore.devices.filter(device => device.typeId === GPIO_SWITCH_DEVICE_TYPE_ID).length)
 const canSubmit = computed(() => {
   if (draft.common.name.trim().length === 0 || draft.common.typeId <= 0) {
     return false
   }
   if (!isDs18b20Type(draft.common.typeId)) {
+    if (isThermostatType(draft.common.typeId)) {
+      return (
+        thermostatConfig.value.temperature_sensor_device_id > 0 &&
+        thermostatConfig.value.switch_device_id > 0 &&
+        thermostatSensorCount.value > 0 &&
+        thermostatSwitchCount.value > 0
+      )
+    }
     return true
   }
-  return ds18b20Config.value.parent_device_id > 0 && ds18b20AddressShapeValid(ds18b20Config.value.address)
+  return ds18b20Config.value.dependency_device_id > 0 && ds18b20AddressShapeValid(ds18b20Config.value.address)
 })
 const createFormComponent = computed(() => resolveDeviceCreateFormComponent(draft.common.typeId))
 
@@ -136,9 +160,15 @@ function submit(): void {
     payload.deps = [
       {
         role: 'onewire_bus',
-        device_id: ds18b20Config.value.parent_device_id,
+        device_id: ds18b20Config.value.dependency_device_id,
       },
     ]
+  } else if (isThermostatType(draft.common.typeId)) {
+    payload.config = encodeThermostatConfig({
+      ...thermostatConfig.value,
+      enabled: draft.common.enabled,
+    })
+    payload.deps = thermostatDependencyLinks(thermostatConfig.value)
   } else if (Object.keys(draft.config).length > 0) {
     payload.config = { ...draft.config }
   }

@@ -30,6 +30,6 @@ After the registry relationship model moves to `deps`, thermostat control can be
 ## Impact
 
 - Firmware: thermostat config/runtime files, runtime capability APIs, switch and temperature sensor runtime access boundaries, device type registry, REST adapter, websocket snapshots, and native tests.
-- API: generic `/api/devices` endpoints gain thermostat parsing/serialization using existing `deps` and computed `has_deps` from `replace-parent-with-deps`.
+- API: generic `/api/devices` endpoints gain thermostat parsing/serialization using existing `deps` and computed `has_deps`.
 - Portal SPA: type catalog, device contracts, thermostat form/detail/widget components, i18n, mocks, and realtime merge handling.
 - Tests: firmware tests for thermostat config, dep validation, state-machine behavior, effective status propagation, switch output behavior, REST serialization, and focused SPA checks.

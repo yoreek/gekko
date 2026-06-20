@@ -127,6 +127,7 @@ void DeviceRegistry::tickFastLoop(uint32_t now) {
         }
     }
     refreshDependentRuntimeStates(now);
+    captureDirtyRuntimeRetainedStates(now);
     emitRuntimeStatusChanges();
 }
 
@@ -137,6 +138,7 @@ void DeviceRegistry::tick100ms(uint32_t now) {
         }
     }
     refreshDependentRuntimeStates(now);
+    captureDirtyRuntimeRetainedStates(now);
     emitRuntimeStatusChanges();
 }
 
@@ -147,6 +149,7 @@ void DeviceRegistry::tick1s(uint32_t now) {
         }
     }
     refreshDependentRuntimeStates(now);
+    captureDirtyRuntimeRetainedStates(now);
     emitRuntimeStatusChanges();
 }
 
@@ -327,6 +330,7 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
     }
 
     refreshDependentRuntimeStates(now);
+    captureDirtyRuntimeRetainedStates(now);
     emitRuntimeStatusChanges();
 
     if (auto* runtimePtr = this->runtime(deviceId); runtimePtr != nullptr) {
@@ -588,6 +592,7 @@ DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, cons
     }
 
     refreshDependentRuntimeStates(now);
+    captureDirtyRuntimeRetainedStates(now);
     emitRuntimeStatusChanges();
 
     DeviceEvent updated{};
@@ -694,6 +699,7 @@ DeviceMutationResult DeviceRegistry::setDeps(DeviceId deviceId, const std::array
     }
 
     refreshDependentRuntimeStates(now);
+    captureDirtyRuntimeRetainedStates(now);
     emitRuntimeStatusChanges();
 
     result.pendingPersistence = persistence_.hasPendingPersistence();
@@ -792,6 +798,7 @@ DeviceMutationResult DeviceRegistry::setEnabled(DeviceId deviceId, bool enabled,
         }
     }
     refreshDependentRuntimeStates(now);
+    captureDirtyRuntimeRetainedStates(now);
     emitRuntimeStatusChanges();
 
     DeviceEvent updated{};
@@ -1429,6 +1436,19 @@ void DeviceRegistry::refreshDependentRuntimeStates(uint32_t now) {
             runtimePtr->requestDisable();
         } else if (shouldReconfigure && runtimePtr->status() != DeviceStatus::Reconfiguring) {
             runtimePtr->requestReconfigure();
+        }
+    }
+}
+
+void DeviceRegistry::captureDirtyRuntimeRetainedStates(uint32_t now) {
+    for (const auto& entry : runtimes_) {
+        if (entry.second.runtime == nullptr || !entry.second.runtime->retainedStateDirty()) {
+            continue;
+        }
+        const DeviceValidationResult retainedResult = captureRuntimeRetainedState(entry.first, now);
+        if (!retainedResult.ok()) {
+            EWFM_DEVICE_REGISTRY_LOG_WARN("retained capture failed for device=%u: %s", static_cast<unsigned>(entry.first),
+                                          retainedResult.message);
         }
     }
 }

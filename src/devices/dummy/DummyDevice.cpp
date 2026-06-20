@@ -79,7 +79,6 @@ DeviceTypeDescriptor DummyDevice::descriptor() {
     descriptor.typeId = kDummyDeviceTypeId;
     descriptor.name = "DummyDevice";
     descriptor.currentConfigVersion = kDummyDeviceConfigVersion;
-    descriptor.canHaveDependents = true;
     descriptor.maxDependents = 16;
     descriptor.supportsCommands = false;
     descriptor.supportsRetainedState = false;

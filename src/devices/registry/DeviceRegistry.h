@@ -24,10 +24,6 @@ struct DeviceCreateRequest {
     bool enabled{true};
     std::array<DeviceDependencyLink, kMaxDeviceDependencies> deps{};
     uint8_t depCount{0};
-#ifdef UNIT_TEST
-    bool hasParent{false};
-    DeviceId parentDeviceId{0};
-#endif
     DevicePersistencePolicy persistencePolicy{DevicePersistencePolicy::Immediate};
 
     bool hasDeps() const {
@@ -35,22 +31,10 @@ struct DeviceCreateRequest {
     }
 
     uint8_t dependencyCount() const {
-#ifdef UNIT_TEST
-        if (depCount == 0 && hasParent && parentDeviceId != 0U) {
-            return 1;
-        }
-#endif
         return depCount;
     }
 
     const DeviceDependencyLink* dependencyLinks() const {
-#ifdef UNIT_TEST
-        if (depCount == 0 && hasParent && parentDeviceId != 0U) {
-            static thread_local DeviceDependencyLink legacyLinks[1];
-            legacyLinks[0] = {DeviceDependencyRole::OneWireBus, parentDeviceId};
-            return legacyLinks;
-        }
-#endif
         return deps.data();
     }
 };
@@ -60,7 +44,6 @@ struct DeviceMutationResult {
     bool pendingPersistence{false};
     std::vector<DeviceId> dependentDeviceIds{};
 #ifdef UNIT_TEST
-    std::vector<DeviceId> dependentChildDeviceIds{};
 #endif
 
     bool ok() const {
@@ -119,10 +102,6 @@ public:
                                              uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
     DeviceMutationResult setDeps(DeviceId deviceId, const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t depCount,
                                  uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Immediate);
-#ifdef UNIT_TEST
-    DeviceMutationResult setParent(DeviceId deviceId, bool hasParent, DeviceId parentDeviceId, uint32_t now,
-                                   DevicePersistencePolicy policy = DevicePersistencePolicy::Immediate);
-#endif
     DeviceMutationResult setEnabled(DeviceId deviceId, bool enabled, uint32_t now,
                                     DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
     DeviceMutationResult remove(DeviceId deviceId, uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Immediate);
@@ -148,6 +127,7 @@ private:
     void syncRuntimeDependencyLinks(DeviceId deviceId);
     DeviceStatus effectiveStatusForRuntime(const IDeviceRuntime& runtime) const;
     void refreshDependentRuntimeStates(uint32_t now);
+    void captureDirtyRuntimeRetainedStates(uint32_t now);
     DeviceValidationResult persistIfNeeded(DevicePersistencePolicy policy);
     DeviceValidationResult reloadRuntimeFor(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
     DeviceValidationResult replaceRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);

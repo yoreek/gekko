@@ -1,5 +1,8 @@
 #pragma once
 
+#include "devices/sensors/temperature/TemperatureSensorTypes.h"
+#include "devices/switch/OutputState.h"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -52,6 +55,33 @@ struct DeviceDependencyRequirement {
 
 const char* deviceDependencyRoleName(DeviceDependencyRole role);
 bool parseDeviceDependencyRole(std::string_view value, DeviceDependencyRole& role);
+
+class ITemperatureReadingRuntime {
+public:
+    ITemperatureReadingRuntime() = default;
+    ITemperatureReadingRuntime(const ITemperatureReadingRuntime&) = delete;
+    ITemperatureReadingRuntime& operator=(const ITemperatureReadingRuntime&) = delete;
+    ITemperatureReadingRuntime(ITemperatureReadingRuntime&&) = delete;
+    ITemperatureReadingRuntime& operator=(ITemperatureReadingRuntime&&) = delete;
+    virtual ~ITemperatureReadingRuntime() = default;
+
+    virtual bool latestTemperatureReading(TemperatureReading& reading) const = 0;
+    virtual const char* latestTemperatureStatus() const = 0;
+};
+
+class ISwitchOutputRuntime {
+public:
+    ISwitchOutputRuntime() = default;
+    ISwitchOutputRuntime(const ISwitchOutputRuntime&) = delete;
+    ISwitchOutputRuntime& operator=(const ISwitchOutputRuntime&) = delete;
+    ISwitchOutputRuntime(ISwitchOutputRuntime&&) = delete;
+    ISwitchOutputRuntime& operator=(ISwitchOutputRuntime&&) = delete;
+    virtual ~ISwitchOutputRuntime() = default;
+
+    virtual OutputStateMask supportedOutputStateMask() const = 0;
+    virtual OutputState currentOutputState() const = 0;
+    virtual bool requestOutputState(OutputState state, uint32_t now) = 0;
+};
 
 template <size_t kCapacity> struct BoundedText {
     bool assign(std::string_view value) {
@@ -199,9 +229,6 @@ enum class DeviceCommandType : uint8_t {
     SetOutput = 9,
     Custom = 10,
     SetDeps = 11,
-#ifdef UNIT_TEST
-    SetParent = 11,
-#endif
 };
 
 enum class DevicePersistencePolicy : uint8_t {
@@ -281,10 +308,6 @@ struct DeviceRegistryEntry {
     DeviceRecordHeader header{};
     std::array<DeviceDependencyLink, kMaxDeviceDependencies> deps{};
     uint8_t depCount{0};
-#ifdef UNIT_TEST
-    bool hasParent{false};
-    DeviceId parentDeviceId{0};
-#endif
     DevicePersistencePolicy persistencePolicy{DevicePersistencePolicy::Delayed};
     DeviceStatus status{DeviceStatus::Unknown};
 
@@ -293,13 +316,6 @@ struct DeviceRegistryEntry {
     }
 
     const DeviceDependencyLink* dependencyLinks() const {
-#ifdef UNIT_TEST
-        if (depCount == 0 && hasParent && parentDeviceId != 0U) {
-            static thread_local DeviceDependencyLink legacyLinks[1];
-            legacyLinks[0] = {DeviceDependencyRole::OneWireBus, parentDeviceId};
-            return legacyLinks;
-        }
-#endif
         return deps.data();
     }
 
@@ -324,11 +340,6 @@ struct DeviceRegistryEntry {
     }
 
     uint8_t dependencyCount() const {
-#ifdef UNIT_TEST
-        if (depCount == 0 && hasParent && parentDeviceId != 0U) {
-            return 1;
-        }
-#endif
         return depCount;
     }
 };
@@ -350,22 +361,12 @@ struct DeviceCommand {
         std::array<DeviceDependencyLink, kMaxDeviceDependencies> deps{};
         uint8_t depCount{0};
     };
-#ifdef UNIT_TEST
-    struct ParentPayload {
-        bool hasParent{false};
-        DeviceId parentDeviceId{0};
-    };
-#endif
 
     DeviceCommandType type{DeviceCommandType::None};
     DeviceId deviceId{0};
     BoundedText<kMaxDeviceEventBytes> payload{};
     DepsPayload depsPayload{};
     bool depsPayloadValid{false};
-#ifdef UNIT_TEST
-    ParentPayload parentPayload{};
-    bool parentPayloadValid{false};
-#endif
     DevicePersistencePolicy persistencePolicy{DevicePersistencePolicy::Delayed};
 
     DeviceCommand() = default;
@@ -380,22 +381,11 @@ struct DeviceCommand {
                   DevicePersistencePolicy commandPolicy = DevicePersistencePolicy::Delayed)
         : type(commandType), deviceId(commandDeviceId), depsPayload(commandDepsPayload), depsPayloadValid(true),
           persistencePolicy(commandPolicy) {}
-#ifdef UNIT_TEST
-    DeviceCommand(DeviceCommandType commandType, DeviceId commandDeviceId, ParentPayload commandParentPayload,
-                  DevicePersistencePolicy commandPolicy = DevicePersistencePolicy::Delayed)
-        : type(commandType), deviceId(commandDeviceId), parentPayload(commandParentPayload), parentPayloadValid(true),
-          persistencePolicy(commandPolicy) {}
-#endif
 
     bool valid() const {
         if (type == DeviceCommandType::SetDeps) {
             return depsPayloadValid;
         }
-#ifdef UNIT_TEST
-        if (type == DeviceCommandType::SetParent) {
-            return parentPayloadValid;
-        }
-#endif
         return payload.valid();
     }
 };
@@ -432,6 +422,12 @@ public:
     }
     virtual IDeviceRuntime* dependencyRuntime(DeviceDependencyRole role) const {
         (void)role;
+        return nullptr;
+    }
+    virtual const ITemperatureReadingRuntime* temperatureReadingRuntime() const {
+        return nullptr;
+    }
+    virtual const ISwitchOutputRuntime* switchOutputRuntime() const {
         return nullptr;
     }
     virtual uint8_t dependencyCount() const {
@@ -516,9 +512,9 @@ public:
         (void)address;
         return false;
     }
-    virtual bool hasDuplicateChildRomAddress(const OneWireRomAddress& address, const IDeviceRuntime* ignoreChild = nullptr) const {
+    virtual bool hasDuplicateDependentRomAddress(const OneWireRomAddress& address, const IDeviceRuntime* ignoreDependent = nullptr) const {
         (void)address;
-        (void)ignoreChild;
+        (void)ignoreDependent;
         return false;
     }
 };
@@ -531,7 +527,6 @@ public:
     DeviceTypeId typeId{0};
     const char* name{nullptr};
     uint32_t currentConfigVersion{1};
-    bool canHaveDependents{false};
     uint8_t maxDependents{0};
     bool supportsCommands{false};
     bool supportsRetainedState{false};
@@ -541,9 +536,6 @@ public:
     bool ticks1s{false};
     std::vector<DeviceDependencyRequirement> dependencyRequirements{};
 #ifdef UNIT_TEST
-    bool canHaveChildren{false};
-    uint8_t maxChildren{0};
-    std::vector<DeviceTypeId> compatibleParentTypes{};
 #endif
     RuntimeFactory createRuntime{nullptr};
     ConfigValidator validateConfig{nullptr};

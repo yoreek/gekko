@@ -190,9 +190,9 @@ The portal API SHALL expose device dependency links as `deps` plus computed `has
 - **WHEN** the API serializes any device
 - **THEN** `has_deps` is computed from the serialized `deps` array
 
-#### Scenario: Parent fields are absent
+#### Scenario: Legacy relationship fields are absent
 - **WHEN** the API serializes a device after the dependency migration
-- **THEN** it does not include `has_parent` or `parent_device_id`
+- **THEN** it does not include legacy relationship fields
 
 #### Scenario: Delete rejection reports dependents
 - **WHEN** a delete request is rejected because other devices depend on the target
@@ -258,7 +258,7 @@ The portal API SHALL include DS18B20 persisted config, dependency identity, life
 ### Requirement: DS18B20 scan selection API support
 The portal API SHALL expose enough OneWire scan data for DS18B20 selection while keeping scan execution on the dependency OneWire bus device.
 
-#### Scenario: Parent scan result remains generic
+#### Scenario: OneWire scan result remains generic
 - **WHEN** the API serializes a OneWire bus scan result
 - **THEN** it includes each scanned ROM address and family code so DS18B20 clients can filter family code `28`
 
@@ -269,3 +269,22 @@ The portal API SHALL expose enough OneWire scan data for DS18B20 selection while
 #### Scenario: Non-DS18B20 scan candidate is not accepted as config
 - **WHEN** a client submits an address from a non-`28` family scan result as DS18B20 config
 - **THEN** the DS18B20 API adapter rejects the config even if the address came from a valid OneWire scan
+
+### Requirement: Thermostat device API contract
+The portal API SHALL create, mutate, and serialize thermostat devices through the existing generic device registry endpoints using the deps-shaped device contract.
+
+#### Scenario: Create request includes deps and config
+- **WHEN** a client creates a thermostat device through `POST /api/devices`
+- **THEN** the request includes `type_id = 5`, common device fields, `temperature_sensor` and `switch` deps, and a thermostat config object containing mode, target, hysteresis, safe min/max, check interval, sensor timeout, retry timeout, and minimum switch interval
+
+#### Scenario: Create rejects invalid dependency set
+- **WHEN** a thermostat create request omits a compatible temperature sensor or switch dep
+- **THEN** the API returns the standard error envelope and does not create a partial registry record
+
+#### Scenario: Update config can atomically update deps
+- **WHEN** a client edits thermostat settings after creation
+- **THEN** the SPA sends one `update_config` command to `POST /api/devices/:id/command` that can carry thermostat config and dependency fields together as structured JSON, and the API validates the combined mutation before applying it
+
+#### Scenario: Snapshot includes thermostat config and output
+- **WHEN** the API serializes a thermostat device
+- **THEN** the snapshot includes the thermostat config, dep links, lifecycle status, effective status, latest temperature output, desired switch output, actual switch output when available, and last check timestamp

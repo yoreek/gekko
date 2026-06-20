@@ -21,15 +21,15 @@ struct OneWireScanResult {
 
 class OneWireBusDevice final : public DeviceRuntimeBase {
 public:
-    class ChildTransaction {
+    class DependencyTransaction {
     public:
-        ChildTransaction() = default;
-        ChildTransaction(OneWireBusDevice* parent, IOneWireBusDriver* driver, uint32_t generation);
-        ChildTransaction(const ChildTransaction&) = delete;
-        ChildTransaction& operator=(const ChildTransaction&) = delete;
-        ChildTransaction(ChildTransaction&& other) noexcept;
-        ChildTransaction& operator=(ChildTransaction&& other) noexcept;
-        ~ChildTransaction();
+        DependencyTransaction() = default;
+        DependencyTransaction(OneWireBusDevice* bus, IOneWireBusDriver* driver, uint32_t generation);
+        DependencyTransaction(const DependencyTransaction&) = delete;
+        DependencyTransaction& operator=(const DependencyTransaction&) = delete;
+        DependencyTransaction(DependencyTransaction&& other) noexcept;
+        DependencyTransaction& operator=(DependencyTransaction&& other) noexcept;
+        ~DependencyTransaction();
 
         explicit operator bool() const;
         IOneWireBusDriver* driver() const;
@@ -37,7 +37,7 @@ public:
         void release();
 
     private:
-        OneWireBusDevice* parent_{nullptr};
+        OneWireBusDevice* bus_{nullptr};
         IOneWireBusDriver* driver_{nullptr};
         uint32_t generation_{0};
     };
@@ -48,8 +48,8 @@ public:
     const OneWireBusDeviceConfigV1& config() const;
     const OneWireScanResult& scan() const;
     uint32_t generation() const;
-    bool childTransactionActive() const;
-    ChildTransaction beginChildTransaction();
+    bool dependencyTransactionActive() const;
+    DependencyTransaction beginDependencyTransaction();
     void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override;
@@ -60,7 +60,7 @@ public:
     static DeviceValidationResult validateConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
 
     bool handleCommand(const DeviceCommand& command) override;
-    bool hasDuplicateChildRomAddress(const OneWireRomAddress& address, const IDeviceRuntime* ignoreChild = nullptr) const override;
+    bool hasDuplicateDependentRomAddress(const OneWireRomAddress& address, const IDeviceRuntime* ignoreDependent = nullptr) const override;
 
 private:
     OneWireBusDevice(const OneWireBusDeviceConfigV1& config, std::unique_ptr<IOneWireBusDriver> ownedDriver);
@@ -81,7 +81,7 @@ private:
     void finishScan();
     void appendScanCandidate(const OneWireRomAddress& address);
     void releaseHardware();
-    void releaseChildTransaction();
+    void releaseDependencyTransaction();
     DeviceValidationResult initializeHardware(uint32_t now);
     bool isScanning() const;
 
@@ -90,7 +90,7 @@ private:
     IOneWireBusDriver& driver_;
     OneWireScanResult scan_{};
     uint32_t generation_{0};
-    bool childTransactionActive_{false};
+    bool dependencyTransactionActive_{false};
 };
 
 } // namespace ewfm

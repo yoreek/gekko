@@ -218,12 +218,11 @@ std::unique_ptr<IDeviceRuntime> createCountingRuntime(const DeviceRegistryEntry&
     return std::unique_ptr<IDeviceRuntime>(new CountingRuntime(record, configBlob));
 }
 
-DeviceTypeDescriptor makeChildDescriptor(DeviceTypeId typeId, DeviceTypeId dependencyTypeId, uint8_t maxDependents = 0) {
+DeviceTypeDescriptor makeDependentDescriptor(DeviceTypeId typeId, DeviceTypeId dependencyTypeId, uint8_t maxDependents = 0) {
     DeviceTypeDescriptor descriptor;
     descriptor.typeId = typeId;
-    descriptor.name = "ChildDevice";
+    descriptor.name = "DependentDevice";
     descriptor.currentConfigVersion = 1;
-    descriptor.canHaveDependents = false;
     descriptor.maxDependents = maxDependents;
     descriptor.supportsCommands = false;
     descriptor.supportsRetainedState = false;
@@ -240,7 +239,6 @@ DeviceTypeDescriptor makeCommandableDescriptor(DeviceTypeId typeId) {
     descriptor.typeId = typeId;
     descriptor.name = "CommandableDevice";
     descriptor.currentConfigVersion = 1;
-    descriptor.canHaveDependents = true;
     descriptor.supportsCommands = true;
     descriptor.supportsRetainedState = false;
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Immediate;
@@ -722,7 +720,7 @@ void test_registry_disable_enable_and_delete() {
     TEST_ASSERT_NULL(registry.runtime(201));
 }
 
-void test_registry_rejects_parent_delete_with_children() {
+void test_registry_rejects_dependency_delete_with_dependents() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
@@ -732,95 +730,97 @@ void test_registry_rejects_parent_delete_with_children() {
     DeviceRegistry registry(store, types, idSource);
     TEST_ASSERT_TRUE(registry.begin(0).ok());
 
-    DeviceCreateResult parentResult = registry.create(makeDummyCreateRequest("parent"), 10);
-    TEST_ASSERT_TRUE(parentResult.ok());
+    DeviceCreateResult dependencyResult = registry.create(makeDummyCreateRequest("dependency"), 10);
+    TEST_ASSERT_TRUE(dependencyResult.ok());
 
-    DeviceCreateRequest childRequest = makeDummyCreateRequest("child");
-    childRequest.depCount = 1;
-    childRequest.deps[0] = {DeviceDependencyRole::OneWireBus, parentResult.deviceId};
-    DeviceCreateResult childResult = registry.create(childRequest, 20);
-    TEST_ASSERT_TRUE(childResult.ok());
+    DeviceCreateRequest dependentRequest = makeDummyCreateRequest("dependent");
+    dependentRequest.depCount = 1;
+    dependentRequest.deps[0] = {DeviceDependencyRole::OneWireBus, dependencyResult.deviceId};
+    DeviceCreateResult dependentResult = registry.create(dependentRequest, 20);
+    TEST_ASSERT_TRUE(dependentResult.ok());
 
-    DeviceMutationResult deleteResult = registry.remove(parentResult.deviceId, 30, DevicePersistencePolicy::Immediate);
+    DeviceMutationResult deleteResult = registry.remove(dependencyResult.deviceId, 30, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_FALSE(deleteResult.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::InvalidRelationship), static_cast<int>(deleteResult.validation.error));
     TEST_ASSERT_EQUAL_UINT32(1, deleteResult.dependentDeviceIds.size());
-    TEST_ASSERT_EQUAL_UINT32(childResult.deviceId, deleteResult.dependentDeviceIds[0]);
-    TEST_ASSERT_NOT_NULL(registry.runtime(parentResult.deviceId));
-    TEST_ASSERT_NOT_NULL(registry.runtime(childResult.deviceId));
-    TEST_ASSERT_NOT_NULL(registry.runtime(parentResult.deviceId));
-    TEST_ASSERT_NOT_NULL(registry.runtime(childResult.deviceId));
-    TEST_ASSERT_EQUAL_PTR(registry.runtime(parentResult.deviceId),
-                          registry.runtime(childResult.deviceId)->dependencyRuntime(DeviceDependencyRole::OneWireBus));
-    const auto& parentChildren = registry.runtime(parentResult.deviceId)->dependentRuntimes();
-    TEST_ASSERT_EQUAL_UINT32(1, parentChildren.size());
-    TEST_ASSERT_EQUAL_PTR(registry.runtime(childResult.deviceId), parentChildren[0]);
+    TEST_ASSERT_EQUAL_UINT32(dependentResult.deviceId, deleteResult.dependentDeviceIds[0]);
+    TEST_ASSERT_NOT_NULL(registry.runtime(dependencyResult.deviceId));
+    TEST_ASSERT_NOT_NULL(registry.runtime(dependentResult.deviceId));
+    TEST_ASSERT_NOT_NULL(registry.runtime(dependencyResult.deviceId));
+    TEST_ASSERT_NOT_NULL(registry.runtime(dependentResult.deviceId));
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(dependencyResult.deviceId),
+                          registry.runtime(dependentResult.deviceId)->dependencyRuntime(DeviceDependencyRole::OneWireBus));
+    const auto& dependencyDependents = registry.runtime(dependencyResult.deviceId)->dependentRuntimes();
+    TEST_ASSERT_EQUAL_UINT32(1, dependencyDependents.size());
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(dependentResult.deviceId), dependencyDependents[0]);
 }
 
-void test_registry_reassigns_parent_atomically() {
+void test_registry_reassigns_dependency_atomically() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
 
     FixedDeviceIdSource idSource({231, 232, 233});
     DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
-    DeviceTypeDescriptor childDescriptor;
-    childDescriptor.typeId = 59;
-    childDescriptor.name = "CountingChild";
-    childDescriptor.currentConfigVersion = 1;
-    childDescriptor.dependencyRequirements.push_back({DeviceDependencyRole::OneWireBus, true, {1}});
-    childDescriptor.createRuntime = &createCountingRuntime;
-    TEST_ASSERT_TRUE(types.registerDescriptor(childDescriptor));
+    DeviceTypeDescriptor dependentDescriptor;
+    dependentDescriptor.typeId = 59;
+    dependentDescriptor.name = "CountingDependent";
+    dependentDescriptor.currentConfigVersion = 1;
+    dependentDescriptor.dependencyRequirements.push_back({DeviceDependencyRole::OneWireBus, true, {1}});
+    dependentDescriptor.createRuntime = &createCountingRuntime;
+    TEST_ASSERT_TRUE(types.registerDescriptor(dependentDescriptor));
     DeviceRegistry registry(store, types, idSource);
     TEST_ASSERT_TRUE(registry.begin(0).ok());
 
-    DeviceCreateResult firstParent = registry.create(makeDummyCreateRequest("parent-a"), 10);
-    TEST_ASSERT_TRUE(firstParent.ok());
-    DeviceCreateResult secondParent = registry.create(makeDummyCreateRequest("parent-b"), 20);
-    TEST_ASSERT_TRUE(secondParent.ok());
+    DeviceCreateResult firstDependency = registry.create(makeDummyCreateRequest("dependency-a"), 10);
+    TEST_ASSERT_TRUE(firstDependency.ok());
+    DeviceCreateResult secondDependency = registry.create(makeDummyCreateRequest("dependency-b"), 20);
+    TEST_ASSERT_TRUE(secondDependency.ok());
     registry.tickFastLoop(21);
     registry.tickFastLoop(22);
 
-    DeviceCreateRequest childRequest = makeDummyCreateRequest("child");
-    childRequest.typeId = 59;
-    childRequest.configVersion = 1;
-    childRequest.depCount = 1;
-    childRequest.deps[0] = {DeviceDependencyRole::OneWireBus, firstParent.deviceId};
-    DeviceCreateResult childResult = registry.create(childRequest, 30);
-    TEST_ASSERT_TRUE(childResult.ok());
+    DeviceCreateRequest dependentRequest = makeDummyCreateRequest("dependent");
+    dependentRequest.typeId = 59;
+    dependentRequest.configVersion = 1;
+    dependentRequest.depCount = 1;
+    dependentRequest.deps[0] = {DeviceDependencyRole::OneWireBus, firstDependency.deviceId};
+    DeviceCreateResult dependentResult = registry.create(dependentRequest, 30);
+    TEST_ASSERT_TRUE(dependentResult.ok());
 
-    auto* childRuntime = dynamic_cast<CountingRuntime*>(registry.runtime(childResult.deviceId));
-    TEST_ASSERT_NOT_NULL(childRuntime);
-    TEST_ASSERT_EQUAL_UINT32(1, childRuntime->beginCount);
-    TEST_ASSERT_EQUAL_UINT32(0, childRuntime->reconfigureCount);
+    auto* dependentRuntime = dynamic_cast<CountingRuntime*>(registry.runtime(dependentResult.deviceId));
+    TEST_ASSERT_NOT_NULL(dependentRuntime);
+    TEST_ASSERT_EQUAL_UINT32(1, dependentRuntime->beginCount);
+    TEST_ASSERT_EQUAL_UINT32(0, dependentRuntime->reconfigureCount);
 
-    DeviceMutationResult reparentResult = registry.setDeps(
-        childResult.deviceId, {{DeviceDependencyRole::OneWireBus, secondParent.deviceId}}, 1, 40, DevicePersistencePolicy::Immediate);
+    DeviceMutationResult reparentResult =
+        registry.setDeps(dependentResult.deviceId, {{DeviceDependencyRole::OneWireBus, secondDependency.deviceId}}, 1, 40,
+                         DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE(reparentResult.ok());
     TEST_ASSERT_FALSE(reparentResult.pendingPersistence);
-    TEST_ASSERT_EQUAL_UINT32(secondParent.deviceId,
-                             registry.runtime(childResult.deviceId)->dependencyDeviceId(DeviceDependencyRole::OneWireBus));
-    auto* sameChildRuntime = dynamic_cast<CountingRuntime*>(registry.runtime(childResult.deviceId));
-    TEST_ASSERT_NOT_NULL(sameChildRuntime);
-    TEST_ASSERT_TRUE(sameChildRuntime == childRuntime);
-    TEST_ASSERT_EQUAL_UINT32(1, sameChildRuntime->beginCount);
-    TEST_ASSERT_EQUAL_UINT32(1, sameChildRuntime->reconfigureCount);
-    TEST_ASSERT_EQUAL_PTR(registry.runtime(secondParent.deviceId), sameChildRuntime->dependencyRuntime(DeviceDependencyRole::OneWireBus));
-    const auto& firstParentChildren = registry.runtime(firstParent.deviceId)->dependentRuntimes();
-    TEST_ASSERT_EQUAL_UINT32(0, firstParentChildren.size());
-    const auto& secondParentChildren = registry.runtime(secondParent.deviceId)->dependentRuntimes();
-    TEST_ASSERT_EQUAL_UINT32(1, secondParentChildren.size());
-    TEST_ASSERT_EQUAL_PTR(registry.runtime(childResult.deviceId), secondParentChildren[0]);
-    TEST_ASSERT_TRUE(registry.remove(firstParent.deviceId, 50, DevicePersistencePolicy::Immediate).ok());
+    TEST_ASSERT_EQUAL_UINT32(secondDependency.deviceId,
+                             registry.runtime(dependentResult.deviceId)->dependencyDeviceId(DeviceDependencyRole::OneWireBus));
+    auto* sameDependentRuntime = dynamic_cast<CountingRuntime*>(registry.runtime(dependentResult.deviceId));
+    TEST_ASSERT_NOT_NULL(sameDependentRuntime);
+    TEST_ASSERT_TRUE(sameDependentRuntime == dependentRuntime);
+    TEST_ASSERT_EQUAL_UINT32(1, sameDependentRuntime->beginCount);
+    TEST_ASSERT_EQUAL_UINT32(1, sameDependentRuntime->reconfigureCount);
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(secondDependency.deviceId),
+                          sameDependentRuntime->dependencyRuntime(DeviceDependencyRole::OneWireBus));
+    const auto& firstDependencyDependents = registry.runtime(firstDependency.deviceId)->dependentRuntimes();
+    TEST_ASSERT_EQUAL_UINT32(0, firstDependencyDependents.size());
+    const auto& secondDependencyDependents = registry.runtime(secondDependency.deviceId)->dependentRuntimes();
+    TEST_ASSERT_EQUAL_UINT32(1, secondDependencyDependents.size());
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(dependentResult.deviceId), secondDependencyDependents[0]);
+    TEST_ASSERT_TRUE(registry.remove(firstDependency.deviceId, 50, DevicePersistencePolicy::Immediate).ok());
 
     DeviceRegistrySnapshot loaded;
     DeviceConfigBlobMap loadedConfigBlobs;
     TEST_ASSERT_TRUE(store.load(loaded, loadedConfigBlobs, &types).ok());
-    const auto loadedChild =
-        std::find_if(loaded.records.begin(), loaded.records.end(),
-                     [childId = childResult.deviceId](const DeviceRegistryEntry& record) { return record.header.deviceId == childId; });
-    TEST_ASSERT_TRUE(loadedChild != loaded.records.end());
-    TEST_ASSERT_EQUAL_UINT32(secondParent.deviceId, loadedChild->dependencyDeviceId(DeviceDependencyRole::OneWireBus));
+    const auto loadedDependent = std::find_if(
+        loaded.records.begin(), loaded.records.end(),
+        [dependentId = dependentResult.deviceId](const DeviceRegistryEntry& record) { return record.header.deviceId == dependentId; });
+    TEST_ASSERT_TRUE(loadedDependent != loaded.records.end());
+    TEST_ASSERT_EQUAL_UINT32(secondDependency.deviceId, loadedDependent->dependencyDeviceId(DeviceDependencyRole::OneWireBus));
 
     ToggleConfigStorage failingStorage;
     DeviceRegistryStore failingStore(failingStorage);
@@ -830,76 +830,78 @@ void test_registry_reassigns_parent_atomically() {
     DeviceRegistry failingRegistry(failingStore, types, failingIdSource);
     TEST_ASSERT_TRUE(failingRegistry.begin(0).ok());
 
-    DeviceCreateResult failingParentA = failingRegistry.create(makeDummyCreateRequest("parent-c"), 10);
-    TEST_ASSERT_TRUE(failingParentA.ok());
-    DeviceCreateResult failingParentB = failingRegistry.create(makeDummyCreateRequest("parent-d"), 20);
-    TEST_ASSERT_TRUE(failingParentB.ok());
+    DeviceCreateResult failingDependencyA = failingRegistry.create(makeDummyCreateRequest("dependency-c"), 10);
+    TEST_ASSERT_TRUE(failingDependencyA.ok());
+    DeviceCreateResult failingDependencyB = failingRegistry.create(makeDummyCreateRequest("dependency-d"), 20);
+    TEST_ASSERT_TRUE(failingDependencyB.ok());
     failingRegistry.tickFastLoop(21);
     failingRegistry.tickFastLoop(22);
 
-    DeviceCreateRequest failingChild = makeDummyCreateRequest("child-fail");
-    failingChild.typeId = 59;
-    failingChild.configVersion = 1;
-    failingChild.depCount = 1;
-    failingChild.deps[0] = {DeviceDependencyRole::OneWireBus, failingParentA.deviceId};
-    DeviceCreateResult failingChildResult = failingRegistry.create(failingChild, 30);
-    TEST_ASSERT_TRUE(failingChildResult.ok());
+    DeviceCreateRequest failingDependentRequest = makeDummyCreateRequest("dependent-fail");
+    failingDependentRequest.typeId = 59;
+    failingDependentRequest.configVersion = 1;
+    failingDependentRequest.depCount = 1;
+    failingDependentRequest.deps[0] = {DeviceDependencyRole::OneWireBus, failingDependencyA.deviceId};
+    DeviceCreateResult failingDependentResult = failingRegistry.create(failingDependentRequest, 30);
+    TEST_ASSERT_TRUE(failingDependentResult.ok());
 
     failingStorage.failNextPutString();
     DeviceMutationResult failingReparent =
-        failingRegistry.setDeps(failingChildResult.deviceId, {{DeviceDependencyRole::OneWireBus, failingParentB.deviceId}}, 1, 40,
+        failingRegistry.setDeps(failingDependentResult.deviceId, {{DeviceDependencyRole::OneWireBus, failingDependencyB.deviceId}}, 1, 40,
                                 DevicePersistencePolicy::Immediate);
     TEST_ASSERT_FALSE(failingReparent.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::StorageError), static_cast<int>(failingReparent.validation.error));
-    TEST_ASSERT_EQUAL_UINT32(failingParentA.deviceId,
-                             failingRegistry.runtime(failingChildResult.deviceId)->dependencyDeviceId(DeviceDependencyRole::OneWireBus));
+    TEST_ASSERT_EQUAL_UINT32(
+        failingDependencyA.deviceId,
+        failingRegistry.runtime(failingDependentResult.deviceId)->dependencyDeviceId(DeviceDependencyRole::OneWireBus));
 }
 
-void test_registry_parent_config_update_reconfigures_children() {
+void test_registry_dependency_config_update_reconfigures_dependents() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
 
     FixedDeviceIdSource idSource({251, 252});
     DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
-    DeviceTypeDescriptor childDescriptor = makeChildDescriptor(59, 1);
-    childDescriptor.createRuntime = &createCountingRuntime;
-    TEST_ASSERT_TRUE(types.registerDescriptor(childDescriptor));
+    DeviceTypeDescriptor dependentDescriptor = makeDependentDescriptor(59, 1);
+    dependentDescriptor.createRuntime = &createCountingRuntime;
+    TEST_ASSERT_TRUE(types.registerDescriptor(dependentDescriptor));
 
     DeviceRegistry registry(store, types, idSource);
     TEST_ASSERT_TRUE(registry.begin(0).ok());
 
-    DeviceCreateResult parent = registry.create(makeDummyCreateRequest("parent-update"), 10);
-    TEST_ASSERT_TRUE(parent.ok());
+    DeviceCreateResult dependency = registry.create(makeDummyCreateRequest("dependency-update"), 10);
+    TEST_ASSERT_TRUE(dependency.ok());
 
-    DeviceCreateRequest childRequest = makeDummyCreateRequest("child-update");
-    childRequest.typeId = 59;
-    childRequest.configVersion = 1;
-    childRequest.depCount = 1;
-    childRequest.deps[0] = {DeviceDependencyRole::OneWireBus, parent.deviceId};
-    childRequest.persistencePolicy = DevicePersistencePolicy::Delayed;
-    DeviceCreateResult child = registry.create(childRequest, 20);
-    TEST_ASSERT_TRUE_MESSAGE(child.ok(), child.validation.message);
+    DeviceCreateRequest dependentRequest = makeDummyCreateRequest("dependent-update");
+    dependentRequest.typeId = 59;
+    dependentRequest.configVersion = 1;
+    dependentRequest.depCount = 1;
+    dependentRequest.deps[0] = {DeviceDependencyRole::OneWireBus, dependency.deviceId};
+    dependentRequest.persistencePolicy = DevicePersistencePolicy::Delayed;
+    DeviceCreateResult dependent = registry.create(dependentRequest, 20);
+    TEST_ASSERT_TRUE_MESSAGE(dependent.ok(), dependent.validation.message);
 
-    auto* childRuntime = dynamic_cast<CountingRuntime*>(registry.runtime(child.deviceId));
-    TEST_ASSERT_NOT_NULL(childRuntime);
-    const uint32_t previousReconfigureCount = childRuntime->reconfigureCount;
+    auto* dependentRuntime = dynamic_cast<CountingRuntime*>(registry.runtime(dependent.deviceId));
+    TEST_ASSERT_NOT_NULL(dependentRuntime);
+    const uint32_t previousReconfigureCount = dependentRuntime->reconfigureCount;
 
     DummyDeviceConfigV1 config{};
     config.enabled = true;
-    std::snprintf(config.name, sizeof(config.name), "%s", "parent");
-    DeviceMutationResult updated = registry.updateConfig(
-        parent.deviceId, encodeDummyConfig(config), DummyDevice::descriptor().currentConfigVersion, 30, DevicePersistencePolicy::Delayed);
+    std::snprintf(config.name, sizeof(config.name), "%s", "dependency");
+    DeviceMutationResult updated =
+        registry.updateConfig(dependency.deviceId, encodeDummyConfig(config), DummyDevice::descriptor().currentConfigVersion, 30,
+                              DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE_MESSAGE(updated.ok(), updated.validation.message);
 
-    auto* sameChildRuntime = dynamic_cast<CountingRuntime*>(registry.runtime(child.deviceId));
-    TEST_ASSERT_NOT_NULL(sameChildRuntime);
-    TEST_ASSERT_TRUE(sameChildRuntime == childRuntime);
-    TEST_ASSERT_EQUAL_UINT32(previousReconfigureCount + 1U, sameChildRuntime->reconfigureCount);
-    TEST_ASSERT_EQUAL_PTR(registry.runtime(parent.deviceId), sameChildRuntime->dependencyRuntime(DeviceDependencyRole::OneWireBus));
+    auto* sameDependentRuntime = dynamic_cast<CountingRuntime*>(registry.runtime(dependent.deviceId));
+    TEST_ASSERT_NOT_NULL(sameDependentRuntime);
+    TEST_ASSERT_TRUE(sameDependentRuntime == dependentRuntime);
+    TEST_ASSERT_EQUAL_UINT32(previousReconfigureCount + 1U, sameDependentRuntime->reconfigureCount);
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(dependency.deviceId), sameDependentRuntime->dependencyRuntime(DeviceDependencyRole::OneWireBus));
 }
 
-void test_registry_propagates_parent_dependency_status_and_recovers() {
+void test_registry_propagates_dependency_status_and_recovers() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
@@ -910,65 +912,65 @@ void test_registry_propagates_parent_dependency_status_and_recovers() {
     DeviceRegistry registry(store, types, idSource);
     TEST_ASSERT_TRUE(registry.begin(0).ok());
 
-    DeviceCreateRequest parentRequest = makeDummyCreateRequest("parent");
-    parentRequest.typeId = 58;
-    DeviceCreateResult parentResult = registry.create(parentRequest, 10);
-    TEST_ASSERT_TRUE(parentResult.ok());
+    DeviceCreateRequest dependencyRequest = makeDummyCreateRequest("dependency");
+    dependencyRequest.typeId = 58;
+    DeviceCreateResult dependencyResult = registry.create(dependencyRequest, 10);
+    TEST_ASSERT_TRUE(dependencyResult.ok());
 
-    DeviceCreateRequest childRequest = makeDummyCreateRequest("child");
-    childRequest.depCount = 1;
-    childRequest.deps[0] = {DeviceDependencyRole::OneWireBus, parentResult.deviceId};
-    DeviceCreateResult childResult = registry.create(childRequest, 20);
-    TEST_ASSERT_TRUE(childResult.ok());
-    TEST_ASSERT_NOT_NULL(registry.runtime(childResult.deviceId));
+    DeviceCreateRequest dependentRequest = makeDummyCreateRequest("dependent");
+    dependentRequest.depCount = 1;
+    dependentRequest.deps[0] = {DeviceDependencyRole::OneWireBus, dependencyResult.deviceId};
+    DeviceCreateResult dependentResult = registry.create(dependentRequest, 20);
+    TEST_ASSERT_TRUE(dependentResult.ok());
+    TEST_ASSERT_NOT_NULL(registry.runtime(dependentResult.deviceId));
 
-    DeviceMutationResult disableResult = registry.setEnabled(parentResult.deviceId, false, 30, DevicePersistencePolicy::Immediate);
+    DeviceMutationResult disableResult = registry.setEnabled(dependencyResult.deviceId, false, 30, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE(disableResult.ok());
-    TEST_ASSERT_NOT_NULL(registry.runtime(childResult.deviceId));
+    TEST_ASSERT_NOT_NULL(registry.runtime(dependentResult.deviceId));
     auto disabledRecords = registry.list();
-    const auto disabledChild =
-        std::find_if(disabledRecords.begin(), disabledRecords.end(),
-                     [childId = childResult.deviceId](const DeviceRegistryEntry& record) { return record.header.deviceId == childId; });
-    TEST_ASSERT_TRUE(disabledChild != disabledRecords.end());
-    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Disabled), static_cast<int>(disabledChild->status));
-    TEST_ASSERT_EQUAL_PTR(registry.runtime(parentResult.deviceId),
-                          registry.runtime(childResult.deviceId)->dependencyRuntime(DeviceDependencyRole::OneWireBus));
-    const auto& blockedParentChildren = registry.runtime(parentResult.deviceId)->dependentRuntimes();
-    TEST_ASSERT_EQUAL_UINT32(1, blockedParentChildren.size());
-    TEST_ASSERT_EQUAL_PTR(registry.runtime(childResult.deviceId), blockedParentChildren[0]);
+    const auto disabledDependent = std::find_if(
+        disabledRecords.begin(), disabledRecords.end(),
+        [dependentId = dependentResult.deviceId](const DeviceRegistryEntry& record) { return record.header.deviceId == dependentId; });
+    TEST_ASSERT_TRUE(disabledDependent != disabledRecords.end());
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Disabled), static_cast<int>(disabledDependent->status));
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(dependencyResult.deviceId),
+                          registry.runtime(dependentResult.deviceId)->dependencyRuntime(DeviceDependencyRole::OneWireBus));
+    const auto& blockedDependents = registry.runtime(dependencyResult.deviceId)->dependentRuntimes();
+    TEST_ASSERT_EQUAL_UINT32(1, blockedDependents.size());
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(dependentResult.deviceId), blockedDependents[0]);
 
-    DeviceMutationResult enableResult = registry.setEnabled(parentResult.deviceId, true, 40, DevicePersistencePolicy::Immediate);
+    DeviceMutationResult enableResult = registry.setEnabled(dependencyResult.deviceId, true, 40, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE(enableResult.ok());
     registry.tickFastLoop(41);
     registry.tickFastLoop(42);
     registry.tickFastLoop(43);
     registry.tickFastLoop(44);
-    TEST_ASSERT_NOT_NULL(registry.runtime(childResult.deviceId));
+    TEST_ASSERT_NOT_NULL(registry.runtime(dependentResult.deviceId));
     auto recoveredRecords = registry.list();
-    const auto recoveredChild =
-        std::find_if(recoveredRecords.begin(), recoveredRecords.end(),
-                     [childId = childResult.deviceId](const DeviceRegistryEntry& record) { return record.header.deviceId == childId; });
-    TEST_ASSERT_TRUE(recoveredChild != recoveredRecords.end());
-    TEST_ASSERT_NOT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(recoveredChild->status));
-    const auto& recoveredParentChildren = registry.runtime(parentResult.deviceId)->dependentRuntimes();
-    TEST_ASSERT_EQUAL_UINT32(1, recoveredParentChildren.size());
-    TEST_ASSERT_EQUAL_PTR(registry.runtime(childResult.deviceId), recoveredParentChildren[0]);
+    const auto recoveredDependent = std::find_if(
+        recoveredRecords.begin(), recoveredRecords.end(),
+        [dependentId = dependentResult.deviceId](const DeviceRegistryEntry& record) { return record.header.deviceId == dependentId; });
+    TEST_ASSERT_TRUE(recoveredDependent != recoveredRecords.end());
+    TEST_ASSERT_NOT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(recoveredDependent->status));
+    const auto& recoveredDependents = registry.runtime(dependencyResult.deviceId)->dependentRuntimes();
+    TEST_ASSERT_EQUAL_UINT32(1, recoveredDependents.size());
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(dependentResult.deviceId), recoveredDependents[0]);
 
-    DeviceMutationResult faultResult =
-        registry.command(DeviceCommand{DeviceCommandType::SetStatus, parentResult.deviceId, "fault", DevicePersistencePolicy::Delayed}, 50);
+    DeviceMutationResult faultResult = registry.command(
+        DeviceCommand{DeviceCommandType::SetStatus, dependencyResult.deviceId, "fault", DevicePersistencePolicy::Delayed}, 50);
     TEST_ASSERT_TRUE(faultResult.ok());
     registry.tickFastLoop(51);
     registry.tickFastLoop(52);
-    TEST_ASSERT_NOT_NULL(registry.runtime(childResult.deviceId));
+    TEST_ASSERT_NOT_NULL(registry.runtime(dependentResult.deviceId));
     auto faultedRecords = registry.list();
-    const auto faultedChild =
-        std::find_if(faultedRecords.begin(), faultedRecords.end(),
-                     [childId = childResult.deviceId](const DeviceRegistryEntry& record) { return record.header.deviceId == childId; });
-    TEST_ASSERT_TRUE(faultedChild != faultedRecords.end());
-    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(faultedChild->status));
+    const auto faultedDependent = std::find_if(
+        faultedRecords.begin(), faultedRecords.end(),
+        [dependentId = dependentResult.deviceId](const DeviceRegistryEntry& record) { return record.header.deviceId == dependentId; });
+    TEST_ASSERT_TRUE(faultedDependent != faultedRecords.end());
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(faultedDependent->status));
 }
 
-void test_registry_set_parent_command_normalization() {
+void test_registry_set_deps_command_normalization() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
@@ -978,36 +980,38 @@ void test_registry_set_parent_command_normalization() {
     DeviceRegistry registry(store, types, idSource);
     TEST_ASSERT_TRUE(registry.begin(0).ok());
 
-    DeviceCreateResult parentA = registry.create(makeDummyCreateRequest("parent-a"), 10);
-    DeviceCreateResult parentB = registry.create(makeDummyCreateRequest("parent-b"), 20);
-    TEST_ASSERT_TRUE(parentA.ok());
-    TEST_ASSERT_TRUE(parentB.ok());
+    DeviceCreateResult dependencyA = registry.create(makeDummyCreateRequest("dependency-a"), 10);
+    DeviceCreateResult dependencyB = registry.create(makeDummyCreateRequest("dependency-b"), 20);
+    TEST_ASSERT_TRUE(dependencyA.ok());
+    TEST_ASSERT_TRUE(dependencyB.ok());
 
-    DeviceCreateRequest childRequest = makeDummyCreateRequest("child");
-    childRequest.depCount = 1;
-    childRequest.deps[0] = {DeviceDependencyRole::OneWireBus, parentA.deviceId};
-    DeviceCreateResult child = registry.create(childRequest, 30);
-    TEST_ASSERT_TRUE(child.ok());
+    DeviceCreateRequest dependentRequest = makeDummyCreateRequest("dependent");
+    dependentRequest.depCount = 1;
+    dependentRequest.deps[0] = {DeviceDependencyRole::OneWireBus, dependencyA.deviceId};
+    DeviceCreateResult dependent = registry.create(dependentRequest, 30);
+    TEST_ASSERT_TRUE(dependent.ok());
 
     DeviceMutationResult commandResult =
-        registry.command(DeviceCommand{DeviceCommandType::SetDeps, child.deviceId,
-                                       DeviceCommand::DepsPayload{{{DeviceDependencyRole::OneWireBus, parentB.deviceId}}, 1},
+        registry.command(DeviceCommand{DeviceCommandType::SetDeps, dependent.deviceId,
+                                       DeviceCommand::DepsPayload{{{DeviceDependencyRole::OneWireBus, dependencyB.deviceId}}, 1},
                                        DevicePersistencePolicy::Immediate},
                          40);
     TEST_ASSERT_TRUE(commandResult.ok());
-    TEST_ASSERT_EQUAL_UINT32(parentB.deviceId, registry.runtime(child.deviceId)->dependencyDeviceId(DeviceDependencyRole::OneWireBus));
-    TEST_ASSERT_EQUAL_PTR(registry.runtime(parentB.deviceId),
-                          registry.runtime(child.deviceId)->dependencyRuntime(DeviceDependencyRole::OneWireBus));
+    TEST_ASSERT_EQUAL_UINT32(dependencyB.deviceId,
+                             registry.runtime(dependent.deviceId)->dependencyDeviceId(DeviceDependencyRole::OneWireBus));
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(dependencyB.deviceId),
+                          registry.runtime(dependent.deviceId)->dependencyRuntime(DeviceDependencyRole::OneWireBus));
 
-    DeviceMutationResult clearParentResult = registry.command(
-        DeviceCommand{DeviceCommandType::SetDeps, child.deviceId, DeviceCommand::DepsPayload{}, DevicePersistencePolicy::Immediate}, 41);
-    TEST_ASSERT_TRUE(clearParentResult.ok());
-    TEST_ASSERT_FALSE(registry.runtime(child.deviceId)->hasDependencies());
-    TEST_ASSERT_NULL(registry.runtime(child.deviceId)->dependencyRuntime(DeviceDependencyRole::OneWireBus));
+    DeviceMutationResult clearDepsResult = registry.command(
+        DeviceCommand{DeviceCommandType::SetDeps, dependent.deviceId, DeviceCommand::DepsPayload{}, DevicePersistencePolicy::Immediate},
+        41);
+    TEST_ASSERT_TRUE(clearDepsResult.ok());
+    TEST_ASSERT_FALSE(registry.runtime(dependent.deviceId)->hasDependencies());
+    TEST_ASSERT_NULL(registry.runtime(dependent.deviceId)->dependencyRuntime(DeviceDependencyRole::OneWireBus));
 
     DeviceCommand invalidPayload{};
     invalidPayload.type = DeviceCommandType::SetDeps;
-    invalidPayload.deviceId = child.deviceId;
+    invalidPayload.deviceId = dependent.deviceId;
     invalidPayload.persistencePolicy = DevicePersistencePolicy::Immediate;
     DeviceMutationResult invalidPayloadResult = registry.command(invalidPayload, 42);
     TEST_ASSERT_FALSE(invalidPayloadResult.ok());
@@ -1478,11 +1482,11 @@ int main(int, char**) {
     RUN_TEST(test_registry_duplicate_generated_id_retries);
     RUN_TEST(test_registry_rejects_invalid_device_id);
     RUN_TEST(test_registry_rejects_max_device_count);
-    RUN_TEST(test_registry_rejects_parent_delete_with_children);
-    RUN_TEST(test_registry_reassigns_parent_atomically);
-    RUN_TEST(test_registry_propagates_parent_dependency_status_and_recovers);
-    RUN_TEST(test_registry_set_parent_command_normalization);
-    RUN_TEST(test_registry_parent_config_update_reconfigures_children);
+    RUN_TEST(test_registry_rejects_dependency_delete_with_dependents);
+    RUN_TEST(test_registry_reassigns_dependency_atomically);
+    RUN_TEST(test_registry_propagates_dependency_status_and_recovers);
+    RUN_TEST(test_registry_set_deps_command_normalization);
+    RUN_TEST(test_registry_dependency_config_update_reconfigures_dependents);
     RUN_TEST(test_registry_emits_required_event_kinds);
     RUN_TEST(test_registry_invokes_only_declared_cadences);
     RUN_TEST(test_registry_immediate_persistence_failure_rolls_back_create);

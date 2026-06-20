@@ -5,6 +5,7 @@ import {
   DUMMY_DEVICE_TYPE_ID,
   GPIO_SWITCH_DEVICE_TYPE_ID,
   ONEWIRE_BUS_DEVICE_TYPE_ID,
+  THERMOSTAT_DEVICE_TYPE_ID,
 } from '@/models/device-types'
 import {
   createDefaultDs18b20TemperatureSensorConfig,
@@ -15,6 +16,14 @@ import {
 } from '@/models/devices/ds18b20'
 import { createDefaultGpioSwitchConfig, normalizeGpioSwitchConfig, type GpioSwitchConfigDraft } from '@/models/devices/gpio-switch'
 import { createDefaultOneWireBusConfig, normalizeOneWireBusConfig, type OneWireBusConfigDraft } from '@/models/devices/onewire-bus'
+import {
+  createDefaultThermostatConfig,
+  encodeThermostatConfig,
+  normalizeThermostatConfig,
+  thermostatConfigChanged,
+  thermostatDependencyLinks,
+  type ThermostatConfigDraft,
+} from '@/models/devices/thermostat'
 
 export interface DeviceCommonDraft {
   name: string
@@ -27,6 +36,7 @@ export interface DeviceEditDraft {
   gpioSwitchConfig: GpioSwitchConfigDraft
   oneWireBusConfig: OneWireBusConfigDraft
   ds18b20Config: Ds18b20TemperatureSensorConfigDraft
+  thermostatConfig: ThermostatConfigDraft
 }
 
 export interface DeviceEditSubmitPayload {
@@ -34,6 +44,7 @@ export interface DeviceEditSubmitPayload {
   gpioSwitchConfig?: GpioSwitchConfigDraft
   oneWireBusConfig?: OneWireBusConfigDraft
   ds18b20Config?: Ds18b20TemperatureSensorConfigDraft
+  thermostatConfig?: ThermostatConfigDraft
 }
 
 export function createDefaultDeviceCommonDraft(): DeviceCommonDraft {
@@ -65,6 +76,9 @@ export function createDefaultDeviceConfigDraft(typeId: number): Record<string, u
   if (typeId === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID) {
     return { ...createDefaultDs18b20TemperatureSensorConfig() }
   }
+  if (typeId === THERMOSTAT_DEVICE_TYPE_ID) {
+    return { ...createDefaultThermostatConfig() }
+  }
   return {}
 }
 
@@ -80,16 +94,22 @@ export function isDs18b20Type(typeId: number): boolean {
   return typeId === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID
 }
 
+export function isThermostatType(typeId: number): boolean {
+  return typeId === THERMOSTAT_DEVICE_TYPE_ID
+}
+
 export function createDeviceEditDraft(device: DashboardDevice | null): DeviceEditDraft {
   const gpioSwitchConfig = normalizeGpioSwitchConfig(device?.detail.config)
   const oneWireBusConfig = normalizeOneWireBusConfig(device?.detail.config)
-  const ds18b20Config = normalizeDs18b20TemperatureSensorConfig(device?.detail.config, device?.parentDeviceId)
+  const ds18b20Config = normalizeDs18b20TemperatureSensorConfig(device?.detail.config, device?.deps)
+  const thermostatConfig = normalizeThermostatConfig(device?.detail.config, device?.deps)
   if (device === null) {
     return {
       common: createDefaultDeviceCommonDraft(),
       gpioSwitchConfig,
       oneWireBusConfig,
       ds18b20Config,
+      thermostatConfig,
     }
   }
   const common = createDeviceCommonDraft(device)
@@ -98,6 +118,7 @@ export function createDeviceEditDraft(device: DashboardDevice | null): DeviceEdi
     gpioSwitchConfig: isGpioSwitchType(device.typeId) ? gpioSwitchConfig : createDefaultGpioSwitchConfig(),
     oneWireBusConfig: isOneWireBusType(device.typeId) ? oneWireBusConfig : createDefaultOneWireBusConfig(),
     ds18b20Config: isDs18b20Type(device.typeId) ? ds18b20Config : createDefaultDs18b20TemperatureSensorConfig(),
+    thermostatConfig: isThermostatType(device.typeId) ? thermostatConfig : createDefaultThermostatConfig(),
   }
 }
 
@@ -163,7 +184,7 @@ export function buildDeviceEditCommands(device: DashboardDevice, payload: Device
   }
 
   if (isDs18b20Type(device.typeId) && payload.ds18b20Config !== undefined) {
-    const current = normalizeDs18b20TemperatureSensorConfig(device.detail.config, device.parentDeviceId)
+    const current = normalizeDs18b20TemperatureSensorConfig(device.detail.config, device.deps)
     const next = {
       ...payload.ds18b20Config,
       enabled: payload.common.enabled,
@@ -175,9 +196,24 @@ export function buildDeviceEditCommands(device: DashboardDevice, payload: Device
         deps: [
           {
             role: 'onewire_bus',
-            device_id: next.parent_device_id,
+            device_id: next.dependency_device_id,
           },
         ],
+      })
+    }
+  }
+
+  if (isThermostatType(device.typeId) && payload.thermostatConfig !== undefined) {
+    const current = normalizeThermostatConfig(device.detail.config, device.deps)
+    const next = {
+      ...payload.thermostatConfig,
+      enabled: payload.common.enabled,
+    }
+    if (thermostatConfigChanged(next, current)) {
+      commands.push({
+        command: 'update_config',
+        config: encodeThermostatConfig(next),
+        deps: thermostatDependencyLinks(next),
       })
     }
   }

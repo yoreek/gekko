@@ -4,7 +4,7 @@ namespace ewfm {
 
 TriStateSwitchDeviceBase::TriStateSwitchDeviceBase(const SwitchDeviceConfigV1& config) : SwitchDeviceBase(config) {}
 
-OutputStateMask TriStateSwitchDeviceBase::supportedOutputStateMask() const {
+OutputStateMask TriStateSwitchDeviceBase::supportedOutputStateMaskImpl() const {
     return kOutputStateMaskTriState;
 }
 

@@ -215,10 +215,6 @@ DeviceValidationResult DeviceRegistrySnapshotValidator::validateTypedRelationshi
                           dependencyRecord.header.typeId) == requirementIt->compatibleTypeIds.end()) {
                 return {DeviceError::InvalidRelationship, "incompatible dependency type"};
             }
-            if (!dependencyDescriptor->canHaveDependents) {
-                return {DeviceError::InvalidRelationship, "dependency type cannot have dependents"};
-            }
-
             const size_t nextCount = ++dependentCounts[dependencyRecord.header.deviceId];
             if (dependencyDescriptor->maxDependents > 0 && nextCount > dependencyDescriptor->maxDependents) {
                 return {DeviceError::InvalidRelationship, "dependency dependent limit exceeded"};

@@ -4,6 +4,10 @@ export interface DeviceOutputSnapshot {
   state?: DeviceOutputState
   physical_level?: boolean
   temperature?: TemperatureOutputSnapshot
+  desired_switch_state?: DeviceOutputState
+  actual_switch_state?: DeviceOutputState
+  control_status?: string
+  last_check_at_ms?: number
 }
 
 export type TemperatureUnit = 'celsius' | 'fahrenheit'
@@ -65,8 +69,6 @@ export interface DeviceRecord {
   enabled: boolean
   deps?: DeviceDependencyLink[]
   has_deps?: boolean
-  has_parent?: boolean
-  parent_device_id?: number
   config_version: number
   config_revision: number
   lifecycle_status: string
@@ -98,8 +100,6 @@ export interface DeviceCommandRequest {
   state?: DeviceOutputState
   config?: Record<string, unknown>
   deps?: DeviceDependencyLink[]
-  has_parent?: boolean
-  parent_device_id?: number
 }
 
 export interface DeviceMutationResponse {

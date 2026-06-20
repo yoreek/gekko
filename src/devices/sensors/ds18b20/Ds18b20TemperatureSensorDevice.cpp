@@ -18,8 +18,8 @@ constexpr uint8_t kFaultErrorThreshold = 3;
 
 const char* kOutputOk = "ok";
 const char* kOutputNotReady = "not_ready";
-const char* kOutputParentUnavailable = "parent_unavailable";
-const char* kOutputParentBusy = "parent_busy";
+const char* kOutputDependencyUnavailable = "dependency_unavailable";
+const char* kOutputDependencyBusy = "dependency_busy";
 const char* kOutputNotFound = "not_found";
 const char* kOutputCrcError = "crc_error";
 const char* kOutputOutOfRange = "out_of_range";
@@ -59,6 +59,19 @@ uint32_t Ds18b20TemperatureSensorDevice::lastDependencyGeneration() const {
     return lastDependencyGeneration_;
 }
 
+const ITemperatureReadingRuntime* Ds18b20TemperatureSensorDevice::temperatureReadingRuntime() const {
+    return this;
+}
+
+bool Ds18b20TemperatureSensorDevice::latestTemperatureReading(TemperatureReading& reading) const {
+    reading = reading_;
+    return true;
+}
+
+const char* Ds18b20TemperatureSensorDevice::latestTemperatureStatus() const {
+    return outputStatus_;
+}
+
 void Ds18b20TemperatureSensorDevice::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
     DeviceRuntimeBase::bindDeviceIdentity(record, config);
     enabled_ = config_.base.enabled != 0U;
@@ -95,7 +108,6 @@ DeviceTypeDescriptor Ds18b20TemperatureSensorDevice::descriptor() {
     descriptor.typeId = kDs18b20TemperatureSensorTypeId;
     descriptor.name = "Ds18b20TemperatureSensorDevice";
     descriptor.currentConfigVersion = kDs18b20TemperatureSensorConfigVersion;
-    descriptor.canHaveDependents = false;
     descriptor.maxDependents = 0;
     descriptor.supportsCommands = false;
     descriptor.supportsRetainedState = false;
@@ -145,18 +157,18 @@ bool Ds18b20TemperatureSensorDevice::dependencyGenerationChanged() const {
     return dependency != nullptr && lastDependencyGeneration_ != 0U && dependency->generation() != lastDependencyGeneration_;
 }
 
-Ds18b20TemperatureSensorDevice::ParentAccessResult
-Ds18b20TemperatureSensorDevice::beginDependencyTransaction(OneWireBusDevice::ChildTransaction& transaction) const {
+Ds18b20TemperatureSensorDevice::DependencyAccessResult
+Ds18b20TemperatureSensorDevice::beginDependencyTransaction(OneWireBusDevice::DependencyTransaction& transaction) const {
     OneWireBusDevice* dependency = dependencyBus();
     if (dependency == nullptr || dependency->status() != DeviceStatus::Ready) {
-        return ParentAccessResult::Missing;
+        return DependencyAccessResult::Missing;
     }
 
-    transaction = dependency->beginChildTransaction();
+    transaction = dependency->beginDependencyTransaction();
     if (!transaction) {
-        return ParentAccessResult::Busy;
+        return DependencyAccessResult::Busy;
     }
-    return ParentAccessResult::Ready;
+    return DependencyAccessResult::Ready;
 }
 
 bool Ds18b20TemperatureSensorDevice::readScratchpad(IOneWireBusDriver& driver, uint8_t (&scratchpad)[kDs18b20ScratchpadSize],
@@ -217,7 +229,7 @@ bool Ds18b20TemperatureSensorDevice::oneWireRomAddress(OneWireRomAddress& addres
 
 bool Ds18b20TemperatureSensorDevice::hasDuplicateOneWireAddress() const {
     const OneWireBusDevice* dependency = dependencyBus();
-    return dependency != nullptr && dependency->hasDuplicateChildRomAddress(config_.address, this);
+    return dependency != nullptr && dependency->hasDuplicateDependentRomAddress(config_.address, this);
 }
 
 bool Ds18b20TemperatureSensorDevice::readTemperature(IOneWireBusDriver& driver, int32_t& milliCelsius, const char*& error) const {
@@ -310,7 +322,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::Starting) {
     }
     if (!dependencyBusReady()) {
         status_ = DeviceStatus::DependencyBlocked;
-        invalidateReading(kOutputParentUnavailable);
+        invalidateReading(kOutputDependencyUnavailable);
         SM_GOTO(DependencyBlocked);
     }
     if (hasDuplicateOneWireAddress()) {
@@ -340,7 +352,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::PowerUpDelay) {
     }
     if (!dependencyBusReady()) {
         status_ = DeviceStatus::DependencyBlocked;
-        invalidateReading(kOutputParentUnavailable);
+        invalidateReading(kOutputDependencyUnavailable);
         SM_GOTO(DependencyBlocked);
     }
     if (hasDuplicateOneWireAddress()) {
@@ -370,7 +382,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::ConfigureSensor) {
     }
     if (!dependencyBusReady()) {
         status_ = DeviceStatus::DependencyBlocked;
-        invalidateReading(kOutputParentUnavailable);
+        invalidateReading(kOutputDependencyUnavailable);
         SM_GOTO(DependencyBlocked);
     }
     if (hasDuplicateOneWireAddress()) {
@@ -380,14 +392,14 @@ SM_STATE(Ds18b20TemperatureSensorDevice::ConfigureSensor) {
         SM_GOTO(Faulted);
     }
 
-    OneWireBusDevice::ChildTransaction transaction;
-    const ParentAccessResult parentAccess = beginDependencyTransaction(transaction);
-    if (parentAccess == ParentAccessResult::Missing) {
+    OneWireBusDevice::DependencyTransaction transaction;
+    const DependencyAccessResult dependencyAccess = beginDependencyTransaction(transaction);
+    if (dependencyAccess == DependencyAccessResult::Missing) {
         status_ = DeviceStatus::DependencyBlocked;
-        invalidateReading(kOutputParentUnavailable);
+        invalidateReading(kOutputDependencyUnavailable);
         SM_GOTO(DependencyBlocked);
     }
-    if (parentAccess == ParentAccessResult::Busy || transaction.driver() == nullptr) {
+    if (dependencyAccess == DependencyAccessResult::Busy || transaction.driver() == nullptr) {
         deferRetry(uptime());
         SM_GOTO(RetryBackoff);
     }
@@ -420,7 +432,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::RequestConversion) {
     }
     if (!dependencyBusReady()) {
         status_ = DeviceStatus::DependencyBlocked;
-        invalidateReading(kOutputParentUnavailable);
+        invalidateReading(kOutputDependencyUnavailable);
         SM_GOTO(DependencyBlocked);
     }
     if (dependencyGenerationChanged() || reconfigureRequested_) {
@@ -434,14 +446,14 @@ SM_STATE(Ds18b20TemperatureSensorDevice::RequestConversion) {
         SM_GOTO(Faulted);
     }
 
-    OneWireBusDevice::ChildTransaction transaction;
-    const ParentAccessResult parentAccess = beginDependencyTransaction(transaction);
-    if (parentAccess == ParentAccessResult::Missing) {
+    OneWireBusDevice::DependencyTransaction transaction;
+    const DependencyAccessResult dependencyAccess = beginDependencyTransaction(transaction);
+    if (dependencyAccess == DependencyAccessResult::Missing) {
         status_ = DeviceStatus::DependencyBlocked;
-        invalidateReading(kOutputParentUnavailable);
+        invalidateReading(kOutputDependencyUnavailable);
         SM_GOTO(DependencyBlocked);
     }
-    if (parentAccess == ParentAccessResult::Busy || transaction.driver() == nullptr) {
+    if (dependencyAccess == DependencyAccessResult::Busy || transaction.driver() == nullptr) {
         deferRetry(uptime());
         SM_GOTO(RetryBackoff);
     }
@@ -474,7 +486,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::WaitConversion) {
     }
     if (!dependencyBusReady()) {
         status_ = DeviceStatus::DependencyBlocked;
-        invalidateReading(kOutputParentUnavailable);
+        invalidateReading(kOutputDependencyUnavailable);
         SM_GOTO(DependencyBlocked);
     }
     if (dependencyGenerationChanged() || reconfigureRequested_) {
@@ -508,7 +520,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::ReadScratchpad) {
     }
     if (!dependencyBusReady()) {
         status_ = DeviceStatus::DependencyBlocked;
-        invalidateReading(kOutputParentUnavailable);
+        invalidateReading(kOutputDependencyUnavailable);
         SM_GOTO(DependencyBlocked);
     }
     if (dependencyGenerationChanged() || reconfigureRequested_) {
@@ -522,14 +534,14 @@ SM_STATE(Ds18b20TemperatureSensorDevice::ReadScratchpad) {
         SM_GOTO(Faulted);
     }
 
-    OneWireBusDevice::ChildTransaction transaction;
-    const ParentAccessResult parentAccess = beginDependencyTransaction(transaction);
-    if (parentAccess == ParentAccessResult::Missing) {
+    OneWireBusDevice::DependencyTransaction transaction;
+    const DependencyAccessResult dependencyAccess = beginDependencyTransaction(transaction);
+    if (dependencyAccess == DependencyAccessResult::Missing) {
         status_ = DeviceStatus::DependencyBlocked;
-        invalidateReading(kOutputParentUnavailable);
+        invalidateReading(kOutputDependencyUnavailable);
         SM_GOTO(DependencyBlocked);
     }
-    if (parentAccess == ParentAccessResult::Busy || transaction.driver() == nullptr) {
+    if (dependencyAccess == DependencyAccessResult::Busy || transaction.driver() == nullptr) {
         deferRetry(uptime());
         SM_GOTO(RetryBackoff);
     }
@@ -564,7 +576,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::Ready) {
     }
     if (!dependencyBusReady()) {
         status_ = DeviceStatus::DependencyBlocked;
-        invalidateReading(kOutputParentUnavailable);
+        invalidateReading(kOutputDependencyUnavailable);
         SM_GOTO(DependencyBlocked);
     }
     if (dependencyGenerationChanged() || reconfigureRequested_) {
@@ -598,7 +610,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::RetryBackoff) {
     }
     if (!dependencyBusReady()) {
         status_ = DeviceStatus::DependencyBlocked;
-        invalidateReading(kOutputParentUnavailable);
+        invalidateReading(kOutputDependencyUnavailable);
         SM_GOTO(DependencyBlocked);
     }
     if (reconfigureRequested_) {
@@ -614,7 +626,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::RetryBackoff) {
     if (!EWFM_SM_TIME_REACHED(uptime(), retryDeadline_)) {
         return;
     }
-    if (std::strcmp(outputStatus_, kOutputParentBusy) == 0) {
+    if (std::strcmp(outputStatus_, kOutputDependencyBusy) == 0) {
         outputStatus_ = kOutputNotReady;
     }
     SM_GOTO(Starting);
@@ -622,7 +634,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::RetryBackoff) {
 
 SM_STATE(Ds18b20TemperatureSensorDevice::DependencyBlocked) {
     status_ = DeviceStatus::DependencyBlocked;
-    invalidateReading(kOutputParentUnavailable);
+    invalidateReading(kOutputDependencyUnavailable);
     if (deleteRequested_) {
         status_ = DeviceStatus::Deleting;
         setDeleted();
@@ -658,7 +670,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::Reconfiguring) {
     }
     if (!dependencyBusReady()) {
         status_ = DeviceStatus::DependencyBlocked;
-        invalidateReading(kOutputParentUnavailable);
+        invalidateReading(kOutputDependencyUnavailable);
         SM_GOTO(DependencyBlocked);
     }
     if (hasDuplicateOneWireAddress()) {
@@ -700,7 +712,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::Faulted) {
     }
     if (!dependencyBusReady()) {
         status_ = DeviceStatus::DependencyBlocked;
-        invalidateReading(kOutputParentUnavailable);
+        invalidateReading(kOutputDependencyUnavailable);
         SM_GOTO(DependencyBlocked);
     }
     if (reconfigureRequested_) {

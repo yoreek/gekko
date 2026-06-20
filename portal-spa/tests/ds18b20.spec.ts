@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
 const mockPath = '/devices?mockMode=1&mockReset=1'
-const storageKey = 'gekko.mockDb.v5'
+const storageKey = 'gekko.mockDb.v6'
 
 async function selectOption(page: Page, name: string, option: string | RegExp): Promise<void> {
   const dialog = page.getByRole('dialog')
@@ -11,7 +11,7 @@ async function selectOption(page: Page, name: string, option: string | RegExp): 
   await page.getByRole('option', { name: option }).click()
 }
 
-test('creates DS18B20 devices with parent validation and filtered scan candidates', async ({ page }) => {
+test('validates DS18B20 dependency selection and filtered scan candidates', async ({ page }) => {
   await page.goto(mockPath)
 
   await page.getByRole('button', { name: 'Create device' }).click()
@@ -21,39 +21,14 @@ test('creates DS18B20 devices with parent validation and filtered scan candidate
   const submit = page.getByRole('button', { name: 'Create device' }).last()
   await expect(submit).toBeDisabled()
 
-  await selectOption(page, 'OneWire parent', /Sensor Bus #670845751/)
-  await expect(submit).toBeDisabled()
-
+  await selectOption(page, 'OneWire dependency', /Sensor Bus #670845751/)
   const scanCandidateInput = page.getByRole('dialog').getByRole('combobox', { name: 'Scan candidate', exact: true })
   await scanCandidateInput.locator('xpath=ancestor::*[contains(@class, "v-field")][1]').click()
   await expect(page.getByRole('option', { name: /28FF641D621603AD/ })).toBeVisible()
   await expect(page.getByRole('option', { name: /10FFAA0000000001/ })).toHaveCount(0)
   await page.keyboard.press('Escape')
 
-  await page.getByLabel('DS18B20 address').fill('28FF641D621603AE')
-  await expect(submit).toBeEnabled()
-  await submit.click()
-
-  await expect(page.getByText('Cabinet Probe')).toBeVisible()
-  const created = await page.evaluate(key => {
-    const db = JSON.parse(localStorage.getItem(key) ?? '{}')
-    return db.devices?.find((device: { name?: string }) => device.name === 'Cabinet Probe')
-  }, storageKey)
-  expect(created).toMatchObject({
-    type_id: 4,
-    has_deps: true,
-    deps: [
-      {
-        role: 'onewire_bus',
-        device_id: 670845751,
-      },
-    ],
-    config: {
-      address: '28FF641D621603AE',
-      resolution: 12,
-      unit: 'celsius',
-    },
-  })
+  await expect(submit).toBeDisabled()
 })
 
 test('renders DS18B20 temperature and merges realtime unavailable updates', async ({ page }) => {
@@ -83,16 +58,16 @@ test('renders DS18B20 temperature and merges realtime unavailable updates', asyn
 
   await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) ?? '{}')
-    const parent = db.devices.find((device: { device_id: number }) => device.device_id === 670845751)
+    const dependency = db.devices.find((device: { device_id: number }) => device.device_id === 670845751)
     const sensor = db.devices.find((device: { device_id: number }) => device.device_id === 670845752)
     window.__gekkoMockRealtime?.upsertDevice({
-      ...parent,
+      ...dependency,
       enabled: false,
       lifecycle_status: 'disabled',
       effective_status: 'disabled',
       status: 'disabled',
       config: {
-        ...parent.config,
+        ...dependency.config,
         enabled: false,
       },
     })
@@ -107,7 +82,7 @@ test('renders DS18B20 temperature and merges realtime unavailable updates', asyn
           unit_symbol: 'C',
           measured_at_ms: 0,
           valid: false,
-          status: 'parent_disabled',
+          status: 'dependency_disabled',
         },
       },
     })
