@@ -1,30 +1,30 @@
 ## Purpose
 
-Define the DS18B20 temperature sensor dynamic device type, its OneWire parent relationship, runtime behavior, configuration contract, output reporting, and address discovery semantics.
+Define the DS18B20 temperature sensor dynamic device type, its OneWire dependency relationship, runtime behavior, configuration contract, output reporting, and address discovery semantics.
 
 ## Requirements
 
 ### Requirement: DS18B20 temperature sensor device type
-The firmware SHALL provide a `Ds18b20TemperatureSensorDevice` dynamic child device type backed by a OneWire parent bus.
+The firmware SHALL provide a `Ds18b20TemperatureSensorDevice` dynamic device type backed by a required OneWire dependency bus.
 
 #### Scenario: Type descriptor is registered
 - **WHEN** the default device type registry is created
-- **THEN** it contains `Ds18b20TemperatureSensorDevice` with stable `type_id = 4`, current config version `1`, retained-state support disabled, child support disabled, 100 ms ticking enabled, and `compatibleParentTypes` containing only the OneWire bus type id
+- **THEN** it contains `Ds18b20TemperatureSensorDevice` with stable `type_id = 4`, current config version `1`, retained-state support disabled, child support disabled, 100 ms ticking enabled, and `compatibleDependencyTypes` containing only the OneWire bus type id
 
-#### Scenario: Parent relationship is required
-- **WHEN** a caller creates a DS18B20 temperature sensor without `has_parent = true` and a non-zero OneWire `parent_device_id`
+#### Scenario: Dependency relationship is required
+- **WHEN** a caller creates a DS18B20 temperature sensor without a compatible OneWire dependency in `deps`
 - **THEN** the firmware rejects the create request with an invalid relationship validation error and does not create the device
 
-#### Scenario: Only OneWire parent is accepted
-- **WHEN** a caller creates or reparents a DS18B20 temperature sensor to a device whose type is not `OneWireBusDevice`
-- **THEN** the firmware rejects the mutation with an incompatible parent type validation error
+#### Scenario: Only OneWire dependency is accepted
+- **WHEN** a caller creates or reassigns a DS18B20 temperature sensor to a device whose type is not `OneWireBusDevice`
+- **THEN** the firmware rejects the mutation with an incompatible dependency type validation error
 
 ### Requirement: DS18B20 configuration contract
 The firmware SHALL persist DS18B20 configuration as a bounded versioned payload containing enabled state, ROM address, resolution, output unit, poll period, report delta, and report policy.
 
 #### Scenario: Valid configuration is accepted
 - **WHEN** a DS18B20 config contains a valid `28` family OneWire ROM address with valid CRC, resolution 9 through 12, unit `celsius` or `fahrenheit`, poll period within bounds, a centi-Celsius report delta, and a boolean report-always flag
-- **THEN** the firmware encodes and persists the config payload without storing the parent id inside the type-specific config
+- **THEN** the firmware encodes and persists the config payload without storing the dependency id inside the type-specific config
 
 #### Scenario: Invalid address is rejected
 - **WHEN** the DS18B20 address is missing, malformed, not 16 hex characters, not family code `28`, or fails ROM CRC validation
@@ -36,17 +36,17 @@ The firmware SHALL persist DS18B20 configuration as a bounded versioned payload 
 
 #### Scenario: Config survives reload
 - **WHEN** a DS18B20 sensor is persisted and the firmware reloads the device registry
-- **THEN** the sensor is restored with the same parent relationship, address, resolution, unit, poll period, report delta, report policy, and config revision
+- **THEN** the sensor is restored with the same dependency relationship, address, resolution, unit, poll period, report delta, report policy, and config revision
 
 ### Requirement: DS18B20 cooperative runtime
 The DS18B20 runtime SHALL use `StateMachine` states for initialization, conversion, reading, retry, reconfiguration, disabling, and deletion without blocking the main loop for conversion waits.
 
 #### Scenario: Runtime initializes sensor resolution
-- **WHEN** an enabled DS18B20 runtime starts with a ready OneWire parent
+- **WHEN** an enabled DS18B20 runtime starts with a ready OneWire dependency
 - **THEN** it validates the configured ROM address, reads the scratchpad, writes the configured resolution when needed, avoids EEPROM copy in v1, and reaches its polling flow only after initialization succeeds
 
 #### Scenario: Runtime waits after power up
-- **WHEN** an enabled DS18B20 runtime starts or reinitializes after parent bus setup
+- **WHEN** an enabled DS18B20 runtime starts or reinitializes after dependency bus setup
 - **THEN** it waits a bounded startup interval using the App-provided `now` timestamp before the first scratchpad access
 
 #### Scenario: Runtime waits by resolution
@@ -58,7 +58,7 @@ The DS18B20 runtime SHALL use `StateMachine` states for initialization, conversi
 - **THEN** the runtime reads the scratchpad using the configured ROM address, validates the scratchpad CRC, converts the raw value to internal milli-Celsius, and leaves other devices on the bus unaddressed
 
 #### Scenario: Runtime handles read failure
-- **WHEN** the parent bus is unavailable, the device does not respond, the scratchpad CRC is invalid, or the parsed temperature is outside the DS18B20 range
+- **WHEN** the dependency bus is unavailable, the device does not respond, the scratchpad CRC is invalid, or the parsed temperature is outside the DS18B20 range
 - **THEN** the runtime marks the reading invalid, publishes unavailable output with `valid = false`, increments a consecutive error counter, and enters a bounded retry state
 
 #### Scenario: Runtime faults recoverably after repeated failures
@@ -85,7 +85,7 @@ The DS18B20 runtime SHALL expose the latest valid temperature as runtime output 
 - **THEN** device snapshots include the Fahrenheit-converted value with `unit = "fahrenheit"` and `unit_symbol = "F"` while the runtime keeps its internal reading in Celsius
 
 #### Scenario: Missing reading is serialized as invalid
-- **WHEN** a DS18B20 runtime has no valid current reading after startup, reconfiguration, parent blocking, or read failure
+- **WHEN** a DS18B20 runtime has no valid current reading after startup, reconfiguration, dependency blocking, or read failure
 - **THEN** device snapshots include `output.temperature.valid = false` and do not require JSON `null` or `NaN` to represent the missing reading
 
 #### Scenario: Changed value publishes output
@@ -100,43 +100,43 @@ The DS18B20 runtime SHALL expose the latest valid temperature as runtime output 
 - **WHEN** report-always is enabled and a reading succeeds
 - **THEN** the runtime marks state dirty after every successful poll even when the measured temperature did not change
 
-### Requirement: DS18B20 parent reinitialization
-The DS18B20 runtime SHALL reinitialize after its own critical config changes or after its parent OneWire bus is reconfigured.
+### Requirement: DS18B20 dependency reinitialization
+The DS18B20 runtime SHALL reinitialize after its own critical config changes or after its OneWire dependency bus is reconfigured.
 
 #### Scenario: Sensor config change reinitializes runtime
-- **WHEN** the DS18B20 address, resolution, parent relationship, or enabled state changes
+- **WHEN** the DS18B20 address, resolution, dependency relationship, or enabled state changes
 - **THEN** the runtime restarts initialization before performing another temperature conversion
 
-#### Scenario: Parent bus generation change reinitializes runtime
-- **WHEN** the parent OneWire bus reinitializes due to pin or pull-up config changes
-- **THEN** each attached DS18B20 child detects the parent generation change and repeats sensor initialization before reporting a new valid reading
+#### Scenario: Dependency bus generation change reinitializes runtime
+- **WHEN** the dependency OneWire bus reinitializes due to pin or pull-up config changes
+- **THEN** each attached DS18B20 dependent detects the dependency generation change and repeats sensor initialization before reporting a new valid reading
 
 #### Scenario: Reinitialization clears current reading
 - **WHEN** a DS18B20 runtime starts or reinitializes
 - **THEN** it exposes unavailable temperature output with `valid = false` until a new reading succeeds
 
-#### Scenario: Parent disabled stops child work
-- **WHEN** the parent OneWire bus is disabled
-- **THEN** the DS18B20 child stops requesting conversions or reading scratchpad data until the parent is enabled and ready again
+#### Scenario: Dependency disabled stops dependent work
+- **WHEN** the dependency OneWire bus is disabled
+- **THEN** the DS18B20 dependent stops requesting conversions or reading scratchpad data until the dependency is enabled and ready again
 
 ### Requirement: Multiple DS18B20 sensors on one bus
-The firmware SHALL allow multiple DS18B20 child sensors on one OneWire bus without sharing scratchpad reads or blocking conversion waits.
+The firmware SHALL allow multiple DS18B20 dependent sensors on one OneWire bus without sharing scratchpad reads or blocking conversion waits.
 
-#### Scenario: Duplicate address on one parent is rejected
-- **WHEN** a create, update, or parent change would place two DS18B20 devices with the same ROM address under the same OneWire parent
+#### Scenario: Duplicate address on one dependency is rejected
+- **WHEN** a create, update, or dependency change would place two DS18B20 devices with the same ROM address under the same OneWire dependency
 - **THEN** the firmware rejects the mutation and leaves the existing registry unchanged
 
 #### Scenario: Independent addressed conversions are used
-- **WHEN** multiple DS18B20 sensors share the same OneWire parent
-- **THEN** each child requests conversion for its configured address and later reads scratchpad data for that address only
+- **WHEN** multiple DS18B20 sensors share the same OneWire dependency
+- **THEN** each dependent requests conversion for its configured address and later reads scratchpad data for that address only
 
 #### Scenario: One sensor failure does not poison siblings
-- **WHEN** one DS18B20 child fails to read or validate its scratchpad
-- **THEN** sibling DS18B20 sensors on the same parent continue their own state-machine flow and retain their own latest output state
+- **WHEN** one DS18B20 dependent fails to read or validate its scratchpad
+- **THEN** sibling DS18B20 sensors on the same dependency continue their own state-machine flow and retain their own latest output state
 
-#### Scenario: Parent scan conflicts are avoided
-- **WHEN** the OneWire parent bus is actively scanning
-- **THEN** DS18B20 child runtimes defer sensor transactions until the parent bus is ready for child access
+#### Scenario: Dependency scan conflicts are avoided
+- **WHEN** the OneWire dependency bus is actively scanning
+- **THEN** DS18B20 dependent runtimes defer sensor transactions until the dependency bus is ready for dependent access
 
 ### Requirement: DS18B20 address discovery contract
 The DS18B20 create and edit workflow SHALL support manual address entry and scan-based address selection filtered to DS18B20-family devices.
@@ -149,6 +149,6 @@ The DS18B20 create and edit workflow SHALL support manual address entry and scan
 - **WHEN** a user enters a DS18B20 ROM address manually
 - **THEN** the backend applies the same 16-hex, family code, and CRC validation as scan-selected addresses
 
-#### Scenario: Scan is parent scoped
+#### Scenario: Scan is dependency scoped
 - **WHEN** a user starts address scanning while creating or editing a DS18B20 sensor
-- **THEN** the scan command targets the selected OneWire parent device and does not scan unrelated OneWire bus devices
+- **THEN** the scan command targets the selected OneWire dependency device and does not scan unrelated OneWire bus devices

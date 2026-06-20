@@ -57,6 +57,21 @@ The firmware SHALL publish realtime `device.upsert` and `device.command_result` 
 - **WHEN** a device is deleted
 - **THEN** the firmware continues to send a lightweight `device.remove` message that identifies the removed device by id
 
+### Requirement: Realtime snapshots expose deps
+The firmware SHALL publish canonical realtime device snapshots using `deps` and computed `has_deps`.
+
+#### Scenario: Device update includes deps
+- **WHEN** a device realtime snapshot is published
+- **THEN** the payload includes the same `deps` and computed `has_deps` fields used by REST snapshots
+
+#### Scenario: Parent fields are absent from realtime
+- **WHEN** a device realtime snapshot is published after the dependency migration
+- **THEN** the payload does not include `has_parent` or `parent_device_id`
+
+#### Scenario: Frontend merges deps
+- **WHEN** the frontend receives a realtime device snapshot
+- **THEN** it updates the device store dependency fields from the payload alone
+
 ### Requirement: Frontend realtime store
 The SPA SHALL consume WebSocket messages through Pinia-backed state stores and recover from reconnects.
 
@@ -88,13 +103,13 @@ The firmware SHALL publish DS18B20 temperature output and lifecycle changes thro
 - **THEN** the firmware does not emit a realtime device update solely for that poll
 
 #### Scenario: Missing reading publishes invalid output when state changes
-- **WHEN** a DS18B20 runtime transitions from valid output to unavailable output after startup, reconfiguration, parent blocking, or read failure
+- **WHEN** a DS18B20 runtime transitions from valid output to unavailable output after startup, reconfiguration, dependency blocking, or read failure
 - **THEN** the firmware publishes a canonical device snapshot with `output.temperature.valid = false`
 
-#### Scenario: Parent status changes are reflected
-- **WHEN** a DS18B20 parent bus is disabled, reconfigured, faulted, or returns ready
-- **THEN** realtime device snapshots for affected DS18B20 children reflect the updated lifecycle or effective status without requiring a full page reload
+#### Scenario: Dependency status changes are reflected
+- **WHEN** a DS18B20 dependency bus is disabled, reconfigured, faulted, or returns ready
+- **THEN** realtime device snapshots for affected DS18B20 dependents reflect the updated lifecycle or effective status without requiring a full page reload
 
 #### Scenario: Frontend store merges DS18B20 updates
 - **WHEN** the SPA receives a realtime DS18B20 device snapshot
-- **THEN** it updates the device store temperature output, unit, status, parent fields, and config revision from the payload alone
+- **THEN** it updates the device store temperature output, unit, status, dependency fields, and config revision from the payload alone

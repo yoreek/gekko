@@ -93,7 +93,7 @@ The SPA SHALL submit migrated device commands with named JSON fields and SHALL s
 
 #### Scenario: OneWire scan sends scan command
 - **WHEN** the user starts a OneWire scan directly or from DS18B20 address selection
-- **THEN** the SPA sends `command = "scan"` to the selected OneWire parent and omits `payload`
+- **THEN** the SPA sends `command = "scan"` to the selected OneWire dependency and omits `payload`
 
 #### Scenario: Switch output sends state
 - **WHEN** the user controls a switch-like device output
@@ -114,6 +114,21 @@ The SPA SHALL submit migrated device commands with named JSON fields and SHALL s
 #### Scenario: Frontend binary config encoders are removed
 - **WHEN** device edit commands are built
 - **THEN** the SPA does not call frontend helpers that construct firmware binary config blobs for OneWire or GPIO switch devices
+
+### Requirement: Device UI uses dependency terminology
+The SPA SHALL model and display device relationships as dependencies and dependents rather than parents and children.
+
+#### Scenario: Device model includes deps
+- **WHEN** the SPA normalizes a device snapshot
+- **THEN** it stores `deps` and computed `hasDeps` and does not require `has_parent` or `parent_device_id`
+
+#### Scenario: Labels use dependencies
+- **WHEN** the UI displays relationship fields in English or Russian
+- **THEN** labels use dependency wording rather than parent wording
+
+#### Scenario: Mock data uses deps
+- **WHEN** the SPA runs in mock mode
+- **THEN** mock device records use `deps` and computed `has_deps` in the same shape as production snapshots
 
 #### Scenario: Mock mode matches production command shape
 - **WHEN** the SPA runs in mock mode
@@ -180,13 +195,13 @@ The SPA SHALL present GPIO switch primary operational fields separately from sec
 - **THEN** the `On`, `Off`, and `Disabled` quick commands are visible outside the collapsed `Config details` disclosure
 
 ### Requirement: DS18B20 create flow
-The SPA SHALL let users create DS18B20 temperature sensors only after selecting a compatible OneWire parent and a valid DS18B20 address.
+The SPA SHALL let users create DS18B20 temperature sensors only after selecting a compatible OneWire dependency and a valid DS18B20 address.
 
-#### Scenario: Parent selection is required
+#### Scenario: Dependency selection is required
 - **WHEN** the user chooses DS18B20 in the device create dialog
 - **THEN** the form requires selecting an existing device whose type is OneWire bus before the create action can submit
 
-#### Scenario: No parent bus is available
+#### Scenario: No dependency bus is available
 - **WHEN** no OneWire bus devices exist
 - **THEN** the DS18B20 create form prevents submission and presents a localized validation state requiring a OneWire bus first
 
@@ -195,7 +210,7 @@ The SPA SHALL let users create DS18B20 temperature sensors only after selecting 
 - **THEN** the form accepts only a 16-character hex address shape locally and relies on the backend for family code and CRC validation on submit
 
 #### Scenario: Scan selects only DS18B20 candidates
-- **WHEN** the user scans the selected OneWire parent and scan results contain multiple family codes
+- **WHEN** the user scans the selected OneWire dependency and scan results contain multiple family codes
 - **THEN** the address selector lists only family code `28` candidates for DS18B20 selection
 
 ### Requirement: DS18B20 config fields

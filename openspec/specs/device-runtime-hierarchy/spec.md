@@ -7,19 +7,34 @@ Define the shared runtime base behavior used by dynamic firmware devices.
 ## Requirements
 
 ### Requirement: Runtime devices share a base lifecycle
-The firmware SHALL provide a reusable base runtime class for dynamic devices so common lifecycle, status, parent dependency, and child runtime wiring behavior is implemented once.
+The firmware SHALL provide a reusable base runtime class for dynamic devices so common lifecycle, status, dependency, and dependent runtime wiring behavior is implemented once.
 
 #### Scenario: Base runtime implements common runtime API
 - **WHEN** a dynamic device runtime inherits from the base runtime class
-- **THEN** it receives common implementations for parent runtime assignment, child runtime attach/detach, status reporting, and reconfigure/disable/delete requests
+- **THEN** it receives common implementations for dependency runtime assignment, dependent runtime attach/detach, status reporting, and reconfigure/disable/delete requests
 
 #### Scenario: Base runtime remains cooperative
 - **WHEN** a derived runtime is ticked by the registry
 - **THEN** the base runtime and derived runtime use the provided `now` timestamp and do not perform blocking waits
 
-#### Scenario: Parent dependency is reusable
-- **WHEN** a derived runtime has a parent runtime
-- **THEN** the derived runtime can use shared parent readiness behavior instead of duplicating parent status checks
+#### Scenario: Dependency readiness is reusable
+- **WHEN** a derived runtime has a dependency runtime
+- **THEN** the derived runtime can use shared dependency readiness behavior instead of duplicating dependency status checks
+
+### Requirement: Runtime API uses dependency terminology
+The runtime boundary SHALL use dependency/dependent naming rather than parent/child naming.
+
+#### Scenario: Dependency runtime is assigned
+- **WHEN** the registry wires a device dependency
+- **THEN** it assigns the dependency runtime by role on the dependent runtime
+
+#### Scenario: Dependent runtime is attached
+- **WHEN** a dependency runtime is wired to a dependent runtime
+- **THEN** the dependency runtime exposes the dependent through a live dependent runtime list
+
+#### Scenario: Old parent methods are removed
+- **WHEN** firmware code is updated for the dependency model
+- **THEN** domain code no longer calls `parentRuntime()`, `setParentRuntime()`, or `childRuntimes()`
 
 ### Requirement: DummyDevice inherits from the base runtime
 The firmware SHALL keep `DummyDevice` inherited from the reusable runtime base while preserving its stable type id, base configuration compatibility, and lifecycle behavior, without preserving old command or retained-output simulation behavior.

@@ -42,7 +42,7 @@ The firmware SHALL persist accepted dynamic device registry changes as a version
 
 #### Scenario: Existing registry is loaded
 - **WHEN** the device boots and NVS contains a supported dynamic device registry
-- **THEN** the firmware validates the registry version, index, per-device records, and type support before rebuilding the in-memory registry, creating runtime instances for the loaded records, and wiring child runtime pointers to their parent runtime objects
+- **THEN** the firmware validates the registry version, index, per-device records, and type support before rebuilding the in-memory registry, creating runtime instances for the loaded records, and wiring dependent runtime pointers to their dependency runtime objects
 
 #### Scenario: Corrupt registry is handled
 - **WHEN** the device boots and NVS contains a corrupt or unsupported dynamic device registry
@@ -54,7 +54,7 @@ The firmware SHALL persist accepted dynamic device registry changes as a version
 
 #### Scenario: Accepted mutation is applied
 - **WHEN** a caller creates, updates, enables, disables, or deletes a dynamic device and validation succeeds
-- **THEN** the firmware updates the in-memory registry immediately, keeps live runtime objects in memory when appropriate, rewires runtime parent/child pointers for relationship changes, and applies the operation's persistence policy to the affected index, device record, or retained-state record
+- **THEN** the firmware updates the in-memory registry immediately, keeps live runtime objects in memory when appropriate, rewires runtime dependency pointers for relationship changes, and applies the operation's persistence policy to the affected index, device record, or retained-state record
 
 #### Scenario: Persisted records are written before the index
 - **WHEN** the firmware flushes dirty registry data to NVS
@@ -139,6 +139,21 @@ The firmware SHALL version each device type's binary configuration payload indep
 - **WHEN** a released binary config layout is superseded by a newer version
 - **THEN** the old layout remains available for migration tests and is not modified to match the new layout
 
+### Requirement: Registry persists dependency records
+The firmware SHALL persist dependency links in each device record as bounded role/device-id entries.
+
+#### Scenario: Record stores deps
+- **WHEN** a device with dependencies is persisted
+- **THEN** its device record contains a bounded `deps` array and does not contain `hasParent` or `parentDeviceId`
+
+#### Scenario: Registry builds dependents
+- **WHEN** the registry loads or mutates records
+- **THEN** it derives dependent relationships by scanning each record's `deps`
+
+#### Scenario: Has deps is computed
+- **WHEN** a registry snapshot is serialized
+- **THEN** `has_deps` is computed from the number of dependency links and is not read from persistent storage
+
 ### Requirement: Configuration and registry revisions
 The firmware SHALL keep configuration layout version, per-device configuration revision, and registry revision as separate concepts.
 
@@ -192,9 +207,9 @@ The firmware SHALL allow `DeviceTypeDescriptor::createRuntime` factories to retu
 - **WHEN** the registry ticks, disables, deletes, or reconfigures a runtime
 - **THEN** it calls the existing `IDeviceRuntime` API without depending on whether the runtime is Dummy, switch base, GPIO switch, or a future switch variant
 
-#### Scenario: Parent child wiring works through inherited runtimes
-- **WHEN** inherited runtime classes are created for parent or child devices
-- **THEN** the registry wires parent and child runtime pointers through the existing `IDeviceRuntime` methods
+#### Scenario: Dependency wiring works through inherited runtimes
+- **WHEN** inherited runtime classes are created for dependency or dependent devices
+- **THEN** the registry wires dependency and dependent runtime pointers through the existing `IDeviceRuntime` methods
 
 ### Requirement: Registry supports switch-like retained output state
 The firmware SHALL support retained output state for switch-like runtimes without requiring switch output changes to rewrite the device configuration record.
@@ -231,7 +246,7 @@ The firmware SHALL expose lifecycle status for each dynamic device from creation
 - **THEN** the firmware stops the runtime instance, removes the persisted record, and no longer lists the device as active
 
 ### Requirement: DummyDevice first implementation
-The firmware SHALL include a `DummyDevice` type that exercises registry persistence, base configuration, lifecycle status, parent-child relationships, and integration events without requiring hardware.
+The firmware SHALL include a `DummyDevice` type that exercises registry persistence, base configuration, lifecycle status, dependency relationships, and integration events without requiring hardware.
 
 #### Scenario: DummyDevice survives reboot
 - **WHEN** a `DummyDevice` is created and the firmware restarts
@@ -264,25 +279,25 @@ The firmware SHALL keep dynamic device runtime work cooperative, timing-aware, a
 - **WHEN** a device or registry state handler evaluates deadlines, debounce, dirty flush, retries, or delayed transitions
 - **THEN** it uses the App-provided `now` value for that cadence and does not call `millis()` or `clock_.millis()` inside the domain handler
 
-### Requirement: Parent child lifecycle propagation
-The device registry SHALL propagate parent lifecycle changes to child runtime availability and effective status in a way that distinguishes disabled parents from broken or transitional parents.
+### Requirement: Dependency lifecycle propagation
+The device registry SHALL propagate dependency lifecycle changes to dependent runtime availability and effective status in a way that distinguishes disabled dependencies from broken or transitional dependencies.
 
-#### Scenario: Disabled parent makes child effectively disabled
-- **WHEN** a parent device is disabled and a child device depends on that parent
-- **THEN** the child device stops runtime work and its `effective_status` is reported as `disabled`
+#### Scenario: Disabled dependency makes dependent effectively disabled
+- **WHEN** a dependency device is disabled and a dependent device depends on that dependency
+- **THEN** the dependent device stops runtime work and its `effective_status` is reported as `disabled`
 
-#### Scenario: Non-ready parent blocks child dependency
-- **WHEN** a parent device is missing, faulted, deleting, reconfiguring, or otherwise not ready for reasons other than being disabled
-- **THEN** the child device stops runtime work and its `effective_status` is reported as `dependency_blocked`
+#### Scenario: Non-ready dependency blocks dependent
+- **WHEN** a dependency device is missing, faulted, deleting, reconfiguring, or otherwise not ready for reasons other than being disabled
+- **THEN** the dependent device stops runtime work and its `effective_status` is reported as `dependency_blocked`
 
-#### Scenario: Parent reconfiguration cascades to children
-- **WHEN** a parent runtime accepts a config change that reinitializes parent hardware
-- **THEN** each attached child runtime is requested to reconfigure after the parent relationship is refreshed
+#### Scenario: Dependency reconfiguration cascades to dependents
+- **WHEN** a dependency runtime accepts a config change that reinitializes dependency hardware
+- **THEN** each attached dependent runtime is requested to reconfigure after the dependency relationship is refreshed
 
-#### Scenario: Parent deletion is rejected with dependent children
-- **WHEN** a caller tries to delete a device that still has child devices
-- **THEN** the registry rejects deletion, leaves the parent and children unchanged, and reports the dependent child device ids
+#### Scenario: Dependency deletion is rejected with dependents
+- **WHEN** a caller tries to delete a device that still has dependent devices
+- **THEN** the registry rejects deletion, leaves the dependency and dependents unchanged, and reports the dependent device ids
 
-#### Scenario: Child parent compatibility is enforced
-- **WHEN** a child device descriptor declares compatible parent types
-- **THEN** create and parent reassignment mutations reject parents whose type id is not in that compatible parent list
+#### Scenario: Dependency compatibility is enforced
+- **WHEN** a dependent device descriptor declares compatible dependency types
+- **THEN** create and dependency reassignment mutations reject dependencies whose type id is not in that compatible dependency list
