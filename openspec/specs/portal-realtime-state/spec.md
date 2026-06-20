@@ -118,7 +118,7 @@ The firmware SHALL publish DS18B20 temperature output and lifecycle changes thro
 The firmware SHALL publish thermostat runtime output, dep status, and lifecycle changes through the existing canonical device realtime topics.
 
 #### Scenario: Control change publishes snapshot
-- **WHEN** a thermostat runtime changes desired switch output, output status, or latest valid temperature state
+- **WHEN** a thermostat runtime changes desired switch output, output status, latest valid temperature state, or the downstream switch reports a new actual output state
 - **THEN** the firmware publishes a `device.upsert` or `device.command_result` payload containing the canonical thermostat snapshot
 
 #### Scenario: Dep status change publishes thermostat snapshot

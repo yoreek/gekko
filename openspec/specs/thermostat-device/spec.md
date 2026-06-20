@@ -129,6 +129,10 @@ The thermostat SHALL command switch output through the switch-like runtime capab
 ### Requirement: Thermostat snapshot output
 The thermostat SHALL expose canonical config, deps, control, and output state through device snapshots.
 
+#### Scenario: Config codec accepts canonical and alias temperature fields
+- **WHEN** a thermostat config update includes canonical fixed-point fields or Celsius aliases for target temperature, safe range, or hysteresis
+- **THEN** the firmware parses the request, preserves canonical fixed-point values, and stores the requested thermostat settings without falling back to defaults
+
 #### Scenario: Snapshot includes thermostat config
 - **WHEN** the API serializes a thermostat device
 - **THEN** the snapshot includes mode, target temperature, hysteresis, safe min/max, check interval, sensor timeout, retry timeout, and minimum switch interval

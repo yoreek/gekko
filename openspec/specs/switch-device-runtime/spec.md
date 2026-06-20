@@ -79,6 +79,21 @@ The firmware SHALL persist switch output restore values as retained runtime stat
 - **WHEN** switch output state changes repeatedly
 - **THEN** retained-state persistence coalesces writes instead of writing flash for every command immediately
 
+### Requirement: Switch output changes are snapshot-visible
+The firmware SHALL mark a switch runtime dirty when its logical output state actually changes so REST and realtime snapshots expose the updated switch state.
+
+#### Scenario: Real output change is published
+- **WHEN** a switch runtime applies a new logical output state that differs from the previous state
+- **THEN** the runtime marks itself dirty and the next snapshot includes the new actual output state
+
+#### Scenario: Thermostat-driven switch change is visible
+- **WHEN** a thermostat runtime drives a downstream switch to a different output state
+- **THEN** the switch output transition is exposed through the same dirty and snapshot path as a direct switch command
+
+#### Scenario: Repeated identical output does not spam updates
+- **WHEN** a switch runtime receives an output request that does not change the current logical output state
+- **THEN** the runtime does not emit a redundant dirty transition solely because the request was repeated
+
 ### Requirement: GPIO switch device drives a configured GPIO output
 The firmware SHALL provide a concrete GPIO switch device type that inherits the switch base behavior and writes the computed physical output to a configured GPIO pin through a bounded driver interface.
 

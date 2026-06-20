@@ -154,7 +154,7 @@ The SPA SHALL expose thermostat configuration fields using shared form structure
 - **THEN** the form prevents clearly nonnumeric or below-minimum values before submit where local validation can do so
 
 ### Requirement: Thermostat detail and widget display
-The SPA SHALL display thermostat dep, control, and output state without one-off styling overrides.
+The SPA SHALL display thermostat dep, control, and output state without one-off styling overrides or low-value last-check clutter.
 
 #### Scenario: Detail view shows deps
 - **WHEN** the detail modal is open for a thermostat
@@ -162,7 +162,7 @@ The SPA SHALL display thermostat dep, control, and output state without one-off 
 
 #### Scenario: Detail view shows latest control state
 - **WHEN** a thermostat has runtime output state
-- **THEN** the detail view displays mode, target, current temperature when valid, desired switch state, actual switch state when available, and last check context
+- **THEN** the detail view displays mode, target, current temperature when valid, desired switch state, and actual switch state when available
 
 #### Scenario: Detail view handles unavailable temperature
 - **WHEN** a thermostat has no valid or fresh temperature reading, is disabled, or is dependency-blocked
@@ -175,6 +175,17 @@ The SPA SHALL display thermostat dep, control, and output state without one-off 
 #### Scenario: UI follows shared design system
 - **WHEN** thermostat UI components are implemented
 - **THEN** they use Vuetify components, theme tokens, shared semantic text roles, and avoid local color, font-weight, letter-spacing, opacity, radius, or behavior overrides
+
+### Requirement: Thermostat edit form tracks draft changes
+The SPA SHALL enable thermostat Save only when the draft differs from the current persisted device snapshot.
+
+#### Scenario: Changed thermostat values enable Save
+- **WHEN** the user changes thermostat target, hysteresis, timing fields, or dep selections in the edit form
+- **THEN** the Save action becomes available because the draft no longer matches the persisted device state
+
+#### Scenario: Unchanged thermostat draft keeps Save disabled
+- **WHEN** the user opens a thermostat in Edit mode and makes no changes
+- **THEN** the Save action remains disabled
 
 ### Requirement: Device UI uses dependency terminology
 The SPA SHALL model and display device relationships as dependencies and dependents rather than legacy relationship terminology.
