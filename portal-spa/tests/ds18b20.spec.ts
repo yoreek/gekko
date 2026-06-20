@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
 const mockPath = '/devices?mockMode=1&mockReset=1'
-const storageKey = 'gekko.mockDb.v4'
+const storageKey = 'gekko.mockDb.v5'
 
 async function selectOption(page: Page, name: string, option: string | RegExp): Promise<void> {
   const dialog = page.getByRole('dialog')
@@ -41,8 +41,13 @@ test('creates DS18B20 devices with parent validation and filtered scan candidate
   }, storageKey)
   expect(created).toMatchObject({
     type_id: 4,
-    has_parent: true,
-    parent_device_id: 670845751,
+    has_deps: true,
+    deps: [
+      {
+        role: 'onewire_bus',
+        device_id: 670845751,
+      },
+    ],
     config: {
       address: '28FF641D621603AE',
       resolution: 12,

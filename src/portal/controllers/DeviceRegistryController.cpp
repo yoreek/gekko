@@ -302,6 +302,18 @@ const char* statusToString(DeviceStatus status) {
     }
 }
 
+void writeRuntimeDeps(JsonObject device, const IDeviceRuntime& runtime) {
+    JsonArray deps = device.createNestedArray("deps");
+    const DeviceDependencyLink* dependencyLinks = runtime.dependencyLinks();
+    const uint8_t dependencyCount = runtime.dependencyCount();
+    for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
+        JsonObject item = deps.createNestedObject();
+        item["role"] = deviceDependencyRoleName(dependencyLinks[index].role);
+        item["device_id"] = dependencyLinks[index].deviceId;
+    }
+    device["has_deps"] = dependencyCount > 0;
+}
+
 void writeIndexResponse(AsyncResponseStream* response, DeviceRegistry& registry, const DeviceApiAdapterRegistry& adapters) {
     if (response == nullptr) {
         return;
@@ -329,8 +341,7 @@ void writeIndexResponse(AsyncResponseStream* response, DeviceRegistry& registry,
             device["type_id"] = runtime.typeId();
             device["name"] = runtime.name();
             device["enabled"] = runtime.enabled();
-            device["has_parent"] = runtime.hasParent();
-            device["parent_device_id"] = runtime.parentDeviceId();
+            writeRuntimeDeps(device, runtime);
             device["config_version"] = runtime.configVersion();
             device["config_revision"] = runtime.configRevision();
             device["lifecycle_status"] = statusToString(runtime.status());
@@ -379,10 +390,9 @@ void DeviceRegistryController::show() {
         device["type_id"] = runtime->typeId();
         device["name"] = runtime->name();
         device["enabled"] = runtime->enabled();
+        writeRuntimeDeps(device, *runtime);
     }
     const DeviceStatus lifecycleStatus = runtime->status();
-    device["has_parent"] = runtime->hasParent();
-    device["parent_device_id"] = runtime->parentDeviceId();
     device["config_version"] = runtime->configVersion();
     device["config_revision"] = runtime->configRevision();
     device["lifecycle_status"] = statusToString(lifecycleStatus);
@@ -444,10 +454,10 @@ void DeviceRegistryController::destroy() {
         doc["success"] = false;
         doc["code"] = errorCodeForDeviceError(result.validation.error);
         doc["error"] = result.validation.message;
-        if (result.validation.error == DeviceError::InvalidRelationship && !result.dependentChildDeviceIds.empty()) {
+        if (result.validation.error == DeviceError::InvalidRelationship && !result.dependentDeviceIds.empty()) {
             doc["code"] = "DEPENDENT_DELETE";
-            JsonArray ids = doc.createNestedArray("dependent_child_device_ids");
-            for (const DeviceId childId : result.dependentChildDeviceIds) {
+            JsonArray ids = doc.createNestedArray("dependent_device_ids");
+            for (const DeviceId childId : result.dependentDeviceIds) {
                 ids.add(childId);
             }
         }
@@ -540,26 +550,43 @@ void DeviceRegistryController::cmd() {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
-    } else if (std::strcmp(commandName, "set_parent") == 0) {
-        if (input["has_parent"].isNull() || input["parent_device_id"].isNull()) {
-            renderError(400, "BAD_ARGS", "has_parent and parent_device_id are required");
+    } else if (std::strcmp(commandName, "set_deps") == 0) {
+        const JsonArrayConst depsArray = input["deps"].as<JsonArrayConst>();
+        if (depsArray.isNull()) {
+            renderError(400, "BAD_ARGS", "deps are required");
             return;
         }
-        const bool hasParent = input["has_parent"].as<bool>();
-        const DeviceId parentDeviceId = static_cast<DeviceId>(input["parent_device_id"] | 0U);
+        DeviceCommand::DepsPayload depsPayload{};
+        uint8_t depCount = 0;
+        for (JsonObjectConst item : depsArray) {
+            if (depCount >= kMaxDeviceDependencies) {
+                renderError(400, "BAD_ARGS", "deps exceed supported count");
+                return;
+            }
+            DeviceDependencyRole role{DeviceDependencyRole::Unknown};
+            if (!parseDeviceDependencyRole(item["role"] | "", role)) {
+                renderError(400, "BAD_ARGS", "dependency role is invalid");
+                return;
+            }
+            const DeviceId dependencyDeviceId = static_cast<DeviceId>(item["device_id"] | 0U);
+            if (dependencyDeviceId == 0U) {
+                renderError(400, "BAD_ARGS", "dependency device_id is required");
+                return;
+            }
+            depsPayload.deps[depCount++] = DeviceDependencyLink{role, dependencyDeviceId};
+        }
+        depsPayload.depCount = depCount;
         const IDeviceApiAdapter* adapter = adapters_.find(currentRuntime->typeId());
         const IDeviceRuntime* runtime = registry_.runtime(deviceId_);
         if (adapter != nullptr && runtime != nullptr) {
-            const DeviceValidationResult parentValidation =
-                adapter->validateSetParentRequest(*runtime, hasParent, parentDeviceId, registry_);
-            if (!parentValidation.ok()) {
-                renderError(400, errorCodeForDeviceError(parentValidation.error), parentValidation.message);
+            const DeviceValidationResult depsValidation =
+                adapter->validateSetDepsRequest(*runtime, depsPayload.deps, depsPayload.depCount, registry_);
+            if (!depsValidation.ok()) {
+                renderError(400, errorCodeForDeviceError(depsValidation.error), depsValidation.message);
                 return;
             }
         }
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetParent, deviceId_,
-                                                         DeviceCommand::ParentPayload{hasParent, parentDeviceId}, parsePolicy(input)},
-                                           0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetDeps, deviceId_, depsPayload, parsePolicy(input)}, 0);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -586,9 +613,9 @@ void DeviceRegistryController::cmd() {
             renderError(400, errorCodeForDeviceError(updateValidation.error), updateValidation.message);
             return;
         }
-        mutationResult = registry_.updateConfigAndParent(deviceId_, updateRequest.configBlob, updateRequest.configVersion,
-                                                         updateRequest.parentFieldsProvided, updateRequest.hasParent,
-                                                         updateRequest.parentDeviceId, 0, parsePolicy(input));
+        mutationResult =
+            registry_.updateConfigAndDeps(deviceId_, updateRequest.configBlob, updateRequest.configVersion, updateRequest.depsProvided,
+                                          updateRequest.deps, updateRequest.depCount, 0, parsePolicy(input));
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -611,11 +638,10 @@ void DeviceRegistryController::cmd() {
             device["type_id"] = runtime->typeId();
             device["name"] = runtime->name();
             device["enabled"] = runtime->enabled();
+            writeRuntimeDeps(device, *runtime);
         }
         const DeviceStatus lifecycleStatus = runtime->status();
         const DeviceStatus effectiveStatus = registry_.effectiveStatus(runtime->deviceId());
-        device["has_parent"] = runtime->hasParent();
-        device["parent_device_id"] = runtime->parentDeviceId();
         device["config_version"] = runtime->configVersion();
         device["config_revision"] = runtime->configRevision();
         device["lifecycle_status"] = statusToString(lifecycleStatus);

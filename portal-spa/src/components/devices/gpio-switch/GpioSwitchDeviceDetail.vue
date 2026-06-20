@@ -140,4 +140,8 @@ function setOutputState(state: OutputState): void {
 .device-switch-field__hint {
   padding-inline-start: 14px;
 }
+
+.device-type-section :deep(.v-expansion-panel-text__wrapper) {
+  padding: 8px 0 0;
+}
 </style>

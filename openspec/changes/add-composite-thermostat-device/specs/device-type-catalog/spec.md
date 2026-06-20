@@ -1,0 +1,39 @@
+## MODIFIED Requirements
+
+### Requirement: Supported device type catalog
+The portal SHALL define a canonical numeric catalog of supported device types for the device dashboard and create flow.
+
+#### Scenario: Catalog contains the supported DummyDevice type
+- **WHEN** the frontend renders the device type catalog
+- **THEN** it exposes `DummyDevice` with `type_id = 1` as a simple supported catalog entry with no type-specific settings
+
+#### Scenario: Catalog contains the GPIO switch type
+- **WHEN** the frontend renders the device type catalog after GPIO switch support is added
+- **THEN** it exposes `GpioSwitchDevice` with a stable numeric `type_id = 2` as a supported catalog entry
+
+#### Scenario: GPIO switch metadata is available
+- **WHEN** the frontend builds type-specific forms or widgets for `GpioSwitchDevice`
+- **THEN** the catalog exposes the label key, local icon key, and component registry key required to resolve GPIO switch UI components without installing icon packages
+
+#### Scenario: Catalog contains the thermostat type
+- **WHEN** the frontend renders the device type catalog after thermostat support is added
+- **THEN** it exposes `ThermostatDevice` with stable numeric `type_id = 5` and required dep role metadata for `temperature_sensor` and `switch`
+
+#### Scenario: Create flow uses the catalog entry
+- **WHEN** a user creates a device from the dashboard
+- **THEN** the portal sends the selected numeric `type_id` from the catalog in the create request
+
+### Requirement: Device type labels are localized
+The portal SHALL resolve device type display labels from locale keys while keeping the numeric `type_id` as the underlying identifier.
+
+#### Scenario: Label is shown in the active locale
+- **WHEN** the dashboard renders a supported device type in English or Russian
+- **THEN** it displays the localized label for that type while preserving the numeric `type_id` in data
+
+#### Scenario: Thermostat label is localized
+- **WHEN** the dashboard renders the thermostat device type in English or Russian
+- **THEN** it displays the localized thermostat label while preserving numeric `type_id = 5` in data and API payloads
+
+#### Scenario: Catalog remains stable across reloads
+- **WHEN** the user refreshes the SPA or opens a new dashboard route
+- **THEN** the same numeric catalog entry remains available without requiring a dynamic lookup

@@ -22,8 +22,11 @@ DeviceRegistryEntry recordFromRuntime(const IDeviceRuntime& runtime) {
     if (runtime.serializeConfigBlob(configBlob)) {
         record.header.payloadLength = static_cast<uint32_t>(configBlob.size());
     }
-    record.hasParent = runtime.hasParent();
-    record.parentDeviceId = runtime.hasParent() ? runtime.parentDeviceId() : 0;
+    record.depCount = runtime.dependencyCount();
+    const DeviceDependencyLink* links = runtime.dependencyLinks();
+    for (uint8_t index = 0; index < record.depCount && links != nullptr && index < kMaxDeviceDependencies; ++index) {
+        record.deps[index] = links[index];
+    }
     record.persistencePolicy = runtime.persistencePolicy();
     record.status = runtime.status();
     return record;
@@ -93,7 +96,7 @@ DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
         if (!runtimeResult.ok()) {
             return runtimeResult;
         }
-        syncRuntimeParentLink(record.header.deviceId);
+        syncRuntimeDependencyLinks(record.header.deviceId);
         if (auto* runtime = this->runtime(record.header.deviceId); runtime != nullptr) {
             if (runtime->enabled()) {
                 runtime->begin(now);
@@ -260,8 +263,11 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
     record.header.configRevision = 1;
     record.header.payloadLength = static_cast<uint32_t>(request.configBlob.size());
     record.header.payloadChecksum = 0;
-    record.hasParent = request.hasParent;
-    record.parentDeviceId = request.parentDeviceId;
+    record.depCount = request.dependencyCount();
+    const DeviceDependencyLink* requestDeps = request.dependencyLinks();
+    for (uint8_t index = 0; index < request.dependencyCount() && index < kMaxDeviceDependencies && requestDeps != nullptr; ++index) {
+        record.deps[index] = requestDeps[index];
+    }
     record.persistencePolicy = request.persistencePolicy;
     record.status = request.enabled ? DeviceStatus::Creating : DeviceStatus::Disabled;
 
@@ -310,7 +316,7 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
     }
 
     result.pendingPersistence = persistence_.hasPendingPersistence();
-    syncRuntimeParentLink(deviceId);
+    syncRuntimeDependencyLinks(deviceId);
     auto* runtimePtr = this->runtime(deviceId);
     if (runtimePtr != nullptr) {
         if (request.enabled) {
@@ -419,9 +425,9 @@ DeviceMutationResult DeviceRegistry::rename(DeviceId deviceId, const std::string
     if (!result.validation.ok()) {
         return result;
     }
-    syncRuntimeParentLink(deviceId);
-    for (const DeviceId childId : childDeviceIds(deviceId)) {
-        syncRuntimeParentLink(childId);
+    syncRuntimeDependencyLinks(deviceId);
+    for (const DeviceId childId : dependentDeviceIds(deviceId)) {
+        syncRuntimeDependencyLinks(childId);
     }
 
     if (policy == DevicePersistencePolicy::Immediate) {
@@ -467,20 +473,21 @@ DeviceMutationResult DeviceRegistry::rename(DeviceId deviceId, const std::string
 
 DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const BoundedBlob<kMaxDeviceConfigBytes>& configBlob,
                                                   uint32_t configVersion, uint32_t now, DevicePersistencePolicy policy) {
-    return updateConfigAndParent(deviceId, configBlob, configVersion, false, false, 0, now, policy);
+    return updateConfigAndDeps(deviceId, configBlob, configVersion, false, {}, 0, now, policy);
 }
 
-DeviceMutationResult DeviceRegistry::updateConfigAndParent(DeviceId deviceId, const BoundedBlob<kMaxDeviceConfigBytes>& configBlob,
-                                                           uint32_t configVersion, bool parentFieldsProvided, bool hasParent,
-                                                           DeviceId parentDeviceId, uint32_t now, DevicePersistencePolicy policy) {
+DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, const BoundedBlob<kMaxDeviceConfigBytes>& configBlob,
+                                                         uint32_t configVersion, bool depsProvided,
+                                                         const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps,
+                                                         uint8_t depCount, uint32_t now, DevicePersistencePolicy policy) {
     DeviceMutationResult result{};
     if (configBlob.size() > kMaxDeviceConfigBytes) {
         result.validation = {DeviceError::BoundsExceeded, "device config exceeds supported size"};
         return result;
     }
 
-    if (parentFieldsProvided && policy != DevicePersistencePolicy::Immediate) {
-        result.validation = {DeviceError::InvalidConfig, "parent reassignment requires immediate persistence"};
+    if (depsProvided && policy != DevicePersistencePolicy::Immediate) {
+        result.validation = {DeviceError::InvalidConfig, "dependency reassignment requires immediate persistence"};
         return result;
     }
 
@@ -508,9 +515,11 @@ DeviceMutationResult DeviceRegistry::updateConfigAndParent(DeviceId deviceId, co
     record.header.configRevision += 1;
     record.header.payloadLength = static_cast<uint32_t>(configBlob.size());
     record.header.payloadChecksum = 0;
-    if (parentFieldsProvided) {
-        record.hasParent = hasParent;
-        record.parentDeviceId = hasParent ? parentDeviceId : 0;
+    if (depsProvided) {
+        record.depCount = depCount;
+        for (uint8_t index = 0; index < depCount && index < kMaxDeviceDependencies; ++index) {
+            record.deps[index] = deps[index];
+        }
     }
     const uint32_t nextConfigRevision = record.header.configRevision;
 
@@ -541,9 +550,9 @@ DeviceMutationResult DeviceRegistry::updateConfigAndParent(DeviceId deviceId, co
     }
     const IDeviceRuntime* updatedRuntime = runtime(deviceId);
     const bool enabled = updatedRuntime == nullptr || updatedRuntime->enabled();
-    syncRuntimeParentLink(deviceId);
-    for (const DeviceId childId : childDeviceIds(deviceId)) {
-        syncRuntimeParentLink(childId);
+    syncRuntimeDependencyLinks(deviceId);
+    for (const DeviceId childId : dependentDeviceIds(deviceId)) {
+        syncRuntimeDependencyLinks(childId);
     }
 
     if (policy == DevicePersistencePolicy::Immediate) {
@@ -562,7 +571,7 @@ DeviceMutationResult DeviceRegistry::updateConfigAndParent(DeviceId deviceId, co
 
     result.pendingPersistence = persistence_.hasPendingPersistence();
     result.validation = {};
-    syncRuntimeParentLink(deviceId);
+    syncRuntimeDependencyLinks(deviceId);
     if (auto* runtimePtr = runtime(deviceId); runtimePtr != nullptr) {
         if (enabled) {
             runtimePtr->begin(now);
@@ -571,8 +580,8 @@ DeviceMutationResult DeviceRegistry::updateConfigAndParent(DeviceId deviceId, co
         }
     }
 
-    for (const DeviceId childId : childDeviceIds(deviceId)) {
-        syncRuntimeParentLink(childId);
+    for (const DeviceId childId : dependentDeviceIds(deviceId)) {
+        syncRuntimeDependencyLinks(childId);
         if (auto* childRuntime = runtime(childId); childRuntime != nullptr) {
             childRuntime->requestReconfigure();
         }
@@ -606,8 +615,8 @@ DeviceMutationResult DeviceRegistry::updateConfigAndParent(DeviceId deviceId, co
     return result;
 }
 
-DeviceMutationResult DeviceRegistry::setParent(DeviceId deviceId, bool hasParent, DeviceId parentDeviceId, uint32_t now,
-                                               DevicePersistencePolicy policy) {
+DeviceMutationResult DeviceRegistry::setDeps(DeviceId deviceId, const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps,
+                                             uint8_t depCount, uint32_t now, DevicePersistencePolicy policy) {
     DeviceMutationResult result{};
     IDeviceRuntime* currentRuntime = runtime(deviceId);
     if (currentRuntime == nullptr) {
@@ -616,8 +625,8 @@ DeviceMutationResult DeviceRegistry::setParent(DeviceId deviceId, bool hasParent
     }
 
     if (policy != DevicePersistencePolicy::Immediate) {
-        EWFM_DEVICE_REGISTRY_LOG_WARN("setParent rejected: non-immediate policy=%u", static_cast<unsigned>(policy));
-        result.validation = {DeviceError::InvalidConfig, "parent reassignment requires immediate persistence"};
+        EWFM_DEVICE_REGISTRY_LOG_WARN("setDeps rejected: non-immediate policy=%u", static_cast<unsigned>(policy));
+        result.validation = {DeviceError::InvalidConfig, "dependency reassignment requires immediate persistence"};
         return result;
     }
 
@@ -626,10 +635,18 @@ DeviceMutationResult DeviceRegistry::setParent(DeviceId deviceId, bool hasParent
         result.validation = {DeviceError::InvalidConfig, "device config is invalid"};
         return result;
     }
+    std::array<DeviceDependencyLink, kMaxDeviceDependencies> oldDeps{};
+    const uint8_t oldDepCount = currentRuntime->dependencyCount();
+    const DeviceDependencyLink* oldDepLinks = currentRuntime->dependencyLinks();
+    for (uint8_t index = 0; index < oldDepCount && oldDepLinks != nullptr; ++index) {
+        oldDeps[index] = oldDepLinks[index];
+    }
     DeviceRegistryEntry oldRecord = recordFromRuntime(*currentRuntime);
     DeviceRegistryEntry record = oldRecord;
-    record.hasParent = hasParent;
-    record.parentDeviceId = hasParent ? parentDeviceId : 0;
+    record.depCount = depCount;
+    for (uint8_t index = 0; index < depCount && index < kMaxDeviceDependencies; ++index) {
+        record.deps[index] = deps[index];
+    }
 
     DeviceRegistrySnapshot next{};
     DeviceConfigBlobMap nextConfigBlobs{};
@@ -663,7 +680,15 @@ DeviceMutationResult DeviceRegistry::setParent(DeviceId deviceId, bool hasParent
     ++registryRevision_;
     persistence_.clearConfigDirtyAfterImmediateFlush();
 
-    syncRuntimeParentLink(deviceId);
+    for (uint8_t index = 0; index < oldDepCount; ++index) {
+        if (oldDeps[index].deviceId == 0U) {
+            continue;
+        }
+        if (IDeviceRuntime* oldDependencyRuntime = runtime(oldDeps[index].deviceId); oldDependencyRuntime != nullptr) {
+            oldDependencyRuntime->detachDependentRuntime(currentRuntime);
+        }
+    }
+    syncRuntimeDependencyLinks(deviceId);
     if (auto* runtimePtr = runtime(deviceId); runtimePtr != nullptr) {
         runtimePtr->requestReconfigure();
     }
@@ -681,7 +706,7 @@ DeviceMutationResult DeviceRegistry::setParent(DeviceId deviceId, bool hasParent
     updated.typeId = record.header.typeId;
     updated.status = effectiveStatus(deviceId);
     updated.pendingPersistence = persistence_.hasPendingPersistence();
-    DeviceRegistryEventReporter::setEventDetail(updated, "parent reassigned");
+    DeviceRegistryEventReporter::setEventDetail(updated, "dependencies reassigned");
     eventReporter_.emit(updated);
 
     DeviceEvent accepted{};
@@ -693,10 +718,10 @@ DeviceMutationResult DeviceRegistry::setParent(DeviceId deviceId, bool hasParent
     accepted.status = updated.status;
     accepted.pendingPersistence = persistence_.hasPendingPersistence();
     accepted.commandAccepted = true;
-    DeviceRegistryEventReporter::setEventDetail(accepted, "set_parent");
+    DeviceRegistryEventReporter::setEventDetail(accepted, "set_deps");
     eventReporter_.emit(accepted);
-    EWFM_DEVICE_REGISTRY_LOG_INFO("parent reassigned device=%u hasParent=%d parent=%u", static_cast<unsigned>(deviceId),
-                                  static_cast<int>(hasParent), static_cast<unsigned>(hasParent ? parentDeviceId : 0));
+    EWFM_DEVICE_REGISTRY_LOG_INFO("dependencies reassigned device=%u depCount=%u", static_cast<unsigned>(deviceId),
+                                  static_cast<unsigned>(depCount));
     return result;
 }
 
@@ -734,9 +759,9 @@ DeviceMutationResult DeviceRegistry::setEnabled(DeviceId deviceId, bool enabled,
     if (!result.validation.ok()) {
         return result;
     }
-    syncRuntimeParentLink(deviceId);
-    for (const DeviceId childId : childDeviceIds(deviceId)) {
-        syncRuntimeParentLink(childId);
+    syncRuntimeDependencyLinks(deviceId);
+    for (const DeviceId childId : dependentDeviceIds(deviceId)) {
+        syncRuntimeDependencyLinks(childId);
     }
 
     if (policy == DevicePersistencePolicy::Immediate) {
@@ -756,7 +781,7 @@ DeviceMutationResult DeviceRegistry::setEnabled(DeviceId deviceId, bool enabled,
     result.pendingPersistence = persistence_.hasPendingPersistence();
     result.validation = {};
     if (enabled) {
-        syncRuntimeParentLink(deviceId);
+        syncRuntimeDependencyLinks(deviceId);
         const auto runtimePtr = runtime(deviceId);
         if (runtimePtr != nullptr) {
             runtimePtr->begin(now);
@@ -801,11 +826,11 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
         return result;
     }
 
-    result.dependentChildDeviceIds = childDeviceIds(deviceId);
-    if (!result.dependentChildDeviceIds.empty()) {
-        EWFM_DEVICE_REGISTRY_LOG_WARN("delete rejected: device=%u has %u children", static_cast<unsigned>(deviceId),
-                                      static_cast<unsigned>(result.dependentChildDeviceIds.size()));
-        result.validation = {DeviceError::InvalidRelationship, "device has dependent child devices"};
+    result.dependentDeviceIds = dependentDeviceIds(deviceId);
+    if (!result.dependentDeviceIds.empty()) {
+        EWFM_DEVICE_REGISTRY_LOG_WARN("delete rejected: device=%u has %u dependents", static_cast<unsigned>(deviceId),
+                                      static_cast<unsigned>(result.dependentDeviceIds.size()));
+        result.validation = {DeviceError::InvalidRelationship, "device has dependent devices"};
         return result;
     }
 
@@ -998,9 +1023,9 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
         result.validation = {};
         return result;
     }
-    case DeviceCommandType::SetParent: {
-        if (!command.parentPayloadValid) {
-            DeviceMutationResult result{{DeviceError::InvalidCommand, "set_parent payload is missing"}, false};
+    case DeviceCommandType::SetDeps: {
+        if (!command.depsPayloadValid) {
+            DeviceMutationResult result{{DeviceError::InvalidCommand, "set_deps payload is missing"}, false};
             DeviceEvent rejected{};
             rejected.kind = DeviceEventKind::CommandRejected;
             rejected.registryRevision = registryRevision_;
@@ -1010,8 +1035,7 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
             eventReporter_.emit(rejected);
             return result;
         }
-        return setParent(command.deviceId, command.parentPayload.hasParent, command.parentPayload.parentDeviceId, now,
-                         command.persistencePolicy);
+        return setDeps(command.deviceId, command.depsPayload.deps, command.depsPayload.depCount, now, command.persistencePolicy);
     }
     case DeviceCommandType::Create:
     case DeviceCommandType::None:
@@ -1223,13 +1247,13 @@ DeviceValidationResult DeviceRegistry::validateSnapshot(const DeviceRegistrySnap
         if (!recordResult.ok()) {
             return recordResult;
         }
-        const DeviceValidationResult parentResult = validateParent(snapshot, record);
-        if (!parentResult.ok()) {
-            return parentResult;
+        const DeviceValidationResult dependencyResult = validateDependencies(snapshot, record);
+        if (!dependencyResult.ok()) {
+            return dependencyResult;
         }
     }
 
-    const DeviceValidationResult graphResult = validateAcyclicParentGraph(snapshot);
+    const DeviceValidationResult graphResult = validateAcyclicDependencyGraph(snapshot);
     if (!graphResult.ok()) {
         return graphResult;
     }
@@ -1248,126 +1272,131 @@ DeviceValidationResult DeviceRegistry::validateRecord(const DeviceRegistryEntry&
     return {};
 }
 
-DeviceValidationResult DeviceRegistry::validateParent(const DeviceRegistrySnapshot& snapshot, const DeviceRegistryEntry& record) const {
-    if (!record.hasParent) {
+DeviceValidationResult DeviceRegistry::validateDependencies(const DeviceRegistrySnapshot& snapshot,
+                                                            const DeviceRegistryEntry& record) const {
+    if (!record.hasDeps()) {
         return {};
     }
 
-    if (record.parentDeviceId == record.header.deviceId) {
-        return {DeviceError::InvalidRelationship, "self parent relationship is not allowed"};
-    }
-
-    const auto parentIt = std::find_if(
-        snapshot.records.begin(), snapshot.records.end(),
-        [parentId = record.parentDeviceId](const DeviceRegistryEntry& candidate) { return candidate.header.deviceId == parentId; });
-    if (parentIt == snapshot.records.end()) {
-        return {DeviceError::InvalidRelationship, "parent device does not exist"};
-    }
-
-    const DeviceTypeDescriptor* childDescriptor = typeRegistry_.find(record.header.typeId);
-    const DeviceTypeDescriptor* parentDescriptor = typeRegistry_.find(parentIt->header.typeId);
-    if (childDescriptor == nullptr || parentDescriptor == nullptr) {
-        return {DeviceError::UnsupportedType, "unsupported device type"};
-    }
-    if (!childDescriptor->compatibleParentTypes.empty() &&
-        std::find(childDescriptor->compatibleParentTypes.begin(), childDescriptor->compatibleParentTypes.end(), parentIt->header.typeId) ==
-            childDescriptor->compatibleParentTypes.end()) {
-        return {DeviceError::InvalidRelationship, "incompatible parent type"};
-    }
-    if (!parentDescriptor->canHaveChildren) {
-        return {DeviceError::InvalidRelationship, "parent type cannot have children"};
-    }
-
-    size_t childCount = 0;
-    for (const auto& candidate : snapshot.records) {
-        if (candidate.hasParent && candidate.parentDeviceId == parentIt->header.deviceId) {
-            ++childCount;
+    const DeviceDependencyLink* links = record.dependencyLinks();
+    const uint8_t depCount = record.dependencyCount();
+    for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
+        const DeviceDependencyLink& link = links[index];
+        if (link.deviceId == 0) {
+            return {DeviceError::InvalidRelationship, "dependency device id is missing"};
         }
-    }
-    if (parentDescriptor->maxChildren > 0 && childCount > parentDescriptor->maxChildren) {
-        return {DeviceError::InvalidRelationship, "parent child limit exceeded"};
+        if (link.deviceId == record.header.deviceId) {
+            return {DeviceError::InvalidRelationship, "self dependency relationship is not allowed"};
+        }
+        const auto dependencyIt = std::find_if(
+            snapshot.records.begin(), snapshot.records.end(),
+            [deviceId = link.deviceId](const DeviceRegistryEntry& candidate) { return candidate.header.deviceId == deviceId; });
+        if (dependencyIt == snapshot.records.end()) {
+            return {DeviceError::InvalidRelationship, "dependency device does not exist"};
+        }
     }
     return {};
 }
 
-DeviceValidationResult DeviceRegistry::validateAcyclicParentGraph(const DeviceRegistrySnapshot& snapshot) const {
+DeviceValidationResult DeviceRegistry::validateAcyclicDependencyGraph(const DeviceRegistrySnapshot& snapshot) const {
     std::map<DeviceId, const DeviceRegistryEntry*> recordsById;
     for (const auto& record : snapshot.records) {
         recordsById.emplace(record.header.deviceId, &record);
     }
 
     for (const auto& record : snapshot.records) {
-        if (!record.hasParent) {
-            continue;
-        }
-
         std::map<DeviceId, bool> seen;
-        DeviceId parentId = record.parentDeviceId;
-        while (parentId != 0) {
-            if (parentId == record.header.deviceId) {
-                return {DeviceError::InvalidRelationship, "cyclic parent relationship detected"};
+        std::vector<DeviceId> stack;
+        stack.push_back(record.header.deviceId);
+        while (!stack.empty()) {
+            const DeviceId currentId = stack.back();
+            stack.pop_back();
+            const auto currentIt = recordsById.find(currentId);
+            if (currentIt == recordsById.end()) {
+                continue;
             }
-            if (seen.find(parentId) != seen.end()) {
-                return {DeviceError::InvalidRelationship, "cyclic parent relationship detected"};
+            const DeviceRegistryEntry& current = *currentIt->second;
+            const DeviceDependencyLink* currentLinks = current.dependencyLinks();
+            const uint8_t currentDepCount = current.dependencyCount();
+            for (uint8_t index = 0; index < currentDepCount && currentLinks != nullptr; ++index) {
+                const DeviceId dependencyId = currentLinks[index].deviceId;
+                if (dependencyId == record.header.deviceId) {
+                    return {DeviceError::InvalidRelationship, "cyclic dependency relationship detected"};
+                }
+                if (seen.find(dependencyId) != seen.end()) {
+                    continue;
+                }
+                seen[dependencyId] = true;
+                stack.push_back(dependencyId);
             }
-            seen[parentId] = true;
-
-            const auto current = recordsById.find(parentId);
-            if (current == recordsById.end()) {
-                break;
-            }
-            const DeviceRegistryEntry& parentRecord = *current->second;
-            if (!parentRecord.hasParent) {
-                break;
-            }
-            parentId = parentRecord.parentDeviceId;
         }
     }
-
     return {};
 }
 
-std::vector<DeviceId> DeviceRegistry::childDeviceIds(DeviceId parentId) const {
-    std::vector<DeviceId> children;
+std::vector<DeviceId> DeviceRegistry::dependentDeviceIds(DeviceId deviceId) const {
+    std::vector<DeviceId> dependents;
     for (const auto& entry : runtimes_) {
         const IDeviceRuntime* runtimePtr = entry.second.runtime.get();
-        if (runtimePtr != nullptr && runtimePtr->hasParent() && runtimePtr->parentDeviceId() == parentId) {
-            children.push_back(runtimePtr->deviceId());
+        if (runtimePtr == nullptr) {
+            continue;
+        }
+        const DeviceDependencyLink* links = runtimePtr->dependencyLinks();
+        const uint8_t depCount = runtimePtr->dependencyCount();
+        for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
+            if (links[index].deviceId == deviceId) {
+                dependents.push_back(runtimePtr->deviceId());
+                break;
+            }
         }
     }
-    return children;
+    return dependents;
 }
 
-void DeviceRegistry::syncRuntimeParentLink(DeviceId deviceId) {
-    IDeviceRuntime* childRuntime = runtime(deviceId);
-    if (childRuntime == nullptr) {
+void DeviceRegistry::syncRuntimeDependencyLinks(DeviceId deviceId) {
+    IDeviceRuntime* dependentRuntime = runtime(deviceId);
+    if (dependentRuntime == nullptr) {
         return;
     }
-    if (IDeviceRuntime* previousParent = childRuntime->parentRuntime(); previousParent != nullptr) {
-        previousParent->detachChildRuntime(childRuntime);
-        childRuntime->setParentRuntime(nullptr);
+    const DeviceDependencyLink* links = dependentRuntime->dependencyLinks();
+    const uint8_t depCount = dependentRuntime->dependencyCount();
+    for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
+        if (IDeviceRuntime* dependencyRuntime = dependentRuntime->dependencyRuntime(links[index].role); dependencyRuntime != nullptr) {
+            dependencyRuntime->detachDependentRuntime(dependentRuntime);
+        }
+        dependentRuntime->setDependencyRuntime(links[index].role, nullptr);
     }
-    if (!childRuntime->hasParent()) {
-        return;
+    for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
+        IDeviceRuntime* dependencyRuntime = runtime(links[index].deviceId);
+        if (dependencyRuntime == nullptr) {
+            continue;
+        }
+        dependentRuntime->setDependencyRuntime(links[index].role, dependencyRuntime);
+        dependencyRuntime->attachDependentRuntime(dependentRuntime);
     }
-    IDeviceRuntime* parentRuntime = runtime(childRuntime->parentDeviceId());
-    if (parentRuntime == nullptr) {
-        return;
-    }
-    childRuntime->setParentRuntime(parentRuntime);
-    parentRuntime->attachChildRuntime(childRuntime);
 }
 
 DeviceStatus DeviceRegistry::effectiveStatusForRuntime(const IDeviceRuntime& runtime) const {
-    if (!runtime.hasParent()) {
+    if (!runtime.hasDependencies()) {
         return runtime.status();
     }
-    const IDeviceRuntime* parent = this->runtime(runtime.parentDeviceId());
-    if (parent == nullptr) {
-        return DeviceStatus::Faulted;
+    const DeviceDependencyLink* links = runtime.dependencyLinks();
+    const uint8_t depCount = runtime.dependencyCount();
+    bool hasBlockedDependency = false;
+    for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
+        const IDeviceRuntime* dependency = this->runtime(links[index].deviceId);
+        if (dependency == nullptr) {
+            return DeviceStatus::DependencyBlocked;
+        }
+        const DeviceStatus dependencyStatus = effectiveStatusForRuntime(*dependency);
+        if (dependencyStatus == DeviceStatus::Disabled) {
+            return DeviceStatus::Disabled;
+        }
+        if (dependencyStatus != DeviceStatus::Ready) {
+            hasBlockedDependency = true;
+        }
     }
-    const DeviceStatus parentStatus = effectiveStatusForRuntime(*parent);
-    if (parentStatus != DeviceStatus::Ready) {
+    if (hasBlockedDependency) {
         return DeviceStatus::DependencyBlocked;
     }
     return runtime.status();
@@ -1377,11 +1406,28 @@ void DeviceRegistry::refreshDependentRuntimeStates(uint32_t now) {
     (void)now;
     for (auto& entry : runtimes_) {
         IDeviceRuntime* runtimePtr = entry.second.runtime.get();
-        if (runtimePtr == nullptr || !runtimePtr->hasParent()) {
+        if (runtimePtr == nullptr || !runtimePtr->hasDependencies()) {
             continue;
         }
-        const IDeviceRuntime* parent = runtime(runtimePtr->parentDeviceId());
-        if ((parent == nullptr || parent->status() != DeviceStatus::Ready) && runtimePtr->status() != DeviceStatus::Reconfiguring) {
+        const DeviceDependencyLink* links = runtimePtr->dependencyLinks();
+        const uint8_t depCount = runtimePtr->dependencyCount();
+        bool shouldDisable = false;
+        bool shouldReconfigure = false;
+        for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
+            const IDeviceRuntime* dependency = runtime(links[index].deviceId);
+            if (dependency == nullptr || dependency->status() == DeviceStatus::Faulted || dependency->status() == DeviceStatus::Deleting) {
+                shouldReconfigure = true;
+                continue;
+            }
+            if (dependency->status() == DeviceStatus::Disabled) {
+                shouldDisable = true;
+            } else if (dependency->status() != DeviceStatus::Ready) {
+                shouldReconfigure = true;
+            }
+        }
+        if (shouldDisable && runtimePtr->status() != DeviceStatus::Disabled) {
+            runtimePtr->requestDisable();
+        } else if (shouldReconfigure && runtimePtr->status() != DeviceStatus::Reconfiguring) {
             runtimePtr->requestReconfigure();
         }
     }
@@ -1494,13 +1540,25 @@ DeviceValidationResult DeviceRegistry::buildSnapshot(DeviceRegistrySnapshot& sna
 void DeviceRegistry::clearRuntime(DeviceId deviceId) {
     const auto it = runtimes_.find(deviceId);
     if (it != runtimes_.end() && it->second.runtime != nullptr) {
-        if (IDeviceRuntime* parent = it->second.runtime->parentRuntime(); parent != nullptr) {
-            parent->detachChildRuntime(it->second.runtime.get());
+        const IDeviceRuntime* runtimePtr = it->second.runtime.get();
+        const DeviceDependencyLink* links = runtimePtr->dependencyLinks();
+        const uint8_t depCount = runtimePtr->dependencyCount();
+        for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
+            if (IDeviceRuntime* dependency = runtime(links[index].deviceId); dependency != nullptr) {
+                dependency->detachDependentRuntime(it->second.runtime.get());
+            }
         }
-        const std::vector<IDeviceRuntime*> children = it->second.runtime->childRuntimes();
-        for (IDeviceRuntime* child : children) {
-            if (child != nullptr) {
-                child->setParentRuntime(nullptr);
+        const std::vector<IDeviceRuntime*> dependents = it->second.runtime->dependentRuntimes();
+        for (IDeviceRuntime* dependent : dependents) {
+            if (dependent == nullptr) {
+                continue;
+            }
+            const DeviceDependencyLink* dependentLinks = dependent->dependencyLinks();
+            const uint8_t dependentDepCount = dependent->dependencyCount();
+            for (uint8_t index = 0; index < dependentDepCount && dependentLinks != nullptr; ++index) {
+                if (dependentLinks[index].deviceId == deviceId) {
+                    dependent->setDependencyRuntime(dependentLinks[index].role, nullptr);
+                }
             }
         }
     }

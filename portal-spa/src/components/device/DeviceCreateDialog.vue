@@ -59,14 +59,14 @@ import {
   encodeDs18b20Config,
   normalizeDs18b20TemperatureSensorConfig,
 } from '@/models/devices/ds18b20'
+import type { DeviceDependencyLink } from '@/api'
 
 type CreatePayload = {
   name: string
   type_id: number
   enabled: boolean
   config?: Record<string, unknown>
-  has_parent?: boolean
-  parent_device_id?: number
+  deps?: DeviceDependencyLink[]
 }
 
 const props = defineProps<{
@@ -133,8 +133,12 @@ function submit(): void {
       ...ds18b20Config.value,
       enabled: draft.common.enabled,
     })
-    payload.has_parent = true
-    payload.parent_device_id = ds18b20Config.value.parent_device_id
+    payload.deps = [
+      {
+        role: 'onewire_bus',
+        device_id: ds18b20Config.value.parent_device_id,
+      },
+    ]
   } else if (Object.keys(draft.config).length > 0) {
     payload.config = { ...draft.config }
   }

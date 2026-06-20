@@ -1,5 +1,7 @@
+#include "devices/core/DeviceBaseConfig.h"
 #include "devices/core/DeviceRuntimeBase.h"
 
+#include <cstdio>
 #include <unity.h>
 
 using namespace ewfm;
@@ -75,19 +77,37 @@ void test_device_runtime_base_begin_and_cadence_tick_state_machine() {
 
 void test_device_runtime_base_parent_and_child_wiring() {
     TestRuntime runtime;
-    StatusRuntime parent;
-    StatusRuntime child;
+    StatusRuntime dependency;
+    StatusRuntime dependent;
 
-    runtime.setParentRuntime(&parent);
-    TEST_ASSERT_EQUAL_PTR(&parent, runtime.parentRuntime());
+    DeviceRegistryEntry record{};
+    record.header.recordVersion = kDeviceRecordHeaderVersion;
+    record.header.deviceId = 42;
+    record.header.typeId = 7;
+    record.header.configVersion = 1;
+    record.header.configRevision = 1;
+    record.depCount = 1;
+    record.deps[0] = {DeviceDependencyRole::OneWireBus, 99};
 
-    runtime.attachChildRuntime(&child);
-    runtime.attachChildRuntime(&child);
-    TEST_ASSERT_EQUAL_UINT32(1, runtime.childRuntimes().size());
-    TEST_ASSERT_EQUAL_PTR(&child, runtime.childRuntimes()[0]);
+    DeviceBaseConfigV1 base{};
+    base.enabled = 1;
+    std::snprintf(base.name, sizeof(base.name), "%s", "runtime");
+    DeviceConfigBlob configBlob{};
+    TEST_ASSERT_TRUE(configBlob.setSize(deviceBaseConfigSize(base)));
+    TEST_ASSERT_TRUE(writeDeviceBaseConfig(configBlob, base));
 
-    runtime.detachChildRuntime(&child);
-    TEST_ASSERT_TRUE(runtime.childRuntimes().empty());
+    runtime.bindDeviceIdentity(record, configBlob);
+    runtime.begin(0);
+    runtime.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &dependency);
+    TEST_ASSERT_EQUAL_PTR(&dependency, runtime.dependencyRuntime(DeviceDependencyRole::OneWireBus));
+
+    runtime.attachDependentRuntime(&dependent);
+    runtime.attachDependentRuntime(&dependent);
+    TEST_ASSERT_EQUAL_UINT32(1, runtime.dependentRuntimes().size());
+    TEST_ASSERT_EQUAL_PTR(&dependent, runtime.dependentRuntimes()[0]);
+
+    runtime.detachDependentRuntime(&dependent);
+    TEST_ASSERT_TRUE(runtime.dependentRuntimes().empty());
 }
 
 void test_device_runtime_base_request_status_defaults() {

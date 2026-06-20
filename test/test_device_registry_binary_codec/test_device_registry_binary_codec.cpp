@@ -16,8 +16,7 @@ DeviceRegistryEntry makeRecord(DeviceId id, DeviceTypeId typeId, const DeviceCon
     record.header.configRevision = 7;
     record.header.payloadLength = static_cast<uint32_t>(payload.size());
     record.header.payloadChecksum = 0;
-    record.hasParent = false;
-    record.parentDeviceId = 0;
+    record.depCount = 0;
     record.status = DeviceStatus::Ready;
     record.persistencePolicy = DevicePersistencePolicy::Delayed;
     return record;
@@ -59,8 +58,8 @@ void test_codec_index_round_trip() {
 void test_codec_record_round_trip() {
     DeviceConfigBlob configBlob = makePayload("payload-v1");
     DeviceRegistryEntry record = makeRecord(501, 7, configBlob);
-    record.hasParent = true;
-    record.parentDeviceId = 500;
+    record.depCount = 1;
+    record.deps[0] = {DeviceDependencyRole::OneWireBus, 500};
     record.status = DeviceStatus::DependencyBlocked;
     record.persistencePolicy = DevicePersistencePolicy::Coalesced;
 
@@ -74,8 +73,9 @@ void test_codec_record_round_trip() {
     TEST_ASSERT_EQUAL_UINT32(record.header.configVersion, decoded.header.configVersion);
     TEST_ASSERT_EQUAL_UINT32(record.header.configRevision, decoded.header.configRevision);
     TEST_ASSERT_EQUAL_UINT32(configBlob.size(), decoded.header.payloadLength);
-    TEST_ASSERT_EQUAL(record.hasParent, decoded.hasParent);
-    TEST_ASSERT_EQUAL_UINT32(record.parentDeviceId, decoded.parentDeviceId);
+    TEST_ASSERT_EQUAL_UINT8(record.depCount, decoded.depCount);
+    TEST_ASSERT_EQUAL(static_cast<int>(record.deps[0].role), static_cast<int>(decoded.deps[0].role));
+    TEST_ASSERT_EQUAL_UINT32(record.deps[0].deviceId, decoded.deps[0].deviceId);
     TEST_ASSERT_EQUAL(static_cast<int>(record.status), static_cast<int>(decoded.status));
     TEST_ASSERT_EQUAL(static_cast<int>(record.persistencePolicy), static_cast<int>(decoded.persistencePolicy));
     TEST_ASSERT_EQUAL_UINT32(configBlob.size(), decodedConfigBlob.size());

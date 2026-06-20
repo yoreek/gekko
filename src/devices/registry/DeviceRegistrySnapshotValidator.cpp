@@ -21,6 +21,64 @@ bool hasDuplicateEntries(const std::vector<DeviceIndexEntry>& entries) {
     }
     return false;
 }
+
+bool hasDuplicateDependencyRoles(const DeviceRegistryEntry& record) {
+    std::map<DeviceDependencyRole, bool> seen;
+    const DeviceDependencyLink* links = record.dependencyLinks();
+    const uint8_t depCount = record.dependencyCount();
+    for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
+        const auto role = links[index].role;
+        if (role == DeviceDependencyRole::Unknown) {
+            return true;
+        }
+        if (seen.find(role) != seen.end()) {
+            return true;
+        }
+        seen.emplace(role, true);
+    }
+    return false;
+}
+
+bool recordDependsOn(const DeviceRegistryEntry& record, DeviceId deviceId) {
+    const DeviceDependencyLink* links = record.dependencyLinks();
+    const uint8_t depCount = record.dependencyCount();
+    for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
+        if (links[index].deviceId == deviceId) {
+            return true;
+        }
+    }
+    return false;
+}
+
+DeviceValidationResult validateDependencyGraph(const std::map<DeviceId, const DeviceRegistryEntry*>& recordsById,
+                                               const DeviceRegistryEntry& record, std::map<DeviceId, bool>& seen) {
+    if (seen.find(record.header.deviceId) != seen.end()) {
+        return {DeviceError::InvalidRelationship, "cyclic dependency relationship detected"};
+    }
+    seen[record.header.deviceId] = true;
+    const DeviceDependencyLink* links = record.dependencyLinks();
+    const uint8_t depCount = record.dependencyCount();
+    for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
+        const DeviceDependencyLink& link = links[index];
+        if (link.deviceId == record.header.deviceId) {
+            return {DeviceError::InvalidRelationship, "self dependency relationship is not allowed"};
+        }
+        const auto depIt = recordsById.find(link.deviceId);
+        if (depIt == recordsById.end()) {
+            return {DeviceError::InvalidRelationship, "dependency device does not exist"};
+        }
+        const DeviceRegistryEntry& dependencyRecord = *depIt->second;
+        if (recordDependsOn(dependencyRecord, record.header.deviceId)) {
+            return {DeviceError::InvalidRelationship, "cyclic dependency relationship detected"};
+        }
+        auto nextSeen = seen;
+        const DeviceValidationResult nestedResult = validateDependencyGraph(recordsById, dependencyRecord, nextSeen);
+        if (!nestedResult.ok()) {
+            return nestedResult;
+        }
+    }
+    return {};
+}
 } // namespace
 
 DeviceValidationResult DeviceRegistrySnapshotValidator::validateStructure(const DeviceRegistrySnapshot& snapshot) {
@@ -59,8 +117,11 @@ DeviceValidationResult DeviceRegistrySnapshotValidator::validateStructure(const 
             static_cast<uint8_t>(record.persistencePolicy) > static_cast<uint8_t>(DevicePersistencePolicy::Coalesced)) {
             return {DeviceError::CorruptRecord, "device record contains invalid status or persistence policy"};
         }
-        if (!record.hasParent && record.parentDeviceId != 0) {
-            return {DeviceError::InvalidRelationship, "device record contains unexpected parent reference"};
+        if (record.dependencyCount() > kMaxDeviceDependencies) {
+            return {DeviceError::BoundsExceeded, "device record exceeds supported dependency count"};
+        }
+        if (hasDuplicateDependencyRoles(record)) {
+            return {DeviceError::InvalidRelationship, "duplicate dependency role or invalid dependency role"};
         }
         if (recordById.find(record.header.deviceId) != recordById.end()) {
             return {DeviceError::DuplicateDeviceId, "duplicate record device id"};
@@ -80,46 +141,27 @@ DeviceValidationResult DeviceRegistrySnapshotValidator::validateStructure(const 
     }
 
     for (const auto& record : snapshot.records) {
-        if (!record.hasParent) {
-            continue;
-        }
-        if (record.parentDeviceId == 0) {
-            return {DeviceError::InvalidRelationship, "parent device id is missing"};
-        }
-        if (record.parentDeviceId == record.header.deviceId) {
-            return {DeviceError::InvalidRelationship, "self parent relationship is not allowed"};
-        }
-        if (recordById.find(record.parentDeviceId) == recordById.end()) {
-            return {DeviceError::InvalidRelationship, "parent device id is missing"};
+        const DeviceDependencyLink* links = record.dependencyLinks();
+        const uint8_t depCount = record.dependencyCount();
+        for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
+            const DeviceDependencyLink& link = links[index];
+            if (link.deviceId == 0) {
+                return {DeviceError::InvalidRelationship, "dependency device id is missing"};
+            }
+            if (link.deviceId == record.header.deviceId) {
+                return {DeviceError::InvalidRelationship, "self dependency relationship is not allowed"};
+            }
+            if (recordById.find(link.deviceId) == recordById.end()) {
+                return {DeviceError::InvalidRelationship, "dependency device does not exist"};
+            }
         }
     }
 
-    for (const auto& entry : snapshot.indexEntries) {
-        const auto childIt = recordById.find(entry.deviceId);
-        if (childIt == recordById.end()) {
-            continue;
-        }
-        const DeviceRegistryEntry& child = *childIt->second;
-        if (!child.hasParent) {
-            continue;
-        }
-
-        DeviceId parentId = child.parentDeviceId;
+    for (const auto& record : snapshot.records) {
         std::map<DeviceId, bool> seen;
-        while (parentId != 0) {
-            if (seen.find(parentId) != seen.end()) {
-                return {DeviceError::InvalidRelationship, "cyclic parent relationship detected"};
-            }
-            seen[parentId] = true;
-            const auto current = recordById.find(parentId);
-            if (current == recordById.end()) {
-                break;
-            }
-            const DeviceRegistryEntry& parentRecord = *current->second;
-            if (!parentRecord.hasParent) {
-                break;
-            }
-            parentId = parentRecord.parentDeviceId;
+        const DeviceValidationResult graphResult = validateDependencyGraph(recordById, record, seen);
+        if (!graphResult.ok()) {
+            return graphResult;
         }
     }
 
@@ -137,53 +179,64 @@ DeviceValidationResult DeviceRegistrySnapshotValidator::validateTypedRelationshi
         recordsById.emplace(record.header.deviceId, &record);
     }
 
-    std::map<DeviceId, size_t> childCounts;
-    for (const auto& entry : snapshot.indexEntries) {
-        const auto childIt = recordsById.find(entry.deviceId);
-        if (childIt == recordsById.end()) {
-            return {DeviceError::MissingRecord, "missing device record for index entry"};
-        }
-
-        const DeviceRegistryEntry& childRecord = *childIt->second;
-        const DeviceTypeDescriptor* childDescriptor = typeRegistry->find(childRecord.header.typeId);
-        if (childDescriptor == nullptr) {
+    std::map<DeviceId, size_t> dependentCounts;
+    for (const auto& record : snapshot.records) {
+        const DeviceTypeDescriptor* dependentDescriptor = typeRegistry->find(record.header.typeId);
+        if (dependentDescriptor == nullptr) {
             return {DeviceError::UnsupportedType, "unsupported device type"};
         }
-        if (childRecord.header.configVersion > childDescriptor->currentConfigVersion) {
+        if (record.header.configVersion > dependentDescriptor->currentConfigVersion) {
             return {DeviceError::InvalidVersion, "unsupported device config version"};
         }
 
-        if (!childRecord.hasParent) {
-            continue;
-        }
+        const DeviceDependencyLink* links = record.dependencyLinks();
+        const uint8_t depCount = record.dependencyCount();
+        for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
+            const DeviceDependencyLink& link = links[index];
+            const auto depIt = recordsById.find(link.deviceId);
+            if (depIt == recordsById.end()) {
+                return {DeviceError::InvalidRelationship, "missing dependency record"};
+            }
 
-        const auto parentIt = recordsById.find(childRecord.parentDeviceId);
-        if (parentIt == recordsById.end()) {
-            return {DeviceError::InvalidRelationship, "missing parent record"};
-        }
+            const DeviceRegistryEntry& dependencyRecord = *depIt->second;
+            const DeviceTypeDescriptor* dependencyDescriptor = typeRegistry->find(dependencyRecord.header.typeId);
+            if (dependencyDescriptor == nullptr) {
+                return {DeviceError::UnsupportedType, "unsupported device type"};
+            }
 
-        const DeviceRegistryEntry& parentRecord = *parentIt->second;
-        const DeviceTypeDescriptor* parentDescriptor = typeRegistry->find(parentRecord.header.typeId);
-        if (parentDescriptor == nullptr) {
-            return {DeviceError::UnsupportedType, "unsupported device type"};
-        }
+            const auto requirementIt =
+                std::find_if(dependentDescriptor->dependencyRequirements.begin(), dependentDescriptor->dependencyRequirements.end(),
+                             [role = link.role](const DeviceDependencyRequirement& requirement) { return requirement.role == role; });
+            if (requirementIt == dependentDescriptor->dependencyRequirements.end()) {
+                return {DeviceError::InvalidRelationship, "unsupported dependency role"};
+            }
+            if (!requirementIt->compatibleTypeIds.empty() &&
+                std::find(requirementIt->compatibleTypeIds.begin(), requirementIt->compatibleTypeIds.end(),
+                          dependencyRecord.header.typeId) == requirementIt->compatibleTypeIds.end()) {
+                return {DeviceError::InvalidRelationship, "incompatible dependency type"};
+            }
+            if (!dependencyDescriptor->canHaveDependents) {
+                return {DeviceError::InvalidRelationship, "dependency type cannot have dependents"};
+            }
 
-        if (!childDescriptor->compatibleParentTypes.empty()) {
-            const bool parentCompatible =
-                std::find(childDescriptor->compatibleParentTypes.begin(), childDescriptor->compatibleParentTypes.end(),
-                          parentRecord.header.typeId) != childDescriptor->compatibleParentTypes.end();
-            if (!parentCompatible) {
-                return {DeviceError::InvalidRelationship, "incompatible parent type"};
+            const size_t nextCount = ++dependentCounts[dependencyRecord.header.deviceId];
+            if (dependencyDescriptor->maxDependents > 0 && nextCount > dependencyDescriptor->maxDependents) {
+                return {DeviceError::InvalidRelationship, "dependency dependent limit exceeded"};
             }
         }
 
-        if (!parentDescriptor->canHaveChildren) {
-            return {DeviceError::InvalidRelationship, "parent type cannot have children"};
-        }
-
-        const size_t nextChildCount = ++childCounts[childRecord.parentDeviceId];
-        if (parentDescriptor->maxChildren > 0 && nextChildCount > parentDescriptor->maxChildren) {
-            return {DeviceError::InvalidRelationship, "parent child limit exceeded"};
+        for (const auto& requirement : dependentDescriptor->dependencyRequirements) {
+            if (!requirement.required) {
+                continue;
+            }
+            const DeviceDependencyLink* links = record.dependencyLinks();
+            const uint8_t depCount = record.dependencyCount();
+            const bool hasRole = std::find_if(links, links + depCount, [&requirement](const DeviceDependencyLink& link) {
+                                     return link.role == requirement.role;
+                                 }) != links + depCount;
+            if (!hasRole) {
+                return {DeviceError::InvalidRelationship, "required dependency role is missing"};
+            }
         }
     }
 

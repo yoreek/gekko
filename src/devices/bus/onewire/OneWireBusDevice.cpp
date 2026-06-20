@@ -163,7 +163,7 @@ OneWireBusDevice::ChildTransaction OneWireBusDevice::beginChildTransaction() {
 }
 
 bool OneWireBusDevice::hasDuplicateChildRomAddress(const OneWireRomAddress& address, const IDeviceRuntime* ignoreChild) const {
-    for (const IDeviceRuntime* child : childRuntimes()) {
+    for (const IDeviceRuntime* child : dependentRuntimes()) {
         if (child == nullptr || child == ignoreChild) {
             continue;
         }
@@ -184,8 +184,8 @@ DeviceTypeDescriptor OneWireBusDevice::descriptor() {
     descriptor.typeId = kOneWireBusDeviceTypeId;
     descriptor.name = "OneWireBusDevice";
     descriptor.currentConfigVersion = kOneWireBusDeviceConfigVersion;
-    descriptor.canHaveChildren = true;
-    descriptor.maxChildren = 16;
+    descriptor.canHaveDependents = true;
+    descriptor.maxDependents = 16;
     descriptor.supportsCommands = true;
     descriptor.supportsRetainedState = false;
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
@@ -324,7 +324,7 @@ SM_STATE(OneWireBusDevice::Idle) {
 
 SM_STATE(OneWireBusDevice::Starting) {
     status_ = DeviceStatus::Starting;
-    if (!parentReady()) {
+    if (!dependenciesReady()) {
         status_ = DeviceStatus::DependencyBlocked;
         SM_GOTO(DependencyBlocked);
     }
@@ -364,7 +364,7 @@ SM_STATE(OneWireBusDevice::Starting) {
 
 SM_STATE(OneWireBusDevice::Ready) {
     status_ = DeviceStatus::Ready;
-    if (!parentReady()) {
+    if (!dependenciesReady()) {
         status_ = DeviceStatus::DependencyBlocked;
         SM_GOTO(DependencyBlocked);
     }
@@ -449,7 +449,7 @@ SM_STATE(OneWireBusDevice::Reconfiguring) {
     }
     resetScanResult();
     releaseHardware();
-    if (!parentReady()) {
+    if (!dependenciesReady()) {
         status_ = DeviceStatus::DependencyBlocked;
         SM_GOTO(DependencyBlocked);
     }
@@ -517,7 +517,7 @@ SM_STATE(OneWireBusDevice::DependencyBlocked) {
         SM_GOTO(Disabled);
     }
     if (reconfigureRequested_ || startRequested_) {
-        if (parentReady()) {
+        if (dependenciesReady()) {
             status_ = DeviceStatus::Reconfiguring;
             SM_GOTO(Reconfiguring);
         }

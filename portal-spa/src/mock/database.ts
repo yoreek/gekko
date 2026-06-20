@@ -8,7 +8,7 @@ import type {
 } from '@/api'
 import { safeReadStorage, safeWriteStorage } from '@/utils/storage'
 
-const storageKey = 'gekko.mockDb.v4'
+const storageKey = 'gekko.mockDb.v5'
 
 export interface MockDatabase {
   registryRevision: number
@@ -58,6 +58,8 @@ const seedDatabase: MockDatabase = {
       type: 'dummy',
       name: 'Aquarium Lamp',
       enabled: true,
+      deps: [],
+      has_deps: false,
       has_parent: false,
       parent_device_id: 0,
       config_version: 1,
@@ -79,6 +81,8 @@ const seedDatabase: MockDatabase = {
       type: 'dummy',
       name: 'Temperature Sensor',
       enabled: true,
+      deps: [],
+      has_deps: false,
       has_parent: false,
       parent_device_id: 0,
       config_version: 1,
@@ -100,6 +104,8 @@ const seedDatabase: MockDatabase = {
       type: 'gpio_switch',
       name: 'GPIO Relay',
       enabled: true,
+      deps: [],
+      has_deps: false,
       has_parent: false,
       parent_device_id: 0,
       config_version: 1,
@@ -130,6 +136,8 @@ const seedDatabase: MockDatabase = {
       type: 'onewire_bus',
       name: 'Sensor Bus',
       enabled: true,
+      deps: [],
+      has_deps: false,
       has_parent: false,
       parent_device_id: 0,
       config_version: 1,
@@ -168,6 +176,13 @@ const seedDatabase: MockDatabase = {
       type: 'ds18b20_temperature_sensor',
       name: 'Water Temperature',
       enabled: true,
+      deps: [
+        {
+          role: 'onewire_bus',
+          device_id: 670845751,
+        },
+      ],
+      has_deps: true,
       has_parent: true,
       parent_device_id: 670845751,
       config_version: 1,

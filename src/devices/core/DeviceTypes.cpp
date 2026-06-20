@@ -7,6 +7,40 @@
 
 namespace ewfm {
 
+namespace {
+constexpr const char* kDeviceDependencyRoleNames[] = {
+    "unknown",
+    "onewire_bus",
+    "temperature_sensor",
+    "switch",
+};
+} // namespace
+
+const char* deviceDependencyRoleName(DeviceDependencyRole role) {
+    const auto index = static_cast<size_t>(role);
+    if (index >= (sizeof(kDeviceDependencyRoleNames) / sizeof(kDeviceDependencyRoleNames[0]))) {
+        return kDeviceDependencyRoleNames[0];
+    }
+    return kDeviceDependencyRoleNames[index];
+}
+
+bool parseDeviceDependencyRole(std::string_view value, DeviceDependencyRole& role) {
+    if (value == "onewire_bus") {
+        role = DeviceDependencyRole::OneWireBus;
+        return true;
+    }
+    if (value == "temperature_sensor") {
+        role = DeviceDependencyRole::TemperatureSensor;
+        return true;
+    }
+    if (value == "switch") {
+        role = DeviceDependencyRole::Switch;
+        return true;
+    }
+    role = DeviceDependencyRole::Unknown;
+    return false;
+}
+
 bool DeviceTypeRegistry::registerDescriptor(const DeviceTypeDescriptor& descriptor) {
     if (descriptor.typeId == 0 || descriptor.name == nullptr) {
         return false;

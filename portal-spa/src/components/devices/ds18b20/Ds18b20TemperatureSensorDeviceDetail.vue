@@ -1,69 +1,73 @@
 <template>
-  <div class="d-grid ga-3">
-    <v-alert v-if="!temperature?.valid" type="warning" variant="tonal">
-      {{ t('device.dialog.temperatureUnavailable') }}
-    </v-alert>
+  <div class="device-type-stack">
+    <section class="device-type-section">
+      <v-alert v-if="!temperature?.valid" type="warning" variant="tonal">
+        {{ t('device.dialog.temperatureUnavailable') }}
+      </v-alert>
 
-    <v-row>
-      <v-col cols="12" md="6">
-        <v-text-field
-          :label="t('device.fields.temperature')"
-          :model-value="temperatureText"
-          readonly
-        />
-      </v-col>
-      <v-col cols="12" md="6">
-        <v-text-field
-          :label="t('device.fields.measuredAt')"
-          :model-value="temperature?.valid ? String(temperature.measured_at_ms) : ''"
-          readonly
-        />
-      </v-col>
-    </v-row>
+      <v-row class="device-type-section__grid">
+        <v-col cols="12" md="6">
+          <v-text-field
+            :label="t('device.fields.temperature')"
+            :model-value="temperatureText"
+            readonly
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field
+            :label="t('device.fields.measuredAt')"
+            :model-value="temperature?.valid ? String(temperature.measured_at_ms) : ''"
+            readonly
+          />
+        </v-col>
+      </v-row>
 
-    <v-row>
-      <v-col cols="12" md="6">
-        <v-text-field
-          :label="t('device.fields.onewireParent')"
-          :model-value="parentLabel"
-          readonly
-        />
-      </v-col>
-      <v-col cols="12" md="6">
-        <v-text-field
-          :label="t('device.fields.ds18b20Address')"
-          :model-value="config.address"
-          readonly
-        />
-      </v-col>
-    </v-row>
+      <v-row class="device-type-section__grid">
+        <v-col cols="12" md="6">
+          <v-text-field
+            :label="t('device.fields.onewireParent')"
+            :model-value="parentLabel"
+            readonly
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field
+            :label="t('device.fields.ds18b20Address')"
+            :model-value="config.address"
+            readonly
+          />
+        </v-col>
+      </v-row>
+    </section>
 
-    <v-expansion-panels>
-      <v-expansion-panel value="details">
-        <v-expansion-panel-title>
-          {{ t('device.dialog.configDetails') }}
-        </v-expansion-panel-title>
-        <v-expansion-panel-text>
-          <v-row>
-            <v-col cols="12" md="6">
-              <v-text-field :label="t('device.fields.resolution')" :model-value="config.resolution" readonly />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field :label="t('device.fields.temperatureUnit')" :model-value="t(`device.dialog.temperatureUnit.${config.unit}`)" readonly />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field :label="t('device.fields.pollMs')" :model-value="config.poll_ms" readonly />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field :label="t('device.fields.reportDelta')" :model-value="config.report_delta_celsius" readonly />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-switch :label="t('device.fields.reportAlways')" :model-value="config.report_always" readonly />
-            </v-col>
-          </v-row>
-        </v-expansion-panel-text>
-      </v-expansion-panel>
-    </v-expansion-panels>
+    <section class="device-type-section">
+      <v-expansion-panels>
+        <v-expansion-panel value="details">
+          <v-expansion-panel-title>
+            {{ t('device.dialog.configDetails') }}
+          </v-expansion-panel-title>
+          <v-expansion-panel-text>
+            <v-row class="device-type-section__grid">
+              <v-col cols="12" md="6">
+                <v-text-field :label="t('device.fields.resolution')" :model-value="config.resolution" readonly />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field :label="t('device.fields.temperatureUnit')" :model-value="t(`device.dialog.temperatureUnit.${config.unit}`)" readonly />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field :label="t('device.fields.pollMs')" :model-value="config.poll_ms" readonly />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field :label="t('device.fields.reportDelta')" :model-value="config.report_delta_celsius" readonly />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-switch :label="t('device.fields.reportAlways')" :model-value="config.report_always" readonly />
+              </v-col>
+            </v-row>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
+    </section>
   </div>
 </template>
 
@@ -97,3 +101,28 @@ const parentLabel = computed(() => {
   return parent ? `${parent.name} #${parent.deviceId}` : `#${props.device.parentDeviceId}`
 })
 </script>
+
+<style scoped>
+.device-type-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.device-type-section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgb(var(--v-theme-outline-variant));
+  border-radius: 10px;
+  background: var(--portal-surface);
+  box-shadow: var(--portal-shadow-sm);
+}
+
+.device-type-section__grid {
+  margin: 0;
+}
+
+.device-type-section :deep(.v-expansion-panel-text__wrapper) {
+  padding: 8px 0 0;
+}
+</style>

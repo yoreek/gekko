@@ -12,9 +12,14 @@ namespace ewfm {
 struct DeviceConfigUpdateRequest {
     BoundedBlob<kMaxDeviceConfigBytes> configBlob{};
     uint32_t configVersion{0};
+    bool depsProvided{false};
+    std::array<DeviceDependencyLink, kMaxDeviceDependencies> deps{};
+    uint8_t depCount{0};
+#ifdef UNIT_TEST
     bool parentFieldsProvided{false};
     bool hasParent{false};
     DeviceId parentDeviceId{0};
+#endif
 };
 
 class IDeviceApiAdapter {
@@ -34,8 +39,9 @@ public:
     virtual DeviceValidationResult validateCreateRequest(const DeviceCreateRequest& request, const DeviceRegistry& registry) const;
     virtual DeviceValidationResult validateUpdateConfigRequest(const IDeviceRuntime& runtime, const DeviceConfigUpdateRequest& request,
                                                                const DeviceRegistry& registry) const;
-    virtual DeviceValidationResult validateSetParentRequest(const IDeviceRuntime& runtime, bool hasParent, DeviceId parentDeviceId,
-                                                            const DeviceRegistry& registry) const;
+    virtual DeviceValidationResult validateSetDepsRequest(const IDeviceRuntime& runtime,
+                                                          const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps,
+                                                          uint8_t depCount, const DeviceRegistry& registry) const;
     virtual void writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const = 0;
 
 protected:

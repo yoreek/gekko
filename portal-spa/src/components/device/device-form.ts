@@ -172,8 +172,12 @@ export function buildDeviceEditCommands(device: DashboardDevice, payload: Device
       commands.push({
         command: 'update_config',
         config: encodeDs18b20Config(next),
-        has_parent: true,
-        parent_device_id: next.parent_device_id,
+        deps: [
+          {
+            role: 'onewire_bus',
+            device_id: next.parent_device_id,
+          },
+        ],
       })
     }
   }

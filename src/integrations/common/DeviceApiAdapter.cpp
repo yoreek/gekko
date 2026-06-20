@@ -19,8 +19,15 @@ void IDeviceApiAdapter::writeCommonDeviceJson(const IDeviceRuntime& runtime, con
     output["config_version"] = runtime.configVersion();
     output["config_revision"] = runtime.configRevision();
     output["persistence_policy"] = persistencePolicy;
-    output["has_parent"] = runtime.hasParent();
-    output["parent_device_id"] = runtime.parentDeviceId();
+    JsonArray deps = output.createNestedArray("deps");
+    const DeviceDependencyLink* dependencyLinks = runtime.dependencyLinks();
+    const uint8_t dependencyCount = runtime.dependencyCount();
+    for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
+        JsonObject item = deps.createNestedObject();
+        item["role"] = deviceDependencyRoleName(dependencyLinks[index].role);
+        item["device_id"] = dependencyLinks[index].deviceId;
+    }
+    output["has_deps"] = dependencyCount > 0;
     output["retained_state_supported"] = retainedStateSupported;
 }
 
@@ -51,11 +58,12 @@ DeviceValidationResult IDeviceApiAdapter::validateUpdateConfigRequest(const IDev
     return {};
 }
 
-DeviceValidationResult IDeviceApiAdapter::validateSetParentRequest(const IDeviceRuntime& runtime, bool hasParent, DeviceId parentDeviceId,
-                                                                   const DeviceRegistry& registry) const {
+DeviceValidationResult IDeviceApiAdapter::validateSetDepsRequest(const IDeviceRuntime& runtime,
+                                                                 const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps,
+                                                                 uint8_t depCount, const DeviceRegistry& registry) const {
     (void)runtime;
-    (void)hasParent;
-    (void)parentDeviceId;
+    (void)deps;
+    (void)depCount;
     (void)registry;
     return {};
 }

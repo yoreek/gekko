@@ -54,8 +54,7 @@ DeviceRegistryEntry makeDeviceRecord() {
     config.enabled = 1;
     std::snprintf(config.name, sizeof(config.name), "%s", "Living Room Lamp");
     record.header.payloadLength = static_cast<uint32_t>(dummyDeviceConfigSize(config));
-    record.hasParent = false;
-    record.parentDeviceId = 0;
+    record.depCount = 0;
     record.persistencePolicy = DevicePersistencePolicy::Delayed;
     record.status = DeviceStatus::Ready;
     return record;

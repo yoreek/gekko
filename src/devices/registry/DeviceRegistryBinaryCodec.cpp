@@ -205,8 +205,10 @@ std::string DeviceRegistryBinaryCodec::serializeRecord(const DeviceRegistryEntry
 }
 
 std::vector<uint8_t> DeviceRegistryBinaryCodec::serializeRecordBlob(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+    const uint8_t depCount = record.dependencyCount();
+    const DeviceDependencyLink* dependencyLinks = record.dependencyLinks();
     std::vector<uint8_t> blob;
-    blob.reserve(40 + configBlob.size());
+    blob.reserve(48 + configBlob.size() + static_cast<size_t>(depCount) * 8U);
     appendLE<uint32_t>(blob, kRecordMagic);
     appendLE<uint16_t>(blob, kDeviceRecordHeaderVersion);
     appendLE<uint16_t>(blob, 0);
@@ -217,11 +219,16 @@ std::vector<uint8_t> DeviceRegistryBinaryCodec::serializeRecordBlob(const Device
     appendLE<uint32_t>(blob, record.header.configRevision);
     appendLE<uint32_t>(blob, static_cast<uint32_t>(configBlob.size()));
     appendLE<uint32_t>(blob, record.header.payloadChecksum);
-    appendLE<uint8_t>(blob, record.hasParent ? 1U : 0U);
+    appendLE<uint8_t>(blob, depCount);
     appendLE<uint8_t>(blob, static_cast<uint8_t>(record.status));
     appendLE<uint8_t>(blob, static_cast<uint8_t>(record.persistencePolicy));
     appendLE<uint8_t>(blob, 0U);
-    appendLE<DeviceId>(blob, record.parentDeviceId);
+    for (uint8_t index = 0; index < depCount && index < kMaxDeviceDependencies && dependencyLinks != nullptr; ++index) {
+        appendLE<uint8_t>(blob, static_cast<uint8_t>(dependencyLinks[index].role));
+        appendLE<uint8_t>(blob, 0U);
+        appendLE<uint16_t>(blob, 0U);
+        appendLE<DeviceId>(blob, dependencyLinks[index].deviceId);
+    }
     appendBytes(blob, configBlob.data(), configBlob.size());
     return blob;
 }
@@ -236,11 +243,21 @@ size_t DeviceRegistryBinaryCodec::serializeRecord(const DeviceRegistryEntry& rec
         !appendLE<uint32_t>(out, capacity, pos, record.header.configRevision) ||
         !appendLE<uint32_t>(out, capacity, pos, static_cast<uint32_t>(configBlob.size())) ||
         !appendLE<uint32_t>(out, capacity, pos, record.header.payloadChecksum) ||
-        !appendLE<uint8_t>(out, capacity, pos, record.hasParent ? 1U : 0U) ||
+        !appendLE<uint8_t>(out, capacity, pos, record.dependencyCount()) ||
         !appendLE<uint8_t>(out, capacity, pos, static_cast<uint8_t>(record.status)) ||
         !appendLE<uint8_t>(out, capacity, pos, static_cast<uint8_t>(record.persistencePolicy)) ||
-        !appendLE<uint8_t>(out, capacity, pos, 0U) || !appendLE<DeviceId>(out, capacity, pos, record.parentDeviceId) ||
-        !appendBytes(out, capacity, pos, configBlob.data(), configBlob.size())) {
+        !appendLE<uint8_t>(out, capacity, pos, 0U)) {
+        return 0U;
+    }
+    const DeviceDependencyLink* dependencyLinks = record.dependencyLinks();
+    for (uint8_t index = 0; index < record.dependencyCount() && index < kMaxDeviceDependencies && dependencyLinks != nullptr; ++index) {
+        if (!appendLE<uint8_t>(out, capacity, pos, static_cast<uint8_t>(dependencyLinks[index].role)) ||
+            !appendLE<uint8_t>(out, capacity, pos, 0U) || !appendLE<uint16_t>(out, capacity, pos, 0U) ||
+            !appendLE<DeviceId>(out, capacity, pos, dependencyLinks[index].deviceId)) {
+            return 0U;
+        }
+    }
+    if (!appendBytes(out, capacity, pos, configBlob.data(), configBlob.size())) {
         return 0U;
     }
     return pos;
@@ -260,7 +277,7 @@ DeviceValidationResult DeviceRegistryBinaryCodec::parseRecord(const uint8_t* blo
     uint16_t reserved16{0};
     uint16_t reservedRecordFlags{0};
     uint32_t payloadLength{0};
-    uint8_t hasParent{0};
+    uint8_t depCount{0};
     uint8_t status{0};
     uint8_t persistence{0};
     uint8_t reserved8{0};
@@ -275,14 +292,33 @@ DeviceValidationResult DeviceRegistryBinaryCodec::parseRecord(const uint8_t* blo
     if (!readLE(blob, size, pos, record.header.deviceId) || !readLE(blob, size, pos, record.header.typeId) ||
         !readLE(blob, size, pos, reservedRecordFlags) || !readLE(blob, size, pos, record.header.configVersion) ||
         !readLE(blob, size, pos, record.header.configRevision) || !readLE(blob, size, pos, payloadLength) ||
-        !readLE(blob, size, pos, record.header.payloadChecksum) || !readLE(blob, size, pos, hasParent) ||
-        !readLE(blob, size, pos, status) || !readLE(blob, size, pos, persistence) || !readLE(blob, size, pos, reserved8) ||
-        !readLE(blob, size, pos, record.parentDeviceId)) {
+        !readLE(blob, size, pos, record.header.payloadChecksum) || !readLE(blob, size, pos, depCount) || !readLE(blob, size, pos, status) ||
+        !readLE(blob, size, pos, persistence) || !readLE(blob, size, pos, reserved8)) {
         return {DeviceError::CorruptRecord, "device record header is truncated"};
     }
 
     if (payloadLength > kMaxDeviceConfigBytes) {
         return {DeviceError::BoundsExceeded, "device record exceeds supported size"};
+    }
+    if (depCount > kMaxDeviceDependencies) {
+        return {DeviceError::BoundsExceeded, "device record exceeds supported dependency count"};
+    }
+
+    record.header.recordVersion = version;
+    record.depCount = depCount;
+    for (uint8_t index = 0; index < record.depCount; ++index) {
+        uint8_t role{0};
+        uint8_t reservedLink8{0};
+        uint16_t reservedLink16{0};
+        DeviceDependencyLink link{};
+        if (!readLE(blob, size, pos, role) || !readLE(blob, size, pos, reservedLink8) || !readLE(blob, size, pos, reservedLink16) ||
+            !readLE(blob, size, pos, link.deviceId)) {
+            return {DeviceError::CorruptRecord, "device record dependency data is truncated"};
+        }
+        link.role = static_cast<DeviceDependencyRole>(role);
+        record.deps[index] = link;
+        (void)reservedLink8;
+        (void)reservedLink16;
     }
 
     if (pos + payloadLength > size) {
@@ -299,9 +335,7 @@ DeviceValidationResult DeviceRegistryBinaryCodec::parseRecord(const uint8_t* blo
     (void)reserved16;
     (void)reservedRecordFlags;
     (void)reserved8;
-    record.header.recordVersion = version;
     record.header.payloadLength = payloadLength;
-    record.hasParent = hasParent != 0U;
     record.status = static_cast<DeviceStatus>(status);
     record.persistencePolicy = static_cast<DevicePersistencePolicy>(persistence);
     return {};

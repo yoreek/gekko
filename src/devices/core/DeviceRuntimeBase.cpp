@@ -20,8 +20,11 @@ void DeviceRuntimeBase::bindDeviceIdentity(const DeviceRegistryEntry& record, co
     typeId_ = record.header.typeId;
     configVersion_ = record.header.configVersion;
     configRevision_ = record.header.configRevision;
-    hasParent_ = record.hasParent;
-    parentDeviceId_ = record.parentDeviceId;
+    dependencyCount_ = record.depCount;
+    for (uint8_t index = 0; index < dependencyCount_ && index < kMaxDeviceDependencies; ++index) {
+        dependencyLinks_[index] = record.deps[index];
+        dependencyRuntimes_[index] = nullptr;
+    }
     persistencePolicy_ = record.persistencePolicy;
 }
 
@@ -42,33 +45,51 @@ void DeviceRuntimeBase::tick1s(uint32_t now) {
     tickRuntime(now);
 }
 
-void DeviceRuntimeBase::setParentRuntime(IDeviceRuntime* parentRuntime) {
-    parentRuntime_ = parentRuntime;
+void DeviceRuntimeBase::setDependencyRuntime(DeviceDependencyRole role, IDeviceRuntime* dependencyRuntime) {
+    for (uint8_t index = 0; index < dependencyCount_ && index < kMaxDeviceDependencies; ++index) {
+        if (dependencyLinks_[index].role == role) {
+            dependencyRuntimes_[index] = dependencyRuntime;
+            return;
+        }
+    }
 }
 
-IDeviceRuntime* DeviceRuntimeBase::parentRuntime() const {
-    return parentRuntime_;
+IDeviceRuntime* DeviceRuntimeBase::dependencyRuntime(DeviceDependencyRole role) const {
+    for (uint8_t index = 0; index < dependencyCount_ && index < kMaxDeviceDependencies; ++index) {
+        if (dependencyLinks_[index].role == role) {
+            return dependencyRuntimes_[index];
+        }
+    }
+    return nullptr;
 }
 
-void DeviceRuntimeBase::attachChildRuntime(IDeviceRuntime* childRuntime) {
-    if (childRuntime == nullptr || hasChildRuntime(childRuntime)) {
+uint8_t DeviceRuntimeBase::dependencyCount() const {
+    return dependencyCount_;
+}
+
+const DeviceDependencyLink* DeviceRuntimeBase::dependencyLinks() const {
+    return dependencyLinks_.data();
+}
+
+void DeviceRuntimeBase::attachDependentRuntime(IDeviceRuntime* dependentRuntime) {
+    if (dependentRuntime == nullptr || hasDependentRuntime(dependentRuntime)) {
         return;
     }
-    childRuntimes_.push_back(childRuntime);
+    dependentRuntimes_.push_back(dependentRuntime);
 }
 
-void DeviceRuntimeBase::detachChildRuntime(IDeviceRuntime* childRuntime) {
-    if (childRuntime == nullptr) {
+void DeviceRuntimeBase::detachDependentRuntime(IDeviceRuntime* dependentRuntime) {
+    if (dependentRuntime == nullptr) {
         return;
     }
-    const auto it = std::remove(childRuntimes_.begin(), childRuntimes_.end(), childRuntime);
-    if (it != childRuntimes_.end()) {
-        childRuntimes_.erase(it, childRuntimes_.end());
+    const auto it = std::remove(dependentRuntimes_.begin(), dependentRuntimes_.end(), dependentRuntime);
+    if (it != dependentRuntimes_.end()) {
+        dependentRuntimes_.erase(it, dependentRuntimes_.end());
     }
 }
 
-const std::vector<IDeviceRuntime*>& DeviceRuntimeBase::childRuntimes() const {
-    return childRuntimes_;
+const std::vector<IDeviceRuntime*>& DeviceRuntimeBase::dependentRuntimes() const {
+    return dependentRuntimes_;
 }
 
 void DeviceRuntimeBase::requestReconfigure() {
@@ -107,12 +128,17 @@ uint32_t DeviceRuntimeBase::configRevision() const {
     return configRevision_;
 }
 
-bool DeviceRuntimeBase::hasParent() const {
-    return hasParent_;
+bool DeviceRuntimeBase::hasDependencies() const {
+    return dependencyCount_ > 0;
 }
 
-DeviceId DeviceRuntimeBase::parentDeviceId() const {
-    return parentDeviceId_;
+DeviceId DeviceRuntimeBase::dependencyDeviceId(DeviceDependencyRole role) const {
+    for (uint8_t index = 0; index < dependencyCount_ && index < kMaxDeviceDependencies; ++index) {
+        if (dependencyLinks_[index].role == role) {
+            return dependencyLinks_[index].deviceId;
+        }
+    }
+    return 0;
 }
 
 bool DeviceRuntimeBase::enabled() const {
@@ -140,15 +166,26 @@ void DeviceRuntimeBase::setStatus(DeviceStatus status) {
     status_ = status;
 }
 
-bool DeviceRuntimeBase::parentReady() const {
-    if (parentRuntime_ == nullptr) {
-        return true;
+bool DeviceRuntimeBase::dependencyReady(DeviceDependencyRole role) const {
+    const IDeviceRuntime* dependency = dependencyRuntime(role);
+    if (dependency == nullptr) {
+        return false;
     }
-    return parentRuntime_->status() == DeviceStatus::Ready;
+    return dependency->status() == DeviceStatus::Ready;
 }
 
-bool DeviceRuntimeBase::hasChildRuntime(const IDeviceRuntime* childRuntime) const {
-    return std::find(childRuntimes_.begin(), childRuntimes_.end(), childRuntime) != childRuntimes_.end();
+bool DeviceRuntimeBase::dependenciesReady() const {
+    for (uint8_t index = 0; index < dependencyCount_ && index < kMaxDeviceDependencies; ++index) {
+        const IDeviceRuntime* dependency = dependencyRuntimes_[index];
+        if (dependency == nullptr || dependency->status() != DeviceStatus::Ready) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool DeviceRuntimeBase::hasDependentRuntime(const IDeviceRuntime* dependentRuntime) const {
+    return std::find(dependentRuntimes_.begin(), dependentRuntimes_.end(), dependentRuntime) != dependentRuntimes_.end();
 }
 
 bool DeviceRuntimeBase::startRequested() const {

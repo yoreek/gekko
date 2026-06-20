@@ -1,114 +1,116 @@
 <template>
-  <div class="d-grid ga-3">
-    <v-alert v-if="parentItems.length === 0" type="warning" variant="tonal">
-      {{ t('device.dialog.ds18b20NoParent') }}
-    </v-alert>
+  <div class="device-type-stack">
+    <section class="device-type-section">
+      <v-alert v-if="parentItems.length === 0" type="warning" variant="tonal">
+        {{ t('device.dialog.ds18b20NoParent') }}
+      </v-alert>
 
-    <v-row>
-      <v-col cols="12" md="6">
-        <v-select
-          :label="t('device.fields.onewireParent')"
-          :items="parentItems"
-          :model-value="currentValue.parent_device_id"
-          :disabled="busy || parentItems.length === 0"
-          @update:model-value="updateNumber('parent_device_id', $event)"
-        />
-      </v-col>
-      <v-col cols="12" md="6">
-        <v-text-field
-          :label="t('device.fields.ds18b20Address')"
-          :model-value="currentValue.address"
-          :hint="t('device.dialog.ds18b20AddressHint')"
-          :rules="addressRules"
-          :disabled="busy"
-          persistent-hint
-          @update:model-value="updateAddress"
-        />
-      </v-col>
-    </v-row>
+      <v-row class="device-type-section__grid">
+        <v-col cols="12" md="6">
+          <v-select
+            :label="t('device.fields.onewireParent')"
+            :items="parentItems"
+            :model-value="currentValue.parent_device_id"
+            :disabled="busy || parentItems.length === 0"
+            @update:model-value="updateNumber('parent_device_id', $event)"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field
+            :label="t('device.fields.ds18b20Address')"
+            :model-value="currentValue.address"
+            :hint="t('device.dialog.ds18b20AddressHint')"
+            :rules="addressRules"
+            :disabled="busy"
+            persistent-hint
+            @update:model-value="updateAddress"
+          />
+        </v-col>
+      </v-row>
 
-    <v-row>
-      <v-col cols="12" md="6">
-        <v-btn
-          color="primary"
-          variant="tonal"
-          :loading="scanBusy || selectedParent?.detail.scan?.in_progress === true"
-          :disabled="busy || scanBusy || currentValue.parent_device_id === 0"
-          @click="scanSelectedParent"
-        >
-          <AppIcon class="me-1" name="refresh" />
-          {{ t('device.dialog.ds18b20ScanAction') }}
-        </v-btn>
-      </v-col>
-      <v-col cols="12" md="6">
-        <v-select
-          :label="t('device.fields.ds18b20ScanCandidate')"
-          :items="scanCandidateItems"
-          :disabled="busy || scanCandidateItems.length === 0"
-          :model-value="currentValue.address"
-          @update:model-value="updateAddress"
-        />
-      </v-col>
-    </v-row>
+      <v-row class="device-type-section__grid">
+        <v-col cols="12" md="6">
+          <v-btn
+            color="primary"
+            variant="tonal"
+            :loading="scanBusy || selectedParent?.detail.scan?.in_progress === true"
+            :disabled="busy || scanBusy || currentValue.parent_device_id === 0"
+            @click="scanSelectedParent"
+          >
+            <AppIcon class="me-1" name="refresh" />
+            {{ t('device.dialog.ds18b20ScanAction') }}
+          </v-btn>
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-select
+            :label="t('device.fields.ds18b20ScanCandidate')"
+            :items="scanCandidateItems"
+            :disabled="busy || scanCandidateItems.length === 0"
+            :model-value="currentValue.address"
+            @update:model-value="updateAddress"
+          />
+        </v-col>
+      </v-row>
 
-    <v-alert v-if="scanError" type="error" variant="tonal">
-      {{ scanError }}
-    </v-alert>
+      <v-alert v-if="scanError" type="error" variant="tonal">
+        {{ scanError }}
+      </v-alert>
+    </section>
 
-    <v-row>
-      <v-col cols="12" md="6">
-        <v-select
-          :label="t('device.fields.resolution')"
-          :items="resolutionItems"
-          :model-value="currentValue.resolution"
-          :disabled="busy"
-          @update:model-value="updateNumber('resolution', $event)"
-        />
-      </v-col>
-      <v-col cols="12" md="6">
-        <v-select
-          :label="t('device.fields.temperatureUnit')"
-          :items="unitItems"
-          :model-value="currentValue.unit"
-          :disabled="busy"
-          @update:model-value="update('unit', $event as 'celsius' | 'fahrenheit')"
-        />
-      </v-col>
-    </v-row>
-
-    <v-row>
-      <v-col cols="12" md="6">
-        <v-text-field
-          :label="t('device.fields.pollMs')"
-          :model-value="currentValue.poll_ms"
-          inputmode="numeric"
-          type="number"
-          min="1000"
-          :disabled="busy"
-          @update:model-value="updateNumber('poll_ms', $event)"
-        />
-      </v-col>
-      <v-col cols="12" md="6">
-        <v-text-field
-          :label="t('device.fields.reportDelta')"
-          :model-value="currentValue.report_delta_celsius"
-          inputmode="decimal"
-          type="number"
-          min="0.01"
-          step="0.01"
-          :disabled="busy"
-          @update:model-value="updateNumber('report_delta_celsius', $event)"
-        />
-      </v-col>
-    </v-row>
-
-    <v-switch
-      :label="t('device.fields.reportAlways')"
-      :model-value="currentValue.report_always"
-      :disabled="busy"
-      inset
-      @update:model-value="update('report_always', Boolean($event))"
-    />
+    <section class="device-type-section">
+      <v-row class="device-type-section__grid">
+        <v-col cols="12" md="6">
+          <v-select
+            :label="t('device.fields.resolution')"
+            :items="resolutionItems"
+            :model-value="currentValue.resolution"
+            :disabled="busy"
+            @update:model-value="updateNumber('resolution', $event)"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-select
+            :label="t('device.fields.temperatureUnit')"
+            :items="unitItems"
+            :model-value="currentValue.unit"
+            :disabled="busy"
+            @update:model-value="update('unit', $event as 'celsius' | 'fahrenheit')"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field
+            :label="t('device.fields.pollMs')"
+            :model-value="currentValue.poll_ms"
+            inputmode="numeric"
+            type="number"
+            min="1000"
+            :disabled="busy"
+            @update:model-value="updateNumber('poll_ms', $event)"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field
+            :label="t('device.fields.reportDelta')"
+            :model-value="currentValue.report_delta_celsius"
+            inputmode="decimal"
+            type="number"
+            min="0.01"
+            step="0.01"
+            :disabled="busy"
+            @update:model-value="updateNumber('report_delta_celsius', $event)"
+          />
+        </v-col>
+        <v-col cols="12">
+          <v-switch
+            :label="t('device.fields.reportAlways')"
+            :model-value="currentValue.report_always"
+            :disabled="busy"
+            inset
+            @update:model-value="update('report_always', Boolean($event))"
+          />
+        </v-col>
+      </v-row>
+    </section>
   </div>
 </template>
 
@@ -206,3 +208,28 @@ async function scanSelectedParent(): Promise<void> {
   }
 }
 </script>
+
+<style scoped>
+.device-type-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.device-type-section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgb(var(--v-theme-outline-variant));
+  border-radius: 10px;
+  background: var(--portal-surface);
+  box-shadow: var(--portal-shadow-sm);
+}
+
+.device-type-section__grid {
+  margin: 0;
+}
+
+.device-type-section :deep(.v-expansion-panel-text__wrapper) {
+  padding: 8px 0 0;
+}
+</style>

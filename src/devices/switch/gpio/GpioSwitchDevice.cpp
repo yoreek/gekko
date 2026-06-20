@@ -156,8 +156,8 @@ DeviceTypeDescriptor GpioSwitchDevice::descriptor() {
     descriptor.typeId = kGpioSwitchDeviceTypeId;
     descriptor.name = "GpioSwitchDevice";
     descriptor.currentConfigVersion = kGpioSwitchDeviceConfigVersion;
-    descriptor.canHaveChildren = false;
-    descriptor.maxChildren = 0;
+    descriptor.canHaveDependents = false;
+    descriptor.maxDependents = 0;
     descriptor.supportsCommands = true;
     descriptor.supportsRetainedState = true;
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;

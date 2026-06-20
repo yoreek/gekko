@@ -214,7 +214,7 @@ SM_STATE(SwitchDeviceBase::Idle) {
 
 SM_STATE(SwitchDeviceBase::Starting) {
     status_ = DeviceStatus::Starting;
-    if (!parentReady()) {
+    if (!dependenciesReady()) {
         status_ = DeviceStatus::DependencyBlocked;
         SM_GOTO(DependencyBlocked);
     }
@@ -247,7 +247,7 @@ SM_STATE(SwitchDeviceBase::Starting) {
 
 SM_STATE(SwitchDeviceBase::Ready) {
     status_ = DeviceStatus::Ready;
-    if (!parentReady()) {
+    if (!dependenciesReady()) {
         status_ = DeviceStatus::DependencyBlocked;
         SM_GOTO(DependencyBlocked);
     }
@@ -297,7 +297,7 @@ SM_STATE(SwitchDeviceBase::DependencyBlocked) {
         SM_GOTO(Disabled);
     }
     if (reconfigureRequested_ || startRequested_) {
-        if (parentReady()) {
+        if (dependenciesReady()) {
             status_ = DeviceStatus::Reconfiguring;
             SM_GOTO(Reconfiguring);
         }

@@ -19,7 +19,7 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeDummyConfig(const DummyDeviceConfigV1& 
     return payload;
 }
 
-DeviceRegistryEntry makeDummyRecord(DeviceId id, DeviceId parentId, bool hasParent, const std::string& name,
+DeviceRegistryEntry makeDummyRecord(DeviceId id, DeviceId dependencyId, bool hasDependency, const std::string& name,
                                     const DummyDeviceConfigV1& config) {
     DeviceRegistryEntry record{};
     record.header.recordVersion = kDeviceRecordHeaderVersion;
@@ -29,8 +29,10 @@ DeviceRegistryEntry makeDummyRecord(DeviceId id, DeviceId parentId, bool hasPare
     record.header.configRevision = 7;
     record.header.payloadLength = static_cast<uint32_t>(dummyDeviceConfigSize(config));
     (void)name;
-    record.hasParent = hasParent;
-    record.parentDeviceId = parentId;
+    record.depCount = hasDependency ? 1U : 0U;
+    if (hasDependency) {
+        record.deps[0] = {DeviceDependencyRole::OneWireBus, dependencyId};
+    }
     record.persistencePolicy = DevicePersistencePolicy::Delayed;
     record.status = DeviceStatus::Ready;
     return record;
@@ -98,7 +100,7 @@ void test_device_registry_store_round_trip() {
     configBlobs[1] = encodeDummyConfig(config);
 
     DummyDeviceConfigV1 childConfig = makeDummyConfig("sensor", true);
-    snapshot.records.push_back(makeDummyRecord(2, 1, true, "sensor", childConfig));
+    snapshot.records.push_back(makeDummyRecord(2, 0, false, "sensor", childConfig));
     configBlobs[2] = encodeDummyConfig(childConfig);
 
     DeviceValidationResult saveResult = store.save(snapshot, configBlobs);
@@ -119,8 +121,6 @@ void test_device_registry_store_round_trip() {
     TEST_ASSERT_TRUE(decodeDummyDeviceConfig(loadedConfigBlobs[2].data(), loadedConfigBlobs[2].size(), loadedChildConfig));
     TEST_ASSERT_EQUAL_STRING("bus", loadedParentConfig.name);
     TEST_ASSERT_EQUAL_STRING("sensor", loadedChildConfig.name);
-    TEST_ASSERT_TRUE(loaded.records[1].hasParent);
-    TEST_ASSERT_EQUAL_UINT32(1, loaded.records[1].parentDeviceId);
     TEST_ASSERT_EQUAL_UINT32(configBlobs[2].size(), loadedConfigBlobs[2].size());
     TEST_ASSERT_EQUAL_MEMORY(configBlobs[2].data(), loadedConfigBlobs[2].data(), configBlobs[2].size());
 }
@@ -245,11 +245,11 @@ void test_dummy_device_parent_dependency_and_child_wiring_survive_base_refactor(
     DummyDevice parent(parentRecord, encodeDummyConfig(config));
     DummyDevice child(childRecord, encodeDummyConfig(config));
 
-    child.setParentRuntime(&parent);
-    parent.attachChildRuntime(&child);
-    parent.attachChildRuntime(&child);
-    TEST_ASSERT_EQUAL_PTR(static_cast<IDeviceRuntime*>(&parent), child.parentRuntime());
-    TEST_ASSERT_EQUAL_UINT32(1, parent.childRuntimes().size());
+    child.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &parent);
+    parent.attachDependentRuntime(&child);
+    parent.attachDependentRuntime(&child);
+    TEST_ASSERT_EQUAL_PTR(static_cast<IDeviceRuntime*>(&parent), child.dependencyRuntime(DeviceDependencyRole::OneWireBus));
+    TEST_ASSERT_EQUAL_UINT32(1, parent.dependentRuntimes().size());
 
     child.begin(300);
     child.tickFastLoop(301);
@@ -262,8 +262,8 @@ void test_dummy_device_parent_dependency_and_child_wiring_survive_base_refactor(
     child.tickFastLoop(306);
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(child.status()));
 
-    parent.detachChildRuntime(&child);
-    TEST_ASSERT_TRUE(parent.childRuntimes().empty());
+    parent.detachDependentRuntime(&child);
+    TEST_ASSERT_TRUE(parent.dependentRuntimes().empty());
 }
 
 int main(int, char**) {

@@ -57,28 +57,55 @@ DevicePersistencePolicy parsePersistencePolicy(const JsonObjectConst& input) {
     return DevicePersistencePolicy::Immediate;
 }
 
-bool parseParentFields(const JsonObjectConst& input, bool requireParent, bool& hasParent, DeviceId& parentDeviceId, const char*& error) {
-    hasParent = input["has_parent"] | true;
-    parentDeviceId = static_cast<DeviceId>(input["parent_device_id"] | 0U);
-    if (requireParent && (!hasParent || parentDeviceId == 0U)) {
-        error = "ds18b20 parent is required";
+bool parseDepsField(const JsonObjectConst& input, std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t& depCount,
+                    const char*& error) {
+    depCount = 0;
+    const JsonArrayConst depsArray = input["deps"].as<JsonArrayConst>();
+    if (depsArray.isNull()) {
+        error = "ds18b20 deps are required";
         return false;
+    }
+    for (JsonObjectConst item : depsArray) {
+        if (depCount >= kMaxDeviceDependencies) {
+            error = "ds18b20 deps exceed supported count";
+            return false;
+        }
+        DeviceDependencyRole role{DeviceDependencyRole::Unknown};
+        if (!parseDeviceDependencyRole(item["role"] | "", role)) {
+            error = "ds18b20 dependency role is invalid";
+            return false;
+        }
+        const DeviceId deviceId = static_cast<DeviceId>(item["device_id"] | 0U);
+        if (deviceId == 0U) {
+            error = "ds18b20 dependency device id is required";
+            return false;
+        }
+        deps[depCount++] = DeviceDependencyLink{role, deviceId};
     }
     return true;
 }
 
-DeviceValidationResult validateUniqueParentAddress(const DeviceRegistry& registry, const IDeviceRuntime* childRuntime,
-                                                   const OneWireRomAddress& address, bool hasParent, DeviceId parentDeviceId) {
-    if (!hasParent || parentDeviceId == 0U) {
-        return {DeviceError::InvalidRelationship, "ds18b20 requires a onewire parent"};
+DeviceId onewireBusDependencyId(const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t depCount) {
+    for (uint8_t index = 0; index < depCount; ++index) {
+        if (deps[index].role == DeviceDependencyRole::OneWireBus) {
+            return deps[index].deviceId;
+        }
+    }
+    return 0;
+}
+
+DeviceValidationResult validateUniqueDependencyAddress(const DeviceRegistry& registry, const IDeviceRuntime* childRuntime,
+                                                       const OneWireRomAddress& address, DeviceId dependencyDeviceId) {
+    if (dependencyDeviceId == 0U) {
+        return {DeviceError::InvalidRelationship, "ds18b20 requires a onewire dependency"};
     }
 
-    const IDeviceRuntime* parentRuntime = registry.runtime(parentDeviceId);
-    if (parentRuntime == nullptr) {
-        return {DeviceError::InvalidRelationship, "ds18b20 parent is missing or invalid"};
+    const IDeviceRuntime* dependencyRuntime = registry.runtime(dependencyDeviceId);
+    if (dependencyRuntime == nullptr) {
+        return {DeviceError::InvalidRelationship, "ds18b20 dependency is missing or invalid"};
     }
-    if (parentRuntime->hasDuplicateChildRomAddress(address, childRuntime)) {
-        return {DeviceError::InvalidRelationship, "duplicate ds18b20 address on parent"};
+    if (dependencyRuntime->hasDuplicateChildRomAddress(address, childRuntime)) {
+        return {DeviceError::InvalidRelationship, "duplicate ds18b20 address on dependency"};
     }
     return {};
 }
@@ -110,7 +137,7 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseCreateRequest(const JsonObje
     }
     request.name = base.name;
     request.enabled = base.enabled != 0U;
-    if (!parseParentFields(input, true, request.hasParent, request.parentDeviceId, error)) {
+    if (!parseDepsField(input, request.deps, request.depCount, error)) {
         return false;
     }
 
@@ -171,8 +198,8 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const Js
         error = "failed to encode ds18b20 config";
         return false;
     }
-    request.parentFieldsProvided = !input["has_parent"].isNull() || !input["parent_device_id"].isNull();
-    if (request.parentFieldsProvided && !parseParentFields(input, true, request.hasParent, request.parentDeviceId, error)) {
+    request.depsProvided = !input["deps"].isNull();
+    if (request.depsProvided && !parseDepsField(input, request.deps, request.depCount, error)) {
         return false;
     }
     return true;
@@ -180,8 +207,9 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const Js
 
 DeviceValidationResult Ds18b20TemperatureSensorDeviceApiAdapter::validateCreateRequest(const DeviceCreateRequest& request,
                                                                                        const DeviceRegistry& registry) const {
-    if (!request.hasParent || request.parentDeviceId == 0U) {
-        return {DeviceError::InvalidRelationship, "ds18b20 requires a onewire parent"};
+    const DeviceId dependencyDeviceId = onewireBusDependencyId(request.deps, request.depCount);
+    if (dependencyDeviceId == 0U) {
+        return {DeviceError::InvalidRelationship, "ds18b20 requires a onewire dependency"};
     }
 
     Ds18b20TemperatureSensorConfigV1 config{};
@@ -190,7 +218,7 @@ DeviceValidationResult Ds18b20TemperatureSensorDeviceApiAdapter::validateCreateR
         return {DeviceError::InvalidConfig, "ds18b20 config is invalid"};
     }
 
-    return validateUniqueParentAddress(registry, nullptr, config.address, request.hasParent, request.parentDeviceId);
+    return validateUniqueDependencyAddress(registry, nullptr, config.address, dependencyDeviceId);
 }
 
 DeviceValidationResult Ds18b20TemperatureSensorDeviceApiAdapter::validateUpdateConfigRequest(const IDeviceRuntime& runtime,
@@ -202,19 +230,20 @@ DeviceValidationResult Ds18b20TemperatureSensorDeviceApiAdapter::validateUpdateC
         return {DeviceError::InvalidConfig, "ds18b20 config is invalid"};
     }
 
-    const bool hasParent = request.parentFieldsProvided ? request.hasParent : runtime.hasParent();
-    const DeviceId parentDeviceId = request.parentFieldsProvided ? request.parentDeviceId : runtime.parentDeviceId();
-    return validateUniqueParentAddress(registry, &runtime, config.address, hasParent, parentDeviceId);
+    const DeviceId dependencyDeviceId = request.depsProvided ? onewireBusDependencyId(request.deps, request.depCount)
+                                                             : runtime.dependencyDeviceId(DeviceDependencyRole::OneWireBus);
+    return validateUniqueDependencyAddress(registry, &runtime, config.address, dependencyDeviceId);
 }
 
-DeviceValidationResult Ds18b20TemperatureSensorDeviceApiAdapter::validateSetParentRequest(const IDeviceRuntime& runtime, bool hasParent,
-                                                                                          DeviceId parentDeviceId,
-                                                                                          const DeviceRegistry& registry) const {
+DeviceValidationResult
+Ds18b20TemperatureSensorDeviceApiAdapter::validateSetDepsRequest(const IDeviceRuntime& runtime,
+                                                                 const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps,
+                                                                 uint8_t depCount, const DeviceRegistry& registry) const {
     OneWireRomAddress address{};
     if (!runtime.oneWireRomAddress(address)) {
         return {DeviceError::InvalidConfig, "ds18b20 config is invalid"};
     }
-    return validateUniqueParentAddress(registry, &runtime, address, hasParent, parentDeviceId);
+    return validateUniqueDependencyAddress(registry, &runtime, address, onewireBusDependencyId(deps, depCount));
 }
 
 void Ds18b20TemperatureSensorDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const {

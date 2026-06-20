@@ -230,7 +230,8 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
     const isOneWireBus = typeId === ONEWIRE_BUS_DEVICE_TYPE_ID
     const isDs18b20 = typeId === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID
     const isDummy = typeId === DUMMY_DEVICE_TYPE_ID
-    const parentDeviceId = isDs18b20 ? normalizeParentDeviceId(payload.parent_device_id) : 0
+    const dependencyLinks = isDs18b20 ? normalizeDependencyLinks(payload.deps, payload.parent_device_id) : []
+    const parentDeviceId = isDs18b20 ? dependencyDeviceIdForRole(dependencyLinks, 'onewire_bus') : 0
     if (isDs18b20) {
       requireOneWireParent(db, parentDeviceId)
     }
@@ -247,6 +248,8 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
       type: isGpioSwitch ? 'gpio_switch' : isOneWireBus ? 'onewire_bus' : isDs18b20 ? 'ds18b20_temperature_sensor' : 'dummy',
       name: String(payload.name ?? 'New Device'),
       enabled,
+      deps: dependencyLinks,
+      has_deps: dependencyLinks.length > 0,
       has_parent: isDs18b20,
       parent_device_id: parentDeviceId,
       config_version: 1,
@@ -418,15 +421,18 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
             }
             device.enabled = Boolean(device.config.enabled)
           } else if (device.type_id === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID) {
-            const parentDeviceId = normalizeParentDeviceId(payload.parent_device_id)
-            if (payload.has_parent !== true || parentDeviceId <= 0) {
-              throw new ApiClientError('ds18b20 parent is required', 'BAD_ARGS', 400, null)
+            const dependencyLinks = normalizeDependencyLinks(payload.deps, device.parent_device_id)
+            const parentDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'onewire_bus')
+            if (parentDeviceId <= 0) {
+              throw new ApiClientError('ds18b20 dependency is required', 'BAD_ARGS', 400, null)
             }
             requireOneWireParent(db, parentDeviceId)
             const config = normalizeDs18b20ConfigPayload(payload.config, device.enabled)
             ensureUniqueDs18b20Address(db, parentDeviceId, String(config.address), device.device_id)
             device.config = config
             device.enabled = Boolean(config.enabled)
+            device.deps = dependencyLinks
+            device.has_deps = dependencyLinks.length > 0
             device.has_parent = true
             device.parent_device_id = parentDeviceId
           }
@@ -483,26 +489,6 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
             }
           } else {
             throw new ApiClientError('unsupported output command', 'BAD_ARGS', 400, null)
-          }
-          break
-        case 'set_parent':
-          if (payload.has_parent === undefined || payload.parent_device_id === undefined) {
-            throw new ApiClientError('has_parent and parent_device_id are required', 'BAD_ARGS', 400, null)
-          }
-          if (device.type_id === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID) {
-            const parentDeviceId = normalizeParentDeviceId(payload.parent_device_id)
-            if (payload.has_parent !== true || parentDeviceId <= 0) {
-              throw new ApiClientError('ds18b20 parent is required', 'BAD_ARGS', 400, null)
-            }
-            requireOneWireParent(db, parentDeviceId)
-            if (isRecordPayload(device.config) && typeof device.config.address === 'string') {
-              ensureUniqueDs18b20Address(db, parentDeviceId, device.config.address, device.device_id)
-            }
-            device.has_parent = true
-            device.parent_device_id = parentDeviceId
-          } else {
-            device.has_parent = Boolean(payload.has_parent)
-            device.parent_device_id = Number(payload.parent_device_id)
           }
           break
         default:
@@ -582,6 +568,35 @@ function isRecordPayload(value: unknown): value is Record<string, unknown> {
 function normalizeParentDeviceId(value: unknown): number {
   const numeric = Number(value)
   return Number.isInteger(numeric) && numeric > 0 ? numeric : 0
+}
+
+function normalizeDependencyLinks(value: unknown, fallbackDeviceId: unknown = 0): Array<{ role: string; device_id: number }> {
+  if (Array.isArray(value)) {
+    return value
+      .filter(isRecordPayload)
+      .map(item => ({
+        role: typeof item.role === 'string' ? item.role.trim() : '',
+        device_id: normalizeParentDeviceId(item.device_id),
+      }))
+      .filter(item => item.role.length > 0 && item.device_id > 0)
+  }
+
+  const deviceId = normalizeParentDeviceId(fallbackDeviceId)
+  if (deviceId > 0) {
+    return [
+      {
+        role: 'onewire_bus',
+        device_id: deviceId,
+      },
+    ]
+  }
+
+  return []
+}
+
+function dependencyDeviceIdForRole(deps: Array<{ role: string; device_id: number }>, role: string): number {
+  const dependency = deps.find(link => link.role === role)
+  return dependency?.device_id ?? 0
 }
 
 function requireOneWireParent(db: ReturnType<typeof createSeedMockDatabase>, parentDeviceId: number): DeviceRecord {

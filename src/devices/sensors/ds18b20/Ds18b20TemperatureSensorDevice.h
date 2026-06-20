@@ -19,7 +19,7 @@ public:
     const TemperatureReading& reading() const;
     const char* outputStatus() const;
     uint8_t consecutiveErrors() const;
-    uint32_t lastParentGeneration() const;
+    uint32_t lastDependencyGeneration() const;
     void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override;
@@ -53,10 +53,10 @@ private:
     State Faulted();
     State Deleting();
 
-    OneWireBusDevice* parentBus() const;
-    bool parentBusReady() const;
-    bool parentGenerationChanged() const;
-    ParentAccessResult beginParentTransaction(OneWireBusDevice::ChildTransaction& transaction) const;
+    OneWireBusDevice* dependencyBus() const;
+    bool dependencyBusReady() const;
+    bool dependencyGenerationChanged() const;
+    ParentAccessResult beginDependencyTransaction(OneWireBusDevice::ChildTransaction& transaction) const;
     bool readScratchpad(IOneWireBusDriver& driver, uint8_t (&scratchpad)[kDs18b20ScratchpadSize], const char*& error) const;
     bool configureSensor(IOneWireBusDriver& driver, const char*& error) const;
     bool requestConversion(IOneWireBusDriver& driver, const char*& error) const;
@@ -71,7 +71,7 @@ private:
     Ds18b20TemperatureSensorConfigV1 config_{};
     TemperatureReading reading_{};
     const char* outputStatus_{"not_ready"};
-    uint32_t lastParentGeneration_{0};
+    uint32_t lastDependencyGeneration_{0};
     uint32_t conversionDeadline_{0};
     uint32_t nextPollAt_{0};
     uint32_t retryDeadline_{0};

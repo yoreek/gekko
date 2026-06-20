@@ -16,8 +16,7 @@ DeviceRegistryEntry makeRecord(DeviceId id, DeviceTypeId typeId, uint32_t config
     record.header.configRevision = 1;
     record.header.payloadLength = static_cast<uint32_t>(payload.size());
     (void)name;
-    record.hasParent = false;
-    record.parentDeviceId = 0;
+    record.depCount = 0;
     record.status = DeviceStatus::Ready;
     record.persistencePolicy = DevicePersistencePolicy::Delayed;
     return record;
@@ -30,8 +29,8 @@ DeviceRegistrySnapshot makeParentChildSnapshot() {
 
     DeviceRegistryEntry parent = makeRecord(10, 1, 2, "bus", "p1");
     DeviceRegistryEntry child = makeRecord(11, 1, 2, "sensor", "c1");
-    child.hasParent = true;
-    child.parentDeviceId = 10;
+    child.depCount = 1;
+    child.deps[0] = {DeviceDependencyRole::OneWireBus, 10};
 
     snapshot.records.push_back(parent);
     snapshot.records.push_back(child);
@@ -62,10 +61,10 @@ void test_validator_rejects_cycle() {
 
     DeviceRegistryEntry first = makeRecord(1, 1, 2, "first", "a");
     DeviceRegistryEntry second = makeRecord(2, 1, 2, "second", "b");
-    first.hasParent = true;
-    first.parentDeviceId = 2;
-    second.hasParent = true;
-    second.parentDeviceId = 1;
+    first.depCount = 1;
+    first.deps[0] = {DeviceDependencyRole::OneWireBus, 2};
+    second.depCount = 1;
+    second.deps[0] = {DeviceDependencyRole::OneWireBus, 1};
     snapshot.records.push_back(first);
     snapshot.records.push_back(second);
 
@@ -83,10 +82,10 @@ void test_validator_typed_relationship_checks() {
     DeviceRegistryEntry parent = makeRecord(100, 10, 1, "parent", "p");
     DeviceRegistryEntry childA = makeRecord(101, 11, 1, "child-a", "a");
     DeviceRegistryEntry childB = makeRecord(102, 11, 1, "child-b", "b");
-    childA.hasParent = true;
-    childA.parentDeviceId = 100;
-    childB.hasParent = true;
-    childB.parentDeviceId = 100;
+    childA.depCount = 1;
+    childA.deps[0] = {DeviceDependencyRole::OneWireBus, 100};
+    childB.depCount = 1;
+    childB.deps[0] = {DeviceDependencyRole::OneWireBus, 100};
     snapshot.records.push_back(parent);
     snapshot.records.push_back(childA);
     snapshot.records.push_back(childB);
@@ -96,15 +95,15 @@ void test_validator_typed_relationship_checks() {
     parentDescriptor.typeId = 10;
     parentDescriptor.name = "Parent";
     parentDescriptor.currentConfigVersion = 1;
-    parentDescriptor.canHaveChildren = true;
-    parentDescriptor.maxChildren = 1;
+    parentDescriptor.canHaveDependents = true;
+    parentDescriptor.maxDependents = 1;
     TEST_ASSERT_TRUE(types.registerDescriptor(parentDescriptor));
 
     DeviceTypeDescriptor childDescriptor{};
     childDescriptor.typeId = 11;
     childDescriptor.name = "Child";
     childDescriptor.currentConfigVersion = 1;
-    childDescriptor.compatibleParentTypes.push_back(10);
+    childDescriptor.dependencyRequirements.push_back({DeviceDependencyRole::OneWireBus, true, {10}});
     TEST_ASSERT_TRUE(types.registerDescriptor(childDescriptor));
 
     const DeviceValidationResult structure = DeviceRegistrySnapshotValidator::validateStructure(snapshot);

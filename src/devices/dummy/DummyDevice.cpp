@@ -79,8 +79,8 @@ DeviceTypeDescriptor DummyDevice::descriptor() {
     descriptor.typeId = kDummyDeviceTypeId;
     descriptor.name = "DummyDevice";
     descriptor.currentConfigVersion = kDummyDeviceConfigVersion;
-    descriptor.canHaveChildren = true;
-    descriptor.maxChildren = 16;
+    descriptor.canHaveDependents = true;
+    descriptor.maxDependents = 16;
     descriptor.supportsCommands = false;
     descriptor.supportsRetainedState = false;
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
@@ -117,7 +117,7 @@ SM_STATE(DummyDevice::Idle) {
 
 SM_STATE(DummyDevice::Starting) {
     status_ = DeviceStatus::Starting;
-    if (!parentReady()) {
+    if (!dependenciesReady()) {
         status_ = DeviceStatus::DependencyBlocked;
         SM_GOTO(DependencyBlocked);
     }
@@ -142,7 +142,7 @@ SM_STATE(DummyDevice::Starting) {
 
 SM_STATE(DummyDevice::Ready) {
     status_ = DeviceStatus::Ready;
-    if (!parentReady()) {
+    if (!dependenciesReady()) {
         status_ = DeviceStatus::DependencyBlocked;
         SM_GOTO(DependencyBlocked);
     }
@@ -177,7 +177,7 @@ SM_STATE(DummyDevice::DependencyBlocked) {
         SM_GOTO(Disabled);
     }
     if (reconfigureRequested_ || startRequested_) {
-        if (parentReady()) {
+        if (dependenciesReady()) {
             status_ = DeviceStatus::Reconfiguring;
             SM_GOTO(Reconfiguring);
         }
@@ -187,7 +187,7 @@ SM_STATE(DummyDevice::DependencyBlocked) {
 SM_STATE(DummyDevice::Reconfiguring) {
     status_ = DeviceStatus::Reconfiguring;
     reconfigureRequested_ = false;
-    if (!parentReady()) {
+    if (!dependenciesReady()) {
         status_ = DeviceStatus::DependencyBlocked;
         SM_GOTO(DependencyBlocked);
     }

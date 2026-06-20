@@ -80,8 +80,6 @@ void PortalWebSocketMessages::fillDeviceRuntimePayload(JsonDocument& payload, co
     } else {
         output["device_id"] = runtime.deviceId();
         output["type_id"] = runtime.typeId();
-        output["has_parent"] = runtime.hasParent();
-        output["parent_device_id"] = runtime.parentDeviceId();
         output["config_version"] = runtime.configVersion();
         output["config_revision"] = runtime.configRevision();
         output["enabled"] = runtime.enabled();
@@ -92,10 +90,19 @@ void PortalWebSocketMessages::fillDeviceRuntimePayload(JsonDocument& payload, co
     const DeviceStatus lifecycleStatus = runtime.status();
     output["device_id"] = runtime.deviceId();
     output["type_id"] = runtime.typeId();
-    output["has_parent"] = runtime.hasParent();
-    output["parent_device_id"] = runtime.parentDeviceId();
     output["config_version"] = runtime.configVersion();
     output["config_revision"] = runtime.configRevision();
+    if (output["deps"].isNull()) {
+        JsonArray deps = output.createNestedArray("deps");
+        const DeviceDependencyLink* dependencyLinks = runtime.dependencyLinks();
+        const uint8_t dependencyCount = runtime.dependencyCount();
+        for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
+            JsonObject item = deps.createNestedObject();
+            item["role"] = deviceDependencyRoleName(dependencyLinks[index].role);
+            item["device_id"] = dependencyLinks[index].deviceId;
+        }
+        output["has_deps"] = dependencyCount > 0;
+    }
     output["status"] = deviceStatusToString(runtime.status());
     output["lifecycle_status"] = deviceStatusToString(lifecycleStatus);
     output["effective_status"] = deviceStatusToString(effectiveStatus);

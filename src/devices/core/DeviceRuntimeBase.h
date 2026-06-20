@@ -15,11 +15,13 @@ public:
     void tickFastLoop(uint32_t now) override;
     void tick100ms(uint32_t now) override;
     void tick1s(uint32_t now) override;
-    void setParentRuntime(IDeviceRuntime* parentRuntime) override;
-    IDeviceRuntime* parentRuntime() const override;
-    void attachChildRuntime(IDeviceRuntime* childRuntime) override;
-    void detachChildRuntime(IDeviceRuntime* childRuntime) override;
-    const std::vector<IDeviceRuntime*>& childRuntimes() const override;
+    void setDependencyRuntime(DeviceDependencyRole role, IDeviceRuntime* dependencyRuntime) override;
+    IDeviceRuntime* dependencyRuntime(DeviceDependencyRole role) const override;
+    uint8_t dependencyCount() const override;
+    const DeviceDependencyLink* dependencyLinks() const override;
+    void attachDependentRuntime(IDeviceRuntime* dependentRuntime) override;
+    void detachDependentRuntime(IDeviceRuntime* dependentRuntime) override;
+    const std::vector<IDeviceRuntime*>& dependentRuntimes() const override;
     void requestReconfigure() override;
     void requestDisable() override;
     void requestDelete() override;
@@ -29,18 +31,43 @@ public:
     DeviceTypeId typeId() const override;
     uint32_t configVersion() const override;
     uint32_t configRevision() const override;
-    bool hasParent() const override;
-    DeviceId parentDeviceId() const override;
+    bool hasDependencies() const override;
+    DeviceId dependencyDeviceId(DeviceDependencyRole role) const override;
     bool enabled() const override;
     const char* name() const override;
     DevicePersistencePolicy persistencePolicy() const override;
     bool handleCommand(const DeviceCommand& command) override;
 
+#ifdef UNIT_TEST
+    void setParentRuntime(IDeviceRuntime* parentRuntime) {
+        setDependencyRuntime(DeviceDependencyRole::OneWireBus, parentRuntime);
+    }
+    IDeviceRuntime* parentRuntime() const {
+        return dependencyRuntime(DeviceDependencyRole::OneWireBus);
+    }
+    void attachChildRuntime(IDeviceRuntime* childRuntime) {
+        attachDependentRuntime(childRuntime);
+    }
+    void detachChildRuntime(IDeviceRuntime* childRuntime) {
+        detachDependentRuntime(childRuntime);
+    }
+    const std::vector<IDeviceRuntime*>& childRuntimes() const {
+        return dependentRuntimes();
+    }
+    bool hasParent() const {
+        return hasDependencies();
+    }
+    DeviceId parentDeviceId() const {
+        return dependencyDeviceId(DeviceDependencyRole::OneWireBus);
+    }
+#endif
+
 protected:
     void tickRuntime(uint32_t now);
     void setStatus(DeviceStatus status);
-    bool parentReady() const;
-    bool hasChildRuntime(const IDeviceRuntime* childRuntime) const;
+    bool dependencyReady(DeviceDependencyRole role) const;
+    bool dependenciesReady() const;
+    bool hasDependentRuntime(const IDeviceRuntime* dependentRuntime) const;
     bool startRequested() const;
     bool reconfigureRequested() const;
     bool disableRequested() const;
@@ -69,15 +96,15 @@ protected:
     DeviceTypeId typeId_{0};
     uint32_t configVersion_{0};
     uint32_t configRevision_{0};
-    bool hasParent_{false};
-    DeviceId parentDeviceId_{0};
+    std::array<DeviceDependencyLink, kMaxDeviceDependencies> dependencyLinks_{};
+    uint8_t dependencyCount_{0};
     bool enabled_{true};
     char name_[kMaxDeviceBaseNameLength + 1]{};
     DevicePersistencePolicy persistencePolicy_{DevicePersistencePolicy::Delayed};
 
 private:
-    IDeviceRuntime* parentRuntime_{nullptr};
-    std::vector<IDeviceRuntime*> childRuntimes_{};
+    std::array<IDeviceRuntime*, kMaxDeviceDependencies> dependencyRuntimes_{};
+    std::vector<IDeviceRuntime*> dependentRuntimes_{};
 };
 
 } // namespace ewfm

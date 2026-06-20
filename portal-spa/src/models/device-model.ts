@@ -1,6 +1,7 @@
 import type {
   DeviceDetailResponse,
   DeviceMutationResponse,
+  DeviceDependencyLink,
   DeviceOutputSnapshot,
   DeviceRecord,
   DeviceRegistryResponse,
@@ -26,6 +27,8 @@ export interface DashboardDevice {
   typeLabel: string
   name: string
   enabled: boolean
+  deps: DeviceDependencyLink[]
+  hasDeps: boolean
   hasParent: boolean
   parentDeviceId: number
   configVersion: number
@@ -93,6 +96,34 @@ function normalizeDetail(record: DeviceRecord): DeviceDetailSnapshot {
   return detail
 }
 
+function normalizeDeps(record: DeviceRecord): DeviceDependencyLink[] {
+  if (Array.isArray(record.deps)) {
+    return record.deps
+      .filter(dep => typeof dep === 'object' && dep !== null)
+      .map(dep => ({
+        role: typeof dep.role === 'string' ? dep.role : '',
+        device_id: Number(dep.device_id ?? 0),
+      }))
+      .filter(dep => dep.role.length > 0 && Number.isInteger(dep.device_id) && dep.device_id > 0)
+  }
+
+  if (typeof record.parent_device_id === 'number' && record.parent_device_id > 0) {
+    return [
+      {
+        role: 'onewire_bus',
+        device_id: record.parent_device_id,
+      },
+    ]
+  }
+
+  return []
+}
+
+function normalizeDependencyDeviceId(deps: DeviceDependencyLink[]): number {
+  const dependency = deps.find(dep => dep.role === 'onewire_bus')
+  return dependency?.device_id ?? deps[0]?.device_id ?? 0
+}
+
 export function normalizeDashboardStatus(effectiveStatus: string | undefined | null): DashboardEffectiveStatus {
   return effectiveStatus === 'ready' ? 'Ready' : '!Ready'
 }
@@ -104,6 +135,8 @@ export function normalizeDeviceRecord(
 ): DashboardDevice {
   const typeName = normalizeTypeName(record)
   const backendEffectiveStatus = record.effective_status ?? record.lifecycle_status ?? record.status ?? 'unknown'
+  const deps = normalizeDeps(record)
+  const parentDeviceId = normalizeDependencyDeviceId(deps)
 
   return {
     deviceId: record.device_id,
@@ -112,8 +145,10 @@ export function normalizeDeviceRecord(
     typeLabel: normalizeTypeLabel(record, typeName),
     name: record.name,
     enabled: record.enabled,
-    hasParent: record.has_parent,
-    parentDeviceId: record.parent_device_id,
+    deps,
+    hasDeps: deps.length > 0,
+    hasParent: deps.length > 0,
+    parentDeviceId,
     configVersion: record.config_version,
     configRevision: record.config_revision,
     registryRevision,

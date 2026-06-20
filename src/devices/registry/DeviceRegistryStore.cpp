@@ -15,7 +15,7 @@ namespace {
 constexpr const char* kNamespace = "device_registry";
 constexpr const char* kRegistryVersionKey = "version";
 constexpr const char* kIndexKey = "index";
-constexpr uint32_t kRegistryFormatVersion = 3;
+constexpr uint32_t kRegistryFormatVersion = 4;
 
 struct DeviceRegistryIndexStorageEntry {
     DeviceId deviceId{0};

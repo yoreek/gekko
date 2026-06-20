@@ -31,6 +31,11 @@ export interface OneWireScanSnapshot {
   devices: OneWireScanDeviceSnapshot[]
 }
 
+export interface DeviceDependencyLink {
+  role: string
+  device_id: number
+}
+
 export interface WifiStatusResponse {
   wifi_status: 'connected' | 'connecting' | 'disconnected' | 'failed' | 'idle' | 'ble_config'
   station_ip: string
@@ -58,8 +63,10 @@ export interface DeviceRecord {
   type?: string
   name: string
   enabled: boolean
-  has_parent: boolean
-  parent_device_id: number
+  deps?: DeviceDependencyLink[]
+  has_deps?: boolean
+  has_parent?: boolean
+  parent_device_id?: number
   config_version: number
   config_revision: number
   lifecycle_status: string
@@ -85,11 +92,12 @@ export interface DeviceRegistryResponse {
 
 export interface DeviceCommandRequest {
   device_id?: number
-  command: 'rename' | 'enable' | 'disable' | 'delete' | 'update_config' | 'set_status' | 'scan' | 'set_output' | 'set_parent'
+  command: 'rename' | 'enable' | 'disable' | 'delete' | 'update_config' | 'set_status' | 'scan' | 'set_output'
   name?: string
   status?: string
   state?: DeviceOutputState
   config?: Record<string, unknown>
+  deps?: DeviceDependencyLink[]
   has_parent?: boolean
   parent_device_id?: number
 }
