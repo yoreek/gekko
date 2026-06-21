@@ -26,9 +26,13 @@ public:
     DummyDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
 
     const DummyDeviceConfigV1& config() const;
+    bool enabled() const override;
+    const char* name() const override;
     bool deleted() const;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override;
+    DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const override;
+    bool applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) override;
     void writeDeviceJson(JsonObject output) const;
 
     static DeviceTypeDescriptor descriptor();

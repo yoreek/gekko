@@ -17,7 +17,7 @@ public:
     using State = void;
     using PState = State (StateMachine::*)();
 
-    explicit StateMachine(PState current) : current_(current), previous_(current) {}
+    explicit StateMachine(PState current) : initial_(current), current_(current), previous_(current) {}
     virtual ~StateMachine() = default;
 
     virtual void tick(uint32_t uptime) {
@@ -45,6 +45,17 @@ public:
 
     void transitionTo(const PState state, uint32_t uptime) {
         setState(state, uptime);
+    }
+
+    void reset(uint32_t uptime) {
+        uptime_ = uptime;
+        delay_ = 0;
+        current_ = initial_;
+        previous_ = initial_;
+        stackPos_ = 0;
+        paused_ = false;
+        isStateUpdated_ = true;
+        stateUpdated_ = uptime;
     }
 
     [[nodiscard]] inline PState getState() const {
@@ -118,6 +129,7 @@ public:
 protected:
     uint32_t uptime_{0};
     uint32_t delay_{0};
+    PState initial_;
     PState current_;
     PState previous_;
     PState stack_[kStateMachineStackDepth]{};

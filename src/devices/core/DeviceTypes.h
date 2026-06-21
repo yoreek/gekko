@@ -403,6 +403,11 @@ struct DeviceEvent {
     BoundedText<kMaxDeviceEventBytes> detail{};
 };
 
+struct DeviceConfigUpdatePlan {
+    bool endOldConfig{false};
+    bool resetStateMachine{false};
+};
+
 class IDeviceRuntime {
 public:
     IDeviceRuntime() = default;
@@ -416,6 +421,21 @@ public:
     virtual void tickFastLoop(uint32_t now) = 0;
     virtual void tick100ms(uint32_t now) = 0;
     virtual void tick1s(uint32_t now) = 0;
+    virtual void end(uint32_t now) {
+        (void)now;
+    }
+    virtual DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const {
+        (void)configBlob;
+        return {};
+    }
+    virtual bool applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
+        (void)configBlob;
+        (void)now;
+        return false;
+    }
+    virtual void resetStateMachine(uint32_t now) {
+        (void)now;
+    }
     virtual void setDependencyRuntime(DeviceDependencyRole role, IDeviceRuntime* dependencyRuntime) {
         (void)role;
         (void)dependencyRuntime;
@@ -449,6 +469,7 @@ public:
     virtual void requestReconfigure() = 0;
     virtual void requestDisable() = 0;
     virtual void requestDelete() = 0;
+    virtual void clearLifecycleRequests() {}
     virtual DeviceStatus status() const = 0;
     virtual void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
         (void)record;

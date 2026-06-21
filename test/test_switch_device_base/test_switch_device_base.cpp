@@ -1,5 +1,6 @@
 #include "devices/switch/BinarySwitchDeviceBase.h"
 #include "devices/switch/TriStateSwitchDeviceBase.h"
+#include "devices/switch/gpio/GpioSwitchDevice.h"
 
 #include <cstdio>
 #include <unity.h>
@@ -69,6 +70,37 @@ private:
     }
 };
 
+class FakeGpioOutputDriver final : public IGpioOutputDriver {
+public:
+    bool configureOutput(uint8_t pin, bool initialLevel) override {
+        configurePins.push_back(pin);
+        configureLevels.push_back(initialLevel);
+        return true;
+    }
+
+    bool write(uint8_t pin, bool level) override {
+        writePins.push_back(pin);
+        writeLevels.push_back(level);
+        return true;
+    }
+
+    bool disableOutput(uint8_t pin) override {
+        disablePins.push_back(pin);
+        return true;
+    }
+
+    void release(uint8_t pin) override {
+        releasePins.push_back(pin);
+    }
+
+    std::vector<uint8_t> configurePins{};
+    std::vector<bool> configureLevels{};
+    std::vector<uint8_t> writePins{};
+    std::vector<bool> writeLevels{};
+    std::vector<uint8_t> disablePins{};
+    std::vector<uint8_t> releasePins{};
+};
+
 SwitchDeviceConfigV1 makeConfig(OutputState startup = OutputState::Off, OutputState safe = OutputState::Off) {
     SwitchDeviceConfigV1 config{};
     config.base.enabled = true;
@@ -86,6 +118,26 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeSwitchPayload(const SwitchDeviceConfigV
     TEST_ASSERT_TRUE(encodeSwitchDeviceConfig(config, buffer, switchDeviceConfigSize(config)));
     TEST_ASSERT_TRUE(payload.assign(buffer, switchDeviceConfigSize(config)));
     return payload;
+}
+
+BoundedBlob<kMaxDeviceConfigBytes> encodeGpioSwitchPayload(const GpioSwitchDevicePersistedConfigV1& config) {
+    BoundedBlob<kMaxDeviceConfigBytes> payload{};
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(encodeGpioSwitchDeviceConfig(config, buffer, gpioSwitchDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(payload.assign(buffer, gpioSwitchDeviceConfigSize(config)));
+    return payload;
+}
+
+GpioSwitchDevicePersistedConfigV1 makeGpioSwitchConfig(uint8_t pin, OutputState startup = OutputState::Off, bool restorePrevious = false) {
+    GpioSwitchDevicePersistedConfigV1 config{};
+    config.switchConfig.base.enabled = 1;
+    std::snprintf(config.switchConfig.base.name, sizeof(config.switchConfig.base.name), "%s", "gpio-switch");
+    config.switchConfig.restorePreviousState = restorePrevious ? 1U : 0U;
+    config.switchConfig.startupState = static_cast<uint8_t>(startup);
+    config.switchConfig.safeState = static_cast<uint8_t>(OutputState::Disabled);
+    config.switchConfig.inverted = 0;
+    config.gpioConfig.gpioPin = pin;
+    return config;
 }
 
 void startToReady(SwitchDeviceBase& device) {
@@ -195,6 +247,49 @@ void test_disable_applies_safe_state_and_disabled_can_be_ready_capable_output() 
     TEST_ASSERT_EQUAL(static_cast<int>(OutputState::Disabled), static_cast<int>(device.writes.back().state));
 }
 
+void test_gpio_switch_update_hooks_release_old_pin_and_restart_with_startup_state() {
+    FakeGpioOutputDriver driver;
+    GpioSwitchDevicePersistedConfigV1 config = makeGpioSwitchConfig(4, OutputState::Off, false);
+    GpioSwitchDevice device(config, driver);
+
+    device.begin(10);
+    device.tickFastLoop(11);
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(device.status()));
+    TEST_ASSERT_EQUAL_UINT32(1, driver.configurePins.size());
+    TEST_ASSERT_EQUAL_UINT8(4, driver.configurePins[0]);
+
+    TEST_ASSERT_TRUE(device.handleCommand(DeviceCommand{DeviceCommandType::SetOutput, 1, "on"}));
+    TEST_ASSERT_EQUAL(static_cast<int>(OutputState::On), static_cast<int>(device.outputState()));
+
+    GpioSwitchDevicePersistedConfigV1 pinChange = config;
+    pinChange.gpioConfig.gpioPin = 17;
+    DeviceConfigUpdatePlan pinPlan = device.planConfigUpdate(encodeGpioSwitchPayload(pinChange));
+    TEST_ASSERT_TRUE(pinPlan.endOldConfig);
+    TEST_ASSERT_TRUE(pinPlan.resetStateMachine);
+    static_cast<IDeviceRuntime&>(device).end(20);
+    TEST_ASSERT_EQUAL_UINT32(1, driver.releasePins.size());
+    TEST_ASSERT_EQUAL_UINT8(4, driver.releasePins[0]);
+    TEST_ASSERT_TRUE(device.applyConfig(encodeGpioSwitchPayload(pinChange), 20));
+    device.resetStateMachine(20);
+    device.tickFastLoop(21);
+    device.tickFastLoop(22);
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(device.status()));
+    TEST_ASSERT_EQUAL_UINT32(2, driver.configurePins.size());
+    TEST_ASSERT_EQUAL_UINT8(17, driver.configurePins.back());
+    TEST_ASSERT_EQUAL(static_cast<int>(OutputState::Off), static_cast<int>(device.outputState()));
+    TEST_ASSERT_EQUAL_UINT8(17, driver.writePins.back());
+
+    GpioSwitchDevicePersistedConfigV1 startupChange = pinChange;
+    startupChange.switchConfig.startupState = static_cast<uint8_t>(OutputState::On);
+    DeviceConfigUpdatePlan startupPlan = device.planConfigUpdate(encodeGpioSwitchPayload(startupChange));
+    TEST_ASSERT_FALSE(startupPlan.endOldConfig);
+    TEST_ASSERT_FALSE(startupPlan.resetStateMachine);
+    TEST_ASSERT_TRUE(device.applyConfig(encodeGpioSwitchPayload(startupChange), 30));
+    device.tickFastLoop(31);
+    TEST_ASSERT_EQUAL_UINT32(2, driver.configurePins.size());
+    TEST_ASSERT_EQUAL(static_cast<int>(OutputState::Off), static_cast<int>(device.outputState()));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_switch_config_round_trip_validates_output_states);
@@ -204,5 +299,6 @@ int main(int, char**) {
     RUN_TEST(test_switch_output_changes_mark_runtime_dirty);
     RUN_TEST(test_binary_switch_rejects_disabled_state_and_toggle_command);
     RUN_TEST(test_disable_applies_safe_state_and_disabled_can_be_ready_capable_output);
+    RUN_TEST(test_gpio_switch_update_hooks_release_old_pin_and_restart_with_startup_state);
     return UNITY_END();
 }

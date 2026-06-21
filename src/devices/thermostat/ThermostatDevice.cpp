@@ -46,6 +46,14 @@ const ThermostatDeviceConfigV1& ThermostatDevice::config() const {
     return config_;
 }
 
+bool ThermostatDevice::enabled() const {
+    return config_.base.enabled != 0U;
+}
+
+const char* ThermostatDevice::name() const {
+    return config_.base.name;
+}
+
 const TemperatureReading& ThermostatDevice::latestTemperature() const {
     return latestTemperature_;
 }
@@ -73,9 +81,6 @@ void ThermostatDevice::setDependencyRuntime(DeviceDependencyRole role, IDeviceRu
 
 void ThermostatDevice::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
     DeviceRuntimeBase::bindDeviceIdentity(record, config);
-    enabled_ = config_.base.enabled != 0U;
-    std::memcpy(name_, config_.base.name, sizeof(name_));
-    name_[sizeof(name_) - 1U] = '\0';
     refreshCapabilityCache();
 }
 
@@ -93,9 +98,37 @@ bool ThermostatDevice::replaceBaseConfig(DeviceConfigBlob& configBlob, const Dev
     return encodeThermostatDeviceConfig(config, buffer, size) && configBlob.assign(buffer, size);
 }
 
+DeviceConfigUpdatePlan ThermostatDevice::planConfigUpdate(const DeviceConfigBlob& configBlob) const {
+    ThermostatDeviceConfigV1 config{};
+    if (!decodeThermostatDeviceConfig(configBlob.data(), configBlob.size(), config)) {
+        return {};
+    }
+    return {};
+}
+
+bool ThermostatDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
+    ThermostatDeviceConfigV1 config{};
+    if (!decodeThermostatDeviceConfig(configBlob.data(), configBlob.size(), config)) {
+        return false;
+    }
+    const bool checkIntervalChanged = config.checkIntervalMs != config_.checkIntervalMs;
+    const bool retryAfterErrorChanged = config.retryAfterErrorMs != config_.retryAfterErrorMs;
+    const bool minSwitchIntervalChanged = config.minSwitchIntervalMs != config_.minSwitchIntervalMs;
+    config_ = config;
+    if (checkIntervalChanged) {
+        nextCheckAtMs_ = now + config_.checkIntervalMs;
+    }
+    if (retryAfterErrorChanged && status_ == DeviceStatus::Faulted) {
+        retryDeadlineMs_ = now + config_.retryAfterErrorMs;
+    }
+    if (minSwitchIntervalChanged && pendingOutputState_ != desiredOutputState_) {
+        nextCheckAtMs_ = lastOrdinarySwitchChangeAtMs_ + config_.minSwitchIntervalMs;
+    }
+    return true;
+}
+
 void ThermostatDevice::writeDeviceJson(JsonObject output) const {
-    output["name"] = config_.base.name;
-    output["enabled"] = config_.base.enabled != 0U;
+    writeCommonDeviceJson(output);
     JsonObject configObject = output.createNestedObject("config");
     writeThermostatDeviceConfigJson(config_, configObject);
     JsonObject outputObject = output.createNestedObject("output");

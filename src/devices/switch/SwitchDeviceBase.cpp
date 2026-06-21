@@ -33,6 +33,14 @@ bool SwitchDeviceBase::restorePreviousState() const {
     return config_.restorePreviousState != 0U;
 }
 
+bool SwitchDeviceBase::enabled() const {
+    return config_.base.enabled != 0U;
+}
+
+const char* SwitchDeviceBase::name() const {
+    return config_.base.name;
+}
+
 bool SwitchDeviceBase::retainedStateDirty() const {
     return retainedStateDirty_;
 }
@@ -55,9 +63,30 @@ bool SwitchDeviceBase::requestOutputState(OutputState state, uint32_t now) {
 
 void SwitchDeviceBase::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
     DeviceRuntimeBase::bindDeviceIdentity(record, config);
-    enabled_ = config_.base.enabled != 0U;
-    std::memcpy(name_, config_.base.name, sizeof(name_));
-    name_[sizeof(name_) - 1U] = '\0';
+}
+
+DeviceConfigUpdatePlan SwitchDeviceBase::planConfigUpdate(const DeviceConfigBlob& configBlob) const {
+    SwitchDeviceConfigV1 config{};
+    if (!decodeSwitchDeviceConfig(configBlob.data(), configBlob.size(), config)) {
+        return {};
+    }
+
+    const bool invertedChanged = config.inverted != switchConfig().inverted;
+
+    DeviceConfigUpdatePlan plan{};
+    plan.endOldConfig = invertedChanged;
+    plan.resetStateMachine = invertedChanged;
+    return plan;
+}
+
+bool SwitchDeviceBase::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
+    (void)now;
+    SwitchDeviceConfigV1 config{};
+    if (!decodeSwitchDeviceConfig(configBlob.data(), configBlob.size(), config)) {
+        return false;
+    }
+    setSwitchConfig(config);
+    return true;
 }
 
 bool SwitchDeviceBase::serializeRetainedState(RetainedStateRecord& record) const {
@@ -151,8 +180,7 @@ const SwitchDeviceConfigV1& SwitchDeviceBase::switchConfig() const {
 }
 
 void SwitchDeviceBase::writeDeviceJson(JsonObject output) const {
-    output["name"] = config_.base.name;
-    output["enabled"] = config_.base.enabled != 0U;
+    writeCommonDeviceJson(output);
     JsonObject configObject = output.createNestedObject("config");
     writeDeviceBaseConfigJson(config_.base, configObject);
     configObject["restore_previous_state"] = config_.restorePreviousState != 0U;
@@ -226,6 +254,10 @@ bool SwitchDeviceBase::parseSetStateCommand(const DeviceCommand& command, Output
 
 bool SwitchDeviceBase::shouldSaveRetainedState() const {
     return restorePreviousState();
+}
+
+void SwitchDeviceBase::setSwitchConfig(const SwitchDeviceConfigV1& config) {
+    config_ = config;
 }
 
 SM_STATE(SwitchDeviceBase::Idle) {

@@ -94,6 +94,14 @@ const OneWireBusDeviceConfigV1& OneWireBusDevice::config() const {
     return config_;
 }
 
+bool OneWireBusDevice::enabled() const {
+    return config_.base.enabled != 0U;
+}
+
+const char* OneWireBusDevice::name() const {
+    return config_.base.name;
+}
+
 const OneWireScanResult& OneWireBusDevice::scan() const {
     return scan_;
 }
@@ -108,9 +116,6 @@ bool OneWireBusDevice::dependencyTransactionActive() const {
 
 void OneWireBusDevice::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
     DeviceRuntimeBase::bindDeviceIdentity(record, config);
-    enabled_ = config_.base.enabled != 0U;
-    std::memcpy(name_, config_.base.name, sizeof(name_));
-    name_[sizeof(name_) - 1U] = '\0';
 }
 
 bool OneWireBusDevice::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
@@ -127,9 +132,33 @@ bool OneWireBusDevice::replaceBaseConfig(DeviceConfigBlob& configBlob, const Dev
     return encodeOneWireBusDeviceConfig(config, buffer, size) && configBlob.assign(buffer, size);
 }
 
+DeviceConfigUpdatePlan OneWireBusDevice::planConfigUpdate(const DeviceConfigBlob& configBlob) const {
+    OneWireBusDeviceConfigV1 config{};
+    if (!decodeOneWireBusDeviceConfig(configBlob.data(), configBlob.size(), config)) {
+        return {};
+    }
+
+    const bool gpioPinChanged = config.gpioPin != config_.gpioPin;
+    const bool internalPullupChanged = config.internalPullup != config_.internalPullup;
+
+    DeviceConfigUpdatePlan plan{};
+    plan.endOldConfig = gpioPinChanged || internalPullupChanged;
+    plan.resetStateMachine = plan.endOldConfig;
+    return plan;
+}
+
+bool OneWireBusDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
+    (void)now;
+    OneWireBusDeviceConfigV1 config{};
+    if (!decodeOneWireBusDeviceConfig(configBlob.data(), configBlob.size(), config)) {
+        return false;
+    }
+    config_ = config;
+    return true;
+}
+
 void OneWireBusDevice::writeDeviceJson(JsonObject output) const {
-    output["name"] = config_.base.name;
-    output["enabled"] = config_.base.enabled != 0U;
+    writeCommonDeviceJson(output);
     JsonObject configObject = output.createNestedObject("config");
     writeOneWireBusDeviceConfigJson(config_, configObject);
     JsonObject scanObject = output.createNestedObject("scan");
@@ -275,6 +304,11 @@ void OneWireBusDevice::appendScanCandidate(const OneWireRomAddress& address) {
 void OneWireBusDevice::releaseHardware() {
     dependencyTransactionActive_ = false;
     driver_.depower();
+}
+
+void OneWireBusDevice::end(uint32_t now) {
+    (void)now;
+    releaseHardware();
 }
 
 void OneWireBusDevice::releaseDependencyTransaction() {

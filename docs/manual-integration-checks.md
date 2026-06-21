@@ -38,6 +38,8 @@ These checks require a real ESP32 device and are intentionally not part of the h
 
 ## OTA
 
+- OTA-enabled builds are not the default target for the current 4 MB ESP32 board in this project.
+- For 4 MB hardware checks, use the no-OTA single-app layout first; keep OTA validation for boards with more flash headroom.
 - Use `esp32dev` for routine firmware compile verification. `esp32dev_ota` only inherits `esp32dev` and changes `upload_protocol`/`upload_port`, so reserve it for actual OTA upload checks or changes to OTA upload settings.
 - See [platformio-environments.md](platformio-environments.md) for the canonical environment contract.
 - Connect the device to WiFi and verify PlatformIO `esp32dev_ota` upload.

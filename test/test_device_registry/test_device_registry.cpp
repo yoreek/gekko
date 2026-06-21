@@ -176,6 +176,11 @@ struct CountingRuntime final : public IDeviceRuntime {
         }
         return false;
     }
+    bool applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) override {
+        (void)configBlob;
+        (void)now;
+        return true;
+    }
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override {
         configBlob = configBlob_;
         return true;
@@ -543,8 +548,8 @@ void test_registry_create_rename_and_flush() {
     TEST_ASSERT_TRUE(createResult.ok());
     TEST_ASSERT_EQUAL_UINT32(101, createResult.deviceId);
     TEST_ASSERT_FALSE(createResult.pendingPersistence);
-    TEST_ASSERT_NOT_NULL(registry.runtime(101));
-    TEST_ASSERT_NOT_NULL(registry.runtime(101));
+    const IDeviceRuntime* runtimeBeforeRename = registry.runtime(101);
+    TEST_ASSERT_NOT_NULL(runtimeBeforeRename);
 
     DeviceRegistrySnapshot createdSnapshot;
     DeviceConfigBlobMap createdConfigBlobs;
@@ -556,6 +561,7 @@ void test_registry_create_rename_and_flush() {
     TEST_ASSERT_TRUE(renameResult.ok());
     TEST_ASSERT_TRUE(renameResult.pendingPersistence);
     TEST_ASSERT_TRUE(registry.hasPendingPersistence());
+    TEST_ASSERT_EQUAL_PTR(runtimeBeforeRename, registry.runtime(101));
     TEST_ASSERT_EQUAL_STRING("dummy-b", registry.runtime(101)->name());
 
     TEST_ASSERT_TRUE(registry.flushNow().ok());
@@ -703,16 +709,17 @@ void test_registry_disable_enable_and_delete() {
     TEST_ASSERT_TRUE(registry.begin(0).ok());
 
     TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("dummy"), 10).ok());
-    TEST_ASSERT_NOT_NULL(registry.runtime(201));
+    const IDeviceRuntime* runtimeBeforeDisable = registry.runtime(201);
+    TEST_ASSERT_NOT_NULL(runtimeBeforeDisable);
 
     DeviceMutationResult disableResult = registry.setEnabled(201, false, 20, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE(disableResult.ok());
-    TEST_ASSERT_NOT_NULL(registry.runtime(201));
+    TEST_ASSERT_EQUAL_PTR(runtimeBeforeDisable, registry.runtime(201));
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Disabled), static_cast<int>(registry.runtime(201)->status()));
 
     DeviceMutationResult enableResult = registry.setEnabled(201, true, 30, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE(enableResult.ok());
-    TEST_ASSERT_NOT_NULL(registry.runtime(201));
+    TEST_ASSERT_EQUAL_PTR(runtimeBeforeDisable, registry.runtime(201));
 
     DeviceMutationResult deleteResult = registry.remove(201, 40, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE(deleteResult.ok());
@@ -803,7 +810,7 @@ void test_registry_reassigns_dependency_atomically() {
     TEST_ASSERT_NOT_NULL(sameDependentRuntime);
     TEST_ASSERT_TRUE(sameDependentRuntime == dependentRuntime);
     TEST_ASSERT_EQUAL_UINT32(1, sameDependentRuntime->beginCount);
-    TEST_ASSERT_EQUAL_UINT32(1, sameDependentRuntime->reconfigureCount);
+    TEST_ASSERT_EQUAL_UINT32(0, sameDependentRuntime->reconfigureCount);
     TEST_ASSERT_EQUAL_PTR(registry.runtime(secondDependency.deviceId),
                           sameDependentRuntime->dependencyRuntime(DeviceDependencyRole::OneWireBus));
     const auto& firstDependencyDependents = registry.runtime(firstDependency.deviceId)->dependentRuntimes();
@@ -851,8 +858,9 @@ void test_registry_reassigns_dependency_atomically() {
                                 DevicePersistencePolicy::Immediate);
     TEST_ASSERT_FALSE(failingReparent.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::StorageError), static_cast<int>(failingReparent.validation.error));
+    TEST_ASSERT_TRUE(failingReparent.pendingPersistence);
     TEST_ASSERT_EQUAL_UINT32(
-        failingDependencyA.deviceId,
+        failingDependencyB.deviceId,
         failingRegistry.runtime(failingDependentResult.deviceId)->dependencyDeviceId(DeviceDependencyRole::OneWireBus));
 }
 
@@ -872,6 +880,7 @@ void test_registry_dependency_config_update_reconfigures_dependents() {
 
     DeviceCreateResult dependency = registry.create(makeDummyCreateRequest("dependency-update"), 10);
     TEST_ASSERT_TRUE(dependency.ok());
+    const IDeviceRuntime* dependencyRuntimeBefore = registry.runtime(dependency.deviceId);
 
     DeviceCreateRequest dependentRequest = makeDummyCreateRequest("dependent-update");
     dependentRequest.typeId = 59;
@@ -897,8 +906,53 @@ void test_registry_dependency_config_update_reconfigures_dependents() {
     auto* sameDependentRuntime = dynamic_cast<CountingRuntime*>(registry.runtime(dependent.deviceId));
     TEST_ASSERT_NOT_NULL(sameDependentRuntime);
     TEST_ASSERT_TRUE(sameDependentRuntime == dependentRuntime);
+    TEST_ASSERT_EQUAL_PTR(dependencyRuntimeBefore, registry.runtime(dependency.deviceId));
     TEST_ASSERT_EQUAL_UINT32(previousReconfigureCount + 1U, sameDependentRuntime->reconfigureCount);
     TEST_ASSERT_EQUAL_PTR(registry.runtime(dependency.deviceId), sameDependentRuntime->dependencyRuntime(DeviceDependencyRole::OneWireBus));
+}
+
+void test_registry_update_config_ignores_reordered_unchanged_dependencies() {
+    MemoryConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    FixedDeviceIdSource idSource({271, 272, 273});
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(store, types, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+
+    DeviceCreateResult dependencyA = registry.create(makeDummyCreateRequest("dependency-a"), 10);
+    DeviceCreateResult dependencyB = registry.create(makeDummyCreateRequest("dependency-b"), 20);
+    TEST_ASSERT_TRUE(dependencyA.ok());
+    TEST_ASSERT_TRUE(dependencyB.ok());
+
+    DeviceCreateRequest targetRequest = makeDummyCreateRequest("target");
+    targetRequest.depCount = 2;
+    targetRequest.deps[0] = {DeviceDependencyRole::OneWireBus, dependencyA.deviceId};
+    targetRequest.deps[1] = {DeviceDependencyRole::TemperatureSensor, dependencyB.deviceId};
+    DeviceCreateResult target = registry.create(targetRequest, 30);
+    TEST_ASSERT_TRUE(target.ok());
+
+    const IDeviceRuntime* targetRuntimeBefore = registry.runtime(target.deviceId);
+    TEST_ASSERT_NOT_NULL(targetRuntimeBefore);
+
+    std::array<DeviceDependencyLink, kMaxDeviceDependencies> reorderedDeps{};
+    reorderedDeps[0] = {DeviceDependencyRole::TemperatureSensor, dependencyB.deviceId};
+    reorderedDeps[1] = {DeviceDependencyRole::OneWireBus, dependencyA.deviceId};
+
+    DummyDeviceConfigV1 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "target");
+
+    DeviceMutationResult updated =
+        registry.updateConfigAndDeps(target.deviceId, encodeDummyConfig(config), DummyDevice::descriptor().currentConfigVersion, true,
+                                     reorderedDeps, 2, 40, DevicePersistencePolicy::Immediate);
+    TEST_ASSERT_TRUE_MESSAGE(updated.ok(), updated.validation.message);
+    TEST_ASSERT_EQUAL_PTR(targetRuntimeBefore, registry.runtime(target.deviceId));
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(dependencyA.deviceId),
+                          registry.runtime(target.deviceId)->dependencyRuntime(DeviceDependencyRole::OneWireBus));
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(dependencyB.deviceId),
+                          registry.runtime(target.deviceId)->dependencyRuntime(DeviceDependencyRole::TemperatureSensor));
 }
 
 void test_registry_propagates_dependency_status_and_recovers() {
@@ -1552,6 +1606,7 @@ int main(int, char**) {
     RUN_TEST(test_registry_backfills_dependency_links_after_begin);
     RUN_TEST(test_registry_set_deps_command_normalization);
     RUN_TEST(test_registry_dependency_config_update_reconfigures_dependents);
+    RUN_TEST(test_registry_update_config_ignores_reordered_unchanged_dependencies);
     RUN_TEST(test_registry_emits_required_event_kinds);
     RUN_TEST(test_registry_invokes_only_declared_cadences);
     RUN_TEST(test_registry_immediate_persistence_failure_rolls_back_create);

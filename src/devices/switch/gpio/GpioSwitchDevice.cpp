@@ -145,6 +145,32 @@ bool GpioSwitchDevice::replaceBaseConfig(DeviceConfigBlob& configBlob, const Dev
     return encodeGpioSwitchDeviceConfig(config, buffer, size) && configBlob.assign(buffer, size);
 }
 
+DeviceConfigUpdatePlan GpioSwitchDevice::planConfigUpdate(const DeviceConfigBlob& configBlob) const {
+    GpioSwitchDevicePersistedConfigV1 config{};
+    if (!decodeGpioSwitchDeviceConfig(configBlob.data(), configBlob.size(), config)) {
+        return {};
+    }
+
+    const bool invertedChanged = config.switchConfig.inverted != switchConfig().inverted;
+    const bool gpioPinChanged = config.gpioConfig.gpioPin != config_.gpioPin;
+
+    DeviceConfigUpdatePlan plan{};
+    plan.endOldConfig = gpioPinChanged || invertedChanged;
+    plan.resetStateMachine = plan.endOldConfig;
+    return plan;
+}
+
+bool GpioSwitchDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
+    (void)now;
+    GpioSwitchDevicePersistedConfigV1 config{};
+    if (!decodeGpioSwitchDeviceConfig(configBlob.data(), configBlob.size(), config)) {
+        return false;
+    }
+    setSwitchConfig(config.switchConfig);
+    config_ = config.gpioConfig;
+    return true;
+}
+
 void GpioSwitchDevice::writeDeviceJson(JsonObject output) const {
     SwitchDeviceBase::writeDeviceJson(output);
     JsonObject configObject = output["config"].isNull() ? output.createNestedObject("config") : output["config"].as<JsonObject>();
@@ -214,6 +240,10 @@ DeviceValidationResult GpioSwitchDevice::applyHardwareOutput(OutputState state, 
 void GpioSwitchDevice::releaseHardware(uint32_t now) {
     (void)now;
     driver_.release(config_.gpioPin);
+}
+
+void GpioSwitchDevice::end(uint32_t now) {
+    releaseHardware(now);
 }
 
 } // namespace ewfm

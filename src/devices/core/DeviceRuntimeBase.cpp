@@ -1,21 +1,13 @@
 #include "devices/core/DeviceRuntimeBase.h"
 
-#include "devices/core/DeviceBaseConfig.h"
-
 #include <algorithm>
-#include <cstring>
 
 namespace ewfm {
 
 DeviceRuntimeBase::DeviceRuntimeBase(PState initialState) : StateMachine(initialState) {}
 
 void DeviceRuntimeBase::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
-    DeviceBaseConfigV1 base{};
-    if (readDeviceBaseConfig(config, base)) {
-        enabled_ = base.enabled != 0U;
-        std::memcpy(name_, base.name, sizeof(name_));
-        name_[sizeof(name_) - 1U] = '\0';
-    }
+    (void)config;
     deviceId_ = record.header.deviceId;
     typeId_ = record.header.typeId;
     configVersion_ = record.header.configVersion;
@@ -26,6 +18,11 @@ void DeviceRuntimeBase::bindDeviceIdentity(const DeviceRegistryEntry& record, co
         dependencyRuntimes_[index] = nullptr;
     }
     persistencePolicy_ = record.persistencePolicy;
+}
+
+void DeviceRuntimeBase::writeCommonDeviceJson(JsonObject output) const {
+    output["name"] = name();
+    output["enabled"] = enabled();
 }
 
 void DeviceRuntimeBase::begin(uint32_t now) {
@@ -43,6 +40,17 @@ void DeviceRuntimeBase::tick100ms(uint32_t now) {
 
 void DeviceRuntimeBase::tick1s(uint32_t now) {
     tickRuntime(now);
+}
+
+void DeviceRuntimeBase::end(uint32_t now) {
+    (void)now;
+}
+
+void DeviceRuntimeBase::resetStateMachine(uint32_t now) {
+    StateMachine::reset(now);
+    startRequested_ = true;
+    clearReconfigureRequested();
+    clearFaultRequested();
 }
 
 void DeviceRuntimeBase::setDependencyRuntime(DeviceDependencyRole role, IDeviceRuntime* dependencyRuntime) {
@@ -108,6 +116,12 @@ void DeviceRuntimeBase::requestDelete() {
     status_ = DeviceStatus::Deleting;
 }
 
+void DeviceRuntimeBase::clearLifecycleRequests() {
+    clearReconfigureRequested();
+    clearDisableRequested();
+    clearFaultRequested();
+}
+
 DeviceStatus DeviceRuntimeBase::status() const {
     return status_;
 }
@@ -142,11 +156,11 @@ DeviceId DeviceRuntimeBase::dependencyDeviceId(DeviceDependencyRole role) const 
 }
 
 bool DeviceRuntimeBase::enabled() const {
-    return enabled_;
+    return false;
 }
 
 const char* DeviceRuntimeBase::name() const {
-    return name_;
+    return nullptr;
 }
 
 DevicePersistencePolicy DeviceRuntimeBase::persistencePolicy() const {

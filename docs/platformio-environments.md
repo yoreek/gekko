@@ -20,3 +20,8 @@ This project keeps the PlatformIO environment layout intentionally small:
 - It avoids accidentally treating OTA upload settings as a second compile profile.
 - It keeps the verification matrix small enough for local development and CI.
 
+## Flash Budget Note
+
+- OTA-enabled firmware needs more flash headroom than the current 4 MB ESP32 board provides in this project.
+- For 4 MB hardware validation, use the no-OTA single-app layout and keep OTA disabled in the build flags.
+- The no-OTA test profile may reclaim the OTA partitions for a larger LittleFS area, raise `littlefs` to 500 KiB, and enable `WITH_DEBUG` for runtime tracing.

@@ -97,7 +97,8 @@ bool parseMilliCelsiusField(const JsonVariantConst& variant, int32_t& milliCelsi
     return true;
 }
 
-bool parseTemperatureField(const JsonObjectConst& input, const char* milliKey, const char* celsiusKey, int32_t& milliCelsius, const char*& error) {
+bool parseTemperatureField(const JsonObjectConst& input, const char* milliKey, const char* celsiusKey, int32_t& milliCelsius,
+                           const char*& error) {
     const JsonVariantConst milliVariant = input[milliKey];
     if (!milliVariant.isNull()) {
         return parseMilliCelsiusField(milliVariant, milliCelsius, error);

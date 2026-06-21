@@ -43,6 +43,8 @@ public:
     const GpioSwitchDeviceConfigV1& gpioConfig() const;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override;
+    DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const override;
+    bool applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) override;
     void writeDeviceJson(JsonObject output) const;
 
     static DeviceTypeDescriptor descriptor();
@@ -52,6 +54,7 @@ public:
 private:
     DeviceValidationResult configureHardware(uint32_t now) override;
     DeviceValidationResult applyHardwareOutput(OutputState state, bool physicalLevel, uint32_t now) override;
+    void end(uint32_t now) override;
     void releaseHardware(uint32_t now) override;
 
     GpioSwitchDeviceConfigV1 config_{};

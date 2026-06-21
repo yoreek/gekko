@@ -53,6 +53,14 @@ const DummyDeviceConfigV1& DummyDevice::config() const {
     return config_;
 }
 
+bool DummyDevice::enabled() const {
+    return config_.enabled != 0U;
+}
+
+const char* DummyDevice::name() const {
+    return config_.name;
+}
+
 bool DummyDevice::deleted() const {
     return deleted_;
 }
@@ -69,7 +77,26 @@ bool DummyDevice::replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBa
     return encodeDummyDeviceConfig(baseConfig, buffer, size) && configBlob.assign(buffer, size);
 }
 
+DeviceConfigUpdatePlan DummyDevice::planConfigUpdate(const DeviceConfigBlob& configBlob) const {
+    DummyDeviceConfigV1 config{};
+    if (!decodeDummyDeviceConfig(configBlob.data(), configBlob.size(), config)) {
+        return {};
+    }
+    return {};
+}
+
+bool DummyDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
+    (void)now;
+    DummyDeviceConfigV1 config{};
+    if (!decodeDummyDeviceConfig(configBlob.data(), configBlob.size(), config)) {
+        return false;
+    }
+    config_ = config;
+    return true;
+}
+
 void DummyDevice::writeDeviceJson(JsonObject output) const {
+    writeCommonDeviceJson(output);
     JsonObject configObject = output.createNestedObject("config");
     writeDeviceBaseConfigJson(config_, configObject);
 }

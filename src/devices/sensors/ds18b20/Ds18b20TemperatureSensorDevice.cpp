@@ -43,6 +43,14 @@ const Ds18b20TemperatureSensorConfigV1& Ds18b20TemperatureSensorDevice::config()
     return config_;
 }
 
+bool Ds18b20TemperatureSensorDevice::enabled() const {
+    return config_.base.enabled != 0U;
+}
+
+const char* Ds18b20TemperatureSensorDevice::name() const {
+    return config_.base.name;
+}
+
 const TemperatureReading& Ds18b20TemperatureSensorDevice::reading() const {
     return reading_;
 }
@@ -74,9 +82,6 @@ const char* Ds18b20TemperatureSensorDevice::latestTemperatureStatus() const {
 
 void Ds18b20TemperatureSensorDevice::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
     DeviceRuntimeBase::bindDeviceIdentity(record, config);
-    enabled_ = config_.base.enabled != 0U;
-    std::memcpy(name_, config_.base.name, sizeof(name_));
-    name_[sizeof(name_) - 1U] = '\0';
 }
 
 bool Ds18b20TemperatureSensorDevice::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
@@ -93,9 +98,36 @@ bool Ds18b20TemperatureSensorDevice::replaceBaseConfig(DeviceConfigBlob& configB
     return encodeDs18b20TemperatureSensorConfig(config, buffer, size) && configBlob.assign(buffer, size);
 }
 
+DeviceConfigUpdatePlan Ds18b20TemperatureSensorDevice::planConfigUpdate(const DeviceConfigBlob& configBlob) const {
+    Ds18b20TemperatureSensorConfigV1 config{};
+    if (!decodeDs18b20TemperatureSensorConfig(configBlob.data(), configBlob.size(), config)) {
+        return {};
+    }
+
+    const bool addressChanged = std::memcmp(config.address.bytes, config_.address.bytes, sizeof(config.address.bytes)) != 0;
+    const bool resolutionChanged = config.resolution != config_.resolution;
+
+    DeviceConfigUpdatePlan plan{};
+    plan.endOldConfig = addressChanged || resolutionChanged;
+    plan.resetStateMachine = plan.endOldConfig;
+    return plan;
+}
+
+bool Ds18b20TemperatureSensorDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
+    Ds18b20TemperatureSensorConfigV1 config{};
+    if (!decodeDs18b20TemperatureSensorConfig(configBlob.data(), configBlob.size(), config)) {
+        return false;
+    }
+    const bool pollChanged = config.pollMs != config_.pollMs;
+    config_ = config;
+    if (pollChanged) {
+        nextPollAt_ = now + config_.pollMs;
+    }
+    return true;
+}
+
 void Ds18b20TemperatureSensorDevice::writeDeviceJson(JsonObject output) const {
-    output["name"] = config_.base.name;
-    output["enabled"] = config_.base.enabled != 0U;
+    writeCommonDeviceJson(output);
     JsonObject configObject = output.createNestedObject("config");
     writeDs18b20TemperatureSensorConfigJson(config_, configObject);
     JsonObject outputObject = output.createNestedObject("output");

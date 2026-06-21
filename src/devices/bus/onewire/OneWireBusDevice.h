@@ -46,6 +46,8 @@ public:
     OneWireBusDevice(const OneWireBusDeviceConfigV1& config, IOneWireBusDriver& driver);
 
     const OneWireBusDeviceConfigV1& config() const;
+    bool enabled() const override;
+    const char* name() const override;
     const OneWireScanResult& scan() const;
     uint32_t generation() const;
     bool dependencyTransactionActive() const;
@@ -53,6 +55,9 @@ public:
     void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override;
+    DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const override;
+    bool applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) override;
+    void end(uint32_t now) override;
     void writeDeviceJson(JsonObject output) const;
 
     static DeviceTypeDescriptor descriptor();

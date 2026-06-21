@@ -101,11 +101,27 @@ The DS18B20 runtime SHALL expose the latest valid temperature as runtime output 
 - **THEN** the runtime marks state dirty after every successful poll even when the measured temperature did not change
 
 ### Requirement: DS18B20 dependency reinitialization
-The DS18B20 runtime SHALL reinitialize after its own critical config changes or after its OneWire dependency bus is reconfigured.
+The DS18B20 runtime SHALL reinitialize after its critical sensor identity/config changes or after its OneWire dependency bus is reconfigured, while non-critical reporting and scheduling changes apply to the existing runtime without full reinitialization.
 
-#### Scenario: Sensor config change reinitializes runtime
-- **WHEN** the DS18B20 address, resolution, dependency relationship, or enabled state changes
-- **THEN** the runtime restarts initialization before performing another temperature conversion
+#### Scenario: Sensor address change reinitializes runtime
+- **WHEN** an accepted DS18B20 config update changes the configured ROM address
+- **THEN** the runtime applies the new config to the existing runtime object and resets the state machine to its initial `Idle` state before performing another temperature conversion
+
+#### Scenario: Sensor resolution change reinitializes runtime
+- **WHEN** an accepted DS18B20 config update changes `resolution`
+- **THEN** the runtime applies the new config to the existing runtime object and resets the state machine to its initial `Idle` state so sensor resolution configuration and conversion timing are rebuilt
+
+#### Scenario: Dependency relationship change reinitializes runtime
+- **WHEN** an accepted DS18B20 update changes the OneWire dependency device id
+- **THEN** the registry relinks the dependency runtime pointer and resets the DS18B20 state machine to its initial `Idle` state
+
+#### Scenario: Poll period update reschedules without reinitialization
+- **WHEN** an accepted DS18B20 config update changes only `poll_ms`
+- **THEN** the runtime applies the new config without resetting the state machine and sets the next poll deadline to `now + newPollMs`
+
+#### Scenario: Reporting config update does not reinitialize runtime
+- **WHEN** an accepted DS18B20 config update changes only `report_delta`, `report_always`, or `output_unit`
+- **THEN** the runtime applies the new config without resetting the state machine
 
 #### Scenario: Dependency bus generation change reinitializes runtime
 - **WHEN** the dependency OneWire bus reinitializes due to pin or pull-up config changes

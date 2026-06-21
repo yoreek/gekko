@@ -15,6 +15,8 @@ public:
     void tickFastLoop(uint32_t now) override;
     void tick100ms(uint32_t now) override;
     void tick1s(uint32_t now) override;
+    void end(uint32_t now) override;
+    void resetStateMachine(uint32_t now) override;
     void setDependencyRuntime(DeviceDependencyRole role, IDeviceRuntime* dependencyRuntime) override;
     IDeviceRuntime* dependencyRuntime(DeviceDependencyRole role) const override;
     uint8_t dependencyCount() const override;
@@ -25,8 +27,10 @@ public:
     void requestReconfigure() override;
     void requestDisable() override;
     void requestDelete() override;
+    void clearLifecycleRequests() override;
     DeviceStatus status() const override;
     void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
+    void writeCommonDeviceJson(JsonObject output) const;
     DeviceId deviceId() const override;
     DeviceTypeId typeId() const override;
     uint32_t configVersion() const override;
@@ -77,8 +81,6 @@ protected:
     uint32_t configRevision_{0};
     std::array<DeviceDependencyLink, kMaxDeviceDependencies> dependencyLinks_{};
     uint8_t dependencyCount_{0};
-    bool enabled_{true};
-    char name_[kMaxDeviceBaseNameLength + 1]{};
     DevicePersistencePolicy persistencePolicy_{DevicePersistencePolicy::Delayed};
 
 private:

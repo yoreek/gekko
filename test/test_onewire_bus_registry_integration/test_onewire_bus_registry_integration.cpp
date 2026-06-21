@@ -76,6 +76,7 @@ public:
     uint8_t lastPin{0};
     bool lastInternalPullup{false};
     size_t searchIndex{0};
+    std::vector<uint8_t> releasePins{};
     std::vector<OneWireRomAddress> candidates{};
 };
 
@@ -190,8 +191,64 @@ void test_onewire_registry_create_scan_reconfigure_disable_and_delete() {
     TEST_ASSERT_NULL(registry.runtime(created.deviceId));
 }
 
+void test_onewire_registry_update_config_restarts_bus_and_advances_generation() {
+    MemoryConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+    SequentialDeviceIdSource ids(1100);
+
+    FakeOneWireBusDriver driver;
+    gDriver = &driver;
+
+    DeviceTypeRegistry types;
+    DeviceTypeDescriptor descriptor = OneWireBusDevice::descriptor();
+    descriptor.createRuntime = &createRuntime;
+    TEST_ASSERT_TRUE(types.registerDescriptor(descriptor));
+
+    DeviceRegistry registry(store, types, ids);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+
+    DeviceCreateResult created = registry.create(makeCreateRequest(4), 10);
+    TEST_ASSERT_TRUE_MESSAGE(created.ok(), created.validation.message);
+    registry.tick100ms(11);
+
+    const OneWireBusDevice* runtimeBefore = runtimeAsOneWire(registry, created.deviceId);
+    TEST_ASSERT_NOT_NULL(runtimeBefore);
+    const uint32_t generationBefore = runtimeBefore->generation();
+    TEST_ASSERT_TRUE(driver.began);
+    TEST_ASSERT_EQUAL_UINT8(4, driver.lastPin);
+
+    OneWireBusDeviceConfigV1 pinChange = makeConfig(17);
+    DeviceMutationResult pinUpdated =
+        registry.updateConfig(created.deviceId, encodeOneWirePayload(pinChange), OneWireBusDevice::descriptor().currentConfigVersion, 20,
+                              DevicePersistencePolicy::Delayed);
+    TEST_ASSERT_TRUE_MESSAGE(pinUpdated.ok(), pinUpdated.validation.message);
+    TEST_ASSERT_TRUE(driver.depowered);
+    registry.tick100ms(21);
+    registry.tick100ms(22);
+    const OneWireBusDevice* runtimeAfterPin = runtimeAsOneWire(registry, created.deviceId);
+    TEST_ASSERT_NOT_NULL(runtimeAfterPin);
+    TEST_ASSERT_TRUE(runtimeAfterPin->generation() > generationBefore);
+    TEST_ASSERT_EQUAL_UINT8(17, driver.lastPin);
+    const uint32_t generationAfterPin = runtimeAfterPin->generation();
+
+    OneWireBusDeviceConfigV1 pullupChange = pinChange;
+    pullupChange.internalPullup = 1;
+    DeviceMutationResult pullupUpdated =
+        registry.updateConfig(created.deviceId, encodeOneWirePayload(pullupChange), OneWireBusDevice::descriptor().currentConfigVersion, 30,
+                              DevicePersistencePolicy::Delayed);
+    TEST_ASSERT_TRUE_MESSAGE(pullupUpdated.ok(), pullupUpdated.validation.message);
+    registry.tick100ms(31);
+    registry.tick100ms(32);
+    const OneWireBusDevice* runtimeAfterPullup = runtimeAsOneWire(registry, created.deviceId);
+    TEST_ASSERT_NOT_NULL(runtimeAfterPullup);
+    TEST_ASSERT_TRUE(runtimeAfterPullup->generation() > generationAfterPin);
+    TEST_ASSERT_TRUE(driver.lastInternalPullup);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_onewire_registry_create_scan_reconfigure_disable_and_delete);
+    RUN_TEST(test_onewire_registry_update_config_restarts_bus_and_advances_generation);
     return UNITY_END();
 }

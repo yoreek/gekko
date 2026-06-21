@@ -12,6 +12,8 @@ public:
     OutputState outputState() const;
     bool physicalOutputState() const;
     bool restorePreviousState() const;
+    bool enabled() const override;
+    const char* name() const override;
     bool retainedStateDirty() const override;
     const ISwitchOutputRuntime* switchOutputRuntime() const override;
     OutputStateMask supportedOutputStateMask() const override;
@@ -24,6 +26,8 @@ public:
     void applyRetainedState(OutputState state);
     void writeDeviceJson(JsonObject output) const;
     bool handleCommand(const DeviceCommand& command) override;
+    DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const override;
+    bool applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) override;
 
 protected:
     explicit SwitchDeviceBase(const SwitchDeviceConfigV1& config);
@@ -34,6 +38,7 @@ protected:
     OutputState safeState() const;
     bool inverted() const;
     const SwitchDeviceConfigV1& switchConfig() const;
+    void setSwitchConfig(const SwitchDeviceConfigV1& config);
 
     virtual DeviceValidationResult configureHardware(uint32_t now) = 0;
     virtual DeviceValidationResult applyHardwareOutput(OutputState state, bool physicalLevel, uint32_t now) = 0;

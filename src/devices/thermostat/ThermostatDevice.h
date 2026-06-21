@@ -14,6 +14,8 @@ public:
     explicit ThermostatDevice(const ThermostatDeviceConfigV1& config);
 
     const ThermostatDeviceConfigV1& config() const;
+    bool enabled() const override;
+    const char* name() const override;
     const TemperatureReading& latestTemperature() const;
     OutputState desiredOutputState() const;
     OutputState actualOutputState() const;
@@ -23,6 +25,8 @@ public:
     void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override;
+    DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const override;
+    bool applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) override;
     void writeDeviceJson(JsonObject output) const;
 
     static DeviceTypeDescriptor descriptor();

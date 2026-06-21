@@ -16,6 +16,8 @@ public:
     explicit Ds18b20TemperatureSensorDevice(const Ds18b20TemperatureSensorConfigV1& config);
 
     const Ds18b20TemperatureSensorConfigV1& config() const;
+    bool enabled() const override;
+    const char* name() const override;
     const TemperatureReading& reading() const;
     const char* outputStatus() const;
     uint8_t consecutiveErrors() const;
@@ -26,6 +28,8 @@ public:
     void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override;
+    DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const override;
+    bool applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) override;
     void writeDeviceJson(JsonObject output) const;
 
     static DeviceTypeDescriptor descriptor();
