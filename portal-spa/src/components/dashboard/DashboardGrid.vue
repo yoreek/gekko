@@ -20,20 +20,35 @@
       :w="1"
       :h="1"
     >
-      <component
-        :is="resolveDashboardDeviceComponent(item.device.typeId)"
-        :device="item.device"
-        :editable="editable"
-        @open="$emit('open', item.device.deviceId)"
-        @remove="$emit('remove', item.device.deviceId)"
-        @command="$emit('command', item.device.deviceId, $event)"
-      />
+      <div class="dashboard-grid__item">
+        <component
+          :is="resolveDashboardDeviceComponent(item.device.typeId)"
+          :device="item.device"
+          :editable="editable"
+          @open="$emit('open', item.device.deviceId)"
+          @command="$emit('command', item.device.deviceId, $event)"
+        />
+
+        <v-btn
+          v-if="editable"
+          class="dashboard-grid__remove"
+          density="compact"
+          size="20"
+          variant="flat"
+          color="error"
+          :aria-label="t('device.actions.delete')"
+          @click.stop="$emit('remove', item.device.deviceId)"
+        >
+          <v-icon icon="close" size="12" />
+        </v-btn>
+      </div>
     </GridItem>
   </GridLayout>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { GridItem, GridLayout } from 'vue-grid-layout-v3'
 
 import type { DeviceCommandRequest } from '@/api'
@@ -66,6 +81,8 @@ const emit = defineEmits<{
   command: [deviceId: number, payload: DeviceCommandRequest]
   'layout-change': [widgets: DashboardPanelWidget[]]
 }>()
+
+const { t } = useI18n()
 
 const cardWidth = 200
 const cardHeight = 44
@@ -106,6 +123,27 @@ function layoutUpdated(layout: GridLayoutItem[]): void {
 </script>
 
 <style scoped>
+.dashboard-grid__item {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.dashboard-grid__remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  z-index: 4;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0;
+  border-radius: 999px;
+  line-height: 0;
+}
+
 .dashboard-grid,
 .dashboard-grid :deep(.vue-grid-item),
 .dashboard-grid :deep(.vue-grid-item.cssTransforms) {

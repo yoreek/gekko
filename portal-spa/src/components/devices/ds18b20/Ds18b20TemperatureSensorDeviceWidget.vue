@@ -1,5 +1,5 @@
 <template>
-  <DeviceWidgetBase :device="device" :editable="editable" @open="$emit('open')" @remove="$emit('remove')">
+  <DeviceWidgetBase :device="device" :editable="editable" @open="$emit('open')">
     <template #actions>
       <v-chip size="small" variant="tonal" :color="temperature?.valid ? 'primary' : 'secondary'">
         {{ temperatureText }}
@@ -23,7 +23,6 @@ const props = defineProps<{
 
 defineEmits<{
   open: []
-  remove: []
 }>()
 
 const { t } = useI18n()

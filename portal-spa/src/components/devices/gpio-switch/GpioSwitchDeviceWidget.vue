@@ -1,5 +1,5 @@
 <template>
-  <SwitchDeviceWidgetBase :device="device" :editable="editable" @open="$emit('open')" @remove="$emit('remove')">
+  <SwitchDeviceWidgetBase :device="device" :editable="editable" @open="$emit('open')">
     <template #actions>
       <SwitchPowerButton
         :state="outputState"
@@ -26,7 +26,6 @@ const props = defineProps<{
 
 defineEmits<{
   open: []
-  remove: []
   command: [payload: DeviceCommandRequest]
 }>()
 

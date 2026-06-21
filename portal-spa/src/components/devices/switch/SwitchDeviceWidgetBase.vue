@@ -1,5 +1,5 @@
 <template>
-  <DeviceWidgetBase :device="device" :editable="editable" @open="$emit('open')" @remove="$emit('remove')">
+  <DeviceWidgetBase :device="device" :editable="editable" @open="$emit('open')">
     <template #actions>
       <slot name="actions" />
     </template>
@@ -17,6 +17,5 @@ defineProps<{
 
 defineEmits<{
   open: []
-  remove: []
 }>()
 </script>

@@ -13,15 +13,6 @@
     @keydown.enter.prevent="handleOpen"
     @keydown.space.prevent="handleOpen"
   >
-    <v-btn
-      v-if="editable"
-      class="device-widget__remove"
-      icon="close"
-      variant="text"
-      :aria-label="t('device.actions.delete')"
-      @click.stop="$emit('remove')"
-    />
-
     <div class="device-widget__header">
       <strong class="device-widget__name text-body-2 text-high-emphasis">{{ device.name }}</strong>
       <div
@@ -41,8 +32,6 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-
 import type { DashboardDevice } from '@/models/device'
 
 const props = defineProps<{
@@ -52,10 +41,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   open: []
-  remove: []
 }>()
-
-const { t } = useI18n()
 
 function handleOpen(): void {
   if (props.editable) {
@@ -84,15 +70,6 @@ function handleOpen(): void {
 
 .device-widget:not(.device-widget--editable):hover {
   transform: translateY(-1px);
-}
-
-.device-widget__remove {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
 }
 
 .device-widget__header {
