@@ -61,6 +61,25 @@ The SPA SHALL open a modal dialog for a selected device and present a shared Dev
 - **WHEN** the selected device changes due to a realtime update while the modal is open
 - **THEN** the modal refreshes its visible state without closing
 
+### Requirement: Device detail dialog shows recent event history
+The SPA SHALL expose recent device event history from the shared device detail dialog without filters.
+
+#### Scenario: Recent journal is collapsed by default
+- **WHEN** a device detail dialog is opened in view mode
+- **THEN** the dialog shows a recent event journal section that is collapsed by default
+
+#### Scenario: Recent journal is limited to selected device
+- **WHEN** the user expands the recent event journal section for a device
+- **THEN** the section shows only entries whose device ID exactly matches that device
+
+#### Scenario: Recent journal shows latest five events
+- **WHEN** more than five retained journal entries exist for the selected device
+- **THEN** the section shows only the five newest entries in reverse chronological order
+
+#### Scenario: Recent journal updates dynamically
+- **WHEN** a supported realtime message for the selected device arrives while the detail dialog is open
+- **THEN** the recent event journal section reflects the new entry without reopening the dialog
+
 ### Requirement: Device detail modal supports edit and runtime commands
 The SPA SHALL allow the user to rename, enable, disable, and command a device from the detail modal, while destructive registry deletion stays outside the modal.
 

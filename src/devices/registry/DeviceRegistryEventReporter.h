@@ -18,9 +18,11 @@ public:
     void trackRuntimeStatus(DeviceId deviceId, DeviceStatus status);
     void clearRuntimeStatus(DeviceId deviceId);
     void emitRuntimeStatusChangeIfNeeded(DeviceId deviceId, DeviceTypeId typeId, DeviceStatus currentStatus, uint32_t registryRevision,
-                                         bool pendingPersistence, const char* detail);
+                                         bool pendingPersistence, const char* detail, const char* name = nullptr,
+                                         const char* typeName = nullptr);
 
     static void setEventDetail(DeviceEvent& event, const char* detail);
+    static void setEventMetadata(DeviceEvent& event, const char* name, const char* typeName);
 
 private:
     DeviceEventDispatcher* dispatcher_{nullptr};

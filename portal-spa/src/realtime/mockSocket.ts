@@ -27,27 +27,32 @@ declare global {
   }
 }
 
-function publishDeviceUpsert(device: DeviceRecord): void {
+function publishDeviceUpsert(device: DeviceRecord, eventKind: 'device_created' | 'device_updated' | 'snapshot' = 'device_updated'): void {
   const db = loadMockDatabase()
   publishRealtimeMessage({
     topic: 'device.upsert',
     revision: device.registry_revision ?? db.registryRevision,
     payload: {
       ...device,
+      event_kind: eventKind,
       registry_revision: device.registry_revision ?? db.registryRevision,
       pending_persistence: device.pending_persistence ?? db.pendingPersistence,
     },
   })
 }
 
-function publishDeviceRemove(deviceId: number, revision: number, pendingPersistence: boolean): void {
+function publishDeviceRemove(device: DeviceRecord | undefined, revision: number, pendingPersistence: boolean): void {
   publishRealtimeMessage({
     topic: 'device.remove',
     revision,
     payload: {
-      device_id: deviceId,
+      device_id: device?.device_id ?? 0,
+      event_kind: 'device_deleted',
       registry_revision: revision,
       pending_persistence: pendingPersistence,
+      name: device?.name ?? '',
+      type_id: device?.type_id ?? 0,
+      type: device?.type ?? device?.label ?? '',
     },
   })
 }
@@ -136,17 +141,18 @@ export function connectMockRealtimeSocket(pinia: Pinia): MockRealtimeSocketHandl
         ...device,
         registry_revision: db.registryRevision,
         pending_persistence: db.pendingPersistence,
-      })
+      }, 'device_updated')
       publishThermostatDependents(db, device.device_id)
     },
     removeDevice(deviceId: number): void {
       const db = loadMockDatabase()
+      const removedDevice = db.devices.find(entry => entry.device_id === deviceId)
       db.devices = db.devices.filter(entry => entry.device_id !== deviceId)
       refreshMockDerivedDeviceState(db)
       db.registryRevision += 1
       db.pendingPersistence = true
       saveMockDatabase(db)
-      publishDeviceRemove(deviceId, db.registryRevision, db.pendingPersistence)
+      publishDeviceRemove(removedDevice, db.registryRevision, db.pendingPersistence)
       publishThermostatDependents(db, deviceId)
     },
     refreshSnapshot(): void {

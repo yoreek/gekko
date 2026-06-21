@@ -43,12 +43,14 @@ void test_event_reporter_emits_and_tracks_runtime_status() {
 
     TEST_ASSERT_EQUAL_UINT32(1, sink.events.size());
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint32_t>(DeviceEventKind::DeviceCreated), static_cast<uint32_t>(sink.events[0].kind));
+    TEST_ASSERT_EQUAL_STRING("device_created", sink.events[0].eventKind.c_str());
     TEST_ASSERT_EQUAL_STRING("created", sink.events[0].detail.c_str());
 
     reporter.emitRuntimeStatusChangeIfNeeded(11, 1, DeviceStatus::Ready, 7, false, "status changed");
     dispatcher.tickFastLoop(20);
     TEST_ASSERT_EQUAL_UINT32(2, sink.events.size());
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint32_t>(DeviceEventKind::StatusChanged), static_cast<uint32_t>(sink.events[1].kind));
+    TEST_ASSERT_EQUAL_STRING("status_changed", sink.events[1].eventKind.c_str());
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint32_t>(DeviceStatus::Unknown), static_cast<uint32_t>(sink.events[1].previousStatus));
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint32_t>(DeviceStatus::Ready), static_cast<uint32_t>(sink.events[1].status));
 

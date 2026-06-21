@@ -2,6 +2,7 @@ import type { RealtimeMessage } from './messages'
 import type { useAppStore } from '@/stores/app'
 import type { DeviceRecord } from '@/api'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
+import { useDeviceEventLogStore } from '@/stores/deviceEventLog'
 import { useOtaStore } from '@/stores/ota'
 import { useSystemStore } from '@/stores/system'
 import { useWebSocketStore } from '@/stores/websocket'
@@ -16,7 +17,14 @@ function isDeviceRecord(value: unknown): value is DeviceRecord {
     value !== null &&
     typeof (value as { device_id?: unknown }).device_id === 'number' &&
     Number.isFinite((value as { device_id: number }).device_id) &&
-    (value as { device_id: number }).device_id > 0
+    (value as { device_id: number }).device_id > 0 &&
+    typeof (value as { type_id?: unknown }).type_id === 'number' &&
+    typeof (value as { name?: unknown }).name === 'string' &&
+    typeof (value as { enabled?: unknown }).enabled === 'boolean' &&
+    typeof (value as { config_version?: unknown }).config_version === 'number' &&
+    typeof (value as { config_revision?: unknown }).config_revision === 'number' &&
+    typeof (value as { lifecycle_status?: unknown }).lifecycle_status === 'string' &&
+    typeof (value as { effective_status?: unknown }).effective_status === 'string'
   )
 }
 
@@ -38,6 +46,7 @@ export function bindRealtimeBridge(
   subscribe: (listener: (message: RealtimeMessage) => void) => () => void,
 ): () => void {
   const deviceStore = useDeviceRegistryStore(pinia)
+  const journalStore = useDeviceEventLogStore(pinia)
   const wifiStore = useWifiStore(pinia)
   const otaStore = useOtaStore(pinia)
   const systemStore = useSystemStore(pinia)
@@ -80,6 +89,7 @@ export function bindRealtimeBridge(
         break
       }
       case 'device.upsert': {
+        journalStore.append(message)
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
         const payload = message.payload as { pending_persistence?: boolean }
@@ -93,6 +103,7 @@ export function bindRealtimeBridge(
         break
       }
       case 'device.remove': {
+        journalStore.append(message)
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
         const payload = message.payload as { device_id?: number }
@@ -107,6 +118,7 @@ export function bindRealtimeBridge(
         break
       }
       case 'device.command_result': {
+        journalStore.append(message)
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
         const payload = message.payload as { pending_persistence?: boolean }

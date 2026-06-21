@@ -100,9 +100,9 @@ void PortalWebSocketManager::onDeviceEvent(const DeviceEvent& event) {
             const IDeviceRuntime* runtime = deviceRegistry_->runtime(event.deviceId);
             if (runtime != nullptr) {
                 const IDeviceApiAdapter* adapter = adapters_.find(runtime->typeId());
-                sendText(PortalWebSocketMessages::buildDeviceCommandResult(*runtime, deviceRegistry_->effectiveStatus(event.deviceId),
-                                                                           deviceRegistry_->registryRevision(),
-                                                                           deviceRegistry_->hasPendingPersistence(), adapter));
+                sendText(PortalWebSocketMessages::buildDeviceCommandResult(
+                    *runtime, deviceRegistry_->effectiveStatus(event.deviceId), deviceRegistry_->registryRevision(),
+                    deviceRegistry_->hasPendingPersistence(), adapter, deviceEventKindName(event.kind)));
                 return;
             }
         }
@@ -120,9 +120,9 @@ void PortalWebSocketManager::onDeviceEvent(const DeviceEvent& event) {
             const IDeviceRuntime* runtime = deviceRegistry_->runtime(event.deviceId);
             if (runtime != nullptr) {
                 const IDeviceApiAdapter* adapter = adapters_.find(runtime->typeId());
-                sendText(PortalWebSocketMessages::buildDeviceUpsert(*runtime, deviceRegistry_->effectiveStatus(event.deviceId),
-                                                                    deviceRegistry_->registryRevision(),
-                                                                    deviceRegistry_->hasPendingPersistence(), adapter));
+                sendText(PortalWebSocketMessages::buildDeviceUpsert(
+                    *runtime, deviceRegistry_->effectiveStatus(event.deviceId), deviceRegistry_->registryRevision(),
+                    deviceRegistry_->hasPendingPersistence(), adapter, deviceEventKindName(event.kind)));
                 return;
             }
         }
@@ -183,7 +183,7 @@ void PortalWebSocketManager::publishDeviceSnapshots() {
         const IDeviceApiAdapter* adapter = adapters_.find(runtime.typeId());
         sendText(PortalWebSocketMessages::buildDeviceUpsert(runtime, deviceRegistry_->effectiveStatus(runtime.deviceId()),
                                                             deviceRegistry_->registryRevision(), deviceRegistry_->hasPendingPersistence(),
-                                                            adapter));
+                                                            adapter, "snapshot"));
     });
 }
 

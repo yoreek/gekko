@@ -480,11 +480,12 @@ void test_ds18b20_runtime_serializes_fahrenheit_output_and_quiet_delta() {
     TEST_ASSERT_EQUAL_STRING("ds18b20_temperature_sensor", output["type"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("fahrenheit", output["output"]["temperature"]["unit"].as<const char*>());
 
-    const std::string upsert = PortalWebSocketMessages::buildDeviceUpsert(sensor, sensor.status(), 99, false,
-                                                                          &Ds18b20TemperatureSensorDeviceApiAdapter::instance());
+    const std::string upsert = PortalWebSocketMessages::buildDeviceUpsert(
+        sensor, sensor.status(), 99, false, &Ds18b20TemperatureSensorDeviceApiAdapter::instance(), "device_updated");
     DynamicJsonDocument wsDoc(4096);
     TEST_ASSERT_FALSE(deserializeJson(wsDoc, upsert));
     TEST_ASSERT_EQUAL_STRING("device.upsert", wsDoc["topic"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("device_updated", wsDoc["payload"]["event_kind"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("fahrenheit", wsDoc["payload"]["output"]["temperature"]["unit"].as<const char*>());
     TEST_ASSERT_TRUE(wsDoc["payload"]["output"]["temperature"]["valid"].as<bool>());
 }

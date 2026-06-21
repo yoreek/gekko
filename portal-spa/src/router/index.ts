@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import DashboardView from '@/views/DashboardView.vue'
 import DevicesView from '@/views/DevicesView.vue'
+import DeviceEventJournalView from '@/views/DeviceEventJournalView.vue'
 import PanelsView from '@/views/PanelsView.vue'
 import OverviewView from '@/views/OverviewView.vue'
 import OtaView from '@/views/OtaView.vue'
@@ -21,6 +22,11 @@ const router = createRouter({
       path: '/devices',
       name: 'devices',
       component: DevicesView,
+    },
+    {
+      path: '/device-events',
+      name: 'device-events',
+      component: DeviceEventJournalView,
     },
     {
       path: '/panels',

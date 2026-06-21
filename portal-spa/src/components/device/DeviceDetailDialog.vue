@@ -80,6 +80,10 @@
           :busy="busyAction === 'command'"
           @command="$emit('command', $event)"
         />
+
+        <section v-if="!editing && device" class="device-dialog__section">
+          <RecentDeviceEvents :device-id="device.deviceId" />
+        </section>
       </div>
 
     </template>
@@ -114,6 +118,7 @@ import { useI18n } from 'vue-i18n'
 import AppIcon from '@/components/AppIcon.vue'
 import DeviceCommonFields from '@/components/device/DeviceCommonFields.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
+import RecentDeviceEvents from '@/components/device/RecentDeviceEvents.vue'
 import {
   buildDeviceEditCommands,
   createDeviceEditDraft,
@@ -328,6 +333,10 @@ function submitSave(): void {
   border-radius: 10px;
   background: var(--portal-surface);
   box-shadow: var(--portal-shadow-sm);
+}
+
+.device-dialog__section + .device-dialog__section {
+  margin-top: 4px;
 }
 
 .device-dialog__empty {

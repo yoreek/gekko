@@ -30,6 +30,7 @@ constexpr size_t kMaxDeviceBaseNameLength = kMaxDynamicDeviceNameLength;
 constexpr size_t kMaxDeviceConfigBytes = 512;
 constexpr size_t kMaxRetainedStateBytes = 64;
 constexpr size_t kMaxDeviceEventBytes = 256;
+constexpr size_t kMaxDeviceEventKindBytes = 32;
 constexpr size_t kMaxRegistryIndexBytes = 2048;
 constexpr size_t kMaxDeviceRecordBytes = 1024;
 constexpr size_t kMaxDeviceIdGenerationAttempts = 8;
@@ -291,6 +292,8 @@ enum class DeviceEventKind : uint8_t {
     PersistencePendingCleared = 10,
 };
 
+const char* deviceEventKindName(DeviceEventKind kind);
+
 struct DeviceIndexEntry {
     DeviceId deviceId{0};
     DeviceTypeId typeId{0};
@@ -392,10 +395,13 @@ struct DeviceCommand {
 
 struct DeviceEvent {
     DeviceEventKind kind{DeviceEventKind::RegistryLoaded};
+    BoundedText<kMaxDeviceEventKindBytes> eventKind{};
     uint32_t registryRevision{0};
     uint32_t configRevision{0};
     DeviceId deviceId{0};
     DeviceTypeId typeId{0};
+    BoundedText<kMaxDynamicDeviceNameLength> name{};
+    BoundedText<kMaxDynamicDeviceNameLength> typeName{};
     DeviceStatus previousStatus{DeviceStatus::Unknown};
     DeviceStatus status{DeviceStatus::Unknown};
     bool pendingPersistence{false};

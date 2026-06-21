@@ -33,8 +33,17 @@ const char* deviceStatusToString(const DeviceStatus status) {
 }
 
 void fillDeviceEventPayload(JsonDocument& payload, const DeviceEvent& event) {
+    if (!event.eventKind.empty()) {
+        payload["event_kind"] = JsonString(event.eventKind.c_str(), JsonString::Copied);
+    }
     payload["device_id"] = event.deviceId;
     payload["type_id"] = event.typeId;
+    if (!event.name.empty()) {
+        payload["name"] = JsonString(event.name.c_str(), JsonString::Copied);
+    }
+    if (!event.typeName.empty()) {
+        payload["type"] = JsonString(event.typeName.c_str(), JsonString::Copied);
+    }
     payload["registry_revision"] = event.registryRevision;
     payload["config_revision"] = event.configRevision;
     payload["previous_status"] = static_cast<uint8_t>(event.previousStatus);
@@ -73,7 +82,8 @@ std::string PortalWebSocketMessages::buildHello(const uint32_t revision, const u
 
 void PortalWebSocketMessages::fillDeviceRuntimePayload(JsonDocument& payload, const IDeviceRuntime& runtime,
                                                        const DeviceStatus effectiveStatus, const uint32_t revision,
-                                                       const bool pendingPersistence, const IDeviceApiAdapter* adapter) {
+                                                       const bool pendingPersistence, const IDeviceApiAdapter* adapter,
+                                                       const char* eventKind) {
     JsonObject output = payload.to<JsonObject>();
     if (adapter != nullptr) {
         adapter->writeDeviceJson(runtime, output);
@@ -87,6 +97,9 @@ void PortalWebSocketMessages::fillDeviceRuntimePayload(JsonDocument& payload, co
         output["status"] = deviceStatusToString(runtime.status());
     }
 
+    if (eventKind != nullptr) {
+        output["event_kind"] = eventKind;
+    }
     const DeviceStatus lifecycleStatus = runtime.status();
     output["device_id"] = runtime.deviceId();
     output["type_id"] = runtime.typeId();
@@ -112,17 +125,17 @@ void PortalWebSocketMessages::fillDeviceRuntimePayload(JsonDocument& payload, co
 
 std::string PortalWebSocketMessages::buildDeviceUpsert(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus,
                                                        const uint32_t revision, const bool pendingPersistence,
-                                                       const IDeviceApiAdapter* adapter) {
+                                                       const IDeviceApiAdapter* adapter, const char* eventKind) {
     DynamicJsonDocument payload(1536);
-    fillDeviceRuntimePayload(payload, runtime, effectiveStatus, revision, pendingPersistence, adapter);
+    fillDeviceRuntimePayload(payload, runtime, effectiveStatus, revision, pendingPersistence, adapter, eventKind);
     return buildEnvelope("device.upsert", revision, payload);
 }
 
 std::string PortalWebSocketMessages::buildDeviceCommandResult(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus,
                                                               const uint32_t revision, const bool pendingPersistence,
-                                                              const IDeviceApiAdapter* adapter) {
+                                                              const IDeviceApiAdapter* adapter, const char* eventKind) {
     DynamicJsonDocument payload(1536);
-    fillDeviceRuntimePayload(payload, runtime, effectiveStatus, revision, pendingPersistence, adapter);
+    fillDeviceRuntimePayload(payload, runtime, effectiveStatus, revision, pendingPersistence, adapter, eventKind);
     return buildEnvelope("device.command_result", revision, payload);
 }
 
@@ -133,10 +146,20 @@ std::string PortalWebSocketMessages::buildDeviceUpsert(const DeviceEvent& event)
 }
 
 std::string PortalWebSocketMessages::buildDeviceRemove(const DeviceEvent& event) {
-    DynamicJsonDocument payload(256);
+    DynamicJsonDocument payload(384);
+    if (!event.eventKind.empty()) {
+        payload["event_kind"] = JsonString(event.eventKind.c_str(), JsonString::Copied);
+    }
     payload["device_id"] = event.deviceId;
+    payload["type_id"] = event.typeId;
     payload["registry_revision"] = event.registryRevision;
     payload["pending_persistence"] = event.pendingPersistence;
+    if (!event.name.empty()) {
+        payload["name"] = JsonString(event.name.c_str(), JsonString::Copied);
+    }
+    if (!event.typeName.empty()) {
+        payload["type"] = JsonString(event.typeName.c_str(), JsonString::Copied);
+    }
     if (!event.detail.empty()) {
         payload["detail"] = JsonString(event.detail.c_str(), JsonString::Copied);
     }

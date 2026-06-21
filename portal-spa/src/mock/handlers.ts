@@ -62,27 +62,48 @@ function completeOneWireScan(deviceId: number): void {
     ],
   }
   saveMockDatabase(db)
+  publishDeviceUpsertMessage(db, device, 'device_updated')
+}
+
+function publishDeviceUpsertMessage(
+  db: ReturnType<typeof createSeedMockDatabase>,
+  device: DeviceRecord,
+  eventKind: 'device_created' | 'device_updated' | 'snapshot',
+): void {
   publishRealtimeMessage({
     topic: 'device.upsert',
     revision: db.registryRevision,
     payload: {
       ...device,
+      event_kind: eventKind,
       registry_revision: db.registryRevision,
       pending_persistence: db.pendingPersistence,
     },
   })
 }
 
-function publishDeviceSnapshot(db: ReturnType<typeof createSeedMockDatabase>, device: DeviceRecord): void {
+function publishDeviceRemoveMessage(
+  db: ReturnType<typeof createSeedMockDatabase>,
+  device: DeviceRecord | undefined,
+  eventKind: 'device_deleted' | 'command_rejected' = 'device_deleted',
+): void {
   publishRealtimeMessage({
-    topic: 'device.upsert',
+    topic: 'device.remove',
     revision: db.registryRevision,
     payload: {
-      ...device,
+      device_id: device?.device_id ?? 0,
+      event_kind: eventKind,
       registry_revision: db.registryRevision,
       pending_persistence: db.pendingPersistence,
+      name: device?.name ?? '',
+      type_id: device?.type_id ?? 0,
+      type: device?.type ?? device?.label ?? '',
     },
   })
+}
+
+function publishDeviceSnapshot(db: ReturnType<typeof createSeedMockDatabase>, device: DeviceRecord): void {
+  publishDeviceUpsertMessage(db, device, 'snapshot')
 }
 
 function publishDependentThermostats(db: ReturnType<typeof createSeedMockDatabase>, sourceDeviceId: number): void {
@@ -401,13 +422,17 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
   publishRealtimeMessage({
     topic: 'device.upsert',
     revision: db.registryRevision,
-    payload: deviceSnapshot,
+    payload: {
+      ...deviceSnapshot,
+      event_kind: 'device_created',
+    },
   })
   scheduleMockPersistenceFlush()
   return Promise.resolve(response)
 }
 
 export function mockCommandDevice(deviceId: number, payload: DeviceCommandRequest): Promise<DeviceMutationResponse> {
+  let removedDevice: DeviceRecord | undefined
   const response = mutateRegistry(db => {
       const device = db.devices.find(entry => entry.device_id === deviceId)
       if (!device) {
@@ -440,6 +465,7 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           }
           break
         case 'delete':
+          removedDevice = { ...device }
           db.devices = db.devices.filter(entry => entry.device_id !== deviceId)
           pruneDashboardLayout(db)
           break
@@ -576,11 +602,30 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
         pending_persistence: db.pendingPersistence,
       }
     : { device_id: deviceId, registry_revision: db.registryRevision, pending_persistence: db.pendingPersistence }
-  publishRealtimeMessage({
-    topic: payload.command === 'delete' ? 'device.remove' : 'device.command_result',
-    revision: db.registryRevision,
-    payload: deviceSnapshot,
-  })
+  if (payload.command === 'delete') {
+    publishRealtimeMessage({
+      topic: 'device.remove',
+      revision: db.registryRevision,
+      payload: {
+        device_id: removedDevice?.device_id ?? deviceId,
+        event_kind: 'device_deleted',
+        registry_revision: db.registryRevision,
+        pending_persistence: db.pendingPersistence,
+        name: removedDevice?.name ?? '',
+        type_id: removedDevice?.type_id ?? 0,
+        type: removedDevice?.type ?? removedDevice?.label ?? '',
+      },
+    })
+  } else {
+    publishRealtimeMessage({
+      topic: 'device.command_result',
+      revision: db.registryRevision,
+      payload: {
+        ...deviceSnapshot,
+        event_kind: 'command_accepted',
+      },
+    })
+  }
   publishDependentThermostats(db, deviceId)
   if (
     payload.command === 'scan' &&

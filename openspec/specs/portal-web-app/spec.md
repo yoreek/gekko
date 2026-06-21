@@ -107,6 +107,29 @@ The SPA SHALL provide a compact navigation shell where the sidebar is opened fro
 - **WHEN** the portal shell is visible
 - **THEN** the top toolbar can show shared indicators such as the active panel name, sync state, locale, and mock mode
 
+### Requirement: Portal shell exposes device event journal navigation
+The SPA SHALL expose the device event journal as a first-class route from the compact portal navigation shell.
+
+#### Scenario: Drawer includes journal entry
+- **WHEN** the navigation drawer is rendered
+- **THEN** it includes a localized menu item for the device event journal page
+
+#### Scenario: Journal route opens from menu
+- **WHEN** the user activates the device event journal menu item
+- **THEN** the SPA navigates to the journal route and renders the journal page within the existing portal shell
+
+#### Scenario: Journal navigation uses local assets
+- **WHEN** the journal menu item renders an icon
+- **THEN** the icon comes from the local frontend icon registry and uses the active theme color
+
+#### Scenario: Journal text is localized
+- **WHEN** the SPA renders the journal navigation item, page labels, filters, or empty states
+- **THEN** it uses vue-i18n message keys with English and Russian dictionary entries
+
+#### Scenario: Journal event kind labels are localized
+- **WHEN** the journal page renders event kind values for created, updated, deleted, command, or snapshot entries
+- **THEN** each event kind is shown with localized English and Russian text
+
 ### Requirement: Vuetify-first UI implementation
 The SPA SHALL prefer Vuetify components, Vuetify props, and Vuetify theme tokens for application UI before introducing custom component behavior or custom CSS.
 

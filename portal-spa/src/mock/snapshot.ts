@@ -44,6 +44,7 @@ export function publishMockSnapshot(): void {
       revision: db.registryRevision,
       payload: {
         ...device,
+        event_kind: 'snapshot',
         registry_revision: db.registryRevision,
         pending_persistence: db.pendingPersistence,
       },

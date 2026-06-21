@@ -9,6 +9,7 @@ export type AppIconName =
   | 'ota'
   | 'system'
   | 'ws'
+  | 'journal'
   | 'locale'
   | 'sun'
   | 'moon'
@@ -67,6 +68,10 @@ export const iconRegistry: Record<AppIconName, IconShape> = {
   system: {
     viewBox: '0 0 24 24',
     paths: ['M12 8a4 4 0 100 8 4 4 0 000-8z', 'M12 3v3', 'M12 18v3', 'M4.8 6.2l2.1 2.1', 'M17.1 15.7l2.1 2.1', 'M3 12h3', 'M18 12h3', 'M4.8 17.8l2.1-2.1', 'M17.1 8.3l2.1-2.1'],
+  },
+  journal: {
+    viewBox: '0 0 24 24',
+    paths: ['M6 4h10l2 2v14H6z', 'M16 4v4h4', 'M8 10h6', 'M8 14h6', 'M8 18h4'],
   },
   ws: {
     viewBox: '0 0 24 24',

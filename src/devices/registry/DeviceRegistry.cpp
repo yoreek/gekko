@@ -32,6 +32,10 @@ DeviceRegistryEntry recordFromRuntime(const IDeviceRuntime& runtime) {
     return record;
 }
 
+void setRuntimeMetadata(DeviceEvent& event, const IDeviceRuntime& runtime, const char* typeName = nullptr) {
+    DeviceRegistryEventReporter::setEventMetadata(event, runtime.name(), typeName);
+}
+
 bool hasDuplicateNames(const DeviceRuntimeMap& runtimes, const std::string& name, DeviceId ignoreId = 0) {
     for (const auto& entry : runtimes) {
         const IDeviceRuntime* runtime = entry.second.runtime.get();
@@ -917,7 +921,8 @@ DeviceMutationResult DeviceRegistry::setEnabled(DeviceId deviceId, bool enabled,
 
 DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, DevicePersistencePolicy policy) {
     DeviceMutationResult result{};
-    if (runtime(deviceId) == nullptr) {
+    const IDeviceRuntime* currentRuntime = runtime(deviceId);
+    if (currentRuntime == nullptr) {
         result.validation = {DeviceError::MissingRecord, "device not found"};
         return result;
     }
@@ -930,6 +935,14 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
         return result;
     }
 
+    const DeviceTypeId removedTypeId = currentRuntime->typeId();
+    const DeviceTypeDescriptor* descriptor = typeRegistry_.find(removedTypeId);
+    BoundedText<kMaxDynamicDeviceNameLength> removedName{};
+    BoundedText<kMaxDynamicDeviceNameLength> removedTypeName{};
+    (void)removedName.assign(currentRuntime->name());
+    if (descriptor != nullptr) {
+        (void)removedTypeName.assign(descriptor->name);
+    }
     clearRuntime(deviceId);
 
     if (policy == DevicePersistencePolicy::Immediate) {
@@ -954,7 +967,10 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
     deleted.kind = DeviceEventKind::DeviceDeleted;
     deleted.registryRevision = registryRevision_;
     deleted.deviceId = deviceId;
+    deleted.typeId = removedTypeId;
     deleted.pendingPersistence = persistence_.hasPendingPersistence();
+    (void)deleted.name.assign(removedName.c_str());
+    (void)deleted.typeName.assign(removedTypeName.c_str());
     DeviceRegistryEventReporter::setEventDetail(deleted, "deleted");
     eventReporter_.emit(deleted);
 
@@ -1239,12 +1255,14 @@ DeviceValidationResult DeviceRegistry::flushNow() {
             continue;
         }
         const DeviceRegistryEntry record = recordFromRuntime(*runtimePtr);
+        const DeviceTypeDescriptor* descriptor = typeRegistry_.find(record.header.typeId);
         DeviceEvent persisted{};
         persisted.kind = DeviceEventKind::ConfigPersisted;
         persisted.registryRevision = registryRevision_;
         persisted.configRevision = record.header.configRevision;
         persisted.deviceId = deviceId;
         persisted.typeId = record.header.typeId;
+        setRuntimeMetadata(persisted, *runtimePtr, descriptor != nullptr ? descriptor->name : nullptr);
         persisted.status = effectiveStatusForRuntime(*runtimePtr);
         persisted.pendingPersistence = false;
         DeviceRegistryEventReporter::setEventDetail(persisted, "config persisted");
@@ -1262,11 +1280,13 @@ DeviceValidationResult DeviceRegistry::flushNow() {
         if (runtimePtr == nullptr) {
             continue;
         }
+        const DeviceTypeDescriptor* descriptor = typeRegistry_.find(runtimePtr->typeId());
         DeviceEvent persisted{};
         persisted.kind = DeviceEventKind::RetainedStateChanged;
         persisted.registryRevision = registryRevision_;
         persisted.deviceId = deviceId;
         persisted.typeId = runtimePtr->typeId();
+        setRuntimeMetadata(persisted, *runtimePtr, descriptor != nullptr ? descriptor->name : nullptr);
         persisted.status = effectiveStatusForRuntime(*runtimePtr);
         persisted.pendingPersistence = false;
         DeviceRegistryEventReporter::setEventDetail(persisted, "retained state persisted");
@@ -1550,8 +1570,10 @@ void DeviceRegistry::emitRuntimeStatusChanges() {
         const DeviceStatus current = entry.second.runtime->status();
         const DeviceRegistryEntry record = recordFromRuntime(*entry.second.runtime);
         const DeviceTypeId typeId = record.header.typeId;
+        const DeviceTypeDescriptor* descriptor = typeRegistry_.find(typeId);
         eventReporter_.emitRuntimeStatusChangeIfNeeded(entry.first, typeId, current, registryRevision_,
-                                                       persistence_.hasPendingPersistence(), "runtime status changed");
+                                                       persistence_.hasPendingPersistence(), "runtime status changed",
+                                                       entry.second.runtime->name(), descriptor != nullptr ? descriptor->name : nullptr);
         if (entry.second.runtime->runtimeStateDirty()) {
             DeviceEvent stateChanged{};
             stateChanged.kind = DeviceEventKind::StateChanged;
@@ -1559,6 +1581,7 @@ void DeviceRegistry::emitRuntimeStatusChanges() {
             stateChanged.configRevision = record.header.configRevision;
             stateChanged.deviceId = entry.first;
             stateChanged.typeId = typeId;
+            setRuntimeMetadata(stateChanged, *entry.second.runtime, descriptor != nullptr ? descriptor->name : nullptr);
             stateChanged.status = current;
             stateChanged.pendingPersistence = persistence_.hasPendingPersistence();
             DeviceRegistryEventReporter::setEventDetail(stateChanged, "runtime state changed");

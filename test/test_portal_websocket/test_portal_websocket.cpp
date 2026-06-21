@@ -31,10 +31,13 @@ struct FixedDeviceIdSource final : public IDeviceIdSource {
 DeviceEvent makeDeviceEvent(const DeviceEventKind kind, const uint32_t revision, const DeviceId deviceId = 42) {
     DeviceEvent event{};
     event.kind = kind;
+    (void)event.eventKind.assign(deviceEventKindName(kind));
     event.registryRevision = revision;
     event.configRevision = 7;
     event.deviceId = deviceId;
     event.typeId = 99;
+    (void)event.name.assign("Living Room Lamp");
+    (void)event.typeName.assign("Dummy device");
     event.previousStatus = DeviceStatus::Starting;
     event.status = DeviceStatus::Ready;
     event.pendingPersistence = true;
@@ -96,10 +99,13 @@ void test_ws_message_builders_create_compact_envelopes() {
     TEST_ASSERT_EQUAL_STRING("device.upsert", upsertDoc["topic"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT32(12, upsertDoc["revision"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(42, upsertDoc["payload"]["device_id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("device_updated", upsertDoc["payload"]["event_kind"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT32(99, upsertDoc["payload"]["type_id"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(7, upsertDoc["payload"]["config_revision"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint8_t>(DeviceStatus::Starting), upsertDoc["payload"]["previous_status"].as<uint8_t>());
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint8_t>(DeviceStatus::Ready), upsertDoc["payload"]["status"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_STRING("Living Room Lamp", upsertDoc["payload"]["name"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("Dummy device", upsertDoc["payload"]["type"].as<const char*>());
     TEST_ASSERT_TRUE(upsertDoc["payload"]["pending_persistence"].as<bool>());
     TEST_ASSERT_FALSE(upsertDoc["payload"]["command_accepted"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("detail", upsertDoc["payload"]["detail"].as<const char*>());
@@ -110,12 +116,13 @@ void test_ws_message_builders_create_compact_envelopes() {
     runtime.begin(0);
     runtime.tickFastLoop(1);
     const std::string snapshot =
-        PortalWebSocketMessages::buildDeviceUpsert(runtime, runtime.status(), 14, true, &DummyDeviceApiAdapter::instance());
+        PortalWebSocketMessages::buildDeviceUpsert(runtime, runtime.status(), 14, true, &DummyDeviceApiAdapter::instance(), "snapshot");
     DynamicJsonDocument snapshotDoc(1536);
     TEST_ASSERT_FALSE(deserializeJson(snapshotDoc, snapshot));
     TEST_ASSERT_EQUAL_STRING("device.upsert", snapshotDoc["topic"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT32(14, snapshotDoc["revision"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(42, snapshotDoc["payload"]["device_id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("snapshot", snapshotDoc["payload"]["event_kind"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("Living Room Lamp", snapshotDoc["payload"]["name"].as<const char*>());
     TEST_ASSERT_TRUE(snapshotDoc["payload"]["device"].isNull());
     TEST_ASSERT_EQUAL_STRING("ready", snapshotDoc["payload"]["effective_status"].as<const char*>());
@@ -128,6 +135,10 @@ void test_ws_message_builders_create_compact_envelopes() {
     TEST_ASSERT_EQUAL_STRING("device.remove", removedDoc["topic"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT32(13, removedDoc["revision"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(42, removedDoc["payload"]["device_id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("device_deleted", removedDoc["payload"]["event_kind"].as<const char*>());
+    TEST_ASSERT_EQUAL_UINT32(99, removedDoc["payload"]["type_id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("Living Room Lamp", removedDoc["payload"]["name"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("Dummy device", removedDoc["payload"]["type"].as<const char*>());
     TEST_ASSERT_TRUE(removedDoc["payload"]["pending_persistence"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("detail", removedDoc["payload"]["detail"].as<const char*>());
 
@@ -171,6 +182,7 @@ void test_ws_manager_receives_device_events_when_attached() {
     TEST_ASSERT_EQUAL_UINT32(33, doc["revision"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(42, doc["payload"]["device_id"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(99, doc["payload"]["type_id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("device_updated", doc["payload"]["event_kind"].as<const char*>());
     TEST_ASSERT_FALSE(doc["payload"]["command_accepted"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("detail", doc["payload"]["detail"].as<const char*>());
 #endif
@@ -258,6 +270,7 @@ void test_ws_manager_resyncs_all_device_snapshots_for_new_clients() {
         DynamicJsonDocument doc(1536);
         TEST_ASSERT_FALSE(deserializeJson(doc, message));
         TEST_ASSERT_EQUAL_STRING("device.upsert", doc["topic"].as<const char*>());
+        TEST_ASSERT_EQUAL_STRING("snapshot", doc["payload"]["event_kind"].as<const char*>());
         TEST_ASSERT_EQUAL_STRING("ready", doc["payload"]["effective_status"].as<const char*>());
         const DeviceId deviceId = doc["payload"]["device_id"].as<DeviceId>();
         if (deviceId == 42) {

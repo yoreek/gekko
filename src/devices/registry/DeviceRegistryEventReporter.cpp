@@ -16,7 +16,11 @@ void DeviceRegistryEventReporter::emit(const DeviceEvent& event) {
     if (dispatcher_ == nullptr) {
         return;
     }
-    (void)dispatcher_->enqueue(event);
+    DeviceEvent copy = event;
+    if (copy.eventKind.empty()) {
+        (void)copy.eventKind.assign(deviceEventKindName(copy.kind));
+    }
+    (void)dispatcher_->enqueue(copy);
 }
 
 void DeviceRegistryEventReporter::trackRuntimeStatus(DeviceId deviceId, DeviceStatus status) {
@@ -28,7 +32,8 @@ void DeviceRegistryEventReporter::clearRuntimeStatus(DeviceId deviceId) {
 }
 
 void DeviceRegistryEventReporter::emitRuntimeStatusChangeIfNeeded(DeviceId deviceId, DeviceTypeId typeId, DeviceStatus currentStatus,
-                                                                  uint32_t registryRevision, bool pendingPersistence, const char* detail) {
+                                                                  uint32_t registryRevision, bool pendingPersistence, const char* detail,
+                                                                  const char* name, const char* typeName) {
     const auto previousIt = lastRuntimeStatuses_.find(deviceId);
     const DeviceStatus previous = previousIt == lastRuntimeStatuses_.end() ? DeviceStatus::Unknown : previousIt->second;
     if (previous == currentStatus) {
@@ -40,6 +45,7 @@ void DeviceRegistryEventReporter::emitRuntimeStatusChangeIfNeeded(DeviceId devic
     event.registryRevision = registryRevision;
     event.deviceId = deviceId;
     event.typeId = typeId;
+    setEventMetadata(event, name, typeName);
     event.previousStatus = previous;
     event.status = currentStatus;
     event.pendingPersistence = pendingPersistence;
@@ -54,6 +60,15 @@ void DeviceRegistryEventReporter::setEventDetail(DeviceEvent& event, const char*
         return;
     }
     (void)event.detail.assign(detail);
+}
+
+void DeviceRegistryEventReporter::setEventMetadata(DeviceEvent& event, const char* name, const char* typeName) {
+    if (name != nullptr) {
+        (void)event.name.assign(name);
+    }
+    if (typeName != nullptr) {
+        (void)event.typeName.assign(typeName);
+    }
 }
 
 } // namespace ewfm

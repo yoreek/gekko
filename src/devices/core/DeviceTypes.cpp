@@ -15,6 +15,20 @@ constexpr const char* kDeviceDependencyRoleNames[] = {
     "temperature_sensor",
     "switch",
 };
+
+constexpr const char* kDeviceEventKindNames[] = {
+    "registry_loaded",
+    "device_created",
+    "device_updated",
+    "device_deleted",
+    "status_changed",
+    "state_changed",
+    "command_accepted",
+    "command_rejected",
+    "config_persisted",
+    "retained_state_changed",
+    "persistence_pending_cleared",
+};
 } // namespace
 
 const char* deviceDependencyRoleName(DeviceDependencyRole role) {
@@ -40,6 +54,14 @@ bool parseDeviceDependencyRole(std::string_view value, DeviceDependencyRole& rol
     }
     role = DeviceDependencyRole::Unknown;
     return false;
+}
+
+const char* deviceEventKindName(const DeviceEventKind kind) {
+    const auto index = static_cast<size_t>(kind);
+    if (index >= (sizeof(kDeviceEventKindNames) / sizeof(kDeviceEventKindNames[0]))) {
+        return kDeviceEventKindNames[0];
+    }
+    return kDeviceEventKindNames[index];
 }
 
 bool DeviceTypeRegistry::registerDescriptor(const DeviceTypeDescriptor& descriptor) {
