@@ -8,11 +8,11 @@
         </div>
         <div class="d-flex ga-2">
           <v-btn color="primary" variant="tonal" @click="createOpen = true">
-            <AppIcon class="me-1" name="plus" />
+            <v-icon class="me-1" icon="plus" />
             {{ t('device.dashboard.create') }}
           </v-btn>
           <v-btn :loading="devicesLoading" color="primary" variant="tonal" @click="refreshDevices">
-            <AppIcon class="me-1" name="refresh" />
+            <v-icon class="me-1" icon="refresh" />
             {{ t('actions.refresh') }}
           </v-btn>
         </div>
@@ -80,14 +80,12 @@
                   <template #activator="{ props }">
                     <v-btn
                       v-bind="props"
-                      icon
+                      icon="trash"
                       variant="text"
                       color="error"
                       :aria-label="t('device.actions.delete')"
                       @click.stop="openDeleteConfirm(device.deviceId)"
-                    >
-                      <AppIcon name="trash" />
-                    </v-btn>
+                    />
                   </template>
                 </v-tooltip>
               </td>
@@ -143,7 +141,6 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { commandDevice, createDevice, deleteDevice, fetchDevice, type DeviceCommandRequest } from '@/api'
-import AppIcon from '@/components/AppIcon.vue'
 import DeviceCreateDialog from '@/components/device/DeviceCreateDialog.vue'
 import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'

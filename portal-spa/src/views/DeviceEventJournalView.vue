@@ -74,13 +74,11 @@
                 <td>
                   <v-btn
                     class="journal-table__toggle"
-                    icon
+                    :icon="isExpanded(entry.sequence) ? 'chevron-down' : 'chevron-right'"
                     variant="text"
                     :aria-label="isExpanded(entry.sequence) ? t('journal.actions.collapse') : t('journal.actions.expand')"
                     @click="toggleEntry(entry.sequence)"
-                  >
-                    <AppIcon :name="isExpanded(entry.sequence) ? 'chevron-down' : 'chevron-right'" />
-                  </v-btn>
+                  />
                 </td>
                 <td class="journal-table__time">{{ formatTime(entry.receivedAt) }}</td>
                 <td>#{{ entry.deviceId }}</td>
@@ -133,7 +131,6 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import AppIcon from '@/components/AppIcon.vue'
 import { deviceTypeLabelKey, deviceTypeOptions } from '@/models/device-types'
 import {
   type DeviceJournalEventKindFilter,

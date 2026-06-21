@@ -3,7 +3,7 @@
     <v-expansion-panel>
       <v-expansion-panel-title class="recent-device-events__title">
         <div class="recent-device-events__title-copy">
-          <AppIcon name="journal" />
+          <v-icon icon="journal" />
           <div>
             <div class="text-subtitle-1 font-weight-medium">{{ t('device.dialog.recentEventsTitle') }}</div>
             <div class="text-body-2 text-medium-emphasis">{{ t('device.dialog.recentEventsSubtitle') }}</div>
@@ -68,7 +68,6 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import AppIcon from '@/components/AppIcon.vue'
 import { deviceTypeLabelKey } from '@/models/device-types'
 import {
   journalEventKindTranslationKey,

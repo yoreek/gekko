@@ -5,14 +5,12 @@
         <div class="dashboard-panel-tabs d-flex align-center flex-grow-1 min-w-0">
           <v-btn
             class="dashboard-panel-tabs__move"
-            icon
+            icon="chevron-left"
             variant="text"
             :disabled="!canMoveActivePanel(-1)"
             :aria-label="t('panels.moveLeft')"
             @click="moveActivePanel(-1)"
-          >
-            <AppIcon name="chevron-left" />
-          </v-btn>
+          />
           <v-tabs
             v-model="activePanelId"
             class="flex-grow-1"
@@ -25,14 +23,12 @@
           </v-tabs>
           <v-btn
             class="dashboard-panel-tabs__move"
-            icon
+            icon="chevron-right"
             variant="text"
             :disabled="!canMoveActivePanel(1)"
             :aria-label="t('panels.moveRight')"
             @click="moveActivePanel(1)"
-          >
-            <AppIcon name="chevron-right" />
-          </v-btn>
+          />
         </div>
 
         <div class="d-flex align-center flex-shrink-0">
@@ -46,7 +42,7 @@
               :aria-label="t('dashboard.addDevice')"
               @click="openAddDeviceDialog"
             >
-              <AppIcon class="me-1" name="plus" />
+              <v-icon class="me-1" icon="plus" />
               {{ t('dashboard.addDevice') }}
             </v-btn>
           </template>
@@ -54,7 +50,7 @@
         <v-tooltip :text="t('dashboard.addPanel')" location="bottom">
           <template #activator="{ props }">
             <v-btn v-bind="props" variant="text" color="primary" :aria-label="t('dashboard.addPanel')" @click="openCreatePanelDialog">
-              <AppIcon class="me-1" name="plus" />
+              <v-icon class="me-1" icon="plus" />
               {{ t('dashboard.addPanel') }}
             </v-btn>
           </template>
@@ -69,7 +65,7 @@
               :aria-label="t('actions.refresh')"
               @click="refreshDevices"
             >
-              <AppIcon class="me-1" name="refresh" />
+              <v-icon class="me-1" icon="refresh" />
               {{ t('actions.refresh') }}
             </v-btn>
           </template>
@@ -82,7 +78,7 @@
               :aria-label="t('dashboard.resetLayout')"
               @click="resetLayout"
             >
-              <AppIcon class="me-1" name="refresh" />
+              <v-icon class="me-1" icon="refresh" />
               {{ t('dashboard.resetLayout') }}
             </v-btn>
           </template>
@@ -96,7 +92,7 @@
               :aria-label="editing ? t('dashboard.doneMode') : t('dashboard.editMode')"
               @click="editing = !editing"
             >
-              <AppIcon class="me-1" :name="editing ? 'close' : 'edit'" />
+              <v-icon class="me-1" :icon="editing ? 'close' : 'edit'" />
               {{ editing ? t('dashboard.doneMode') : t('dashboard.editMode') }}
             </v-btn>
           </template>
@@ -210,7 +206,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { commandDevice, fetchDevice, type DeviceCommandRequest } from '@/api'
-import AppIcon from '@/components/AppIcon.vue'
 import DashboardGrid from '@/components/dashboard/DashboardGrid.vue'
 import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'

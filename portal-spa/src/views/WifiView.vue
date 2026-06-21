@@ -18,17 +18,17 @@
             </p>
             <div class="page-grid page-grid--three">
               <section class="metric">
-                <AppIcon class="metric-icon" name="wifi" />
+                <v-icon class="metric-icon" icon="wifi" />
                 <span class="text-body-2 font-weight-medium">{{ t('wifi.status') }}</span>
                 <strong class="text-body-1">{{ wifiStatusLabel }}</strong>
               </section>
               <section class="metric">
-                <AppIcon class="metric-icon" name="refresh" />
+                <v-icon class="metric-icon" icon="refresh" />
                 <span class="text-body-2 font-weight-medium">{{ t('wifi.stationIp') }}</span>
                 <strong class="text-body-1">{{ wifiStore.stationIp || '—' }}</strong>
               </section>
               <section class="metric">
-                <AppIcon class="metric-icon" name="portal" />
+                <v-icon class="metric-icon" icon="portal" />
                 <span class="text-body-2 font-weight-medium">{{ t('wifi.setupApIp') }}</span>
                 <strong class="text-body-1">{{ wifiStore.setupApIp || '—' }}</strong>
               </section>
@@ -144,7 +144,6 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { configureWifi, fetchWifiScan, fetchWifiStatus, resetWifiCredentials, startBleWifiConfig } from '@/api'
-import AppIcon from '@/components/AppIcon.vue'
 import { useWifiStore } from '@/stores/wifi'
 
 const { t } = useI18n()

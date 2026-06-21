@@ -23,7 +23,7 @@
         :aria-label="t('actions.refresh')"
         @click="$emit('refresh')"
       >
-        <AppIcon name="refresh" />
+        <v-icon icon="refresh" />
       </v-btn>
       <v-btn
         v-if="device && !editing"
@@ -33,7 +33,7 @@
         :aria-label="t('device.dialog.edit')"
         @click="enterEditMode"
       >
-        <AppIcon name="edit" />
+        <v-icon icon="edit" />
       </v-btn>
     </template>
 
@@ -115,7 +115,6 @@ import { computed, reactive, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useI18n } from 'vue-i18n'
 
-import AppIcon from '@/components/AppIcon.vue'
 import DeviceCommonFields from '@/components/device/DeviceCommonFields.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import RecentDeviceEvents from '@/components/device/RecentDeviceEvents.vue'

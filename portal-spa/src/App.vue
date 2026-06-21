@@ -6,9 +6,7 @@
           <div class="portal-drawer__title">{{ t('app.title') }}</div>
           <div class="portal-drawer__subtitle">{{ t('app.subtitle') }}</div>
         </div>
-        <v-btn class="portal-drawer__close" icon variant="text" @click="drawerOpen = false">
-          <AppIcon class="portal-drawer__close-icon" name="close" />
-        </v-btn>
+        <v-btn class="portal-drawer__close" icon="close" variant="text" @click="drawerOpen = false" />
       </div>
 
       <v-divider class="portal-drawer__divider" />
@@ -23,7 +21,7 @@
           @click="drawerOpen = false"
         >
           <template #prepend>
-            <AppIcon class="portal-drawer__item-icon" :name="item.icon" />
+            <v-icon class="portal-drawer__item-icon" :icon="item.icon" />
           </template>
           <v-list-item-title>{{ item.label }}</v-list-item-title>
         </v-list-item>
@@ -33,13 +31,11 @@
     <v-app-bar class="app-bar" flat height="64">
       <v-btn
         class="app-bar__nav-icon"
-        icon
+        icon="menu"
         variant="text"
         :aria-label="t('navigation.menu')"
         @click="drawerOpen = !drawerOpen"
-      >
-        <AppIcon name="menu" />
-      </v-btn>
+      />
 
       <div class="app-bar__brand">
         <div class="app-bar__title">{{ t('app.title') }}</div>
@@ -58,9 +54,12 @@
         {{ appStore.transportMode === 'mock' ? t('labels.mock') : t('labels.real') }}
       </v-chip>
 
-      <v-btn class="app-bar__icon-button" icon variant="text" @click="toggleTheme">
-        <AppIcon class="app-bar__menu-icon" :name="appStore.theme === 'dark' ? 'sun' : 'moon'" />
-      </v-btn>
+      <v-btn
+        class="app-bar__icon-button"
+        :icon="appStore.theme === 'dark' ? 'sun' : 'moon'"
+        variant="text"
+        @click="toggleTheme"
+      />
 
       <v-btn
         v-for="locale in locales"
@@ -85,8 +84,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, type RouteLocationRaw } from 'vue-router'
 import { useTheme } from 'vuetify'
 
-import AppIcon from './components/AppIcon.vue'
-import type { AppIconName } from './icons'
+import type { PortalIconName } from './icons'
 import { applyLocale, supportedLocales, type AppLocale } from './i18n'
 import { useAppStore } from './stores/app'
 import { useDeviceRegistryStore } from './stores/deviceRegistry'
@@ -106,7 +104,7 @@ interface MenuItem {
   name: 'dashboard' | 'panels' | 'devices' | 'device-events' | 'wifi' | 'ota' | 'system' | 'overview'
   to: RouteLocationRaw
   label: string
-  icon: AppIconName
+  icon: PortalIconName
   exact: boolean
 }
 
@@ -201,11 +199,6 @@ watch(
   min-width: 0;
 }
 
-.portal-drawer__close-icon {
-  width: 16px;
-  height: 16px;
-}
-
 .portal-drawer__title {
   font-size: 1rem;
   font-weight: 700;
@@ -234,8 +227,9 @@ watch(
 }
 
 .portal-drawer__item-icon {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
 }
 
 .app-bar,

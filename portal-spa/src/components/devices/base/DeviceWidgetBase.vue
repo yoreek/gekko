@@ -16,13 +16,11 @@
     <v-btn
       v-if="editable"
       class="device-widget__remove"
-      icon
+      icon="close"
       variant="text"
       :aria-label="t('device.actions.delete')"
       @click.stop="$emit('remove')"
-    >
-      <AppIcon class="device-widget__remove-icon" name="close" />
-    </v-btn>
+    />
 
     <div class="device-widget__header">
       <strong class="device-widget__name text-body-2 text-high-emphasis">{{ device.name }}</strong>
@@ -45,7 +43,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 
-import AppIcon from '@/components/AppIcon.vue'
 import type { DashboardDevice } from '@/models/device'
 
 const props = defineProps<{
@@ -96,11 +93,6 @@ function handleOpen(): void {
   width: 28px;
   height: 28px;
   min-width: 28px;
-}
-
-.device-widget__remove-icon {
-  width: 14px;
-  height: 14px;
 }
 
 .device-widget__header {

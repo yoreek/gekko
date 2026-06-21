@@ -16,12 +16,11 @@
           <slot name="title-actions" />
           <v-btn
             class="device-dialog__icon-button"
+            icon="close"
             variant="text"
             :aria-label="t('device.actions.close')"
             @click="$emit('update:modelValue', false)"
-          >
-            <AppIcon name="close" />
-          </v-btn>
+          />
         </div>
       </v-card-title>
 
@@ -42,8 +41,6 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-
-import AppIcon from '@/components/AppIcon.vue'
 
 defineProps<{
   modelValue: boolean

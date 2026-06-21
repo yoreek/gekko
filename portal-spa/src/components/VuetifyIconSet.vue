@@ -4,8 +4,8 @@
       :viewBox="shape.viewBox"
       class="portal-icon-set__svg"
       xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      stroke="currentColor"
+      :fill="shape.filled ? 'currentColor' : 'none'"
+      :stroke="shape.filled ? 'none' : 'currentColor'"
       stroke-linecap="round"
       stroke-linejoin="round"
       stroke-width="1.8"
@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { iconRegistry, type AppIconName } from '@/icons'
+import { resolveIconShape } from '@/icons'
 
 type IconValue = string | undefined | null
 
@@ -28,12 +28,7 @@ const props = defineProps<{
 }>()
 
 const shape = computed(() => {
-  if (typeof props.icon !== 'string') {
-    return iconRegistry.portal
-  }
-
-  const name = props.icon.replace(/^svg:/, '') as AppIconName
-  return iconRegistry[name] ?? iconRegistry.portal
+  return resolveIconShape(props.icon)
 })
 </script>
 

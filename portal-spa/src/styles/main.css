@@ -109,8 +109,9 @@ body[data-portal-theme='dark'] {
 .metric-icon {
   display: inline-block;
   flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
+  font-size: 22px;
   margin-bottom: 4px;
 }
 

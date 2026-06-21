@@ -18,17 +18,17 @@
             </p>
             <div class="page-grid page-grid--three">
               <section class="metric">
-                <AppIcon class="metric-icon" name="system" />
+                <v-icon class="metric-icon" icon="system" />
                 <span class="text-body-2 font-weight-medium">{{ t('system.status') }}</span>
                 <strong class="text-body-1">{{ systemStore.status }}</strong>
               </section>
               <section class="metric">
-                <AppIcon class="metric-icon" name="ws" />
+                <v-icon class="metric-icon" icon="ws" />
                 <span class="text-body-2 font-weight-medium">{{ t('system.websocket') }}</span>
                 <strong class="text-body-1">{{ t(`status.ws.${wsStore.connected ? 'connected' : 'disconnected'}`) }}</strong>
               </section>
               <section class="metric">
-                <AppIcon class="metric-icon" name="refresh" />
+                <v-icon class="metric-icon" icon="refresh" />
                 <span class="text-body-2 font-weight-medium">{{ t('system.rebooting') }}</span>
                 <strong class="text-body-1">{{ systemStore.rebooting ? t('labels.yes') : t('labels.no') }}</strong>
               </section>
@@ -50,7 +50,6 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { restartSystem as requestRestartSystem } from '@/api'
-import AppIcon from '@/components/AppIcon.vue'
 import { useSystemStore } from '@/stores/system'
 import { useWebSocketStore } from '@/stores/websocket'
 

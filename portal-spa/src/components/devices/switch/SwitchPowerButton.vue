@@ -4,18 +4,15 @@
     :color="buttonColor"
     :disabled="isDisabled"
     :variant="buttonVariant"
-    icon
+    icon="power"
     @click.stop="emitToggle"
-  >
-    <AppIcon name="power" />
-  </v-btn>
+  />
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import AppIcon from '@/components/AppIcon.vue'
 import { nextDashboardPowerState, type OutputState } from '@/models/devices/switch'
 
 const props = defineProps<{

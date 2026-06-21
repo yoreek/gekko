@@ -29,7 +29,7 @@
           :disabled="busy || scan.in_progress || !device.isReady"
           @click="emitScan"
         >
-          <AppIcon class="me-1" name="refresh" />
+          <v-icon class="me-1" icon="refresh" />
           {{ t('device.dialog.onewireScanAction') }}
         </v-btn>
         <v-chip v-if="scan.in_progress" color="primary" variant="tonal">
@@ -59,7 +59,6 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import AppIcon from '@/components/AppIcon.vue'
 import type { DeviceCommandRequest } from '@/api'
 import type { DashboardDevice } from '@/models/device'
 import { normalizeOneWireBusConfig } from '@/models/devices/onewire-bus'

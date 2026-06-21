@@ -29,17 +29,13 @@
                 />
               </div>
               <div class="panel-manager__actions">
-                <v-btn icon variant="text" :disabled="panelStore.panels.indexOf(panel) === 0" @click="movePanel(panel.id, -1)">
-                  <AppIcon name="chevron-left" />
-                </v-btn>
+                <v-btn icon="chevron-left" variant="text" :disabled="panelStore.panels.indexOf(panel) === 0" @click="movePanel(panel.id, -1)" />
                 <v-btn
-                  icon
+                  icon="chevron-right"
                   variant="text"
                   :disabled="panelStore.panels.indexOf(panel) === panelStore.panels.length - 1"
                   @click="movePanel(panel.id, 1)"
-                >
-                  <AppIcon name="chevron-right" />
-                </v-btn>
+                />
                 <v-btn variant="tonal" @click="savePanelName(panel.id)">
                   {{ t('panels.rename') }}
                 </v-btn>
@@ -47,7 +43,7 @@
                   {{ t('panels.activate') }}
                 </v-btn>
                 <v-btn color="error" variant="text" :disabled="panelStore.panels.length <= 1" @click="deletePanel(panel.id)">
-                  <AppIcon name="trash" />
+                  <v-icon class="me-1" icon="trash" />
                   {{ t('panels.delete') }}
                 </v-btn>
               </div>
@@ -67,7 +63,6 @@
 import { reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import AppIcon from '@/components/AppIcon.vue'
 import { usePanelStore } from '@/stores/panels'
 
 const { t } = useI18n()

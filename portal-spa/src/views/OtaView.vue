@@ -18,17 +18,17 @@
             </p>
             <div class="page-grid page-grid--three">
               <section class="metric">
-                <AppIcon class="metric-icon" name="ota" />
+                <v-icon class="metric-icon" icon="ota" />
                 <span class="text-body-2 font-weight-medium">{{ t('ota.enabled') }}</span>
                 <strong class="text-body-1">{{ otaStore.enabled ? t('status.enabled') : t('status.disabled') }}</strong>
               </section>
               <section class="metric">
-                <AppIcon class="metric-icon" name="refresh" />
+                <v-icon class="metric-icon" icon="refresh" />
                 <span class="text-body-2 font-weight-medium">{{ t('ota.freeSketchSpace') }}</span>
                 <strong class="text-body-1">{{ otaStore.freeSketchSpace }} B</strong>
               </section>
               <section class="metric">
-                <AppIcon class="metric-icon" name="system" />
+                <v-icon class="metric-icon" icon="system" />
                 <span class="text-body-2 font-weight-medium">{{ t('ota.hasError') }}</span>
                 <strong class="text-body-1">{{ otaStore.hasError ? t('status.failed') : t('labels.no') }}</strong>
               </section>
@@ -50,7 +50,6 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { fetchOtaStatus } from '@/api'
-import AppIcon from '@/components/AppIcon.vue'
 import { useOtaStore } from '@/stores/ota'
 
 const { t } = useI18n()

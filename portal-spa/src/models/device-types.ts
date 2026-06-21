@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
 
 import type { DeviceOutputState } from '@/api'
-import type { AppIconName } from '@/icons'
+import type { PortalIconName } from '@/icons'
 import DummyDeviceWidget from '@/components/devices/dummy/DummyDeviceWidget.vue'
 import GpioSwitchDeviceWidget from '@/components/devices/gpio-switch/GpioSwitchDeviceWidget.vue'
 import OneWireBusDeviceWidget from '@/components/devices/onewire-bus/OneWireBusDeviceWidget.vue'
@@ -19,7 +19,7 @@ export type DeviceTypeId = number
 export interface DeviceTypeOption {
   id: DeviceTypeId
   labelKey: string
-  icon: AppIconName
+  icon: PortalIconName
   componentKey: string
   supportedOutputStates?: DeviceOutputState[]
 }

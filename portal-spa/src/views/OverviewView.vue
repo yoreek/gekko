@@ -18,17 +18,17 @@
             </p>
             <div class="page-grid page-grid--three">
               <section class="metric">
-                <AppIcon class="metric-icon" name="device" />
+                <v-icon class="metric-icon" icon="device" />
                 <span class="text-body-2 font-weight-medium">{{ t('device.dashboard.title') }}</span>
                 <strong class="text-body-1">{{ deviceStore.devices.length }}</strong>
               </section>
               <section class="metric">
-                <AppIcon class="metric-icon" name="wifi" />
+                <v-icon class="metric-icon" icon="wifi" />
                 <span class="text-body-2 font-weight-medium">{{ t('wifi.status') }}</span>
                 <strong class="text-body-1">{{ wifiStatusLabel }}</strong>
               </section>
               <section class="metric">
-                <AppIcon class="metric-icon" name="ota" />
+                <v-icon class="metric-icon" icon="ota" />
                 <span class="text-body-2 font-weight-medium">{{ t('ota.enabled') }}</span>
                 <strong class="text-body-1">{{ otaStore.enabled ? t('status.enabled') : t('status.disabled') }}</strong>
               </section>
@@ -124,7 +124,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { fetchOtaStatus, fetchWifiStatus } from '@/api'
-import AppIcon from '@/components/AppIcon.vue'
 import { useAppStore } from '@/stores/app'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { useOtaStore } from '@/stores/ota'

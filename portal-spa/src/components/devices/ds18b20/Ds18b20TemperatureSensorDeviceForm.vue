@@ -37,7 +37,7 @@
             :disabled="busy || scanBusy || currentValue.dependency_device_id === 0"
             @click="scanSelectedDependency"
           >
-            <AppIcon class="me-1" name="refresh" />
+            <v-icon class="me-1" icon="refresh" />
             {{ t('device.dialog.ds18b20ScanAction') }}
           </v-btn>
         </v-col>
@@ -120,7 +120,6 @@ import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommandRequest } from '@/api'
 import { commandDevice } from '@/api'
-import AppIcon from '@/components/AppIcon.vue'
 import { ONEWIRE_BUS_DEVICE_TYPE_ID } from '@/models/device-types'
 import {
   createDefaultDs18b20TemperatureSensorConfig,
