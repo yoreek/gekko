@@ -1,19 +1,30 @@
 #pragma once
 
 #include <ArduinoJson.h>
-
-class AsyncWebServerRequest;
-class AsyncWebServerResponse;
-class AsyncResponseStream;
+#include <cstddef>
+#include <cstdint>
+#include <string>
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 #include <ESPAsyncWebServer.h>
+#elif defined(UNIT_TEST)
+#include <ESPAsyncWebServer.h>
+#else
+class AsyncWebServerRequest;
+class AsyncWebServerResponse;
+class AsyncResponseStream;
 #endif
 
 namespace ewfm {
 
 class BaseController {
 public:
+    static constexpr uint32_t kRequestStateMagic = 0x57554631u;
+    static constexpr size_t kMaxRequestFiles = 3;
+    static constexpr size_t kMaxTmpPathLength = 96;
+    static constexpr size_t kMaxOriginalFilenameLength = 96;
+    static constexpr size_t kMaxContentTypeLength = 64;
+
     enum class Action : uint8_t {
         Index,
         Show,
@@ -42,12 +53,35 @@ public:
         size_t size;
         const RulesChain* prev{nullptr};
     };
-
+    struct RequestFile {
+        char tmpPath[kMaxTmpPathLength]{};
+        char originalFilename[kMaxOriginalFilenameLength]{};
+        char contentType[kMaxContentTypeLength]{};
+        size_t size{0};
+        size_t received{0};
+        bool claimed{false};
+        bool present{false};
+    };
+    struct RequestState {
+        uint32_t magic{kRequestStateMagic};
+        RequestFile files[kMaxRequestFiles]{};
+        size_t fileCount{0};
+    };
     explicit BaseController(AsyncWebServerRequest* request, Action action);
     virtual ~BaseController();
 
     void dispatch();
     void dispatch(uint8_t* body, size_t len);
+
+    const RequestFile* files() const;
+    size_t fileCount() const;
+
+    bool claimFile(size_t index);
+    bool moveFile(size_t index, const char* destinationPath);
+    static void setUploadTmpDir(const char* path);
+    static const char* uploadTmpDir();
+    static bool appendRequestBody(AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total);
+    static void clearRequestBody(AsyncWebServerRequest* request);
 
 protected:
     AsyncWebServerRequest* request_{nullptr};
@@ -77,6 +111,14 @@ protected:
     void send(AsyncWebServerResponse* response);
     void send(AsyncResponseStream* stream);
 
+    static bool beginUploadFile(AsyncWebServerRequest* request, const char* originalFilename, const char* contentType, size_t totalBytes,
+                                size_t& fileIndex);
+    static bool appendUploadFile(AsyncWebServerRequest* request, size_t fileIndex, const uint8_t* data, size_t len, size_t index,
+                                 size_t total);
+    static bool finishUploadFile(AsyncWebServerRequest* request, size_t fileIndex, bool final);
+    void cleanupUploadFiles();
+    static const RequestFile* requestFiles(AsyncWebServerRequest* request, size_t& fileCount);
+
     static const char* corsAllowMethods();
     static const char* corsAllowHeaders();
     static bool beforeCorsOptions(BaseController& self);
@@ -96,9 +138,11 @@ private:
     void _runAfter(const RulesChain* chain);
     AsyncWebServerResponse* wrap(AsyncWebServerResponse* response) const;
     AsyncResponseStream* wrap(AsyncResponseStream* stream) const;
+    void cleanupRequestState();
 
     DynamicJsonDocument* doc_{nullptr};
     bool applyDefaultHeaders_{true};
+    static std::string uploadTmpDir_;
 };
 
 } // namespace ewfm

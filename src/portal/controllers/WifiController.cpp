@@ -14,45 +14,6 @@ namespace ewfm {
 
 bool WifiController::scanStarted_ = false;
 
-#if defined(ARDUINO) && !defined(UNIT_TEST)
-namespace {
-bool appendRequestBody(AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
-    if (request == nullptr) {
-        return false;
-    }
-
-    if (index == 0U) {
-        if (request->_tempObject != nullptr) {
-            free(request->_tempObject);
-            request->_tempObject = nullptr;
-        }
-
-        request->_tempObject = calloc(total + 1U, sizeof(uint8_t));
-        if (request->_tempObject == nullptr) {
-            return false;
-        }
-    }
-
-    if (request->_tempObject == nullptr) {
-        return false;
-    }
-
-    auto* buffer = static_cast<uint8_t*>(request->_tempObject);
-    std::memcpy(buffer + index, data, len);
-    return (index + len) == total;
-}
-
-void clearRequestBody(AsyncWebServerRequest* request) {
-    if (request == nullptr || request->_tempObject == nullptr) {
-        return;
-    }
-
-    free(request->_tempObject);
-    request->_tempObject = nullptr;
-}
-} // namespace
-#endif
-
 WifiController::WifiController(AsyncWebServerRequest* request, const Action action, WifiManager& wifiManager, IWifiDriver& wifiDriver)
     : BaseController(request, action), wifiManager_(wifiManager), wifiDriver_(wifiDriver) {}
 
@@ -67,12 +28,12 @@ void WifiController::registerRoutes(AsyncWebServer& server, WifiManager& wifiMan
     server.on(
         "/api/wifi/configure", HTTP_POST, [&wifiManager, &wifiDriver](AsyncWebServerRequest* request) { (void)request; }, nullptr,
         [&wifiManager, &wifiDriver](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
-            if (!appendRequestBody(request, data, len, index, total)) {
+            if (!BaseController::appendRequestBody(request, data, len, index, total)) {
                 return;
             }
 
             WifiController(request, Action::Create, wifiManager, wifiDriver).dispatch(static_cast<uint8_t*>(request->_tempObject), total);
-            clearRequestBody(request);
+            BaseController::clearRequestBody(request);
         });
     server.on("/api/wifi/configure", HTTP_DELETE, [&wifiManager, &wifiDriver](AsyncWebServerRequest* request) {
         WifiController(request, Action::Destroy, wifiManager, wifiDriver).dispatch();
@@ -80,12 +41,12 @@ void WifiController::registerRoutes(AsyncWebServer& server, WifiManager& wifiMan
     server.on(
         "/api/wifi/ble-config", HTTP_POST, [&wifiManager, &wifiDriver](AsyncWebServerRequest* request) { (void)request; }, nullptr,
         [&wifiManager, &wifiDriver](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
-            if (!appendRequestBody(request, data, len, index, total)) {
+            if (!BaseController::appendRequestBody(request, data, len, index, total)) {
                 return;
             }
 
             WifiController(request, Action::Cmd, wifiManager, wifiDriver).dispatch(static_cast<uint8_t*>(request->_tempObject), total);
-            clearRequestBody(request);
+            BaseController::clearRequestBody(request);
         });
     server.on("/api/wifi/scan", HTTP_OPTIONS, [&wifiManager, &wifiDriver](AsyncWebServerRequest* request) {
         WifiController(request, Action::Options, wifiManager, wifiDriver).dispatch();

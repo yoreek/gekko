@@ -98,40 +98,6 @@ void writeLayoutJson(::AsyncResponseStream& out, const DashboardLayoutSnapshot& 
     out.print("]}");
 }
 
-bool appendRequestBody(AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
-    if (request == nullptr || total > DashboardLayoutStore::kMaxSerializedBytes) {
-        return false;
-    }
-
-    if (index == 0U) {
-        if (request->_tempObject != nullptr) {
-            free(request->_tempObject);
-            request->_tempObject = nullptr;
-        }
-
-        request->_tempObject = calloc(total + 1U, sizeof(uint8_t));
-        if (request->_tempObject == nullptr) {
-            return false;
-        }
-    }
-
-    if (request->_tempObject == nullptr) {
-        return false;
-    }
-
-    auto* buffer = static_cast<uint8_t*>(request->_tempObject);
-    std::memcpy(buffer + index, data, len);
-    return (index + len) == total;
-}
-
-void clearRequestBody(AsyncWebServerRequest* request) {
-    if (request == nullptr || request->_tempObject == nullptr) {
-        return;
-    }
-
-    free(request->_tempObject);
-    request->_tempObject = nullptr;
-}
 } // namespace
 
 void DashboardLayoutController::registerRoutes(AsyncWebServer& server, DashboardLayoutStore& store) {
@@ -140,12 +106,12 @@ void DashboardLayoutController::registerRoutes(AsyncWebServer& server, Dashboard
     server.on(
         AsyncURIMatcher::exact("/api/dashboard/layout"), HTTP_PUT, [&store](AsyncWebServerRequest* request) { (void)request; }, nullptr,
         [&store](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
-            if (!appendRequestBody(request, data, len, index, total)) {
+            if (total > DashboardLayoutStore::kMaxSerializedBytes || !BaseController::appendRequestBody(request, data, len, index, total)) {
                 return;
             }
 
             DashboardLayoutController(request, Action::Update, store).dispatch(static_cast<uint8_t*>(request->_tempObject), total);
-            clearRequestBody(request);
+            BaseController::clearRequestBody(request);
         });
     server.on(AsyncURIMatcher::exact("/api/dashboard/layout"), HTTP_OPTIONS,
               [&store](AsyncWebServerRequest* request) { DashboardLayoutController(request, Action::Options, store).dispatch(); });

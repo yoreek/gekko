@@ -44,41 +44,6 @@ DeviceValidationResult flushRegistryBeforeRestart(DeviceRegistry* registry) {
     }
     return registry->flushNow();
 }
-
-bool appendRequestBody(AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
-    if (request == nullptr) {
-        return false;
-    }
-
-    if (index == 0U) {
-        if (request->_tempObject != nullptr) {
-            free(request->_tempObject);
-            request->_tempObject = nullptr;
-        }
-
-        request->_tempObject = calloc(total + 1U, sizeof(uint8_t));
-        if (request->_tempObject == nullptr) {
-            return false;
-        }
-    }
-
-    if (request->_tempObject == nullptr) {
-        return false;
-    }
-
-    auto* buffer = static_cast<uint8_t*>(request->_tempObject);
-    std::memcpy(buffer + index, data, len);
-    return (index + len) == total;
-}
-
-void clearRequestBody(AsyncWebServerRequest* request) {
-    if (request == nullptr || request->_tempObject == nullptr) {
-        return;
-    }
-
-    free(request->_tempObject);
-    request->_tempObject = nullptr;
-}
 } // namespace
 
 void SystemController::registerRoutes(AsyncWebServer& server, DeviceRegistry* registry) {
@@ -86,12 +51,12 @@ void SystemController::registerRoutes(AsyncWebServer& server, DeviceRegistry* re
     server.on(
         "/api/system/restart", HTTP_POST, [registry](AsyncWebServerRequest* request) { (void)request; }, nullptr,
         [registry](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
-            if (!appendRequestBody(request, data, len, index, total)) {
+            if (!BaseController::appendRequestBody(request, data, len, index, total)) {
                 return;
             }
 
             SystemController(request, Action::Create, registry).dispatch(static_cast<uint8_t*>(request->_tempObject), total);
-            clearRequestBody(request);
+            BaseController::clearRequestBody(request);
         });
     server.on("/api/system/restart", HTTP_OPTIONS,
               [registry](AsyncWebServerRequest* request) { SystemController(request, Action::Options, registry).dispatch(); });
