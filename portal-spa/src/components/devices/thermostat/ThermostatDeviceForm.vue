@@ -2,10 +2,10 @@
   <div class="device-type-stack">
     <section class="device-type-section">
       <v-alert v-if="sensorItems.length === 0" type="warning" variant="tonal">
-        {{ t('device.dialog.thermostatNoTemperatureSensor') }}
+        {{ t('device.dialog.thermostat.noTemperatureSensor') }}
       </v-alert>
       <v-alert v-if="switchItems.length === 0" type="warning" variant="tonal">
-        {{ t('device.dialog.thermostatNoSwitch') }}
+        {{ t('device.dialog.thermostat.noSwitch') }}
       </v-alert>
 
       <v-row class="device-type-section__grid">
@@ -15,6 +15,7 @@
             :items="sensorItems"
             :model-value="currentValue.temperature_sensor_device_id"
             :disabled="busy || sensorItems.length === 0"
+            :rules="sensorRules"
             @update:model-value="updateNumber('temperature_sensor_device_id', $event)"
           />
         </v-col>
@@ -24,6 +25,7 @@
             :items="switchItems"
             :model-value="currentValue.switch_device_id"
             :disabled="busy || switchItems.length === 0"
+            :rules="switchRules"
             @update:model-value="updateNumber('switch_device_id', $event)"
           />
         </v-col>
@@ -38,7 +40,7 @@
             :items="modeItems"
             :model-value="currentValue.mode"
             :disabled="busy"
-            @update:model-value="update('mode', $event as ThermostatMode)"
+            @update:model-value="update('mode', $event as Thermostat.Mode)"
           />
         </v-col>
         <v-col cols="12" md="4">
@@ -145,7 +147,7 @@
             :items="algorithmItems"
             :model-value="currentValue.algorithm"
             :disabled="busy"
-            @update:model-value="update('algorithm', $event as ThermostatAlgorithm)"
+            @update:model-value="update('algorithm', $event as Thermostat.Algorithm)"
           />
         </v-col>
       </v-row>
@@ -157,34 +159,48 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import {
-  createDefaultThermostatConfig,
-  thermostatAlgorithmLabelKey,
-  thermostatModeLabelKey,
-  type ThermostatAlgorithm,
-  type ThermostatConfigDraft,
-  type ThermostatMode,
-} from '@/models/devices/thermostat'
+import { Thermostat } from '@/models/devices/thermostat'
 import {
   DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
   GPIO_SWITCH_DEVICE_TYPE_ID,
+  THERMOSTAT_DEVICE_TYPE_ID,
   resolveDeviceTypeOption,
 } from '@/models/device-types'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
+type ThermostatFormValue = Thermostat.CreateDraft | Thermostat.ConfigDraft
+
 const props = defineProps<{
-  modelValue: ThermostatConfigDraft | undefined
+  modelValue: ThermostatFormValue | undefined
+  mode?: 'create' | 'edit'
   busy?: boolean
 }>()
 
 const emit = defineEmits<{
-  'update:modelValue': [value: ThermostatConfigDraft]
+  'update:modelValue': [value: ThermostatFormValue]
 }>()
 
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
-const fallbackValue = createDefaultThermostatConfig()
-const currentValue = computed<ThermostatConfigDraft>(() => props.modelValue ?? fallbackValue)
+const isCreateMode = computed(() => props.mode !== 'edit')
+const fallbackValue: ThermostatFormValue = {
+  name: 'New Device',
+  typeId: THERMOSTAT_DEVICE_TYPE_ID,
+  enabled: true,
+  mode: 'heat',
+  algorithm: 'hysteresis',
+  target_celsius: 25,
+  min_safe_celsius: 0,
+  max_safe_celsius: 50,
+  hysteresis_celsius: 0.5,
+  check_interval_ms: 1000,
+  sensor_timeout_ms: 6000,
+  retry_after_error_ms: 30000,
+  min_switch_interval_ms: 5000,
+  temperature_sensor_device_id: 0,
+  switch_device_id: 0,
+}
+const currentValue = computed<ThermostatFormValue>(() => props.modelValue ?? fallbackValue)
 const sensorItems = computed(() =>
   deviceStore.devices
     .filter(device => device.typeId === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID)
@@ -204,24 +220,27 @@ const switchItems = computed(() =>
       value: device.deviceId,
     })),
 )
-const modeItems = computed(() => ['off', 'heat', 'cool'].map(value => ({ title: t(thermostatModeLabelKey(value as ThermostatMode)), value })))
+const modeItems = computed(() => ['off', 'heat', 'cool'].map(value => ({ title: t(Thermostat.modeLabelKey(value as Thermostat.Mode)), value })))
 const algorithmItems = computed(() =>
-  ['hysteresis'].map(value => ({ title: t(thermostatAlgorithmLabelKey(value as ThermostatAlgorithm)), value })),
+  ['hysteresis'].map(value => ({ title: t(Thermostat.algorithmLabelKey(value as Thermostat.Algorithm)), value })),
 )
+const sensorRules = computed(() => [
+  (value: unknown) => Number(value) > 0 || t('device.dialog.thermostat.noTemperatureSensor'),
+])
+const switchRules = computed(() => [
+  (value: unknown) => Number(value) > 0 || t('device.dialog.thermostat.noSwitch'),
+])
 
-function emitUpdate(next: ThermostatConfigDraft): void {
+function emitUpdate(next: ThermostatFormValue): void {
   emit('update:modelValue', next)
 }
 
-function update<K extends keyof ThermostatConfigDraft>(key: K, value: ThermostatConfigDraft[K]): void {
-  emitUpdate({
-    ...currentValue.value,
-    [key]: value,
-  })
+function update<K extends keyof Thermostat.CreateDraft>(key: K, value: Thermostat.CreateDraft[K]): void {
+  emitUpdate(buildNextValue({ [key]: value } as Partial<Thermostat.CreateDraft>))
 }
 
 function updateNumber(key: keyof Pick<
-  ThermostatConfigDraft,
+  Thermostat.CreateDraft,
   | 'temperature_sensor_device_id'
   | 'switch_device_id'
   | 'target_celsius'
@@ -238,6 +257,19 @@ function updateNumber(key: keyof Pick<
     return
   }
   update(key as never, numeric as never)
+}
+
+function buildNextValue(patch: Partial<Thermostat.CreateDraft>): ThermostatFormValue {
+  if (!isCreateMode.value) {
+    return {
+      ...(currentValue.value as Thermostat.CreateDraft),
+      ...patch,
+    }
+  }
+  return {
+    ...(currentValue.value as Thermostat.CreateDraft),
+    ...patch,
+  }
 }
 </script>
 

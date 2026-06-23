@@ -210,7 +210,7 @@ import DashboardGrid from '@/components/dashboard/DashboardGrid.vue'
 import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import { buildDeviceEditCommands } from '@/components/device/device-form'
-import type { DeviceEditSubmitPayload } from '@/components/device/device-form'
+import type { DeviceEditDraft } from '@/components/device/device-form'
 import type { DashboardDevice } from '@/models/device'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore, type DashboardPanelWidget } from '@/stores/panels'
@@ -415,10 +415,11 @@ function applyMutationResponse(response: { registry_revision: number; pending_pe
   deviceStore.setPendingPersistence(response.pending_persistence)
   if (response.device !== undefined) {
     const device = response.device
-    const isNewDevice = !deviceStore.devices.some(entry => entry.deviceId === device.device_id)
+    const deviceId = device.device_id ?? 0
+    const isNewDevice = !deviceStore.devices.some(entry => entry.deviceId === deviceId)
     deviceStore.upsertDevice(device, response.registry_revision)
     if (isNewDevice) {
-      panelStore.assignDeviceToActivePanel(device.device_id)
+      panelStore.assignDeviceToActivePanel(deviceId)
     }
   }
 }
@@ -484,7 +485,7 @@ function submitAddDevice(): void {
   addDeviceDialogOpen.value = false
 }
 
-async function saveDevice(payload: DeviceEditSubmitPayload): Promise<void> {
+async function saveDevice(payload: DeviceEditDraft): Promise<void> {
   if (selectedDeviceId.value === null || selectedDevice.value === null) {
     return
   }

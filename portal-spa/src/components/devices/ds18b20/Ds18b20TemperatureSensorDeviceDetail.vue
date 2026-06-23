@@ -76,12 +76,10 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DashboardDevice } from '@/models/device'
-import {
-  formatTemperatureOutput,
-  normalizeDs18b20TemperatureSensorConfig,
-  temperatureOutputValid,
-} from '@/models/devices/ds18b20'
+import { Ds18b20 } from '@/models/devices/ds18b20'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
+
+const deviceModel = new Ds18b20.Device()
 
 const props = defineProps<{
   device: DashboardDevice
@@ -91,12 +89,13 @@ const props = defineProps<{
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
 const dependencyDeviceId = computed(() => props.device.deps.find(dep => dep.role === 'onewire_bus')?.device_id ?? 0)
-const config = computed(() => normalizeDs18b20TemperatureSensorConfig(props.device.detail.config, props.device.deps))
+const config = computed(() => deviceModel.normalizeConfig(props.device.detail.config, props.device.deps))
+const output = computed(() => deviceModel.normalizeOutput(props.device.raw))
 const temperature = computed(() => {
-  const value = props.device.output.temperature
-  return temperatureOutputValid(value) ? value : undefined
+  const value = output.value.temperature
+  return Ds18b20.temperatureValid(value) ? value : undefined
 })
-const temperatureText = computed(() => formatTemperatureOutput(temperature.value) || t('device.dialog.temperatureUnavailableShort'))
+const temperatureText = computed(() => Ds18b20.formatTemperature(temperature.value) || t('device.dialog.temperatureUnavailableShort'))
 const dependencyLabel = computed(() => {
   const dependency = deviceStore.devices.find(device => device.deviceId === dependencyDeviceId.value)
   return dependency ? `${dependency.name} #${dependency.deviceId}` : `#${dependencyDeviceId.value}`

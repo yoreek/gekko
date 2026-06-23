@@ -3,60 +3,8 @@
 #include "devices/core/DeviceBaseConfig.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
 
-#include <cstring>
-
 namespace ewfm {
-
 namespace {
-const char* deviceStatusToString(DeviceStatus status) {
-    switch (status) {
-    case DeviceStatus::Creating:
-        return "creating";
-    case DeviceStatus::Starting:
-        return "starting";
-    case DeviceStatus::Ready:
-        return "ready";
-    case DeviceStatus::Disabled:
-        return "disabled";
-    case DeviceStatus::Faulted:
-        return "faulted";
-    case DeviceStatus::DependencyBlocked:
-        return "dependency_blocked";
-    case DeviceStatus::Reconfiguring:
-        return "reconfiguring";
-    case DeviceStatus::Stopping:
-        return "stopping";
-    case DeviceStatus::Deleting:
-        return "deleting";
-    case DeviceStatus::Unknown:
-    default:
-        return "unknown";
-    }
-}
-
-const char* persistencePolicyToString(DevicePersistencePolicy policy) {
-    switch (policy) {
-    case DevicePersistencePolicy::Immediate:
-        return "immediate";
-    case DevicePersistencePolicy::Delayed:
-        return "delayed";
-    case DevicePersistencePolicy::Coalesced:
-        return "coalesced";
-    }
-    return "delayed";
-}
-
-DevicePersistencePolicy parsePersistencePolicy(const JsonObjectConst& input) {
-    const char* policy = input["persistence_policy"] | "immediate";
-    if (std::strcmp(policy, "delayed") == 0) {
-        return DevicePersistencePolicy::Delayed;
-    }
-    if (std::strcmp(policy, "coalesced") == 0) {
-        return DevicePersistencePolicy::Coalesced;
-    }
-    return DevicePersistencePolicy::Immediate;
-}
-
 bool parseDepsField(const JsonObjectConst& input, std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t& depCount,
                     const char*& error) {
     depCount = 0;
@@ -128,7 +76,7 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseCreateRequest(const JsonObje
                                                                   const char*& error) const {
     request = {};
     request.typeId = typeId();
-    request.persistencePolicy = parsePersistencePolicy(input);
+    request.persistencePolicy = Ds18b20TemperatureSensorDevice::descriptor().defaultPersistencePolicy;
     request.configVersion = kDs18b20TemperatureSensorConfigVersion;
 
     DeviceBaseConfigV1 base{};
@@ -142,13 +90,9 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseCreateRequest(const JsonObje
     }
 
     const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
-    if (configObject.isNull()) {
-        error = "ds18b20 config is required";
-        return false;
-    }
-
+    const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
     Ds18b20TemperatureSensorConfigV1 config{};
-    if (!parseDs18b20TemperatureSensorConfigJson(configObject, config, error)) {
+    if (!parseDs18b20TemperatureSensorConfigJson(configInput, config, error)) {
         return false;
     }
     config.base = base;
@@ -168,7 +112,10 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseCreateRequest(const JsonObje
 bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
                                                                         DeviceConfigUpdateRequest& request, const char*& error) const {
     const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
-    if (configObject.isNull()) {
+    const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
+    if (configObject.isNull() && input["address"].isNull() && input["resolution"].isNull() && input["unit"].isNull() &&
+        input["poll_ms"].isNull() && input["report_delta_celsius"].isNull() && input["report_delta_centi_celsius"].isNull() &&
+        input["report_always"].isNull()) {
         error = "ds18b20 config is required";
         return false;
     }
@@ -181,7 +128,7 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const Js
     }
 
     Ds18b20TemperatureSensorConfigV1 config{};
-    if (!parseDs18b20TemperatureSensorConfigJson(configObject, config, error)) {
+    if (!parseDs18b20TemperatureSensorConfigJson(configInput, config, error)) {
         return false;
     }
     config.base = base;
@@ -247,8 +194,7 @@ Ds18b20TemperatureSensorDeviceApiAdapter::validateSetDepsRequest(const IDeviceRu
 }
 
 void Ds18b20TemperatureSensorDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const {
-    writeCommonDeviceJson(runtime, typeName(), deviceStatusToString(runtime.status()),
-                          persistencePolicyToString(runtime.persistencePolicy()), false, output);
+    writeCommonDeviceJson(runtime, typeName(), output);
     static_cast<const Ds18b20TemperatureSensorDevice&>(runtime).writeDeviceJson(output);
 }
 

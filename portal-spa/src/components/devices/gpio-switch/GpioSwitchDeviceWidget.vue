@@ -18,6 +18,9 @@ import SwitchDeviceWidgetBase from '@/components/devices/switch/SwitchDeviceWidg
 import SwitchPowerButton from '@/components/devices/switch/SwitchPowerButton.vue'
 import type { DashboardDevice } from '@/models/device'
 import { isOutputState, switchCommandPayload } from '@/models/devices/switch'
+import { GpioSwitch } from '@/models/devices/gpio-switch'
+
+const deviceModel = new GpioSwitch.Device()
 
 const props = defineProps<{
   device: DashboardDevice
@@ -29,5 +32,8 @@ defineEmits<{
   command: [payload: DeviceCommandRequest]
 }>()
 
-const outputState = computed(() => (isOutputState(props.device.output.state) ? props.device.output.state : undefined))
+const outputState = computed(() => {
+  const output = deviceModel.normalizeOutput(props.device.raw)
+  return isOutputState(output.state) ? output.state : undefined
+})
 </script>

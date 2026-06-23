@@ -46,6 +46,11 @@ The firmware SHALL support JSON as an external configuration interchange format.
 - **WHEN** a caller requests a configuration export
 - **THEN** the firmware returns JSON containing the current non-secret configuration fields, schema version, and metadata needed for future import
 
+#### Scenario: Exported device records are flat JSON objects
+- **WHEN** the firmware exports a device setup transfer bundle
+- **THEN** each device record contains top-level identity fields such as `id`, `type`, `name`, `enabled`, `config_version`, `config_revision`, the device-specific configuration fields, and `deps`
+- **AND** the export does not wrap the device configuration in a separate binary `config_blob_hex` field
+
 #### Scenario: Configuration is imported
 - **WHEN** a caller submits JSON configuration within the accepted size limit
 - **THEN** the firmware parses, validates, migrates if needed, and persists only accepted fields
@@ -87,4 +92,3 @@ The firmware SHALL keep controller-level configuration separate from the dynamic
 #### Scenario: Controller configuration changes
 - **WHEN** a caller changes controller-level configuration such as WiFi credentials or provisioning settings
 - **THEN** the firmware persists those controller settings without rewriting dynamic device records unless an explicit registry migration is required
-

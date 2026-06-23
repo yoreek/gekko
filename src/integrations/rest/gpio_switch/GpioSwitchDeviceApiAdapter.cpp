@@ -3,60 +3,7 @@
 #include "devices/core/DeviceBaseConfig.h"
 #include "devices/switch/gpio/GpioSwitchDevice.h"
 
-#include <cstring>
-
 namespace ewfm {
-
-namespace {
-const char* deviceStatusToString(DeviceStatus status) {
-    switch (status) {
-    case DeviceStatus::Creating:
-        return "creating";
-    case DeviceStatus::Starting:
-        return "starting";
-    case DeviceStatus::Ready:
-        return "ready";
-    case DeviceStatus::Disabled:
-        return "disabled";
-    case DeviceStatus::Faulted:
-        return "faulted";
-    case DeviceStatus::DependencyBlocked:
-        return "dependency_blocked";
-    case DeviceStatus::Reconfiguring:
-        return "reconfiguring";
-    case DeviceStatus::Stopping:
-        return "stopping";
-    case DeviceStatus::Deleting:
-        return "deleting";
-    case DeviceStatus::Unknown:
-    default:
-        return "unknown";
-    }
-}
-
-const char* persistencePolicyToString(DevicePersistencePolicy policy) {
-    switch (policy) {
-    case DevicePersistencePolicy::Immediate:
-        return "immediate";
-    case DevicePersistencePolicy::Delayed:
-        return "delayed";
-    case DevicePersistencePolicy::Coalesced:
-        return "coalesced";
-    }
-    return "delayed";
-}
-
-DevicePersistencePolicy parsePersistencePolicy(const JsonObjectConst& input) {
-    const char* policy = input["persistence_policy"] | "immediate";
-    if (std::strcmp(policy, "delayed") == 0) {
-        return DevicePersistencePolicy::Delayed;
-    }
-    if (std::strcmp(policy, "coalesced") == 0) {
-        return DevicePersistencePolicy::Coalesced;
-    }
-    return DevicePersistencePolicy::Immediate;
-}
-} // namespace
 
 const GpioSwitchDeviceApiAdapter& GpioSwitchDeviceApiAdapter::instance() {
     static const GpioSwitchDeviceApiAdapter adapter;
@@ -74,7 +21,7 @@ const char* GpioSwitchDeviceApiAdapter::typeName() const {
 bool GpioSwitchDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, const char*& error) const {
     request = {};
     request.typeId = typeId();
-    request.persistencePolicy = parsePersistencePolicy(input);
+    request.persistencePolicy = GpioSwitchDevice::descriptor().defaultPersistencePolicy;
     request.configVersion = GpioSwitchDevice::descriptor().currentConfigVersion;
 
     DeviceBaseConfigV1 base{};
@@ -84,14 +31,12 @@ bool GpioSwitchDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
     request.name = base.name;
     request.enabled = base.enabled != 0U;
 
-    GpioSwitchDevicePersistedConfigV1 config{};
     const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
-    if (!configObject.isNull()) {
-        if (!parseGpioSwitchDeviceConfigJson(configObject, config, error)) {
-            return false;
-        }
+    const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
+    GpioSwitchDevicePersistedConfigV1 config{};
+    if (!parseGpioSwitchDeviceConfigJson(configInput, config, error)) {
+        return false;
     }
-
     config.switchConfig.base = base;
     if (!validateSwitchDeviceConfig(config.switchConfig).ok()) {
         error = "gpio switch config is invalid";
@@ -109,7 +54,9 @@ bool GpioSwitchDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
 bool GpioSwitchDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
                                                           DeviceConfigUpdateRequest& request, const char*& error) const {
     const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
-    if (configObject.isNull()) {
+    const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
+    if (configObject.isNull() && input["gpio_pin"].isNull() && input["restore_previous_state"].isNull() &&
+        input["startup_state"].isNull() && input["safe_state"].isNull() && input["inverted"].isNull()) {
         error = "gpio switch config is required";
         return false;
     }
@@ -122,7 +69,7 @@ bool GpioSwitchDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst&
     }
 
     GpioSwitchDevicePersistedConfigV1 config{};
-    if (!parseGpioSwitchDeviceConfigJson(configObject, config, error)) {
+    if (!parseGpioSwitchDeviceConfigJson(configInput, config, error)) {
         return false;
     }
     config.switchConfig.base = base;
@@ -143,9 +90,7 @@ bool GpioSwitchDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst&
 }
 
 void GpioSwitchDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const {
-    writeCommonDeviceJson(runtime, typeName(), deviceStatusToString(runtime.status()),
-                          persistencePolicyToString(runtime.persistencePolicy()), GpioSwitchDevice::descriptor().supportsRetainedState,
-                          output);
+    writeCommonDeviceJson(runtime, typeName(), output);
     static_cast<const GpioSwitchDevice&>(runtime).writeDeviceJson(output);
 }
 

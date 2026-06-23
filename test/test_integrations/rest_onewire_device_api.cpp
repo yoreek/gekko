@@ -170,8 +170,8 @@ void test_onewire_api_adapter_serializes_runtime_scan_snapshot() {
     OneWireBusDeviceApiAdapter::instance().writeDeviceJson(runtime, output);
 
     TEST_ASSERT_EQUAL_STRING("onewire_bus", output["type"].as<const char*>());
-    TEST_ASSERT_EQUAL_UINT8(4, output["config"]["gpio_pin"].as<uint8_t>());
-    TEST_ASSERT_FALSE(output["config"]["internal_pullup"].as<bool>());
+    TEST_ASSERT_EQUAL_UINT8(4, output["gpio_pin"].as<uint8_t>());
+    TEST_ASSERT_FALSE(output["internal_pullup"].as<bool>());
     TEST_ASSERT_TRUE(output["scan"]["ready"].as<bool>());
     TEST_ASSERT_EQUAL_UINT8(1, output["scan"]["device_count"].as<uint8_t>());
     TEST_ASSERT_EQUAL_STRING("28FF641D621603AD", output["scan"]["devices"][0]["address"].as<const char*>());

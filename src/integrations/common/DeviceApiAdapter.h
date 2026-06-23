@@ -40,8 +40,7 @@ public:
     virtual void writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const = 0;
 
 protected:
-    static void writeCommonDeviceJson(const IDeviceRuntime& runtime, const char* typeName, const char* status,
-                                      const char* persistencePolicy, bool retainedStateSupported, JsonObject output);
+    static void writeCommonDeviceJson(const IDeviceRuntime& runtime, const char* typeName, JsonObject output);
 };
 
 class DeviceApiAdapterRegistry {

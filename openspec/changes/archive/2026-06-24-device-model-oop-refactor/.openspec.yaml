@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-06-23
+goal: Unify device model layer around per-device classes, typed output
+  snapshots, and inherited create forms.

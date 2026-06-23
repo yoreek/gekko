@@ -346,12 +346,12 @@ bool BaseController::appendUploadFile(AsyncWebServerRequest* request, const size
         return false;
     const size_t written = out.write(data, len);
     out.close();
-    if (written != len || (index + len) > total) {
+    if (written != len || (index + len) > total || (file.size != 0U && file.received + len > file.size)) {
         return false;
     }
 #else
     (void)data;
-    if (file.received + len > file.size || (index + len) > total) {
+    if ((file.size != 0U && file.received + len > file.size) || (index + len) > total) {
         return false;
     }
 #endif
@@ -376,6 +376,9 @@ bool BaseController::finishUploadFile(AsyncWebServerRequest* request, const size
         return false;
     RequestFile& file = files[fileIndex];
     file.present = true;
+    if (file.size == 0U) {
+        file.size = file.received;
+    }
     (void) final;
     return file.tmpPath[0] != '\0' && file.received == file.size;
 #else

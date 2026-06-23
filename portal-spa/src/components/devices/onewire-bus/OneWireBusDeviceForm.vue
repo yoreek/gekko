@@ -32,38 +32,52 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import type { OneWireBusConfigDraft } from '@/models/devices/onewire-bus'
+import { ONEWIRE_BUS_DEVICE_TYPE_ID } from '@/models/device-types'
+import { OneWireBus } from '@/models/devices/onewire-bus'
+
+type OneWireBusFormValue = OneWireBus.CreateDraft | OneWireBus.ConfigDraft
 
 const props = defineProps<{
-  modelValue: OneWireBusConfigDraft | undefined
+  modelValue: OneWireBusFormValue | undefined
+  mode?: 'create' | 'edit'
   busy?: boolean
 }>()
 
 const emit = defineEmits<{
-  'update:modelValue': [value: OneWireBusConfigDraft]
+  'update:modelValue': [value: OneWireBusFormValue]
 }>()
 
 const { t } = useI18n()
-const fallbackValue: OneWireBusConfigDraft = {
+const isCreateMode = computed(() => props.mode !== 'edit')
+const fallbackValue: OneWireBusFormValue = {
+  name: 'New Device',
+  typeId: ONEWIRE_BUS_DEVICE_TYPE_ID,
   enabled: true,
   gpio_pin: 4,
   internal_pullup: false,
 }
-const currentValue = computed<OneWireBusConfigDraft>(() => props.modelValue ?? fallbackValue)
+const currentValue = computed<OneWireBusFormValue>(() => props.modelValue ?? fallbackValue)
 
 function updatePin(value: string | number): void {
   const gpioPin = Number(value)
-  emit('update:modelValue', {
-    ...currentValue.value,
-    gpio_pin: Number.isFinite(gpioPin) ? gpioPin : currentValue.value.gpio_pin,
-  })
+  emit('update:modelValue', buildNextValue({ gpio_pin: Number.isFinite(gpioPin) ? gpioPin : currentValue.value.gpio_pin }))
 }
 
-function update<K extends keyof OneWireBusConfigDraft>(key: K, value: OneWireBusConfigDraft[K]): void {
-  emit('update:modelValue', {
-    ...currentValue.value,
-    [key]: value,
-  })
+function update<K extends keyof OneWireBus.CreateDraft>(key: K, value: OneWireBus.CreateDraft[K]): void {
+  emit('update:modelValue', buildNextValue({ [key]: value } as Partial<OneWireBus.CreateDraft>))
+}
+
+function buildNextValue(patch: Partial<OneWireBus.CreateDraft>): OneWireBusFormValue {
+  if (!isCreateMode.value) {
+    return {
+      ...(currentValue.value as OneWireBus.CreateDraft),
+      ...patch,
+    }
+  }
+  return {
+    ...(currentValue.value as OneWireBus.CreateDraft),
+    ...patch,
+  }
 }
 </script>
 

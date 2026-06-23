@@ -97,8 +97,7 @@ bool DummyDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) 
 
 void DummyDevice::writeDeviceJson(JsonObject output) const {
     writeCommonDeviceJson(output);
-    JsonObject configObject = output.createNestedObject("config");
-    writeDeviceBaseConfigJson(config_, configObject);
+    writeDeviceBaseConfigJson(config_, output);
 }
 
 DeviceTypeDescriptor DummyDevice::descriptor() {

@@ -15,6 +15,7 @@ export const DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID = 4 as const
 export const THERMOSTAT_DEVICE_TYPE_ID = 5 as const
 
 export type DeviceTypeId = number
+export type DeviceTypeName = 'dummy' | 'gpio_switch' | 'onewire_bus' | 'ds18b20_temperature_sensor' | 'thermostat'
 
 export interface DeviceTypeOption {
   id: DeviceTypeId
@@ -66,6 +67,22 @@ const deviceTypeLabelKeys: Record<number, string> = {
   [THERMOSTAT_DEVICE_TYPE_ID]: 'device.type.thermostat',
 }
 
+const deviceTypeNames: Record<number, DeviceTypeName> = {
+  [DUMMY_DEVICE_TYPE_ID]: 'dummy',
+  [GPIO_SWITCH_DEVICE_TYPE_ID]: 'gpio_switch',
+  [ONEWIRE_BUS_DEVICE_TYPE_ID]: 'onewire_bus',
+  [DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID]: 'ds18b20_temperature_sensor',
+  [THERMOSTAT_DEVICE_TYPE_ID]: 'thermostat',
+}
+
+const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
+  dummy: DUMMY_DEVICE_TYPE_ID,
+  gpio_switch: GPIO_SWITCH_DEVICE_TYPE_ID,
+  onewire_bus: ONEWIRE_BUS_DEVICE_TYPE_ID,
+  ds18b20_temperature_sensor: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
+  thermostat: THERMOSTAT_DEVICE_TYPE_ID,
+}
+
 export const deviceComponentRegistry: DeviceComponentRegistryEntry[] = [
   {
     typeId: DUMMY_DEVICE_TYPE_ID,
@@ -112,6 +129,14 @@ export function deviceStatusLabelKey(status: string): string {
 
 export function resolveDeviceTypeOption(typeId: number): DeviceTypeOption | undefined {
   return deviceTypeOptions.find(option => option.id === typeId)
+}
+
+export function deviceTypeName(typeId: number): DeviceTypeName {
+  return deviceTypeNames[typeId] ?? 'dummy'
+}
+
+export function deviceTypeIdFromName(typeName: string | undefined | null): DeviceTypeId {
+  return typeName && typeName in deviceTypeIds ? deviceTypeIds[typeName as DeviceTypeName] : 0
 }
 
 export function resolveDeviceComponent(typeId: number): Component {

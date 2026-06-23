@@ -2,7 +2,7 @@
   <div class="device-type-stack">
     <section class="device-type-section">
       <v-alert v-if="dependencyItems.length === 0" type="warning" variant="tonal">
-        {{ t('device.dialog.ds18b20NoDependency') }}
+        {{ t('device.dialog.ds18b20.noDependency') }}
       </v-alert>
 
       <v-row class="device-type-section__grid">
@@ -12,6 +12,7 @@
             :items="dependencyItems"
             :model-value="currentValue.dependency_device_id"
             :disabled="busy || dependencyItems.length === 0"
+            :rules="dependencyRules"
             @update:model-value="updateNumber('dependency_device_id', $event)"
           />
         </v-col>
@@ -19,7 +20,7 @@
           <v-text-field
             :label="t('device.fields.ds18b20Address')"
             :model-value="currentValue.address"
-            :hint="t('device.dialog.ds18b20AddressHint')"
+            :hint="t('device.dialog.ds18b20.addressHint')"
             :rules="addressRules"
             :disabled="busy"
             persistent-hint
@@ -38,7 +39,7 @@
             @click="scanSelectedDependency"
           >
             <v-icon class="me-1" icon="refresh" />
-            {{ t('device.dialog.ds18b20ScanAction') }}
+            {{ t('device.dialog.ds18b20.scanAction') }}
           </v-btn>
         </v-col>
         <v-col cols="12" md="6">
@@ -121,56 +122,65 @@ import { useI18n } from 'vue-i18n'
 import type { DeviceCommandRequest } from '@/api'
 import { commandDevice } from '@/api'
 import { ONEWIRE_BUS_DEVICE_TYPE_ID } from '@/models/device-types'
-import {
-  createDefaultDs18b20TemperatureSensorConfig,
-  ds18b20AddressShapeValid,
-  ds18b20ResolutionOptions,
-  isDs18b20ScanCandidate,
-  temperatureUnitOptions,
-  type Ds18b20TemperatureSensorConfigDraft,
-} from '@/models/devices/ds18b20'
+import { Ds18b20 } from '@/models/devices/ds18b20'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
+import { DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID } from '@/models/device-types'
+
+type Ds18b20FormValue = Ds18b20.CreateDraft | Ds18b20.ConfigDraft
 
 const props = defineProps<{
-  modelValue: Ds18b20TemperatureSensorConfigDraft | undefined
+  modelValue: Ds18b20FormValue | undefined
+  mode?: 'create' | 'edit'
   busy?: boolean
 }>()
 
 const emit = defineEmits<{
-  'update:modelValue': [value: Ds18b20TemperatureSensorConfigDraft]
+  'update:modelValue': [value: Ds18b20FormValue]
 }>()
 
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
 const scanBusy = ref(false)
 const scanError = ref('')
-const fallbackValue = createDefaultDs18b20TemperatureSensorConfig()
-const currentValue = computed<Ds18b20TemperatureSensorConfigDraft>(() => props.modelValue ?? fallbackValue)
+const isCreateMode = computed(() => props.mode !== 'edit')
+const fallbackValue: Ds18b20FormValue = {
+  name: 'New Device',
+  typeId: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
+  enabled: true,
+  dependency_device_id: 0,
+  address: '',
+  resolution: 12,
+  unit: 'celsius',
+  poll_ms: 5000,
+  report_delta_celsius: 0.01,
+  report_always: false,
+}
+const currentValue = computed<Ds18b20FormValue>(() => props.modelValue ?? fallbackValue)
 const dependencyDevices = computed(() => deviceStore.devices.filter(device => device.typeId === ONEWIRE_BUS_DEVICE_TYPE_ID))
 const selectedDependency = computed(() => dependencyDevices.value.find(device => device.deviceId === currentValue.value.dependency_device_id))
 const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ title: `${device.name} #${device.deviceId}`, value: device.deviceId })))
-const resolutionItems = computed(() => ds18b20ResolutionOptions.map(value => ({ title: t('device.dialog.ds18b20Resolution', { value }), value })))
-const unitItems = computed(() => temperatureUnitOptions.map(value => ({ title: t(`device.dialog.temperatureUnit.${value}`), value })))
+const resolutionItems = computed(() => Ds18b20.resolutionOptions.map(value => ({ title: t('device.dialog.ds18b20.resolution', { value }), value })))
+const unitItems = computed(() => Ds18b20.temperatureUnitOptions.map(value => ({ title: t(`device.dialog.temperatureUnit.${value}`), value })))
+const dependencyRules = computed(() => [
+  (value: unknown) => Number(value) > 0 || t('device.dialog.ds18b20.noDependency'),
+])
 const scanCandidateItems = computed(() => {
   const devices = selectedDependency.value?.detail.scan?.devices ?? []
-  return devices.filter(isDs18b20ScanCandidate).map(candidate => ({
+  return devices.filter(Ds18b20.isScanCandidate).map(candidate => ({
     title: `${candidate.address} · ${t('device.dialog.onewireFamilyCode', { family: candidate.family_code })}`,
     value: candidate.address,
   }))
 })
 const addressRules = computed(() => [
-  (value: string) => ds18b20AddressShapeValid(value) || t('device.dialog.ds18b20AddressInvalid'),
+  (value: string) => Ds18b20.addressValid(value) || t('device.dialog.ds18b20.addressInvalid'),
 ])
 
-function emitUpdate(next: Ds18b20TemperatureSensorConfigDraft): void {
+function emitUpdate(next: Ds18b20FormValue): void {
   emit('update:modelValue', next)
 }
 
-function update<K extends keyof Ds18b20TemperatureSensorConfigDraft>(key: K, value: Ds18b20TemperatureSensorConfigDraft[K]): void {
-  emitUpdate({
-    ...currentValue.value,
-    [key]: value,
-  })
+function update<K extends keyof Ds18b20.CreateDraft>(key: K, value: Ds18b20.CreateDraft[K]): void {
+  emitUpdate(buildNextValue({ [key]: value } as Partial<Ds18b20.CreateDraft>))
 }
 
 function updateNumber(key: 'dependency_device_id' | 'resolution' | 'poll_ms' | 'report_delta_celsius', value: unknown): void {
@@ -183,6 +193,19 @@ function updateNumber(key: 'dependency_device_id' | 'resolution' | 'poll_ms' | '
 
 function updateAddress(value: unknown): void {
   update('address', String(value ?? '').trim().toUpperCase())
+}
+
+function buildNextValue(patch: Partial<Ds18b20.CreateDraft>): Ds18b20FormValue {
+  if (!isCreateMode.value) {
+    return {
+      ...(currentValue.value as Ds18b20.CreateDraft),
+      ...patch,
+    }
+  }
+  return {
+    ...(currentValue.value as Ds18b20.CreateDraft),
+    ...patch,
+  }
 }
 
 async function scanSelectedDependency(): Promise<void> {

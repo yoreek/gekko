@@ -147,16 +147,22 @@ void test_gpio_switch_api_adapter_serializes_record() {
     GpioSwitchDeviceApiAdapter::instance().writeDeviceJson(*runtime, output);
 
     TEST_ASSERT_FALSE(doc.overflowed());
-    TEST_ASSERT_EQUAL_UINT32(7, output["device_id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32(7, output["id"].as<uint32_t>());
     TEST_ASSERT_EQUAL_STRING("gpio_switch", output["type"].as<const char*>());
-    TEST_ASSERT_EQUAL_STRING("ready", output["status"].as<const char*>());
-    TEST_ASSERT_TRUE(output["retained_state_supported"].as<bool>());
-    TEST_ASSERT_EQUAL_STRING("on", output["config"]["startup_state"].as<const char*>());
-    TEST_ASSERT_EQUAL_STRING("disabled", output["config"]["safe_state"].as<const char*>());
-    TEST_ASSERT_TRUE(output["config"]["inverted"].as<bool>());
-    TEST_ASSERT_EQUAL_UINT8(21, output["config"]["gpio_pin"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_STRING("relay", output["name"].as<const char*>());
+    TEST_ASSERT_TRUE(output["enabled"].as<bool>());
+    TEST_ASSERT_TRUE(output["restore_previous_state"].as<bool>());
+    TEST_ASSERT_EQUAL_STRING("on", output["startup_state"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("disabled", output["safe_state"].as<const char*>());
+    TEST_ASSERT_TRUE(output["inverted"].as<bool>());
+    TEST_ASSERT_EQUAL_UINT8(21, output["gpio_pin"].as<uint8_t>());
     TEST_ASSERT_EQUAL_STRING("on", output["output"]["state"].as<const char*>());
     TEST_ASSERT_FALSE(output["output"]["physical_level"].as<bool>());
+    TEST_ASSERT_TRUE(output["device_id"].isNull());
+    TEST_ASSERT_TRUE(output["type_id"].isNull());
+    TEST_ASSERT_TRUE(output["status"].isNull());
+    TEST_ASSERT_TRUE(output["has_deps"].isNull());
+    TEST_ASSERT_TRUE(output["retained_state_supported"].isNull());
 }
 
 void test_gpio_switch_api_adapter_serializes_runtime_output() {
@@ -168,7 +174,7 @@ void test_gpio_switch_api_adapter_serializes_runtime_output() {
     GpioSwitchDeviceApiAdapter::instance().writeDeviceJson(*runtime, output);
 
     TEST_ASSERT_FALSE(doc.overflowed());
-    TEST_ASSERT_EQUAL_STRING("on", output["config"]["startup_state"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("on", output["startup_state"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("on", output["output"]["state"].as<const char*>());
 }
 

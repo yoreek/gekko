@@ -9,17 +9,13 @@
 
 namespace ewfm {
 
-void IDeviceApiAdapter::writeCommonDeviceJson(const IDeviceRuntime& runtime, const char* typeName, const char* status,
-                                              const char* persistencePolicy, bool retainedStateSupported, JsonObject output) {
-    output["device_id"] = runtime.deviceId();
-    output["type_id"] = runtime.typeId();
+void IDeviceApiAdapter::writeCommonDeviceJson(const IDeviceRuntime& runtime, const char* typeName, JsonObject output) {
+    output["id"] = runtime.deviceId();
     output["type"] = typeName;
     output["name"] = JsonString(runtime.name() != nullptr ? runtime.name() : "", JsonString::Copied);
     output["enabled"] = runtime.enabled();
-    output["status"] = status;
     output["config_version"] = runtime.configVersion();
     output["config_revision"] = runtime.configRevision();
-    output["persistence_policy"] = persistencePolicy;
     JsonArray deps = output.createNestedArray("deps");
     const DeviceDependencyLink* dependencyLinks = runtime.dependencyLinks();
     const uint8_t dependencyCount = runtime.dependencyCount();
@@ -28,8 +24,6 @@ void IDeviceApiAdapter::writeCommonDeviceJson(const IDeviceRuntime& runtime, con
         item["role"] = deviceDependencyRoleName(dependencyLinks[index].role);
         item["device_id"] = dependencyLinks[index].deviceId;
     }
-    output["has_deps"] = dependencyCount > 0;
-    output["retained_state_supported"] = retainedStateSupported;
 }
 
 bool IDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,

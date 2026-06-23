@@ -3,6 +3,7 @@ import {
   mdiChevronLeft as chevronLeftPath,
   mdiChevronRight as chevronRightPath,
   mdiClose as closePath,
+  mdiDownload as downloadPath,
   mdiEye as eyePath,
   mdiEyeOff as eyeOffPath,
   mdiInformationOutline as infoPath,
@@ -11,6 +12,7 @@ import {
   mdiPlus as plusPath,
   mdiPower as powerPath,
   mdiRefresh as refreshPath,
+  mdiUpload as uploadPath,
   mdiTrashCan as trashPath,
 } from '@mdi/js'
 
@@ -39,6 +41,8 @@ export type PortalIconName =
   | 'menu'
   | 'plus'
   | 'power'
+  | 'download'
+  | 'upload'
   | 'chevron-left'
   | 'chevron-right'
   | 'chevron-down'
@@ -111,6 +115,8 @@ const mdiIconRegistry: Record<
   | 'menu'
   | 'plus'
   | 'power'
+  | 'download'
+  | 'upload'
   | 'chevron-left'
   | 'chevron-right'
   | 'chevron-down',
@@ -126,6 +132,8 @@ const mdiIconRegistry: Record<
   menu: createFilledIconShape(menuPath),
   plus: createFilledIconShape(plusPath),
   power: createFilledIconShape(powerPath),
+  download: createFilledIconShape(downloadPath),
+  upload: createFilledIconShape(uploadPath),
   'chevron-left': createFilledIconShape(chevronLeftPath),
   'chevron-right': createFilledIconShape(chevronRightPath),
   'chevron-down': createFilledIconShape(chevronDownPath),

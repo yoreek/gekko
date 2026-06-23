@@ -142,7 +142,7 @@ export function connectMockRealtimeSocket(pinia: Pinia): MockRealtimeSocketHandl
         registry_revision: db.registryRevision,
         pending_persistence: db.pendingPersistence,
       }, 'device_updated')
-      publishThermostatDependents(db, device.device_id)
+      publishThermostatDependents(db, device.device_id ?? 0)
     },
     removeDevice(deviceId: number): void {
       const db = loadMockDatabase()

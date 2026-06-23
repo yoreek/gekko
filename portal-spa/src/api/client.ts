@@ -4,6 +4,7 @@ import type {
   DashboardLayoutRecord,
   DashboardLayoutResponse,
   DeviceMutationResponse,
+  DeviceSetupTransferResponse,
   DeviceRegistryResponse,
   OtaStatusResponse,
   SystemRestartResponse,
@@ -11,10 +12,12 @@ import type {
   WifiStatusResponse,
 } from './contracts'
 import { detectTransportMode } from './transport'
-import { requestEmpty, requestJson } from './http'
+import { requestEmpty, requestFormData, requestJson, requestText } from './http'
 import {
   mockCommandDevice,
+  mockExportDeviceSetupBundle,
   mockFetchDashboardLayout,
+  mockImportDeviceSetupBundle,
   mockConfigureWifi,
   mockCreateDevice,
   mockDeleteDevice,
@@ -164,5 +167,28 @@ export function restartSystem(): Promise<SystemRestartResponse> {
     headers: {
       'Content-Type': 'application/json',
     },
+  })
+}
+
+export function fetchDeviceSetupBundle(): Promise<string> {
+  if (useMockTransport()) {
+    return Promise.resolve(mockExportDeviceSetupBundle())
+  }
+  return requestText('/api/device-setup/export', {
+    headers: {
+      Accept: 'application/x-ndjson',
+    },
+  })
+}
+
+export function importDeviceSetupBundle(file: File): Promise<DeviceSetupTransferResponse> {
+  if (useMockTransport()) {
+    return mockImportDeviceSetupBundle(file)
+  }
+
+  const formData = new FormData()
+  formData.append('bundle', file, file.name || 'device-setup.ndjson')
+  return requestFormData<DeviceSetupTransferResponse>('/api/device-setup/import', formData, {
+    method: 'POST',
   })
 }

@@ -173,8 +173,7 @@ bool GpioSwitchDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t 
 
 void GpioSwitchDevice::writeDeviceJson(JsonObject output) const {
     SwitchDeviceBase::writeDeviceJson(output);
-    JsonObject configObject = output["config"].isNull() ? output.createNestedObject("config") : output["config"].as<JsonObject>();
-    configObject["gpio_pin"] = config_.gpioPin;
+    output["gpio_pin"] = config_.gpioPin;
 }
 
 DeviceTypeDescriptor GpioSwitchDevice::descriptor() {

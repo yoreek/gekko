@@ -91,8 +91,10 @@ import type { DeviceCommandRequest } from '@/api'
 import SwitchOutputControls from '@/components/devices/switch/SwitchOutputControls.vue'
 import SwitchStateSelect from '@/components/devices/switch/SwitchStateSelect.vue'
 import type { DashboardDevice } from '@/models/device'
-import { normalizeGpioSwitchConfig } from '@/models/devices/gpio-switch'
 import { isOutputState, outputStateLabelKey, switchCommandPayload, type OutputState } from '@/models/devices/switch'
+import { GpioSwitch } from '@/models/devices/gpio-switch'
+
+const deviceModel = new GpioSwitch.Device()
 
 const props = defineProps<{
   device: DashboardDevice
@@ -104,8 +106,9 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const config = computed(() => normalizeGpioSwitchConfig(props.device.detail.config))
-const outputState = computed(() => (isOutputState(props.device.output.state) ? props.device.output.state : undefined))
+const config = computed(() => deviceModel.normalizeConfig(props.device.detail.config))
+const output = computed(() => deviceModel.normalizeOutput(props.device.raw))
+const outputState = computed(() => (isOutputState(output.value.state) ? output.value.state : undefined))
 
 function setOutputState(state: OutputState): void {
   emit('command', switchCommandPayload(state))

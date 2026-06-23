@@ -520,6 +520,9 @@ public:
         (void)configBlob;
         return false;
     }
+    virtual void writeDeviceJson(JsonObject output) const {
+        (void)output;
+    }
     virtual bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const {
         (void)configBlob;
         (void)baseConfig;

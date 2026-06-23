@@ -3,60 +3,9 @@
 #include "devices/core/DeviceBaseConfig.h"
 #include "devices/thermostat/ThermostatDevice.h"
 
-#include <cstring>
-
 namespace ewfm {
 
 namespace {
-const char* deviceStatusToString(DeviceStatus status) {
-    switch (status) {
-    case DeviceStatus::Creating:
-        return "creating";
-    case DeviceStatus::Starting:
-        return "starting";
-    case DeviceStatus::Ready:
-        return "ready";
-    case DeviceStatus::Disabled:
-        return "disabled";
-    case DeviceStatus::Faulted:
-        return "faulted";
-    case DeviceStatus::DependencyBlocked:
-        return "dependency_blocked";
-    case DeviceStatus::Reconfiguring:
-        return "reconfiguring";
-    case DeviceStatus::Stopping:
-        return "stopping";
-    case DeviceStatus::Deleting:
-        return "deleting";
-    case DeviceStatus::Unknown:
-    default:
-        return "unknown";
-    }
-}
-
-const char* persistencePolicyToString(DevicePersistencePolicy policy) {
-    switch (policy) {
-    case DevicePersistencePolicy::Immediate:
-        return "immediate";
-    case DevicePersistencePolicy::Delayed:
-        return "delayed";
-    case DevicePersistencePolicy::Coalesced:
-        return "coalesced";
-    }
-    return "delayed";
-}
-
-DevicePersistencePolicy parsePersistencePolicy(const JsonObjectConst& input) {
-    const char* policy = input["persistence_policy"] | "immediate";
-    if (std::strcmp(policy, "delayed") == 0) {
-        return DevicePersistencePolicy::Delayed;
-    }
-    if (std::strcmp(policy, "coalesced") == 0) {
-        return DevicePersistencePolicy::Coalesced;
-    }
-    return DevicePersistencePolicy::Immediate;
-}
-
 bool parseDepsField(const JsonObjectConst& input, std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t& depCount,
                     const char*& error) {
     depCount = 0;
@@ -141,7 +90,7 @@ const char* ThermostatDeviceApiAdapter::typeName() const {
 bool ThermostatDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, const char*& error) const {
     request = {};
     request.typeId = typeId();
-    request.persistencePolicy = parsePersistencePolicy(input);
+    request.persistencePolicy = ThermostatDevice::descriptor().defaultPersistencePolicy;
     request.configVersion = kThermostatDeviceConfigVersion;
 
     DeviceBaseConfigV1 base{};
@@ -155,13 +104,9 @@ bool ThermostatDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
     }
 
     const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
-    if (configObject.isNull()) {
-        error = "thermostat config is required";
-        return false;
-    }
-
+    const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
     ThermostatDeviceConfigV1 config{};
-    if (!parseThermostatDeviceConfigJson(configObject, config, error)) {
+    if (!parseThermostatDeviceConfigJson(configInput, config, error)) {
         return false;
     }
     config.base = base;
@@ -181,7 +126,12 @@ bool ThermostatDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
 bool ThermostatDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
                                                           DeviceConfigUpdateRequest& request, const char*& error) const {
     const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
-    if (configObject.isNull()) {
+    const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
+    if (configObject.isNull() && input["mode"].isNull() && input["algorithm"].isNull() && input["target_milli_celsius"].isNull() &&
+        input["target_celsius"].isNull() && input["min_safe_milli_celsius"].isNull() && input["min_safe_celsius"].isNull() &&
+        input["max_safe_milli_celsius"].isNull() && input["max_safe_celsius"].isNull() && input["hysteresis_centi_celsius"].isNull() &&
+        input["hysteresis_celsius"].isNull() && input["check_interval_ms"].isNull() && input["sensor_timeout_ms"].isNull() &&
+        input["retry_after_error_ms"].isNull() && input["min_switch_interval_ms"].isNull()) {
         error = "thermostat config is required";
         return false;
     }
@@ -194,7 +144,7 @@ bool ThermostatDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst&
     }
 
     ThermostatDeviceConfigV1 config{};
-    if (!parseThermostatDeviceConfigJson(configObject, config, error)) {
+    if (!parseThermostatDeviceConfigJson(configInput, config, error)) {
         return false;
     }
     config.base = base;
@@ -325,9 +275,7 @@ ThermostatDeviceApiAdapter::validateSetDepsRequest(const IDeviceRuntime& runtime
 }
 
 void ThermostatDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const {
-    writeCommonDeviceJson(runtime, typeName(), deviceStatusToString(runtime.status()),
-                          persistencePolicyToString(runtime.persistencePolicy()), ThermostatDevice::descriptor().supportsRetainedState,
-                          output);
+    writeCommonDeviceJson(runtime, typeName(), output);
     static_cast<const ThermostatDevice&>(runtime).writeDeviceJson(output);
 }
 

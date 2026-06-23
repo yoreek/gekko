@@ -65,7 +65,3 @@ export function resolveDeviceDetailComponent(typeId: number): Component {
 export function resolveDeviceFormComponent(typeId: number): Component | undefined {
   return deviceUiRegistry.find(entry => entry.typeId === typeId)?.form
 }
-
-export function resolveDeviceCreateFormComponent(typeId: number): Component | undefined {
-  return resolveDeviceFormComponent(typeId)
-}

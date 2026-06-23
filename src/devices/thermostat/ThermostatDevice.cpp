@@ -129,8 +129,7 @@ bool ThermostatDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t 
 
 void ThermostatDevice::writeDeviceJson(JsonObject output) const {
     writeCommonDeviceJson(output);
-    JsonObject configObject = output.createNestedObject("config");
-    writeThermostatDeviceConfigJson(config_, configObject);
+    writeThermostatDeviceConfigJson(config_, output);
     JsonObject outputObject = output.createNestedObject("output");
     JsonObject temperatureObject = outputObject.createNestedObject("temperature");
     writeTemperatureOutputJson(latestTemperature_, TemperatureUnit::Celsius, controlStatus_, temperatureObject);

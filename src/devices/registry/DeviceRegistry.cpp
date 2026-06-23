@@ -342,7 +342,7 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
     }
 
     result.deviceId = deviceId;
-    result.validation = reloadRuntimeFor(record, request.configBlob);
+    result.validation = reloadRuntimeFor(runtimes_, record, request.configBlob);
     if (!result.validation.ok()) {
         return result;
     }
@@ -1304,6 +1304,58 @@ DeviceValidationResult DeviceRegistry::flushNow() {
     return {};
 }
 
+DeviceValidationResult DeviceRegistry::restore(const DeviceRegistrySnapshot& snapshot, const DeviceConfigBlobMap& configBlobs,
+                                               uint32_t registryRevision, uint32_t now) {
+    const DeviceValidationResult structureResult = validateSnapshot(snapshot, configBlobs);
+    if (!structureResult.ok()) {
+        return structureResult;
+    }
+
+    DeviceRuntimeMap nextRuntimes{};
+    for (const auto& record : snapshot.records) {
+        const auto configIt = configBlobs.find(record.header.deviceId);
+        if (configIt == configBlobs.end()) {
+            return {DeviceError::MissingRecord, "missing device config"};
+        }
+        const DeviceValidationResult runtimeResult = reloadRuntimeFor(nextRuntimes, record, configIt->second);
+        if (!runtimeResult.ok()) {
+            return runtimeResult;
+        }
+    }
+
+    const DeviceValidationResult saveResult = store_.save(snapshot, configBlobs);
+    if (!saveResult.ok()) {
+        return saveResult;
+    }
+
+    for (auto& entry : runtimes_) {
+        if (entry.second.runtime != nullptr) {
+            entry.second.runtime->end(now);
+        }
+    }
+
+    runtimes_.swap(nextRuntimes);
+    persistence_.reset(now);
+    registryRevision_ = std::max(registryRevision_ + 1U, registryRevision);
+
+    for (const auto& record : snapshot.records) {
+        syncRuntimeDependencyLinks(record.header.deviceId);
+        if (auto* runtimePtr = runtime(record.header.deviceId); runtimePtr != nullptr) {
+            if (runtimePtr->enabled()) {
+                runtimePtr->begin(now);
+            } else {
+                runtimePtr->requestDisable();
+            }
+            eventReporter_.trackRuntimeStatus(record.header.deviceId, runtimePtr->status());
+        }
+    }
+
+    refreshDependentRuntimeStates(now);
+    captureDirtyRuntimeRetainedStates(now);
+    emitRuntimeStatusChanges();
+    return {};
+}
+
 DeviceValidationResult DeviceRegistry::validateSnapshot(const DeviceRegistrySnapshot& snapshot) const {
     DeviceConfigBlobMap configBlobs{};
     for (const auto& entry : runtimes_) {
@@ -1608,7 +1660,8 @@ DeviceValidationResult DeviceRegistry::persistIfNeeded(DevicePersistencePolicy p
     return {};
 }
 
-DeviceValidationResult DeviceRegistry::reloadRuntimeFor(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+DeviceValidationResult DeviceRegistry::reloadRuntimeFor(DeviceRuntimeMap& target, const DeviceRegistryEntry& record,
+                                                        const DeviceConfigBlob& configBlob) {
     const DeviceTypeDescriptor* descriptor = typeRegistry_.find(record.header.typeId);
     if (descriptor == nullptr) {
         return {DeviceError::UnsupportedType, "unsupported device type"};
@@ -1639,8 +1692,12 @@ DeviceValidationResult DeviceRegistry::reloadRuntimeFor(const DeviceRegistryEntr
             return retainedResult;
         }
     }
-    runtimes_[record.header.deviceId] = std::move(entry);
+    target[record.header.deviceId] = std::move(entry);
     return {};
+}
+
+DeviceValidationResult DeviceRegistry::reloadRuntimeFor(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+    return reloadRuntimeFor(runtimes_, record, configBlob);
 }
 
 DeviceValidationResult DeviceRegistry::replaceRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {

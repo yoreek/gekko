@@ -1,4 +1,4 @@
-import type { DeviceCommandRequest, DeviceOutputState } from '../../api/contracts'
+import type { DeviceCommandRequest, DeviceOutputState, GpioSwitchOutputSnapshot } from '../../api/contracts'
 
 export type OutputState = DeviceOutputState
 
@@ -34,4 +34,18 @@ export function nextDashboardPowerState(state: OutputState | undefined): OutputS
     return 'on'
   }
   return null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+export function normalizeSwitchOutput(value: unknown): GpioSwitchOutputSnapshot {
+  if (!isRecord(value)) {
+    return {}
+  }
+  return {
+    state: isOutputState(value.state) ? value.state : undefined,
+    physical_level: typeof value.physical_level === 'boolean' ? value.physical_level : undefined,
+  }
 }

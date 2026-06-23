@@ -4,6 +4,7 @@
 #include "debug/Debug.h"
 #include "portal/controllers/DashboardLayoutController.h"
 #include "portal/controllers/DeviceRegistryController.h"
+#include "portal/controllers/DeviceSetupTransferController.h"
 #include "portal/controllers/OtaController.h"
 #include "portal/controllers/PortalAssetController.h"
 #include "portal/controllers/SystemController.h"
@@ -102,6 +103,7 @@ private:
         WifiController::registerRoutes(*server_, wifiManager_, wifiDriver_);
         if (deviceRegistry_ != nullptr) {
             DeviceRegistryController::registerRoutes(*server_, *deviceRegistry_);
+            DeviceSetupTransferController::registerRoutes(*server_, *deviceRegistry_);
         }
         if (dashboardLayoutStore_ != nullptr) {
             DashboardLayoutController::registerRoutes(*server_, *dashboardLayoutStore_);

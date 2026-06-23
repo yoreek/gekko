@@ -100,16 +100,10 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DashboardDevice } from '@/models/device'
-import {
-  formatThermostatOutput,
-  formatThermostatTemperature,
-  normalizeThermostatConfig,
-  thermostatAlgorithmLabelKey,
-  thermostatModeLabelKey,
-  thermostatOutputTone,
-  thermostatStatusLabelKey,
-} from '@/models/devices/thermostat'
+import { Thermostat } from '@/models/devices/thermostat'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
+
+const deviceModel = new Thermostat.Device()
 
 const props = defineProps<{
   device: DashboardDevice
@@ -118,27 +112,28 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
-const config = computed(() => normalizeThermostatConfig(props.device.detail.config, props.device.deps))
+const config = computed(() => deviceModel.normalizeConfig(props.device.detail.config, props.device.deps))
+const output = computed(() => deviceModel.normalizeOutput(props.device.raw))
 const sensorDevice = computed(() => deviceStore.devices.find(device => device.deviceId === config.value.temperature_sensor_device_id))
 const switchDevice = computed(() => deviceStore.devices.find(device => device.deviceId === config.value.switch_device_id))
-const temperature = computed(() => props.device.output.temperature)
-const temperatureText = computed(() => formatThermostatOutput(temperature.value) || t('device.dialog.temperatureUnavailableShort'))
-const targetTemperatureText = computed(() => formatThermostatTemperature(config.value.target_celsius))
-const minSafeTemperatureText = computed(() => formatThermostatTemperature(config.value.min_safe_celsius))
-const maxSafeTemperatureText = computed(() => formatThermostatTemperature(config.value.max_safe_celsius))
-const modeText = computed(() => t(thermostatModeLabelKey(config.value.mode)))
-const algorithmText = computed(() => t(thermostatAlgorithmLabelKey(config.value.algorithm)))
-const statusText = computed(() => t(thermostatStatusLabelKey(props.device.output.control_status ?? props.device.backendEffectiveStatus)))
+const temperature = computed(() => output.value.temperature)
+const temperatureText = computed(() => Thermostat.formatOutput(temperature.value) || t('device.dialog.temperatureUnavailableShort'))
+const targetTemperatureText = computed(() => Thermostat.formatTemperature(config.value.target_celsius))
+const minSafeTemperatureText = computed(() => Thermostat.formatTemperature(config.value.min_safe_celsius))
+const maxSafeTemperatureText = computed(() => Thermostat.formatTemperature(config.value.max_safe_celsius))
+const modeText = computed(() => t(Thermostat.modeLabelKey(config.value.mode)))
+const algorithmText = computed(() => t(Thermostat.algorithmLabelKey(config.value.algorithm)))
+const statusText = computed(() => t(Thermostat.statusLabelKey(output.value.control_status ?? props.device.backendEffectiveStatus)))
 const controlText = computed(() => `${t('device.fields.controlStatus')}: ${statusText.value}`)
-const desiredSwitchText = computed(() => t(`labels.output.${props.device.output.desired_switch_state ?? 'off'}`))
-const actualSwitchText = computed(() => t(`labels.output.${props.device.output.actual_switch_state ?? 'off'}`))
+const desiredSwitchText = computed(() => t(`labels.output.${output.value.desired_switch_state ?? 'off'}`))
+const actualSwitchText = computed(() => t(`labels.output.${output.value.actual_switch_state ?? 'off'}`))
 const sensorLabel = computed(() =>
   sensorDevice.value ? `${sensorDevice.value.name} #${sensorDevice.value.deviceId}` : `#${config.value.temperature_sensor_device_id || '—'}`,
 )
 const switchLabel = computed(() =>
   switchDevice.value ? `${switchDevice.value.name} #${switchDevice.value.deviceId}` : `#${config.value.switch_device_id || '—'}`,
 )
-const statusTone = computed(() => thermostatOutputTone(props.device.output.control_status ?? props.device.backendEffectiveStatus))
+const statusTone = computed(() => Thermostat.outputTone(output.value.control_status ?? props.device.backendEffectiveStatus))
 const temperatureColor = computed(() => (temperature.value?.valid ? 'primary' : 'secondary'))
 const alertType = computed(() => {
   if (statusTone.value === 'warning') {

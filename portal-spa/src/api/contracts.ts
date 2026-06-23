@@ -1,14 +1,26 @@
 export type DeviceOutputState = 'off' | 'on' | 'disabled'
 
-export interface DeviceOutputSnapshot {
+export interface GpioSwitchOutputSnapshot {
   state?: DeviceOutputState
   physical_level?: boolean
+}
+
+export interface Ds18b20TemperatureSensorOutputSnapshot {
   temperature?: TemperatureOutputSnapshot
+}
+
+export interface ThermostatOutputSnapshot {
   desired_switch_state?: DeviceOutputState
   actual_switch_state?: DeviceOutputState
   control_status?: string
   last_check_at_ms?: number
+  temperature?: TemperatureOutputSnapshot
 }
+
+export type DeviceOutputSnapshot =
+  | GpioSwitchOutputSnapshot
+  | Ds18b20TemperatureSensorOutputSnapshot
+  | ThermostatOutputSnapshot
 
 export type TemperatureUnit = 'celsius' | 'fahrenheit'
 
@@ -61,10 +73,11 @@ export interface WifiScanResponse {
 }
 
 export interface DeviceRecord {
-  device_id: number
-  type_id: number
-  label?: string
+  id?: number
   type?: string
+  device_id?: number
+  type_id?: number
+  label?: string
   name: string
   enabled: boolean
   deps?: DeviceDependencyLink[]
@@ -107,6 +120,13 @@ export interface DeviceMutationResponse {
   pending_persistence: boolean
   device?: DeviceRecord
   success?: boolean
+}
+
+export interface DeviceSetupTransferResponse {
+  registry_revision: number
+  device_count: number
+  success?: boolean
+  status?: string
 }
 
 export interface DeviceDetailResponse {

@@ -41,35 +41,19 @@
       <div class="device-dialog__content">
         <section class="device-dialog__section">
           <DeviceCommonFields
-            v-model="draft.common"
+            v-model="draft"
             :mode="editing ? 'edit' : 'view'"
             :busy="busy"
           />
         </section>
 
-        <GpioSwitchDeviceForm
-          v-if="editing && isGpioSwitch"
-          v-model="draft.gpioSwitchConfig"
+        <component
+          v-if="editing && editFormComponent"
+          :is="editFormComponent"
+          v-model="draft"
+          mode="edit"
           :output-state="outputState"
           show-output-state
-          :busy="busy"
-        />
-
-        <OneWireBusDeviceForm
-          v-else-if="editing && isOneWireBus"
-          v-model="draft.oneWireBusConfig"
-          :busy="busy"
-        />
-
-        <Ds18b20TemperatureSensorDeviceForm
-          v-else-if="editing && isDs18b20"
-          v-model="draft.ds18b20Config"
-          :busy="busy"
-        />
-
-        <ThermostatDeviceForm
-          v-else-if="editing && isThermostat"
-          v-model="draft.thermostatConfig"
           :busy="busy"
         />
 
@@ -111,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useI18n } from 'vue-i18n'
 
@@ -121,22 +105,13 @@ import RecentDeviceEvents from '@/components/device/RecentDeviceEvents.vue'
 import {
   buildDeviceEditCommands,
   createDeviceEditDraft,
-  isDs18b20Type,
-  isGpioSwitchType,
-  isOneWireBusType,
-  isThermostatType,
+  type DeviceEditDraft,
 } from '@/components/device/device-form'
-import Ds18b20TemperatureSensorDeviceForm from '@/components/devices/ds18b20/Ds18b20TemperatureSensorDeviceForm.vue'
-import GpioSwitchDeviceForm from '@/components/devices/gpio-switch/GpioSwitchDeviceForm.vue'
-import OneWireBusDeviceForm from '@/components/devices/onewire-bus/OneWireBusDeviceForm.vue'
-import ThermostatDeviceForm from '@/components/devices/thermostat/ThermostatDeviceForm.vue'
-import { resolveDeviceDetailComponent } from '@/components/devices/registry/device-component-registry'
+import { resolveDeviceDetailComponent, resolveDeviceFormComponent } from '@/components/devices/registry/device-component-registry'
 import type { DashboardDevice } from '@/models/device'
-import { deviceStatusLabelKey, deviceTypeLabelKey } from '@/models/device-types'
-import { ds18b20AddressShapeValid, ds18b20ConfigChanged } from '@/models/devices/ds18b20'
-import { normalizeThermostatConfig, thermostatConfigChanged } from '@/models/devices/thermostat'
+import { GPIO_SWITCH_DEVICE_TYPE_ID, deviceStatusLabelKey, deviceTypeLabelKey } from '@/models/device-types'
+import type { GpioSwitchOutputSnapshot } from '@/api/contracts'
 import type { DeviceCommandRequest } from '@/api'
-import type { DeviceEditSubmitPayload } from '@/components/device/device-form'
 
 const props = defineProps<{
   modelValue: boolean
@@ -150,21 +125,24 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   'update:editing': [value: boolean]
   refresh: []
-  save: [payload: DeviceEditSubmitPayload]
+  save: [payload: DeviceEditDraft]
   command: [payload: DeviceCommandRequest]
 }>()
 
 const { t } = useI18n()
 const { smAndDown } = useDisplay()
-const draft = reactive(createDeviceEditDraft(props.device ?? null))
+const draft = ref<any>(createDeviceEditDraft(props.device ?? null))
 const busy = computed(() => props.busyAction !== null)
 const fullscreen = computed(() => smAndDown.value)
 const device = computed(() => props.device)
-const isGpioSwitch = computed(() => device.value !== null && isGpioSwitchType(device.value.typeId))
-const isOneWireBus = computed(() => device.value !== null && isOneWireBusType(device.value.typeId))
-const isDs18b20 = computed(() => device.value !== null && isDs18b20Type(device.value.typeId))
-const isThermostat = computed(() => device.value !== null && isThermostatType(device.value.typeId))
 const hasTypeDetails = computed(() => device.value !== null)
+
+const editFormComponent = computed(() => {
+  if (device.value === null) {
+    return null
+  }
+  return resolveDeviceFormComponent(device.value.typeId)
+})
 
 const detailComponent = computed(() => {
   if (device.value === null) {
@@ -205,35 +183,20 @@ const statusColor = computed(() => {
   }
 })
 
-const outputState = computed(() => device.value?.output.state)
+const outputState = computed(() => {
+  if (device.value === null || device.value.typeId !== GPIO_SWITCH_DEVICE_TYPE_ID) {
+    return undefined
+  }
+  return (device.value.output as GpioSwitchOutputSnapshot | undefined)?.state
+})
 const canSave = computed(() => {
   if (device.value === null) {
     return false
   }
-  if (draft.common.name.trim().length === 0) {
+  if (draft.value.name.trim().length === 0) {
     return false
   }
-  if (isDs18b20.value && (draft.ds18b20Config.dependency_device_id <= 0 || !ds18b20AddressShapeValid(draft.ds18b20Config.address))) {
-    return false
-  }
-  const nextName = draft.common.name.trim()
-  const currentDraft = createDeviceEditDraft(device.value)
-  if (nextName !== currentDraft.common.name || draft.common.enabled !== currentDraft.common.enabled) {
-    return true
-  }
-  if (isGpioSwitch.value) {
-    return JSON.stringify(draft.gpioSwitchConfig) !== JSON.stringify(currentDraft.gpioSwitchConfig)
-  }
-  if (isOneWireBus.value) {
-    return JSON.stringify(draft.oneWireBusConfig) !== JSON.stringify(currentDraft.oneWireBusConfig)
-  }
-  if (isDs18b20.value) {
-    return ds18b20ConfigChanged(draft.ds18b20Config, currentDraft.ds18b20Config)
-  }
-  if (isThermostat.value) {
-    return thermostatConfigChanged(draft.thermostatConfig, currentDraft.thermostatConfig)
-  }
-  return false
+  return buildDeviceEditCommands(device.value, draft.value).length > 0
 })
 
 watch(
@@ -260,13 +223,7 @@ watch(
 
 function resetDrafts(current: DashboardDevice): void {
   const next = createDeviceEditDraft(current)
-  draft.common.name = next.common.name
-  draft.common.typeId = next.common.typeId
-  draft.common.enabled = next.common.enabled
-  draft.gpioSwitchConfig = next.gpioSwitchConfig
-  draft.oneWireBusConfig = next.oneWireBusConfig
-  draft.ds18b20Config = next.ds18b20Config
-  draft.thermostatConfig = next.thermostatConfig
+  draft.value = next
 }
 
 function enterEditMode(): void {
@@ -289,30 +246,16 @@ function submitSave(): void {
     return
   }
   const commands = buildDeviceEditCommands(device.value, {
-    common: {
-      name: draft.common.name.trim(),
-      enabled: draft.common.enabled,
-      typeId: draft.common.typeId,
-    },
-    gpioSwitchConfig: isGpioSwitch.value ? draft.gpioSwitchConfig : undefined,
-    oneWireBusConfig: isOneWireBus.value ? draft.oneWireBusConfig : undefined,
-    ds18b20Config: isDs18b20.value ? draft.ds18b20Config : undefined,
-    thermostatConfig: isThermostat.value ? draft.thermostatConfig : undefined,
+    ...draft.value,
+    name: draft.value.name.trim(),
   })
   if (commands.length === 0) {
     emit('update:editing', false)
     return
   }
   emit('save', {
-    common: {
-      name: draft.common.name.trim(),
-      enabled: draft.common.enabled,
-      typeId: draft.common.typeId,
-    },
-    gpioSwitchConfig: isGpioSwitch.value ? draft.gpioSwitchConfig : undefined,
-    oneWireBusConfig: isOneWireBus.value ? draft.oneWireBusConfig : undefined,
-    ds18b20Config: isDs18b20.value ? draft.ds18b20Config : undefined,
-    thermostatConfig: isThermostat.value ? draft.thermostatConfig : undefined,
+    ...draft.value,
+    name: draft.value.name.trim(),
   })
 }
 

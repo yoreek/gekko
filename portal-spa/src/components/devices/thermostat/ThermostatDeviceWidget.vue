@@ -14,13 +14,9 @@ import { useI18n } from 'vue-i18n'
 
 import DeviceWidgetBase from '@/components/devices/base/DeviceWidgetBase.vue'
 import type { DashboardDevice } from '@/models/device'
-import {
-  formatThermostatOutput,
-  normalizeThermostatConfig,
-  thermostatModeLabelKey,
-  thermostatOutputTone,
-  thermostatStatusLabelKey,
-} from '@/models/devices/thermostat'
+import { Thermostat } from '@/models/devices/thermostat'
+
+const deviceModel = new Thermostat.Device()
 
 const props = defineProps<{
   device: DashboardDevice
@@ -33,20 +29,21 @@ defineEmits<{
 
 const { t } = useI18n()
 
-const config = computed(() => normalizeThermostatConfig(props.device.detail.config, props.device.deps))
-const temperature = computed(() => props.device.output.temperature)
-const currentTemperatureText = computed(() => formatThermostatOutput(temperature.value) || t('device.dialog.temperatureUnavailableShort'))
-const summaryTone = computed(() => thermostatOutputTone(props.device.backendEffectiveStatus))
+const config = computed(() => deviceModel.normalizeConfig(props.device.detail.config, props.device.deps))
+const output = computed(() => deviceModel.normalizeOutput(props.device.raw))
+const temperature = computed(() => output.value.temperature)
+const currentTemperatureText = computed(() => Thermostat.formatOutput(temperature.value) || t('device.dialog.temperatureUnavailableShort'))
+const summaryTone = computed(() => Thermostat.outputTone(props.device.backendEffectiveStatus))
 const summaryText = computed(() => {
-  const mode = t(thermostatModeLabelKey(config.value.mode))
-  return `${mode} ${formatThermostatOutput(temperature.value) || formatTemperatureSetpoint(config.value.target_celsius)}`
+  const mode = t(Thermostat.modeLabelKey(config.value.mode))
+  return `${mode} ${Thermostat.formatOutput(temperature.value) || formatTemperatureSetpoint(config.value.target_celsius)}`
 })
 const summaryTitle = computed(() =>
   [
-    t(thermostatModeLabelKey(config.value.mode)),
+    t(Thermostat.modeLabelKey(config.value.mode)),
     `${t('device.fields.targetTemperature')}: ${formatTemperatureSetpoint(config.value.target_celsius)}`,
     `${t('device.fields.currentTemperature')}: ${currentTemperatureText.value}`,
-    `${t('device.fields.controlStatus')}: ${t(thermostatStatusLabelKey(props.device.output.control_status ?? props.device.backendEffectiveStatus))}`,
+    `${t('device.fields.controlStatus')}: ${t(Thermostat.statusLabelKey(output.value.control_status ?? props.device.backendEffectiveStatus))}`,
   ].join(' · '),
 )
 

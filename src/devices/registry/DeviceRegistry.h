@@ -109,6 +109,8 @@ public:
                                           DevicePersistencePolicy policy = DevicePersistencePolicy::Coalesced);
     DeviceMutationResult command(const DeviceCommand& command, uint32_t now);
     DeviceValidationResult flushNow();
+    DeviceValidationResult restore(const DeviceRegistrySnapshot& snapshot, const DeviceConfigBlobMap& configBlobs,
+                                   uint32_t registryRevision, uint32_t now);
 
     bool dirtyIndex() const;
     std::vector<DeviceId> dirtyConfigRecordIds() const;
@@ -129,6 +131,8 @@ private:
     void refreshDependentRuntimeStates(uint32_t now);
     void captureDirtyRuntimeRetainedStates(uint32_t now);
     DeviceValidationResult persistIfNeeded(DevicePersistencePolicy policy);
+    DeviceValidationResult reloadRuntimeFor(DeviceRuntimeMap& target, const DeviceRegistryEntry& record,
+                                            const DeviceConfigBlob& configBlob);
     DeviceValidationResult reloadRuntimeFor(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
     DeviceValidationResult replaceRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
     DeviceValidationResult buildSnapshot(DeviceRegistrySnapshot& snapshot, DeviceConfigBlobMap& configBlobs) const;

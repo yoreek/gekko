@@ -83,45 +83,56 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { outputStateLabelKey, type OutputState } from '@/models/devices/switch'
-import type { GpioSwitchConfigDraft } from '@/models/devices/gpio-switch'
+import { GpioSwitch } from '@/models/devices/gpio-switch'
 import SwitchStateSelect from '@/components/devices/switch/SwitchStateSelect.vue'
 import { isOutputState } from '@/models/devices/switch'
+import { GPIO_SWITCH_DEVICE_TYPE_ID } from '@/models/device-types'
+
+type GpioSwitchFormValue = GpioSwitch.CreateDraft | GpioSwitch.ConfigDraft
 
 const props = defineProps<{
-  modelValue: GpioSwitchConfigDraft | undefined
+  modelValue: GpioSwitchFormValue | undefined
   outputState?: OutputState
   showOutputState?: boolean
+  mode?: 'create' | 'edit'
   busy?: boolean
 }>()
 
 const emit = defineEmits<{
-  'update:modelValue': [value: GpioSwitchConfigDraft]
+  'update:modelValue': [value: GpioSwitchFormValue]
 }>()
 
 const { t } = useI18n()
-const fallbackValue: GpioSwitchConfigDraft = {
-  restore_previous_state: false,
-  startup_state: 'off',
-  safe_state: 'disabled',
-  inverted: false,
-  gpio_pin: 4,
+const isCreateMode = computed(() => props.mode !== 'edit')
+const fallbackValue: GpioSwitchFormValue = {
+  name: 'New Device',
+  typeId: GPIO_SWITCH_DEVICE_TYPE_ID,
+  enabled: true,
+  ...GpioSwitch.defaultConfig(),
 }
-const currentValue = computed<GpioSwitchConfigDraft>(() => props.modelValue ?? fallbackValue)
+const currentValue = computed<GpioSwitchFormValue>(() => props.modelValue ?? fallbackValue)
 const outputState = computed(() => (props.outputState !== undefined && isOutputState(props.outputState) ? props.outputState : undefined))
 
 function updatePin(value: string | number): void {
   const gpioPin = Number(value)
-  emit('update:modelValue', {
-    ...currentValue.value,
-    gpio_pin: Number.isFinite(gpioPin) ? gpioPin : currentValue.value.gpio_pin,
-  })
+  emit('update:modelValue', buildNextValue({ gpio_pin: Number.isFinite(gpioPin) ? gpioPin : currentValue.value.gpio_pin }))
 }
 
-function update<K extends keyof GpioSwitchConfigDraft>(key: K, value: GpioSwitchConfigDraft[K]): void {
-  emit('update:modelValue', {
-    ...currentValue.value,
-    [key]: value,
-  })
+function update<K extends keyof GpioSwitch.CreateDraft>(key: K, value: GpioSwitch.CreateDraft[K]): void {
+  emit('update:modelValue', buildNextValue({ [key]: value } as Partial<GpioSwitch.CreateDraft>))
+}
+
+function buildNextValue(patch: Partial<GpioSwitch.CreateDraft>): GpioSwitchFormValue {
+  if (!isCreateMode.value) {
+    return {
+      ...(currentValue.value as GpioSwitch.CreateDraft),
+      ...patch,
+    }
+  }
+  return {
+    ...(currentValue.value as GpioSwitch.CreateDraft),
+    ...patch,
+  }
 }
 </script>
 

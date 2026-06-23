@@ -5,6 +5,7 @@ import type {
   DeviceCommandRequest,
   DeviceDetailResponse,
   DeviceMutationResponse,
+  DeviceSetupTransferResponse,
   DeviceRecord,
   DeviceRegistryResponse,
   OtaStatusResponse,
@@ -12,6 +13,7 @@ import type {
   WifiScanResponse,
   WifiStatusResponse,
 } from '@/api'
+import type { TemperatureOutputSnapshot } from '@/api/contracts'
 import { ApiClientError } from '@/api/http'
 import { publishRealtimeMessage } from '@/realtime/bus'
 import { scheduleMockPersistenceFlush } from '@/realtime/mockRuntime'
@@ -21,6 +23,7 @@ import {
   GPIO_SWITCH_DEVICE_TYPE_ID,
   ONEWIRE_BUS_DEVICE_TYPE_ID,
   THERMOSTAT_DEVICE_TYPE_ID,
+  deviceTypeIdFromName,
 } from '@/models/device-types'
 import { createSeedMockDatabase, loadMockDatabase, saveMockDatabase } from './database'
 
@@ -243,7 +246,7 @@ export function mockFetchDashboardLayout(): DashboardLayoutResponse {
 export function mockSaveDashboardLayout(layout: DashboardLayoutRecord): Promise<void> {
   mutateRegistry(db => {
     validateDashboardLayout(layout)
-    db.dashboardLayout = normalizeDashboardLayout(layout, db.devices.map(device => device.device_id))
+    db.dashboardLayout = normalizeDashboardLayout(layout, db.devices.map(device => device.device_id ?? 0))
     db.dashboardLayoutRevision += 1
   })
   const revision = loadMockDatabase().dashboardLayoutRevision
@@ -259,8 +262,9 @@ export function mockSaveDashboardLayout(layout: DashboardLayoutRecord): Promise<
 
 export function mockCreateDevice(payload: Record<string, unknown>): Promise<DeviceMutationResponse> {
   const response = mutateRegistry(db => {
-    const nextId = Math.max(1, ...db.devices.map(device => device.device_id)) + 1
-    const typeId = payload.type_id
+    const nextId = Math.max(1, ...db.devices.map(device => device.device_id ?? 0)) + 1
+    const typeName = typeof payload.type === 'string' ? payload.type : ''
+    const typeId = typeof payload.type_id === 'number' ? payload.type_id : typeName.length > 0 ? deviceTypeIdFromName(typeName) : 0
     if (
       typeof typeId !== 'number' ||
       (
@@ -279,14 +283,15 @@ export function mockCreateDevice(payload: Record<string, unknown>): Promise<Devi
     const isThermostat = typeId === THERMOSTAT_DEVICE_TYPE_ID
     const isDummy = typeId === DUMMY_DEVICE_TYPE_ID
     const dependencyLinks = isDs18b20 ? normalizeDependencyLinks(payload.deps) : []
-    const thermostatDependencyLinks = isThermostat ? normalizeThermostatDependencyLinks(payload.deps, payload.config) : []
+    const configSource = isRecordPayload(payload.config) ? payload.config : payload
+    const thermostatDependencyLinks = isThermostat ? normalizeThermostatDependencyLinks(payload.deps, configSource) : []
     const dependencyDeviceId = isDs18b20 ? dependencyDeviceIdForRole(dependencyLinks, 'onewire_bus') : 0
     if (isDs18b20) {
       requireOneWireDependency(db, dependencyDeviceId)
     }
     const enabled = Boolean(payload.enabled ?? true)
-    const ds18b20Config = isDs18b20 ? normalizeDs18b20ConfigPayload(payload.config, enabled) : undefined
-    const thermostatConfig = isThermostat ? normalizeThermostatConfigPayload(payload.config, enabled, thermostatDependencyLinks) : undefined
+    const ds18b20Config = isDs18b20 ? normalizeDs18b20ConfigPayload(configSource, enabled) : undefined
+    const thermostatConfig = isThermostat ? normalizeThermostatConfigPayload(configSource, enabled, thermostatDependencyLinks) : undefined
     if (isDs18b20 && ds18b20Config !== undefined) {
       ensureUniqueDs18b20Address(db, dependencyDeviceId, String(ds18b20Config.address), nextId)
     }
@@ -508,7 +513,7 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
             }
             requireOneWireDependency(db, dependencyDeviceId)
             const config = normalizeDs18b20ConfigPayload(payload.config, device.enabled)
-            ensureUniqueDs18b20Address(db, dependencyDeviceId, String(config.address), device.device_id)
+            ensureUniqueDs18b20Address(db, dependencyDeviceId, String(config.address), device.device_id ?? 0)
             device.config = config
             device.enabled = Boolean(config.enabled)
             device.deps = dependencyLinks
@@ -781,7 +786,10 @@ function buildThermostatOutput(
   const switchDeviceId = normalizeDependencyDeviceId(config.switch_device_id)
   const sensor = db.devices.find(entry => entry.device_id === sensorDeviceId)
   const switchDevice = db.devices.find(entry => entry.device_id === switchDeviceId)
-  const temperature = sensor?.output?.temperature
+  const temperature = (sensor?.output as
+    | { temperature?: { measured_at_ms?: number; valid?: boolean; value?: number; unit?: string; unit_symbol?: string } }
+    | undefined
+  )?.temperature
   const measuredAtMs = temperature?.measured_at_ms ?? 0
   const validTemperature = Boolean(temperature?.valid)
   const currentTemperature = validTemperature ? Number(temperature?.value ?? 0) : 0
@@ -811,7 +819,7 @@ function buildThermostatOutput(
       desiredSwitchState = 'off'
       controlStatus = 'idle'
     } else {
-      desiredSwitchState = switchDevice.output?.state === 'on' ? 'on' : 'off'
+      desiredSwitchState = ((switchDevice.output as { state?: 'off' | 'on' | 'disabled' } | undefined)?.state === 'on' ? 'on' : 'off')
       controlStatus = desiredSwitchState === 'on' ? 'heating' : 'idle'
     }
   } else {
@@ -822,26 +830,28 @@ function buildThermostatOutput(
       desiredSwitchState = 'off'
       controlStatus = 'idle'
     } else {
-      desiredSwitchState = switchDevice.output?.state === 'on' ? 'on' : 'off'
+      desiredSwitchState = ((switchDevice.output as { state?: 'off' | 'on' | 'disabled' } | undefined)?.state === 'on' ? 'on' : 'off')
       controlStatus = desiredSwitchState === 'on' ? 'cooling' : 'idle'
     }
   }
 
-  const actualSwitchState = switchDevice?.output?.state ?? 'off'
+  const actualSwitchState = (switchDevice?.output as { state?: 'off' | 'on' | 'disabled' } | undefined)?.state ?? 'off'
   if (desiredSwitchState !== 'disabled' && actualSwitchState !== desiredSwitchState && controlStatus !== 'dependency_blocked' && controlStatus !== 'sensor_timeout') {
     controlStatus = 'switch_error'
   }
 
+  const outputTemperature: TemperatureOutputSnapshot = (temperature as TemperatureOutputSnapshot | undefined) ?? {
+    value: 0,
+    unit: 'celsius',
+    unit_symbol: 'C',
+    measured_at_ms: 0,
+    valid: false,
+    status: 'not_ready',
+  }
+
   return {
     ...((db.devices.find(entry => entry.device_id === currentDeviceId)?.output ?? {}) as Record<string, unknown>),
-    temperature: temperature ?? {
-      value: 0,
-      unit: 'celsius',
-      unit_symbol: 'C',
-      measured_at_ms: 0,
-      valid: false,
-      status: 'not_ready',
-    },
+    temperature: outputTemperature,
     desired_switch_state: desiredSwitchState,
     actual_switch_state: actualSwitchState,
     control_status: controlStatus,
@@ -967,7 +977,7 @@ function refreshChildEffectiveStatuses(db: ReturnType<typeof createSeedMockDatab
 
     device.effective_status = device.lifecycle_status === 'faulted' ? 'faulted' : 'ready'
     device.status = device.effective_status
-    if (!device.output?.temperature) {
+    if (!(device.output as { temperature?: unknown } | undefined)?.temperature) {
       markTemperatureUnavailable(device, 'not_ready')
     }
   }
@@ -984,7 +994,7 @@ function refreshChildEffectiveStatuses(db: ReturnType<typeof createSeedMockDatab
       device.lifecycle_status = 'disabled'
       device.effective_status = 'disabled'
       device.status = 'disabled'
-      device.output = buildThermostatOutput(db, config, device.device_id)
+      device.output = buildThermostatOutput(db, config, device.device_id ?? 0)
       continue
     }
 
@@ -994,19 +1004,19 @@ function refreshChildEffectiveStatuses(db: ReturnType<typeof createSeedMockDatab
     if (!sensor || sensor.type_id !== DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID || !switchDevice || switchDevice.type_id !== GPIO_SWITCH_DEVICE_TYPE_ID) {
       device.effective_status = 'dependency_blocked'
       device.status = 'dependency_blocked'
-      device.output = buildThermostatOutput(db, config, device.device_id)
+      device.output = buildThermostatOutput(db, config, device.device_id ?? 0)
       continue
     }
     if (!sensor.enabled || sensor.effective_status === 'disabled') {
       device.effective_status = 'disabled'
       device.status = 'disabled'
-      device.output = buildThermostatOutput(db, config, device.device_id)
+      device.output = buildThermostatOutput(db, config, device.device_id ?? 0)
       continue
     }
 
     device.effective_status = device.lifecycle_status === 'faulted' ? 'faulted' : 'ready'
     device.status = device.effective_status
-    device.output = buildThermostatOutput(db, config, device.device_id)
+    device.output = buildThermostatOutput(db, config, device.device_id ?? 0)
   }
 }
 
@@ -1016,6 +1026,149 @@ export function refreshMockDerivedDeviceState(db: ReturnType<typeof createSeedMo
 
 export function publishThermostatDependents(db: ReturnType<typeof createSeedMockDatabase>, sourceDeviceId: number): void {
   publishDependentThermostats(db, sourceDeviceId)
+}
+
+function cloneConfig(value: unknown): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return {}
+  }
+  return { ...(value as Record<string, unknown>) }
+}
+
+function dependencyIdFromExportDeps(deps: unknown, role: string): number {
+  if (!Array.isArray(deps)) {
+    return 0
+  }
+  const match = deps.find(entry => typeof entry === 'object' && entry !== null && !Array.isArray(entry) && (entry as Record<string, unknown>).role === role)
+  if (match === undefined) {
+    return 0
+  }
+  const deviceId = Number((match as Record<string, unknown>).device_id ?? 0)
+  return Number.isFinite(deviceId) && deviceId > 0 ? deviceId : 0
+}
+
+function exportDeviceConfig(device: DeviceRecord): Record<string, unknown> {
+  const config = cloneConfig(device.config)
+  if (device.type_id === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID) {
+    delete config.dependency_device_id
+  }
+  if (device.type_id === THERMOSTAT_DEVICE_TYPE_ID) {
+    delete config.temperature_sensor_device_id
+    delete config.switch_device_id
+  }
+  return config
+}
+
+export function mockExportDeviceSetupBundle(): string {
+  const db = loadMockDatabase()
+  const lines: string[] = []
+  lines.push(JSON.stringify({
+    kind: 'transfer_envelope',
+    transfer_schema_version: 1,
+    registry_schema_version: 1,
+    registry_revision: db.registryRevision,
+    device_count: db.devices.length,
+  }))
+
+  for (const device of db.devices) {
+    const config = exportDeviceConfig(device)
+    lines.push(JSON.stringify({
+      kind: 'device',
+      id: device.device_id,
+      type: device.type,
+      config_version: device.config_version,
+      config_revision: device.config_revision,
+      ...config,
+      name: device.name,
+      enabled: device.enabled,
+      deps: Array.isArray(device.deps) ? device.deps : [],
+    }))
+  }
+
+  return `${lines.join('\n')}\n`
+}
+
+export function mockImportDeviceSetupBundle(file: File): Promise<DeviceSetupTransferResponse> {
+  return file.text().then(text => {
+    const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+    if (lines.length === 0) {
+      throw new ApiClientError('bundle file is missing', 'BAD_JSON', 400, null)
+    }
+
+    const envelope = JSON.parse(lines[0]) as Record<string, unknown>
+    if (envelope.kind !== 'transfer_envelope' || envelope.transfer_schema_version !== 1) {
+      throw new ApiClientError('unsupported transfer schema version', 'INVALID_VERSION', 400, null)
+    }
+
+    const devices: DeviceRecord[] = []
+    for (const line of lines.slice(1)) {
+      const parsed = JSON.parse(line) as Record<string, unknown>
+      if (parsed.kind !== 'device') {
+        throw new ApiClientError('unexpected bundle record kind', 'BAD_ARGS', 400, null)
+      }
+      const config = cloneConfig(parsed)
+      delete config.kind
+      delete config.id
+      delete config.device_id
+      delete config.type
+      delete config.type_id
+      delete config.config_version
+      delete config.config_revision
+      delete config.name
+      delete config.enabled
+      delete config.deps
+      delete config.config_blob_hex
+
+      const typeName = typeof parsed.type === 'string' ? parsed.type : ''
+      const deps = (Array.isArray(parsed.deps) ? parsed.deps : []) as NonNullable<DeviceRecord['deps']>
+      if (typeName === 'ds18b20_temperature_sensor') {
+        const dependencyDeviceId = dependencyIdFromExportDeps(deps, 'onewire_bus')
+        if (dependencyDeviceId > 0) {
+          config.dependency_device_id = dependencyDeviceId
+        }
+      }
+      if (typeName === 'thermostat') {
+        const temperatureSensorId = dependencyIdFromExportDeps(deps, 'temperature_sensor')
+        const switchDeviceId = dependencyIdFromExportDeps(deps, 'switch')
+        if (temperatureSensorId > 0) {
+          config.temperature_sensor_device_id = temperatureSensorId
+        }
+        if (switchDeviceId > 0) {
+          config.switch_device_id = switchDeviceId
+        }
+      }
+
+      devices.push({
+        device_id: Number(parsed.id ?? parsed.device_id ?? 0),
+        type_id: Number(parsed.type_id ?? deviceTypeIdFromName(typeName)),
+        label: typeof parsed.name === 'string' ? parsed.name : undefined,
+        type: typeName,
+        name: typeof parsed.name === 'string' ? parsed.name : '',
+        enabled: Boolean(parsed.enabled),
+        deps,
+        has_deps: deps.length > 0,
+        config_version: Number(parsed.config_version ?? 0),
+        config_revision: Number(parsed.config_revision ?? 0),
+        lifecycle_status: 'ready',
+        effective_status: 'ready',
+        status: 'ready',
+        config,
+      })
+    }
+
+    mutateRegistry(db => {
+      db.devices = devices
+      db.registryRevision = Number(envelope.registry_revision ?? db.registryRevision)
+      db.pendingPersistence = false
+      refreshMockDerivedDeviceState(db)
+      return null
+    })
+
+    return ok({
+      registry_revision: Number(envelope.registry_revision ?? 0),
+      device_count: devices.length,
+    })
+  })
 }
 
 function normalizeDashboardLayout(layout: DashboardLayoutRecord, deviceIds: number[]): DashboardLayoutRecord {
@@ -1050,7 +1203,7 @@ function normalizeDashboardLayout(layout: DashboardLayoutRecord, deviceIds: numb
 }
 
 function pruneDashboardLayout(db: ReturnType<typeof createSeedMockDatabase>): void {
-  db.dashboardLayout = normalizeDashboardLayout(db.dashboardLayout, db.devices.map(device => device.device_id))
+  db.dashboardLayout = normalizeDashboardLayout(db.dashboardLayout, db.devices.map(device => device.device_id ?? 0))
 }
 
 function validateDashboardLayout(layout: DashboardLayoutRecord): void {

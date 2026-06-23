@@ -181,12 +181,11 @@ const SwitchDeviceConfigV1& SwitchDeviceBase::switchConfig() const {
 
 void SwitchDeviceBase::writeDeviceJson(JsonObject output) const {
     writeCommonDeviceJson(output);
-    JsonObject configObject = output.createNestedObject("config");
-    writeDeviceBaseConfigJson(config_.base, configObject);
-    configObject["restore_previous_state"] = config_.restorePreviousState != 0U;
-    configObject["startup_state"] = outputStateName(startupState());
-    configObject["safe_state"] = outputStateName(safeState());
-    configObject["inverted"] = config_.inverted != 0U;
+    writeDeviceBaseConfigJson(config_.base, output);
+    output["restore_previous_state"] = config_.restorePreviousState != 0U;
+    output["startup_state"] = outputStateName(startupState());
+    output["safe_state"] = outputStateName(safeState());
+    output["inverted"] = config_.inverted != 0U;
     JsonObject outputObject = output.createNestedObject("output");
     outputObject["state"] = outputStateName(outputState_);
     outputObject["physical_level"] = physicalOutputState_;

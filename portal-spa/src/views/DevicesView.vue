@@ -11,6 +11,14 @@
             <v-icon class="me-1" icon="plus" />
             {{ t('device.dashboard.create') }}
           </v-btn>
+          <v-btn :loading="transferLoading" color="primary" variant="tonal" @click="exportDeviceSetup">
+            <v-icon class="me-1" icon="download" />
+            {{ t('devices.export') }}
+          </v-btn>
+          <v-btn color="primary" variant="tonal" @click="importDialogOpen = true">
+            <v-icon class="me-1" icon="upload" />
+            {{ t('devices.import') }}
+          </v-btn>
           <v-btn :loading="devicesLoading" color="primary" variant="tonal" @click="refreshDevices">
             <v-icon class="me-1" icon="refresh" />
             {{ t('actions.refresh') }}
@@ -21,6 +29,12 @@
         <p class="text-body-1">
           {{ t('devices.copy') }}
         </p>
+        <v-alert v-if="transferMessage" class="mb-4" type="success" variant="tonal">
+          {{ transferMessage }}
+        </v-alert>
+        <v-alert v-if="transferError" class="mb-4" type="error" variant="tonal">
+          {{ transferError }}
+        </v-alert>
         <v-row class="devices-toolbar">
           <v-col cols="12" md="4">
             <v-text-field
@@ -133,19 +147,63 @@
         </v-btn>
       </template>
     </DeviceDialogShell>
+
+    <DeviceDialogShell
+      v-model="importDialogOpen"
+      :headline="t('devices.importTitle')"
+      :subline="t('devices.importCopy')"
+      :max-width="560"
+    >
+      <v-alert v-if="importError" class="mb-4" type="error" variant="tonal">
+        {{ importError }}
+      </v-alert>
+      <v-file-input
+        v-model="importFile"
+        accept=".ndjson,.jsonl,.txt,application/x-ndjson,text/plain"
+        :label="t('devices.importFile')"
+        prepend-icon="upload"
+      />
+      <v-checkbox
+        v-model="importConfirmed"
+        class="mt-2"
+        :label="t('devices.importConfirm')"
+      />
+      <template #footer>
+        <v-spacer />
+        <v-btn variant="text" @click="closeImportDialog">
+          {{ t('actions.cancel') }}
+        </v-btn>
+        <v-btn
+          color="primary"
+          :loading="transferLoading"
+          :disabled="selectedImportFile === null || !importConfirmed"
+          @click="submitImportDeviceSetup"
+        >
+          {{ t('devices.importAction') }}
+        </v-btn>
+      </template>
+    </DeviceDialogShell>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { commandDevice, createDevice, deleteDevice, fetchDevice, type DeviceCommandRequest } from '@/api'
+import {
+  commandDevice,
+  createDevice,
+  deleteDevice,
+  fetchDevice,
+  fetchDeviceSetupBundle,
+  importDeviceSetupBundle,
+  type DeviceCommandRequest,
+} from '@/api'
 import DeviceCreateDialog from '@/components/device/DeviceCreateDialog.vue'
 import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import { buildDeviceEditCommands } from '@/components/device/device-form'
-import type { DeviceEditSubmitPayload } from '@/components/device/device-form'
+import type { DeviceEditDraft } from '@/components/device/device-form'
 import type { DashboardDevice } from '@/models/device'
 import { deviceStatusLabelKey, deviceTypeLabelKey, deviceTypeOptions } from '@/models/device-types'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
@@ -167,6 +225,13 @@ const deleteDialogOpen = ref(false)
 const deleteTargetId = ref<number | null>(null)
 const deleteBusy = ref(false)
 const selectedDeviceId = ref<number | null>(null)
+const transferLoading = ref(false)
+const transferMessage = ref('')
+const transferError = ref('')
+const importDialogOpen = ref(false)
+const importFile = ref<File | File[] | null>(null)
+const importConfirmed = ref(false)
+const importError = ref('')
 const idFilter = ref('')
 const nameFilter = ref('')
 const typeFilter = ref<'all' | number>('all')
@@ -197,6 +262,13 @@ const filteredDevices = computed(() => {
   })
 })
 
+const selectedImportFile = computed<File | null>(() => {
+  if (Array.isArray(importFile.value)) {
+    return importFile.value[0] ?? null
+  }
+  return importFile.value
+})
+
 async function refreshDevices(silent = false): Promise<void> {
   if (!silent) {
     devicesLoading.value = true
@@ -208,6 +280,61 @@ async function refreshDevices(silent = false): Promise<void> {
     if (!silent) {
       devicesLoading.value = false
     }
+  }
+}
+
+function downloadBundle(text: string, filename: string): void {
+  const blob = new Blob([text], { type: 'application/x-ndjson' })
+  const url = window.URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.style.display = 'none'
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 0)
+}
+
+async function exportDeviceSetup(): Promise<void> {
+  transferLoading.value = true
+  transferError.value = ''
+  transferMessage.value = ''
+  try {
+    const bundle = await fetchDeviceSetupBundle()
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+    downloadBundle(bundle, `device-setup-${stamp}.ndjson`)
+    transferMessage.value = t('devices.exportSuccess')
+  } catch (error) {
+    transferError.value = formatError(error)
+  } finally {
+    transferLoading.value = false
+  }
+}
+
+function closeImportDialog(): void {
+  importDialogOpen.value = false
+  importFile.value = null
+  importConfirmed.value = false
+  importError.value = ''
+}
+
+async function submitImportDeviceSetup(): Promise<void> {
+  if (selectedImportFile.value === null || !importConfirmed.value) {
+    return
+  }
+  transferLoading.value = true
+  importError.value = ''
+  transferMessage.value = ''
+  try {
+    const response = await importDeviceSetupBundle(selectedImportFile.value)
+    await refreshDevices(true)
+    transferMessage.value = t('devices.importSuccess', { count: response.device_count })
+    closeImportDialog()
+  } catch (error) {
+    importError.value = formatError(error)
+  } finally {
+    transferLoading.value = false
   }
 }
 
@@ -273,7 +400,7 @@ async function refreshSelectedDevice(): Promise<void> {
   }
 }
 
-async function saveDevice(payload: DeviceEditSubmitPayload): Promise<void> {
+async function saveDevice(payload: DeviceEditDraft): Promise<void> {
   if (selectedDeviceId.value === null || selectedDevice.value === null) {
     return
   }
@@ -365,6 +492,14 @@ watch(
 watch(detailOpen, value => {
   if (!value) {
     detailEditing.value = false
+  }
+})
+
+watch(importDialogOpen, value => {
+  if (!value) {
+    importFile.value = null
+    importConfirmed.value = false
+    importError.value = ''
   }
 })
 </script>

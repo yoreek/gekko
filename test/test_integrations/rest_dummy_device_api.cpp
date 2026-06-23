@@ -102,17 +102,19 @@ void test_dummy_device_api_adapter_serializes_record() {
 
     DummyDeviceApiAdapter::instance().writeDeviceJson(runtime, output);
 
-    TEST_ASSERT_EQUAL_UINT32(42, output["device_id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32(42, output["id"].as<uint32_t>());
     TEST_ASSERT_EQUAL_STRING("dummy", output["type"].as<const char*>());
     TEST_ASSERT_TRUE(output["enabled"].as<bool>());
-    TEST_ASSERT_EQUAL_STRING("ready", output["status"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT32(DummyDevice::descriptor().currentConfigVersion, output["config_version"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(3, output["config_revision"].as<uint32_t>());
-    TEST_ASSERT_FALSE(output["retained_state_supported"].as<bool>());
-
-    JsonObject config = output["config"].as<JsonObject>();
-    TEST_ASSERT_TRUE(config["enabled"].as<bool>());
-    TEST_ASSERT_EQUAL_STRING("dummy-api", config["name"].as<const char*>());
+    TEST_ASSERT_TRUE(output["deps"].is<JsonArrayConst>());
+    TEST_ASSERT_TRUE(output["device_id"].isNull());
+    TEST_ASSERT_TRUE(output["type_id"].isNull());
+    TEST_ASSERT_TRUE(output["status"].isNull());
+    TEST_ASSERT_TRUE(output["has_deps"].isNull());
+    TEST_ASSERT_TRUE(output["retained_state_supported"].isNull());
+    TEST_ASSERT_TRUE(output["enabled"].as<bool>());
+    TEST_ASSERT_EQUAL_STRING("dummy-api", output["name"].as<const char*>());
 }
 
 int main(int, char**) {

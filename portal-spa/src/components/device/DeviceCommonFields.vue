@@ -6,6 +6,7 @@
         :model-value="modelValue.name"
         :readonly="mode === 'view'"
         :disabled="busy && mode !== 'view'"
+        :rules="nameRules"
         @update:model-value="updateField('name', String($event))"
       />
     </v-col>
@@ -17,6 +18,7 @@
         :items="typeItems"
         :readonly="mode !== 'create'"
         :disabled="busy && mode === 'create'"
+        :rules="typeRules"
         @update:model-value="updateField('typeId', Number($event))"
       />
     </v-col>
@@ -54,6 +56,12 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const typeItems = computed(() => deviceTypeOptions.map(option => ({ title: t(option.labelKey), value: option.id })))
+const nameRules = [
+  (value: unknown) => String(value ?? '').trim().length > 0 || t('validation.required'),
+]
+const typeRules = [
+  (value: unknown) => Number(value) > 0 || t('validation.required'),
+]
 
 function updateField<K extends keyof DeviceCommonDraft>(key: K, value: DeviceCommonDraft[K]): void {
   emit('update:modelValue', {

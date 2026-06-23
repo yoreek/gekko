@@ -10,10 +10,10 @@
       {{ errorMessage }}
     </v-alert>
 
-    <div class="device-dialog__content">
+    <v-form v-model="formValid" class="device-dialog__content">
       <section class="device-dialog__section">
         <DeviceCommonFields
-          v-model="draft.common"
+          v-model="draft"
           :mode="'create'"
           :busy="loading"
         />
@@ -23,18 +23,18 @@
         <div class="device-dialog__section-heading text-overline">{{ t('device.dialog.details') }}</div>
         <component
           :is="createFormComponent"
-          v-model="draft.config"
+          v-model="draft"
           :busy="loading"
         />
       </section>
-    </div>
+    </v-form>
 
     <template #footer>
       <v-spacer />
       <v-btn variant="text" @click="$emit('update:modelValue', false)">
         {{ t('actions.cancel') }}
       </v-btn>
-      <v-btn color="primary" :loading="loading" :disabled="!canSubmit" @click="submit">
+      <v-btn color="primary" :loading="loading" :disabled="!formValid || loading" @click="submit">
         {{ t('device.dashboard.create') }}
       </v-btn>
     </template>
@@ -42,44 +42,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import DeviceCommonFields from '@/components/device/DeviceCommonFields.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import {
-  createDefaultDeviceCommonDraft,
-  createDefaultDeviceConfigDraft,
-  isDs18b20Type,
-  isThermostatType,
-  type DeviceCommonDraft,
+  createDefaultDeviceDraft,
+  type DeviceCreateDraft,
 } from '@/components/device/device-form'
-import { resolveDeviceCreateFormComponent } from '@/components/devices/registry/device-component-registry'
-import {
-  DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
-  GPIO_SWITCH_DEVICE_TYPE_ID,
-} from '@/models/device-types'
-import {
-  ds18b20AddressShapeValid,
-  encodeDs18b20Config,
-  normalizeDs18b20TemperatureSensorConfig,
-} from '@/models/devices/ds18b20'
-import {
-  encodeThermostatConfig,
-  normalizeThermostatConfig,
-  thermostatDependencyLinks,
-  type ThermostatConfigDraft,
-} from '@/models/devices/thermostat'
-import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
-import type { DeviceDependencyLink } from '@/api'
-
-type CreatePayload = {
-  name: string
-  type_id: number
-  enabled: boolean
-  config?: Record<string, unknown>
-  deps?: DeviceDependencyLink[]
-}
+import { resolveDeviceFormComponent } from '@/components/devices/registry/device-component-registry'
+import { resolveDeviceModelByTypeId } from '@/models/devices/device-model-factory'
+import type { DeviceCreatePayload } from '@/models/devices/base-device'
 
 const props = defineProps<{
   modelValue: boolean
@@ -89,90 +63,45 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  submit: [payload: CreatePayload]
+  submit: [payload: DeviceCreatePayload]
 }>()
 
 const { t } = useI18n()
-const deviceStore = useDeviceRegistryStore()
 
-const draft = reactive<{
-  common: DeviceCommonDraft
-  config: Record<string, unknown>
-}>({
-  common: createDefaultDeviceCommonDraft(),
-  config: {},
-})
-
-const ds18b20Config = computed(() => normalizeDs18b20TemperatureSensorConfig(draft.config))
-const thermostatConfig = computed<ThermostatConfigDraft>(() => normalizeThermostatConfig(draft.config))
-const thermostatSensorCount = computed(() => deviceStore.devices.filter(device => device.typeId === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID).length)
-const thermostatSwitchCount = computed(() => deviceStore.devices.filter(device => device.typeId === GPIO_SWITCH_DEVICE_TYPE_ID).length)
-const canSubmit = computed(() => {
-  if (draft.common.name.trim().length === 0 || draft.common.typeId <= 0) {
-    return false
-  }
-  if (!isDs18b20Type(draft.common.typeId)) {
-    if (isThermostatType(draft.common.typeId)) {
-      return (
-        thermostatConfig.value.temperature_sensor_device_id > 0 &&
-        thermostatConfig.value.switch_device_id > 0 &&
-        thermostatSensorCount.value > 0 &&
-        thermostatSwitchCount.value > 0
-      )
-    }
-    return true
-  }
-  return ds18b20Config.value.dependency_device_id > 0 && ds18b20AddressShapeValid(ds18b20Config.value.address)
-})
-const createFormComponent = computed(() => resolveDeviceCreateFormComponent(draft.common.typeId))
+const draft = ref<DeviceCreateDraft>(createDefaultDeviceDraft())
+const createFormComponent = computed(() => resolveDeviceFormComponent(draft.value.typeId))
+const formValid = ref(false)
 
 watch(
   () => props.modelValue,
   value => {
     if (value) {
-      draft.common = createDefaultDeviceCommonDraft()
-      draft.config = createDefaultDeviceConfigDraft(draft.common.typeId)
+      replaceDraft(createDefaultDeviceDraft())
     }
   },
 )
 
 watch(
-  () => draft.common.typeId,
+  () => draft.value.typeId,
   typeId => {
-    draft.config = createDefaultDeviceConfigDraft(typeId)
+    formValid.value = false
+    const next = createDefaultDeviceDraft(typeId)
+    next.name = draft.value.name
+    next.enabled = draft.value.enabled
+    replaceDraft(next)
   },
 )
 
 function submit(): void {
-  if (!canSubmit.value) {
+  if (!formValid.value) {
     return
   }
-  const payload: CreatePayload = {
-    name: draft.common.name.trim(),
-    type_id: draft.common.typeId,
-    enabled: draft.common.enabled,
-  }
-  if (isDs18b20Type(draft.common.typeId)) {
-    payload.config = encodeDs18b20Config({
-      ...ds18b20Config.value,
-      enabled: draft.common.enabled,
-    })
-    payload.deps = [
-      {
-        role: 'onewire_bus',
-        device_id: ds18b20Config.value.dependency_device_id,
-      },
-    ]
-  } else if (isThermostatType(draft.common.typeId)) {
-    payload.config = encodeThermostatConfig({
-      ...thermostatConfig.value,
-      enabled: draft.common.enabled,
-    })
-    payload.deps = thermostatDependencyLinks(thermostatConfig.value)
-  } else if (Object.keys(draft.config).length > 0) {
-    payload.config = { ...draft.config }
-  }
-  emit('submit', payload)
+  const model = resolveDeviceModelByTypeId(draft.value.typeId)
+  emit('submit', model.buildCreatePayload(draft.value))
+}
+
+function replaceDraft(next: DeviceCreateDraft): void {
+  draft.value = next
 }
 </script>
 

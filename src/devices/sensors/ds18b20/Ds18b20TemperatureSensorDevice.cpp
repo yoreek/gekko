@@ -128,8 +128,7 @@ bool Ds18b20TemperatureSensorDevice::applyConfig(const DeviceConfigBlob& configB
 
 void Ds18b20TemperatureSensorDevice::writeDeviceJson(JsonObject output) const {
     writeCommonDeviceJson(output);
-    JsonObject configObject = output.createNestedObject("config");
-    writeDs18b20TemperatureSensorConfigJson(config_, configObject);
+    writeDs18b20TemperatureSensorConfigJson(config_, output);
     JsonObject outputObject = output.createNestedObject("output");
     JsonObject temperatureObject = outputObject.createNestedObject("temperature");
     writeTemperatureOutputJson(reading_, outputUnit(), outputStatus_, temperatureObject);

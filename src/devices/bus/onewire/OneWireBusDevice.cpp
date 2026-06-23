@@ -159,8 +159,7 @@ bool OneWireBusDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t 
 
 void OneWireBusDevice::writeDeviceJson(JsonObject output) const {
     writeCommonDeviceJson(output);
-    JsonObject configObject = output.createNestedObject("config");
-    writeOneWireBusDeviceConfigJson(config_, configObject);
+    writeOneWireBusDeviceConfigJson(config_, output);
     JsonObject scanObject = output.createNestedObject("scan");
     scanObject["in_progress"] = scan_.inProgress;
     scanObject["ready"] = scan_.ready;
