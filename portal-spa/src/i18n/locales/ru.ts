@@ -190,6 +190,13 @@ export default {
       freeSketchSpace: 'Свободная область прошивки',
       hasError: 'Есть ошибка',
     },
+    status: {
+      ready: 'Готов',
+      disabled: 'Отключено',
+      dependencyBlocked: 'Зависимость недоступна',
+      faulted: 'Сбой',
+      unknown: 'Неизвестно',
+    },
     dialog: {
       createTitle: 'Создание устройства',
       createHint: 'Добавьте новую запись реестра через текущий API портала.',

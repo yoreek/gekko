@@ -69,10 +69,10 @@
               <td>
                 <strong class="text-body-1">{{ device.name }}</strong>
               </td>
-              <td>{{ device.typeLabel }}</td>
+              <td>{{ t(deviceTypeLabelKey(device.typeId)) }}</td>
               <td>
-                <v-chip variant="tonal" :color="device.isReady ? 'success' : 'secondary'">
-                  {{ device.effectiveStatus }}
+                <v-chip variant="tonal" :color="statusColor(device.backendEffectiveStatus)">
+                  {{ t(deviceStatusLabelKey(device.backendEffectiveStatus)) }}
                 </v-chip>
               </td>
               <td class="devices-table__actions">
@@ -147,7 +147,7 @@ import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import { buildDeviceEditCommands } from '@/components/device/device-form'
 import type { DeviceEditSubmitPayload } from '@/components/device/device-form'
 import type { DashboardDevice } from '@/models/device'
-import { deviceTypeOptions } from '@/models/device-types'
+import { deviceStatusLabelKey, deviceTypeLabelKey, deviceTypeOptions } from '@/models/device-types'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore } from '@/stores/panels'
 
@@ -217,6 +217,21 @@ function applyMutationResponse(response: { registry_revision: number; pending_pe
   if (response.device !== undefined) {
     deviceStore.upsertDevice(response.device, response.registry_revision)
     void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
+  }
+}
+
+function statusColor(status: string): 'success' | 'secondary' | 'error' | 'warning' | 'primary' {
+  switch (status.trim().toLowerCase()) {
+    case 'ready':
+      return 'success'
+    case 'disabled':
+      return 'secondary'
+    case 'faulted':
+      return 'error'
+    case 'dependency_blocked':
+      return 'warning'
+    default:
+      return 'primary'
   }
 }
 

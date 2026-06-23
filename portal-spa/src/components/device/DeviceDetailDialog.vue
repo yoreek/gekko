@@ -132,7 +132,7 @@ import OneWireBusDeviceForm from '@/components/devices/onewire-bus/OneWireBusDev
 import ThermostatDeviceForm from '@/components/devices/thermostat/ThermostatDeviceForm.vue'
 import { resolveDeviceDetailComponent } from '@/components/devices/registry/device-component-registry'
 import type { DashboardDevice } from '@/models/device'
-import { deviceTypeLabelKey } from '@/models/device-types'
+import { deviceStatusLabelKey, deviceTypeLabelKey } from '@/models/device-types'
 import { ds18b20AddressShapeValid, ds18b20ConfigChanged } from '@/models/devices/ds18b20'
 import { normalizeThermostatConfig, thermostatConfigChanged } from '@/models/devices/thermostat'
 import type { DeviceCommandRequest } from '@/api'
@@ -184,7 +184,7 @@ const statusText = computed(() => {
   if (device.value === null) {
     return ''
   }
-  return device.value.backendEffectiveStatus || device.value.lifecycleStatus
+  return t(deviceStatusLabelKey(device.value.backendEffectiveStatus || device.value.lifecycleStatus))
 })
 
 const statusColor = computed(() => {

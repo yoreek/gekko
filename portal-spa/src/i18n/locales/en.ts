@@ -190,6 +190,13 @@ export default {
       freeSketchSpace: 'Free sketch space',
       hasError: 'Has error',
     },
+    status: {
+      ready: 'Ready',
+      disabled: 'Disabled',
+      dependencyBlocked: 'Dependency blocked',
+      faulted: 'Faulted',
+      unknown: 'Unknown',
+    },
     actions: {
       name: 'Name',
       type: 'Type',
