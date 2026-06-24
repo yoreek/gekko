@@ -14,7 +14,7 @@ import { useI18n } from 'vue-i18n'
 
 import type { DeviceRecord, ThermostatOutputSnapshot } from '@/api/contracts'
 import DeviceWidgetBase from '@/components/devices/base/DeviceWidgetBase.vue'
-import { deviceRecordEffectiveStatus, deviceRecordConfig, deviceRecordRuntime } from '@/models/device'
+import { deviceRecordEffectiveStatus } from '@/models/device'
 import { Thermostat } from '@/models/devices/thermostat'
 
 const props = defineProps<{
@@ -28,8 +28,8 @@ defineEmits<{
 
 const { t } = useI18n()
 
-const config = computed(() => Thermostat.normalizeConfig(deviceRecordConfig(props.device), deviceRecordConfig(props.device).deps))
-const output = computed(() => deviceRecordRuntime(props.device) as ThermostatOutputSnapshot)
+const config = computed(() => Thermostat.normalizeConfig(props.device.config, props.device.config.deps))
+const output = computed(() => props.device.runtime as ThermostatOutputSnapshot)
 const temperature = computed(() => output.value.temperature)
 const currentTemperatureText = computed(() => Thermostat.formatOutput(temperature.value) || t('device.dialog.temperatureUnavailableShort'))
 const summaryTone = computed(() => Thermostat.outputTone(deviceRecordEffectiveStatus(props.device)))

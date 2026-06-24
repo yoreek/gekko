@@ -123,7 +123,7 @@ import type { DeviceCommandRequest } from '@/api'
 import { commandDevice } from '@/api'
 import { ONEWIRE_BUS_DEVICE_TYPE_ID } from '@/models/device-types'
 import { Ds18b20 } from '@/models/devices/ds18b20'
-import { deviceRecordId, deviceRecordName, deviceRecordRuntime, deviceRecordTypeId } from '@/models/device'
+import { deviceRecordId, deviceRecordName, deviceRecordTypeId } from '@/models/device'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID } from '@/models/device-types'
 
@@ -162,7 +162,7 @@ const dependencyDevices = computed(() => deviceStore.devices.filter(device => de
 const selectedDependency = computed(() => dependencyDevices.value.find(device => deviceRecordId(device) === currentValue.value.dependencyDeviceId))
 const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ title: `${deviceRecordName(device)} #${deviceRecordId(device)}`, value: deviceRecordId(device) })))
 const selectedDependencyScanInProgress = computed(() => {
-  const scan = selectedDependency.value ? (deviceRecordRuntime(selectedDependency.value) as { scan?: { inProgress?: boolean } }).scan : undefined
+  const scan = selectedDependency.value ? (selectedDependency.value.runtime as { scan?: { inProgress?: boolean } }).scan : undefined
   return scan?.inProgress === true
 })
 const resolutionItems = computed(() => Ds18b20.resolutionOptions.map(value => ({ title: t('device.dialog.ds18b20.resolution', { value }), value })))
@@ -171,7 +171,7 @@ const dependencyRules = computed(() => [
   (value: unknown) => Number(value) > 0 || t('device.dialog.ds18b20.noDependency'),
 ])
 const scanCandidateItems = computed(() => {
-  const devices = (selectedDependency.value ? (deviceRecordRuntime(selectedDependency.value) as { scan?: { devices?: Array<{ address: string; familyCode: string }> } }).scan?.devices : undefined) ?? []
+  const devices = (selectedDependency.value ? (selectedDependency.value.runtime as { scan?: { devices?: Array<{ address: string; familyCode: string }> } }).scan?.devices : undefined) ?? []
   return devices.filter(Ds18b20.isScanCandidate).map(candidate => ({
       title: `${candidate.address} · ${t('device.dialog.onewireFamilyCode', { family: candidate.familyCode })}`,
     value: candidate.address,

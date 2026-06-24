@@ -100,7 +100,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceRecord, ThermostatOutputSnapshot } from '@/api/contracts'
-import { deviceRecordConfig, deviceRecordEffectiveStatus, deviceRecordId, deviceRecordName, deviceRecordRuntime } from '@/models/device'
+import { deviceRecordEffectiveStatus, deviceRecordId, deviceRecordName } from '@/models/device'
 import { Thermostat } from '@/models/devices/thermostat'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
@@ -113,8 +113,8 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
-const config = computed(() => deviceModel.normalizeConfig(deviceRecordConfig(props.device), deviceRecordConfig(props.device).deps))
-const output = computed(() => deviceRecordRuntime(props.device) as ThermostatOutputSnapshot)
+const config = computed(() => deviceModel.normalizeConfig(props.device.config, props.device.config.deps))
+const output = computed(() => props.device.runtime as ThermostatOutputSnapshot)
 const sensorDevice = computed(() => deviceStore.devices.find(device => device.record.id === config.value.temperatureSensorDeviceId))
 const switchDevice = computed(() => deviceStore.devices.find(device => device.record.id === config.value.switchDeviceId))
 const temperature = computed(() => output.value.temperature)

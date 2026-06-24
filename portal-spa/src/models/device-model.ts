@@ -1,6 +1,4 @@
 import type {
-  DeviceDependencyLink,
-  DeviceOutputSnapshot,
   DeviceRecord,
   DeviceRegistryResponse,
 } from '@/api/contracts'
@@ -11,14 +9,6 @@ export type DashboardEffectiveStatus = 'Ready' | '!Ready'
 export interface DeviceCollection<TRecord extends DeviceRecord = DeviceRecord> {
   registryRevision: number
   devices: TRecord[]
-}
-
-export interface DeviceActionPreset {
-  key: string
-  command: string
-  labelKey: string
-  payload?: string
-  tone?: 'primary' | 'secondary' | 'warning' | 'error'
 }
 
 export function normalizeDashboardStatus(effectiveStatus: string | undefined | null): DashboardEffectiveStatus {
@@ -56,30 +46,6 @@ export function deviceRecordName(device: DeviceRecord): string {
   return typeof device.config.name === 'string' ? device.config.name : ''
 }
 
-export function deviceRecordConfig(device: DeviceRecord): DeviceRecord['config'] {
-  return device.config
-}
-
-export function deviceRecordRuntime(device: DeviceRecord): DeviceRecord['runtime'] {
-  return device.runtime
-}
-
-export function deviceRecordEnabled(device: DeviceRecord): boolean {
-  return typeof device.config.enabled === 'boolean' ? device.config.enabled : true
-}
-
-export function deviceRecordDeps(device: DeviceRecord): DeviceDependencyLink[] {
-  return Array.isArray(device.config.deps) ? device.config.deps : []
-}
-
-export function deviceRecordOutput(device: DeviceRecord): DeviceOutputSnapshot {
-  return device.runtime as DeviceOutputSnapshot
-}
-
-export function deviceRecordStatus(device: DeviceRecord): string {
-  return typeof device.runtime.status === 'string' ? device.runtime.status : 'unknown'
-}
-
 export function deviceRecordEffectiveStatus(device: DeviceRecord): string {
   return typeof device.runtime.effectiveStatus === 'string'
     ? device.runtime.effectiveStatus
@@ -88,8 +54,4 @@ export function deviceRecordEffectiveStatus(device: DeviceRecord): string {
       : typeof device.runtime.status === 'string'
         ? device.runtime.status
         : 'unknown'
-}
-
-export function deviceActionPresets(): DeviceActionPreset[] {
-  return []
 }

@@ -112,7 +112,6 @@ import {
   deviceRecordEffectiveStatus,
   deviceRecordId,
   deviceRecordName,
-  deviceRecordRuntime,
   deviceRecordTypeId,
 } from '@/models/device'
 import type { DeviceRecord } from '@/api/contracts'
@@ -195,7 +194,7 @@ const outputState = computed(() => {
   if (device.value === null || deviceRecordTypeId(device.value) !== GPIO_SWITCH_DEVICE_TYPE_ID) {
     return undefined
   }
-  return (deviceRecordRuntime(device.value) as { state?: string }).state
+  return (device.value.runtime as { state?: string }).state
 })
 const canSave = computed(() => {
   if (device.value === null) {

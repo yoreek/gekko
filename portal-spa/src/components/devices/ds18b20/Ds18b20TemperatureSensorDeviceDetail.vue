@@ -76,7 +76,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceRecord, Ds18b20TemperatureSensorOutputSnapshot, TemperatureOutputSnapshot } from '@/api/contracts'
-import { deviceRecordConfig, deviceRecordRuntime, deviceRecordId, deviceRecordName } from '@/models/device'
+import { deviceRecordId, deviceRecordName } from '@/models/device'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
 const props = defineProps<{
@@ -86,8 +86,8 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
-const dependencyDeviceId = computed(() => deviceRecordConfig(props.device).deps.find(dep => dep.role === 'onewire_bus')?.deviceId ?? 0)
-const config = computed(() => deviceRecordConfig(props.device) as unknown as {
+const dependencyDeviceId = computed(() => props.device.config.deps.find(dep => dep.role === 'onewire_bus')?.deviceId ?? 0)
+const config = computed(() => props.device.config as unknown as {
   address: string
   resolution: number
   unit: 'celsius' | 'fahrenheit'
@@ -95,7 +95,7 @@ const config = computed(() => deviceRecordConfig(props.device) as unknown as {
   reportDeltaCelsius: number
   reportAlways: boolean
 })
-const output = computed(() => deviceRecordRuntime(props.device) as Ds18b20TemperatureSensorOutputSnapshot)
+const output = computed(() => props.device.runtime as Ds18b20TemperatureSensorOutputSnapshot)
 const temperature = computed(() => output.value.temperature as TemperatureOutputSnapshot | undefined)
 const temperatureText = computed(() => temperature.value?.valid ? `${temperature.value.value.toFixed(2)} ${temperature.value.unitSymbol}` : t('device.dialog.temperatureUnavailableShort'))
 const dependencyLabel = computed(() => {
