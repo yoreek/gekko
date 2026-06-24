@@ -3,9 +3,9 @@ import type { DeviceCommandRequest, DeviceOutputState, GpioSwitchOutputSnapshot 
 export type OutputState = DeviceOutputState
 
 export interface SwitchConfigDraft {
-  restore_previous_state: boolean
-  startup_state: OutputState
-  safe_state: OutputState
+  restorePreviousState: boolean
+  startupState: OutputState
+  safeState: OutputState
   inverted: boolean
 }
 
@@ -21,7 +21,7 @@ export function outputStateLabelKey(state: OutputState): string {
 
 export function switchCommandPayload(state: OutputState): DeviceCommandRequest {
   return {
-    command: 'set_output',
+    command: 'setOutput',
     state,
   }
 }
@@ -46,6 +46,6 @@ export function normalizeSwitchOutput(value: unknown): GpioSwitchOutputSnapshot 
   }
   return {
     state: isOutputState(value.state) ? value.state : undefined,
-    physical_level: typeof value.physical_level === 'boolean' ? value.physical_level : undefined,
+    physicalLevel: typeof value.physicalLevel === 'boolean' ? value.physicalLevel : undefined,
   }
 }

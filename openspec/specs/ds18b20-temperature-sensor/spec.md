@@ -9,7 +9,7 @@ The firmware SHALL provide a `Ds18b20TemperatureSensorDevice` dynamic device typ
 
 #### Scenario: Type descriptor is registered
 - **WHEN** the default device type registry is created
-- **THEN** it contains `Ds18b20TemperatureSensorDevice` with stable `type_id = 4`, current config version `1`, retained-state support disabled, dependent support disabled, 100 ms ticking enabled, and `compatibleDependencyTypes` containing only the OneWire bus type id
+- **THEN** it contains `Ds18b20TemperatureSensorDevice` with stable `type_id = 4`, current config format marker `DS18B20-1`, retained-state support disabled, dependent support disabled, 100 ms ticking enabled, and `compatibleDependencyTypes` containing only the OneWire bus type id
 
 #### Scenario: Dependency relationship is required
 - **WHEN** a caller creates a DS18B20 temperature sensor without a compatible OneWire dependency in `deps`
@@ -20,7 +20,7 @@ The firmware SHALL provide a `Ds18b20TemperatureSensorDevice` dynamic device typ
 - **THEN** the firmware rejects the mutation with an incompatible dependency type validation error
 
 ### Requirement: DS18B20 configuration contract
-The firmware SHALL persist DS18B20 configuration as a bounded versioned payload containing enabled state, ROM address, resolution, output unit, poll period, report delta, and report policy.
+The firmware SHALL persist DS18B20 configuration as a bounded binary payload identified by the `DS18B20-1` format marker and containing enabled state, ROM address, resolution, output unit, poll period, report delta, and report policy.
 
 #### Scenario: Valid configuration is accepted
 - **WHEN** a DS18B20 config contains a valid `28` family OneWire ROM address with valid CRC, resolution 9 through 12, unit `celsius` or `fahrenheit`, poll period within bounds, a centi-Celsius report delta, and a boolean report-always flag

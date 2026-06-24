@@ -5,11 +5,11 @@ Define the firmware contract for the composite thermostat device type.
 ## Requirements
 
 ### Requirement: Thermostat device type
-The firmware SHALL provide a `ThermostatDevice` dynamic device type with stable type identity, bounded versioned config, and no embedded sensor or switch hardware ownership.
+The firmware SHALL provide a `ThermostatDevice` dynamic device type with stable type identity, bounded binary config, and no embedded sensor or switch hardware ownership.
 
 #### Scenario: Thermostat type is registered
 - **WHEN** the default firmware device type registry is created after dependency support exists
-- **THEN** it includes `ThermostatDevice` with stable `type_id = 5`, current config version, required `temperature_sensor` and `switch` deps, no retained state, and a declared runtime cadence
+- **THEN** it includes `ThermostatDevice` with stable `type_id = 5`, current config format marker `THRM-1`, required `temperature_sensor` and `switch` deps, no retained state, and a declared runtime cadence
 
 #### Scenario: Thermostat config is bounded
 - **WHEN** a thermostat config is encoded for registry storage

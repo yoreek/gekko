@@ -13,20 +13,20 @@
           <v-select
             :label="t('device.fields.temperatureSensor')"
             :items="sensorItems"
-            :model-value="currentValue.temperature_sensor_device_id"
+            :model-value="currentValue.temperatureSensorDeviceId"
             :disabled="busy || sensorItems.length === 0"
             :rules="sensorRules"
-            @update:model-value="updateNumber('temperature_sensor_device_id', $event)"
+            @update:model-value="updateNumber('temperatureSensorDeviceId', $event)"
           />
         </v-col>
         <v-col cols="12" md="6">
           <v-select
             :label="t('device.fields.switchDevice')"
             :items="switchItems"
-            :model-value="currentValue.switch_device_id"
+            :model-value="currentValue.switchDeviceId"
             :disabled="busy || switchItems.length === 0"
             :rules="switchRules"
-            @update:model-value="updateNumber('switch_device_id', $event)"
+            @update:model-value="updateNumber('switchDeviceId', $event)"
           />
         </v-col>
       </v-row>
@@ -46,46 +46,46 @@
         <v-col cols="12" md="4">
           <v-text-field
             :label="t('device.fields.targetTemperature')"
-            :model-value="currentValue.target_celsius"
+            :model-value="currentValue.targetCelsius"
             inputmode="decimal"
             type="number"
             step="0.1"
             :disabled="busy"
-            @update:model-value="updateNumber('target_celsius', $event)"
+            @update:model-value="updateNumber('targetCelsius', $event)"
           />
         </v-col>
         <v-col cols="12" md="4">
           <v-text-field
             :label="t('device.fields.hysteresis')"
-            :model-value="currentValue.hysteresis_celsius"
+            :model-value="currentValue.hysteresisCelsius"
             inputmode="decimal"
             type="number"
             step="0.1"
             min="0"
             :disabled="busy"
-            @update:model-value="updateNumber('hysteresis_celsius', $event)"
+            @update:model-value="updateNumber('hysteresisCelsius', $event)"
           />
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
             :label="t('device.fields.safeMinTemperature')"
-            :model-value="currentValue.min_safe_celsius"
+            :model-value="currentValue.minSafeCelsius"
             inputmode="decimal"
             type="number"
             step="0.1"
             :disabled="busy"
-            @update:model-value="updateNumber('min_safe_celsius', $event)"
+            @update:model-value="updateNumber('minSafeCelsius', $event)"
           />
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
             :label="t('device.fields.safeMaxTemperature')"
-            :model-value="currentValue.max_safe_celsius"
+            :model-value="currentValue.maxSafeCelsius"
             inputmode="decimal"
             type="number"
             step="0.1"
             :disabled="busy"
-            @update:model-value="updateNumber('max_safe_celsius', $event)"
+            @update:model-value="updateNumber('maxSafeCelsius', $event)"
           />
         </v-col>
       </v-row>
@@ -96,49 +96,49 @@
         <v-col cols="12" md="3">
           <v-text-field
             :label="t('device.fields.checkIntervalMs')"
-            :model-value="currentValue.check_interval_ms"
+            :model-value="currentValue.checkIntervalMs"
             inputmode="numeric"
             type="number"
             min="100"
             step="100"
             :disabled="busy"
-            @update:model-value="updateNumber('check_interval_ms', $event)"
+            @update:model-value="updateNumber('checkIntervalMs', $event)"
           />
         </v-col>
         <v-col cols="12" md="3">
           <v-text-field
             :label="t('device.fields.sensorTimeoutMs')"
-            :model-value="currentValue.sensor_timeout_ms"
+            :model-value="currentValue.sensorTimeoutMs"
             inputmode="numeric"
             type="number"
             min="100"
             step="100"
             :disabled="busy"
-            @update:model-value="updateNumber('sensor_timeout_ms', $event)"
+            @update:model-value="updateNumber('sensorTimeoutMs', $event)"
           />
         </v-col>
         <v-col cols="12" md="3">
           <v-text-field
             :label="t('device.fields.retryAfterErrorMs')"
-            :model-value="currentValue.retry_after_error_ms"
+            :model-value="currentValue.retryAfterErrorMs"
             inputmode="numeric"
             type="number"
             min="100"
             step="100"
             :disabled="busy"
-            @update:model-value="updateNumber('retry_after_error_ms', $event)"
+            @update:model-value="updateNumber('retryAfterErrorMs', $event)"
           />
         </v-col>
         <v-col cols="12" md="3">
           <v-text-field
             :label="t('device.fields.minSwitchIntervalMs')"
-            :model-value="currentValue.min_switch_interval_ms"
+            :model-value="currentValue.minSwitchIntervalMs"
             inputmode="numeric"
             type="number"
             min="0"
             step="100"
             :disabled="busy"
-            @update:model-value="updateNumber('min_switch_interval_ms', $event)"
+            @update:model-value="updateNumber('minSwitchIntervalMs', $event)"
           />
         </v-col>
         <v-col cols="12">
@@ -187,18 +187,19 @@ const fallbackValue: ThermostatFormValue = {
   name: 'New Device',
   typeId: THERMOSTAT_DEVICE_TYPE_ID,
   enabled: true,
+  deps: [],
   mode: 'heat',
   algorithm: 'hysteresis',
-  target_celsius: 25,
-  min_safe_celsius: 0,
-  max_safe_celsius: 50,
-  hysteresis_celsius: 0.5,
-  check_interval_ms: 1000,
-  sensor_timeout_ms: 6000,
-  retry_after_error_ms: 30000,
-  min_switch_interval_ms: 5000,
-  temperature_sensor_device_id: 0,
-  switch_device_id: 0,
+  targetCelsius: 25,
+  minSafeCelsius: 0,
+  maxSafeCelsius: 50,
+  hysteresisCelsius: 0.5,
+  checkIntervalMs: 1000,
+  sensorTimeoutMs: 6000,
+  retryAfterErrorMs: 30000,
+  minSwitchIntervalMs: 5000,
+  temperatureSensorDeviceId: 0,
+  switchDeviceId: 0,
 }
 const currentValue = computed<ThermostatFormValue>(() => props.modelValue ?? fallbackValue)
 const sensorItems = computed(() =>
@@ -239,19 +240,19 @@ function update<K extends keyof Thermostat.CreateDraft>(key: K, value: Thermosta
   emitUpdate(buildNextValue({ [key]: value } as Partial<Thermostat.CreateDraft>))
 }
 
-function updateNumber(key: keyof Pick<
-  Thermostat.CreateDraft,
-  | 'temperature_sensor_device_id'
-  | 'switch_device_id'
-  | 'target_celsius'
-  | 'min_safe_celsius'
-  | 'max_safe_celsius'
-  | 'hysteresis_celsius'
-  | 'check_interval_ms'
-  | 'sensor_timeout_ms'
-  | 'retry_after_error_ms'
-  | 'min_switch_interval_ms'
->, value: unknown): void {
+type ThermostatNumericKey =
+  | 'temperatureSensorDeviceId'
+  | 'switchDeviceId'
+  | 'targetCelsius'
+  | 'minSafeCelsius'
+  | 'maxSafeCelsius'
+  | 'hysteresisCelsius'
+  | 'checkIntervalMs'
+  | 'sensorTimeoutMs'
+  | 'retryAfterErrorMs'
+  | 'minSwitchIntervalMs'
+
+function updateNumber(key: ThermostatNumericKey, value: unknown): void {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) {
     return

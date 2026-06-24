@@ -13,7 +13,7 @@ test('switch commands use structured output state fields', async ({ page }) => {
     return page.evaluate(key => {
       const db = JSON.parse(localStorage.getItem(key) || '{}')
       const devices = db.devices || []
-      const device = devices.find(entry => entry.device_id === 670845750)
+      const device = devices.find(entry => entry.deviceId === 670845750)
       if (!device || !device.output) {
         return ''
       }
@@ -27,11 +27,11 @@ test('dashboard switch power remains enabled when snapshot only has ready status
 
   await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) || '{}')
-    const device = db.devices?.find((entry: { device_id: number }) => entry.device_id === 670845750)
+    const device = db.devices?.find((entry: { deviceId: number }) => entry.deviceId === 670845750)
     window.__gekkoMockRealtime?.upsertDevice({
       ...device,
-      lifecycle_status: undefined,
-      effective_status: undefined,
+      lifecycleStatus: undefined,
+      effectiveStatus: undefined,
       status: 'ready',
       output: {
         state: 'off',
@@ -52,7 +52,7 @@ test('onewire scan commands use the named scan action', async ({ page }) => {
     return page.evaluate(key => {
       const db = JSON.parse(localStorage.getItem(key) || '{}')
       const devices = db.devices || []
-      const device = devices.find(entry => entry.device_id === 670845751)
+      const device = devices.find(entry => entry.deviceId === 670845751)
       return !!(device && device.scan && device.scan.ready)
     }, storageKey)
   }).toBe(true)
@@ -72,11 +72,11 @@ test('onewire edit flows persist JSON config objects', async ({ page }) => {
     return page.evaluate(key => {
       const db = JSON.parse(localStorage.getItem(key) || '{}')
       const devices = db.devices || []
-      const device = devices.find(entry => entry.device_id === 670845751)
+      const device = devices.find(entry => entry.deviceId === 670845751)
       if (!device || !device.config) {
         return 0
       }
-      return device.config.gpio_pin || 0
+      return device.config.gpioPin || 0
     }, storageKey)
   }).toBe(19)
 })
@@ -102,15 +102,15 @@ test('dummy device has no command UI and creates only base config', async ({ pag
   }, storageKey)
 
   expect(created).toMatchObject({
-    type_id: 1,
-    retained_state_supported: false,
+    typeId: 1,
+    retainedStateSupported: false,
     config: {
       enabled: true,
       name: 'Dummy Basic',
     },
   })
-  expect(created?.config).not.toHaveProperty('restore_previous_state')
-  expect(created?.config).not.toHaveProperty('default_output')
-  expect(created?.config).not.toHaveProperty('current_output')
+  expect(created?.config).not.toHaveProperty('restorePreviousState')
+  expect(created?.config).not.toHaveProperty('defaultOutput')
+  expect(created?.config).not.toHaveProperty('currentOutput')
   expect(created).not.toHaveProperty('output')
 })

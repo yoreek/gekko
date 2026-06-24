@@ -160,7 +160,6 @@ export default {
       enabled: 'Enabled',
       registryRevision: 'Registry revision',
       configRevision: 'Config revision',
-      pendingPersistence: 'Pending persistence',
       lifecycle: 'Lifecycle',
       effectiveStatus: 'Effective status',
       retainedStateSupported: 'Retained state supported',
@@ -373,7 +372,6 @@ export default {
       revision: 'Registry revision',
       eventKind: 'Event kind',
       receivedAt: 'Received at',
-      pendingPersistence: 'Pending persistence',
     },
     eventKinds: {
       deviceCreated: 'Device created',

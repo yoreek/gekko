@@ -7,7 +7,7 @@
             :label="t('device.fields.gpioPin')"
             :hint="t('device.dialog.onewirePinHint')"
             persistent-hint
-            :model-value="currentValue.gpio_pin"
+            :model-value="currentValue.gpioPin"
             inputmode="numeric"
             type="number"
             :disabled="busy"
@@ -17,10 +17,10 @@
         <v-col cols="12" md="6">
           <v-switch
             :label="t('device.fields.internalPullup')"
-            :model-value="currentValue.internal_pullup"
+            :model-value="currentValue.internalPullup"
             :disabled="busy"
             inset
-            @update:model-value="update('internal_pullup', Boolean($event))"
+            @update:model-value="update('internalPullup', Boolean($event))"
           />
         </v-col>
       </v-row>
@@ -53,14 +53,15 @@ const fallbackValue: OneWireBusFormValue = {
   name: 'New Device',
   typeId: ONEWIRE_BUS_DEVICE_TYPE_ID,
   enabled: true,
-  gpio_pin: 4,
-  internal_pullup: false,
+  deps: [],
+  gpioPin: 4,
+  internalPullup: false,
 }
 const currentValue = computed<OneWireBusFormValue>(() => props.modelValue ?? fallbackValue)
 
 function updatePin(value: string | number): void {
   const gpioPin = Number(value)
-  emit('update:modelValue', buildNextValue({ gpio_pin: Number.isFinite(gpioPin) ? gpioPin : currentValue.value.gpio_pin }))
+  emit('update:modelValue', buildNextValue({ gpioPin: Number.isFinite(gpioPin) ? gpioPin : currentValue.value.gpioPin }))
 }
 
 function update<K extends keyof OneWireBus.CreateDraft>(key: K, value: OneWireBus.CreateDraft[K]): void {

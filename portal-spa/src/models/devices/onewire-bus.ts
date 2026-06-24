@@ -1,14 +1,13 @@
 import type { DeviceCommandRequest, DeviceRecord, OneWireScanSnapshot } from '@/api/contracts'
-import type { DashboardDevice } from '@/models/device'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import { ONEWIRE_BUS_DEVICE_TYPE_ID } from '@/models/device-types'
 import { BaseDevice } from '@/models/devices/base-device'
+import type { BaseDeviceConfig } from '@/api/contracts'
 
 export namespace OneWireBus {
-  export interface ConfigDraft {
-    enabled: boolean
-    gpio_pin: number
-    internal_pullup: boolean
+  export interface ConfigDraft extends BaseDeviceConfig {
+    gpioPin: number
+    internalPullup: boolean
   }
 
   export interface CreateDraft extends DeviceCreateDraftBase, ConfigDraft {
@@ -18,8 +17,10 @@ export namespace OneWireBus {
   export function defaultConfig(): ConfigDraft {
     return {
       enabled: true,
-      gpio_pin: 4,
-      internal_pullup: false,
+      name: 'New Device',
+      deps: [],
+      gpioPin: 4,
+      internalPullup: false,
     }
   }
 
@@ -30,17 +31,21 @@ export namespace OneWireBus {
     }
     const raw = value as Record<string, unknown>
     return {
+      name: typeof raw.name === 'string' ? raw.name : defaults.name,
       enabled: typeof raw.enabled === 'boolean' ? raw.enabled : defaults.enabled,
-      gpio_pin: typeof raw.gpio_pin === 'number' && Number.isFinite(raw.gpio_pin) ? raw.gpio_pin : defaults.gpio_pin,
-      internal_pullup: typeof raw.internal_pullup === 'boolean' ? raw.internal_pullup : defaults.internal_pullup,
+      deps: Array.isArray(raw.deps) ? (raw.deps as ConfigDraft['deps']) : defaults.deps,
+      gpioPin: typeof raw.gpioPin === 'number' && Number.isFinite(raw.gpioPin) ? raw.gpioPin : defaults.gpioPin,
+      internalPullup: typeof raw.internalPullup === 'boolean' ? raw.internalPullup : defaults.internalPullup,
     }
   }
 
   export function encodeConfig(config: ConfigDraft): Record<string, unknown> {
     return {
+      name: config.name,
       enabled: config.enabled,
-      gpio_pin: config.gpio_pin,
-      internal_pullup: config.internal_pullup,
+      deps: config.deps,
+      gpioPin: config.gpioPin,
+      internalPullup: config.internalPullup,
     }
   }
 
@@ -54,20 +59,16 @@ export namespace OneWireBus {
 
     createDefaultCreateDraft(common: Partial<DeviceCreateDraftBase> = {}): CreateDraft {
       return {
-        name: common.name ?? 'New Device',
-        typeId: common.typeId ?? this.typeId,
         ...this.createDefaultConfig(),
-        enabled: common.enabled ?? true,
+        ...common,
+        typeId: common.typeId ?? this.typeId,
       }
     }
 
-    createEditDraft(current: DashboardDevice): CreateDraft {
-      const { enabled: _enabled, ...config } = this.normalizeConfig(current.detail.config)
+    createEditDraft(current: DeviceRecord): CreateDraft {
       return {
-        name: current.name,
-        typeId: current.typeId,
-        enabled: current.enabled,
-        ...config,
+        ...this.normalizeConfig(current.config),
+        typeId: this.typeId,
       }
     }
 
@@ -83,26 +84,26 @@ export namespace OneWireBus {
       return OneWireBus.encodeConfig(config)
     }
 
-    buildEditCommands(current: DashboardDevice, draft: CreateDraft): DeviceCommandRequest[] {
+    buildEditCommands(current: DeviceRecord, draft: CreateDraft): DeviceCommandRequest[] {
+      const currentConfig = this.normalizeConfig(current.config)
       const commands: DeviceCommandRequest[] = []
-      if (draft.name.trim() !== current.name) {
+      if (draft.name.trim() !== currentConfig.name) {
         commands.push({ command: 'rename', name: draft.name.trim() })
       }
-      if (draft.enabled !== current.enabled) {
+      if (draft.enabled !== currentConfig.enabled) {
         commands.push({ command: draft.enabled ? 'enable' : 'disable' })
       }
-      const { enabled: _currentEnabled, ...currentConfig } = this.normalizeConfig(current.detail.config)
       const { enabled: _nextEnabled, ...nextConfig } = this.normalizeConfig(draft)
       if (
-        nextConfig.gpio_pin !== currentConfig.gpio_pin ||
-        nextConfig.internal_pullup !== currentConfig.internal_pullup
+        nextConfig.gpioPin !== currentConfig.gpioPin ||
+        nextConfig.internalPullup !== currentConfig.internalPullup
       ) {
         const encodedConfig = {
           ...nextConfig,
           enabled: draft.enabled,
         }
         commands.push({
-          command: 'update_config',
+          command: 'updateConfig',
           config: this.encodeConfig(encodedConfig),
         })
       }
@@ -110,7 +111,7 @@ export namespace OneWireBus {
     }
 
     protected extractCreateConfig(draft: CreateDraft): ConfigDraft {
-      const { name: _name, typeId: _typeId, ...config } = draft
+      const { typeId: _typeId, ...config } = draft
       return config
     }
   }

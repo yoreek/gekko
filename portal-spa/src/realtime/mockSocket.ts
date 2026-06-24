@@ -1,13 +1,14 @@
-import type { DeviceRecord } from '@/api'
 import type { Pinia } from 'pinia'
 
 import { publishRealtimeMessage } from './bus'
 import type { RealtimeMessage } from './messages'
 import { publishMockSnapshot } from '@/mock/snapshot'
 import { loadMockDatabase, saveMockDatabase } from '@/mock/database'
-import { publishThermostatDependents, refreshMockDerivedDeviceState } from '@/mock/handlers'
+import { decorateDeviceRecord, publishThermostatDependents, refreshMockDerivedDeviceState } from '@/mock/handlers'
 import { useAppStore } from '@/stores/app'
 import { useWebSocketStore } from '@/stores/websocket'
+
+type DeviceRecord = Record<string, any>
 
 export interface MockRealtimeSocketHandle {
   dispose(): void
@@ -29,30 +30,52 @@ declare global {
 
 function publishDeviceUpsert(device: DeviceRecord, eventKind: 'device_created' | 'device_updated' | 'snapshot' = 'device_updated'): void {
   const db = loadMockDatabase()
+  const payload = {
+    ...device,
+    record: {
+      id: device.deviceId ?? 0,
+      typeName: device.record?.typeName ?? device.typeName ?? '',
+      configRevision: device.record?.configRevision ?? device.configRevision ?? 0,
+    },
+    config: {
+      name: device.name,
+      enabled: device.enabled,
+      deps: Array.isArray(device.deps) ? device.deps : [],
+      ...(typeof device.config === 'object' && device.config !== null ? device.config : {}),
+    },
+    runtime: {
+      status: device.status ?? device.effectiveStatus ?? device.lifecycleStatus ?? 'unknown',
+      lifecycleStatus: device.lifecycleStatus ?? device.status ?? 'unknown',
+      effectiveStatus: device.effectiveStatus ?? device.status ?? device.lifecycleStatus ?? 'unknown',
+      ...(typeof device.runtime === 'object' && device.runtime !== null ? device.runtime : {}),
+    },
+  }
   publishRealtimeMessage({
     topic: 'device.upsert',
-    revision: device.registry_revision ?? db.registryRevision,
+    revision: device.registryRevision ?? db.registryRevision,
     payload: {
-      ...device,
-      event_kind: eventKind,
-      registry_revision: device.registry_revision ?? db.registryRevision,
-      pending_persistence: device.pending_persistence ?? db.pendingPersistence,
+      ...payload,
+      eventKind,
     },
   })
 }
 
-function publishDeviceRemove(device: DeviceRecord | undefined, revision: number, pendingPersistence: boolean): void {
+function publishDeviceRemove(device: DeviceRecord | undefined, revision: number): void {
   publishRealtimeMessage({
     topic: 'device.remove',
     revision,
     payload: {
-      device_id: device?.device_id ?? 0,
-      event_kind: 'device_deleted',
-      registry_revision: revision,
-      pending_persistence: pendingPersistence,
+      record: {
+        id: device?.deviceId ?? 0,
+        typeName: device?.record?.typeName ?? device?.typeName ?? device?.label ?? '',
+        configRevision: device?.record?.configRevision ?? device?.configRevision ?? 0,
+      },
+      deviceId: device?.deviceId ?? 0,
+      eventKind: 'device_deleted',
+      registryRevision: revision,
       name: device?.name ?? '',
-      type_id: device?.type_id ?? 0,
-      type: device?.type ?? device?.label ?? '',
+      typeId: device?.typeId ?? 0,
+      typeName: device?.typeName ?? device?.label ?? '',
     },
   })
 }
@@ -60,46 +83,8 @@ function publishDeviceRemove(device: DeviceRecord | undefined, revision: number,
 export function connectMockRealtimeSocket(pinia: Pinia): MockRealtimeSocketHandle {
   const appStore = useAppStore(pinia)
   const wsStore = useWebSocketStore(pinia)
-  let persistenceFlushTimer: number | null = null
-  const persistenceFlushDelayMs = 250
-
-  const clearPersistenceFlushTimer = (): void => {
-    if (persistenceFlushTimer === null) {
-      return
-    }
-    window.clearTimeout(persistenceFlushTimer)
-    persistenceFlushTimer = null
-  }
-
-  const flushPendingPersistence = (): void => {
-    persistenceFlushTimer = null
-    const db = loadMockDatabase()
-    if (!db.pendingPersistence) {
-      return
-    }
-
-    db.pendingPersistence = false
-    saveMockDatabase(db)
-
-    for (const device of db.devices) {
-      publishRealtimeMessage({
-        topic: 'device.upsert',
-        revision: db.registryRevision,
-        payload: {
-          ...device,
-          pending_persistence: false,
-          registry_revision: db.registryRevision,
-        },
-      })
-    }
-  }
-
   const schedulePersistenceFlush = (): void => {
-    if (typeof window === 'undefined') {
-      return
-    }
-    clearPersistenceFlushTimer()
-    persistenceFlushTimer = window.setTimeout(flushPendingPersistence, persistenceFlushDelayMs)
+    void window
   }
 
   const markConnected = (): void => {
@@ -127,7 +112,7 @@ export function connectMockRealtimeSocket(pinia: Pinia): MockRealtimeSocketHandl
     },
     upsertDevice(device: DeviceRecord): void {
       const db = loadMockDatabase()
-      const index = db.devices.findIndex(entry => entry.device_id === device.device_id)
+      const index = db.devices.findIndex(entry => entry.deviceId === device.deviceId)
       if (index >= 0) {
         db.devices.splice(index, 1, device)
       } else {
@@ -135,24 +120,21 @@ export function connectMockRealtimeSocket(pinia: Pinia): MockRealtimeSocketHandl
       }
       refreshMockDerivedDeviceState(db)
       db.registryRevision += 1
-      db.pendingPersistence = true
       saveMockDatabase(db)
       publishDeviceUpsert({
         ...device,
-        registry_revision: db.registryRevision,
-        pending_persistence: db.pendingPersistence,
+        registryRevision: db.registryRevision,
       }, 'device_updated')
-      publishThermostatDependents(db, device.device_id ?? 0)
+      publishThermostatDependents(db, device.deviceId ?? 0)
     },
     removeDevice(deviceId: number): void {
       const db = loadMockDatabase()
-      const removedDevice = db.devices.find(entry => entry.device_id === deviceId)
-      db.devices = db.devices.filter(entry => entry.device_id !== deviceId)
+      const removedDevice = db.devices.find(entry => entry.deviceId === deviceId)
+      db.devices = db.devices.filter(entry => entry.deviceId !== deviceId)
       refreshMockDerivedDeviceState(db)
       db.registryRevision += 1
-      db.pendingPersistence = true
       saveMockDatabase(db)
-      publishDeviceRemove(removedDevice, db.registryRevision, db.pendingPersistence)
+      publishDeviceRemove(removedDevice, db.registryRevision)
       publishThermostatDependents(db, deviceId)
     },
     refreshSnapshot(): void {

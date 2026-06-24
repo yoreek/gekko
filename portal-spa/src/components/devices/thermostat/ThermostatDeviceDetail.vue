@@ -67,16 +67,16 @@
                 <v-text-field :label="t('device.fields.hysteresis')" :model-value="hysteresisText" readonly />
               </v-col>
               <v-col cols="12" md="4">
-                <v-text-field :label="t('device.fields.checkIntervalMs')" :model-value="config.check_interval_ms" readonly />
+                <v-text-field :label="t('device.fields.checkIntervalMs')" :model-value="config.checkIntervalMs" readonly />
               </v-col>
               <v-col cols="12" md="4">
-                <v-text-field :label="t('device.fields.sensorTimeoutMs')" :model-value="config.sensor_timeout_ms" readonly />
+                <v-text-field :label="t('device.fields.sensorTimeoutMs')" :model-value="config.sensorTimeoutMs" readonly />
               </v-col>
               <v-col cols="12" md="4">
-                <v-text-field :label="t('device.fields.retryAfterErrorMs')" :model-value="config.retry_after_error_ms" readonly />
+                <v-text-field :label="t('device.fields.retryAfterErrorMs')" :model-value="config.retryAfterErrorMs" readonly />
               </v-col>
               <v-col cols="12" md="4">
-                <v-text-field :label="t('device.fields.minSwitchIntervalMs')" :model-value="config.min_switch_interval_ms" readonly />
+                <v-text-field :label="t('device.fields.minSwitchIntervalMs')" :model-value="config.minSwitchIntervalMs" readonly />
               </v-col>
               <v-col cols="12" md="4">
                 <v-text-field :label="t('device.fields.safeMinTemperature')" :model-value="minSafeTemperatureText" readonly />
@@ -99,6 +99,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import type { ThermostatOutputSnapshot } from '@/api/contracts'
 import type { DashboardDevice } from '@/models/device'
 import { Thermostat } from '@/models/devices/thermostat'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
@@ -113,27 +114,27 @@ const props = defineProps<{
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
 const config = computed(() => deviceModel.normalizeConfig(props.device.detail.config, props.device.deps))
-const output = computed(() => deviceModel.normalizeOutput(props.device.raw))
-const sensorDevice = computed(() => deviceStore.devices.find(device => device.deviceId === config.value.temperature_sensor_device_id))
-const switchDevice = computed(() => deviceStore.devices.find(device => device.deviceId === config.value.switch_device_id))
+const output = computed(() => props.device.output as ThermostatOutputSnapshot)
+const sensorDevice = computed(() => deviceStore.devices.find(device => device.deviceId === config.value.temperatureSensorDeviceId))
+const switchDevice = computed(() => deviceStore.devices.find(device => device.deviceId === config.value.switchDeviceId))
 const temperature = computed(() => output.value.temperature)
 const temperatureText = computed(() => Thermostat.formatOutput(temperature.value) || t('device.dialog.temperatureUnavailableShort'))
-const targetTemperatureText = computed(() => Thermostat.formatTemperature(config.value.target_celsius))
-const minSafeTemperatureText = computed(() => Thermostat.formatTemperature(config.value.min_safe_celsius))
-const maxSafeTemperatureText = computed(() => Thermostat.formatTemperature(config.value.max_safe_celsius))
+const targetTemperatureText = computed(() => Thermostat.formatTemperature(config.value.targetCelsius))
+const minSafeTemperatureText = computed(() => Thermostat.formatTemperature(config.value.minSafeCelsius))
+const maxSafeTemperatureText = computed(() => Thermostat.formatTemperature(config.value.maxSafeCelsius))
 const modeText = computed(() => t(Thermostat.modeLabelKey(config.value.mode)))
 const algorithmText = computed(() => t(Thermostat.algorithmLabelKey(config.value.algorithm)))
-const statusText = computed(() => t(Thermostat.statusLabelKey(output.value.control_status ?? props.device.backendEffectiveStatus)))
+const statusText = computed(() => t(Thermostat.statusLabelKey(output.value.controlStatus ?? props.device.backendEffectiveStatus)))
 const controlText = computed(() => `${t('device.fields.controlStatus')}: ${statusText.value}`)
-const desiredSwitchText = computed(() => t(`labels.output.${output.value.desired_switch_state ?? 'off'}`))
-const actualSwitchText = computed(() => t(`labels.output.${output.value.actual_switch_state ?? 'off'}`))
+const desiredSwitchText = computed(() => t(`labels.output.${output.value.desiredSwitchState ?? 'off'}`))
+const actualSwitchText = computed(() => t(`labels.output.${output.value.actualSwitchState ?? 'off'}`))
 const sensorLabel = computed(() =>
-  sensorDevice.value ? `${sensorDevice.value.name} #${sensorDevice.value.deviceId}` : `#${config.value.temperature_sensor_device_id || '—'}`,
+  sensorDevice.value ? `${sensorDevice.value.name} #${sensorDevice.value.deviceId}` : `#${config.value.temperatureSensorDeviceId || '—'}`,
 )
 const switchLabel = computed(() =>
-  switchDevice.value ? `${switchDevice.value.name} #${switchDevice.value.deviceId}` : `#${config.value.switch_device_id || '—'}`,
+  switchDevice.value ? `${switchDevice.value.name} #${switchDevice.value.deviceId}` : `#${config.value.switchDeviceId || '—'}`,
 )
-const statusTone = computed(() => Thermostat.outputTone(output.value.control_status ?? props.device.backendEffectiveStatus))
+const statusTone = computed(() => Thermostat.outputTone(output.value.controlStatus ?? props.device.backendEffectiveStatus))
 const temperatureColor = computed(() => (temperature.value?.valid ? 'primary' : 'secondary'))
 const alertType = computed(() => {
   if (statusTone.value === 'warning') {
@@ -147,7 +148,7 @@ const alertType = computed(() => {
   }
   return 'success'
 })
-const hysteresisText = computed(() => `${config.value.hysteresis_celsius.toFixed(1)}°C`)
+const hysteresisText = computed(() => `${config.value.hysteresisCelsius.toFixed(1)}°C`)
 </script>
 
 <style scoped>

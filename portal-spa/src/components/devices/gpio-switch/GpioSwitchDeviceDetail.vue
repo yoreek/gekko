@@ -7,7 +7,7 @@
             :label="t('device.fields.gpioPin')"
             :hint="t('device.dialog.gpioPinHint')"
             persistent-hint
-            :model-value="config.gpio_pin"
+            :model-value="config.gpioPin"
             readonly
           />
         </v-col>
@@ -32,7 +32,7 @@
             <v-row class="device-type-section__grid">
               <v-col cols="12" md="6">
                 <SwitchStateSelect
-                  :model-value="config.startup_state"
+                  :model-value="config.startupState"
                   :label="t('device.fields.startupState')"
                   :hint="t('device.dialog.startupStateHint')"
                   readonly
@@ -40,7 +40,7 @@
               </v-col>
               <v-col cols="12" md="6">
                 <SwitchStateSelect
-                  :model-value="config.safe_state"
+                  :model-value="config.safeState"
                   :label="t('device.fields.safeState')"
                   :hint="t('device.dialog.safeStateHint')"
                   readonly
@@ -50,7 +50,7 @@
                 <div class="device-switch-field">
                   <v-switch
                     :label="t('device.fields.restorePreviousState')"
-                    :model-value="config.restore_previous_state"
+                    :model-value="config.restorePreviousState"
                     readonly
                   />
                   <div class="device-switch-field__hint text-caption text-medium-emphasis">
@@ -88,13 +88,11 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommandRequest } from '@/api'
+import type { GpioSwitchOutputSnapshot } from '@/api/contracts'
 import SwitchOutputControls from '@/components/devices/switch/SwitchOutputControls.vue'
 import SwitchStateSelect from '@/components/devices/switch/SwitchStateSelect.vue'
 import type { DashboardDevice } from '@/models/device'
 import { isOutputState, outputStateLabelKey, switchCommandPayload, type OutputState } from '@/models/devices/switch'
-import { GpioSwitch } from '@/models/devices/gpio-switch'
-
-const deviceModel = new GpioSwitch.Device()
 
 const props = defineProps<{
   device: DashboardDevice
@@ -106,9 +104,18 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const config = computed(() => deviceModel.normalizeConfig(props.device.detail.config))
-const output = computed(() => deviceModel.normalizeOutput(props.device.raw))
-const outputState = computed(() => (isOutputState(output.value.state) ? output.value.state : undefined))
+const config = computed(() => props.device.detail.config as {
+  gpioPin: number
+  startupState: OutputState
+  safeState: OutputState
+  restorePreviousState: boolean
+  inverted: boolean
+})
+const output = computed(() => props.device.output as GpioSwitchOutputSnapshot)
+const outputState = computed(() => {
+  const state = output.value.state
+  return isOutputState(state) ? state : undefined
+})
 
 function setOutputState(state: OutputState): void {
   emit('command', switchCommandPayload(state))

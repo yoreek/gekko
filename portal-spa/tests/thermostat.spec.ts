@@ -34,30 +34,30 @@ test('creates thermostat devices with deps and config', async ({ page }) => {
     return db.devices?.find((device: { name?: string }) => device.name === 'Greenhouse Thermostat')
   }, storageKey)
   expect(created).toMatchObject({
-    type_id: 5,
-    has_deps: true,
+    typeId: 5,
+    hasDeps: true,
     deps: [
       {
         role: 'temperature_sensor',
-        device_id: 670845752,
+        deviceId: 670845752,
       },
       {
         role: 'switch',
-        device_id: 670845750,
+        deviceId: 670845750,
       },
     ],
     config: {
       mode: 'heat',
       algorithm: 'hysteresis',
-      target_milli_celsius: 25000,
-      hysteresis_centi_celsius: 50,
-      temperature_sensor_device_id: 670845752,
-      switch_device_id: 670845750,
+      targetMilliCelsius: 25000,
+      hysteresisCentiCelsius: 50,
+      temperatureSensorDeviceId: 670845752,
+      switchDeviceId: 670845750,
     },
     output: {
-      desired_switch_state: 'off',
-      actual_switch_state: 'off',
-      control_status: 'idle',
+      desiredSwitchState: 'off',
+      actualSwitchState: 'off',
+      controlStatus: 'idle',
     },
   })
 })
@@ -72,15 +72,15 @@ test('realtime thermostat updates merge temperature and control state', async ({
 
   await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) ?? '{}')
-    const sensor = db.devices.find((device: { device_id: number }) => device.device_id === 670845752)
+    const sensor = db.devices.find((device: { deviceId: number }) => device.deviceId === 670845752)
     window.__gekkoMockRealtime?.upsertDevice({
       ...sensor,
       output: {
         temperature: {
           value: 26.4,
           unit: 'celsius',
-          unit_symbol: 'C',
-          measured_at_ms: 30500,
+          unitSymbol: 'C',
+          measuredAtMs: 30500,
           valid: true,
           status: 'ok',
         },

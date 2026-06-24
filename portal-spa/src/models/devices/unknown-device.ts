@@ -1,7 +1,6 @@
 import { BaseDevice } from '@/models/devices/base-device'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import type { DeviceCommandRequest, DeviceRecord } from '@/api/contracts'
-import type { DashboardDevice } from '@/models/device'
 
 export interface UnknownDeviceCreateDraft extends DeviceCreateDraftBase {
   typeId: number
@@ -20,14 +19,17 @@ export class UnknownDevice extends BaseDevice<Record<string, unknown>, UnknownDe
       name: common.name ?? 'New Device',
       typeId: common.typeId ?? 0,
       enabled: common.enabled ?? true,
+      deps: common.deps ?? [],
     }
   }
 
-  createEditDraft(current: DashboardDevice): UnknownDeviceCreateDraft {
+  createEditDraft(current: DeviceRecord): UnknownDeviceCreateDraft {
+    const config = current.config ?? {}
     return {
-      name: current.name,
-      typeId: current.typeId,
-      enabled: current.enabled,
+      name: config.name ?? 'New Device',
+      typeId: 0,
+      enabled: config.enabled ?? true,
+      deps: Array.isArray(config.deps) ? config.deps : [],
     }
   }
 
@@ -39,12 +41,13 @@ export class UnknownDevice extends BaseDevice<Record<string, unknown>, UnknownDe
     return {}
   }
 
-  buildEditCommands(current: DashboardDevice, draft: UnknownDeviceCreateDraft): DeviceCommandRequest[] {
+  buildEditCommands(current: DeviceRecord, draft: UnknownDeviceCreateDraft): DeviceCommandRequest[] {
+    const config = current.config ?? {}
     const commands: DeviceCommandRequest[] = []
-    if (draft.name.trim() !== current.name) {
+    if (draft.name.trim() !== config.name) {
       commands.push({ command: 'rename', name: draft.name.trim() })
     }
-    if (draft.enabled !== current.enabled) {
+    if (draft.enabled !== config.enabled) {
       commands.push({ command: draft.enabled ? 'enable' : 'disable' })
     }
     return commands

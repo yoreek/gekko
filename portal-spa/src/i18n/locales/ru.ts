@@ -160,7 +160,6 @@ export default {
       enabled: 'Включено',
       registryRevision: 'Ревизия реестра',
       configRevision: 'Ревизия конфигурации',
-      pendingPersistence: 'Ожидает сохранения',
       lifecycle: 'Жизненный цикл',
       effectiveStatus: 'Фактический статус',
       retainedStateSupported: 'Поддержка retained state',
@@ -373,7 +372,6 @@ export default {
       revision: 'Ревизия реестра',
       eventKind: 'Тип события',
       receivedAt: 'Получено',
-      pendingPersistence: 'Ожидание сохранения',
     },
     eventKinds: {
       deviceCreated: 'Устройство создано',

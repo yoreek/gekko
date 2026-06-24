@@ -47,9 +47,6 @@
       <v-chip v-if="activePanelName" class="me-2" color="primary" variant="tonal">
         {{ activePanelName }}
       </v-chip>
-      <v-chip class="me-2" variant="tonal" :color="syncChipColor">
-        {{ syncLabel }}
-      </v-chip>
       <v-chip class="me-2" :color="appStore.transportMode === 'mock' ? 'warning' : 'success'" variant="flat">
         {{ appStore.transportMode === 'mock' ? t('labels.mock') : t('labels.real') }}
       </v-chip>
@@ -87,14 +84,12 @@ import { useTheme } from 'vuetify'
 import type { PortalIconName } from './icons'
 import { applyLocale, supportedLocales, type AppLocale } from './i18n'
 import { useAppStore } from './stores/app'
-import { useDeviceRegistryStore } from './stores/deviceRegistry'
 import { usePanelStore } from './stores/panels'
 
 const { t } = useI18n()
 const route = useRoute()
 const vuetifyTheme = useTheme()
 const appStore = useAppStore()
-const deviceStore = useDeviceRegistryStore()
 const panelStore = usePanelStore()
 
 const drawerOpen = ref(false)
@@ -120,8 +115,6 @@ const menuItems = computed<MenuItem[]>(() => [
 ])
 
 const activePanelName = computed(() => (route.name === 'dashboard' ? panelStore.activePanel?.name ?? '' : ''))
-const syncLabel = computed(() => (deviceStore.pendingPersistence ? t('dashboard.pending') : t('dashboard.synced')))
-const syncChipColor = computed(() => (deviceStore.pendingPersistence ? 'warning' : 'success'))
 
 function selectLocale(locale: AppLocale): void {
   appStore.setLocale(locale)

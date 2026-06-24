@@ -1,17 +1,31 @@
 ## Purpose
 
-Define the versioned configuration and persistence model used by the firmware.
+Define the canonical device record, configuration persistence, and JSON interchange model used by the firmware.
 ## Requirements
-### Requirement: Versioned configuration model
-The firmware SHALL define a versioned device configuration model that can be extended by future capabilities.
+### Requirement: Canonical flat device record
+The firmware SHALL define each dynamic device as a flat record with top-level identity, common config, dependency links, and type-specific fields.
 
 #### Scenario: Defaults are loaded
 - **WHEN** no configuration exists in NVS
-- **THEN** the firmware creates an in-memory configuration using safe defaults and the current schema version
+- **THEN** the firmware creates an in-memory configuration using safe defaults and the current supported config format
 
 #### Scenario: Existing configuration is loaded
-- **WHEN** configuration exists in NVS with a supported schema version
+- **WHEN** configuration exists in NVS with a supported config format
 - **THEN** the firmware loads it, validates it, and exposes typed values to application modules
+
+### Requirement: Configuration class hierarchy example
+The firmware documentation SHALL show device configuration as a compact C++ inheritance chain instead of scattering the shared fields across unrelated descriptions.
+
+#### Scenario: DS18B20 config derives from base config classes
+- **WHEN** the documentation describes a DS18B20 configuration model
+- **THEN** the example chain is:
+  ```cpp
+  class BaseDeviceConfig {};
+  class BaseSensorConfig : public BaseDeviceConfig {};
+  class BaseOneWireSensorConfig : public BaseSensorConfig {};
+  class Ds18b20SensorConfig : public BaseOneWireSensorConfig {};
+  ```
+- **AND** `BaseDeviceConfig` owns the shared device fields, `BaseOneWireSensorConfig` adds the OneWire-specific address, `Ds18b20SensorConfig` adds the DS18B20-specific settings, and `deps` remain top-level device record data
 
 ### Requirement: NVS persistence
 The firmware SHALL persist boot-critical configuration in NVS through Arduino ESP32 `Preferences` or an equivalent adapter.
@@ -25,35 +39,35 @@ The firmware SHALL persist boot-critical configuration in NVS through Arduino ES
 - **THEN** the firmware rejects the update and leaves the last valid persisted configuration unchanged
 
 ### Requirement: Configuration migration
-The firmware SHALL support migrating stored configuration from older supported schema versions to the current schema version.
+The firmware SHALL support migrating stored configuration from older supported config formats to the current config format.
 
 #### Scenario: Older supported schema is found
-- **WHEN** NVS contains configuration with an older supported schema version
-- **THEN** the firmware migrates it in memory, validates the migrated result, and persists the current schema version
+- **WHEN** NVS contains configuration with an older supported config format
+- **THEN** the firmware migrates it in memory, validates the migrated result, and persists the current config format
 
-#### Scenario: Unsupported schema is found
-- **WHEN** NVS contains configuration with an unsupported or corrupt schema version
+#### Scenario: Unsupported config format is found
+- **WHEN** NVS contains configuration with an unsupported or corrupt config format
 - **THEN** the firmware logs the issue and enters a recovery path that does not use unsafe configuration values
 
 #### Scenario: Migration logic is covered by Unity tests
 - **WHEN** configuration validation and migration logic is changed
-- **THEN** Unity tests cover supported defaults, valid stored data, older supported schema versions, and corrupt or unsupported schema inputs
+- **THEN** Unity tests cover supported defaults, valid stored data, older supported config formats, and corrupt or unsupported config inputs
 
 ### Requirement: JSON import and export
 The firmware SHALL support JSON as an external configuration interchange format.
 
 #### Scenario: Configuration is exported
 - **WHEN** a caller requests a configuration export
-- **THEN** the firmware returns JSON containing the current non-secret configuration fields, schema version, and metadata needed for future import
+- **THEN** the firmware returns JSON containing the current non-secret configuration fields and metadata needed for future import
 
 #### Scenario: Exported device records are flat JSON objects
 - **WHEN** the firmware exports a device setup transfer bundle
-- **THEN** each device record contains top-level identity fields such as `id`, `type`, `name`, `enabled`, `config_version`, `config_revision`, the device-specific configuration fields, and `deps`
+- **THEN** each device record contains top-level identity fields such as `id`, `type`, `name`, `enabled`, `deps`, `config_revision`, and the device-specific configuration fields
 - **AND** the export does not wrap the device configuration in a separate binary `config_blob_hex` field
 
 #### Scenario: Configuration is imported
 - **WHEN** a caller submits JSON configuration within the accepted size limit
-- **THEN** the firmware parses, validates, migrates if needed, and persists only accepted fields
+- **THEN** the firmware parses, validates, migrates if needed, and persists only accepted fields from the flat device record
 
 #### Scenario: Secret handling during export
 - **WHEN** configuration contains WiFi passwords or other secrets

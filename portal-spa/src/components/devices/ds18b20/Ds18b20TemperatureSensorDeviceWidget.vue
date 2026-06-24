@@ -12,11 +12,10 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import type { Ds18b20TemperatureSensorOutputSnapshot, TemperatureOutputSnapshot } from '@/api/contracts'
 import DeviceWidgetBase from '@/components/devices/base/DeviceWidgetBase.vue'
 import type { DashboardDevice } from '@/models/device'
 import { Ds18b20 } from '@/models/devices/ds18b20'
-
-const deviceModel = new Ds18b20.Device()
 
 const props = defineProps<{
   device: DashboardDevice
@@ -29,7 +28,7 @@ defineEmits<{
 
 const { t } = useI18n()
 const temperature = computed(() => {
-  const value = deviceModel.normalizeOutput(props.device.raw).temperature
+  const value = (props.device.output as Ds18b20TemperatureSensorOutputSnapshot).temperature as TemperatureOutputSnapshot | undefined
   return Ds18b20.temperatureValid(value) ? value : undefined
 })
 const temperatureText = computed(() => Ds18b20.formatTemperature(temperature.value) || t('device.dialog.temperatureUnavailableShort'))

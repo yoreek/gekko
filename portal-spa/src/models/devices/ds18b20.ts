@@ -2,6 +2,7 @@ import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import { DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID } from '@/models/device-types'
 import { BaseDevice } from '@/models/devices/base-device'
 import type {
+  BaseDeviceConfig,
   DeviceCommandRequest,
   DeviceDependencyLink,
   DeviceRecord,
@@ -10,20 +11,18 @@ import type {
   TemperatureOutputSnapshot,
   TemperatureUnit,
 } from '@/api/contracts'
-import type { DashboardDevice } from '@/models/device'
 
 export namespace Ds18b20 {
   export type Resolution = 9 | 10 | 11 | 12
 
-  export interface ConfigDraft {
-    enabled: boolean
-    dependency_device_id: number
+  export interface ConfigDraft extends BaseDeviceConfig {
+    dependencyDeviceId: number
     address: string
     resolution: Resolution
     unit: TemperatureUnit
-    poll_ms: number
-    report_delta_celsius: number
-    report_always: boolean
+    pollMs: number
+    reportDeltaCelsius: number
+    reportAlways: boolean
   }
 
   export interface CreateDraft extends DeviceCreateDraftBase, ConfigDraft {
@@ -53,13 +52,15 @@ export namespace Ds18b20 {
   function createDefaultConfig(): ConfigDraft {
     return {
       enabled: true,
-      dependency_device_id: 0,
+      name: 'New Device',
+      deps: [],
+      dependencyDeviceId: 0,
       address: '',
       resolution: 12,
       unit: 'celsius',
-      poll_ms: 5000,
-      report_delta_celsius: 0.01,
-      report_always: false,
+      pollMs: 5000,
+      reportDeltaCelsius: 0.01,
+      reportAlways: false,
     }
   }
 
@@ -73,31 +74,35 @@ export namespace Ds18b20 {
   ): ConfigDraft {
     const defaults = createDefaultConfig()
     const dependencyDeviceId = Array.isArray(dependencyDeviceOrDeps)
-      ? dependencyDeviceOrDeps.find(dep => dep.role === 'onewire_bus')?.device_id ?? 0
+      ? dependencyDeviceOrDeps.find(dep => dep.role === 'onewire_bus')?.deviceId ?? 0
       : typeof dependencyDeviceOrDeps === 'number'
         ? dependencyDeviceOrDeps
         : 0
     if (!isRecord(value)) {
       return {
         ...defaults,
-        dependency_device_id: normalizeDependencyDeviceId(dependencyDeviceId),
+        dependencyDeviceId: normalizeDependencyDeviceId(dependencyDeviceId),
+        deps: Array.isArray(dependencyDeviceOrDeps) ? dependencyDeviceOrDeps : defaults.deps,
       }
     }
-    const reportDeltaCenti = typeof value.report_delta_centi_celsius === 'number' ? value.report_delta_centi_celsius / 100 : undefined
+    const reportDeltaCenti = typeof value.reportDeltaCentiCelsius === 'number' ? value.reportDeltaCentiCelsius / 100 : undefined
+    const deps = Array.isArray(value.deps) ? (value.deps as DeviceDependencyLink[]) : defaults.deps
     const normalizedDependencyDeviceId = normalizeDependencyDeviceId(
-      dependencyDeviceId ?? value.dependency_device_id,
+      dependencyDeviceId ?? value.dependencyDeviceId,
     )
     return {
+      name: typeof value.name === 'string' ? value.name : defaults.name,
       enabled: typeof value.enabled === 'boolean' ? value.enabled : defaults.enabled,
-      dependency_device_id: normalizedDependencyDeviceId,
+      deps,
+      dependencyDeviceId: normalizedDependencyDeviceId,
       address: typeof value.address === 'string' ? value.address.toUpperCase() : defaults.address,
       resolution: normalizeResolution(value.resolution),
       unit: normalizeUnit(value.unit),
-      poll_ms: typeof value.poll_ms === 'number' && Number.isFinite(value.poll_ms) ? value.poll_ms : defaults.poll_ms,
-      report_delta_celsius: typeof value.report_delta_celsius === 'number' && Number.isFinite(value.report_delta_celsius)
-        ? value.report_delta_celsius
-        : reportDeltaCenti ?? defaults.report_delta_celsius,
-      report_always: typeof value.report_always === 'boolean' ? value.report_always : defaults.report_always,
+      pollMs: typeof value.pollMs === 'number' && Number.isFinite(value.pollMs) ? value.pollMs : defaults.pollMs,
+      reportDeltaCelsius: typeof value.reportDeltaCelsius === 'number' && Number.isFinite(value.reportDeltaCelsius)
+        ? value.reportDeltaCelsius
+        : reportDeltaCenti ?? defaults.reportDeltaCelsius,
+      reportAlways: typeof value.reportAlways === 'boolean' ? value.reportAlways : defaults.reportAlways,
     }
   }
 
@@ -106,26 +111,28 @@ export namespace Ds18b20 {
     original: ConfigDraft,
   ): boolean {
     return (
-      current.dependency_device_id !== original.dependency_device_id ||
+      current.dependencyDeviceId !== original.dependencyDeviceId ||
       current.address.toUpperCase() !== original.address.toUpperCase() ||
       current.resolution !== original.resolution ||
       current.unit !== original.unit ||
-      current.poll_ms !== original.poll_ms ||
-      current.report_delta_celsius !== original.report_delta_celsius ||
-      current.report_always !== original.report_always ||
+      current.pollMs !== original.pollMs ||
+      current.reportDeltaCelsius !== original.reportDeltaCelsius ||
+      current.reportAlways !== original.reportAlways ||
       current.enabled !== original.enabled
     )
   }
 
   export function encodeConfig(config: ConfigDraft): Record<string, unknown> {
     return {
+      name: config.name,
       enabled: config.enabled,
+      deps: config.deps,
       address: config.address.trim().toUpperCase(),
       resolution: config.resolution,
       unit: config.unit,
-      poll_ms: config.poll_ms,
-      report_delta_celsius: config.report_delta_celsius,
-      report_always: config.report_always,
+      pollMs: config.pollMs,
+      reportDeltaCelsius: config.reportDeltaCelsius,
+      reportAlways: config.reportAlways,
     }
   }
 
@@ -134,7 +141,7 @@ export namespace Ds18b20 {
   }
 
   export function isScanCandidate(candidate: OneWireScanDeviceSnapshot): boolean {
-    return candidate.family_code.toUpperCase() === '28' && addressValid(candidate.address)
+    return candidate.familyCode.toUpperCase() === '28' && addressValid(candidate.address)
   }
 
   export function temperatureValid(value: unknown): value is TemperatureOutputSnapshot {
@@ -154,7 +161,7 @@ export namespace Ds18b20 {
     if (!output?.valid) {
       return ''
     }
-    return `${output.value.toFixed(2)} ${output.unit_symbol}`
+    return `${output.value.toFixed(2)} ${output.unitSymbol}`
   }
 
   export class Device extends BaseDevice<
@@ -171,53 +178,49 @@ export namespace Ds18b20 {
 
     createDefaultCreateDraft(common: Partial<DeviceCreateDraftBase> = {}): CreateDraft {
       return {
-        name: common.name ?? 'New Device',
-        typeId: common.typeId ?? this.typeId,
         ...this.createDefaultConfig(),
-        enabled: common.enabled ?? true,
+        ...common,
+        typeId: common.typeId ?? this.typeId,
       }
     }
 
-    createEditDraft(current: DashboardDevice): CreateDraft {
-      const { enabled: _enabled, ...config } = this.normalizeConfig(current.detail.config, current.deps)
+    createEditDraft(current: DeviceRecord): CreateDraft {
       return {
-        name: current.name,
-        typeId: current.typeId,
-        enabled: current.enabled,
-        ...config,
+        ...this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined),
+        typeId: this.typeId,
       }
     }
 
-    normalizeConfig(value: unknown, deps?: number | { role: string; device_id: number }[]): ConfigDraft {
+    normalizeConfig(value: unknown, deps?: DeviceDependencyLink[]): ConfigDraft {
       return Ds18b20.normalizeConfig(value, deps)
     }
 
     normalizeOutput(record: DeviceRecord): Ds18b20TemperatureSensorOutputSnapshot {
-      return Ds18b20.normalizeOutput(record.output)
+      return Ds18b20.normalizeOutput(record.runtime)
     }
 
     override encodeConfig(config: ConfigDraft): Record<string, unknown> {
       return Ds18b20.encodeConfig(config)
     }
 
-    buildEditCommands(current: DashboardDevice, draft: CreateDraft): DeviceCommandRequest[] {
+    buildEditCommands(current: DeviceRecord, draft: CreateDraft): DeviceCommandRequest[] {
       const commands: DeviceCommandRequest[] = []
-      if (draft.name.trim() !== current.name) {
+      const currentConfig = this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined)
+      if (draft.name.trim() !== currentConfig.name) {
         commands.push({ command: 'rename', name: draft.name.trim() })
       }
-      if (draft.enabled !== current.enabled) {
+      if (draft.enabled !== currentConfig.enabled) {
         commands.push({ command: draft.enabled ? 'enable' : 'disable' })
       }
-      const currentConfig = this.normalizeConfig(current.detail.config, current.deps)
       const nextConfig = this.normalizeConfig(draft, [
         {
           role: 'onewire_bus',
-          device_id: draft.dependency_device_id,
+          deviceId: draft.dependencyDeviceId,
         },
       ])
       if (Ds18b20.configChanged(nextConfig, currentConfig)) {
         commands.push({
-          command: 'update_config',
+          command: 'updateConfig',
           config: {
             ...this.encodeConfig(nextConfig),
             enabled: draft.enabled,
@@ -225,7 +228,7 @@ export namespace Ds18b20 {
           deps: [
             {
               role: 'onewire_bus',
-              device_id: nextConfig.dependency_device_id,
+              deviceId: nextConfig.dependencyDeviceId,
             },
           ],
         })
@@ -234,7 +237,7 @@ export namespace Ds18b20 {
     }
 
     protected extractCreateConfig(draft: CreateDraft): ConfigDraft {
-      const { name: _name, typeId: _typeId, ...config } = draft
+      const { typeId: _typeId, ...config } = draft
       return config
     }
 
@@ -242,7 +245,7 @@ export namespace Ds18b20 {
       return [
         {
           role: 'onewire_bus',
-          device_id: config.dependency_device_id,
+          deviceId: config.dependencyDeviceId,
         },
       ]
     }

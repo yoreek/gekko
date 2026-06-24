@@ -7,7 +7,6 @@ export const useDeviceRegistryStore = defineStore('deviceRegistry', {
   state: () => ({
     devices: [] as DashboardDevice[],
     registryRevision: 0,
-    pendingPersistence: false,
     initialized: false,
     initializePromise: null as Promise<void> | null,
   }),
@@ -16,7 +15,6 @@ export const useDeviceRegistryStore = defineStore('deviceRegistry', {
       const collection = normalizeDeviceCollection(payload)
       this.devices = [...collection.devices]
       this.registryRevision = collection.registryRevision
-      this.pendingPersistence = collection.pendingPersistence
     },
     async initialize(): Promise<void> {
       if (this.initialized) {
@@ -48,7 +46,7 @@ export const useDeviceRegistryStore = defineStore('deviceRegistry', {
       this.initialized = true
     },
     upsertDevice(device: DeviceRecord, revision: number): void {
-      const normalized = normalizeDeviceRecord(device, revision, device.pending_persistence ?? this.pendingPersistence)
+      const normalized = normalizeDeviceRecord(device, revision)
       const index = this.devices.findIndex(entry => entry.deviceId === normalized.deviceId)
       if (index >= 0) {
         this.devices.splice(index, 1, normalized)
@@ -56,9 +54,6 @@ export const useDeviceRegistryStore = defineStore('deviceRegistry', {
         this.devices.push(normalized)
       }
       this.registryRevision = revision
-      if (typeof device.pending_persistence === 'boolean') {
-        this.pendingPersistence = device.pending_persistence
-      }
     },
     removeDevice(deviceId: number, revision: number): void {
       this.devices = this.devices.filter(device => device.deviceId !== deviceId)
@@ -66,9 +61,6 @@ export const useDeviceRegistryStore = defineStore('deviceRegistry', {
     },
     setRevision(revision: number): void {
       this.registryRevision = revision
-    },
-    setPendingPersistence(pendingPersistence: boolean): void {
-      this.pendingPersistence = pendingPersistence
     },
   },
 })

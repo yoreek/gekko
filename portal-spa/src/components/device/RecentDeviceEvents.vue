@@ -45,10 +45,6 @@
                     <div class="text-caption text-medium-emphasis">{{ t('journal.details.receivedAt') }}</div>
                     <div class="text-body-2">{{ formatTime(entry.receivedAt) }}</div>
                   </div>
-                  <div>
-                    <div class="text-caption text-medium-emphasis">{{ t('journal.details.pendingPersistence') }}</div>
-                    <div class="text-body-2">{{ formatPendingPersistence(entry.pendingPersistence) }}</div>
-                  </div>
                 </div>
                 <pre class="recent-device-events__payload">{{ formatPayload(entry.details) }}</pre>
               </div>
@@ -101,13 +97,6 @@ function typeLabel(typeId: number): string {
 function eventKindLabel(eventKind: string): string {
   const translationKey = journalEventKindTranslationKey(eventKind)
   return translationKey === null ? eventKind : t(translationKey)
-}
-
-function formatPendingPersistence(pendingPersistence: boolean | null): string {
-  if (pendingPersistence === null) {
-    return t('journal.missingValue')
-  }
-  return pendingPersistence ? t('labels.yes') : t('labels.no')
 }
 
 function formatPayload(payload: Record<string, unknown>): string {

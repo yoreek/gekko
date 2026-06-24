@@ -16,7 +16,7 @@
         <v-col cols="12" md="6">
           <v-text-field
             :label="t('device.fields.measuredAt')"
-            :model-value="temperature?.valid ? String(temperature.measured_at_ms) : ''"
+            :model-value="temperature?.valid ? String(temperature.measuredAtMs) : ''"
             readonly
           />
         </v-col>
@@ -24,11 +24,11 @@
 
       <v-row class="device-type-section__grid">
         <v-col cols="12" md="6">
-          <v-text-field
-            :label="t('device.fields.onewireDependency')"
-            :model-value="dependencyLabel"
-            readonly
-          />
+            <v-text-field
+              :label="t('device.fields.onewireDependency')"
+              :model-value="dependencyLabel"
+              readonly
+            />
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
@@ -55,13 +55,13 @@
                 <v-text-field :label="t('device.fields.temperatureUnit')" :model-value="t(`device.dialog.temperatureUnit.${config.unit}`)" readonly />
               </v-col>
               <v-col cols="12" md="6">
-                <v-text-field :label="t('device.fields.pollMs')" :model-value="config.poll_ms" readonly />
+                <v-text-field :label="t('device.fields.pollMs')" :model-value="config.pollMs" readonly />
               </v-col>
               <v-col cols="12" md="6">
-                <v-text-field :label="t('device.fields.reportDelta')" :model-value="config.report_delta_celsius" readonly />
+                <v-text-field :label="t('device.fields.reportDelta')" :model-value="config.reportDeltaCelsius" readonly />
               </v-col>
               <v-col cols="12" md="6">
-                <v-switch :label="t('device.fields.reportAlways')" :model-value="config.report_always" readonly />
+                <v-switch :label="t('device.fields.reportAlways')" :model-value="config.reportAlways" readonly />
               </v-col>
             </v-row>
           </v-expansion-panel-text>
@@ -75,11 +75,9 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import type { Ds18b20TemperatureSensorOutputSnapshot, TemperatureOutputSnapshot } from '@/api/contracts'
 import type { DashboardDevice } from '@/models/device'
-import { Ds18b20 } from '@/models/devices/ds18b20'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
-
-const deviceModel = new Ds18b20.Device()
 
 const props = defineProps<{
   device: DashboardDevice
@@ -88,14 +86,18 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
-const dependencyDeviceId = computed(() => props.device.deps.find(dep => dep.role === 'onewire_bus')?.device_id ?? 0)
-const config = computed(() => deviceModel.normalizeConfig(props.device.detail.config, props.device.deps))
-const output = computed(() => deviceModel.normalizeOutput(props.device.raw))
-const temperature = computed(() => {
-  const value = output.value.temperature
-  return Ds18b20.temperatureValid(value) ? value : undefined
+const dependencyDeviceId = computed(() => props.device.deps.find(dep => dep.role === 'onewire_bus')?.deviceId ?? 0)
+const config = computed(() => props.device.detail.config as {
+  address: string
+  resolution: number
+  unit: 'celsius' | 'fahrenheit'
+  pollMs: number
+  reportDeltaCelsius: number
+  reportAlways: boolean
 })
-const temperatureText = computed(() => Ds18b20.formatTemperature(temperature.value) || t('device.dialog.temperatureUnavailableShort'))
+const output = computed(() => props.device.output as Ds18b20TemperatureSensorOutputSnapshot)
+const temperature = computed(() => output.value.temperature as TemperatureOutputSnapshot | undefined)
+const temperatureText = computed(() => temperature.value?.valid ? `${temperature.value.value.toFixed(2)} ${temperature.value.unitSymbol}` : t('device.dialog.temperatureUnavailableShort'))
 const dependencyLabel = computed(() => {
   const dependency = deviceStore.devices.find(device => device.deviceId === dependencyDeviceId.value)
   return dependency ? `${dependency.name} #${dependency.deviceId}` : `#${dependencyDeviceId.value}`

@@ -7,7 +7,7 @@
             :label="t('device.fields.gpioPin')"
             :hint="t('device.dialog.gpioPinHint')"
             persistent-hint
-            :model-value="currentValue.gpio_pin"
+            :model-value="currentValue.gpioPin"
             inputmode="numeric"
             type="number"
             :disabled="busy"
@@ -35,27 +35,27 @@
             <v-row class="device-type-section__grid">
               <v-col cols="12" md="6">
                 <SwitchStateSelect
-                  :model-value="currentValue.startup_state"
+                  :model-value="currentValue.startupState"
                   :label="t('device.fields.startupState')"
                   :hint="t('device.dialog.startupStateHint')"
-                  @update:model-value="update('startup_state', $event)"
+                  @update:model-value="update('startupState', $event)"
                 />
               </v-col>
               <v-col cols="12" md="6">
                 <SwitchStateSelect
-                  :model-value="currentValue.safe_state"
+                  :model-value="currentValue.safeState"
                   :label="t('device.fields.safeState')"
                   :hint="t('device.dialog.safeStateHint')"
-                  @update:model-value="update('safe_state', $event)"
+                  @update:model-value="update('safeState', $event)"
                 />
               </v-col>
               <v-col cols="12" md="6">
                 <div class="device-switch-field">
                   <v-switch
                     :label="t('device.fields.restorePreviousState')"
-                    :model-value="currentValue.restore_previous_state"
+                    :model-value="currentValue.restorePreviousState"
                     :disabled="busy"
-                    @update:model-value="update('restore_previous_state', Boolean($event))"
+                    @update:model-value="update('restorePreviousState', Boolean($event))"
                   />
                   <div class="device-switch-field__hint text-caption text-medium-emphasis">
                     {{ t('device.dialog.restorePreviousStateHint') }}
@@ -105,9 +105,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const isCreateMode = computed(() => props.mode !== 'edit')
 const fallbackValue: GpioSwitchFormValue = {
-  name: 'New Device',
   typeId: GPIO_SWITCH_DEVICE_TYPE_ID,
-  enabled: true,
   ...GpioSwitch.defaultConfig(),
 }
 const currentValue = computed<GpioSwitchFormValue>(() => props.modelValue ?? fallbackValue)
@@ -115,7 +113,7 @@ const outputState = computed(() => (props.outputState !== undefined && isOutputS
 
 function updatePin(value: string | number): void {
   const gpioPin = Number(value)
-  emit('update:modelValue', buildNextValue({ gpio_pin: Number.isFinite(gpioPin) ? gpioPin : currentValue.value.gpio_pin }))
+  emit('update:modelValue', buildNextValue({ gpioPin: Number.isFinite(gpioPin) ? gpioPin : currentValue.value.gpioPin }))
 }
 
 function update<K extends keyof GpioSwitch.CreateDraft>(key: K, value: GpioSwitch.CreateDraft[K]): void {

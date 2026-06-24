@@ -53,10 +53,6 @@
                 <span>{{ t('dashboard.registryRevision') }}</span>
                 <strong>{{ deviceStore.registryRevision }}</strong>
               </div>
-              <div class="status-row">
-                <span>{{ t('device.fields.pendingPersistence') }}</span>
-                <strong>{{ deviceStore.pendingPersistence ? t('labels.yes') : t('labels.no') }}</strong>
-              </div>
             </div>
           </v-card-text>
         </v-card>

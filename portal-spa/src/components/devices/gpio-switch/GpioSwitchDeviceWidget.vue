@@ -14,13 +14,11 @@
 import { computed } from 'vue'
 
 import type { DeviceCommandRequest } from '@/api'
+import type { GpioSwitchOutputSnapshot } from '@/api/contracts'
 import SwitchDeviceWidgetBase from '@/components/devices/switch/SwitchDeviceWidgetBase.vue'
 import SwitchPowerButton from '@/components/devices/switch/SwitchPowerButton.vue'
 import type { DashboardDevice } from '@/models/device'
 import { isOutputState, switchCommandPayload } from '@/models/devices/switch'
-import { GpioSwitch } from '@/models/devices/gpio-switch'
-
-const deviceModel = new GpioSwitch.Device()
 
 const props = defineProps<{
   device: DashboardDevice
@@ -33,7 +31,8 @@ defineEmits<{
 }>()
 
 const outputState = computed(() => {
-  const output = deviceModel.normalizeOutput(props.device.raw)
-  return isOutputState(output.state) ? output.state : undefined
+  const output = props.device.output as GpioSwitchOutputSnapshot
+  const state = output.state
+  return isOutputState(state) ? state : undefined
 })
 </script>

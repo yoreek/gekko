@@ -205,7 +205,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { commandDevice, fetchDevice, type DeviceCommandRequest } from '@/api'
+import { commandDevice, fetchDevice, type DeviceCommandRequest, type DeviceRecord } from '@/api'
 import DashboardGrid from '@/components/dashboard/DashboardGrid.vue'
 import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
@@ -410,14 +410,13 @@ async function refreshDevices(silent = false): Promise<void> {
   }
 }
 
-function applyMutationResponse(response: { registry_revision: number; pending_persistence: boolean; device?: DashboardDevice['raw'] }): void {
-  deviceStore.setRevision(response.registry_revision)
-  deviceStore.setPendingPersistence(response.pending_persistence)
+function applyMutationResponse(response: { registryRevision: number; device?: DeviceRecord }): void {
+  deviceStore.setRevision(response.registryRevision)
   if (response.device !== undefined) {
     const device = response.device
-    const deviceId = device.device_id ?? 0
+    const deviceId = device.record.id
     const isNewDevice = !deviceStore.devices.some(entry => entry.deviceId === deviceId)
-    deviceStore.upsertDevice(device, response.registry_revision)
+    deviceStore.upsertDevice(device, response.registryRevision)
     if (isNewDevice) {
       panelStore.assignDeviceToActivePanel(deviceId)
     }
@@ -461,8 +460,7 @@ async function refreshSelectedDevice(): Promise<void> {
   detailError.value = ''
   try {
     const response = await fetchDevice(selectedDeviceId.value)
-    deviceStore.upsertDevice(response.device, response.registry_revision)
-    deviceStore.setPendingPersistence(response.pending_persistence)
+    deviceStore.upsertDevice(response.device, response.registryRevision)
   } catch (error) {
     detailError.value = formatError(error)
   } finally {
@@ -496,7 +494,7 @@ async function saveDevice(payload: DeviceEditDraft): Promise<void> {
     for (const command of commands) {
       const response = await commandDevice(selectedDeviceId.value, {
         ...command,
-        device_id: selectedDeviceId.value,
+        deviceId: selectedDeviceId.value,
       })
       applyMutationResponse(response)
     }
@@ -517,7 +515,7 @@ async function submitDeviceCommand(payload: DeviceCommandRequest): Promise<void>
   try {
     const response = await commandDevice(selectedDeviceId.value, {
       ...payload,
-      device_id: selectedDeviceId.value,
+      deviceId: selectedDeviceId.value,
     })
     applyMutationResponse(response)
   } catch (error) {
@@ -534,7 +532,7 @@ async function submitDashboardDeviceCommand(deviceId: number, payload: DeviceCom
   try {
     const response = await commandDevice(deviceId, {
       ...payload,
-      device_id: deviceId,
+      deviceId,
     })
     applyMutationResponse(response)
   } catch {

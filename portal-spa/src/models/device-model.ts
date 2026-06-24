@@ -7,7 +7,7 @@ import type {
   DeviceRegistryResponse,
   OneWireScanSnapshot,
 } from '@/api/contracts'
-import { resolveDeviceModel } from '@/models/devices/device-model-factory'
+import { deviceTypeIdFromName, deviceTypeName } from '@/models/device-types'
 
 export type DashboardEffectiveStatus = 'Ready' | '!Ready'
 
@@ -21,19 +21,16 @@ export interface DeviceDetailSnapshot {
   scan?: OneWireScanSnapshot
 }
 
-export interface DashboardDevice {
+export interface DashboardDevice extends DeviceRecord {
   deviceId: number
   typeId: number
-  typeName: string
   typeLabel: string
   name: string
   enabled: boolean
   deps: DeviceDependencyLink[]
   hasDeps: boolean
-  configVersion: number
   configRevision: number
   registryRevision: number
-  pendingPersistence: boolean
   lifecycleStatus: string
   effectiveStatus: DashboardEffectiveStatus
   backendEffectiveStatus: string
@@ -41,13 +38,11 @@ export interface DashboardDevice {
   isReady: boolean
   detail: DeviceDetailSnapshot
   output: DeviceOutputSnapshot
-  raw: DeviceRecord
 }
 
-export interface DashboardDeviceCollection {
+export interface DashboardDeviceCollection<TRecord extends DashboardDevice = DashboardDevice> {
   registryRevision: number
-  pendingPersistence: boolean
-  devices: DashboardDevice[]
+  devices: TRecord[]
 }
 
 export interface DashboardDeviceActionPreset {
@@ -62,19 +57,99 @@ export function normalizeDashboardStatus(effectiveStatus: string | undefined | n
   return effectiveStatus === 'ready' ? 'Ready' : '!Ready'
 }
 
-export function normalizeDeviceRecord(
-  record: DeviceRecord,
-  registryRevision = record.registry_revision ?? 0,
-  pendingPersistence = record.pending_persistence ?? false,
+function readRecord(source: DeviceRecord | Record<string, unknown>): DeviceRecord {
+  return source as DeviceRecord
+}
+
+function readConfig(source: DeviceRecord): Record<string, unknown> {
+  return (source.config ?? {}) as unknown as Record<string, unknown>
+}
+
+function readRuntime(source: DeviceRecord): Record<string, unknown> {
+  return (source.runtime ?? {}) as unknown as Record<string, unknown>
+}
+
+function readDeps(source: DeviceRecord): DeviceDependencyLink[] {
+  const config = readConfig(source)
+  return Array.isArray(config.deps) ? (config.deps as DeviceDependencyLink[]) : []
+}
+
+function buildDetail(source: DeviceRecord): DeviceDetailSnapshot {
+  const config = readConfig(source)
+  const runtime = readRuntime(source)
+  const detail: DeviceDetailSnapshot = {
+    config,
+    retainedStateSupported: Boolean((config as { retainedStateSupported?: unknown }).retainedStateSupported ?? false),
+    retainedStartupEnabled: (config as { retainedStartupEnabled?: boolean }).retainedStartupEnabled,
+    retainedStartupFallbackOutput: (config as { retainedStartupFallbackOutput?: boolean }).retainedStartupFallbackOutput,
+    retainedStateInConfigPayload: (config as { retainedStateInConfigPayload?: boolean }).retainedStateInConfigPayload,
+    scan: runtime.scan as OneWireScanSnapshot | undefined,
+  }
+  const restorePreviousState = (config as { restorePreviousState?: unknown }).restorePreviousState
+  if (typeof restorePreviousState === 'boolean') {
+    detail.restorePreviousState = restorePreviousState
+  }
+  return detail
+}
+
+export function createDashboardDevice(
+  source: DeviceRecord | Record<string, unknown>,
+  registryRevision = 0,
 ): DashboardDevice {
-  return resolveDeviceModel(record).normalize(record, registryRevision, pendingPersistence)
+  const record = readRecord(source)
+  const config = readConfig(record)
+  const runtime = readRuntime(record)
+  const deps = readDeps(record)
+  const typeName = record.record?.typeName ?? ''
+  const device: DashboardDevice = {
+    ...record,
+    deviceId: record.record?.id ?? 0,
+    typeId: deviceTypeIdFromName(typeName) || 0,
+    typeLabel: typeName || deviceTypeName(deviceTypeIdFromName(typeName) || 0),
+    name: typeof config.name === 'string' ? config.name : '',
+    enabled: typeof config.enabled === 'boolean' ? config.enabled : true,
+    deps,
+    hasDeps: deps.length > 0,
+    configRevision: record.record?.configRevision ?? 0,
+    registryRevision,
+    lifecycleStatus: typeof runtime.lifecycleStatus === 'string' ? runtime.lifecycleStatus : 'unknown',
+    effectiveStatus: normalizeDashboardStatus(
+      typeof runtime.effectiveStatus === 'string' ? runtime.effectiveStatus : typeof runtime.lifecycleStatus === 'string' ? runtime.lifecycleStatus : typeof runtime.status === 'string' ? runtime.status : 'unknown',
+    ),
+    backendEffectiveStatus:
+      typeof runtime.effectiveStatus === 'string'
+        ? runtime.effectiveStatus
+        : typeof runtime.lifecycleStatus === 'string'
+          ? runtime.lifecycleStatus
+          : typeof runtime.status === 'string'
+            ? runtime.status
+            : 'unknown',
+    status: typeof runtime.status === 'string'
+      ? runtime.status
+      : typeof runtime.effectiveStatus === 'string'
+        ? runtime.effectiveStatus
+        : typeof runtime.lifecycleStatus === 'string'
+          ? runtime.lifecycleStatus
+          : 'unknown',
+    isReady:
+      (typeof runtime.effectiveStatus === 'string' ? runtime.effectiveStatus : runtime.status) === 'ready',
+    detail: buildDetail(record),
+    output: (runtime.output ?? {}) as DeviceOutputSnapshot,
+  }
+  return device
+}
+
+export function normalizeDeviceRecord(
+  record: DeviceRecord | Record<string, unknown>,
+  registryRevision = 0,
+): DashboardDevice {
+  return createDashboardDevice(record, registryRevision)
 }
 
 export function normalizeDeviceCollection(payload: DeviceRegistryResponse): DashboardDeviceCollection {
   return {
-    registryRevision: payload.registry_revision,
-    pendingPersistence: payload.pending_persistence,
-    devices: payload.devices.map(device => normalizeDeviceRecord(device, payload.registry_revision, payload.pending_persistence)),
+    registryRevision: payload.registryRevision,
+    devices: payload.devices.map(device => createDashboardDevice(device, payload.registryRevision)),
   }
 }
 

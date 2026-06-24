@@ -3,6 +3,7 @@ import type {
   DeviceDetailResponse,
   DashboardLayoutRecord,
   DashboardLayoutResponse,
+  DeviceCreateRequest,
   DeviceMutationResponse,
   DeviceSetupTransferResponse,
   DeviceRegistryResponse,
@@ -34,6 +35,10 @@ import {
 
 function useMockTransport(): boolean {
   return detectTransportMode() === 'mock'
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 export function fetchWifiStatus(): Promise<WifiStatusResponse> {
@@ -97,7 +102,7 @@ export function fetchDevice(deviceId: number): Promise<DeviceDetailResponse> {
   return requestJson<DeviceDetailResponse>(`/api/devices/${deviceId}`)
 }
 
-export function createDevice(payload: Record<string, unknown>): Promise<DeviceMutationResponse> {
+export function createDevice(payload: DeviceCreateRequest): Promise<DeviceMutationResponse> {
   if (useMockTransport()) {
     return mockCreateDevice(payload)
   }
@@ -116,7 +121,7 @@ export function commandDevice(deviceId: number, payload: DeviceCommandRequest): 
   }
   return requestJson<DeviceMutationResponse>(`/api/devices/${deviceId}/command`, {
     method: 'POST',
-    body: JSON.stringify({ ...payload, device_id: deviceId }),
+    body: JSON.stringify(payload),
     headers: {
       'Content-Type': 'application/json',
     },

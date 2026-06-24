@@ -39,15 +39,15 @@ test('renders DS18B20 temperature and merges realtime unavailable updates', asyn
 
   await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) ?? '{}')
-    const sensor = db.devices.find((device: { device_id: number }) => device.device_id === 670845752)
+    const sensor = db.devices.find((device: { deviceId: number }) => device.deviceId === 670845752)
     window.__gekkoMockRealtime?.upsertDevice({
       ...sensor,
       output: {
         temperature: {
           value: 25.5,
           unit: 'celsius',
-          unit_symbol: 'C',
-          measured_at_ms: 24000,
+          unitSymbol: 'C',
+          measuredAtMs: 24000,
           valid: true,
           status: 'ok',
         },
@@ -58,13 +58,13 @@ test('renders DS18B20 temperature and merges realtime unavailable updates', asyn
 
   await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) ?? '{}')
-    const dependency = db.devices.find((device: { device_id: number }) => device.device_id === 670845751)
-    const sensor = db.devices.find((device: { device_id: number }) => device.device_id === 670845752)
+    const dependency = db.devices.find((device: { deviceId: number }) => device.deviceId === 670845751)
+    const sensor = db.devices.find((device: { deviceId: number }) => device.deviceId === 670845752)
     window.__gekkoMockRealtime?.upsertDevice({
       ...dependency,
       enabled: false,
-      lifecycle_status: 'disabled',
-      effective_status: 'disabled',
+      lifecycleStatus: 'disabled',
+      effectiveStatus: 'disabled',
       status: 'disabled',
       config: {
         ...dependency.config,
@@ -73,14 +73,14 @@ test('renders DS18B20 temperature and merges realtime unavailable updates', asyn
     })
     window.__gekkoMockRealtime?.upsertDevice({
       ...sensor,
-      effective_status: 'disabled',
+      effectiveStatus: 'disabled',
       status: 'disabled',
       output: {
         temperature: {
           value: 0,
           unit: 'celsius',
-          unit_symbol: 'C',
-          measured_at_ms: 0,
+          unitSymbol: 'C',
+          measuredAtMs: 0,
           valid: false,
           status: 'dependency_disabled',
         },

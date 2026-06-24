@@ -197,7 +197,9 @@ import {
   fetchDevice,
   fetchDeviceSetupBundle,
   importDeviceSetupBundle,
+  type DeviceRecord,
   type DeviceCommandRequest,
+  type DeviceCreateRequest,
 } from '@/api'
 import DeviceCreateDialog from '@/components/device/DeviceCreateDialog.vue'
 import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
@@ -329,7 +331,7 @@ async function submitImportDeviceSetup(): Promise<void> {
   try {
     const response = await importDeviceSetupBundle(selectedImportFile.value)
     await refreshDevices(true)
-    transferMessage.value = t('devices.importSuccess', { count: response.device_count })
+    transferMessage.value = t('devices.importSuccess', { count: response.deviceCount })
     closeImportDialog()
   } catch (error) {
     importError.value = formatError(error)
@@ -338,11 +340,10 @@ async function submitImportDeviceSetup(): Promise<void> {
   }
 }
 
-function applyMutationResponse(response: { registry_revision: number; pending_persistence: boolean; device?: DashboardDevice['raw'] }): void {
-  deviceStore.setRevision(response.registry_revision)
-  deviceStore.setPendingPersistence(response.pending_persistence)
+function applyMutationResponse(response: { registryRevision: number; device?: DeviceRecord }): void {
+  deviceStore.setRevision(response.registryRevision)
   if (response.device !== undefined) {
-    deviceStore.upsertDevice(response.device, response.registry_revision)
+    deviceStore.upsertDevice(response.device, response.registryRevision)
     void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
   }
 }
@@ -362,7 +363,7 @@ function statusColor(status: string): 'success' | 'secondary' | 'error' | 'warni
   }
 }
 
-async function submitCreateDevice(payload: Record<string, unknown>): Promise<void> {
+async function submitCreateDevice(payload: DeviceCreateRequest): Promise<void> {
   createLoading.value = true
   createError.value = ''
   try {
@@ -391,8 +392,7 @@ async function refreshSelectedDevice(): Promise<void> {
   detailError.value = ''
   try {
     const response = await fetchDevice(selectedDeviceId.value)
-    deviceStore.upsertDevice(response.device, response.registry_revision)
-    deviceStore.setPendingPersistence(response.pending_persistence)
+    deviceStore.upsertDevice(response.device, response.registryRevision)
   } catch (error) {
     detailError.value = formatError(error)
   } finally {
@@ -411,7 +411,7 @@ async function saveDevice(payload: DeviceEditDraft): Promise<void> {
     for (const command of commands) {
       const response = await commandDevice(selectedDeviceId.value, {
         ...command,
-        device_id: selectedDeviceId.value,
+        deviceId: selectedDeviceId.value,
       })
       applyMutationResponse(response)
     }
@@ -435,8 +435,7 @@ async function submitDeleteDevice(): Promise<void> {
   deleteBusy.value = true
   try {
     const response = await deleteDevice(deleteTargetId.value)
-    deviceStore.removeDevice(deleteTargetId.value, response.registry_revision)
-    deviceStore.setPendingPersistence(response.pending_persistence)
+    deviceStore.removeDevice(deleteTargetId.value, response.registryRevision)
     panelStore.removeDevice(deleteTargetId.value)
     if (selectedDeviceId.value === deleteTargetId.value) {
       detailOpen.value = false
@@ -461,7 +460,7 @@ async function submitDeviceCommand(payload: DeviceCommandRequest): Promise<void>
   try {
     const response = await commandDevice(selectedDeviceId.value, {
       ...payload,
-      device_id: selectedDeviceId.value,
+      deviceId: selectedDeviceId.value,
     })
     applyMutationResponse(response)
   } catch (error) {

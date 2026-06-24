@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 
 import type { RealtimeMessage } from '@/realtime/messages'
+import { deviceTypeIdFromName } from '../models/device-types'
 
 export type DeviceJournalTypeFilter = number | 'all'
 export type DeviceJournalEventKindFilter = string | 'all'
@@ -17,7 +18,6 @@ export interface DeviceEventJournalEntry {
   eventKind: string
   registryRevision: number
   configRevision: number | null
-  pendingPersistence: boolean | null
   details: Record<string, unknown>
   raw: RealtimeMessage<Record<string, unknown>>
 }
@@ -30,16 +30,12 @@ export interface DeviceEventJournalFilters {
 }
 
 interface DeviceEventPayload extends Record<string, unknown> {
-  event_kind?: unknown
-  device_id?: unknown
-  type_id?: unknown
-  type?: unknown
-  label?: unknown
+  typeName?: unknown
   name?: unknown
-  registry_revision?: unknown
-  config_revision?: unknown
-  pending_persistence?: unknown
   device?: unknown
+  record?: unknown
+  config?: unknown
+  runtime?: unknown
 }
 
 const kMaxEntries = 200
@@ -65,6 +61,9 @@ function extractPayload(message: RealtimeMessage): DeviceEventPayload | null {
 }
 
 function extractSnapshot(payload: DeviceEventPayload): DeviceEventPayload | null {
+  if (isRecord(payload.record)) {
+    return payload as DeviceEventPayload
+  }
   if (isRecord(payload.device)) {
     return payload.device as DeviceEventPayload
   }
@@ -109,24 +108,24 @@ function createEntry(message: RealtimeMessage, receivedAt: number): DeviceEventJ
   }
 
   const snapshot = extractSnapshot(payload)
-  const eventKind = asText(payload.event_kind)
+  const eventKind = asText((payload as { eventKind?: unknown }).eventKind)
   if (snapshot === null) {
     return null
   }
 
-  const deviceId = asNumber(snapshot.device_id ?? payload.device_id)
-  const typeId = asNumber(snapshot.type_id ?? payload.type_id)
+  const record = isRecord(snapshot.record) ? snapshot.record as Record<string, unknown> : null
+  const config = isRecord(snapshot.config) ? snapshot.config as Record<string, unknown> : null
+  const runtime = isRecord(snapshot.runtime) ? snapshot.runtime as Record<string, unknown> : null
+  const deviceId = asNumber(record?.id)
+  const typeName = asText(record?.typeName ?? snapshot.typeName ?? payload.typeName)
+  const typeId = asNumber((payload as { typeId?: unknown }).typeId ?? (typeName.length > 0 ? deviceTypeIdFromName(typeName) : null))
   if (deviceId === null || deviceId <= 0 || typeId === null || typeId <= 0) {
     return null
   }
 
-  const name = asText(snapshot.name ?? payload.name)
-  const typeName = asText(snapshot.type ?? payload.type ?? payload.label)
-  const registryRevision = asNumber(payload.registry_revision ?? message.revision) ?? message.revision
-  const configRevision = asNumber(snapshot.config_revision ?? payload.config_revision)
-  const pendingPersistenceValue = payload.pending_persistence
-  const pendingPersistence = typeof pendingPersistenceValue === 'boolean' ? pendingPersistenceValue : null
-
+  const name = asText(config?.name ?? snapshot.name ?? payload.name)
+  const registryRevision = asNumber((payload as { registryRevision?: unknown }).registryRevision ?? message.revision) ?? message.revision
+  const configRevision = asNumber(record?.configRevision)
   return {
     sequence: 0,
     receivedAt,
@@ -139,12 +138,11 @@ function createEntry(message: RealtimeMessage, receivedAt: number): DeviceEventJ
     eventKind,
     registryRevision,
     configRevision,
-    pendingPersistence,
     details: payload,
     raw: {
       topic: message.topic,
       revision: message.revision,
-      payload: payload,
+      payload: runtime !== null ? { ...payload, runtime } : payload,
     },
   }
 }

@@ -1,18 +1,22 @@
 import type { DeviceCommandRequest, DeviceRecord } from '@/api/contracts'
-import type { DashboardDevice } from '@/models/device'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import { DUMMY_DEVICE_TYPE_ID } from '@/models/device-types'
 import { BaseDevice } from '@/models/devices/base-device'
+import type { BaseDeviceConfig } from '@/api/contracts'
 
 export namespace Dummy {
-  export type ConfigDraft = Record<string, never>
+  export type ConfigDraft = BaseDeviceConfig
 
   export interface CreateDraft extends DeviceCreateDraftBase {
     typeId: number
   }
 
   export function defaultConfig(): ConfigDraft {
-    return {}
+    return {
+      name: 'New Device',
+      enabled: true,
+      deps: [],
+    }
   }
 
   export class Device extends BaseDevice<ConfigDraft, CreateDraft, ConfigDraft> {
@@ -25,41 +29,45 @@ export namespace Dummy {
 
     createDefaultCreateDraft(common: Partial<DeviceCreateDraftBase> = {}): CreateDraft {
       return {
-        name: common.name ?? 'New Device',
+        ...this.createDefaultConfig(),
+        ...common,
         typeId: common.typeId ?? this.typeId,
-        enabled: common.enabled ?? true,
       }
     }
 
-    createEditDraft(current: DashboardDevice): CreateDraft {
+    createEditDraft(current: DeviceRecord): CreateDraft {
+      const config = current.config as Partial<ConfigDraft> | undefined
       return {
-        name: current.name,
-        typeId: current.typeId,
-        enabled: current.enabled,
+        ...this.createDefaultConfig(),
+        name: config?.name ?? this.createDefaultConfig().name,
+        enabled: config?.enabled ?? this.createDefaultConfig().enabled,
+        deps: Array.isArray(config?.deps) ? config.deps : this.createDefaultConfig().deps,
+        typeId: this.typeId,
       }
     }
 
     normalizeConfig(_value: unknown): ConfigDraft {
-      return {}
+      return defaultConfig()
     }
 
     normalizeOutput(_record: DeviceRecord): ConfigDraft {
-      return {}
+      return defaultConfig()
     }
 
-    buildEditCommands(current: DashboardDevice, draft: CreateDraft): DeviceCommandRequest[] {
+    buildEditCommands(current: DeviceRecord, draft: CreateDraft): DeviceCommandRequest[] {
+      const config = current.config as Partial<ConfigDraft> | undefined
       const commands: DeviceCommandRequest[] = []
-      if (draft.name.trim() !== current.name) {
+      if (draft.name.trim() !== config?.name) {
         commands.push({ command: 'rename', name: draft.name.trim() })
       }
-      if (draft.enabled !== current.enabled) {
+      if (draft.enabled !== config?.enabled) {
         commands.push({ command: draft.enabled ? 'enable' : 'disable' })
       }
       return commands
     }
 
     protected extractCreateConfig(_draft: CreateDraft): ConfigDraft {
-      return {}
+      return defaultConfig()
     }
   }
 }

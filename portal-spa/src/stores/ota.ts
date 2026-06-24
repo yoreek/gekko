@@ -12,10 +12,9 @@ export const useOtaStore = defineStore('ota', {
   actions: {
     replaceFromResponse(payload: OtaStatusResponse): void {
       this.enabled = payload.enabled
-      this.freeSketchSpace = payload.free_sketch_space
-      this.hasError = payload.has_error
+      this.freeSketchSpace = payload.freeSketchSpace
+      this.hasError = payload.hasError
       this.status = payload.status ?? 'ok'
     },
   },
 })
-

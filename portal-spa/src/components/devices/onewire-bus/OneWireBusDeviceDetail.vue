@@ -5,14 +5,14 @@
         <v-col cols="12" md="6">
           <v-text-field
             :label="t('device.fields.gpioPin')"
-            :model-value="config.gpio_pin"
+            :model-value="config.gpioPin"
             readonly
           />
         </v-col>
         <v-col cols="12" md="6">
           <v-switch
             :label="t('device.fields.internalPullup')"
-            :model-value="config.internal_pullup"
+            :model-value="config.internalPullup"
             readonly
           />
         </v-col>
@@ -25,30 +25,30 @@
         <v-btn
           color="primary"
           variant="tonal"
-          :loading="busy || scan.in_progress"
-          :disabled="busy || scan.in_progress || !device.isReady"
+          :loading="busy || scan.inProgress"
+          :disabled="busy || scan.inProgress || !device.isReady"
           @click="emitScan"
         >
           <v-icon class="me-1" icon="refresh" />
           {{ t('device.dialog.onewireScanAction') }}
         </v-btn>
-        <v-chip v-if="scan.in_progress" color="primary" variant="tonal">
+        <v-chip v-if="scan.inProgress" color="primary" variant="tonal">
           {{ t('device.dialog.onewireScanLoading') }}
         </v-chip>
-        <v-chip v-else-if="scan.ready" :color="scan.device_count > 0 ? 'success' : 'secondary'" variant="tonal">
-          {{ scan.device_count > 0 ? t('device.dialog.onewireScanReady') : t('device.dialog.onewireScanEmptyReady') }}
+        <v-chip v-else-if="scan.ready" :color="scan.deviceCount > 0 ? 'success' : 'secondary'" variant="tonal">
+          {{ scan.deviceCount > 0 ? t('device.dialog.onewireScanReady') : t('device.dialog.onewireScanEmptyReady') }}
         </v-chip>
       </div>
-      <v-alert v-if="scan.invalid_crc_seen" type="warning" variant="tonal">
+      <v-alert v-if="scan.invalidCrcSeen" type="warning" variant="tonal">
         {{ t('device.dialog.onewireInvalidCrcSeen') }}
       </v-alert>
-      <v-alert v-if="scan.ready && scan.device_count === 0" type="info" variant="tonal">
+      <v-alert v-if="scan.ready && scan.deviceCount === 0" type="info" variant="tonal">
         {{ t('device.dialog.onewireScanEmpty') }}
       </v-alert>
-      <v-list v-if="scan.ready && scan.device_count > 0" density="compact" class="device-type-section__list">
+      <v-list v-if="scan.ready && scan.deviceCount > 0" density="compact" class="device-type-section__list">
         <v-list-item v-for="entry in scan.devices" :key="entry.address">
           <v-list-item-title class="text-body-1 font-weight-medium">{{ entry.address }}</v-list-item-title>
-          <v-list-item-subtitle>{{ t('device.dialog.onewireFamilyCode', { family: entry.family_code }) }}</v-list-item-subtitle>
+          <v-list-item-subtitle>{{ t('device.dialog.onewireFamilyCode', { family: entry.familyCode }) }}</v-list-item-subtitle>
         </v-list-item>
       </v-list>
     </section>
@@ -78,11 +78,11 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const config = computed(() => deviceModel.normalizeConfig(props.device.detail.config))
 const scan = computed<OneWireScanSnapshot>(() => props.device.detail.scan ?? {
-  in_progress: false,
+  inProgress: false,
   ready: false,
-  device_count: 0,
+  deviceCount: 0,
   truncated: false,
-  invalid_crc_seen: false,
+  invalidCrcSeen: false,
   devices: [],
 })
 

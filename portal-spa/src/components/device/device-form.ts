@@ -1,5 +1,6 @@
+import type { DeviceDependencyLink } from '@/api/contracts'
 import type { DeviceCommandRequest } from '@/api'
-import type { DashboardDevice } from '@/models/device'
+import type { DeviceRecord } from '@/api/contracts'
 import { DUMMY_DEVICE_TYPE_ID } from '@/models/device-types'
 import { resolveDeviceModel, resolveDeviceModelByTypeId } from '@/models/devices/device-model-factory'
 
@@ -7,6 +8,7 @@ export interface DeviceCommonDraft {
   name: string
   typeId: number
   enabled: boolean
+  deps?: DeviceDependencyLink[]
 }
 
 export type DeviceCreateDraft = DeviceCommonDraft & Record<string, unknown>
@@ -21,13 +23,13 @@ export function createDefaultDeviceDraft(typeId: number = DUMMY_DEVICE_TYPE_ID):
   })
 }
 
-export function createDeviceEditDraft(device: DashboardDevice | null): DeviceEditDraft {
+export function createDeviceEditDraft(device: DeviceRecord | null): DeviceEditDraft {
   if (device === null) {
     return createDefaultDeviceDraft()
   }
-  return resolveDeviceModel(device.raw).createEditDraft(device)
+  return resolveDeviceModel(device).createEditDraft(device)
 }
 
-export function buildDeviceEditCommands(device: DashboardDevice, payload: DeviceEditDraft): DeviceCommandRequest[] {
-  return resolveDeviceModel(device.raw).buildEditCommands(device, payload)
+export function buildDeviceEditCommands(device: DeviceRecord, payload: DeviceEditDraft): DeviceCommandRequest[] {
+  return resolveDeviceModel(device).buildEditCommands(device, payload)
 }

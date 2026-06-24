@@ -60,7 +60,7 @@ The firmware SHALL keep `DummyDevice` inherited from the reusable runtime base w
 
 #### Scenario: DummyDevice descriptor stays stable
 - **WHEN** the default device type registry is created
-- **THEN** `DummyDevice` remains registered with stable `type_id = 1` and current config version
+- **THEN** `DummyDevice` remains registered with stable `type_id = 1` and current config format marker `BASE-1`
 
 #### Scenario: DummyDevice descriptor exposes simple capabilities
 - **WHEN** callers inspect the `DummyDevice` type descriptor
@@ -68,7 +68,7 @@ The firmware SHALL keep `DummyDevice` inherited from the reusable runtime base w
 
 #### Scenario: DummyDevice config remains compatible
 - **WHEN** an existing `DummyDevice` binary config payload is loaded
-- **THEN** the firmware decodes it using the existing supported Dummy config versions and creates the runtime successfully
+- **THEN** the firmware decodes it using the existing supported Dummy config formats and creates the runtime successfully
 
 #### Scenario: DummyDevice lifecycle remains available
 - **WHEN** `DummyDevice` is started, disabled, reconfigured, dependency-blocked, or deleted

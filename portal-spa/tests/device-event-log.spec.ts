@@ -21,19 +21,17 @@ function makeSnapshotMessage(
     topic: eventKind === 'command_accepted' || eventKind === 'command_rejected' ? 'device.command_result' : 'device.upsert',
     revision: 19,
     payload: {
-      event_kind: eventKind,
-      device_id: deviceId,
-      type_id: 2,
-      type: 'gpio_switch',
+      eventKind,
+      deviceId,
+      typeId: 2,
+      typeName: 'gpio_switch',
       name: `Device ${deviceId}`,
       enabled: true,
-      config_version: 1,
-      config_revision: 3,
-      lifecycle_status: 'ready',
-      effective_status: 'ready',
+      configRevision: 3,
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
       status: 'ready',
-      registry_revision: 19,
-      pending_persistence: false,
+      registryRevision: 19,
       ...overrides,
     },
   }
@@ -50,13 +48,12 @@ test('classifies and stores event kinds in the journal', () => {
     topic: 'device.remove',
     revision: 20,
     payload: {
-      event_kind: 'device_deleted',
-      device_id: 25,
-      type_id: 2,
-      type: 'gpio_switch',
+      eventKind: 'device_deleted',
+      deviceId: 25,
+      typeId: 2,
+      typeName: 'gpio_switch',
       name: 'Removed Device',
-      registry_revision: 20,
-      pending_persistence: true,
+      registryRevision: 20,
     },
   }, 105)
 
@@ -85,9 +82,9 @@ test('keeps the newest entries and drops the oldest when bounded', () => {
 test('filters by type, event kind, partial name, and exact device id', () => {
   const store = createStore()
 
-  store.append(makeSnapshotMessage('device_created', 31, { type_id: 2, type: 'gpio_switch', name: 'Kitchen Relay' }), 201)
-  store.append(makeSnapshotMessage('state_changed', 32, { type_id: 4, type: 'ds18b20_temperature_sensor', name: 'Kitchen Probe' }), 202)
-  store.append(makeSnapshotMessage('snapshot', 33, { type_id: 2, type: 'gpio_switch', name: 'Porch Light' }), 203)
+  store.append(makeSnapshotMessage('device_created', 31, { typeId: 2, typeName: 'gpio_switch', name: 'Kitchen Relay' }), 201)
+  store.append(makeSnapshotMessage('state_changed', 32, { typeId: 4, typeName: 'ds18b20_temperature_sensor', name: 'Kitchen Probe' }), 202)
+  store.append(makeSnapshotMessage('snapshot', 33, { typeId: 2, typeName: 'gpio_switch', name: 'Porch Light' }), 203)
 
   const filtered = store.filteredEntries({
     typeId: 4,

@@ -2,24 +2,24 @@
   <v-row>
     <v-col cols="12" md="6">
       <SwitchStateSelect
-        :model-value="modelValue.startup_state"
+        :model-value="modelValue.startupState"
         :label="t('device.fields.startupState')"
-        @update:model-value="update('startup_state', $event)"
+        @update:model-value="update('startupState', $event)"
       />
     </v-col>
     <v-col cols="12" md="6">
       <SwitchStateSelect
-        :model-value="modelValue.safe_state"
+        :model-value="modelValue.safeState"
         :label="t('device.fields.safeState')"
-        @update:model-value="update('safe_state', $event)"
+        @update:model-value="update('safeState', $event)"
       />
     </v-col>
     <v-col cols="12" md="6">
       <v-switch
-        :model-value="modelValue.restore_previous_state"
+        :model-value="modelValue.restorePreviousState"
         :label="t('device.fields.restorePreviousState')"
         inset
-        @update:model-value="update('restore_previous_state', Boolean($event))"
+        @update:model-value="update('restorePreviousState', Boolean($event))"
       />
     </v-col>
     <v-col cols="12" md="6">

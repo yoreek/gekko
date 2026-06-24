@@ -205,8 +205,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function snapshotToApi(snapshot: PanelSnapshot): DashboardLayoutRecord {
   return {
-    schema_version: 1,
-    active_panel_id: snapshot.activePanelId,
+    schemaVersion: 1,
+    activePanelId: snapshot.activePanelId,
     panels: snapshot.panels.map((panel, order) => ({
       id: panel.id,
       name: panel.name,
@@ -232,7 +232,7 @@ function readWidgetRecord(widget: unknown): DashboardPanelWidget | null {
   }
 
   if (isRecord(widget)) {
-    const deviceId = Number(widget.device_id ?? 0)
+    const deviceId = Number(widget.deviceId ?? 0)
     const x = Number(widget.x ?? 0)
     const y = Number(widget.y ?? 0)
     const w = Number(widget.w ?? 1)
@@ -248,7 +248,7 @@ function readWidgetRecord(widget: unknown): DashboardPanelWidget | null {
 
 function apiToSnapshot(layout: DashboardLayoutRecord): PanelSnapshot {
   return {
-    activePanelId: layout.active_panel_id,
+    activePanelId: layout.activePanelId,
     panels: [...layout.panels]
       .sort((a, b) => a.order - b.order)
       .map(panel => ({

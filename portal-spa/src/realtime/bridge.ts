@@ -12,19 +12,15 @@ import type { Pinia } from 'pinia'
 type AppStore = ReturnType<typeof useAppStore>
 
 function isDeviceRecord(value: unknown): value is DeviceRecord {
+  const record = typeof value === 'object' && value !== null ? (value as { record?: unknown }).record : null
   return (
     typeof value === 'object' &&
     value !== null &&
-    typeof (value as { device_id?: unknown }).device_id === 'number' &&
-    Number.isFinite((value as { device_id: number }).device_id) &&
-    (value as { device_id: number }).device_id > 0 &&
-    typeof (value as { type_id?: unknown }).type_id === 'number' &&
-    typeof (value as { name?: unknown }).name === 'string' &&
-    typeof (value as { enabled?: unknown }).enabled === 'boolean' &&
-    typeof (value as { config_version?: unknown }).config_version === 'number' &&
-    typeof (value as { config_revision?: unknown }).config_revision === 'number' &&
-    typeof (value as { lifecycle_status?: unknown }).lifecycle_status === 'string' &&
-    typeof (value as { effective_status?: unknown }).effective_status === 'string'
+    typeof record === 'object' &&
+    record !== null &&
+    typeof (record as { id?: unknown }).id === 'number' &&
+    typeof (record as { typeName?: unknown }).typeName === 'string' &&
+    typeof (record as { configRevision?: unknown }).configRevision === 'number'
   )
 }
 
@@ -61,12 +57,13 @@ export function bindRealtimeBridge(
         break
       }
       case 'wifi.status': {
-        const payload = message.payload as { wifi_status?: string }
-        if (typeof payload.wifi_status === 'string') {
-          appStore.wifiStatus = payload.wifi_status
-          appStore.mode = payload.wifi_status === 'ap' || payload.wifi_status === 'ble_config' ? 'ap' : 'station'
+        const payload = message.payload as { wifiStatus?: string }
+        const wifiStatus = typeof payload.wifiStatus === 'string' ? payload.wifiStatus : undefined
+        if (typeof wifiStatus === 'string') {
+          appStore.wifiStatus = wifiStatus
+          appStore.mode = wifiStatus === 'ap' || wifiStatus === 'ble_config' ? 'ap' : 'station'
         }
-        wifiStore.replaceStatus(message.payload as { wifi_status: 'connected' | 'connecting' | 'disconnected' | 'failed' | 'idle'; station_ip: string; setup_ap_ip: string })
+        wifiStore.replaceStatus(message.payload as { wifiStatus: 'connected' | 'connecting' | 'disconnected' | 'failed' | 'idle'; stationIp: string; setupApIp: string })
         break
       }
       case 'ota.status': {
@@ -74,7 +71,7 @@ export function bindRealtimeBridge(
         if (typeof payload.enabled === 'boolean') {
           appStore.otaEnabled = payload.enabled
         }
-        otaStore.replaceFromResponse(message.payload as { enabled: boolean; free_sketch_space: number; has_error: boolean; status?: string })
+        otaStore.replaceFromResponse(message.payload as { enabled: boolean; freeSketchSpace: number; hasError: boolean; status?: string })
         break
       }
       case 'system.status': {
@@ -92,13 +89,9 @@ export function bindRealtimeBridge(
         journalStore.append(message)
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
-        const payload = message.payload as { pending_persistence?: boolean }
         const devicePayload = extractDeviceRecord(message.payload)
         if (isDeviceRecord(devicePayload)) {
           deviceStore.upsertDevice(devicePayload, message.revision)
-        }
-        if (typeof payload.pending_persistence === 'boolean') {
-          deviceStore.setPendingPersistence(payload.pending_persistence)
         }
         break
       }
@@ -106,14 +99,11 @@ export function bindRealtimeBridge(
         journalStore.append(message)
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
-        const payload = message.payload as { device_id?: number }
-        if (typeof payload.device_id === 'number') {
-          deviceStore.removeDevice(payload.device_id, message.revision)
+        const payload = message.payload as { deviceId?: number }
+        if (typeof payload.deviceId === 'number') {
+          deviceStore.removeDevice(payload.deviceId, message.revision)
         } else {
           deviceStore.setRevision(message.revision)
-        }
-        if (typeof (message.payload as { pending_persistence?: boolean }).pending_persistence === 'boolean') {
-          deviceStore.setPendingPersistence((message.payload as { pending_persistence?: boolean }).pending_persistence === true)
         }
         break
       }
@@ -121,13 +111,9 @@ export function bindRealtimeBridge(
         journalStore.append(message)
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
-        const payload = message.payload as { pending_persistence?: boolean }
         const devicePayload = extractDeviceRecord(message.payload)
         if (isDeviceRecord(devicePayload)) {
           deviceStore.upsertDevice(devicePayload, message.revision)
-        }
-        if (typeof payload.pending_persistence === 'boolean') {
-          deviceStore.setPendingPersistence(payload.pending_persistence)
         }
         break
       }

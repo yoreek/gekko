@@ -1,4 +1,5 @@
 import type {
+  BaseDeviceConfig,
   DeviceDependencyLink,
   TemperatureOutputSnapshot,
   ThermostatOutputSnapshot,
@@ -7,7 +8,6 @@ import { isOutputState } from '@/models/devices/switch'
 import { Ds18b20 } from '@/models/devices/ds18b20'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import type { DeviceCommandRequest, DeviceRecord } from '@/api/contracts'
-import type { DashboardDevice } from '@/models/device'
 import { THERMOSTAT_DEVICE_TYPE_ID } from '@/models/device-types'
 import { BaseDevice } from '@/models/devices/base-device'
 
@@ -15,20 +15,19 @@ export namespace Thermostat {
   export type Mode = 'off' | 'heat' | 'cool'
   export type Algorithm = 'hysteresis'
 
-  export interface ConfigDraft {
-    enabled: boolean
+  export interface ConfigDraft extends BaseDeviceConfig {
     mode: Mode
     algorithm: Algorithm
-    target_celsius: number
-    min_safe_celsius: number
-    max_safe_celsius: number
-    hysteresis_celsius: number
-    check_interval_ms: number
-    sensor_timeout_ms: number
-    retry_after_error_ms: number
-    min_switch_interval_ms: number
-    temperature_sensor_device_id: number
-    switch_device_id: number
+    targetCelsius: number
+    minSafeCelsius: number
+    maxSafeCelsius: number
+    hysteresisCelsius: number
+    checkIntervalMs: number
+    sensorTimeoutMs: number
+    retryAfterErrorMs: number
+    minSwitchIntervalMs: number
+    temperatureSensorDeviceId: number
+    switchDeviceId: number
   }
 
   export interface CreateDraft extends DeviceCreateDraftBase, ConfigDraft {
@@ -61,24 +60,26 @@ export namespace Thermostat {
   }
 
   function deviceIdFromDeps(deps: DeviceDependencyLink[] | undefined, role: string): number {
-    return deps?.find(dep => dep.role === role)?.device_id ?? 0
+    return deps?.find(dep => dep.role === role)?.deviceId ?? 0
   }
 
   export function defaultConfig(): ConfigDraft {
     return {
       enabled: true,
+      name: 'New Device',
+      deps: [],
       mode: 'heat',
       algorithm: 'hysteresis',
-      target_celsius: 25,
-      min_safe_celsius: 0,
-      max_safe_celsius: 50,
-      hysteresis_celsius: 0.5,
-      check_interval_ms: 1000,
-      sensor_timeout_ms: 6000,
-      retry_after_error_ms: 30000,
-      min_switch_interval_ms: 5000,
-      temperature_sensor_device_id: 0,
-      switch_device_id: 0,
+      targetCelsius: 25,
+      minSafeCelsius: 0,
+      maxSafeCelsius: 50,
+      hysteresisCelsius: 0.5,
+      checkIntervalMs: 1000,
+      sensorTimeoutMs: 6000,
+      retryAfterErrorMs: 30000,
+      minSwitchIntervalMs: 5000,
+      temperatureSensorDeviceId: 0,
+      switchDeviceId: 0,
     }
   }
 
@@ -87,25 +88,28 @@ export namespace Thermostat {
     if (!isRecord(value)) {
       return {
         ...defaults,
-        temperature_sensor_device_id: deviceIdFromDeps(deps, 'temperature_sensor'),
-        switch_device_id: deviceIdFromDeps(deps, 'switch'),
+        deps: Array.isArray(deps) ? deps : defaults.deps,
+        temperatureSensorDeviceId: deviceIdFromDeps(deps, 'temperature_sensor'),
+        switchDeviceId: deviceIdFromDeps(deps, 'switch'),
       }
     }
 
     return {
+      name: typeof value.name === 'string' ? value.name : defaults.name,
       enabled: typeof value.enabled === 'boolean' ? value.enabled : defaults.enabled,
+      deps: Array.isArray(value.deps) ? (value.deps as DeviceDependencyLink[]) : defaults.deps,
       mode: normalizeMode(value.mode),
       algorithm: normalizeAlgorithm(value.algorithm),
-      target_celsius: normalizeNumber(value.target_milli_celsius, defaults.target_celsius * 1000) / 1000,
-      min_safe_celsius: normalizeNumber(value.min_safe_milli_celsius, defaults.min_safe_celsius * 1000) / 1000,
-      max_safe_celsius: normalizeNumber(value.max_safe_milli_celsius, defaults.max_safe_celsius * 1000) / 1000,
-      hysteresis_celsius: normalizeNumber(value.hysteresis_centi_celsius, defaults.hysteresis_celsius * 100) / 100,
-      check_interval_ms: normalizeNumber(value.check_interval_ms, defaults.check_interval_ms),
-      sensor_timeout_ms: normalizeNumber(value.sensor_timeout_ms, defaults.sensor_timeout_ms),
-      retry_after_error_ms: normalizeNumber(value.retry_after_error_ms, defaults.retry_after_error_ms),
-      min_switch_interval_ms: normalizeNumber(value.min_switch_interval_ms, defaults.min_switch_interval_ms),
-      temperature_sensor_device_id: normalizeDeviceId(value.temperature_sensor_device_id ?? deviceIdFromDeps(deps, 'temperature_sensor')),
-      switch_device_id: normalizeDeviceId(value.switch_device_id ?? deviceIdFromDeps(deps, 'switch')),
+      targetCelsius: normalizeNumber(value.targetCelsius, defaults.targetCelsius),
+      minSafeCelsius: normalizeNumber(value.minSafeCelsius, defaults.minSafeCelsius),
+      maxSafeCelsius: normalizeNumber(value.maxSafeCelsius, defaults.maxSafeCelsius),
+      hysteresisCelsius: normalizeNumber(value.hysteresisCelsius, defaults.hysteresisCelsius),
+      checkIntervalMs: normalizeNumber(value.checkIntervalMs, defaults.checkIntervalMs),
+      sensorTimeoutMs: normalizeNumber(value.sensorTimeoutMs, defaults.sensorTimeoutMs),
+      retryAfterErrorMs: normalizeNumber(value.retryAfterErrorMs, defaults.retryAfterErrorMs),
+      minSwitchIntervalMs: normalizeNumber(value.minSwitchIntervalMs, defaults.minSwitchIntervalMs),
+      temperatureSensorDeviceId: normalizeDeviceId(value.temperatureSensorDeviceId ?? deviceIdFromDeps(deps, 'temperature_sensor')),
+      switchDeviceId: normalizeDeviceId(value.switchDeviceId ?? deviceIdFromDeps(deps, 'switch')),
     }
   }
 
@@ -114,32 +118,34 @@ export namespace Thermostat {
       current.enabled !== original.enabled ||
       current.mode !== original.mode ||
       current.algorithm !== original.algorithm ||
-      current.target_celsius !== original.target_celsius ||
-      current.min_safe_celsius !== original.min_safe_celsius ||
-      current.max_safe_celsius !== original.max_safe_celsius ||
-      current.hysteresis_celsius !== original.hysteresis_celsius ||
-      current.check_interval_ms !== original.check_interval_ms ||
-      current.sensor_timeout_ms !== original.sensor_timeout_ms ||
-      current.retry_after_error_ms !== original.retry_after_error_ms ||
-      current.min_switch_interval_ms !== original.min_switch_interval_ms ||
-      current.temperature_sensor_device_id !== original.temperature_sensor_device_id ||
-      current.switch_device_id !== original.switch_device_id
+      current.targetCelsius !== original.targetCelsius ||
+      current.minSafeCelsius !== original.minSafeCelsius ||
+      current.maxSafeCelsius !== original.maxSafeCelsius ||
+      current.hysteresisCelsius !== original.hysteresisCelsius ||
+      current.checkIntervalMs !== original.checkIntervalMs ||
+      current.sensorTimeoutMs !== original.sensorTimeoutMs ||
+      current.retryAfterErrorMs !== original.retryAfterErrorMs ||
+      current.minSwitchIntervalMs !== original.minSwitchIntervalMs ||
+      current.temperatureSensorDeviceId !== original.temperatureSensorDeviceId ||
+      current.switchDeviceId !== original.switchDeviceId
     )
   }
 
   export function encodeConfig(config: ConfigDraft): Record<string, unknown> {
     return {
+      name: config.name,
       enabled: config.enabled,
+      deps: config.deps,
       mode: config.mode,
       algorithm: config.algorithm,
-      target_milli_celsius: Math.round(config.target_celsius * 1000),
-      min_safe_milli_celsius: Math.round(config.min_safe_celsius * 1000),
-      max_safe_milli_celsius: Math.round(config.max_safe_celsius * 1000),
-      hysteresis_centi_celsius: Math.round(config.hysteresis_celsius * 100),
-      check_interval_ms: Math.round(config.check_interval_ms),
-      sensor_timeout_ms: Math.round(config.sensor_timeout_ms),
-      retry_after_error_ms: Math.round(config.retry_after_error_ms),
-      min_switch_interval_ms: Math.round(config.min_switch_interval_ms),
+      targetCelsius: config.targetCelsius,
+      minSafeCelsius: config.minSafeCelsius,
+      maxSafeCelsius: config.maxSafeCelsius,
+      hysteresisCelsius: config.hysteresisCelsius,
+      checkIntervalMs: Math.round(config.checkIntervalMs),
+      sensorTimeoutMs: Math.round(config.sensorTimeoutMs),
+      retryAfterErrorMs: Math.round(config.retryAfterErrorMs),
+      minSwitchIntervalMs: Math.round(config.minSwitchIntervalMs),
     }
   }
 
@@ -147,11 +153,11 @@ export namespace Thermostat {
     return [
       {
         role: 'temperature_sensor',
-        device_id: config.temperature_sensor_device_id,
+        deviceId: config.temperatureSensorDeviceId,
       },
       {
         role: 'switch',
-        device_id: config.switch_device_id,
+        deviceId: config.switchDeviceId,
       },
     ]
   }
@@ -184,11 +190,11 @@ export namespace Thermostat {
       return {}
     }
     return {
-      desired_switch_state: isOutputState(value.desired_switch_state) ? value.desired_switch_state : undefined,
-      actual_switch_state: isOutputState(value.actual_switch_state) ? value.actual_switch_state : undefined,
-      control_status: typeof value.control_status === 'string' ? value.control_status : undefined,
-      last_check_at_ms: typeof value.last_check_at_ms === 'number' && Number.isFinite(value.last_check_at_ms)
-        ? value.last_check_at_ms
+      desiredSwitchState: isOutputState(value.desiredSwitchState) ? value.desiredSwitchState : undefined,
+      actualSwitchState: isOutputState(value.actualSwitchState) ? value.actualSwitchState : undefined,
+      controlStatus: typeof value.controlStatus === 'string' ? value.controlStatus : undefined,
+      lastCheckAtMs: typeof value.lastCheckAtMs === 'number' && Number.isFinite(value.lastCheckAtMs)
+        ? value.lastCheckAtMs
         : undefined,
       temperature: Ds18b20.temperatureValid(value.temperature) ? value.temperature : undefined,
     }
@@ -231,20 +237,16 @@ export namespace Thermostat {
 
     createDefaultCreateDraft(common: Partial<DeviceCreateDraftBase> = {}): CreateDraft {
       return {
-        name: common.name ?? 'New Device',
-        typeId: common.typeId ?? this.typeId,
         ...this.createDefaultConfig(),
-        enabled: common.enabled ?? true,
+        ...common,
+        typeId: common.typeId ?? this.typeId,
       }
     }
 
-    createEditDraft(current: DashboardDevice): CreateDraft {
-      const { enabled: _enabled, ...config } = this.normalizeConfig(current.detail.config, current.deps)
+    createEditDraft(current: DeviceRecord): CreateDraft {
       return {
-        name: current.name,
-        typeId: current.typeId,
-        enabled: current.enabled,
-        ...config,
+        ...this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined),
+        typeId: this.typeId,
       }
     }
 
@@ -253,35 +255,35 @@ export namespace Thermostat {
     }
 
     normalizeOutput(record: DeviceRecord): ThermostatOutputSnapshot {
-      return Thermostat.normalizeOutput(record.output)
+      return Thermostat.normalizeOutput(record.runtime)
     }
 
     override encodeConfig(config: ConfigDraft): Record<string, unknown> {
       return Thermostat.encodeConfig(config)
     }
 
-    buildEditCommands(current: DashboardDevice, draft: CreateDraft): DeviceCommandRequest[] {
+    buildEditCommands(current: DeviceRecord, draft: CreateDraft): DeviceCommandRequest[] {
+      const currentConfig = this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined)
       const commands: DeviceCommandRequest[] = []
-      if (draft.name.trim() !== current.name) {
+      if (draft.name.trim() !== currentConfig.name) {
         commands.push({ command: 'rename', name: draft.name.trim() })
       }
-      if (draft.enabled !== current.enabled) {
+      if (draft.enabled !== currentConfig.enabled) {
         commands.push({ command: draft.enabled ? 'enable' : 'disable' })
       }
-      const currentConfig = this.normalizeConfig(current.detail.config, current.deps)
       const nextConfig = this.normalizeConfig(draft, [
         {
           role: 'temperature_sensor',
-          device_id: draft.temperature_sensor_device_id,
+          deviceId: draft.temperatureSensorDeviceId,
         },
         {
           role: 'switch',
-          device_id: draft.switch_device_id,
+          deviceId: draft.switchDeviceId,
         },
       ])
       if (Thermostat.configChanged(nextConfig, currentConfig)) {
         commands.push({
-          command: 'update_config',
+          command: 'updateConfig',
           config: {
             ...this.encodeConfig(nextConfig),
             enabled: draft.enabled,
@@ -293,7 +295,7 @@ export namespace Thermostat {
     }
 
     protected extractCreateConfig(draft: CreateDraft): ConfigDraft {
-      const { name: _name, typeId: _typeId, ...config } = draft
+      const { typeId: _typeId, ...config } = draft
       return config
     }
 

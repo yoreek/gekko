@@ -2,7 +2,7 @@ export type DeviceOutputState = 'off' | 'on' | 'disabled'
 
 export interface GpioSwitchOutputSnapshot {
   state?: DeviceOutputState
-  physical_level?: boolean
+  physicalLevel?: boolean
 }
 
 export interface Ds18b20TemperatureSensorOutputSnapshot {
@@ -10,10 +10,10 @@ export interface Ds18b20TemperatureSensorOutputSnapshot {
 }
 
 export interface ThermostatOutputSnapshot {
-  desired_switch_state?: DeviceOutputState
-  actual_switch_state?: DeviceOutputState
-  control_status?: string
-  last_check_at_ms?: number
+  desiredSwitchState?: DeviceOutputState
+  actualSwitchState?: DeviceOutputState
+  controlStatus?: string
+  lastCheckAtMs?: number
   temperature?: TemperatureOutputSnapshot
 }
 
@@ -27,35 +27,54 @@ export type TemperatureUnit = 'celsius' | 'fahrenheit'
 export interface TemperatureOutputSnapshot {
   value: number
   unit: TemperatureUnit
-  unit_symbol: string
-  measured_at_ms: number
+  unitSymbol: string
+  measuredAtMs: number
   valid: boolean
   status?: string
 }
 
 export interface OneWireScanDeviceSnapshot {
   address: string
-  family_code: string
+  familyCode: string
 }
 
 export interface OneWireScanSnapshot {
-  in_progress: boolean
+  inProgress: boolean
   ready: boolean
-  device_count: number
+  deviceCount: number
   truncated: boolean
-  invalid_crc_seen: boolean
+  invalidCrcSeen: boolean
   devices: OneWireScanDeviceSnapshot[]
 }
 
 export interface DeviceDependencyLink {
   role: string
-  device_id: number
+  deviceId: number
+}
+
+export interface DeviceRecordBase {
+  id: number
+  typeName: string
+  configRevision: number
+}
+
+export interface BaseDeviceConfig {
+  name: string
+  enabled: boolean
+  deps: DeviceDependencyLink[]
+}
+
+export interface BaseDeviceRuntime {
+  status: string
+  lifecycleStatus: string
+  effectiveStatus: string
+  dependencyStatus?: string
 }
 
 export interface WifiStatusResponse {
-  wifi_status: 'connected' | 'connecting' | 'disconnected' | 'failed' | 'idle' | 'ble_config'
-  station_ip: string
-  setup_ap_ip: string
+  wifiStatus: 'connected' | 'connecting' | 'disconnected' | 'failed' | 'idle' | 'ble_config'
+  stationIp: string
+  setupApIp: string
   success?: boolean
   status?: string
 }
@@ -72,42 +91,29 @@ export interface WifiScanResponse {
   success?: boolean
 }
 
-export interface DeviceRecord {
-  id?: number
-  type?: string
-  device_id?: number
-  type_id?: number
-  label?: string
-  name: string
-  enabled: boolean
-  deps?: DeviceDependencyLink[]
-  has_deps?: boolean
-  config_version: number
-  config_revision: number
-  lifecycle_status: string
-  effective_status: string
-  status?: string
-  config?: Record<string, unknown>
-  output?: DeviceOutputSnapshot
-  retained_state_supported?: boolean
-  retained_startup_enabled?: boolean
-  retained_startup_fallback_output?: boolean
-  retained_state_in_config_payload?: boolean
-  scan?: OneWireScanSnapshot
-  registry_revision?: number
-  pending_persistence?: boolean
+export interface DeviceRecord<
+  TConfig extends BaseDeviceConfig = BaseDeviceConfig,
+  TRuntime extends BaseDeviceRuntime = BaseDeviceRuntime,
+> {
+  record: DeviceRecordBase
+  config: TConfig
+  runtime: TRuntime
 }
 
-export interface DeviceRegistryResponse {
-  registry_revision: number
-  pending_persistence: boolean
-  devices: DeviceRecord[]
+export interface DeviceCreateRequest<TConfig extends BaseDeviceConfig = BaseDeviceConfig> {
+  typeName: string
+  config: TConfig
+}
+
+export interface DeviceRegistryResponse<TRecord extends DeviceRecord = DeviceRecord> {
+  registryRevision: number
+  devices: TRecord[]
   success?: boolean
 }
 
 export interface DeviceCommandRequest {
-  device_id?: number
-  command: 'rename' | 'enable' | 'disable' | 'delete' | 'update_config' | 'set_status' | 'scan' | 'set_output'
+  deviceId?: number
+  command: 'rename' | 'enable' | 'disable' | 'delete' | 'updateConfig' | 'setStatus' | 'scan' | 'setOutput'
   name?: string
   status?: string
   state?: DeviceOutputState
@@ -115,24 +121,22 @@ export interface DeviceCommandRequest {
   deps?: DeviceDependencyLink[]
 }
 
-export interface DeviceMutationResponse {
-  registry_revision: number
-  pending_persistence: boolean
-  device?: DeviceRecord
+export interface DeviceMutationResponse<TRecord extends DeviceRecord = DeviceRecord> {
+  registryRevision: number
+  device?: TRecord
   success?: boolean
 }
 
 export interface DeviceSetupTransferResponse {
-  registry_revision: number
-  device_count: number
+  registryRevision: number
+  deviceCount: number
   success?: boolean
   status?: string
 }
 
-export interface DeviceDetailResponse {
-  registry_revision: number
-  pending_persistence: boolean
-  device: DeviceRecord
+export interface DeviceDetailResponse<TRecord extends DeviceRecord = DeviceRecord> {
+  registryRevision: number
+  device: TRecord
   success?: boolean
 }
 
@@ -146,22 +150,22 @@ export interface DashboardLayoutPanelRecord {
 }
 
 export interface DashboardLayoutRecord {
-  schema_version: number
-  active_panel_id: string
+  schemaVersion: number
+  activePanelId: string
   panels: DashboardLayoutPanelRecord[]
 }
 
 export interface DashboardLayoutResponse {
   revision: number
-  layout_defaulted?: boolean
+  layoutDefaulted?: boolean
   layout: DashboardLayoutRecord
   success?: boolean
 }
 
 export interface OtaStatusResponse {
   enabled: boolean
-  free_sketch_space: number
-  has_error: boolean
+  freeSketchSpace: number
+  hasError: boolean
   success?: boolean
   status?: string
 }

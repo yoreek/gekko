@@ -10,10 +10,10 @@
           <v-select
             :label="t('device.fields.onewireDependency')"
             :items="dependencyItems"
-            :model-value="currentValue.dependency_device_id"
+            :model-value="currentValue.dependencyDeviceId"
             :disabled="busy || dependencyItems.length === 0"
             :rules="dependencyRules"
-            @update:model-value="updateNumber('dependency_device_id', $event)"
+            @update:model-value="updateNumber('dependencyDeviceId', $event)"
           />
         </v-col>
         <v-col cols="12" md="6">
@@ -34,8 +34,8 @@
           <v-btn
             color="primary"
             variant="tonal"
-            :loading="scanBusy || selectedDependency?.detail.scan?.in_progress === true"
-            :disabled="busy || scanBusy || currentValue.dependency_device_id === 0"
+            :loading="scanBusy || selectedDependency?.detail.scan?.inProgress === true"
+            :disabled="busy || scanBusy || currentValue.dependencyDeviceId === 0"
             @click="scanSelectedDependency"
           >
             <v-icon class="me-1" icon="refresh" />
@@ -81,33 +81,33 @@
         <v-col cols="12" md="6">
           <v-text-field
             :label="t('device.fields.pollMs')"
-            :model-value="currentValue.poll_ms"
+            :model-value="currentValue.pollMs"
             inputmode="numeric"
             type="number"
             min="1000"
             :disabled="busy"
-            @update:model-value="updateNumber('poll_ms', $event)"
+            @update:model-value="updateNumber('pollMs', $event)"
           />
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
             :label="t('device.fields.reportDelta')"
-            :model-value="currentValue.report_delta_celsius"
+            :model-value="currentValue.reportDeltaCelsius"
             inputmode="decimal"
             type="number"
             min="0.01"
             step="0.01"
             :disabled="busy"
-            @update:model-value="updateNumber('report_delta_celsius', $event)"
+            @update:model-value="updateNumber('reportDeltaCelsius', $event)"
           />
         </v-col>
         <v-col cols="12">
           <v-switch
             :label="t('device.fields.reportAlways')"
-            :model-value="currentValue.report_always"
+            :model-value="currentValue.reportAlways"
             :disabled="busy"
             inset
-            @update:model-value="update('report_always', Boolean($event))"
+            @update:model-value="update('reportAlways', Boolean($event))"
           />
         </v-col>
       </v-row>
@@ -147,17 +147,18 @@ const fallbackValue: Ds18b20FormValue = {
   name: 'New Device',
   typeId: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
   enabled: true,
-  dependency_device_id: 0,
+  deps: [],
+  dependencyDeviceId: 0,
   address: '',
   resolution: 12,
   unit: 'celsius',
-  poll_ms: 5000,
-  report_delta_celsius: 0.01,
-  report_always: false,
+  pollMs: 5000,
+  reportDeltaCelsius: 0.01,
+  reportAlways: false,
 }
 const currentValue = computed<Ds18b20FormValue>(() => props.modelValue ?? fallbackValue)
 const dependencyDevices = computed(() => deviceStore.devices.filter(device => device.typeId === ONEWIRE_BUS_DEVICE_TYPE_ID))
-const selectedDependency = computed(() => dependencyDevices.value.find(device => device.deviceId === currentValue.value.dependency_device_id))
+const selectedDependency = computed(() => dependencyDevices.value.find(device => device.deviceId === currentValue.value.dependencyDeviceId))
 const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ title: `${device.name} #${device.deviceId}`, value: device.deviceId })))
 const resolutionItems = computed(() => Ds18b20.resolutionOptions.map(value => ({ title: t('device.dialog.ds18b20.resolution', { value }), value })))
 const unitItems = computed(() => Ds18b20.temperatureUnitOptions.map(value => ({ title: t(`device.dialog.temperatureUnit.${value}`), value })))
@@ -167,7 +168,7 @@ const dependencyRules = computed(() => [
 const scanCandidateItems = computed(() => {
   const devices = selectedDependency.value?.detail.scan?.devices ?? []
   return devices.filter(Ds18b20.isScanCandidate).map(candidate => ({
-    title: `${candidate.address} · ${t('device.dialog.onewireFamilyCode', { family: candidate.family_code })}`,
+      title: `${candidate.address} · ${t('device.dialog.onewireFamilyCode', { family: candidate.familyCode })}`,
     value: candidate.address,
   }))
 })
@@ -183,7 +184,7 @@ function update<K extends keyof Ds18b20.CreateDraft>(key: K, value: Ds18b20.Crea
   emitUpdate(buildNextValue({ [key]: value } as Partial<Ds18b20.CreateDraft>))
 }
 
-function updateNumber(key: 'dependency_device_id' | 'resolution' | 'poll_ms' | 'report_delta_celsius', value: unknown): void {
+function updateNumber(key: 'dependencyDeviceId' | 'resolution' | 'pollMs' | 'reportDeltaCelsius', value: unknown): void {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) {
     return
@@ -209,7 +210,7 @@ function buildNextValue(patch: Partial<Ds18b20.CreateDraft>): Ds18b20FormValue {
 }
 
 async function scanSelectedDependency(): Promise<void> {
-  if (currentValue.value.dependency_device_id === 0) {
+  if (currentValue.value.dependencyDeviceId === 0) {
     return
   }
   scanBusy.value = true
@@ -218,11 +219,10 @@ async function scanSelectedDependency(): Promise<void> {
     const payload: DeviceCommandRequest = {
       command: 'scan',
     }
-    const response = await commandDevice(currentValue.value.dependency_device_id, payload)
+    const response = await commandDevice(currentValue.value.dependencyDeviceId, payload)
     if (response.device) {
-      deviceStore.upsertDevice(response.device, response.registry_revision)
+      deviceStore.upsertDevice(response.device, response.registryRevision)
     }
-    deviceStore.setPendingPersistence(response.pending_persistence)
   } catch (error) {
     scanError.value = error instanceof Error ? error.message : t('device.dialog.unknownError')
   } finally {

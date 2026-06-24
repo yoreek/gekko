@@ -135,19 +135,19 @@ The firmware SHALL capture retained runtime state changes caused by internal run
 - **THEN** the registry coalesces retained-state persistence using the existing retained-state bounds and dirty tracking
 - **THEN** the firmware rejects the restart action and keeps running without initiating reboot
 
-### Requirement: Type-specific config version migration
-The firmware SHALL version each device type's binary configuration payload independently from the registry index and SHALL migrate old supported payload versions through the owning device type descriptor.
+### Requirement: Type-specific config format migration
+The firmware SHALL identify each device type's binary configuration payload with the owning device type's immutable format marker and SHALL migrate older supported payload formats through the owning device type descriptor.
 
-#### Scenario: Current config version is loaded
-- **WHEN** a device record contains the current config version for its device type
+#### Scenario: Current config format is loaded
+- **WHEN** a device record contains the current config format for its device type
 - **THEN** the firmware parses the payload using the current immutable config layout, validates the result, and creates the runtime device
 
-#### Scenario: Older supported config version is loaded
-- **WHEN** a device record contains an older supported config version for its device type
-- **THEN** the firmware parses the payload using the matching old immutable config layout, migrates it through the device type descriptor, validates the migrated config, and marks the record for rewrite in the current config version
+#### Scenario: Older supported config format is loaded
+- **WHEN** a device record contains an older supported config format for its device type
+- **THEN** the firmware parses the payload using the matching old immutable config layout, migrates it through the device type descriptor, validates the migrated config, and marks the record for rewrite in the current config format
 
-#### Scenario: Unsupported config version is loaded
-- **WHEN** a device record contains an unsupported config version for its device type
+#### Scenario: Unsupported config format is loaded
+- **WHEN** a device record contains an unsupported config format for its device type
 - **THEN** the firmware does not instantiate that device record and reports a recoverable registry load issue without blocking controller boot
 
 #### Scenario: Old config layout is preserved
