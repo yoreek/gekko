@@ -237,6 +237,35 @@ using Ds18b20DeviceApiRecord = DeviceApiRecord<Ds18b20SensorConfig, Ds18b20Devic
 - The device record wrapper must not duplicate `name`, `enabled`, or `deps`; those stay inside `config`.
 - `typeName` identifies the device family in the public contract; `typeId` stays internal to the registry and descriptor lookup.
 
+## Device Setup Bundle Model
+
+The transfer bundle used for export and import should reuse the same identity/config split as the API model, but omit runtime state.
+
+```cpp
+template <typename TConfig> struct DeviceSetupRecord {
+    DeviceRecordBase record{};
+    TConfig config{};
+};
+```
+
+### Bundle field ownership
+
+- `record`
+  - `id`
+  - `typeName`
+  - `configRevision`
+- `config`
+  - persisted device settings only
+  - must include `name`, `enabled`, and `deps`
+  - must not include runtime output or live status fields
+
+### Bundle separation rules
+
+- export should serialize `record` and `config` only
+- import should accept the same `record` and `config` structure
+- runtime fields must be reconstructed by the registry after import
+- the bundle format should not duplicate top-level `name`, `enabled`, or `deps`
+
 ### Registry internal state
 
 `pendingPersistence` is a backend registry-local runtime flag used to track whether the registry still needs to flush changed state. It is not part of the serialized API payload, not part of the frontend domain, and not part of the persisted device record.
@@ -306,6 +335,8 @@ These are the models that should stay aligned across backend, websocket, and fro
   - shared identity block for frontend and websocket records
 - `DeviceApiRecord<TConfig, TRuntime>`
   - backend canonical API payload
+- `DeviceSetupRecord<TConfig>`
+  - export/import bundle payload without runtime
 - `DeviceRecord<TConfig, TRuntime>`
   - shared frontend and websocket payload
 - `RealtimeMessage<TPayload>`

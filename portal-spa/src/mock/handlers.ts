@@ -1008,6 +1008,22 @@ function exportDeviceConfig(device: DeviceRecord): Record<string, unknown> {
   return config
 }
 
+interface DeviceSetupExportRecord {
+  record: DeviceRecord['record']
+  config: Record<string, unknown>
+}
+
+function exportDeviceRecord(device: DeviceRecord): DeviceSetupExportRecord {
+  return {
+    record: {
+      id: device.record.id,
+      typeName: device.record.typeName,
+      configRevision: device.record.configRevision,
+    },
+    config: exportDeviceConfig(device),
+  }
+}
+
 export function mockExportDeviceSetupBundle(): string {
   const db = loadMockDatabase()
   const lines: string[] = []
@@ -1020,16 +1036,9 @@ export function mockExportDeviceSetupBundle(): string {
   }))
 
   for (const device of db.devices) {
-    const config = exportDeviceConfig(device)
     lines.push(JSON.stringify({
       kind: 'device',
-      id: device.record.id,
-      typeName: device.record.typeName,
-      configRevision: device.record.configRevision,
-      ...config,
-      name: device.config.name,
-      enabled: device.config.enabled,
-      deps: Array.isArray(device.config.deps) ? device.config.deps : [],
+      ...exportDeviceRecord(device),
     }))
   }
 
@@ -1054,26 +1063,31 @@ export function mockImportDeviceSetupBundle(file: File): Promise<DeviceSetupTran
       if (parsed.kind !== 'device') {
         throw new ApiClientError('unexpected bundle record kind', 'BAD_ARGS', 400, null)
       }
-      const config = cloneConfig(parsed)
+      if (!isRecordPayload(parsed.record) || !isRecordPayload(parsed.config)) {
+        throw new ApiClientError('device bundle record must include record and config', 'BAD_ARGS', 400, null)
+      }
+      const recordSource = parsed.record
+      const configSource = parsed.config
+      const config = cloneConfig(configSource)
       delete config.kind
+      delete config.record
       delete config.id
       delete config.deviceId
       delete config.typeName
       delete config.configRevision
-      delete config.name
-      delete config.enabled
-      delete config.deps
+      delete config.config
 
-      const typeName = typeof parsed.typeName === 'string' ? parsed.typeName : ''
-      const deps = normalizeDependencyLinks(parsed.deps)
-      const enabled = Boolean(parsed.enabled)
+      const typeName = typeof recordSource.typeName === 'string' ? recordSource.typeName : ''
+      const deps = normalizeDependencyLinks(configSource.deps)
+      const enabled = typeof configSource.enabled === 'boolean' ? configSource.enabled : true
+      const name = typeof configSource.name === 'string' ? configSource.name : ''
       devices.push(createDeviceRecord(
-        Number(parsed.id ?? parsed.deviceId ?? 0),
+        Number(recordSource.id ?? 0),
         typeName,
-        Number(parsed.configRevision ?? 0),
+        Number(recordSource.configRevision ?? 0),
         {
           ...config,
-          name: typeof parsed.name === 'string' ? parsed.name : '',
+          name,
           enabled,
           deps,
         },
