@@ -54,7 +54,7 @@ const deviceUiRegistry: DeviceUiRegistryEntry[] = [
   },
 ]
 
-export function resolveDashboardDeviceComponent(typeId: number): Component {
+export function resolveDeviceWidgetComponent(typeId: number): Component {
   return resolveDeviceComponent(typeId)
 }
 

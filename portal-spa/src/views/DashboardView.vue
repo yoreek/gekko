@@ -127,7 +127,7 @@
                   :editable="editing"
                   @open="openDevice"
                   @remove="removeWidget"
-                  @command="submitDashboardDeviceCommand"
+                  @command="submitDashboardCommand"
                   @layout-change="saveWidgetLayout"
                 />
               </template>
@@ -525,7 +525,7 @@ async function submitDeviceCommand(payload: DeviceCommandRequest): Promise<void>
   }
 }
 
-async function submitDashboardDeviceCommand(deviceId: number, payload: DeviceCommandRequest): Promise<void> {
+async function submitDashboardCommand(deviceId: number, payload: DeviceCommandRequest): Promise<void> {
   if (editing.value) {
     return
   }

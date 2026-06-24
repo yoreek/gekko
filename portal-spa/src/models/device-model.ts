@@ -8,12 +8,12 @@ import { deviceTypeIdFromName } from '@/models/device-types'
 
 export type DashboardEffectiveStatus = 'Ready' | '!Ready'
 
-export interface DashboardDeviceCollection<TRecord extends DeviceRecord = DeviceRecord> {
+export interface DeviceCollection<TRecord extends DeviceRecord = DeviceRecord> {
   registryRevision: number
   devices: TRecord[]
 }
 
-export interface DashboardDeviceActionPreset {
+export interface DeviceActionPreset {
   key: string
   command: string
   labelKey: string
@@ -33,7 +33,7 @@ export function normalizeDeviceRecord(
   return record as DeviceRecord
 }
 
-export function normalizeDeviceCollection(payload: DeviceRegistryResponse): DashboardDeviceCollection {
+export function normalizeDeviceCollection(payload: DeviceRegistryResponse): DeviceCollection {
   return {
     registryRevision: payload.registryRevision,
     devices: payload.devices,
@@ -90,6 +90,6 @@ export function deviceRecordEffectiveStatus(device: DeviceRecord): string {
         : 'unknown'
 }
 
-export function deviceActionPresets(): DashboardDeviceActionPreset[] {
+export function deviceActionPresets(): DeviceActionPreset[] {
   return []
 }
