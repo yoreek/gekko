@@ -9,21 +9,56 @@
 
 namespace ewfm {
 
-void IDeviceApiAdapter::writeCommonDeviceJson(const IDeviceRuntime& runtime, const char* typeName, JsonObject output) {
-    output["id"] = runtime.deviceId();
-    output["type"] = typeName;
-    output["name"] = JsonString(runtime.name() != nullptr ? runtime.name() : "", JsonString::Copied);
-    output["enabled"] = runtime.enabled();
-    output["config_version"] = runtime.configVersion();
-    output["config_revision"] = runtime.configRevision();
-    JsonArray deps = output.createNestedArray("deps");
+namespace {
+const char* deviceStatusToString(const DeviceStatus status) {
+    switch (status) {
+    case DeviceStatus::Creating:
+        return "creating";
+    case DeviceStatus::Starting:
+        return "starting";
+    case DeviceStatus::Ready:
+        return "ready";
+    case DeviceStatus::Disabled:
+        return "disabled";
+    case DeviceStatus::Faulted:
+        return "faulted";
+    case DeviceStatus::DependencyBlocked:
+        return "dependency_blocked";
+    case DeviceStatus::Reconfiguring:
+        return "reconfiguring";
+    case DeviceStatus::Stopping:
+        return "stopping";
+    case DeviceStatus::Deleting:
+        return "deleting";
+    case DeviceStatus::Unknown:
+    default:
+        return "unknown";
+    }
+}
+} // namespace
+
+void IDeviceApiAdapter::writeCommonDeviceJson(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus, const char* typeName,
+                                              JsonObject output) {
+    JsonObject record = output.createNestedObject("record");
+    record["id"] = runtime.deviceId();
+    record["typeName"] = typeName;
+    record["configRevision"] = runtime.configRevision();
+
+    JsonObject config = output.createNestedObject("config");
+    config["name"] = JsonString(runtime.name() != nullptr ? runtime.name() : "", JsonString::Copied);
+    config["enabled"] = runtime.enabled();
+    JsonArray deps = config.createNestedArray("deps");
     const DeviceDependencyLink* dependencyLinks = runtime.dependencyLinks();
     const uint8_t dependencyCount = runtime.dependencyCount();
     for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
         JsonObject item = deps.createNestedObject();
         item["role"] = deviceDependencyRoleName(dependencyLinks[index].role);
-        item["device_id"] = dependencyLinks[index].deviceId;
+        item["deviceId"] = dependencyLinks[index].deviceId;
     }
+
+    JsonObject runtimeJson = output.createNestedObject("runtime");
+    runtimeJson["status"] = deviceStatusToString(runtime.status());
+    runtimeJson["effectiveStatus"] = deviceStatusToString(effectiveStatus);
 }
 
 bool IDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,

@@ -300,18 +300,18 @@ void writeThermostatDeviceConfigJson(const ThermostatDeviceConfigV1& config, Jso
     writeDeviceBaseConfigJson(config.base, output);
     output["mode"] = thermostatModeName(mode);
     output["algorithm"] = thermostatAlgorithmName(algorithm);
-    output["target_celsius"] = static_cast<float>(config.targetMilliCelsius) / 1000.0F;
-    output["target_milli_celsius"] = config.targetMilliCelsius;
-    output["min_safe_celsius"] = static_cast<float>(config.minSafeMilliCelsius) / 1000.0F;
-    output["min_safe_milli_celsius"] = config.minSafeMilliCelsius;
-    output["max_safe_celsius"] = static_cast<float>(config.maxSafeMilliCelsius) / 1000.0F;
-    output["max_safe_milli_celsius"] = config.maxSafeMilliCelsius;
-    output["hysteresis_celsius"] = static_cast<float>(config.hysteresisCentiCelsius) / 100.0F;
-    output["hysteresis_centi_celsius"] = config.hysteresisCentiCelsius;
-    output["check_interval_ms"] = config.checkIntervalMs;
-    output["sensor_timeout_ms"] = config.sensorTimeoutMs;
-    output["retry_after_error_ms"] = config.retryAfterErrorMs;
-    output["min_switch_interval_ms"] = config.minSwitchIntervalMs;
+    output["targetCelsius"] = static_cast<float>(config.targetMilliCelsius) / 1000.0F;
+    output["targetMilliCelsius"] = config.targetMilliCelsius;
+    output["minSafeCelsius"] = static_cast<float>(config.minSafeMilliCelsius) / 1000.0F;
+    output["minSafeMilliCelsius"] = config.minSafeMilliCelsius;
+    output["maxSafeCelsius"] = static_cast<float>(config.maxSafeMilliCelsius) / 1000.0F;
+    output["maxSafeMilliCelsius"] = config.maxSafeMilliCelsius;
+    output["hysteresisCelsius"] = static_cast<float>(config.hysteresisCentiCelsius) / 100.0F;
+    output["hysteresisCentiCelsius"] = config.hysteresisCentiCelsius;
+    output["checkIntervalMs"] = config.checkIntervalMs;
+    output["sensorTimeoutMs"] = config.sensorTimeoutMs;
+    output["retryAfterErrorMs"] = config.retryAfterErrorMs;
+    output["minSwitchIntervalMs"] = config.minSwitchIntervalMs;
 }
 
 } // namespace ewfm

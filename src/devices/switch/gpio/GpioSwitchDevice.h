@@ -41,6 +41,7 @@ public:
 
     uint8_t gpioPin() const;
     const GpioSwitchDeviceConfigV1& gpioConfig() const;
+    GpioSwitchDevicePersistedConfigV1 config() const;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override;
     DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const override;

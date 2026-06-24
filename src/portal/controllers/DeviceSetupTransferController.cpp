@@ -143,8 +143,8 @@ void DeviceSetupTransferController::create() {
     }
 
     StaticJsonDocument<256> doc;
-    doc["device_count"] = parsed.deviceCount;
-    doc["registry_revision"] = registry_.registryRevision();
+    doc["deviceCount"] = parsed.deviceCount;
+    doc["registryRevision"] = registry_.registryRevision();
     renderOk(doc);
 #endif
 }

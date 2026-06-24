@@ -105,7 +105,7 @@ public:
     DeviceMutationResult setEnabled(DeviceId deviceId, bool enabled, uint32_t now,
                                     DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
     DeviceMutationResult remove(DeviceId deviceId, uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Immediate);
-    DeviceMutationResult setRetainedState(DeviceId deviceId, const std::string& payload, uint32_t now,
+    DeviceMutationResult setRetainedState(DeviceId deviceId, const RetainedStateRecord& record, uint32_t now,
                                           DevicePersistencePolicy policy = DevicePersistencePolicy::Coalesced);
     DeviceMutationResult command(const DeviceCommand& command, uint32_t now);
     DeviceValidationResult flushNow();

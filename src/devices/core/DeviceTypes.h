@@ -23,7 +23,7 @@ struct OneWireRomAddress;
 constexpr uint32_t kDeviceRegistrySchemaVersion = 1;
 constexpr uint16_t kDeviceRegistryIndexVersion = 2;
 constexpr uint16_t kDeviceRecordHeaderVersion = 4;
-constexpr uint16_t kRetainedStateRecordVersion = 1;
+constexpr uint16_t kRetainedStateRecordVersion = 2;
 constexpr size_t kMaxDynamicDevices = 200;
 constexpr size_t kMaxDynamicDeviceNameLength = 32;
 constexpr size_t kMaxDeviceBaseNameLength = kMaxDynamicDeviceNameLength;
@@ -46,6 +46,43 @@ enum class DeviceDependencyRole : uint8_t {
 struct DeviceDependencyLink {
     DeviceDependencyRole role{DeviceDependencyRole::Unknown};
     DeviceId deviceId{0};
+};
+
+enum class DeviceStatus : uint8_t;
+
+enum class DeviceStatus : uint8_t {
+    Unknown = 0,
+    Creating = 1,
+    Starting = 2,
+    Ready = 3,
+    Disabled = 4,
+    Faulted = 5,
+    DependencyBlocked = 6,
+    Reconfiguring = 7,
+    Stopping = 8,
+    Deleting = 9,
+};
+
+struct DeviceRecordBase {
+    DeviceId id{0};
+    const char* typeName{nullptr};
+    uint32_t configRevision{0};
+};
+
+struct DeviceRuntimeSnapshotBase {
+    DeviceStatus status{DeviceStatus::Unknown};
+    DeviceStatus effectiveStatus{DeviceStatus::Unknown};
+};
+
+template <typename TConfig, typename TRuntime> struct DeviceApiRecord {
+    DeviceRecordBase record{};
+    TConfig config{};
+    TRuntime runtime{};
+};
+
+template <typename TConfig> struct DeviceSetupRecord {
+    DeviceRecordBase record{};
+    TConfig config{};
 };
 
 struct DeviceDependencyRequirement {
@@ -204,19 +241,6 @@ private:
 
 using DeviceConfigBlob = BoundedBlob<kMaxDeviceConfigBytes>;
 
-enum class DeviceStatus : uint8_t {
-    Unknown = 0,
-    Creating = 1,
-    Starting = 2,
-    Ready = 3,
-    Disabled = 4,
-    Faulted = 5,
-    DependencyBlocked = 6,
-    Reconfiguring = 7,
-    Stopping = 8,
-    Deleting = 9,
-};
-
 enum class DeviceCommandType : uint8_t {
     None = 0,
     Create = 1,
@@ -356,7 +380,7 @@ struct DeviceRegistrySnapshot {
 struct RetainedStateRecord {
     uint16_t recordVersion{kRetainedStateRecordVersion};
     DeviceId deviceId{0};
-    std::string payload{};
+    OutputState outputState{OutputState::Off};
 };
 
 struct DeviceCommand {

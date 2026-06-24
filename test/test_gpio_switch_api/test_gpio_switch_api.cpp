@@ -66,8 +66,8 @@ GpioSwitchDevicePersistedConfigV1 makeGpioSwitchConfig() {
     config.switchConfig.base.enabled = true;
     std::snprintf(config.switchConfig.base.name, sizeof(config.switchConfig.base.name), "%s", "relay");
     config.switchConfig.restorePreviousState = true;
-    config.switchConfig.startupState = static_cast<uint8_t>(OutputState::On);
-    config.switchConfig.safeState = static_cast<uint8_t>(OutputState::Disabled);
+    config.switchConfig.startupState = OutputState::On;
+    config.switchConfig.safeState = OutputState::Disabled;
     config.switchConfig.inverted = true;
     config.gpioConfig.gpioPin = 21;
     return config;
@@ -99,11 +99,11 @@ void test_gpio_switch_api_adapter_parses_create_request() {
     JsonObject config = doc.createNestedObject("config");
     config["name"] = "relay";
     config["enabled"] = true;
-    config["restore_previous_state"] = true;
-    config["startup_state"] = "on";
-    config["safe_state"] = "disabled";
+    config["restorePreviousState"] = true;
+    config["startupState"] = "on";
+    config["safeState"] = "disabled";
     config["inverted"] = true;
-    config["gpio_pin"] = 21;
+    config["gpioPin"] = 21;
 
     DeviceCreateRequest request{};
     const char* error = nullptr;
@@ -116,13 +116,13 @@ void test_gpio_switch_api_adapter_parses_create_request() {
     GpioSwitchDevicePersistedConfigV1 parsed{};
     TEST_ASSERT_TRUE(
         decodeGpioSwitchDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
-    TEST_ASSERT_TRUE(parsed.switchConfig.base.enabled != 0U);
+    TEST_ASSERT_TRUE(parsed.switchConfig.base.enabled);
     TEST_ASSERT_EQUAL_STRING("relay", parsed.switchConfig.base.name);
     TEST_ASSERT_EQUAL_STRING("relay", parsed.switchConfig.base.name);
-    TEST_ASSERT_TRUE(parsed.switchConfig.restorePreviousState != 0U);
-    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(OutputState::On), parsed.switchConfig.startupState);
-    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(OutputState::Disabled), parsed.switchConfig.safeState);
-    TEST_ASSERT_TRUE(parsed.switchConfig.inverted != 0U);
+    TEST_ASSERT_TRUE(parsed.switchConfig.restorePreviousState);
+    TEST_ASSERT_EQUAL(static_cast<int>(OutputState::On), static_cast<int>(parsed.switchConfig.startupState));
+    TEST_ASSERT_EQUAL(static_cast<int>(OutputState::Disabled), static_cast<int>(parsed.switchConfig.safeState));
+    TEST_ASSERT_TRUE(parsed.switchConfig.inverted);
     TEST_ASSERT_EQUAL_UINT8(21, parsed.gpioConfig.gpioPin);
 }
 
@@ -130,7 +130,7 @@ void test_gpio_switch_api_adapter_rejects_invalid_pin() {
     StaticJsonDocument<128> doc;
     doc["name"] = "bad";
     JsonObject config = doc.createNestedObject("config");
-    config["gpio_pin"] = 36;
+    config["gpioPin"] = 36;
 
     DeviceCreateRequest request{};
     const char* error = nullptr;
@@ -144,25 +144,22 @@ void test_gpio_switch_api_adapter_serializes_record() {
     auto runtime = makeGpioSwitchRuntime(driver);
     StaticJsonDocument<1024> doc;
     JsonObject output = doc.to<JsonObject>();
-    GpioSwitchDeviceApiAdapter::instance().writeDeviceJson(*runtime, output);
+    GpioSwitchDeviceApiAdapter::instance().writeDeviceJson(*runtime, runtime->status(), output);
 
     TEST_ASSERT_FALSE(doc.overflowed());
-    TEST_ASSERT_EQUAL_UINT32(7, output["id"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_STRING("gpio_switch", output["type"].as<const char*>());
-    TEST_ASSERT_EQUAL_STRING("relay", output["name"].as<const char*>());
-    TEST_ASSERT_TRUE(output["enabled"].as<bool>());
-    TEST_ASSERT_TRUE(output["restore_previous_state"].as<bool>());
-    TEST_ASSERT_EQUAL_STRING("on", output["startup_state"].as<const char*>());
-    TEST_ASSERT_EQUAL_STRING("disabled", output["safe_state"].as<const char*>());
-    TEST_ASSERT_TRUE(output["inverted"].as<bool>());
-    TEST_ASSERT_EQUAL_UINT8(21, output["gpio_pin"].as<uint8_t>());
-    TEST_ASSERT_EQUAL_STRING("on", output["output"]["state"].as<const char*>());
-    TEST_ASSERT_FALSE(output["output"]["physical_level"].as<bool>());
-    TEST_ASSERT_TRUE(output["device_id"].isNull());
-    TEST_ASSERT_TRUE(output["type_id"].isNull());
-    TEST_ASSERT_TRUE(output["status"].isNull());
-    TEST_ASSERT_TRUE(output["has_deps"].isNull());
-    TEST_ASSERT_TRUE(output["retained_state_supported"].isNull());
+    TEST_ASSERT_EQUAL_UINT32(7, output["record"]["id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("gpio_switch", output["record"]["typeName"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("relay", output["config"]["name"].as<const char*>());
+    TEST_ASSERT_TRUE(output["config"]["enabled"].as<bool>());
+    TEST_ASSERT_TRUE(output["config"]["restorePreviousState"].as<bool>());
+    TEST_ASSERT_EQUAL_STRING("on", output["config"]["startupState"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("disabled", output["config"]["safeState"].as<const char*>());
+    TEST_ASSERT_TRUE(output["config"]["inverted"].as<bool>());
+    TEST_ASSERT_EQUAL_UINT8(21, output["config"]["gpioPin"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_STRING("on", output["runtime"]["output"]["state"].as<const char*>());
+    TEST_ASSERT_FALSE(output["runtime"]["output"]["physical_level"].as<bool>());
+    TEST_ASSERT_EQUAL_STRING("ready", output["runtime"]["status"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("ready", output["runtime"]["effectiveStatus"].as<const char*>());
 }
 
 void test_gpio_switch_api_adapter_serializes_runtime_output() {
@@ -171,11 +168,11 @@ void test_gpio_switch_api_adapter_serializes_runtime_output() {
 
     StaticJsonDocument<1024> doc;
     JsonObject output = doc.to<JsonObject>();
-    GpioSwitchDeviceApiAdapter::instance().writeDeviceJson(*runtime, output);
+    GpioSwitchDeviceApiAdapter::instance().writeDeviceJson(*runtime, runtime->status(), output);
 
     TEST_ASSERT_FALSE(doc.overflowed());
-    TEST_ASSERT_EQUAL_STRING("on", output["startup_state"].as<const char*>());
-    TEST_ASSERT_EQUAL_STRING("on", output["output"]["state"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("on", output["config"]["startupState"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("on", output["runtime"]["output"]["state"].as<const char*>());
 }
 
 void test_gpio_switch_api_adapter_parses_update_config_request() {
@@ -183,11 +180,11 @@ void test_gpio_switch_api_adapter_parses_update_config_request() {
     JsonObject config = doc.createNestedObject("config");
     config["name"] = "relay";
     config["enabled"] = false;
-    config["restore_previous_state"] = true;
-    config["startup_state"] = "off";
-    config["safe_state"] = "disabled";
+    config["restorePreviousState"] = true;
+    config["startupState"] = "off";
+    config["safeState"] = "disabled";
     config["inverted"] = true;
-    config["gpio_pin"] = 19;
+    config["gpioPin"] = 19;
 
     FakeGpioOutputDriver driver;
     auto runtime = makeGpioSwitchRuntime(driver);
@@ -200,11 +197,11 @@ void test_gpio_switch_api_adapter_parses_update_config_request() {
     GpioSwitchDevicePersistedConfigV1 parsed{};
     TEST_ASSERT_TRUE(
         decodeGpioSwitchDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
-    TEST_ASSERT_TRUE(parsed.switchConfig.base.enabled != 0U);
-    TEST_ASSERT_TRUE(parsed.switchConfig.restorePreviousState != 0U);
-    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(OutputState::Off), parsed.switchConfig.startupState);
-    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(OutputState::Disabled), parsed.switchConfig.safeState);
-    TEST_ASSERT_TRUE(parsed.switchConfig.inverted != 0U);
+    TEST_ASSERT_TRUE(parsed.switchConfig.base.enabled);
+    TEST_ASSERT_TRUE(parsed.switchConfig.restorePreviousState);
+    TEST_ASSERT_EQUAL(static_cast<int>(OutputState::Off), static_cast<int>(parsed.switchConfig.startupState));
+    TEST_ASSERT_EQUAL(static_cast<int>(OutputState::Disabled), static_cast<int>(parsed.switchConfig.safeState));
+    TEST_ASSERT_TRUE(parsed.switchConfig.inverted);
     TEST_ASSERT_EQUAL_UINT8(19, parsed.gpioConfig.gpioPin);
 }
 

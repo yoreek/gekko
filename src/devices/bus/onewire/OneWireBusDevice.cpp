@@ -163,9 +163,9 @@ void OneWireBusDevice::writeDeviceJson(JsonObject output) const {
     JsonObject scanObject = output.createNestedObject("scan");
     scanObject["in_progress"] = scan_.inProgress;
     scanObject["ready"] = scan_.ready;
-    scanObject["device_count"] = scan_.deviceCount;
+    scanObject["deviceCount"] = scan_.deviceCount;
     scanObject["truncated"] = scan_.truncated;
-    scanObject["invalid_crc_seen"] = scan_.invalidCandidateSeen;
+    scanObject["invalidCandidateSeen"] = scan_.invalidCandidateSeen;
     JsonArray devices = scanObject.createNestedArray("devices");
     for (uint8_t index = 0; index < scan_.deviceCount; ++index) {
         JsonObject item = devices.createNestedObject();
@@ -176,7 +176,7 @@ void OneWireBusDevice::writeDeviceJson(JsonObject output) const {
         family[1] = "0123456789ABCDEF"[scan_.devices[index].bytes[0] & 0x0F];
         family[2] = '\0';
         item["address"] = rom;
-        item["family_code"] = family;
+        item["familyCode"] = family;
     }
 }
 

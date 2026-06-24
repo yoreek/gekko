@@ -12,10 +12,10 @@ namespace ewfm {
 struct SwitchDeviceConfigV1 {
     static constexpr char kMagic[] = "SWCFG1";
     DeviceBaseConfigV1 base{};
-    uint8_t restorePreviousState{0};
-    uint8_t startupState{static_cast<uint8_t>(OutputState::Off)};
-    uint8_t safeState{static_cast<uint8_t>(OutputState::Off)};
-    uint8_t inverted{0};
+    bool restorePreviousState{false};
+    OutputState startupState{OutputState::Off};
+    OutputState safeState{OutputState::Off};
+    bool inverted{false};
 };
 #pragma pack(pop)
 

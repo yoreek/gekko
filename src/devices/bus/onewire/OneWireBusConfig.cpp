@@ -23,9 +23,9 @@ bool decodeOneWireBusDeviceConfig(const uint8_t* blob, size_t size, OneWireBusDe
 }
 
 bool parseOneWireBusDeviceConfigJson(const JsonObjectConst& input, OneWireBusDeviceConfigV1& config, const char*& error) {
-    config.internalPullup = (input["internal_pullup"] | false) ? 1U : 0U;
+    config.internalPullup = (input["internalPullup"] | false) ? 1U : 0U;
 
-    const JsonVariantConst pinVariant = input["gpio_pin"];
+    const JsonVariantConst pinVariant = input["gpioPin"];
     if (!pinVariant.isNull()) {
         if (!pinVariant.is<int>()) {
             error = "onewire bus pin must be numeric";
@@ -44,8 +44,8 @@ bool parseOneWireBusDeviceConfigJson(const JsonObjectConst& input, OneWireBusDev
 
 void writeOneWireBusDeviceConfigJson(const OneWireBusDeviceConfigV1& config, JsonObject output) {
     writeDeviceBaseConfigJson(config.base, output);
-    output["gpio_pin"] = config.gpioPin;
-    output["internal_pullup"] = config.internalPullup != 0U;
+    output["gpioPin"] = config.gpioPin;
+    output["internalPullup"] = config.internalPullup != 0U;
 }
 
 } // namespace ewfm

@@ -23,8 +23,8 @@ DeviceCreateRequest makeGpioSwitchCreateRequest() {
     config.switchConfig.base.enabled = true;
     std::snprintf(config.switchConfig.base.name, sizeof(config.switchConfig.base.name), "%s", "relay");
     config.switchConfig.restorePreviousState = true;
-    config.switchConfig.startupState = static_cast<uint8_t>(OutputState::Off);
-    config.switchConfig.safeState = static_cast<uint8_t>(OutputState::Disabled);
+    config.switchConfig.startupState = OutputState::Off;
+    config.switchConfig.safeState = OutputState::Disabled;
     config.switchConfig.inverted = false;
     config.gpioConfig.gpioPin = 13;
 

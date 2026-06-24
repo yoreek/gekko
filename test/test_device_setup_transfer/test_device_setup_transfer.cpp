@@ -128,8 +128,9 @@ void test_device_setup_export_includes_metadata_and_redacts_secret_strings() {
 
     std::string bundle;
     TEST_ASSERT_TRUE(DeviceSetupTransferCodec::writeBundle(bundle, registry, registry.registryRevision()));
-    TEST_ASSERT_TRUE(bundle.find("transfer_schema_version") != std::string::npos);
-    TEST_ASSERT_TRUE(bundle.find("\"type\":\"dummy\"") != std::string::npos);
+    TEST_ASSERT_TRUE(bundle.find("transferSchemaVersion") != std::string::npos);
+    TEST_ASSERT_TRUE(bundle.find("\"record\":{\"id\":") != std::string::npos);
+    TEST_ASSERT_TRUE(bundle.find("\"typeName\":\"dummy\"") != std::string::npos);
     TEST_ASSERT_TRUE(bundle.find("\"deps\":[]") != std::string::npos);
     TEST_ASSERT_TRUE(bundle.find("config_blob_hex") == std::string::npos);
     TEST_ASSERT_EQUAL(std::string::npos, bundle.find("\"status\""));

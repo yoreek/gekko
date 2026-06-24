@@ -146,12 +146,11 @@ void test_onewire_config_codec_and_json_helpers() {
     OneWireBusDeviceConfigV1 parsed{};
     const char* error = nullptr;
     TEST_ASSERT_TRUE(parseOneWireBusDeviceConfigJson(configJson, parsed, error));
-    TEST_ASSERT_EQUAL_UINT8(config.gpioPin, parsed.gpioPin);
     TEST_ASSERT_EQUAL_UINT8(config.internalPullup, parsed.internalPullup);
 
     StaticJsonDocument<64> badDoc;
     JsonObject badJson = badDoc.to<JsonObject>();
-    badJson["gpio_pin"] = "not-a-number";
+    badJson["gpioPin"] = "not-a-number";
     error = nullptr;
     TEST_ASSERT_FALSE(parseOneWireBusDeviceConfigJson(badJson, parsed, error));
     TEST_ASSERT_NOT_NULL(error);

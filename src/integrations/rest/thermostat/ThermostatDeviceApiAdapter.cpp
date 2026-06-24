@@ -274,9 +274,20 @@ ThermostatDeviceApiAdapter::validateSetDepsRequest(const IDeviceRuntime& runtime
     return {};
 }
 
-void ThermostatDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const {
-    writeCommonDeviceJson(runtime, typeName(), output);
-    static_cast<const ThermostatDevice&>(runtime).writeDeviceJson(output);
+void ThermostatDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus,
+                                                 JsonObject output) const {
+    writeCommonDeviceJson(runtime, effectiveStatus, typeName(), output);
+    const ThermostatDevice& device = static_cast<const ThermostatDevice&>(runtime);
+    JsonObject config = output["config"].as<JsonObject>();
+    writeThermostatDeviceConfigJson(device.config(), config);
+
+    JsonObject runtimeJson = output["runtime"].as<JsonObject>();
+    JsonObject temperature = runtimeJson.createNestedObject("temperature");
+    writeTemperatureOutputJson(device.latestTemperature(), TemperatureUnit::Celsius, device.controlStatus(), temperature);
+    runtimeJson["desiredSwitchState"] = outputStateName(device.desiredOutputState());
+    runtimeJson["actualSwitchState"] = outputStateName(device.actualOutputState());
+    runtimeJson["lastCheckAtMs"] = device.lastCheckAtMs();
+    runtimeJson["controlStatus"] = device.controlStatus();
 }
 
 } // namespace ewfm

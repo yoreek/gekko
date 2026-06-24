@@ -1,17 +1,9 @@
 #include "devices/switch/SwitchDeviceBase.h"
 
-#include <cstring>
-
 namespace ewfm {
 
 #undef SM_CLASS
 #define SM_CLASS SwitchDeviceBase
-
-namespace {
-constexpr uint8_t kSwitchRetainedStateVersion = 1;
-constexpr size_t kSwitchRetainedStatePayloadSize = 2;
-static_assert(kSwitchRetainedStatePayloadSize <= kMaxRetainedStateBytes, "switch retained state payload exceeds retained-state bound");
-} // namespace
 
 SwitchDeviceBase::SwitchDeviceBase(const SwitchDeviceConfigV1& config)
     : DeviceRuntimeBase((PState)&SwitchDeviceBase::Idle), config_(config) {
@@ -30,7 +22,7 @@ bool SwitchDeviceBase::physicalOutputState() const {
 }
 
 bool SwitchDeviceBase::restorePreviousState() const {
-    return config_.restorePreviousState != 0U;
+    return config_.restorePreviousState;
 }
 
 bool SwitchDeviceBase::enabled() const {
@@ -93,25 +85,17 @@ bool SwitchDeviceBase::serializeRetainedState(RetainedStateRecord& record) const
     if (!restorePreviousState()) {
         return false;
     }
-    record.payload.resize(kSwitchRetainedStatePayloadSize);
-    record.payload[0] = static_cast<char>(kSwitchRetainedStateVersion);
-    record.payload[1] = static_cast<char>(static_cast<uint8_t>(outputState_));
+    record.recordVersion = kRetainedStateRecordVersion;
+    record.outputState = outputState_;
     return true;
 }
 
 bool SwitchDeviceBase::applyRetainedStateRecord(const RetainedStateRecord& record) {
-    if (record.payload.size() != kSwitchRetainedStatePayloadSize) {
-        return false;
-    }
-    if (static_cast<uint8_t>(record.payload[0]) != kSwitchRetainedStateVersion) {
+    if (record.recordVersion != kRetainedStateRecordVersion) {
         return false;
     }
 
-    OutputState state{};
-    if (!outputStateFromByte(static_cast<uint8_t>(record.payload[1]), state)) {
-        return false;
-    }
-    applyRetainedState(state);
+    applyRetainedState(record.outputState);
     return true;
 }
 
@@ -172,7 +156,7 @@ OutputState SwitchDeviceBase::safeState() const {
 }
 
 bool SwitchDeviceBase::inverted() const {
-    return config_.inverted != 0U;
+    return config_.inverted;
 }
 
 const SwitchDeviceConfigV1& SwitchDeviceBase::switchConfig() const {
@@ -182,10 +166,10 @@ const SwitchDeviceConfigV1& SwitchDeviceBase::switchConfig() const {
 void SwitchDeviceBase::writeDeviceJson(JsonObject output) const {
     writeCommonDeviceJson(output);
     writeDeviceBaseConfigJson(config_.base, output);
-    output["restore_previous_state"] = config_.restorePreviousState != 0U;
-    output["startup_state"] = outputStateName(startupState());
-    output["safe_state"] = outputStateName(safeState());
-    output["inverted"] = config_.inverted != 0U;
+    output["restorePreviousState"] = config_.restorePreviousState;
+    output["startupState"] = outputStateName(startupState());
+    output["safeState"] = outputStateName(safeState());
+    output["inverted"] = config_.inverted;
     JsonObject outputObject = output.createNestedObject("output");
     outputObject["state"] = outputStateName(outputState_);
     outputObject["physical_level"] = physicalOutputState_;

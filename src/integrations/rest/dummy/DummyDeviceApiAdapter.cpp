@@ -47,9 +47,11 @@ bool DummyDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, Dev
     return true;
 }
 
-void DummyDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const {
-    writeCommonDeviceJson(runtime, typeName(), output);
-    static_cast<const DummyDevice&>(runtime).writeDeviceJson(output);
+void DummyDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus, JsonObject output) const {
+    writeCommonDeviceJson(runtime, effectiveStatus, typeName(), output);
+    const DummyDevice& device = static_cast<const DummyDevice&>(runtime);
+    JsonObject config = output["config"].as<JsonObject>();
+    writeDummyDeviceConfigJson(device.config(), config);
 }
 
 } // namespace ewfm

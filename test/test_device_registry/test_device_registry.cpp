@@ -1174,7 +1174,10 @@ void test_registry_emits_required_event_kinds() {
     TEST_ASSERT_TRUE(retainedCreated.ok());
     dispatcher.tickFastLoop(25);
 
-    DeviceMutationResult retained = registry.setRetainedState(retainedCreated.deviceId, "output=1", 26, DevicePersistencePolicy::Coalesced);
+    RetainedStateRecord retainedRecord{};
+    retainedRecord.outputState = OutputState::On;
+    DeviceMutationResult retained =
+        registry.setRetainedState(retainedCreated.deviceId, retainedRecord, 26, DevicePersistencePolicy::Coalesced);
     TEST_ASSERT_TRUE(retained.ok());
     dispatcher.tickFastLoop(27);
 
@@ -1566,14 +1569,18 @@ void test_registry_coalesces_retained_state_updates() {
     retainedRequest.typeId = 57;
     TEST_ASSERT_TRUE(registry.create(retainedRequest, 10).ok());
 
-    DeviceMutationResult firstResult = registry.setRetainedState(501, "output=0", 20, DevicePersistencePolicy::Coalesced);
+    RetainedStateRecord firstRecord{};
+    firstRecord.outputState = OutputState::Off;
+    DeviceMutationResult firstResult = registry.setRetainedState(501, firstRecord, 20, DevicePersistencePolicy::Coalesced);
     TEST_ASSERT_TRUE(firstResult.ok());
     TEST_ASSERT_TRUE(firstResult.pendingPersistence);
     TEST_ASSERT_EQUAL_UINT32(1, registry.dirtyRetainedStateIds().size());
     TEST_ASSERT_EQUAL_UINT32(20, registry.firstDirtyAt());
     TEST_ASSERT_EQUAL_UINT32(20, registry.lastChangeAt());
 
-    DeviceMutationResult secondResult = registry.setRetainedState(501, "output=1", 40, DevicePersistencePolicy::Coalesced);
+    RetainedStateRecord secondRecord{};
+    secondRecord.outputState = OutputState::On;
+    DeviceMutationResult secondResult = registry.setRetainedState(501, secondRecord, 40, DevicePersistencePolicy::Coalesced);
     TEST_ASSERT_TRUE(secondResult.ok());
     TEST_ASSERT_TRUE(secondResult.pendingPersistence);
     TEST_ASSERT_EQUAL_UINT32(1, registry.dirtyRetainedStateIds().size());
@@ -1586,7 +1593,7 @@ void test_registry_coalesces_retained_state_updates() {
     RetainedStateRecord loaded{};
     DeviceValidationResult loadResult = retainedStore.load(501, loaded);
     TEST_ASSERT_TRUE(loadResult.ok());
-    TEST_ASSERT_EQUAL_STRING("output=1", loaded.payload.c_str());
+    TEST_ASSERT_EQUAL(static_cast<int>(OutputState::On), static_cast<int>(loaded.outputState));
 }
 
 int main(int, char**) {

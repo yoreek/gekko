@@ -20,7 +20,6 @@ constexpr OutputStateMask kOutputStateMaskTriState = kOutputStateMaskBinary | kO
 
 bool outputStateIsValid(OutputState state);
 bool outputStateIsSupported(OutputState state, OutputStateMask mask);
-bool outputStateFromByte(uint8_t value, OutputState& state);
 const char* outputStateName(OutputState state);
 
 } // namespace ewfm

@@ -174,14 +174,14 @@ void test_retained_state_store_round_trip_and_remove() {
 
     RetainedStateRecord record{};
     record.deviceId = 7;
-    record.payload = "last-output=1";
+    record.outputState = OutputState::On;
     TEST_ASSERT_TRUE(store.save(record).ok());
 
     RetainedStateRecord loaded;
     DeviceValidationResult loadResult = store.load(7, loaded);
     TEST_ASSERT_TRUE(loadResult.ok());
     TEST_ASSERT_EQUAL_UINT32(7, loaded.deviceId);
-    TEST_ASSERT_EQUAL_STRING(record.payload.c_str(), loaded.payload.c_str());
+    TEST_ASSERT_EQUAL(static_cast<int>(record.outputState), static_cast<int>(loaded.outputState));
 
     TEST_ASSERT_TRUE(store.remove(7));
     RetainedStateRecord missing;
@@ -200,7 +200,7 @@ void test_retained_state_store_rejects_corrupt_payload() {
     RetainedStateRecord loaded;
     DeviceValidationResult result = store.load(7, loaded);
     TEST_ASSERT_FALSE(result.ok());
-    TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::CorruptRecord), static_cast<int>(result.error));
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::MissingRecord), static_cast<int>(result.error));
 }
 
 void test_dummy_device_lifecycle_and_command_output() {

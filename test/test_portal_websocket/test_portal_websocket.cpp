@@ -99,15 +99,15 @@ void test_ws_message_builders_create_compact_envelopes() {
     TEST_ASSERT_EQUAL_STRING("device.upsert", upsertDoc["topic"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT32(12, upsertDoc["revision"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(42, upsertDoc["payload"]["device_id"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_STRING("device_updated", upsertDoc["payload"]["event_kind"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("device_updated", upsertDoc["payload"]["eventKind"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT32(99, upsertDoc["payload"]["type_id"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_UINT32(7, upsertDoc["payload"]["config_revision"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_UINT32(static_cast<uint8_t>(DeviceStatus::Starting), upsertDoc["payload"]["previous_status"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_UINT32(7, upsertDoc["payload"]["configRevision"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32(static_cast<uint8_t>(DeviceStatus::Starting), upsertDoc["payload"]["previousStatus"].as<uint8_t>());
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint8_t>(DeviceStatus::Ready), upsertDoc["payload"]["status"].as<uint8_t>());
     TEST_ASSERT_EQUAL_STRING("Living Room Lamp", upsertDoc["payload"]["name"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("Dummy device", upsertDoc["payload"]["type"].as<const char*>());
-    TEST_ASSERT_TRUE(upsertDoc["payload"]["pending_persistence"].as<bool>());
-    TEST_ASSERT_FALSE(upsertDoc["payload"]["command_accepted"].as<bool>());
+    TEST_ASSERT_TRUE(upsertDoc["payload"]["pendingPersistence"].as<bool>());
+    TEST_ASSERT_FALSE(upsertDoc["payload"]["commandAccepted"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("detail", upsertDoc["payload"]["detail"].as<const char*>());
 
     const DeviceRegistryEntry record = makeDeviceRecord();
@@ -121,12 +121,12 @@ void test_ws_message_builders_create_compact_envelopes() {
     TEST_ASSERT_FALSE(deserializeJson(snapshotDoc, snapshot));
     TEST_ASSERT_EQUAL_STRING("device.upsert", snapshotDoc["topic"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT32(14, snapshotDoc["revision"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_UINT32(42, snapshotDoc["payload"]["device_id"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_STRING("snapshot", snapshotDoc["payload"]["event_kind"].as<const char*>());
-    TEST_ASSERT_EQUAL_STRING("Living Room Lamp", snapshotDoc["payload"]["name"].as<const char*>());
-    TEST_ASSERT_TRUE(snapshotDoc["payload"]["device"].isNull());
-    TEST_ASSERT_EQUAL_STRING("ready", snapshotDoc["payload"]["effective_status"].as<const char*>());
-    TEST_ASSERT_TRUE(snapshotDoc["payload"]["pending_persistence"].as<bool>());
+    TEST_ASSERT_EQUAL_UINT32(42, snapshotDoc["payload"]["record"]["id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("snapshot", snapshotDoc["payload"]["eventKind"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("Living Room Lamp", snapshotDoc["payload"]["config"]["name"].as<const char*>());
+    TEST_ASSERT_TRUE(snapshotDoc["payload"]["config"]["deps"].is<JsonArrayConst>());
+    TEST_ASSERT_EQUAL_STRING("ready", snapshotDoc["payload"]["runtime"]["effectiveStatus"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("ready", snapshotDoc["payload"]["runtime"]["status"].as<const char*>());
 
     DeviceEvent removedEvent = makeDeviceEvent(DeviceEventKind::DeviceDeleted, 13);
     const std::string removed = PortalWebSocketMessages::buildDeviceRemove(removedEvent);
@@ -134,12 +134,11 @@ void test_ws_message_builders_create_compact_envelopes() {
     TEST_ASSERT_FALSE(deserializeJson(removedDoc, removed));
     TEST_ASSERT_EQUAL_STRING("device.remove", removedDoc["topic"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT32(13, removedDoc["revision"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_UINT32(42, removedDoc["payload"]["device_id"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_STRING("device_deleted", removedDoc["payload"]["event_kind"].as<const char*>());
-    TEST_ASSERT_EQUAL_UINT32(99, removedDoc["payload"]["type_id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32(42, removedDoc["payload"]["deviceId"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("device_deleted", removedDoc["payload"]["eventKind"].as<const char*>());
+    TEST_ASSERT_EQUAL_UINT32(99, removedDoc["payload"]["typeId"].as<uint32_t>());
     TEST_ASSERT_EQUAL_STRING("Living Room Lamp", removedDoc["payload"]["name"].as<const char*>());
-    TEST_ASSERT_EQUAL_STRING("Dummy device", removedDoc["payload"]["type"].as<const char*>());
-    TEST_ASSERT_TRUE(removedDoc["payload"]["pending_persistence"].as<bool>());
+    TEST_ASSERT_EQUAL_STRING("Dummy device", removedDoc["payload"]["typeName"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("detail", removedDoc["payload"]["detail"].as<const char*>());
 
     const std::string hello = PortalWebSocketMessages::buildHello(9, 8, 2);
@@ -149,7 +148,7 @@ void test_ws_message_builders_create_compact_envelopes() {
     TEST_ASSERT_EQUAL_UINT32(9, helloDoc["revision"].as<uint32_t>());
     TEST_ASSERT_EQUAL_STRING("connected", helloDoc["payload"]["state"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT32(2, helloDoc["payload"]["clients"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_UINT32(8, helloDoc["payload"]["registry_revision"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32(8, helloDoc["payload"]["registryRevision"].as<uint32_t>());
 }
 
 void test_ws_manager_attaches_and_detaches_from_dispatcher() {
@@ -182,8 +181,8 @@ void test_ws_manager_receives_device_events_when_attached() {
     TEST_ASSERT_EQUAL_UINT32(33, doc["revision"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(42, doc["payload"]["device_id"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(99, doc["payload"]["type_id"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_STRING("device_updated", doc["payload"]["event_kind"].as<const char*>());
-    TEST_ASSERT_FALSE(doc["payload"]["command_accepted"].as<bool>());
+    TEST_ASSERT_EQUAL_STRING("device_updated", doc["payload"]["eventKind"].as<const char*>());
+    TEST_ASSERT_FALSE(doc["payload"]["commandAccepted"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("detail", doc["payload"]["detail"].as<const char*>());
 #endif
 }
@@ -270,15 +269,15 @@ void test_ws_manager_resyncs_all_device_snapshots_for_new_clients() {
         DynamicJsonDocument doc(1536);
         TEST_ASSERT_FALSE(deserializeJson(doc, message));
         TEST_ASSERT_EQUAL_STRING("device.upsert", doc["topic"].as<const char*>());
-        TEST_ASSERT_EQUAL_STRING("snapshot", doc["payload"]["event_kind"].as<const char*>());
-        TEST_ASSERT_EQUAL_STRING("ready", doc["payload"]["effective_status"].as<const char*>());
-        const DeviceId deviceId = doc["payload"]["device_id"].as<DeviceId>();
+        TEST_ASSERT_EQUAL_STRING("snapshot", doc["payload"]["eventKind"].as<const char*>());
+        TEST_ASSERT_EQUAL_STRING("ready", doc["payload"]["runtime"]["effectiveStatus"].as<const char*>());
+        const DeviceId deviceId = doc["payload"]["record"]["id"].as<DeviceId>();
         if (deviceId == 42) {
             sawFirst = true;
-            TEST_ASSERT_EQUAL_STRING("Living Room Lamp", doc["payload"]["name"].as<const char*>());
+            TEST_ASSERT_EQUAL_STRING("Living Room Lamp", doc["payload"]["config"]["name"].as<const char*>());
         } else if (deviceId == 43) {
             sawSecond = true;
-            TEST_ASSERT_EQUAL_STRING("Kitchen Lamp", doc["payload"]["name"].as<const char*>());
+            TEST_ASSERT_EQUAL_STRING("Kitchen Lamp", doc["payload"]["config"]["name"].as<const char*>());
         } else {
             TEST_FAIL_MESSAGE("unexpected device snapshot");
         }

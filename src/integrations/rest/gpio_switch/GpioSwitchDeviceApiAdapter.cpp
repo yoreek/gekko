@@ -55,8 +55,8 @@ bool GpioSwitchDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst&
                                                           DeviceConfigUpdateRequest& request, const char*& error) const {
     const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
     const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
-    if (configObject.isNull() && input["gpio_pin"].isNull() && input["restore_previous_state"].isNull() &&
-        input["startup_state"].isNull() && input["safe_state"].isNull() && input["inverted"].isNull()) {
+    if (configObject.isNull() && input["gpioPin"].isNull() && input["restorePreviousState"].isNull() && input["startupState"].isNull() &&
+        input["safeState"].isNull() && input["inverted"].isNull()) {
         error = "gpio switch config is required";
         return false;
     }
@@ -89,9 +89,16 @@ bool GpioSwitchDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst&
     return true;
 }
 
-void GpioSwitchDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const {
-    writeCommonDeviceJson(runtime, typeName(), output);
-    static_cast<const GpioSwitchDevice&>(runtime).writeDeviceJson(output);
+void GpioSwitchDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus,
+                                                  JsonObject output) const {
+    writeCommonDeviceJson(runtime, effectiveStatus, typeName(), output);
+    const GpioSwitchDevice& device = static_cast<const GpioSwitchDevice&>(runtime);
+    JsonObject config = output["config"].as<JsonObject>();
+    writeGpioSwitchDeviceConfigJson(device.config(), config);
+    JsonObject runtimeJson = output["runtime"].as<JsonObject>();
+    JsonObject outputJson = runtimeJson.createNestedObject("output");
+    outputJson["state"] = outputStateName(device.outputState());
+    outputJson["physicalLevel"] = device.physicalOutputState();
 }
 
 } // namespace ewfm

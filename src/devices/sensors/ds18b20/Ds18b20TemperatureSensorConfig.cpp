@@ -38,12 +38,12 @@ bool parseUint16(const JsonVariantConst& variant, uint16_t& value) {
 }
 
 bool parseReportDelta(const JsonObjectConst& input, uint16_t& centiCelsius) {
-    const JsonVariantConst centiVariant = input["report_delta_centi_celsius"];
+    const JsonVariantConst centiVariant = input["reportDeltaCentiCelsius"];
     if (!centiVariant.isNull()) {
         return parseUint16(centiVariant, centiCelsius);
     }
 
-    const JsonVariantConst celsiusVariant = input["report_delta_celsius"];
+    const JsonVariantConst celsiusVariant = input["reportDeltaCelsius"];
     if (celsiusVariant.isNull()) {
         return true;
     }
@@ -101,7 +101,7 @@ DeviceValidationResult validateDs18b20TemperatureSensorConfig(const Ds18b20Tempe
 }
 
 bool parseDs18b20TemperatureSensorConfigJson(const JsonObjectConst& input, Ds18b20TemperatureSensorConfigV1& config, const char*& error) {
-    config.reportAlways = parseBoolField(input, "report_always", false) ? 1U : 0U;
+    config.reportAlways = parseBoolField(input, "reportAlways", false) ? 1U : 0U;
 
     const char* address = input["address"] | "";
     if (!parseOneWireRomAddress(address, config.address)) {
@@ -131,7 +131,7 @@ bool parseDs18b20TemperatureSensorConfigJson(const JsonObjectConst& input, Ds18b
     config.outputUnit = temperatureUnitToByte(unit);
 
     uint32_t pollMs = config.pollMs;
-    if (!parseUint32(input["poll_ms"], pollMs)) {
+    if (!parseUint32(input["pollMs"], pollMs)) {
         error = "ds18b20 poll period must be numeric";
         return false;
     }
@@ -174,17 +174,15 @@ bool parseDs18b20TemperatureSensorConfigJson(const JsonObjectConst& input, Ds18b
 void writeDs18b20TemperatureSensorConfigJson(const Ds18b20TemperatureSensorConfigV1& config, JsonObject output) {
     char address[17]{};
     (void)formatOneWireRomAddress(config.address, address);
-    TemperatureUnit unit{TemperatureUnit::Celsius};
-    (void)temperatureUnitFromByte(config.outputUnit, unit);
 
     writeDeviceBaseConfigJson(config.base, output);
     output["address"] = address;
     output["resolution"] = config.resolution;
-    output["unit"] = temperatureUnitName(unit);
-    output["poll_ms"] = config.pollMs;
-    output["report_delta_celsius"] = static_cast<float>(config.reportDeltaCentiCelsius) / 100.0F;
-    output["report_delta_centi_celsius"] = config.reportDeltaCentiCelsius;
-    output["report_always"] = config.reportAlways != 0U;
+    output["unit"] = temperatureUnitName(static_cast<TemperatureUnit>(config.outputUnit));
+    output["pollMs"] = config.pollMs;
+    output["reportDeltaCelsius"] = static_cast<float>(config.reportDeltaCentiCelsius) / 100.0F;
+    output["reportDeltaCentiCelsius"] = config.reportDeltaCentiCelsius;
+    output["reportAlways"] = config.reportAlways != 0U;
 }
 
 } // namespace ewfm

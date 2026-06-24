@@ -989,14 +989,9 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
     return result;
 }
 
-DeviceMutationResult DeviceRegistry::setRetainedState(DeviceId deviceId, const std::string& payload, uint32_t now,
+DeviceMutationResult DeviceRegistry::setRetainedState(DeviceId deviceId, const RetainedStateRecord& record, uint32_t now,
                                                       DevicePersistencePolicy policy) {
     DeviceMutationResult result{};
-    if (payload.size() > kMaxRetainedStateBytes) {
-        result.validation = {DeviceError::BoundsExceeded, "retained state exceeds supported size"};
-        return result;
-    }
-
     const IDeviceRuntime* runtimePtr = runtime(deviceId);
     if (runtimePtr == nullptr) {
         result.validation = {DeviceError::MissingRecord, "device not found"};
@@ -1014,9 +1009,8 @@ DeviceMutationResult DeviceRegistry::setRetainedState(DeviceId deviceId, const s
         return result;
     }
 
-    RetainedStateRecord retained{};
+    RetainedStateRecord retained = record;
     retained.deviceId = deviceId;
-    retained.payload = payload;
 
     if (policy == DevicePersistencePolicy::Immediate) {
         if (retainedStateStore_ == nullptr) {
@@ -1177,7 +1171,7 @@ DeviceValidationResult DeviceRegistry::captureRuntimeRetainedState(DeviceId devi
         return {};
     }
 
-    DeviceMutationResult result = setRetainedState(deviceId, retained.payload, now, DevicePersistencePolicy::Coalesced);
+    DeviceMutationResult result = setRetainedState(deviceId, retained, now, DevicePersistencePolicy::Coalesced);
     if (!result.ok()) {
         return result.validation;
     }

@@ -354,9 +354,9 @@ void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input() {
     config["address"] = "28FF641D621603AD";
     config["resolution"] = 11;
     config["unit"] = "fahrenheit";
-    config["poll_ms"] = 2000;
-    config["report_delta_celsius"] = 0.25;
-    config["report_always"] = true;
+    config["pollMs"] = 2000;
+    config["reportDeltaCentiCelsius"] = 25;
+    config["reportAlways"] = true;
 
     DeviceCreateRequest request{};
     const char* error = nullptr;
@@ -385,9 +385,9 @@ void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input() {
     updateConfig["address"] = "28FF641D621603AD";
     updateConfig["resolution"] = 12;
     updateConfig["unit"] = "celsius";
-    updateConfig["poll_ms"] = 3000;
-    updateConfig["report_delta_centi_celsius"] = 2;
-    updateConfig["report_always"] = false;
+    updateConfig["pollMs"] = 3000;
+    updateConfig["reportDeltaCentiCelsius"] = 2;
+    updateConfig["reportAlways"] = false;
     DeviceConfigUpdateRequest updateRequest{};
     error = nullptr;
     TEST_ASSERT_TRUE_MESSAGE(Ds18b20TemperatureSensorDeviceApiAdapter::instance().parseUpdateConfigRequest(updateDoc.as<JsonObjectConst>(),
@@ -476,18 +476,18 @@ void test_ds18b20_runtime_serializes_fahrenheit_output_and_quiet_delta() {
 
     StaticJsonDocument<1024> doc;
     JsonObject output = doc.to<JsonObject>();
-    Ds18b20TemperatureSensorDeviceApiAdapter::instance().writeDeviceJson(sensor, output);
-    TEST_ASSERT_EQUAL_STRING("ds18b20_temperature_sensor", output["type"].as<const char*>());
-    TEST_ASSERT_EQUAL_STRING("fahrenheit", output["output"]["temperature"]["unit"].as<const char*>());
+    Ds18b20TemperatureSensorDeviceApiAdapter::instance().writeDeviceJson(sensor, sensor.status(), output);
+    TEST_ASSERT_EQUAL_STRING("ds18b20_temperature_sensor", output["record"]["typeName"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("fahrenheit", output["runtime"]["temperature"]["unit"].as<const char*>());
 
     const std::string upsert = PortalWebSocketMessages::buildDeviceUpsert(
         sensor, sensor.status(), 99, false, &Ds18b20TemperatureSensorDeviceApiAdapter::instance(), "device_updated");
     DynamicJsonDocument wsDoc(4096);
     TEST_ASSERT_FALSE(deserializeJson(wsDoc, upsert));
     TEST_ASSERT_EQUAL_STRING("device.upsert", wsDoc["topic"].as<const char*>());
-    TEST_ASSERT_EQUAL_STRING("device_updated", wsDoc["payload"]["event_kind"].as<const char*>());
-    TEST_ASSERT_EQUAL_STRING("fahrenheit", wsDoc["payload"]["output"]["temperature"]["unit"].as<const char*>());
-    TEST_ASSERT_TRUE(wsDoc["payload"]["output"]["temperature"]["valid"].as<bool>());
+    TEST_ASSERT_EQUAL_STRING("device_updated", wsDoc["payload"]["eventKind"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("fahrenheit", wsDoc["payload"]["runtime"]["temperature"]["unit"].as<const char*>());
+    TEST_ASSERT_TRUE(wsDoc["payload"]["runtime"]["temperature"]["valid"].as<bool>());
 }
 
 void test_ds18b20_runtime_report_always_marks_repeated_reading_dirty() {
@@ -536,8 +536,8 @@ void test_ds18b20_runtime_publishes_invalid_crc_and_recovers() {
 
     StaticJsonDocument<1024> invalidDoc;
     JsonObject invalidOutput = invalidDoc.to<JsonObject>();
-    Ds18b20TemperatureSensorDeviceApiAdapter::instance().writeDeviceJson(sensor, invalidOutput);
-    TEST_ASSERT_FALSE(invalidOutput["output"]["temperature"]["valid"].as<bool>());
+    Ds18b20TemperatureSensorDeviceApiAdapter::instance().writeDeviceJson(sensor, sensor.status(), invalidOutput);
+    TEST_ASSERT_FALSE(invalidOutput["runtime"]["temperature"]["valid"].as<bool>());
 
     driver.setTemperatureRaw(0x0180, 12);
     for (uint32_t now = 5900; now < 29000 && !sensor.reading().valid; now += 100U) {

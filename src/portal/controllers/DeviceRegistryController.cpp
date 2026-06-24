@@ -263,16 +263,28 @@ const char* statusToString(DeviceStatus status) {
     }
 }
 
-void writeRuntimeDeps(JsonObject device, const IDeviceRuntime& runtime) {
-    JsonArray deps = device.createNestedArray("deps");
+void writeFallbackDeviceJson(JsonObject device, const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus,
+                             const char* typeName) {
+    JsonObject record = device.createNestedObject("record");
+    record["id"] = runtime.deviceId();
+    record["typeName"] = typeName;
+    record["configRevision"] = runtime.configRevision();
+
+    JsonObject config = device.createNestedObject("config");
+    config["name"] = JsonString(runtime.name() != nullptr ? runtime.name() : "", JsonString::Copied);
+    config["enabled"] = runtime.enabled();
+    JsonArray deps = config.createNestedArray("deps");
     const DeviceDependencyLink* dependencyLinks = runtime.dependencyLinks();
     const uint8_t dependencyCount = runtime.dependencyCount();
     for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
         JsonObject item = deps.createNestedObject();
         item["role"] = deviceDependencyRoleName(dependencyLinks[index].role);
-        item["device_id"] = dependencyLinks[index].deviceId;
+        item["deviceId"] = dependencyLinks[index].deviceId;
     }
-    device["has_deps"] = dependencyCount > 0;
+
+    JsonObject runtimeJson = device.createNestedObject("runtime");
+    runtimeJson["status"] = statusToString(runtime.status());
+    runtimeJson["effectiveStatus"] = statusToString(effectiveStatus);
 }
 
 void writeIndexResponse(AsyncResponseStream* response, DeviceRegistry& registry, const DeviceApiAdapterRegistry& adapters) {
@@ -281,8 +293,8 @@ void writeIndexResponse(AsyncResponseStream* response, DeviceRegistry& registry,
     }
 
     response->print("{\"success\":true,");
-    response->printf("\"registry_revision\":%lu,", static_cast<unsigned long>(registry.registryRevision()));
-    response->printf("\"pending_persistence\":%s,", registry.hasPendingPersistence() ? "true" : "false");
+    response->printf("\"registryRevision\":%lu,", static_cast<unsigned long>(registry.registryRevision()));
+    response->printf("\"pendingPersistence\":%s,", registry.hasPendingPersistence() ? "true" : "false");
     response->print("\"devices\":[");
 
     bool first = true;
@@ -294,26 +306,16 @@ void writeIndexResponse(AsyncResponseStream* response, DeviceRegistry& registry,
 
         StaticJsonDocument<1024> item;
         JsonObject device = item.to<JsonObject>();
+        const DeviceStatus effectiveStatus = registry.effectiveStatus(runtime.deviceId());
         const IDeviceApiAdapter* adapter = adapters.find(runtime.typeId());
         if (adapter != nullptr) {
-            adapter->writeDeviceJson(runtime, device);
+            adapter->writeDeviceJson(runtime, effectiveStatus, device);
         } else {
-            device["device_id"] = runtime.deviceId();
-            device["type_id"] = runtime.typeId();
-            device["name"] = runtime.name();
-            device["enabled"] = runtime.enabled();
-            writeRuntimeDeps(device, runtime);
-            device["config_version"] = runtime.configVersion();
-            device["config_revision"] = runtime.configRevision();
-            device["lifecycle_status"] = statusToString(runtime.status());
-            device["effective_status"] = statusToString(registry.effectiveStatus(runtime.deviceId()));
+            writeFallbackDeviceJson(device, runtime, effectiveStatus, "unknown");
         }
         const DeviceStatus lifecycleStatus = runtime.status();
-        const DeviceStatus effectiveStatus = registry.effectiveStatus(runtime.deviceId());
-        device["lifecycle_status"] = statusToString(lifecycleStatus);
-        device["effective_status"] = statusToString(effectiveStatus);
-        device["registry_revision"] = registry.registryRevision();
-        device["pending_persistence"] = registry.hasPendingPersistence();
+        device["runtime"]["status"] = statusToString(lifecycleStatus);
+        device["runtime"]["effectiveStatus"] = statusToString(effectiveStatus);
         serializeJson(item, *response);
     });
 
@@ -339,27 +341,18 @@ void DeviceRegistryController::show() {
     }
 
     StaticJsonDocument<1024> doc;
-    doc["registry_revision"] = registry_.registryRevision();
-    doc["pending_persistence"] = registry_.hasPendingPersistence();
+    doc["registryRevision"] = registry_.registryRevision();
+    doc["pendingPersistence"] = registry_.hasPendingPersistence();
     JsonObject device = doc.createNestedObject("device");
-    const IDeviceApiAdapter* adapter = adapters_.find(runtime->typeId());
     const DeviceStatus effectiveStatus = registry_.effectiveStatus(runtime->deviceId());
+    const IDeviceApiAdapter* adapter = adapters_.find(runtime->typeId());
     if (adapter != nullptr) {
-        adapter->writeDeviceJson(*runtime, device);
+        adapter->writeDeviceJson(*runtime, effectiveStatus, device);
     } else {
-        device["device_id"] = runtime->deviceId();
-        device["type_id"] = runtime->typeId();
-        device["name"] = runtime->name();
-        device["enabled"] = runtime->enabled();
-        writeRuntimeDeps(device, *runtime);
+        writeFallbackDeviceJson(device, *runtime, effectiveStatus, "unknown");
     }
-    const DeviceStatus lifecycleStatus = runtime->status();
-    device["config_version"] = runtime->configVersion();
-    device["config_revision"] = runtime->configRevision();
-    device["lifecycle_status"] = statusToString(lifecycleStatus);
-    device["effective_status"] = statusToString(effectiveStatus);
-    device["registry_revision"] = registry_.registryRevision();
-    device["pending_persistence"] = registry_.hasPendingPersistence();
+    device["runtime"]["status"] = statusToString(runtime->status());
+    device["runtime"]["effectiveStatus"] = statusToString(effectiveStatus);
     renderOk(doc);
 #endif
 }
@@ -392,11 +385,12 @@ void DeviceRegistryController::create() {
     }
 
     StaticJsonDocument<1024> doc;
-    doc["registry_revision"] = registry_.registryRevision();
-    doc["pending_persistence"] = result.pendingPersistence;
+    doc["registryRevision"] = registry_.registryRevision();
+    doc["pendingPersistence"] = result.pendingPersistence;
     JsonObject device = doc.createNestedObject("device");
     if (const IDeviceRuntime* runtime = registry_.runtime(result.deviceId); runtime != nullptr) {
-        adapter->writeDeviceJson(*runtime, device);
+        const DeviceStatus effectiveStatus = registry_.effectiveStatus(runtime->deviceId());
+        adapter->writeDeviceJson(*runtime, effectiveStatus, device);
     }
     sendJson(201, doc);
 #endif
@@ -417,7 +411,7 @@ void DeviceRegistryController::destroy() {
         doc["error"] = result.validation.message;
         if (result.validation.error == DeviceError::InvalidRelationship && !result.dependentDeviceIds.empty()) {
             doc["code"] = "DEPENDENT_DELETE";
-            JsonArray ids = doc.createNestedArray("dependent_device_ids");
+            JsonArray ids = doc.createNestedArray("dependentDeviceIds");
             for (const DeviceId childId : result.dependentDeviceIds) {
                 ids.add(childId);
             }
@@ -427,8 +421,8 @@ void DeviceRegistryController::destroy() {
     }
 
     StaticJsonDocument<256> doc;
-    doc["registry_revision"] = registry_.registryRevision();
-    doc["pending_persistence"] = result.pendingPersistence;
+    doc["registryRevision"] = registry_.registryRevision();
+    doc["pendingPersistence"] = result.pendingPersistence;
     renderOk(doc);
 #endif
 }
@@ -592,23 +586,14 @@ void DeviceRegistryController::cmd() {
     if (const IDeviceRuntime* runtime = registry_.runtime(deviceId_); runtime != nullptr) {
         JsonObject device = doc.createNestedObject("device");
         const IDeviceApiAdapter* adapter = adapters_.find(runtime->typeId());
-        if (adapter != nullptr) {
-            adapter->writeDeviceJson(*runtime, device);
-        } else {
-            device["device_id"] = runtime->deviceId();
-            device["type_id"] = runtime->typeId();
-            device["name"] = runtime->name();
-            device["enabled"] = runtime->enabled();
-            writeRuntimeDeps(device, *runtime);
-        }
-        const DeviceStatus lifecycleStatus = runtime->status();
         const DeviceStatus effectiveStatus = registry_.effectiveStatus(runtime->deviceId());
-        device["config_version"] = runtime->configVersion();
-        device["config_revision"] = runtime->configRevision();
-        device["lifecycle_status"] = statusToString(lifecycleStatus);
-        device["effective_status"] = statusToString(effectiveStatus);
-        device["registry_revision"] = registry_.registryRevision();
-        device["pending_persistence"] = mutationResult.pendingPersistence;
+        if (adapter != nullptr) {
+            adapter->writeDeviceJson(*runtime, effectiveStatus, device);
+        } else {
+            writeFallbackDeviceJson(device, *runtime, effectiveStatus, "unknown");
+        }
+        device["runtime"]["status"] = statusToString(runtime->status());
+        device["runtime"]["effectiveStatus"] = statusToString(effectiveStatus);
     }
     renderOk(doc);
 #endif
@@ -623,8 +608,8 @@ void DeviceRegistryController::flush() {
     }
 
     StaticJsonDocument<256> doc;
-    doc["registry_revision"] = registry_.registryRevision();
-    doc["pending_persistence"] = registry_.hasPendingPersistence();
+    doc["registryRevision"] = registry_.registryRevision();
+    doc["pendingPersistence"] = registry_.hasPendingPersistence();
     renderOk(doc);
 #endif
 }

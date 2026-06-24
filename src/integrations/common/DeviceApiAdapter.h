@@ -37,10 +37,10 @@ public:
     virtual DeviceValidationResult validateSetDepsRequest(const IDeviceRuntime& runtime,
                                                           const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps,
                                                           uint8_t depCount, const DeviceRegistry& registry) const;
-    virtual void writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const = 0;
+    virtual void writeDeviceJson(const IDeviceRuntime& runtime, DeviceStatus effectiveStatus, JsonObject output) const = 0;
 
 protected:
-    static void writeCommonDeviceJson(const IDeviceRuntime& runtime, const char* typeName, JsonObject output);
+    static void writeCommonDeviceJson(const IDeviceRuntime& runtime, DeviceStatus effectiveStatus, const char* typeName, JsonObject output);
 };
 
 class DeviceApiAdapterRegistry {

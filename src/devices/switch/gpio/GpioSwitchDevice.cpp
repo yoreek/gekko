@@ -65,18 +65,18 @@ bool decodeGpioSwitchDeviceConfig(const uint8_t* blob, size_t size, GpioSwitchDe
 }
 
 bool parseGpioSwitchDeviceConfigJson(const JsonObjectConst& input, GpioSwitchDevicePersistedConfigV1& config, const char*& error) {
-    config.switchConfig.restorePreviousState = (input["restore_previous_state"] | false) ? 1U : 0U;
-    config.switchConfig.inverted = (input["inverted"] | false) ? 1U : 0U;
+    config.switchConfig.restorePreviousState = (input["restorePreviousState"] | false) ? true : false;
+    config.switchConfig.inverted = (input["inverted"] | false) ? true : false;
 
     OutputState startup{};
     OutputState safe{};
-    if (!parseOutputState(input["startup_state"] | "off", startup, error) || !parseOutputState(input["safe_state"] | "off", safe, error)) {
+    if (!parseOutputState(input["startupState"] | "off", startup, error) || !parseOutputState(input["safeState"] | "off", safe, error)) {
         return false;
     }
-    config.switchConfig.startupState = static_cast<uint8_t>(startup);
-    config.switchConfig.safeState = static_cast<uint8_t>(safe);
+    config.switchConfig.startupState = startup;
+    config.switchConfig.safeState = safe;
 
-    config.gpioConfig.gpioPin = static_cast<uint8_t>(input["gpio_pin"] | static_cast<int>(config.gpioConfig.gpioPin));
+    config.gpioConfig.gpioPin = static_cast<uint8_t>(input["gpioPin"] | static_cast<int>(config.gpioConfig.gpioPin));
     if (!gpioSwitchPinIsValid(config.gpioConfig.gpioPin)) {
         error = "gpio switch pin is invalid";
         return false;
@@ -85,16 +85,12 @@ bool parseGpioSwitchDeviceConfigJson(const JsonObjectConst& input, GpioSwitchDev
 }
 
 void writeGpioSwitchDeviceConfigJson(const GpioSwitchDevicePersistedConfigV1& config, JsonObject output) {
-    OutputState startup{};
-    OutputState safe{};
-    (void)outputStateFromByte(config.switchConfig.startupState, startup);
-    (void)outputStateFromByte(config.switchConfig.safeState, safe);
     writeDeviceBaseConfigJson(config.switchConfig.base, output);
-    output["restore_previous_state"] = config.switchConfig.restorePreviousState != 0U;
-    output["startup_state"] = outputStateName(startup);
-    output["safe_state"] = outputStateName(safe);
-    output["inverted"] = config.switchConfig.inverted != 0U;
-    output["gpio_pin"] = config.gpioConfig.gpioPin;
+    output["restorePreviousState"] = config.switchConfig.restorePreviousState;
+    output["startupState"] = outputStateName(config.switchConfig.startupState);
+    output["safeState"] = outputStateName(config.switchConfig.safeState);
+    output["inverted"] = config.switchConfig.inverted;
+    output["gpioPin"] = config.gpioConfig.gpioPin;
 }
 
 bool gpioSwitchPinIsValid(uint8_t pin) {
@@ -124,6 +120,13 @@ uint8_t GpioSwitchDevice::gpioPin() const {
 
 const GpioSwitchDeviceConfigV1& GpioSwitchDevice::gpioConfig() const {
     return config_;
+}
+
+GpioSwitchDevicePersistedConfigV1 GpioSwitchDevice::config() const {
+    GpioSwitchDevicePersistedConfigV1 config{};
+    config.switchConfig = switchConfig();
+    config.gpioConfig = config_;
+    return config;
 }
 
 bool GpioSwitchDevice::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
@@ -173,7 +176,7 @@ bool GpioSwitchDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t 
 
 void GpioSwitchDevice::writeDeviceJson(JsonObject output) const {
     SwitchDeviceBase::writeDeviceJson(output);
-    output["gpio_pin"] = config_.gpioPin;
+    output["gpioPin"] = config_.gpioPin;
 }
 
 DeviceTypeDescriptor GpioSwitchDevice::descriptor() {

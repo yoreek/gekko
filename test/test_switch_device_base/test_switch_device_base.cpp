@@ -106,8 +106,8 @@ SwitchDeviceConfigV1 makeConfig(OutputState startup = OutputState::Off, OutputSt
     config.base.enabled = true;
     std::snprintf(config.base.name, sizeof(config.base.name), "%s", "switch");
     config.restorePreviousState = false;
-    config.startupState = static_cast<uint8_t>(startup);
-    config.safeState = static_cast<uint8_t>(safe);
+    config.startupState = startup;
+    config.safeState = safe;
     config.inverted = false;
     return config;
 }
@@ -132,10 +132,10 @@ GpioSwitchDevicePersistedConfigV1 makeGpioSwitchConfig(uint8_t pin, OutputState 
     GpioSwitchDevicePersistedConfigV1 config{};
     config.switchConfig.base.enabled = 1;
     std::snprintf(config.switchConfig.base.name, sizeof(config.switchConfig.base.name), "%s", "gpio-switch");
-    config.switchConfig.restorePreviousState = restorePrevious ? 1U : 0U;
-    config.switchConfig.startupState = static_cast<uint8_t>(startup);
-    config.switchConfig.safeState = static_cast<uint8_t>(OutputState::Disabled);
-    config.switchConfig.inverted = 0;
+    config.switchConfig.restorePreviousState = restorePrevious;
+    config.switchConfig.startupState = startup;
+    config.switchConfig.safeState = OutputState::Disabled;
+    config.switchConfig.inverted = false;
     config.gpioConfig.gpioPin = pin;
     return config;
 }
@@ -280,7 +280,7 @@ void test_gpio_switch_update_hooks_release_old_pin_and_restart_with_startup_stat
     TEST_ASSERT_EQUAL_UINT8(17, driver.writePins.back());
 
     GpioSwitchDevicePersistedConfigV1 startupChange = pinChange;
-    startupChange.switchConfig.startupState = static_cast<uint8_t>(OutputState::On);
+    startupChange.switchConfig.startupState = OutputState::On;
     DeviceConfigUpdatePlan startupPlan = device.planConfigUpdate(encodeGpioSwitchPayload(startupChange));
     TEST_ASSERT_FALSE(startupPlan.endOldConfig);
     TEST_ASSERT_FALSE(startupPlan.resetStateMachine);

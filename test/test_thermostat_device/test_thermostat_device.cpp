@@ -164,8 +164,8 @@ SwitchDeviceConfigV1 makeSwitchConfig(OutputState startup = OutputState::Off, Ou
     config.base.enabled = true;
     std::snprintf(config.base.name, sizeof(config.base.name), "%s", "switch");
     config.restorePreviousState = true;
-    config.startupState = static_cast<uint8_t>(startup);
-    config.safeState = static_cast<uint8_t>(safe);
+    config.startupState = startup;
+    config.safeState = safe;
     config.inverted = false;
     return config;
 }

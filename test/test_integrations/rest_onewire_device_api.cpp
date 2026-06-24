@@ -117,8 +117,8 @@ void test_onewire_api_adapter_parses_create_request() {
     doc["enabled"] = true;
     doc["persistence_policy"] = "delayed";
     JsonObject config = doc.createNestedObject("config");
-    config["gpio_pin"] = 18;
-    config["internal_pullup"] = true;
+    config["gpioPin"] = 18;
+    config["internalPullup"] = true;
 
     DeviceCreateRequest request{};
     const char* error = nullptr;
@@ -138,7 +138,7 @@ void test_onewire_api_adapter_rejects_invalid_config_shape() {
     StaticJsonDocument<128> doc;
     doc["name"] = "onewire";
     JsonObject config = doc.createNestedObject("config");
-    config["gpio_pin"] = "bad";
+    config["gpioPin"] = "bad";
 
     DeviceCreateRequest request{};
     const char* error = nullptr;
@@ -167,23 +167,22 @@ void test_onewire_api_adapter_serializes_runtime_scan_snapshot() {
 
     StaticJsonDocument<1024> doc;
     JsonObject output = doc.to<JsonObject>();
-    OneWireBusDeviceApiAdapter::instance().writeDeviceJson(runtime, output);
+    OneWireBusDeviceApiAdapter::instance().writeDeviceJson(runtime, runtime.status(), output);
 
-    TEST_ASSERT_EQUAL_STRING("onewire_bus", output["type"].as<const char*>());
-    TEST_ASSERT_EQUAL_UINT8(4, output["gpio_pin"].as<uint8_t>());
-    TEST_ASSERT_FALSE(output["internal_pullup"].as<bool>());
-    TEST_ASSERT_TRUE(output["scan"]["ready"].as<bool>());
-    TEST_ASSERT_EQUAL_UINT8(1, output["scan"]["device_count"].as<uint8_t>());
-    TEST_ASSERT_EQUAL_STRING("28FF641D621603AD", output["scan"]["devices"][0]["address"].as<const char*>());
-    TEST_ASSERT_EQUAL_STRING("28", output["scan"]["devices"][0]["family_code"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("onewire_bus", output["record"]["typeName"].as<const char*>());
+    TEST_ASSERT_FALSE(output["config"]["internalPullup"].as<bool>());
+    TEST_ASSERT_TRUE(output["runtime"]["scan"]["ready"].as<bool>());
+    TEST_ASSERT_EQUAL_UINT8(1, output["runtime"]["scan"]["deviceCount"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_STRING("28FF641D621603AD", output["runtime"]["scan"]["devices"][0]["address"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("28", output["runtime"]["scan"]["devices"][0]["familyCode"].as<const char*>());
 }
 
 void test_onewire_api_adapter_parses_update_config_request() {
     StaticJsonDocument<256> doc;
     JsonObject config = doc.createNestedObject("config");
     config["enabled"] = false;
-    config["gpio_pin"] = 19;
-    config["internal_pullup"] = true;
+    config["gpioPin"] = 19;
+    config["internalPullup"] = true;
 
     OneWireBusDeviceConfigV1 current{};
     current.base.enabled = true;

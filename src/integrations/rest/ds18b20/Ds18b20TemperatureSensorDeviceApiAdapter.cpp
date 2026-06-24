@@ -114,8 +114,8 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const Js
     const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
     const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
     if (configObject.isNull() && input["address"].isNull() && input["resolution"].isNull() && input["unit"].isNull() &&
-        input["poll_ms"].isNull() && input["report_delta_celsius"].isNull() && input["report_delta_centi_celsius"].isNull() &&
-        input["report_always"].isNull()) {
+        input["pollMs"].isNull() && input["reportDeltaCelsius"].isNull() && input["reportDeltaCentiCelsius"].isNull() &&
+        input["reportAlways"].isNull()) {
         error = "ds18b20 config is required";
         return false;
     }
@@ -193,9 +193,21 @@ Ds18b20TemperatureSensorDeviceApiAdapter::validateSetDepsRequest(const IDeviceRu
     return validateUniqueDependencyAddress(registry, &runtime, address, onewireBusDependencyId(deps, depCount));
 }
 
-void Ds18b20TemperatureSensorDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const {
-    writeCommonDeviceJson(runtime, typeName(), output);
-    static_cast<const Ds18b20TemperatureSensorDevice&>(runtime).writeDeviceJson(output);
+void Ds18b20TemperatureSensorDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus,
+                                                               JsonObject output) const {
+    writeCommonDeviceJson(runtime, effectiveStatus, typeName(), output);
+    const Ds18b20TemperatureSensorDevice& device = static_cast<const Ds18b20TemperatureSensorDevice&>(runtime);
+    JsonObject config = output["config"].as<JsonObject>();
+    writeDs18b20TemperatureSensorConfigJson(device.config(), config);
+
+    JsonObject runtimeJson = output["runtime"].as<JsonObject>();
+    JsonObject temperature = runtimeJson.createNestedObject("temperature");
+    writeTemperatureOutputJson(device.reading(), device.config().outputUnit == temperatureUnitToByte(TemperatureUnit::Fahrenheit)
+                                                        ? TemperatureUnit::Fahrenheit
+                                                        : TemperatureUnit::Celsius,
+                               device.outputStatus(), temperature);
+    runtimeJson["consecutiveErrors"] = device.consecutiveErrors();
+    runtimeJson["lastDependencyGeneration"] = device.lastDependencyGeneration();
 }
 
 } // namespace ewfm

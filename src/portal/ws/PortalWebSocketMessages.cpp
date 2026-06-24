@@ -34,7 +34,9 @@ const char* deviceStatusToString(const DeviceStatus status) {
 
 void fillDeviceEventPayload(JsonDocument& payload, const DeviceEvent& event) {
     if (!event.eventKind.empty()) {
-        payload["event_kind"] = JsonString(event.eventKind.c_str(), JsonString::Copied);
+        payload["eventKind"] = JsonString(event.eventKind.c_str(), JsonString::Copied);
+    } else {
+        payload["eventKind"] = deviceEventKindName(event.kind);
     }
     payload["device_id"] = event.deviceId;
     payload["type_id"] = event.typeId;
@@ -44,12 +46,12 @@ void fillDeviceEventPayload(JsonDocument& payload, const DeviceEvent& event) {
     if (!event.typeName.empty()) {
         payload["type"] = JsonString(event.typeName.c_str(), JsonString::Copied);
     }
-    payload["registry_revision"] = event.registryRevision;
-    payload["config_revision"] = event.configRevision;
-    payload["previous_status"] = static_cast<uint8_t>(event.previousStatus);
+    payload["registryRevision"] = event.registryRevision;
+    payload["configRevision"] = event.configRevision;
+    payload["previousStatus"] = static_cast<uint8_t>(event.previousStatus);
     payload["status"] = static_cast<uint8_t>(event.status);
-    payload["pending_persistence"] = event.pendingPersistence;
-    payload["command_accepted"] = event.commandAccepted;
+    payload["pendingPersistence"] = event.pendingPersistence;
+    payload["commandAccepted"] = event.commandAccepted;
     if (!event.detail.empty()) {
         payload["detail"] = JsonString(event.detail.c_str(), JsonString::Copied);
     }
@@ -76,7 +78,7 @@ std::string PortalWebSocketMessages::buildHello(const uint32_t revision, const u
     DynamicJsonDocument payload(128);
     payload["state"] = "connected";
     payload["clients"] = clientCount;
-    payload["registry_revision"] = registryRevision;
+    payload["registryRevision"] = registryRevision;
     return buildEnvelope("hello", revision, payload);
 }
 
@@ -86,41 +88,35 @@ void PortalWebSocketMessages::fillDeviceRuntimePayload(JsonDocument& payload, co
                                                        const char* eventKind) {
     JsonObject output = payload.to<JsonObject>();
     if (adapter != nullptr) {
-        adapter->writeDeviceJson(runtime, output);
+        adapter->writeDeviceJson(runtime, effectiveStatus, output);
     } else {
-        output["device_id"] = runtime.deviceId();
-        output["type_id"] = runtime.typeId();
-        output["config_version"] = runtime.configVersion();
-        output["config_revision"] = runtime.configRevision();
-        output["enabled"] = runtime.enabled();
-        output["name"] = JsonString(runtime.name(), JsonString::Copied);
-        output["status"] = deviceStatusToString(runtime.status());
-    }
+        JsonObject record = output.createNestedObject("record");
+        record["id"] = runtime.deviceId();
+        record["typeName"] = "unknown";
+        record["configRevision"] = runtime.configRevision();
 
-    if (eventKind != nullptr) {
-        output["event_kind"] = eventKind;
-    }
-    const DeviceStatus lifecycleStatus = runtime.status();
-    output["device_id"] = runtime.deviceId();
-    output["type_id"] = runtime.typeId();
-    output["config_version"] = runtime.configVersion();
-    output["config_revision"] = runtime.configRevision();
-    if (output["deps"].isNull()) {
-        JsonArray deps = output.createNestedArray("deps");
+        JsonObject config = output.createNestedObject("config");
+        config["name"] = JsonString(runtime.name() != nullptr ? runtime.name() : "", JsonString::Copied);
+        config["enabled"] = runtime.enabled();
+        JsonArray deps = config.createNestedArray("deps");
         const DeviceDependencyLink* dependencyLinks = runtime.dependencyLinks();
         const uint8_t dependencyCount = runtime.dependencyCount();
         for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
             JsonObject item = deps.createNestedObject();
             item["role"] = deviceDependencyRoleName(dependencyLinks[index].role);
-            item["device_id"] = dependencyLinks[index].deviceId;
+            item["deviceId"] = dependencyLinks[index].deviceId;
         }
-        output["has_deps"] = dependencyCount > 0;
+
+        JsonObject runtimeJson = output.createNestedObject("runtime");
+        runtimeJson["status"] = deviceStatusToString(runtime.status());
+        runtimeJson["effectiveStatus"] = deviceStatusToString(effectiveStatus);
     }
-    output["status"] = deviceStatusToString(runtime.status());
-    output["lifecycle_status"] = deviceStatusToString(lifecycleStatus);
-    output["effective_status"] = deviceStatusToString(effectiveStatus);
-    output["registry_revision"] = revision;
-    output["pending_persistence"] = pendingPersistence;
+
+    if (eventKind != nullptr) {
+        output["eventKind"] = eventKind;
+    }
+    (void)revision;
+    (void)pendingPersistence;
 }
 
 std::string PortalWebSocketMessages::buildDeviceUpsert(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus,
@@ -148,17 +144,16 @@ std::string PortalWebSocketMessages::buildDeviceUpsert(const DeviceEvent& event)
 std::string PortalWebSocketMessages::buildDeviceRemove(const DeviceEvent& event) {
     DynamicJsonDocument payload(384);
     if (!event.eventKind.empty()) {
-        payload["event_kind"] = JsonString(event.eventKind.c_str(), JsonString::Copied);
+        payload["eventKind"] = JsonString(event.eventKind.c_str(), JsonString::Copied);
     }
-    payload["device_id"] = event.deviceId;
-    payload["type_id"] = event.typeId;
-    payload["registry_revision"] = event.registryRevision;
-    payload["pending_persistence"] = event.pendingPersistence;
+    payload["deviceId"] = event.deviceId;
+    payload["typeId"] = event.typeId;
+    payload["registryRevision"] = event.registryRevision;
     if (!event.name.empty()) {
         payload["name"] = JsonString(event.name.c_str(), JsonString::Copied);
     }
     if (!event.typeName.empty()) {
-        payload["type"] = JsonString(event.typeName.c_str(), JsonString::Copied);
+        payload["typeName"] = JsonString(event.typeName.c_str(), JsonString::Copied);
     }
     if (!event.detail.empty()) {
         payload["detail"] = JsonString(event.detail.c_str(), JsonString::Copied);

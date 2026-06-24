@@ -80,8 +80,8 @@ DeviceCreateRequest makeCreateRequest() {
     config.base.enabled = true;
     std::snprintf(config.base.name, sizeof(config.base.name), "%s", "switch");
     config.restorePreviousState = true;
-    config.startupState = static_cast<uint8_t>(OutputState::Off);
-    config.safeState = static_cast<uint8_t>(OutputState::Disabled);
+    config.startupState = OutputState::Off;
+    config.safeState = OutputState::Disabled;
     config.inverted = false;
 
     DeviceCreateRequest request{};

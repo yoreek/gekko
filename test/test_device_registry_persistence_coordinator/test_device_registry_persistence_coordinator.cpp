@@ -29,7 +29,7 @@ void test_persistence_coordinator_tracks_dirty_state_and_flush_window() {
 
     RetainedStateRecord retained{};
     retained.deviceId = 101;
-    retained.payload = "x";
+    retained.outputState = OutputState::On;
     coordinator.pendingRetainedStateRecords()[101] = retained;
     TEST_ASSERT_TRUE(coordinator.hasAnyPersistenceWork());
 

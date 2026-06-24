@@ -53,8 +53,8 @@ GpioSwitchDevicePersistedConfigV1 makeGpioConfig(OutputState startup = OutputSta
     config.switchConfig.base.enabled = true;
     std::snprintf(config.switchConfig.base.name, sizeof(config.switchConfig.base.name), "%s", "relay");
     config.switchConfig.restorePreviousState = true;
-    config.switchConfig.startupState = static_cast<uint8_t>(startup);
-    config.switchConfig.safeState = static_cast<uint8_t>(safe);
+    config.switchConfig.startupState = startup;
+    config.switchConfig.safeState = safe;
     config.switchConfig.inverted = false;
     config.gpioConfig.gpioPin = 13;
     return config;
@@ -83,12 +83,12 @@ void test_gpio_switch_config_round_trip() {
     GpioSwitchDevicePersistedConfigV1 decoded{};
     const BoundedBlob<kMaxDeviceConfigBytes> payload = encodeGpioPayload(config);
     TEST_ASSERT_TRUE(decodeGpioSwitchDeviceConfig(payload.data(), payload.size(), decoded));
-    TEST_ASSERT_EQUAL_UINT8(config.switchConfig.base.enabled, decoded.switchConfig.base.enabled);
+    TEST_ASSERT_EQUAL(config.switchConfig.base.enabled, decoded.switchConfig.base.enabled);
     TEST_ASSERT_EQUAL_STRING(config.switchConfig.base.name, decoded.switchConfig.base.name);
-    TEST_ASSERT_EQUAL_UINT8(config.switchConfig.restorePreviousState, decoded.switchConfig.restorePreviousState);
-    TEST_ASSERT_EQUAL_UINT8(config.switchConfig.startupState, decoded.switchConfig.startupState);
-    TEST_ASSERT_EQUAL_UINT8(config.switchConfig.safeState, decoded.switchConfig.safeState);
-    TEST_ASSERT_EQUAL_UINT8(config.switchConfig.inverted, decoded.switchConfig.inverted);
+    TEST_ASSERT_EQUAL(config.switchConfig.restorePreviousState, decoded.switchConfig.restorePreviousState);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(config.switchConfig.startupState), static_cast<uint8_t>(decoded.switchConfig.startupState));
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(config.switchConfig.safeState), static_cast<uint8_t>(decoded.switchConfig.safeState));
+    TEST_ASSERT_EQUAL(config.switchConfig.inverted, decoded.switchConfig.inverted);
     TEST_ASSERT_EQUAL_UINT8(config.gpioConfig.gpioPin, decoded.gpioConfig.gpioPin);
 }
 

@@ -24,22 +24,23 @@ DeviceValidationResult validateSwitchDeviceConfig(const SwitchDeviceConfigV1& co
     if (!baseValidation.ok()) {
         return baseValidation;
     }
-    OutputState state{};
-    if (!outputStateFromByte(config.startupState, state)) {
+    if (!outputStateIsValid(config.startupState)) {
         return {DeviceError::InvalidConfig, "switch startup state is invalid"};
     }
-    if (!outputStateFromByte(config.safeState, state)) {
+    if (!outputStateIsValid(config.safeState)) {
         return {DeviceError::InvalidConfig, "switch safe state is invalid"};
     }
     return {};
 }
 
 bool switchConfigStartupState(const SwitchDeviceConfigV1& config, OutputState& state) {
-    return outputStateFromByte(config.startupState, state);
+    state = config.startupState;
+    return true;
 }
 
 bool switchConfigSafeState(const SwitchDeviceConfigV1& config, OutputState& state) {
-    return outputStateFromByte(config.safeState, state);
+    state = config.safeState;
+    return true;
 }
 
 } // namespace ewfm

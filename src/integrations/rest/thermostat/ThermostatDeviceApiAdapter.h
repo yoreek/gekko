@@ -19,7 +19,7 @@ public:
     DeviceValidationResult validateSetDepsRequest(const IDeviceRuntime& runtime,
                                                   const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t depCount,
                                                   const DeviceRegistry& registry) const override;
-    void writeDeviceJson(const IDeviceRuntime& runtime, JsonObject output) const override;
+    void writeDeviceJson(const IDeviceRuntime& runtime, DeviceStatus effectiveStatus, JsonObject output) const override;
 };
 
 } // namespace ewfm
