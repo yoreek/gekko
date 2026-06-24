@@ -53,9 +53,9 @@ The firmware SHALL publish realtime `device.upsert` and `device.command_result` 
 - **WHEN** the frontend receives a `device.upsert` or snapshot-bearing `device.command_result` message
 - **THEN** it can update the device store from the payload alone without requesting a follow-up `/api/devices` refresh
 
-#### Scenario: Device removal includes lightweight delete metadata
+#### Scenario: Device removal remains identity-only
 - **WHEN** a device is deleted
-- **THEN** the firmware sends a lightweight `device.remove` message that identifies the removed device by id and includes `event_kind`, registry revision, pending persistence state, and last-known name and type metadata when available from a temporary pre-delete snapshot only
+- **THEN** the firmware sends a `device.remove` message that identifies the removed device by id without requiring a separate device record model
 
 ### Requirement: Realtime snapshots expose deps
 The firmware SHALL publish canonical realtime device snapshots using `deps` and computed `has_deps`.
@@ -71,6 +71,11 @@ The firmware SHALL publish canonical realtime device snapshots using `deps` and 
 #### Scenario: Frontend merges deps
 - **WHEN** the frontend receives a realtime device snapshot
 - **THEN** it updates the device store dependency fields from the payload alone
+
+#### Scenario: Realtime metadata stays outside device records
+- **WHEN** a realtime message includes event metadata
+- **THEN** event kind and message revision remain websocket metadata
+- **AND** `pendingPersistence` is not copied into the device record
 
 ### Requirement: Device realtime payloads expose event kind
 The firmware SHALL include explicit `event_kind` metadata in supported device realtime payloads without changing the top-level WebSocket envelope.

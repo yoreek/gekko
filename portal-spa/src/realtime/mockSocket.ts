@@ -3,12 +3,12 @@ import type { Pinia } from 'pinia'
 import { publishRealtimeMessage } from './bus'
 import type { RealtimeMessage } from './messages'
 import { publishMockSnapshot } from '@/mock/snapshot'
-import { loadMockDatabase, saveMockDatabase } from '@/mock/database'
+import { canonicalizeDeviceRecord, loadMockDatabase, saveMockDatabase, type MockDeviceRecord } from '@/mock/database'
 import { decorateDeviceRecord, publishThermostatDependents, refreshMockDerivedDeviceState } from '@/mock/handlers'
 import { useAppStore } from '@/stores/app'
 import { useWebSocketStore } from '@/stores/websocket'
 
-type DeviceRecord = Record<string, any>
+type DeviceRecord = MockDeviceRecord
 
 export interface MockRealtimeSocketHandle {
   dispose(): void
@@ -30,10 +30,10 @@ declare global {
 
 function publishDeviceUpsert(device: DeviceRecord, eventKind: 'device_created' | 'device_updated' | 'snapshot' = 'device_updated'): void {
   const db = loadMockDatabase()
-  const payload = decorateDeviceRecord(device, device.registryRevision ?? db.registryRevision)
+  const payload = decorateDeviceRecord(device, db.registryRevision)
   publishRealtimeMessage({
     topic: 'device.upsert',
-    revision: device.registryRevision ?? db.registryRevision,
+    revision: db.registryRevision,
     payload: {
       ...payload,
       eventKind,
@@ -45,12 +45,7 @@ function publishDeviceRemove(device: DeviceRecord | undefined, revision: number)
   publishRealtimeMessage({
     topic: 'device.remove',
     revision,
-    payload: {
-      ...(device ? decorateDeviceRecord(device, revision) : { record: { id: 0, typeName: '', configRevision: revision }, config: {}, runtime: {} }),
-      deviceId: device?.record?.id ?? device?.deviceId ?? 0,
-      eventKind: 'device_deleted',
-      registryRevision: revision,
-    },
+    payload: device ? decorateDeviceRecord(device, revision) : { record: { id: 0, typeName: '', configRevision: revision }, config: {}, runtime: {} },
   })
 }
 
@@ -86,25 +81,25 @@ export function connectMockRealtimeSocket(pinia: Pinia): MockRealtimeSocketHandl
     },
     upsertDevice(device: DeviceRecord): void {
       const db = loadMockDatabase()
-      const index = db.devices.findIndex(entry => entry.deviceId === device.deviceId)
+      const canonicalDevice = canonicalizeDeviceRecord(device)
+      const index = db.devices.findIndex(entry => entry.record.id === canonicalDevice.record.id)
       if (index >= 0) {
-        db.devices.splice(index, 1, device)
+        db.devices.splice(index, 1, canonicalDevice)
       } else {
-        db.devices.push(device)
+        db.devices.push(canonicalDevice)
       }
       refreshMockDerivedDeviceState(db)
       db.registryRevision += 1
       saveMockDatabase(db)
       publishDeviceUpsert({
-        ...device,
-        registryRevision: db.registryRevision,
+        ...canonicalDevice,
       }, 'device_updated')
-      publishThermostatDependents(db, device.deviceId ?? 0)
+      publishThermostatDependents(db, canonicalDevice.record.id)
     },
     removeDevice(deviceId: number): void {
       const db = loadMockDatabase()
-      const removedDevice = db.devices.find(entry => entry.deviceId === deviceId)
-      db.devices = db.devices.filter(entry => entry.deviceId !== deviceId)
+      const removedDevice = db.devices.find(entry => entry.record.id === deviceId)
+      db.devices = db.devices.filter(entry => entry.record.id !== deviceId)
       refreshMockDerivedDeviceState(db)
       db.registryRevision += 1
       saveMockDatabase(db)

@@ -17,7 +17,7 @@ import type { DeviceCommandRequest } from '@/api'
 import type { GpioSwitchOutputSnapshot, DeviceRecord } from '@/api/contracts'
 import SwitchDeviceWidgetBase from '@/components/devices/switch/SwitchDeviceWidgetBase.vue'
 import SwitchPowerButton from '@/components/devices/switch/SwitchPowerButton.vue'
-import { isOutputState, switchCommandPayload } from '@/models/devices/switch'
+import { switchCommandPayload } from '@/models/devices/switch'
 
 const props = defineProps<{
   device: DeviceRecord
@@ -30,9 +30,8 @@ defineEmits<{
 }>()
 
 const outputState = computed(() => {
-  const output = props.device.runtime as GpioSwitchOutputSnapshot
-  const state = output.state
-  return isOutputState(state) ? state : undefined
+  const output = (props.device.runtime as { output?: GpioSwitchOutputSnapshot }).output
+  return output?.state
 })
 
 const isReady = computed(() => props.device.runtime.effectiveStatus === 'ready')

@@ -83,7 +83,7 @@
                 <td class="journal-table__time">{{ formatTime(entry.receivedAt) }}</td>
                 <td>#{{ entry.deviceId }}</td>
                 <td>{{ entry.name || t('journal.missingValue') }}</td>
-                <td>{{ typeLabel(entry.typeId, entry.typeName) }}</td>
+                <td>{{ typeLabel(entry.typeName) }}</td>
                 <td>
                   <v-chip color="secondary" variant="tonal">
                     {{ eventKindLabel(entry.eventKind) }}
@@ -127,7 +127,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { deviceTypeLabelKey, deviceTypeOptions } from '@/models/device-types'
+import { deviceTypeLabelKeyByName, deviceTypeOptions } from '@/models/device-types'
 import {
   type DeviceJournalEventKindFilter,
   type DeviceJournalTypeFilter,
@@ -196,8 +196,8 @@ function formatTime(receivedAt: number): string {
   return dateFormatter.value.format(new Date(receivedAt))
 }
 
-function typeLabel(typeId: number, typeName: string): string {
-  const labelKey = deviceTypeLabelKey(typeId)
+function typeLabel(typeName: string): string {
+  const labelKey = deviceTypeLabelKeyByName(typeName)
   return labelKey === 'device.type.unknown' && typeName.length > 0 ? typeName : t(labelKey)
 }
 

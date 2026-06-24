@@ -25,9 +25,7 @@ export namespace Ds18b20 {
     reportAlways: boolean
   }
 
-  export interface CreateDraft extends DeviceCreateDraftBase, ConfigDraft {
-    typeId: number
-  }
+  export interface CreateDraft extends DeviceCreateDraftBase, ConfigDraft {}
 
   export const resolutionOptions: Resolution[] = [9, 10, 11, 12]
   export const temperatureUnitOptions: TemperatureUnit[] = ['celsius', 'fahrenheit']
@@ -144,19 +142,6 @@ export namespace Ds18b20 {
     return candidate.familyCode.toUpperCase() === '28' && addressValid(candidate.address)
   }
 
-  export function temperatureValid(value: unknown): value is TemperatureOutputSnapshot {
-    return isRecord(value) && typeof value.valid === 'boolean'
-  }
-
-  export function normalizeOutput(value: unknown): Ds18b20TemperatureSensorOutputSnapshot {
-    if (!isRecord(value)) {
-      return {}
-    }
-    return {
-      temperature: temperatureValid(value.temperature) ? value.temperature : undefined,
-    }
-  }
-
   export function formatTemperature(output: TemperatureOutputSnapshot | undefined): string {
     if (!output?.valid) {
       return ''
@@ -180,14 +165,14 @@ export namespace Ds18b20 {
       return {
         ...this.createDefaultConfig(),
         ...common,
-        typeId: common.typeId ?? this.typeId,
+        typeName: common.typeName ?? this.typeName,
       }
     }
 
     createEditDraft(current: DeviceRecord): CreateDraft {
       return {
         ...this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined),
-        typeId: this.typeId,
+        typeName: this.typeName,
       }
     }
 
@@ -196,7 +181,7 @@ export namespace Ds18b20 {
     }
 
     normalizeOutput(record: DeviceRecord): Ds18b20TemperatureSensorOutputSnapshot {
-      return Ds18b20.normalizeOutput(record.runtime)
+      return record.runtime as Ds18b20TemperatureSensorOutputSnapshot
     }
 
     override encodeConfig(config: ConfigDraft): Record<string, unknown> {
@@ -237,8 +222,7 @@ export namespace Ds18b20 {
     }
 
     protected extractCreateConfig(draft: CreateDraft): ConfigDraft {
-      const { typeId: _typeId, ...config } = draft
-      return config
+      return { ...draft }
     }
 
     protected override createCreateDeps(config: ConfigDraft) {

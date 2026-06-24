@@ -109,8 +109,7 @@ import {
 } from '@/components/device/device-form'
 import { resolveDeviceDetailComponent, resolveDeviceFormComponent } from '@/components/devices/registry/device-component-registry'
 import type { DeviceRecord } from '@/api/contracts'
-import { GPIO_SWITCH_DEVICE_TYPE_ID, deviceStatusLabelKey, deviceTypeLabelKey } from '@/models/device-types'
-import { deviceTypeIdFromName } from '@/models/device-types'
+import { deviceStatusLabelKey, deviceTypeLabelKeyByName } from '@/models/device-types'
 import type { DeviceCommandRequest } from '@/api'
 
 const props = defineProps<{
@@ -143,21 +142,21 @@ const editFormComponent = computed(() => {
   if (device.value === null) {
     return null
   }
-  return resolveDeviceFormComponent(deviceTypeIdFromName(device.value.record.typeName))
+  return resolveDeviceFormComponent(device.value.record.typeName)
 })
 
 const detailComponent = computed(() => {
   if (device.value === null) {
     return null
   }
-  return resolveDeviceDetailComponent(deviceTypeIdFromName(device.value.record.typeName))
+  return resolveDeviceDetailComponent(device.value.record.typeName)
 })
 
 const typeLabelText = computed(() => {
   if (device.value === null) {
     return ''
   }
-  return t(deviceTypeLabelKey(deviceTypeIdFromName(device.value.record.typeName)))
+  return t(deviceTypeLabelKeyByName(device.value.record.typeName))
 })
 
 const statusText = computed(() => {
@@ -187,7 +186,7 @@ const statusColor = computed(() => {
 })
 
 const outputState = computed(() => {
-  if (device.value === null || deviceTypeIdFromName(device.value.record.typeName) !== GPIO_SWITCH_DEVICE_TYPE_ID) {
+  if (device.value === null || device.value.record.typeName !== 'gpio_switch') {
     return undefined
   }
   return (device.value.runtime as { state?: string }).state

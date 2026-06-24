@@ -20,7 +20,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 
-import { isOutputState, type OutputState } from '@/models/devices/switch'
+import type { OutputState } from '@/models/devices/switch'
 
 defineProps<{
   state?: OutputState
@@ -35,8 +35,6 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 function emitState(value: unknown): void {
-  if (isOutputState(value)) {
-    emit('set-state', value)
-  }
+  emit('set-state', value as OutputState)
 }
 </script>

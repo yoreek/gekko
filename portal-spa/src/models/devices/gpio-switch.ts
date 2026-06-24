@@ -2,7 +2,8 @@ import type { DeviceCommandRequest, DeviceRecord, GpioSwitchOutputSnapshot } fro
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import { GPIO_SWITCH_DEVICE_TYPE_ID } from '@/models/device-types'
 import { BaseDevice } from '@/models/devices/base-device'
-import { isOutputState, type OutputState, type SwitchConfigDraft, normalizeSwitchOutput } from '@/models/devices/switch'
+import type { OutputState } from '@/models/devices/switch'
+import type { SwitchConfigDraft } from '@/models/devices/switch-config'
 import type { BaseDeviceConfig } from '@/api/contracts'
 
 export namespace GpioSwitch {
@@ -10,9 +11,7 @@ export namespace GpioSwitch {
     gpioPin: number
   }
 
-  export interface CreateDraft extends DeviceCreateDraftBase, ConfigDraft {
-    typeId: number
-  }
+  export interface CreateDraft extends DeviceCreateDraftBase, ConfigDraft {}
 
   export function defaultConfig(): ConfigDraft {
     return {
@@ -28,7 +27,7 @@ export namespace GpioSwitch {
   }
 
   function readOutputState(value: unknown, fallback: OutputState): OutputState {
-    return isOutputState(value) ? value : fallback
+    return value as OutputState ?? fallback
   }
 
   export function normalizeConfig(value: unknown): ConfigDraft {
@@ -76,14 +75,14 @@ export namespace GpioSwitch {
       return {
         ...this.createDefaultConfig(),
         ...common,
-        typeId: common.typeId ?? this.typeId,
+        typeName: common.typeName ?? this.typeName,
       }
     }
 
     createEditDraft(current: DeviceRecord): CreateDraft {
       return {
         ...this.normalizeConfig(current.config),
-        typeId: this.typeId,
+        typeName: this.typeName,
       }
     }
 
@@ -92,7 +91,7 @@ export namespace GpioSwitch {
     }
 
     normalizeOutput(record: DeviceRecord): GpioSwitchOutputSnapshot {
-      return normalizeSwitchOutput(record.runtime)
+      return record.runtime as GpioSwitchOutputSnapshot
     }
 
     override encodeConfig(config: ConfigDraft): Record<string, unknown> {
@@ -129,8 +128,7 @@ export namespace GpioSwitch {
     }
 
     protected extractCreateConfig(draft: CreateDraft): ConfigDraft {
-      const { typeId: _typeId, ...config } = draft
-      return config
+      return { ...draft }
     }
   }
 }

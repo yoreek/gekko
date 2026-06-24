@@ -20,7 +20,7 @@
                 </v-chip>
                 <div class="recent-device-events__summary-copy">
                   <div class="text-body-2 text-medium-emphasis">
-                    #{{ entry.deviceId }} · {{ typeLabel(entry.typeId) }} · {{ eventKindLabel(entry.eventKind) }}
+                    #{{ entry.deviceId }} · {{ typeLabel(entry.typeName) }} · {{ eventKindLabel(entry.eventKind) }}
                   </div>
                 </div>
               </div>
@@ -64,7 +64,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { deviceTypeLabelKey } from '@/models/device-types'
+import { deviceTypeLabelKeyByName } from '@/models/device-types'
 import {
   journalEventKindTranslationKey,
   useDeviceEventLogStore,
@@ -90,8 +90,8 @@ function formatTime(receivedAt: number): string {
   return dateFormatter.value.format(new Date(receivedAt))
 }
 
-function typeLabel(typeId: number): string {
-  return t(deviceTypeLabelKey(typeId))
+function typeLabel(typeName: string): string {
+  return t(deviceTypeLabelKeyByName(typeName))
 }
 
 function eventKindLabel(eventKind: string): string {

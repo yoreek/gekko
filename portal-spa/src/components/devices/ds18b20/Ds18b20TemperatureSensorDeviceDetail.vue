@@ -94,8 +94,8 @@ const config = computed(() => props.device.config as unknown as {
   reportDeltaCelsius: number
   reportAlways: boolean
 })
-const output = computed(() => props.device.runtime as Ds18b20TemperatureSensorOutputSnapshot)
-const temperature = computed(() => output.value.temperature as TemperatureOutputSnapshot | undefined)
+const output = computed(() => (props.device.runtime as { output?: Ds18b20TemperatureSensorOutputSnapshot }).output)
+const temperature = computed(() => output.value?.temperature as TemperatureOutputSnapshot | undefined)
 const temperatureText = computed(() => temperature.value?.valid ? `${temperature.value.value.toFixed(2)} ${temperature.value.unitSymbol}` : t('device.dialog.temperatureUnavailableShort'))
 const dependencyLabel = computed(() => {
   const dependency = deviceStore.devices.find(device => device.record.id === dependencyDeviceId.value)

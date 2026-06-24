@@ -186,7 +186,6 @@ const deviceStore = useDeviceRegistryStore()
 const isCreateMode = computed(() => props.mode !== 'edit')
 const fallbackValue: ThermostatFormValue = {
   name: 'New Device',
-  typeId: THERMOSTAT_DEVICE_TYPE_ID,
   enabled: true,
   deps: [],
   mode: 'heat',

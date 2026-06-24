@@ -83,7 +83,7 @@
               <td>
                 <strong class="text-body-1">{{ device.config.name }}</strong>
               </td>
-              <td>{{ t(deviceTypeLabelKey(deviceTypeIdFromName(device.record.typeName))) }}</td>
+              <td>{{ t(deviceTypeLabelKeyByName(device.record.typeName)) }}</td>
               <td>
                 <v-chip variant="tonal" :color="statusColor(device.runtime.effectiveStatus ?? device.runtime.lifecycleStatus ?? device.runtime.status ?? 'unknown')">
                   {{ t(deviceStatusLabelKey(device.runtime.effectiveStatus ?? device.runtime.lifecycleStatus ?? device.runtime.status ?? 'unknown')) }}
@@ -206,7 +206,7 @@ import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import { buildDeviceEditCommands } from '@/components/device/device-form'
 import type { DeviceEditDraft } from '@/components/device/device-form'
-import { deviceStatusLabelKey, deviceTypeIdFromName, deviceTypeLabelKey, deviceTypeOptions } from '@/models/device-types'
+import { deviceStatusLabelKey, deviceTypeLabelKeyByName, deviceTypeOptions, resolveDeviceTypeOptionByName } from '@/models/device-types'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore } from '@/stores/panels'
 
@@ -258,7 +258,7 @@ const filteredDevices = computed(() => {
   return deviceStore.devices.filter(device => {
     const matchesId = idMatch === null ? true : Number.isInteger(idMatch) && device.record.id === idMatch
     const matchesName = query.length === 0 || device.config.name.toLowerCase().includes(query)
-    const matchesType = typeValue === 'all' || deviceTypeIdFromName(device.record.typeName) === typeValue
+    const matchesType = typeValue === 'all' || resolveDeviceTypeOptionByName(device.record.typeName)?.id === typeValue
     return matchesId && matchesName && matchesType
   })
 })

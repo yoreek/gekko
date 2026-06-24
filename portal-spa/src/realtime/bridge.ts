@@ -11,31 +11,6 @@ import type { Pinia } from 'pinia'
 
 type AppStore = ReturnType<typeof useAppStore>
 
-function isDeviceRecord(value: unknown): value is DeviceRecord {
-  const record = typeof value === 'object' && value !== null ? (value as { record?: unknown }).record : null
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof record === 'object' &&
-    record !== null &&
-    typeof (record as { id?: unknown }).id === 'number' &&
-    typeof (record as { typeName?: unknown }).typeName === 'string' &&
-    typeof (record as { configRevision?: unknown }).configRevision === 'number'
-  )
-}
-
-function extractDeviceRecord(payload: unknown): DeviceRecord | null {
-  if (isDeviceRecord(payload)) {
-    return payload
-  }
-
-  if (typeof payload === 'object' && payload !== null && isDeviceRecord((payload as { device?: unknown }).device)) {
-    return (payload as { device: DeviceRecord }).device
-  }
-
-  return null
-}
-
 export function bindRealtimeBridge(
   pinia: Pinia,
   appStore: AppStore,
@@ -89,32 +64,21 @@ export function bindRealtimeBridge(
         journalStore.append(message)
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
-        const devicePayload = extractDeviceRecord(message.payload)
-        if (isDeviceRecord(devicePayload)) {
-          deviceStore.upsertDevice(devicePayload, message.revision)
-        }
+        deviceStore.upsertDevice(message.payload as DeviceRecord, message.revision)
         break
       }
       case 'device.remove': {
         journalStore.append(message)
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
-        const payload = message.payload as { deviceId?: number }
-        if (typeof payload.deviceId === 'number') {
-          deviceStore.removeDevice(payload.deviceId, message.revision)
-        } else {
-          deviceStore.setRevision(message.revision)
-        }
+        deviceStore.removeDevice((message.payload as DeviceRecord).record.id, message.revision)
         break
       }
       case 'device.command_result': {
         journalStore.append(message)
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
-        const devicePayload = extractDeviceRecord(message.payload)
-        if (isDeviceRecord(devicePayload)) {
-          deviceStore.upsertDevice(devicePayload, message.revision)
-        }
+        deviceStore.upsertDevice(message.payload as DeviceRecord, message.revision)
         break
       }
       default:

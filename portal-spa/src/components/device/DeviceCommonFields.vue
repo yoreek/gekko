@@ -14,12 +14,12 @@
     <v-col cols="12" md="6">
       <v-select
         :label="t('device.actions.type')"
-        :model-value="modelValue.typeId"
+        :model-value="modelValue.typeName"
         :items="typeItems"
         :readonly="mode !== 'create'"
         :disabled="busy && mode === 'create'"
         :rules="typeRules"
-        @update:model-value="updateField('typeId', Number($event))"
+        @update:model-value="updateType(String($event))"
       />
     </v-col>
 
@@ -55,18 +55,25 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const typeItems = computed(() => deviceTypeOptions.map(option => ({ title: t(option.labelKey), value: option.id })))
+const typeItems = computed(() => deviceTypeOptions.map(option => ({ title: t(option.labelKey), value: option.typeName })))
 const nameRules = [
   (value: unknown) => String(value ?? '').trim().length > 0 || t('validation.required'),
 ]
 const typeRules = [
-  (value: unknown) => Number(value) > 0 || t('validation.required'),
+  (value: unknown) => String(value ?? '').trim().length > 0 || t('validation.required'),
 ]
 
 function updateField<K extends keyof DeviceCommonDraft>(key: K, value: DeviceCommonDraft[K]): void {
   emit('update:modelValue', {
     ...props.modelValue,
     [key]: value,
+  })
+}
+
+function updateType(typeName: string): void {
+  emit('update:modelValue', {
+    ...props.modelValue,
+    typeName: typeName as DeviceCommonDraft['typeName'],
   })
 }
 </script>

@@ -22,6 +22,10 @@ export function resolveDeviceModelByTypeId(typeId: number): BaseDevice<any, any,
   return deviceModelsByTypeId[typeId] ?? fallbackDevice
 }
 
+export function resolveDeviceModelByTypeName(typeName: string | undefined | null): BaseDevice<any, any, any> {
+  return resolveDeviceModelByTypeId(deviceTypeIdFromName(typeName))
+}
+
 export function resolveDeviceModel(record: DeviceRecord | Record<string, unknown>): BaseDevice<any, any, any> {
   const source = record as Record<string, any>
   const typeName = typeof source.record?.typeName === 'string' && source.record.typeName.length > 0

@@ -36,7 +36,8 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 
-import type { OutputState, SwitchConfigDraft } from '@/models/devices/switch'
+import type { OutputState } from '@/models/devices/switch'
+import type { SwitchConfigDraft } from '@/models/devices/switch-config'
 import SwitchStateSelect from './SwitchStateSelect.vue'
 
 const props = defineProps<{

@@ -22,7 +22,7 @@
     >
       <div class="dashboard-grid__item">
         <component
-          :is="resolveDeviceWidgetComponent(deviceTypeIdFromName(item.device.record.typeName))"
+          :is="resolveDeviceWidgetComponent(item.device.record.typeName)"
           :device="item.device"
           :editable="editable"
           @open="$emit('open', item.device.record.id)"
@@ -54,7 +54,6 @@ import { GridItem, GridLayout } from 'vue-grid-layout-v3'
 import type { DeviceCommandRequest } from '@/api'
 import { resolveDeviceWidgetComponent } from '@/components/devices/registry/device-component-registry'
 import type { DeviceRecord } from '@/api/contracts'
-import { deviceTypeIdFromName } from '@/models/device-types'
 import type { DashboardPanelWidget } from '@/stores/panels'
 
 interface DashboardGridItem {

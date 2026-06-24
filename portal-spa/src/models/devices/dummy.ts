@@ -7,9 +7,7 @@ import type { BaseDeviceConfig } from '@/api/contracts'
 export namespace Dummy {
   export type ConfigDraft = BaseDeviceConfig
 
-  export interface CreateDraft extends DeviceCreateDraftBase {
-    typeId: number
-  }
+  export interface CreateDraft extends DeviceCreateDraftBase {}
 
   export function defaultConfig(): ConfigDraft {
     return {
@@ -31,7 +29,7 @@ export namespace Dummy {
       return {
         ...this.createDefaultConfig(),
         ...common,
-        typeId: common.typeId ?? this.typeId,
+        typeName: common.typeName ?? this.typeName,
       }
     }
 
@@ -42,7 +40,7 @@ export namespace Dummy {
         name: config?.name ?? this.createDefaultConfig().name,
         enabled: config?.enabled ?? this.createDefaultConfig().enabled,
         deps: Array.isArray(config?.deps) ? config.deps : this.createDefaultConfig().deps,
-        typeId: this.typeId,
+        typeName: this.typeName,
       }
     }
 

@@ -19,6 +19,7 @@ export type DeviceTypeName = 'dummy' | 'gpio_switch' | 'onewire_bus' | 'ds18b20_
 
 export interface DeviceTypeOption {
   id: DeviceTypeId
+  typeName: DeviceTypeName
   labelKey: string
   icon: PortalIconName
   componentKey: string
@@ -31,9 +32,10 @@ export interface DeviceComponentRegistryEntry {
 }
 
 export const deviceTypeOptions: DeviceTypeOption[] = [
-  { id: DUMMY_DEVICE_TYPE_ID, labelKey: 'device.type.dummy', icon: 'device', componentKey: 'dummy' },
+  { id: DUMMY_DEVICE_TYPE_ID, typeName: 'dummy', labelKey: 'device.type.dummy', icon: 'device', componentKey: 'dummy' },
   {
     id: GPIO_SWITCH_DEVICE_TYPE_ID,
+    typeName: 'gpio_switch',
     labelKey: 'device.type.gpioSwitch',
     icon: 'power',
     componentKey: 'gpio-switch',
@@ -41,18 +43,21 @@ export const deviceTypeOptions: DeviceTypeOption[] = [
   },
   {
     id: ONEWIRE_BUS_DEVICE_TYPE_ID,
+    typeName: 'onewire_bus',
     labelKey: 'device.type.onewireBus',
     icon: 'bus',
     componentKey: 'onewire-bus',
   },
   {
     id: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
+    typeName: 'ds18b20_temperature_sensor',
     labelKey: 'device.type.ds18b20TemperatureSensor',
     icon: 'temperature',
     componentKey: 'ds18b20-temperature-sensor',
   },
   {
     id: THERMOSTAT_DEVICE_TYPE_ID,
+    typeName: 'thermostat',
     labelKey: 'device.type.thermostat',
     icon: 'temperature',
     componentKey: 'thermostat',
@@ -110,6 +115,12 @@ export function deviceTypeLabelKey(typeId: number): string {
   return deviceTypeLabelKeys[typeId] ?? 'device.type.unknown'
 }
 
+export function deviceTypeLabelKeyByName(typeName: string | undefined | null): string {
+  return typeName && typeName in deviceTypeIds
+    ? deviceTypeLabelKeys[deviceTypeIds[typeName as DeviceTypeName]] ?? 'device.type.unknown'
+    : 'device.type.unknown'
+}
+
 export function deviceStatusLabelKey(status: string): string {
   switch (status.trim().toLowerCase()) {
     case 'ready':
@@ -129,6 +140,12 @@ export function deviceStatusLabelKey(status: string): string {
 
 export function resolveDeviceTypeOption(typeId: number): DeviceTypeOption | undefined {
   return deviceTypeOptions.find(option => option.id === typeId)
+}
+
+export function resolveDeviceTypeOptionByName(typeName: string | undefined | null): DeviceTypeOption | undefined {
+  return typeName && typeName in deviceTypeIds
+    ? deviceTypeOptions.find(option => option.typeName === typeName)
+    : undefined
 }
 
 export function deviceTypeName(typeId: number): DeviceTypeName {

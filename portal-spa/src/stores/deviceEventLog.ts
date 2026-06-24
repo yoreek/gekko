@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 
+import type { DeviceRecord } from '@/api'
 import type { RealtimeMessage } from '@/realtime/messages'
 import { deviceTypeIdFromName } from '../models/device-types'
 
@@ -29,20 +30,7 @@ export interface DeviceEventJournalFilters {
   deviceId: string
 }
 
-interface DeviceEventPayload extends Record<string, unknown> {
-  typeName?: unknown
-  name?: unknown
-  device?: unknown
-  record?: unknown
-  config?: unknown
-  runtime?: unknown
-}
-
 const kMaxEntries = 200
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
 
 function asNumber(value: unknown): number | null {
   const numeric = Number(value)
@@ -53,21 +41,17 @@ function asText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-function extractPayload(message: RealtimeMessage): DeviceEventPayload | null {
-  if (!isRecord(message.payload)) {
-    return null
+function eventKindFromTopic(topic: string): string {
+  switch (topic) {
+    case 'device.upsert':
+      return 'device_updated'
+    case 'device.command_result':
+      return 'command_accepted'
+    case 'device.remove':
+      return 'device_deleted'
+    default:
+      return ''
   }
-  return message.payload as DeviceEventPayload
-}
-
-function extractSnapshot(payload: DeviceEventPayload): DeviceEventPayload | null {
-  if (isRecord(payload.record)) {
-    return payload as DeviceEventPayload
-  }
-  if (isRecord(payload.device)) {
-    return payload.device as DeviceEventPayload
-  }
-  return payload
 }
 
 export function journalEventKindTranslationKey(eventKind: string): string | null {
@@ -102,30 +86,25 @@ function createEntry(message: RealtimeMessage, receivedAt: number): DeviceEventJ
     return null
   }
 
-  const payload = extractPayload(message)
-  if (payload === null) {
-    return null
+  const payload = message.payload as DeviceRecord & {
+    record?: { id?: unknown; typeName?: unknown; configRevision?: unknown }
+    config?: { name?: unknown }
+    eventKind?: unknown
+    registryRevision?: unknown
   }
-
-  const snapshot = extractSnapshot(payload)
-  const eventKind = asText((payload as { eventKind?: unknown }).eventKind)
-  if (snapshot === null) {
-    return null
-  }
-
-  const record = isRecord(snapshot.record) ? snapshot.record as Record<string, unknown> : null
-  const config = isRecord(snapshot.config) ? snapshot.config as Record<string, unknown> : null
-  const runtime = isRecord(snapshot.runtime) ? snapshot.runtime as Record<string, unknown> : null
-  const deviceId = asNumber(record?.id)
-  const typeName = asText(record?.typeName ?? snapshot.typeName ?? payload.typeName)
-  const typeId = asNumber((payload as { typeId?: unknown }).typeId ?? (typeName.length > 0 ? deviceTypeIdFromName(typeName) : null))
+  const record = payload.record ?? {}
+  const config = payload.config ?? {}
+  const eventKind = asText(payload.eventKind) || eventKindFromTopic(message.topic)
+  const deviceId = asNumber(record.id)
+  const typeName = asText(record.typeName)
+  const typeId = asNumber(typeName.length > 0 ? deviceTypeIdFromName(typeName) : null)
   if (deviceId === null || deviceId <= 0 || typeId === null || typeId <= 0) {
     return null
   }
 
-  const name = asText(config?.name ?? snapshot.name ?? payload.name)
-  const registryRevision = asNumber((payload as { registryRevision?: unknown }).registryRevision ?? message.revision) ?? message.revision
-  const configRevision = asNumber(record?.configRevision)
+  const name = asText(config.name)
+  const registryRevision = asNumber(payload.registryRevision ?? message.revision) ?? message.revision
+  const configRevision = asNumber(record.configRevision)
   return {
     sequence: 0,
     receivedAt,
@@ -138,12 +117,8 @@ function createEntry(message: RealtimeMessage, receivedAt: number): DeviceEventJ
     eventKind,
     registryRevision,
     configRevision,
-    details: payload,
-    raw: {
-      topic: message.topic,
-      revision: message.revision,
-      payload: runtime !== null ? { ...payload, runtime } : payload,
-    },
+    details: payload as unknown as Record<string, unknown>,
+    raw: message as RealtimeMessage<Record<string, unknown>>,
   }
 }
 

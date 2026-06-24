@@ -1,6 +1,11 @@
 import type {
+  BaseDeviceConfig,
+  BaseDeviceRuntime,
   DashboardLayoutRecord,
   DashboardLayoutWidgetRecord,
+  DeviceRecord,
+  DeviceOutputSnapshot,
+  OneWireScanSnapshot,
   OtaStatusResponse,
   WifiScanNetwork,
   WifiStatusResponse,
@@ -9,13 +14,25 @@ import { safeReadStorage, safeWriteStorage } from '@/utils/storage'
 
 const storageKey = 'gekko.mockDb.v6'
 
-type DeviceRecord = Record<string, any>
+type MockDeviceConfig = BaseDeviceConfig & Record<string, unknown>
+type MockDeviceRuntime = BaseDeviceRuntime & {
+  dependencyStatus?: string
+  output?: DeviceOutputSnapshot
+  scan?: OneWireScanSnapshot
+  [key: string]: unknown
+}
+
+export type MockDeviceRecord = DeviceRecord<MockDeviceConfig, MockDeviceRuntime>
+
+type SeedDatabase = Omit<MockDatabase, 'devices'> & {
+  devices: MockDeviceRecord[]
+}
 
 export interface MockDatabase {
   registryRevision: number
   dashboardLayoutRevision: number
   dashboardLayout: DashboardLayoutRecord
-  devices: DeviceRecord[]
+  devices: MockDeviceRecord[]
   wifi: {
     status: WifiStatusResponse['wifiStatus']
     stationIp: string
@@ -29,7 +46,25 @@ export interface MockDatabase {
   }
 }
 
-const seedDatabase: MockDatabase = {
+export function createDeviceRecord(
+  id: number,
+  typeName: string,
+  configRevision: number,
+  config: MockDeviceConfig,
+  runtime: MockDeviceRuntime,
+): MockDeviceRecord {
+  return {
+    record: {
+      id,
+      typeName,
+      configRevision,
+    },
+    config,
+    runtime,
+  }
+}
+
+const seedDatabase: SeedDatabase = {
   registryRevision: 19,
   dashboardLayoutRevision: 1,
   dashboardLayout: {
@@ -51,94 +86,51 @@ const seedDatabase: MockDatabase = {
     ],
   },
   devices: [
-    {
-      deviceId: 670845748,
-      typeId: 1,
-      label: 'Dummy device',
-      typeName: 'dummy',
-      name: 'Aquarium Lamp',
+    createDeviceRecord(670845748, 'dummy', 4, {
       enabled: true,
+      name: 'Aquarium Lamp',
       deps: [],
-      hasDeps: false,
-      configRevision: 4,
+    }, {
+      status: 'ready',
       lifecycleStatus: 'ready',
       effectiveStatus: 'ready',
-      status: 'ready',
-      retainedStateSupported: false,
-      retainedStateInConfigPayload: false,
-      config: {
-        enabled: true,
-        name: 'Aquarium Lamp',
-      },
-    },
-    {
-      deviceId: 670845749,
-      typeId: 1,
-      label: 'Dummy device',
-      typeName: 'dummy',
-      name: 'Temperature Sensor',
+    }),
+    createDeviceRecord(670845749, 'dummy', 2, {
       enabled: true,
+      name: 'Temperature Sensor',
       deps: [],
-      hasDeps: false,
-      configRevision: 2,
+    }, {
+      status: 'disabled',
       lifecycleStatus: 'disabled',
       effectiveStatus: 'disabled',
-      status: 'disabled',
-      retainedStateSupported: false,
-      retainedStateInConfigPayload: false,
-      config: {
-        enabled: true,
-        name: 'Temperature Sensor',
-      },
-    },
-    {
-      deviceId: 670845750,
-      typeId: 2,
-      label: 'GPIO switch',
-      typeName: 'gpio_switch',
-      name: 'GPIO Relay',
+    }),
+    createDeviceRecord(670845750, 'gpio_switch', 1, {
       enabled: true,
+      name: 'GPIO Relay',
       deps: [],
-      hasDeps: false,
-      configRevision: 1,
+      restorePreviousState: false,
+      startupState: 'off',
+      safeState: 'disabled',
+      inverted: false,
+      gpioPin: 4,
+    }, {
+      status: 'ready',
       lifecycleStatus: 'ready',
       effectiveStatus: 'ready',
-      status: 'ready',
-      retainedStateSupported: true,
-      retainedStartupEnabled: false,
-      retainedStartupFallbackOutput: false,
-      retainedStateInConfigPayload: false,
-      config: {
-        enabled: true,
-        restorePreviousState: false,
-        startupState: 'off',
-        safeState: 'disabled',
-        inverted: false,
-        gpioPin: 4,
-      },
       output: {
         state: 'off',
       },
-    },
-    {
-      deviceId: 670845751,
-      typeId: 3,
-      label: 'OneWire bus',
-      typeName: 'onewire_bus',
-      name: 'Sensor Bus',
+    }),
+    createDeviceRecord(670845751, 'onewire_bus', 1, {
       enabled: true,
+      name: 'Sensor Bus',
       deps: [],
-      hasDeps: false,
-      configRevision: 1,
+      gpioPin: 18,
+      internalPullup: false,
+    }, {
+      status: 'ready',
       lifecycleStatus: 'ready',
       effectiveStatus: 'ready',
-      status: 'ready',
-      retainedStateSupported: false,
-      config: {
-        enabled: true,
-        gpioPin: 18,
-        internalPullup: false,
-      },
       scan: {
         inProgress: false,
         ready: true,
@@ -156,35 +148,26 @@ const seedDatabase: MockDatabase = {
           },
         ],
       },
-    },
-    {
-      deviceId: 670845752,
-      typeId: 4,
-      label: 'DS18B20 temperature sensor',
-      typeName: 'ds18b20_temperature_sensor',
-      name: 'Water Temperature',
+    }),
+    createDeviceRecord(670845752, 'ds18b20_temperature_sensor', 1, {
       enabled: true,
+      name: 'Water Temperature',
       deps: [
         {
           role: 'onewire_bus',
           deviceId: 670845751,
         },
       ],
-      hasDeps: true,
-      configRevision: 1,
+      address: '28FF641D621603AD',
+      resolution: 12,
+      unit: 'celsius',
+      pollMs: 5000,
+      reportDeltaCelsius: 0.25,
+      reportAlways: false,
+    }, {
+      status: 'ready',
       lifecycleStatus: 'ready',
       effectiveStatus: 'ready',
-      status: 'ready',
-      retainedStateSupported: false,
-      config: {
-        enabled: true,
-        address: '28FF641D621603AD',
-        resolution: 12,
-        unit: 'celsius',
-        pollMs: 5000,
-        reportDeltaCelsius: 0.25,
-        reportAlways: false,
-      },
       output: {
         temperature: {
           value: 24.625,
@@ -195,14 +178,10 @@ const seedDatabase: MockDatabase = {
           status: 'ok',
         },
       },
-    },
-    {
-      deviceId: 670845753,
-      typeId: 5,
-      label: 'Thermostat',
-      typeName: 'thermostat',
-      name: 'Grow Room Thermostat',
+    }),
+    createDeviceRecord(670845753, 'thermostat', 1, {
       enabled: true,
+      name: 'Grow Room Thermostat',
       deps: [
         {
           role: 'temperature_sensor',
@@ -213,28 +192,22 @@ const seedDatabase: MockDatabase = {
           deviceId: 670845750,
         },
       ],
-      hasDeps: true,
-      configRevision: 1,
+      mode: 'heat',
+      algorithm: 'hysteresis',
+      targetMilliCelsius: 25000,
+      minSafeMilliCelsius: 0,
+      maxSafeMilliCelsius: 50000,
+      hysteresisCentiCelsius: 50,
+      checkIntervalMs: 1000,
+      sensorTimeoutMs: 6000,
+      retryAfterErrorMs: 30000,
+      minSwitchIntervalMs: 5000,
+      temperatureSensorDeviceId: 670845752,
+      switchDeviceId: 670845750,
+    }, {
+      status: 'ready',
       lifecycleStatus: 'ready',
       effectiveStatus: 'ready',
-      status: 'ready',
-      retainedStateSupported: false,
-      retainedStateInConfigPayload: false,
-      config: {
-        enabled: true,
-        mode: 'heat',
-        algorithm: 'hysteresis',
-        targetMilliCelsius: 25000,
-        minSafeMilliCelsius: 0,
-        maxSafeMilliCelsius: 50000,
-        hysteresisCentiCelsius: 50,
-        checkIntervalMs: 1000,
-        sensorTimeoutMs: 6000,
-        retryAfterErrorMs: 30000,
-        minSwitchIntervalMs: 5000,
-        temperatureSensorDeviceId: 670845752,
-        switchDeviceId: 670845750,
-      },
       output: {
         temperature: {
           value: 24.625,
@@ -249,7 +222,7 @@ const seedDatabase: MockDatabase = {
         controlStatus: 'heating',
         lastCheckAtMs: 18500,
       },
-    },
+    }),
   ],
   wifi: {
     status: 'connected',
@@ -272,6 +245,85 @@ const seedDatabase: MockDatabase = {
     status: 'idle',
     rebooting: false,
   },
+}
+
+export function canonicalizeDeviceRecord(value: unknown): MockDeviceRecord {
+  const source = isRecord(value) ? value : {}
+  const recordSource = isRecord(source.record) ? source.record : {}
+  const configSource = isRecord(source.config) ? source.config : {}
+  const runtimeSource = isRecord(source.runtime) ? source.runtime : {}
+  const id = Number(recordSource.id ?? source.id ?? source.deviceId ?? 0)
+  const typeName = typeof recordSource.typeName === 'string' && recordSource.typeName.trim().length > 0
+    ? recordSource.typeName.trim()
+    : typeof source.typeName === 'string' && source.typeName.trim().length > 0
+      ? source.typeName.trim()
+      : typeof source.type === 'string'
+        ? source.type
+        : ''
+  const configRevision = Number(recordSource.configRevision ?? source.configRevision ?? 0)
+  const deps = Array.isArray(configSource.deps)
+    ? configSource.deps
+    : Array.isArray(source.deps)
+      ? source.deps
+      : []
+  const config: MockDeviceConfig = {
+    ...configSource,
+    name: typeof configSource.name === 'string' && configSource.name.length > 0
+      ? configSource.name
+      : typeof source.name === 'string'
+        ? source.name
+        : '',
+    enabled: typeof configSource.enabled === 'boolean'
+      ? configSource.enabled
+      : typeof source.enabled === 'boolean'
+        ? source.enabled
+        : true,
+    deps,
+  }
+  const runtime: MockDeviceRuntime = {
+    ...runtimeSource,
+    status: typeof runtimeSource.status === 'string'
+      ? runtimeSource.status
+      : typeof source.status === 'string'
+        ? source.status
+        : 'unknown',
+    lifecycleStatus: typeof runtimeSource.lifecycleStatus === 'string'
+      ? runtimeSource.lifecycleStatus
+      : typeof source.lifecycleStatus === 'string'
+        ? source.lifecycleStatus
+        : typeof source.status === 'string'
+          ? source.status
+          : 'unknown',
+    effectiveStatus: typeof runtimeSource.effectiveStatus === 'string'
+      ? runtimeSource.effectiveStatus
+      : typeof source.effectiveStatus === 'string'
+        ? source.effectiveStatus
+        : typeof source.lifecycleStatus === 'string'
+          ? source.lifecycleStatus
+          : typeof source.status === 'string'
+            ? source.status
+            : 'unknown',
+  }
+
+  if (runtimeSource.dependencyStatus === undefined && typeof source.dependencyStatus === 'string') {
+    runtime.dependencyStatus = source.dependencyStatus
+  }
+  if (runtimeSource.output === undefined && source.output !== null && source.output !== undefined) {
+    runtime.output = source.output as DeviceOutputSnapshot
+  }
+  if (runtimeSource.scan === undefined && source.scan !== null && source.scan !== undefined) {
+    runtime.scan = source.scan as OneWireScanSnapshot
+  }
+
+  return {
+    record: {
+      id,
+      typeName,
+      configRevision,
+    },
+    config,
+    runtime,
+  }
 }
 
 function deepClone<T>(value: T): T {
@@ -355,7 +407,9 @@ function normalizeStoredDatabase(stored: unknown): MockDatabase {
     registryRevision: typeof stored.registryRevision === 'number' ? stored.registryRevision : seed.registryRevision,
     dashboardLayoutRevision: typeof stored.dashboardLayoutRevision === 'number' ? stored.dashboardLayoutRevision : seed.dashboardLayoutRevision,
     dashboardLayout,
-    devices: Array.isArray(stored.devices) ? (stored.devices as DeviceRecord[]) : seed.devices,
+    devices: Array.isArray(stored.devices)
+      ? stored.devices.map(device => canonicalizeDeviceRecord(device))
+      : seed.devices,
     wifi: {
       ...seed.wifi,
       ...wifi,

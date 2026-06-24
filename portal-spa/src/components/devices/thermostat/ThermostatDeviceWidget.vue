@@ -28,8 +28,8 @@ defineEmits<{
 const { t } = useI18n()
 
 const config = computed(() => Thermostat.normalizeConfig(props.device.config, props.device.config.deps))
-const output = computed(() => props.device.runtime as ThermostatOutputSnapshot)
-const temperature = computed(() => output.value.temperature)
+const output = computed(() => (props.device.runtime as { output?: ThermostatOutputSnapshot }).output)
+const temperature = computed(() => output.value?.temperature)
 const currentTemperatureText = computed(() => Thermostat.formatOutput(temperature.value) || t('device.dialog.temperatureUnavailableShort'))
 const summaryTone = computed(() => Thermostat.outputTone(props.device.runtime.effectiveStatus ?? props.device.runtime.lifecycleStatus ?? props.device.runtime.status ?? 'unknown'))
 const summaryText = computed(() => {
@@ -41,7 +41,7 @@ const summaryTitle = computed(() =>
     t(Thermostat.modeLabelKey(config.value.mode)),
     `${t('device.fields.targetTemperature')}: ${formatTemperatureSetpoint(config.value.targetCelsius)}`,
     `${t('device.fields.currentTemperature')}: ${currentTemperatureText.value}`,
-    `${t('device.fields.controlStatus')}: ${t(Thermostat.statusLabelKey(output.value.controlStatus ?? props.device.runtime.effectiveStatus ?? props.device.runtime.lifecycleStatus ?? props.device.runtime.status ?? 'unknown'))}`,
+    `${t('device.fields.controlStatus')}: ${t(Thermostat.statusLabelKey(output.value?.controlStatus ?? props.device.runtime.effectiveStatus ?? props.device.runtime.lifecycleStatus ?? props.device.runtime.status ?? 'unknown'))}`,
   ].join(' · '),
 )
 

@@ -52,7 +52,7 @@ import {
   type DeviceCreateDraft,
 } from '@/components/device/device-form'
 import { resolveDeviceFormComponent } from '@/components/devices/registry/device-component-registry'
-import { resolveDeviceModelByTypeId } from '@/models/devices/device-model-factory'
+import { resolveDeviceModelByTypeName } from '@/models/devices/device-model-factory'
 import type { DeviceCreatePayload } from '@/models/devices/base-device'
 
 const props = defineProps<{
@@ -69,7 +69,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const draft = ref<DeviceCreateDraft>(createDefaultDeviceDraft())
-const createFormComponent = computed(() => resolveDeviceFormComponent(draft.value.typeId))
+const createFormComponent = computed(() => resolveDeviceFormComponent(draft.value.typeName))
 const formValid = ref(false)
 
 watch(
@@ -82,10 +82,10 @@ watch(
 )
 
 watch(
-  () => draft.value.typeId,
-  typeId => {
+  () => draft.value.typeName,
+  typeName => {
     formValid.value = false
-    const next = createDefaultDeviceDraft(typeId)
+    const next = createDefaultDeviceDraft(typeName)
     next.name = draft.value.name
     next.enabled = draft.value.enabled
     replaceDraft(next)
@@ -96,7 +96,7 @@ function submit(): void {
   if (!formValid.value) {
     return
   }
-  const model = resolveDeviceModelByTypeId(draft.value.typeId)
+  const model = resolveDeviceModelByTypeName(draft.value.typeName)
   emit('submit', model.buildCreatePayload(draft.value))
 }
 

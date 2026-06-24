@@ -145,7 +145,6 @@ const scanError = ref('')
 const isCreateMode = computed(() => props.mode !== 'edit')
 const fallbackValue: Ds18b20FormValue = {
   name: 'New Device',
-  typeId: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
   enabled: true,
   deps: [],
   dependencyDeviceId: 0,

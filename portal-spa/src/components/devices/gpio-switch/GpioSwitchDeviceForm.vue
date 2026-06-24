@@ -85,7 +85,6 @@ import { useI18n } from 'vue-i18n'
 import { outputStateLabelKey, type OutputState } from '@/models/devices/switch'
 import { GpioSwitch } from '@/models/devices/gpio-switch'
 import SwitchStateSelect from '@/components/devices/switch/SwitchStateSelect.vue'
-import { isOutputState } from '@/models/devices/switch'
 import { GPIO_SWITCH_DEVICE_TYPE_ID } from '@/models/device-types'
 
 type GpioSwitchFormValue = GpioSwitch.CreateDraft | GpioSwitch.ConfigDraft
@@ -105,11 +104,10 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const isCreateMode = computed(() => props.mode !== 'edit')
 const fallbackValue: GpioSwitchFormValue = {
-  typeId: GPIO_SWITCH_DEVICE_TYPE_ID,
   ...GpioSwitch.defaultConfig(),
 }
 const currentValue = computed<GpioSwitchFormValue>(() => props.modelValue ?? fallbackValue)
-const outputState = computed(() => (props.outputState !== undefined && isOutputState(props.outputState) ? props.outputState : undefined))
+const outputState = computed(() => props.outputState)
 
 function updatePin(value: string | number): void {
   const gpioPin = Number(value)

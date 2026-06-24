@@ -3,4 +3,3 @@ export interface RealtimeMessage<TPayload = unknown> {
   revision: number
   payload: TPayload
 }
-

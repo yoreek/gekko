@@ -10,9 +10,7 @@ export namespace OneWireBus {
     internalPullup: boolean
   }
 
-  export interface CreateDraft extends DeviceCreateDraftBase, ConfigDraft {
-    typeId: number
-  }
+  export interface CreateDraft extends DeviceCreateDraftBase, ConfigDraft {}
 
   export function defaultConfig(): ConfigDraft {
     return {
@@ -61,14 +59,14 @@ export namespace OneWireBus {
       return {
         ...this.createDefaultConfig(),
         ...common,
-        typeId: common.typeId ?? this.typeId,
+        typeName: common.typeName ?? this.typeName,
       }
     }
 
     createEditDraft(current: DeviceRecord): CreateDraft {
       return {
         ...this.normalizeConfig(current.config),
-        typeId: this.typeId,
+        typeName: this.typeName,
       }
     }
 
@@ -111,8 +109,7 @@ export namespace OneWireBus {
     }
 
     protected extractCreateConfig(draft: CreateDraft): ConfigDraft {
-      const { typeId: _typeId, ...config } = draft
-      return config
+      return { ...draft }
     }
   }
 }

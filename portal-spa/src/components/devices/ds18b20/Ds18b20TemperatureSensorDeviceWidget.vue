@@ -27,8 +27,8 @@ defineEmits<{
 
 const { t } = useI18n()
 const temperature = computed(() => {
-  const value = (props.device.runtime as Ds18b20TemperatureSensorOutputSnapshot).temperature as TemperatureOutputSnapshot | undefined
-  return Ds18b20.temperatureValid(value) ? value : undefined
+  const value = (props.device.runtime as { output?: Ds18b20TemperatureSensorOutputSnapshot }).output?.temperature as TemperatureOutputSnapshot | undefined
+  return value
 })
 const temperatureText = computed(() => Ds18b20.formatTemperature(temperature.value) || t('device.dialog.temperatureUnavailableShort'))
 </script>

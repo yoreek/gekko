@@ -292,6 +292,49 @@ The SPA SHALL provide a `mockMode` that lets developers run and test the fronten
 - **WHEN** a developer opens the app with `?mockMode=1&mockReset=1`
 - **THEN** the mock data store is restored to deterministic seed data suitable for repeatable UI testing
 
+### Requirement: Frontend device records use canonical model shape
+The SPA SHALL represent device records with a single canonical `record/config/runtime` shape after API and realtime boundary normalization.
+
+#### Scenario: Device record separates identity, config, and runtime
+- **WHEN** frontend code consumes a device record from REST, websocket, mock data, or store state
+- **THEN** identity fields are read from `record`
+- **AND** persisted settings are read from `config`
+- **AND** live status, output, readings, and snapshots are read from `runtime`
+
+#### Scenario: Persisted base fields stay in config
+- **WHEN** a device model needs `name`, `enabled`, or `deps`
+- **THEN** it reads them from `config`
+- **AND** the record wrapper does not duplicate those fields
+
+#### Scenario: Frontend contract uses type names
+- **WHEN** the SPA creates, edits, routes, or renders a device by type
+- **THEN** the public/domain model uses `typeName`
+- **AND** numeric `typeId` is limited to temporary compatibility or internal UI lookup during migration
+
+#### Scenario: Runtime and registry metadata remain separate
+- **WHEN** the SPA normalizes a device record
+- **THEN** runtime fields remain under `runtime`
+- **AND** registry revision stays on the response/store envelope
+- **AND** `pendingPersistence` is not exposed in the frontend device model
+
+### Requirement: Frontend device-specific models use shared base config
+The SPA SHALL model each device-specific config as an extension of the shared base device config.
+
+#### Scenario: Device config includes base config once
+- **WHEN** a device-specific config type is declared
+- **THEN** it extends the shared base config containing `name`, `enabled`, and `deps`
+- **AND** it only adds fields owned by that device family
+
+#### Scenario: Device-specific fields use camelCase
+- **WHEN** frontend code reads or writes device-specific config or runtime fields
+- **THEN** it uses camelCase field names in the frontend domain model
+- **AND** any legacy snake_case compatibility remains at API/realtime boundaries only
+
+#### Scenario: Dependency selectors use config deps
+- **WHEN** DS18B20 or thermostat forms select dependency devices
+- **THEN** the selected dependency is represented through `config.deps`
+- **AND** helper fields such as `dependency_device_id`, `temperature_sensor_device_id`, and `switch_device_id` do not become canonical persisted frontend config fields
+
 ### Requirement: Realtime device store updates use canonical snapshots
 The SPA SHALL merge websocket `device.upsert` and `device.command_result` payloads directly into the Pinia device store when they contain a canonical device snapshot.
 
@@ -299,13 +342,19 @@ The SPA SHALL merge websocket `device.upsert` and `device.command_result` payloa
 - **WHEN** a realtime device update message arrives
 - **THEN** the SPA normalizes the payload into the device registry store and updates the affected device entry without refetching the full registry
 
-#### Scenario: Legacy nested payload remains tolerated during transition
-- **WHEN** a realtime device update arrives in a legacy nested form
-- **THEN** the SPA may still accept it during the transition period, but the canonical flat snapshot remains the preferred contract
+#### Scenario: Payload matches canonical device record
+- **WHEN** a realtime device update message carries device data
+- **THEN** the payload uses the same canonical `DeviceRecord<TConfig, TRuntime>` shape as REST device responses
+- **AND** the realtime layer does not define a separate device record model
 
 #### Scenario: Device removal updates the store
 - **WHEN** a `device.remove` realtime message arrives
 - **THEN** the SPA removes the device from the store using the device id in the payload without reloading `/api/devices`
+
+#### Scenario: Realtime metadata stays outside device records
+- **WHEN** a realtime message includes event metadata
+- **THEN** event kind and message revision remain websocket metadata
+- **AND** `pendingPersistence` is not copied into the device record
 
 #### Scenario: Mock dashboard layout is persisted
 - **WHEN** a user changes dashboard panel order, panel names, active panel, or widget coordinates while mock mode is enabled

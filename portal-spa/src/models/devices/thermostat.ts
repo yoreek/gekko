@@ -4,7 +4,6 @@ import type {
   TemperatureOutputSnapshot,
   ThermostatOutputSnapshot,
 } from '@/api/contracts'
-import { isOutputState } from '@/models/devices/switch'
 import { Ds18b20 } from '@/models/devices/ds18b20'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import type { DeviceCommandRequest, DeviceRecord } from '@/api/contracts'
@@ -30,9 +29,7 @@ export namespace Thermostat {
     switchDeviceId: number
   }
 
-  export interface CreateDraft extends DeviceCreateDraftBase, ConfigDraft {
-    typeId: number
-  }
+  export interface CreateDraft extends DeviceCreateDraftBase, ConfigDraft {}
 
   const modeOptions: Mode[] = ['off', 'heat', 'cool']
   const algorithmOptions: Algorithm[] = ['hysteresis']
@@ -185,21 +182,6 @@ export namespace Thermostat {
     return formatTemperature(output.value)
   }
 
-  export function normalizeOutput(value: unknown): ThermostatOutputSnapshot {
-    if (!isRecord(value)) {
-      return {}
-    }
-    return {
-      desiredSwitchState: isOutputState(value.desiredSwitchState) ? value.desiredSwitchState : undefined,
-      actualSwitchState: isOutputState(value.actualSwitchState) ? value.actualSwitchState : undefined,
-      controlStatus: typeof value.controlStatus === 'string' ? value.controlStatus : undefined,
-      lastCheckAtMs: typeof value.lastCheckAtMs === 'number' && Number.isFinite(value.lastCheckAtMs)
-        ? value.lastCheckAtMs
-        : undefined,
-      temperature: Ds18b20.temperatureValid(value.temperature) ? value.temperature : undefined,
-    }
-  }
-
   export function outputTone(status: string | undefined | null): 'primary' | 'secondary' | 'warning' | 'error' {
     switch (status) {
       case 'ready':
@@ -239,14 +221,14 @@ export namespace Thermostat {
       return {
         ...this.createDefaultConfig(),
         ...common,
-        typeId: common.typeId ?? this.typeId,
+        typeName: common.typeName ?? this.typeName,
       }
     }
 
     createEditDraft(current: DeviceRecord): CreateDraft {
       return {
         ...this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined),
-        typeId: this.typeId,
+        typeName: this.typeName,
       }
     }
 
@@ -255,7 +237,7 @@ export namespace Thermostat {
     }
 
     normalizeOutput(record: DeviceRecord): ThermostatOutputSnapshot {
-      return Thermostat.normalizeOutput(record.runtime)
+      return record.runtime as ThermostatOutputSnapshot
     }
 
     override encodeConfig(config: ConfigDraft): Record<string, unknown> {
@@ -295,8 +277,7 @@ export namespace Thermostat {
     }
 
     protected extractCreateConfig(draft: CreateDraft): ConfigDraft {
-      const { typeId: _typeId, ...config } = draft
-      return config
+      return { ...draft }
     }
 
     protected override createCreateDeps(config: ConfigDraft) {

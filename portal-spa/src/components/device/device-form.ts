@@ -1,12 +1,12 @@
 import type { DeviceDependencyLink } from '@/api/contracts'
 import type { DeviceCommandRequest } from '@/api'
 import type { DeviceRecord } from '@/api/contracts'
-import { DUMMY_DEVICE_TYPE_ID } from '@/models/device-types'
-import { resolveDeviceModel, resolveDeviceModelByTypeId } from '@/models/devices/device-model-factory'
+import type { DeviceTypeName } from '@/models/device-types'
+import { resolveDeviceModel, resolveDeviceModelByTypeName } from '@/models/devices/device-model-factory'
 
 export interface DeviceCommonDraft {
   name: string
-  typeId: number
+  typeName: DeviceTypeName
   enabled: boolean
   deps?: DeviceDependencyLink[]
 }
@@ -15,10 +15,10 @@ export type DeviceCreateDraft = DeviceCommonDraft & Record<string, unknown>
 
 export type DeviceEditDraft = DeviceCreateDraft
 
-export function createDefaultDeviceDraft(typeId: number = DUMMY_DEVICE_TYPE_ID): DeviceCreateDraft {
-  return resolveDeviceModelByTypeId(typeId).createDefaultCreateDraft({
+export function createDefaultDeviceDraft(typeName: DeviceTypeName = 'dummy'): DeviceCreateDraft {
+  return resolveDeviceModelByTypeName(typeName).createDefaultCreateDraft({
     name: 'New Device',
-    typeId,
+    typeName,
     enabled: true,
   })
 }

@@ -51,7 +51,6 @@ const { t } = useI18n()
 const isCreateMode = computed(() => props.mode !== 'edit')
 const fallbackValue: OneWireBusFormValue = {
   name: 'New Device',
-  typeId: ONEWIRE_BUS_DEVICE_TYPE_ID,
   enabled: true,
   deps: [],
   gpioPin: 4,
