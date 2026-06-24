@@ -12,13 +12,13 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import type { ThermostatOutputSnapshot } from '@/api/contracts'
+import type { DeviceRecord, ThermostatOutputSnapshot } from '@/api/contracts'
 import DeviceWidgetBase from '@/components/devices/base/DeviceWidgetBase.vue'
-import type { DashboardDevice } from '@/models/device'
+import { deviceRecordEffectiveStatus, deviceRecordConfig, deviceRecordRuntime } from '@/models/device'
 import { Thermostat } from '@/models/devices/thermostat'
 
 const props = defineProps<{
-  device: DashboardDevice
+  device: DeviceRecord
   editable?: boolean
 }>()
 
@@ -28,11 +28,11 @@ defineEmits<{
 
 const { t } = useI18n()
 
-const config = computed(() => Thermostat.normalizeConfig(props.device.detail.config, props.device.deps))
-const output = computed(() => props.device.output as ThermostatOutputSnapshot)
+const config = computed(() => Thermostat.normalizeConfig(deviceRecordConfig(props.device), deviceRecordConfig(props.device).deps))
+const output = computed(() => deviceRecordRuntime(props.device) as ThermostatOutputSnapshot)
 const temperature = computed(() => output.value.temperature)
 const currentTemperatureText = computed(() => Thermostat.formatOutput(temperature.value) || t('device.dialog.temperatureUnavailableShort'))
-const summaryTone = computed(() => Thermostat.outputTone(props.device.backendEffectiveStatus))
+const summaryTone = computed(() => Thermostat.outputTone(deviceRecordEffectiveStatus(props.device)))
 const summaryText = computed(() => {
   const mode = t(Thermostat.modeLabelKey(config.value.mode))
   return `${mode} ${Thermostat.formatOutput(temperature.value) || formatTemperatureSetpoint(config.value.targetCelsius)}`
@@ -42,7 +42,7 @@ const summaryTitle = computed(() =>
     t(Thermostat.modeLabelKey(config.value.mode)),
     `${t('device.fields.targetTemperature')}: ${formatTemperatureSetpoint(config.value.targetCelsius)}`,
     `${t('device.fields.currentTemperature')}: ${currentTemperatureText.value}`,
-    `${t('device.fields.controlStatus')}: ${t(Thermostat.statusLabelKey(output.value.controlStatus ?? props.device.backendEffectiveStatus))}`,
+    `${t('device.fields.controlStatus')}: ${t(Thermostat.statusLabelKey(output.value.controlStatus ?? deviceRecordEffectiveStatus(props.device)))}`,
   ].join(' · '),
 )
 

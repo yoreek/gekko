@@ -1,8 +1,8 @@
 <template>
   <DeviceDialogShell
     :model-value="modelValue"
-    :headline="device?.name ?? t('device.dialog.noneSelected')"
-    :subline="device ? `${typeLabelText} · #${device.deviceId}` : undefined"
+    :headline="deviceName ?? t('device.dialog.noneSelected')"
+    :subline="device ? `${typeLabelText} · #${deviceId}` : undefined"
     :fullscreen="fullscreen"
     :max-width="980"
     @update:model-value="$emit('update:modelValue', $event)"
@@ -66,7 +66,7 @@
         />
 
         <section v-if="!editing && device" class="device-dialog__section">
-          <RecentDeviceEvents :device-id="device.deviceId" />
+          <RecentDeviceEvents :device-id="deviceId" />
         </section>
       </div>
 
@@ -108,14 +108,20 @@ import {
   type DeviceEditDraft,
 } from '@/components/device/device-form'
 import { resolveDeviceDetailComponent, resolveDeviceFormComponent } from '@/components/devices/registry/device-component-registry'
-import type { DashboardDevice } from '@/models/device'
+import {
+  deviceRecordEffectiveStatus,
+  deviceRecordId,
+  deviceRecordName,
+  deviceRecordRuntime,
+  deviceRecordTypeId,
+} from '@/models/device'
+import type { DeviceRecord } from '@/api/contracts'
 import { GPIO_SWITCH_DEVICE_TYPE_ID, deviceStatusLabelKey, deviceTypeLabelKey } from '@/models/device-types'
-import type { GpioSwitchOutputSnapshot } from '@/api/contracts'
 import type { DeviceCommandRequest } from '@/api'
 
 const props = defineProps<{
   modelValue: boolean
-  device: DashboardDevice | null
+  device: DeviceRecord | null
   editing: boolean
   busyAction: 'refresh' | 'save' | 'command' | null
   errorMessage: string
@@ -136,40 +142,42 @@ const busy = computed(() => props.busyAction !== null)
 const fullscreen = computed(() => smAndDown.value)
 const device = computed(() => props.device)
 const hasTypeDetails = computed(() => device.value !== null)
+const deviceId = computed(() => (device.value === null ? 0 : deviceRecordId(device.value)))
+const deviceName = computed(() => (device.value === null ? undefined : deviceRecordName(device.value)))
 
 const editFormComponent = computed(() => {
   if (device.value === null) {
     return null
   }
-  return resolveDeviceFormComponent(device.value.typeId)
+  return resolveDeviceFormComponent(deviceRecordTypeId(device.value))
 })
 
 const detailComponent = computed(() => {
   if (device.value === null) {
     return null
   }
-  return resolveDeviceDetailComponent(device.value.typeId)
+  return resolveDeviceDetailComponent(deviceRecordTypeId(device.value))
 })
 
 const typeLabelText = computed(() => {
   if (device.value === null) {
     return ''
   }
-  return t(deviceTypeLabelKey(device.value.typeId))
+  return t(deviceTypeLabelKey(deviceRecordTypeId(device.value)))
 })
 
 const statusText = computed(() => {
   if (device.value === null) {
     return ''
   }
-  return t(deviceStatusLabelKey(device.value.backendEffectiveStatus || device.value.lifecycleStatus))
+  return t(deviceStatusLabelKey(deviceRecordEffectiveStatus(device.value)))
 })
 
 const statusColor = computed(() => {
   if (device.value === null) {
     return 'primary'
   }
-  switch (device.value.backendEffectiveStatus) {
+  switch (deviceRecordEffectiveStatus(device.value)) {
     case 'ready':
       return 'success'
     case 'disabled':
@@ -184,10 +192,10 @@ const statusColor = computed(() => {
 })
 
 const outputState = computed(() => {
-  if (device.value === null || device.value.typeId !== GPIO_SWITCH_DEVICE_TYPE_ID) {
+  if (device.value === null || deviceRecordTypeId(device.value) !== GPIO_SWITCH_DEVICE_TYPE_ID) {
     return undefined
   }
-  return (device.value.output as GpioSwitchOutputSnapshot | undefined)?.state
+  return (deviceRecordRuntime(device.value) as { state?: string }).state
 })
 const canSave = computed(() => {
   if (device.value === null) {
@@ -221,7 +229,7 @@ watch(
   },
 )
 
-function resetDrafts(current: DashboardDevice): void {
+function resetDrafts(current: DeviceRecord): void {
   const next = createDeviceEditDraft(current)
   draft.value = next
 }

@@ -166,6 +166,7 @@ import {
   THERMOSTAT_DEVICE_TYPE_ID,
   resolveDeviceTypeOption,
 } from '@/models/device-types'
+import { deviceRecordId, deviceRecordName, deviceRecordTypeId } from '@/models/device'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
 type ThermostatFormValue = Thermostat.CreateDraft | Thermostat.ConfigDraft
@@ -204,21 +205,22 @@ const fallbackValue: ThermostatFormValue = {
 const currentValue = computed<ThermostatFormValue>(() => props.modelValue ?? fallbackValue)
 const sensorItems = computed(() =>
   deviceStore.devices
-    .filter(device => device.typeId === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID)
+    .filter(device => deviceRecordTypeId(device) === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID)
     .map(device => ({
-      title: `${device.name} #${device.deviceId}`,
-      value: device.deviceId,
+      title: `${deviceRecordName(device)} #${deviceRecordId(device)}`,
+      value: deviceRecordId(device),
     })),
 )
 const switchItems = computed(() =>
   deviceStore.devices
     .filter(device => {
-      const option = resolveDeviceTypeOption(device.typeId)
-      return device.typeId === GPIO_SWITCH_DEVICE_TYPE_ID || (option?.supportedOutputStates?.includes('off') && option?.supportedOutputStates?.includes('on'))
+      const typeId = deviceRecordTypeId(device)
+      const option = resolveDeviceTypeOption(typeId)
+      return typeId === GPIO_SWITCH_DEVICE_TYPE_ID || (option?.supportedOutputStates?.includes('off') && option?.supportedOutputStates?.includes('on'))
     })
     .map(device => ({
-      title: `${device.name} #${device.deviceId}`,
-      value: device.deviceId,
+      title: `${deviceRecordName(device)} #${deviceRecordId(device)}`,
+      value: deviceRecordId(device),
     })),
 )
 const modeItems = computed(() => ['off', 'heat', 'cool'].map(value => ({ title: t(Thermostat.modeLabelKey(value as Thermostat.Mode)), value })))

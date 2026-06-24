@@ -76,7 +76,7 @@
       <SwitchOutputControls
         :state="outputState"
         :loading="busy"
-        :disabled="!device.isReady"
+        :disabled="!isReady"
         @set-state="setOutputState"
       />
     </section>
@@ -88,14 +88,14 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommandRequest } from '@/api'
-import type { GpioSwitchOutputSnapshot } from '@/api/contracts'
+import type { GpioSwitchOutputSnapshot, DeviceRecord } from '@/api/contracts'
 import SwitchOutputControls from '@/components/devices/switch/SwitchOutputControls.vue'
 import SwitchStateSelect from '@/components/devices/switch/SwitchStateSelect.vue'
-import type { DashboardDevice } from '@/models/device'
+import { deviceRecordEffectiveStatus, deviceRecordRuntime, deviceRecordConfig } from '@/models/device'
 import { isOutputState, outputStateLabelKey, switchCommandPayload, type OutputState } from '@/models/devices/switch'
 
 const props = defineProps<{
-  device: DashboardDevice
+  device: DeviceRecord
   busy?: boolean
 }>()
 
@@ -104,18 +104,19 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const config = computed(() => props.device.detail.config as {
+const config = computed(() => deviceRecordConfig(props.device) as unknown as {
   gpioPin: number
   startupState: OutputState
   safeState: OutputState
   restorePreviousState: boolean
   inverted: boolean
 })
-const output = computed(() => props.device.output as GpioSwitchOutputSnapshot)
+const output = computed(() => deviceRecordRuntime(props.device) as GpioSwitchOutputSnapshot)
 const outputState = computed(() => {
   const state = output.value.state
   return isOutputState(state) ? state : undefined
 })
+const isReady = computed(() => deviceRecordEffectiveStatus(props.device) === 'ready')
 
 function setOutputState(state: OutputState): void {
   emit('command', switchCommandPayload(state))

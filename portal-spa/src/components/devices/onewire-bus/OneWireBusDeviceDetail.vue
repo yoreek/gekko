@@ -26,7 +26,7 @@
           color="primary"
           variant="tonal"
           :loading="busy || scan.inProgress"
-          :disabled="busy || scan.inProgress || !device.isReady"
+          :disabled="busy || scan.inProgress || !isReady"
           @click="emitScan"
         >
           <v-icon class="me-1" icon="refresh" />
@@ -60,14 +60,14 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommandRequest } from '@/api'
-import type { DashboardDevice } from '@/models/device'
-import type { OneWireScanSnapshot } from '@/api/contracts'
+import type { DeviceRecord, OneWireScanSnapshot } from '@/api/contracts'
+import { deviceRecordConfig, deviceRecordEffectiveStatus, deviceRecordRuntime } from '@/models/device'
 import { OneWireBus } from '@/models/devices/onewire-bus'
 
 const deviceModel = new OneWireBus.Device()
 
 const props = defineProps<{
-  device: DashboardDevice
+  device: DeviceRecord
   busy?: boolean
 }>()
 
@@ -76,8 +76,8 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const config = computed(() => deviceModel.normalizeConfig(props.device.detail.config))
-const scan = computed<OneWireScanSnapshot>(() => props.device.detail.scan ?? {
+const config = computed(() => deviceModel.normalizeConfig(deviceRecordConfig(props.device)))
+const scan = computed<OneWireScanSnapshot>(() => (deviceRecordRuntime(props.device) as { scan?: OneWireScanSnapshot }).scan ?? {
   inProgress: false,
   ready: false,
   deviceCount: 0,
@@ -85,6 +85,7 @@ const scan = computed<OneWireScanSnapshot>(() => props.device.detail.scan ?? {
   invalidCrcSeen: false,
   devices: [],
 })
+const isReady = computed(() => deviceRecordEffectiveStatus(props.device) === 'ready')
 
 function emitScan(): void {
   emit('command', {

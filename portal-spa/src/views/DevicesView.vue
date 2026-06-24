@@ -75,18 +75,18 @@
           <tbody>
             <tr
               v-for="device in filteredDevices"
-              :key="device.deviceId"
+              :key="deviceRecordId(device)"
               class="devices-table__row"
-              @click="openDevice(device.deviceId)"
+              @click="openDevice(deviceRecordId(device))"
             >
-              <td>#{{ device.deviceId }}</td>
+              <td>#{{ deviceRecordId(device) }}</td>
               <td>
-                <strong class="text-body-1">{{ device.name }}</strong>
+                <strong class="text-body-1">{{ deviceRecordName(device) }}</strong>
               </td>
-              <td>{{ t(deviceTypeLabelKey(device.typeId)) }}</td>
+              <td>{{ t(deviceTypeLabelKey(deviceRecordTypeId(device))) }}</td>
               <td>
-                <v-chip variant="tonal" :color="statusColor(device.backendEffectiveStatus)">
-                  {{ t(deviceStatusLabelKey(device.backendEffectiveStatus)) }}
+                <v-chip variant="tonal" :color="statusColor(deviceRecordEffectiveStatus(device))">
+                  {{ t(deviceStatusLabelKey(deviceRecordEffectiveStatus(device))) }}
                 </v-chip>
               </td>
               <td class="devices-table__actions">
@@ -98,7 +98,7 @@
                       variant="text"
                       color="error"
                       :aria-label="t('device.actions.delete')"
-                      @click.stop="openDeleteConfirm(device.deviceId)"
+                      @click.stop="openDeleteConfirm(deviceRecordId(device))"
                     />
                   </template>
                 </v-tooltip>
@@ -206,7 +206,12 @@ import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import { buildDeviceEditCommands } from '@/components/device/device-form'
 import type { DeviceEditDraft } from '@/components/device/device-form'
-import type { DashboardDevice } from '@/models/device'
+import {
+  deviceRecordEffectiveStatus,
+  deviceRecordId,
+  deviceRecordName,
+  deviceRecordTypeId,
+} from '@/models/device'
 import { deviceStatusLabelKey, deviceTypeLabelKey, deviceTypeOptions } from '@/models/device-types'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore } from '@/stores/panels'
@@ -243,11 +248,11 @@ const typeFilterOptions = computed(() => [
   ...deviceTypeOptions.map(option => ({ title: t(option.labelKey), value: option.id })),
 ])
 
-const selectedDevice = computed<DashboardDevice | null>(() => {
+const selectedDevice = computed<DeviceRecord | null>(() => {
   if (selectedDeviceId.value === null) {
     return null
   }
-  return deviceStore.devices.find(device => device.deviceId === selectedDeviceId.value) ?? null
+  return deviceStore.devices.find(device => device.record.id === selectedDeviceId.value) ?? null
 })
 
 const filteredDevices = computed(() => {
@@ -257,9 +262,9 @@ const filteredDevices = computed(() => {
   const idMatch = trimmedId.length === 0 ? null : Number(trimmedId)
 
   return deviceStore.devices.filter(device => {
-    const matchesId = idMatch === null ? true : Number.isInteger(idMatch) && device.deviceId === idMatch
-    const matchesName = query.length === 0 || device.name.toLowerCase().includes(query)
-    const matchesType = typeValue === 'all' || device.typeId === typeValue
+    const matchesId = idMatch === null ? true : Number.isInteger(idMatch) && deviceRecordId(device) === idMatch
+    const matchesName = query.length === 0 || deviceRecordName(device).toLowerCase().includes(query)
+    const matchesType = typeValue === 'all' || deviceRecordTypeId(device) === typeValue
     return matchesId && matchesName && matchesType
   })
 })
@@ -277,7 +282,7 @@ async function refreshDevices(silent = false): Promise<void> {
   }
   try {
     await deviceStore.reload()
-    await panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
+    await panelStore.syncDeviceIds(deviceStore.devices.map(device => deviceRecordId(device)))
   } finally {
     if (!silent) {
       devicesLoading.value = false
@@ -344,7 +349,7 @@ function applyMutationResponse(response: { registryRevision: number; device?: De
   deviceStore.setRevision(response.registryRevision)
   if (response.device !== undefined) {
     deviceStore.upsertDevice(response.device, response.registryRevision)
-    void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
+    void panelStore.syncDeviceIds(deviceStore.devices.map(device => deviceRecordId(device)))
   }
 }
 
@@ -482,9 +487,9 @@ onMounted(() => {
 })
 
 watch(
-  () => deviceStore.devices.map(device => device.deviceId).join(','),
+  () => deviceStore.devices.map(device => deviceRecordId(device)).join(','),
   () => {
-    void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
+    void panelStore.syncDeviceIds(deviceStore.devices.map(device => deviceRecordId(device)))
   },
 )
 

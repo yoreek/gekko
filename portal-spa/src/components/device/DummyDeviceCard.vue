@@ -1,6 +1,6 @@
 <template>
   <DeviceCard
-    :title="device.name"
+    :title="deviceName"
     :selected="selected"
     :status-tone="statusTone"
     @open="$emit('open')"
@@ -10,11 +10,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import type { DeviceRecord } from '@/api/contracts'
 import DeviceCard from '@/components/device/DeviceCard.vue'
-import type { DashboardDevice } from '@/models/device'
+import { deviceRecordEffectiveStatus, deviceRecordName } from '@/models/device'
 
 const props = defineProps<{
-  device: DashboardDevice
+  device: DeviceRecord
   selected?: boolean
 }>()
 
@@ -23,6 +24,8 @@ defineEmits<{
 }>()
 
 const statusTone = computed(() => {
-  return props.device.isReady ? 'ready' : 'secondary'
+  return deviceRecordEffectiveStatus(props.device) === 'ready' ? 'ready' : 'secondary'
 })
+
+const deviceName = computed(() => deviceRecordName(props.device))
 </script>

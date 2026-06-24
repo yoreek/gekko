@@ -211,7 +211,7 @@ import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import { buildDeviceEditCommands } from '@/components/device/device-form'
 import type { DeviceEditDraft } from '@/components/device/device-form'
-import type { DashboardDevice } from '@/models/device'
+import { deviceRecordId, deviceRecordName } from '@/models/device'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore, type DashboardPanelWidget } from '@/stores/panels'
 import { useWebSocketStore } from '@/stores/websocket'
@@ -241,11 +241,11 @@ const dashboardCardWidth = 200
 const dashboardGridGap = 10
 const dashboardMaxColumns = 12
 
-const selectedDevice = computed<DashboardDevice | null>(() => {
+const selectedDevice = computed<DeviceRecord | null>(() => {
   if (selectedDeviceId.value === null) {
     return null
   }
-  return deviceStore.devices.find(device => device.deviceId === selectedDeviceId.value) ?? null
+  return deviceStore.devices.find(device => device.record.id === selectedDeviceId.value) ?? null
 })
 
 const activePanelId = computed<string | null>({
@@ -266,9 +266,9 @@ const activePanelWidgets = computed(() => {
   return activePanel.value.widgets
     .map(widget => ({
       widget,
-      device: deviceStore.devices.find(device => device.deviceId === widget.deviceId),
+      device: deviceStore.devices.find(device => device.record.id === widget.deviceId),
     }))
-    .filter((entry): entry is { widget: DashboardPanelWidget; device: DashboardDevice } => Boolean(entry.device))
+    .filter((entry): entry is { widget: DashboardPanelWidget; device: DeviceRecord } => Boolean(entry.device))
 })
 
 const addableDevices = computed(() => {
@@ -277,13 +277,13 @@ const addableDevices = computed(() => {
   }
 
   const usedDeviceIds = new Set(activePanel.value.widgets.map(widget => widget.deviceId))
-  return deviceStore.devices.filter(device => !usedDeviceIds.has(device.deviceId))
+  return deviceStore.devices.filter(device => !usedDeviceIds.has(deviceRecordId(device)))
 })
 
 const deviceOptions = computed(() =>
   addableDevices.value.map(device => ({
-    title: `${device.name} #${device.deviceId}`,
-    value: device.deviceId,
+    title: `${deviceRecordName(device)} #${deviceRecordId(device)}`,
+    value: deviceRecordId(device),
   })),
 )
 
@@ -389,7 +389,7 @@ function openCreatePanelDialog(): void {
 }
 
 function openAddDeviceDialog(): void {
-  selectedAddDeviceId.value = addableDevices.value[0]?.deviceId ?? null
+  selectedAddDeviceId.value = addableDevices.value[0] ? deviceRecordId(addableDevices.value[0]) : null
   addDeviceDialogOpen.value = true
 }
 
@@ -399,7 +399,7 @@ async function refreshDevices(silent = false): Promise<void> {
   }
   try {
     await deviceStore.reload()
-    await panelStore.reload(deviceStore.devices.map(device => device.deviceId))
+    await panelStore.reload(deviceStore.devices.map(device => deviceRecordId(device)))
     await nextTick()
     updateColumns()
     showGridAfterLayout()
@@ -415,7 +415,7 @@ function applyMutationResponse(response: { registryRevision: number; device?: De
   if (response.device !== undefined) {
     const device = response.device
     const deviceId = device.record.id
-    const isNewDevice = !deviceStore.devices.some(entry => entry.deviceId === deviceId)
+    const isNewDevice = !deviceStore.devices.some(entry => entry.record.id === deviceId)
     deviceStore.upsertDevice(device, response.registryRevision)
     if (isNewDevice) {
       panelStore.assignDeviceToActivePanel(deviceId)
@@ -553,7 +553,7 @@ function onResize(): void {
 
 onMounted(async () => {
   await deviceStore.initialize()
-  await panelStore.initialize(deviceStore.devices.map(device => device.deviceId))
+  await panelStore.initialize(deviceStore.devices.map(device => deviceRecordId(device)))
   await prepareVisibleGrid()
   if (typeof ResizeObserver === 'undefined' && typeof window !== 'undefined') {
     window.addEventListener('resize', onResize, { passive: true })
@@ -571,12 +571,12 @@ onBeforeUnmount(() => {
 })
 
 watch(
-  () => deviceStore.devices.map(device => device.deviceId).join(','),
+  () => deviceStore.devices.map(device => deviceRecordId(device)).join(','),
   () => {
     if (!panelStore.initialized) {
       return
     }
-    void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.deviceId))
+    void panelStore.syncDeviceIds(deviceStore.devices.map(device => deviceRecordId(device)))
   },
 )
 
@@ -587,7 +587,7 @@ watch(
       void prepareVisibleGrid()
     }
     if (addDeviceDialogOpen.value) {
-      selectedAddDeviceId.value = addableDevices.value[0]?.deviceId ?? null
+      selectedAddDeviceId.value = addableDevices.value[0] ? deviceRecordId(addableDevices.value[0]) : null
     }
   },
 )

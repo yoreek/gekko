@@ -75,19 +75,19 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import type { Ds18b20TemperatureSensorOutputSnapshot, TemperatureOutputSnapshot } from '@/api/contracts'
-import type { DashboardDevice } from '@/models/device'
+import type { DeviceRecord, Ds18b20TemperatureSensorOutputSnapshot, TemperatureOutputSnapshot } from '@/api/contracts'
+import { deviceRecordConfig, deviceRecordRuntime, deviceRecordId, deviceRecordName } from '@/models/device'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
 const props = defineProps<{
-  device: DashboardDevice
+  device: DeviceRecord
   busy?: boolean
 }>()
 
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
-const dependencyDeviceId = computed(() => props.device.deps.find(dep => dep.role === 'onewire_bus')?.deviceId ?? 0)
-const config = computed(() => props.device.detail.config as {
+const dependencyDeviceId = computed(() => deviceRecordConfig(props.device).deps.find(dep => dep.role === 'onewire_bus')?.deviceId ?? 0)
+const config = computed(() => deviceRecordConfig(props.device) as unknown as {
   address: string
   resolution: number
   unit: 'celsius' | 'fahrenheit'
@@ -95,12 +95,12 @@ const config = computed(() => props.device.detail.config as {
   reportDeltaCelsius: number
   reportAlways: boolean
 })
-const output = computed(() => props.device.output as Ds18b20TemperatureSensorOutputSnapshot)
+const output = computed(() => deviceRecordRuntime(props.device) as Ds18b20TemperatureSensorOutputSnapshot)
 const temperature = computed(() => output.value.temperature as TemperatureOutputSnapshot | undefined)
 const temperatureText = computed(() => temperature.value?.valid ? `${temperature.value.value.toFixed(2)} ${temperature.value.unitSymbol}` : t('device.dialog.temperatureUnavailableShort'))
 const dependencyLabel = computed(() => {
-  const dependency = deviceStore.devices.find(device => device.deviceId === dependencyDeviceId.value)
-  return dependency ? `${dependency.name} #${dependency.deviceId}` : `#${dependencyDeviceId.value}`
+  const dependency = deviceStore.devices.find(device => device.record.id === dependencyDeviceId.value)
+  return dependency ? `${deviceRecordName(dependency)} #${deviceRecordId(dependency)}` : `#${dependencyDeviceId.value}`
 })
 </script>
 

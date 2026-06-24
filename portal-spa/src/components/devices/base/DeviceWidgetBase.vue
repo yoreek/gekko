@@ -2,9 +2,9 @@
   <v-card
     class="device-widget"
     :class="{ 'device-widget--editable': editable }"
-    :color="device.isReady ? undefined : 'surface-variant'"
-    :border="device.isReady ? false : true"
-    :variant="device.isReady ? 'outlined' : 'tonal'"
+    :color="isReady ? undefined : 'surface-variant'"
+    :border="isReady ? false : true"
+    :variant="isReady ? 'outlined' : 'tonal'"
     :style="{ borderColor: 'var(--portal-border)' }"
     elevation="0"
     role="button"
@@ -14,7 +14,7 @@
     @keydown.space.prevent="handleOpen"
   >
     <div class="device-widget__header">
-      <strong class="device-widget__name text-body-2 text-high-emphasis">{{ device.name }}</strong>
+      <strong class="device-widget__name text-body-2 text-high-emphasis">{{ deviceName }}</strong>
       <div
         v-if="$slots.actions"
         class="device-widget__actions"
@@ -32,16 +32,22 @@
 </template>
 
 <script setup lang="ts">
-import type { DashboardDevice } from '@/models/device'
+import { computed } from 'vue'
+
+import type { DeviceRecord } from '@/api/contracts'
+import { deviceRecordEffectiveStatus, deviceRecordName } from '@/models/device'
 
 const props = defineProps<{
-  device: DashboardDevice
+  device: DeviceRecord
   editable?: boolean
 }>()
 
 const emit = defineEmits<{
   open: []
 }>()
+
+const isReady = computed(() => deviceRecordEffectiveStatus(props.device) === 'ready')
+const deviceName = computed(() => deviceRecordName(props.device))
 
 function handleOpen(): void {
   if (props.editable) {

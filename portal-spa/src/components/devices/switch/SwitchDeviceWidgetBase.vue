@@ -7,11 +7,11 @@
 </template>
 
 <script setup lang="ts">
+import type { DeviceRecord } from '@/api/contracts'
 import DeviceWidgetBase from '@/components/devices/base/DeviceWidgetBase.vue'
-import type { DashboardDevice } from '@/models/device'
 
 defineProps<{
-  device: DashboardDevice
+  device: DeviceRecord
   editable?: boolean
 }>()
 
