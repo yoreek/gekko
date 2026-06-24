@@ -65,7 +65,6 @@ export function decorateDeviceRecord(
   }
 
   return {
-    ...device,
     record: {
       id,
       typeName,

@@ -30,26 +30,7 @@ declare global {
 
 function publishDeviceUpsert(device: DeviceRecord, eventKind: 'device_created' | 'device_updated' | 'snapshot' = 'device_updated'): void {
   const db = loadMockDatabase()
-  const payload = {
-    ...device,
-    record: {
-      id: device.deviceId ?? 0,
-      typeName: device.record?.typeName ?? device.typeName ?? '',
-      configRevision: device.record?.configRevision ?? device.configRevision ?? 0,
-    },
-    config: {
-      name: device.name,
-      enabled: device.enabled,
-      deps: Array.isArray(device.deps) ? device.deps : [],
-      ...(typeof device.config === 'object' && device.config !== null ? device.config : {}),
-    },
-    runtime: {
-      status: device.status ?? device.effectiveStatus ?? device.lifecycleStatus ?? 'unknown',
-      lifecycleStatus: device.lifecycleStatus ?? device.status ?? 'unknown',
-      effectiveStatus: device.effectiveStatus ?? device.status ?? device.lifecycleStatus ?? 'unknown',
-      ...(typeof device.runtime === 'object' && device.runtime !== null ? device.runtime : {}),
-    },
-  }
+  const payload = decorateDeviceRecord(device, device.registryRevision ?? db.registryRevision)
   publishRealtimeMessage({
     topic: 'device.upsert',
     revision: device.registryRevision ?? db.registryRevision,
@@ -65,17 +46,10 @@ function publishDeviceRemove(device: DeviceRecord | undefined, revision: number)
     topic: 'device.remove',
     revision,
     payload: {
-      record: {
-        id: device?.deviceId ?? 0,
-        typeName: device?.record?.typeName ?? device?.typeName ?? device?.label ?? '',
-        configRevision: device?.record?.configRevision ?? device?.configRevision ?? 0,
-      },
-      deviceId: device?.deviceId ?? 0,
+      ...(device ? decorateDeviceRecord(device, revision) : { record: { id: 0, typeName: '', configRevision: revision }, config: {}, runtime: {} }),
+      deviceId: device?.record?.id ?? device?.deviceId ?? 0,
       eventKind: 'device_deleted',
       registryRevision: revision,
-      name: device?.name ?? '',
-      typeId: device?.typeId ?? 0,
-      typeName: device?.typeName ?? device?.label ?? '',
     },
   })
 }
