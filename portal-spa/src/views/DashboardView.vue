@@ -211,7 +211,6 @@ import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import { buildDeviceEditCommands } from '@/components/device/device-form'
 import type { DeviceEditDraft } from '@/components/device/device-form'
-import { deviceRecordId, deviceRecordName } from '@/models/device'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore, type DashboardPanelWidget } from '@/stores/panels'
 import { useWebSocketStore } from '@/stores/websocket'
@@ -277,13 +276,13 @@ const addableDevices = computed(() => {
   }
 
   const usedDeviceIds = new Set(activePanel.value.widgets.map(widget => widget.deviceId))
-  return deviceStore.devices.filter(device => !usedDeviceIds.has(deviceRecordId(device)))
+  return deviceStore.devices.filter(device => !usedDeviceIds.has(device.record.id))
 })
 
 const deviceOptions = computed(() =>
   addableDevices.value.map(device => ({
-    title: `${deviceRecordName(device)} #${deviceRecordId(device)}`,
-    value: deviceRecordId(device),
+    title: `${device.config.name} #${device.record.id}`,
+    value: device.record.id,
   })),
 )
 
@@ -389,7 +388,7 @@ function openCreatePanelDialog(): void {
 }
 
 function openAddDeviceDialog(): void {
-  selectedAddDeviceId.value = addableDevices.value[0] ? deviceRecordId(addableDevices.value[0]) : null
+  selectedAddDeviceId.value = addableDevices.value[0] ? addableDevices.value[0].record.id : null
   addDeviceDialogOpen.value = true
 }
 
@@ -399,7 +398,7 @@ async function refreshDevices(silent = false): Promise<void> {
   }
   try {
     await deviceStore.reload()
-    await panelStore.reload(deviceStore.devices.map(device => deviceRecordId(device)))
+    await panelStore.reload(deviceStore.devices.map(device => device.record.id))
     await nextTick()
     updateColumns()
     showGridAfterLayout()
@@ -553,7 +552,7 @@ function onResize(): void {
 
 onMounted(async () => {
   await deviceStore.initialize()
-  await panelStore.initialize(deviceStore.devices.map(device => deviceRecordId(device)))
+  await panelStore.initialize(deviceStore.devices.map(device => device.record.id))
   await prepareVisibleGrid()
   if (typeof ResizeObserver === 'undefined' && typeof window !== 'undefined') {
     window.addEventListener('resize', onResize, { passive: true })
@@ -571,12 +570,12 @@ onBeforeUnmount(() => {
 })
 
 watch(
-  () => deviceStore.devices.map(device => deviceRecordId(device)).join(','),
+  () => deviceStore.devices.map(device => device.record.id).join(','),
   () => {
     if (!panelStore.initialized) {
       return
     }
-    void panelStore.syncDeviceIds(deviceStore.devices.map(device => deviceRecordId(device)))
+    void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.record.id))
   },
 )
 
@@ -587,7 +586,7 @@ watch(
       void prepareVisibleGrid()
     }
     if (addDeviceDialogOpen.value) {
-      selectedAddDeviceId.value = addableDevices.value[0] ? deviceRecordId(addableDevices.value[0]) : null
+      selectedAddDeviceId.value = addableDevices.value[0] ? addableDevices.value[0].record.id : null
     }
   },
 )

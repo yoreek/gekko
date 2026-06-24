@@ -75,18 +75,18 @@
           <tbody>
             <tr
               v-for="device in filteredDevices"
-              :key="deviceRecordId(device)"
+              :key="device.record.id"
               class="devices-table__row"
-              @click="openDevice(deviceRecordId(device))"
+              @click="openDevice(device.record.id)"
             >
-              <td>#{{ deviceRecordId(device) }}</td>
+              <td>#{{ device.record.id }}</td>
               <td>
-                <strong class="text-body-1">{{ deviceRecordName(device) }}</strong>
+                <strong class="text-body-1">{{ device.config.name }}</strong>
               </td>
-              <td>{{ t(deviceTypeLabelKey(deviceRecordTypeId(device))) }}</td>
+              <td>{{ t(deviceTypeLabelKey(deviceTypeIdFromName(device.record.typeName))) }}</td>
               <td>
-                <v-chip variant="tonal" :color="statusColor(deviceRecordEffectiveStatus(device))">
-                  {{ t(deviceStatusLabelKey(deviceRecordEffectiveStatus(device))) }}
+                <v-chip variant="tonal" :color="statusColor(device.runtime.effectiveStatus ?? device.runtime.lifecycleStatus ?? device.runtime.status ?? 'unknown')">
+                  {{ t(deviceStatusLabelKey(device.runtime.effectiveStatus ?? device.runtime.lifecycleStatus ?? device.runtime.status ?? 'unknown')) }}
                 </v-chip>
               </td>
               <td class="devices-table__actions">
@@ -98,7 +98,7 @@
                       variant="text"
                       color="error"
                       :aria-label="t('device.actions.delete')"
-                      @click.stop="openDeleteConfirm(deviceRecordId(device))"
+                      @click.stop="openDeleteConfirm(device.record.id)"
                     />
                   </template>
                 </v-tooltip>
@@ -206,13 +206,7 @@ import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import { buildDeviceEditCommands } from '@/components/device/device-form'
 import type { DeviceEditDraft } from '@/components/device/device-form'
-import {
-  deviceRecordEffectiveStatus,
-  deviceRecordId,
-  deviceRecordName,
-  deviceRecordTypeId,
-} from '@/models/device'
-import { deviceStatusLabelKey, deviceTypeLabelKey, deviceTypeOptions } from '@/models/device-types'
+import { deviceStatusLabelKey, deviceTypeIdFromName, deviceTypeLabelKey, deviceTypeOptions } from '@/models/device-types'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore } from '@/stores/panels'
 
@@ -262,9 +256,9 @@ const filteredDevices = computed(() => {
   const idMatch = trimmedId.length === 0 ? null : Number(trimmedId)
 
   return deviceStore.devices.filter(device => {
-    const matchesId = idMatch === null ? true : Number.isInteger(idMatch) && deviceRecordId(device) === idMatch
-    const matchesName = query.length === 0 || deviceRecordName(device).toLowerCase().includes(query)
-    const matchesType = typeValue === 'all' || deviceRecordTypeId(device) === typeValue
+    const matchesId = idMatch === null ? true : Number.isInteger(idMatch) && device.record.id === idMatch
+    const matchesName = query.length === 0 || device.config.name.toLowerCase().includes(query)
+    const matchesType = typeValue === 'all' || deviceTypeIdFromName(device.record.typeName) === typeValue
     return matchesId && matchesName && matchesType
   })
 })
@@ -282,7 +276,7 @@ async function refreshDevices(silent = false): Promise<void> {
   }
   try {
     await deviceStore.reload()
-    await panelStore.syncDeviceIds(deviceStore.devices.map(device => deviceRecordId(device)))
+    await panelStore.syncDeviceIds(deviceStore.devices.map(device => device.record.id))
   } finally {
     if (!silent) {
       devicesLoading.value = false
@@ -349,7 +343,7 @@ function applyMutationResponse(response: { registryRevision: number; device?: De
   deviceStore.setRevision(response.registryRevision)
   if (response.device !== undefined) {
     deviceStore.upsertDevice(response.device, response.registryRevision)
-    void panelStore.syncDeviceIds(deviceStore.devices.map(device => deviceRecordId(device)))
+    void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.record.id))
   }
 }
 
@@ -487,9 +481,9 @@ onMounted(() => {
 })
 
 watch(
-  () => deviceStore.devices.map(device => deviceRecordId(device)).join(','),
+  () => deviceStore.devices.map(device => device.record.id).join(','),
   () => {
-    void panelStore.syncDeviceIds(deviceStore.devices.map(device => deviceRecordId(device)))
+    void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.record.id))
   },
 )
 

@@ -23,7 +23,6 @@ import { useI18n } from 'vue-i18n'
 import PanelManager from '@/components/panels/PanelManager.vue'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore } from '@/stores/panels'
-import { deviceRecordId } from '@/models/device'
 
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
@@ -31,6 +30,6 @@ const panelStore = usePanelStore()
 
 onMounted(async () => {
   await deviceStore.initialize()
-  await panelStore.initialize(deviceStore.devices.map(device => deviceRecordId(device)))
+  await panelStore.initialize(deviceStore.devices.map(device => device.record.id))
 })
 </script>

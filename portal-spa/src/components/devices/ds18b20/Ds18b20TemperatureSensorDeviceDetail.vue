@@ -76,7 +76,6 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceRecord, Ds18b20TemperatureSensorOutputSnapshot, TemperatureOutputSnapshot } from '@/api/contracts'
-import { deviceRecordId, deviceRecordName } from '@/models/device'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
 const props = defineProps<{
@@ -100,7 +99,7 @@ const temperature = computed(() => output.value.temperature as TemperatureOutput
 const temperatureText = computed(() => temperature.value?.valid ? `${temperature.value.value.toFixed(2)} ${temperature.value.unitSymbol}` : t('device.dialog.temperatureUnavailableShort'))
 const dependencyLabel = computed(() => {
   const dependency = deviceStore.devices.find(device => device.record.id === dependencyDeviceId.value)
-  return dependency ? `${deviceRecordName(dependency)} #${deviceRecordId(dependency)}` : `#${dependencyDeviceId.value}`
+  return dependency ? `${dependency.config.name} #${dependency.record.id}` : `#${dependencyDeviceId.value}`
 })
 </script>
 

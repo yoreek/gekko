@@ -61,7 +61,6 @@ import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommandRequest } from '@/api'
 import type { DeviceRecord, OneWireScanSnapshot } from '@/api/contracts'
-import { deviceRecordEffectiveStatus } from '@/models/device'
 import { OneWireBus } from '@/models/devices/onewire-bus'
 
 const deviceModel = new OneWireBus.Device()
@@ -85,7 +84,7 @@ const scan = computed<OneWireScanSnapshot>(() => (props.device.runtime as { scan
   invalidCrcSeen: false,
   devices: [],
 })
-const isReady = computed(() => deviceRecordEffectiveStatus(props.device) === 'ready')
+const isReady = computed(() => props.device.runtime.effectiveStatus === 'ready')
 
 function emitScan(): void {
   emit('command', {

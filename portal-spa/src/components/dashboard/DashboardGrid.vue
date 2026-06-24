@@ -13,8 +13,8 @@
   >
     <GridItem
       v-for="item in widgets"
-      :key="deviceRecordId(item.device)"
-      :i="String(deviceRecordId(item.device))"
+      :key="item.device.record.id"
+      :i="String(item.device.record.id)"
       :x="item.widget.x"
       :y="item.widget.y"
       :w="1"
@@ -22,11 +22,11 @@
     >
       <div class="dashboard-grid__item">
         <component
-          :is="resolveDeviceWidgetComponent(deviceRecordTypeId(item.device))"
+          :is="resolveDeviceWidgetComponent(deviceTypeIdFromName(item.device.record.typeName))"
           :device="item.device"
           :editable="editable"
-          @open="$emit('open', deviceRecordId(item.device))"
-          @command="$emit('command', deviceRecordId(item.device), $event)"
+          @open="$emit('open', item.device.record.id)"
+          @command="$emit('command', item.device.record.id, $event)"
         />
 
         <v-btn
@@ -37,7 +37,7 @@
           variant="flat"
           color="error"
           :aria-label="t('device.actions.delete')"
-          @click.stop="$emit('remove', deviceRecordId(item.device))"
+          @click.stop="$emit('remove', item.device.record.id)"
         >
           <v-icon icon="close" size="12" />
         </v-btn>
@@ -53,8 +53,8 @@ import { GridItem, GridLayout } from 'vue-grid-layout-v3'
 
 import type { DeviceCommandRequest } from '@/api'
 import { resolveDeviceWidgetComponent } from '@/components/devices/registry/device-component-registry'
-import { deviceRecordId, deviceRecordTypeId } from '@/models/device'
 import type { DeviceRecord } from '@/api/contracts'
+import { deviceTypeIdFromName } from '@/models/device-types'
 import type { DashboardPanelWidget } from '@/stores/panels'
 
 interface DashboardGridItem {

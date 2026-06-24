@@ -121,9 +121,8 @@ import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommandRequest } from '@/api'
 import { commandDevice } from '@/api'
-import { ONEWIRE_BUS_DEVICE_TYPE_ID } from '@/models/device-types'
+import { ONEWIRE_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-types'
 import { Ds18b20 } from '@/models/devices/ds18b20'
-import { deviceRecordId, deviceRecordName, deviceRecordTypeId } from '@/models/device'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID } from '@/models/device-types'
 
@@ -158,9 +157,9 @@ const fallbackValue: Ds18b20FormValue = {
   reportAlways: false,
 }
 const currentValue = computed<Ds18b20FormValue>(() => props.modelValue ?? fallbackValue)
-const dependencyDevices = computed(() => deviceStore.devices.filter(device => deviceRecordTypeId(device) === ONEWIRE_BUS_DEVICE_TYPE_ID))
-const selectedDependency = computed(() => dependencyDevices.value.find(device => deviceRecordId(device) === currentValue.value.dependencyDeviceId))
-const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ title: `${deviceRecordName(device)} #${deviceRecordId(device)}`, value: deviceRecordId(device) })))
+const dependencyDevices = computed(() => deviceStore.devices.filter(device => deviceTypeIdFromName(device.record.typeName) === ONEWIRE_BUS_DEVICE_TYPE_ID))
+const selectedDependency = computed(() => dependencyDevices.value.find(device => device.record.id === currentValue.value.dependencyDeviceId))
+const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ title: `${device.config.name} #${device.record.id}`, value: device.record.id })))
 const selectedDependencyScanInProgress = computed(() => {
   const scan = selectedDependency.value ? (selectedDependency.value.runtime as { scan?: { inProgress?: boolean } }).scan : undefined
   return scan?.inProgress === true

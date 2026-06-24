@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 
 import { fetchDevices, type DeviceRecord, type DeviceRegistryResponse } from '@/api'
-import { normalizeDeviceCollection, normalizeDeviceRecord } from '@/models/device'
 
 export const useDeviceRegistryStore = defineStore('deviceRegistry', {
   state: () => ({
@@ -12,9 +11,8 @@ export const useDeviceRegistryStore = defineStore('deviceRegistry', {
   }),
   actions: {
     replaceFromResponse(payload: DeviceRegistryResponse): void {
-      const collection = normalizeDeviceCollection(payload)
-      this.devices = [...collection.devices]
-      this.registryRevision = collection.registryRevision
+      this.devices = [...payload.devices]
+      this.registryRevision = payload.registryRevision
     },
     async initialize(): Promise<void> {
       if (this.initialized) {
@@ -46,12 +44,11 @@ export const useDeviceRegistryStore = defineStore('deviceRegistry', {
       this.initialized = true
     },
     upsertDevice(device: DeviceRecord, revision: number): void {
-      const normalized = normalizeDeviceRecord(device, revision)
-      const index = this.devices.findIndex(entry => entry.record.id === normalized.record.id)
+      const index = this.devices.findIndex(entry => entry.record.id === device.record.id)
       if (index >= 0) {
-        this.devices.splice(index, 1, normalized)
+        this.devices.splice(index, 1, device)
       } else {
-        this.devices.push(normalized)
+        this.devices.push(device)
       }
       this.registryRevision = revision
     },

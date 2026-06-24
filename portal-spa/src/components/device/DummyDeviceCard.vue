@@ -12,7 +12,6 @@ import { computed } from 'vue'
 
 import type { DeviceRecord } from '@/api/contracts'
 import DeviceCard from '@/components/device/DeviceCard.vue'
-import { deviceRecordEffectiveStatus, deviceRecordName } from '@/models/device'
 
 const props = defineProps<{
   device: DeviceRecord
@@ -24,8 +23,8 @@ defineEmits<{
 }>()
 
 const statusTone = computed(() => {
-  return deviceRecordEffectiveStatus(props.device) === 'ready' ? 'ready' : 'secondary'
+  return props.device.runtime.effectiveStatus === 'ready' ? 'ready' : 'secondary'
 })
 
-const deviceName = computed(() => deviceRecordName(props.device))
+const deviceName = computed(() => props.device.config.name)
 </script>

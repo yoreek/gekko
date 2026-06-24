@@ -1,6 +1,6 @@
 <template>
-  <DeviceDialogShell
-    :model-value="modelValue"
+    <DeviceDialogShell
+      :model-value="modelValue"
     :headline="deviceName ?? t('device.dialog.noneSelected')"
     :subline="device ? `${typeLabelText} · #${deviceId}` : undefined"
     :fullscreen="fullscreen"
@@ -108,14 +108,9 @@ import {
   type DeviceEditDraft,
 } from '@/components/device/device-form'
 import { resolveDeviceDetailComponent, resolveDeviceFormComponent } from '@/components/devices/registry/device-component-registry'
-import {
-  deviceRecordEffectiveStatus,
-  deviceRecordId,
-  deviceRecordName,
-  deviceRecordTypeId,
-} from '@/models/device'
 import type { DeviceRecord } from '@/api/contracts'
 import { GPIO_SWITCH_DEVICE_TYPE_ID, deviceStatusLabelKey, deviceTypeLabelKey } from '@/models/device-types'
+import { deviceTypeIdFromName } from '@/models/device-types'
 import type { DeviceCommandRequest } from '@/api'
 
 const props = defineProps<{
@@ -141,42 +136,43 @@ const busy = computed(() => props.busyAction !== null)
 const fullscreen = computed(() => smAndDown.value)
 const device = computed(() => props.device)
 const hasTypeDetails = computed(() => device.value !== null)
-const deviceId = computed(() => (device.value === null ? 0 : deviceRecordId(device.value)))
-const deviceName = computed(() => (device.value === null ? undefined : deviceRecordName(device.value)))
+const deviceId = computed(() => (device.value === null ? 0 : device.value.record.id))
+const deviceName = computed(() => (device.value === null ? undefined : device.value.config.name))
 
 const editFormComponent = computed(() => {
   if (device.value === null) {
     return null
   }
-  return resolveDeviceFormComponent(deviceRecordTypeId(device.value))
+  return resolveDeviceFormComponent(deviceTypeIdFromName(device.value.record.typeName))
 })
 
 const detailComponent = computed(() => {
   if (device.value === null) {
     return null
   }
-  return resolveDeviceDetailComponent(deviceRecordTypeId(device.value))
+  return resolveDeviceDetailComponent(deviceTypeIdFromName(device.value.record.typeName))
 })
 
 const typeLabelText = computed(() => {
   if (device.value === null) {
     return ''
   }
-  return t(deviceTypeLabelKey(deviceRecordTypeId(device.value)))
+  return t(deviceTypeLabelKey(deviceTypeIdFromName(device.value.record.typeName)))
 })
 
 const statusText = computed(() => {
   if (device.value === null) {
     return ''
   }
-  return t(deviceStatusLabelKey(deviceRecordEffectiveStatus(device.value)))
+  const status = device.value.runtime.effectiveStatus ?? device.value.runtime.lifecycleStatus ?? device.value.runtime.status ?? 'unknown'
+  return t(deviceStatusLabelKey(status))
 })
 
 const statusColor = computed(() => {
   if (device.value === null) {
     return 'primary'
   }
-  switch (deviceRecordEffectiveStatus(device.value)) {
+  switch (device.value.runtime.effectiveStatus ?? device.value.runtime.lifecycleStatus ?? device.value.runtime.status ?? 'unknown') {
     case 'ready':
       return 'success'
     case 'disabled':
@@ -191,7 +187,7 @@ const statusColor = computed(() => {
 })
 
 const outputState = computed(() => {
-  if (device.value === null || deviceRecordTypeId(device.value) !== GPIO_SWITCH_DEVICE_TYPE_ID) {
+  if (device.value === null || deviceTypeIdFromName(device.value.record.typeName) !== GPIO_SWITCH_DEVICE_TYPE_ID) {
     return undefined
   }
   return (device.value.runtime as { state?: string }).state

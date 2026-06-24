@@ -35,7 +35,6 @@
 import { computed } from 'vue'
 
 import type { DeviceRecord } from '@/api/contracts'
-import { deviceRecordEffectiveStatus, deviceRecordName } from '@/models/device'
 
 const props = defineProps<{
   device: DeviceRecord
@@ -46,8 +45,8 @@ const emit = defineEmits<{
   open: []
 }>()
 
-const isReady = computed(() => deviceRecordEffectiveStatus(props.device) === 'ready')
-const deviceName = computed(() => deviceRecordName(props.device))
+const isReady = computed(() => props.device.runtime.effectiveStatus === 'ready')
+const deviceName = computed(() => props.device.config.name)
 
 function handleOpen(): void {
   if (props.editable) {
