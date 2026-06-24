@@ -1,14 +1,14 @@
 #include "devices/registry/DeviceSetupTransferCodec.h"
 
-#include "devices/core/DeviceBaseConfig.h"
 #include "devices/bus/onewire/OneWireBusConfig.h"
 #include "devices/bus/onewire/OneWireBusDevice.h"
+#include "devices/core/DeviceBaseConfig.h"
 #include "devices/dummy/DummyDevice.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorConfig.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
 #include "devices/switch/gpio/GpioSwitchDevice.h"
-#include "devices/thermostat/ThermostatDeviceConfig.h"
 #include "devices/thermostat/ThermostatDevice.h"
+#include "devices/thermostat/ThermostatDeviceConfig.h"
 
 #include <cstdio>
 #include <cstring>
@@ -72,13 +72,7 @@ const char* deviceTypeNameFromId(const DeviceTypeId typeId) {
 }
 
 bool deviceTypeIdFromTransferJson(const JsonObjectConst& input, DeviceTypeId& typeId, std::string& error) {
-    const uint32_t numericTypeId = input["typeId"] | (input["type_id"] | 0U);
-    if (numericTypeId != 0U) {
-        typeId = static_cast<DeviceTypeId>(numericTypeId);
-        return true;
-    }
-
-    const char* typeName = input["typeName"] | (input["type"] | "");
+    const char* typeName = input["typeName"] | "";
     if (std::strcmp(typeName, "dummy") == 0) {
         typeId = 1U;
         return true;
@@ -221,15 +215,17 @@ bool parseDeviceLine(const JsonObjectConst& input, DeviceRegistryEntry& record, 
 
     const JsonObjectConst recordInput = input["record"].as<JsonObjectConst>();
     const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
-    const JsonObjectConst recordFields = recordInput.isNull() ? input : recordInput;
-    const JsonObjectConst configFields = configInput.isNull() ? input : configInput;
-
-    const uint32_t deviceId = recordFields["id"] | (input["id"] | (input["device_id"] | 0U));
-    DeviceTypeId typeId{0};
-    if (!deviceTypeIdFromTransferJson(recordFields, typeId, error)) {
+    if (recordInput.isNull() || configInput.isNull()) {
+        error = "device bundle record must contain record and config sections";
         return false;
     }
-    const uint32_t configRevision = recordFields["configRevision"] | (recordFields["config_revision"] | 0U);
+
+    const uint32_t deviceId = recordInput["id"] | 0U;
+    DeviceTypeId typeId{0};
+    if (!deviceTypeIdFromTransferJson(recordInput, typeId, error)) {
+        return false;
+    }
+    const uint32_t configRevision = recordInput["configRevision"] | 0U;
     if (deviceId == 0U || typeId == 0U || configRevision == 0U) {
         error = "device bundle record is missing required fields";
         return false;
@@ -237,12 +233,12 @@ bool parseDeviceLine(const JsonObjectConst& input, DeviceRegistryEntry& record, 
 
     DeviceBaseConfigV1 base{};
     const char* baseError = nullptr;
-    if (!parseDeviceBaseConfigJson(configFields, base, baseError)) {
+    if (!parseDeviceBaseConfigJson(configInput, base, baseError)) {
         error = baseError != nullptr ? baseError : "device bundle base config is invalid";
         return false;
     }
 
-    if (!encodeTransferConfigBlob(configFields, base, typeId, 1U, configBlob, error)) {
+    if (!encodeTransferConfigBlob(configInput, base, typeId, 1U, configBlob, error)) {
         return false;
     }
 
@@ -257,7 +253,7 @@ bool parseDeviceLine(const JsonObjectConst& input, DeviceRegistryEntry& record, 
     record.persistencePolicy = DevicePersistencePolicy::Delayed;
     record.status = base.enabled != 0U ? DeviceStatus::Ready : DeviceStatus::Disabled;
 
-    const JsonArrayConst deps = configFields["deps"].as<JsonArrayConst>();
+    const JsonArrayConst deps = configInput["deps"].as<JsonArrayConst>();
     uint8_t depCount = 0;
     if (!deps.isNull()) {
         for (JsonVariantConst item : deps) {
@@ -272,7 +268,7 @@ bool parseDeviceLine(const JsonObjectConst& input, DeviceRegistryEntry& record, 
                 error = "device bundle contains an invalid dependency role";
                 return false;
             }
-            const DeviceId dependencyId = static_cast<DeviceId>(depObject["deviceId"] | (depObject["device_id"] | 0U));
+            const DeviceId dependencyId = static_cast<DeviceId>(depObject["deviceId"] | 0U);
             if (dependencyId == 0U) {
                 error = "device bundle dependency id is missing";
                 return false;
@@ -477,13 +473,13 @@ DeviceSetupTransferCodec::ParseResult DeviceSetupTransferCodec::parseFile(const 
                 result.validation = {DeviceError::InvalidConfig, "bundle is missing the transfer envelope"};
                 return result;
             }
-            const uint32_t schemaVersion = object["transferSchemaVersion"] | (object["transfer_schema_version"] | 0U);
+            const uint32_t schemaVersion = object["transferSchemaVersion"] | 0U;
             if (schemaVersion != kTransferSchemaVersion) {
                 result.validation = {DeviceError::InvalidVersion, "unsupported transfer schema version"};
                 return result;
             }
-            result.registryRevision = object["registryRevision"] | (object["registry_revision"] | 0U);
-            const uint32_t expectedCount = object["deviceCount"] | (object["device_count"] | 0U);
+            result.registryRevision = object["registryRevision"] | 0U;
+            const uint32_t expectedCount = object["deviceCount"] | 0U;
             envelopeSeen = true;
             result.deviceCount = expectedCount;
             continue;

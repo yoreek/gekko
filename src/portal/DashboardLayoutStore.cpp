@@ -426,7 +426,7 @@ bool DashboardLayoutStore::parseWidget(JsonVariantConst json, DashboardLayoutWid
     const JsonObjectConst object = json.as<JsonObjectConst>();
 
     uint32_t deviceId{0};
-    if (!readUInt32(object["device_id"], deviceId)) {
+    if (!readUInt32(object["deviceId"], deviceId)) {
         return false;
     }
     if (!readUInt16(object["x"], widget.x)) {

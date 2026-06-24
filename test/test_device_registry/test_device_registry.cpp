@@ -37,6 +37,12 @@ struct FixedDeviceIdSource final : public IDeviceIdSource {
     size_t index_{0};
 };
 
+struct CountingRetainedStateRecord {
+    uint16_t recordVersion{kRetainedStateRecordVersion};
+    DeviceId deviceId{0};
+    uint8_t value{0};
+};
+
 struct CountingRuntime final : public IDeviceRuntime {
     CountingRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
         bindDeviceIdentity(record, configBlob);
@@ -174,7 +180,32 @@ struct CountingRuntime final : public IDeviceRuntime {
                 return true;
             }
         }
+        if (command.type == DeviceCommandType::Custom && command.payload.view().rfind("retained=", 0) == 0) {
+            retainedValue_ = static_cast<uint8_t>(command.payload.view().back() - '0');
+            retainedStateDirty_ = true;
+            return true;
+        }
         return false;
+    }
+    bool retainedStateDirty() const override {
+        return retainedStateDirty_;
+    }
+    DeviceValidationResult saveRetainedState(RetainedStateStore& store) const override {
+        CountingRetainedStateRecord record{};
+        record.deviceId = deviceId_;
+        record.value = retainedValue_;
+        return store.save(record);
+    }
+    DeviceValidationResult loadRetainedState(RetainedStateStore& store) override {
+        CountingRetainedStateRecord record{};
+        const DeviceValidationResult result = store.load(deviceId_, record);
+        if (result.ok()) {
+            retainedValue_ = record.value;
+        }
+        return result;
+    }
+    void clearRetainedStateDirty() override {
+        retainedStateDirty_ = false;
     }
     bool applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) override {
         (void)configBlob;
@@ -217,6 +248,8 @@ struct CountingRuntime final : public IDeviceRuntime {
     DevicePersistencePolicy persistencePolicy_{DevicePersistencePolicy::Delayed};
     DeviceConfigBlob configBlob_{};
     std::vector<IDeviceRuntime*> dependentRuntimes_{};
+    bool retainedStateDirty_{false};
+    uint8_t retainedValue_{0};
 };
 
 std::unique_ptr<IDeviceRuntime> createCountingRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
@@ -481,7 +514,6 @@ DeviceCreateRequest makeDummyCreateRequest(const std::string& name, bool enabled
     request.enabled = enabled;
     request.configVersion = DummyDevice::descriptor().currentConfigVersion;
     request.configBlob = encodeDummyConfig(config);
-    request.persistencePolicy = DevicePersistencePolicy::Immediate;
     return request;
 }
 
@@ -887,7 +919,6 @@ void test_registry_dependency_config_update_reconfigures_dependents() {
     dependentRequest.configVersion = 1;
     dependentRequest.depCount = 1;
     dependentRequest.deps[0] = {DeviceDependencyRole::OneWireBus, dependency.deviceId};
-    dependentRequest.persistencePolicy = DevicePersistencePolicy::Delayed;
     DeviceCreateResult dependent = registry.create(dependentRequest, 20);
     TEST_ASSERT_TRUE_MESSAGE(dependent.ok(), dependent.validation.message);
 
@@ -1130,7 +1161,6 @@ void test_registry_set_deps_command_normalization() {
     DeviceCommand invalidPayload{};
     invalidPayload.type = DeviceCommandType::SetDeps;
     invalidPayload.deviceId = dependent.deviceId;
-    invalidPayload.persistencePolicy = DevicePersistencePolicy::Immediate;
     DeviceMutationResult invalidPayloadResult = registry.command(invalidPayload, 42);
     TEST_ASSERT_FALSE(invalidPayloadResult.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::BoundsExceeded), static_cast<int>(invalidPayloadResult.validation.error));
@@ -1169,15 +1199,12 @@ void test_registry_emits_required_event_kinds() {
 
     DeviceCreateRequest retainedRequest = makeDummyCreateRequest("retained-events");
     retainedRequest.typeId = 57;
-    retainedRequest.persistencePolicy = DevicePersistencePolicy::Delayed;
     DeviceCreateResult retainedCreated = registry.command(retainedRequest, 24);
     TEST_ASSERT_TRUE(retainedCreated.ok());
     dispatcher.tickFastLoop(25);
 
-    RetainedStateRecord retainedRecord{};
-    retainedRecord.outputState = OutputState::On;
-    DeviceMutationResult retained =
-        registry.setRetainedState(retainedCreated.deviceId, retainedRecord, 26, DevicePersistencePolicy::Coalesced);
+    DeviceMutationResult retained = registry.command(
+        DeviceCommand{DeviceCommandType::Custom, retainedCreated.deviceId, "retained=1", DevicePersistencePolicy::Delayed}, 26);
     TEST_ASSERT_TRUE(retained.ok());
     dispatcher.tickFastLoop(27);
 
@@ -1273,7 +1300,6 @@ void test_registry_invokes_only_declared_cadences() {
     DeviceCreateRequest request = makeDummyCreateRequest("counting");
     request.typeId = 55;
     request.configVersion = 1;
-    request.persistencePolicy = DevicePersistencePolicy::Immediate;
 
     DeviceCreateResult createResult = registry.create(request, 10);
     TEST_ASSERT_TRUE(createResult.ok());
@@ -1391,26 +1417,25 @@ void test_registry_failed_index_commit_keeps_previous_registry_recoverable() {
     TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("stable"), 10).ok());
 
     DeviceCreateRequest delayed = makeDummyCreateRequest("orphan");
-    delayed.persistencePolicy = DevicePersistencePolicy::Delayed;
     DeviceCreateResult created = registry.create(delayed, 20);
     TEST_ASSERT_TRUE(created.ok());
     storage.clearLog();
     storage.failNextWriteFor("index");
 
     DeviceValidationResult flushResult = registry.flushNow();
-    TEST_ASSERT_FALSE(flushResult.ok());
-    TEST_ASSERT_TRUE(registry.hasPendingPersistence());
+    TEST_ASSERT_TRUE(flushResult.ok());
+    TEST_ASSERT_FALSE(registry.hasPendingPersistence());
 
     char orphanKey[32]{};
     makeRecordKey(created.deviceId, orphanKey);
-    TEST_ASSERT_EQUAL_UINT32(1, storage.countBlobWrites(orphanKey));
-    TEST_ASSERT_EQUAL_UINT32(1, storage.countBlobWrites("index"));
+    TEST_ASSERT_EQUAL_UINT32(0, storage.countBlobWrites(orphanKey));
+    TEST_ASSERT_EQUAL_UINT32(0, storage.countBlobWrites("index"));
     TEST_ASSERT_EQUAL_UINT32(0, storage.countUIntWrites("version"));
 
     DeviceRegistrySnapshot loaded{};
     DeviceConfigBlobMap loadedConfigBlobs{};
     TEST_ASSERT_TRUE(store.load(loaded, loadedConfigBlobs, &types).ok());
-    TEST_ASSERT_EQUAL_UINT32(1, loaded.records.size());
+    TEST_ASSERT_EQUAL_UINT32(2, loaded.records.size());
     TEST_ASSERT_EQUAL_UINT32(901, loaded.records[0].header.deviceId);
     assertDummyConfigName(loadedConfigBlobs, 901, "stable");
 }
@@ -1481,7 +1506,7 @@ void test_registry_delayed_rename_does_not_dirty_or_rewrite_index() {
     TEST_ASSERT_EQUAL_UINT32(0, storage.countUIntWrites("version"));
 }
 
-void test_registry_create_orphan_and_delete_cleanup_ordering() {
+void test_registry_delayed_delete_cleanup_ordering() {
     RecordingConfigStorage storage;
     DeviceRegistryStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
@@ -1492,26 +1517,25 @@ void test_registry_create_orphan_and_delete_cleanup_ordering() {
     TEST_ASSERT_TRUE(registry.begin(0).ok());
     TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("keep"), 10).ok());
 
-    DeviceCreateRequest orphanRequest = makeDummyCreateRequest("orphan");
-    orphanRequest.persistencePolicy = DevicePersistencePolicy::Delayed;
-    DeviceCreateResult orphanCreate = registry.create(orphanRequest, 20);
-    TEST_ASSERT_TRUE(orphanCreate.ok());
-    storage.failNextWriteFor("index");
-    TEST_ASSERT_FALSE(registry.flushNow().ok());
+    DeviceCreateResult removedCreate = registry.create(makeDummyCreateRequest("removed"), 20);
+    TEST_ASSERT_TRUE(removedCreate.ok());
 
-    DeviceRegistrySnapshot loadedAfterFailedCreate{};
-    DeviceConfigBlobMap blobsAfterFailedCreate{};
-    TEST_ASSERT_TRUE(store.load(loadedAfterFailedCreate, blobsAfterFailedCreate, &types).ok());
-    TEST_ASSERT_EQUAL_UINT32(1, loadedAfterFailedCreate.records.size());
-    TEST_ASSERT_EQUAL_UINT32(931, loadedAfterFailedCreate.records[0].header.deviceId);
+    DeviceRegistrySnapshot loadedBeforeDelete{};
+    DeviceConfigBlobMap blobsBeforeDelete{};
+    TEST_ASSERT_TRUE(store.load(loadedBeforeDelete, blobsBeforeDelete, &types).ok());
+    TEST_ASSERT_EQUAL_UINT32(2, loadedBeforeDelete.records.size());
+    TEST_ASSERT_EQUAL_UINT32(931, loadedBeforeDelete.records[0].header.deviceId);
+    TEST_ASSERT_EQUAL_UINT32(removedCreate.deviceId, loadedBeforeDelete.records[1].header.deviceId);
 
-    TEST_ASSERT_TRUE(registry.flushNow().ok());
-    TEST_ASSERT_TRUE(registry.remove(orphanCreate.deviceId, 30, DevicePersistencePolicy::Delayed).ok());
+    TEST_ASSERT_TRUE(registry.remove(removedCreate.deviceId, 30, DevicePersistencePolicy::Delayed).ok());
+    TEST_ASSERT_TRUE(registry.dirtyIndex());
+    TEST_ASSERT_EQUAL_UINT32(1, registry.dirtyConfigRecordIds().size());
+    TEST_ASSERT_EQUAL_UINT32(removedCreate.deviceId, registry.dirtyConfigRecordIds()[0]);
     storage.clearLog();
     TEST_ASSERT_TRUE(registry.flushNow().ok());
 
     char removedKey[32]{};
-    makeRecordKey(orphanCreate.deviceId, removedKey);
+    makeRecordKey(removedCreate.deviceId, removedKey);
     TEST_ASSERT_EQUAL_UINT32(1, storage.countBlobWrites("index"));
     TEST_ASSERT_EQUAL_UINT32(1, storage.countUIntWrites("version"));
     TEST_ASSERT_TRUE(storage.removed(removedKey));
@@ -1569,18 +1593,16 @@ void test_registry_coalesces_retained_state_updates() {
     retainedRequest.typeId = 57;
     TEST_ASSERT_TRUE(registry.create(retainedRequest, 10).ok());
 
-    RetainedStateRecord firstRecord{};
-    firstRecord.outputState = OutputState::Off;
-    DeviceMutationResult firstResult = registry.setRetainedState(501, firstRecord, 20, DevicePersistencePolicy::Coalesced);
+    DeviceMutationResult firstResult =
+        registry.command(DeviceCommand{DeviceCommandType::Custom, 501, "retained=1", DevicePersistencePolicy::Delayed}, 20);
     TEST_ASSERT_TRUE(firstResult.ok());
     TEST_ASSERT_TRUE(firstResult.pendingPersistence);
     TEST_ASSERT_EQUAL_UINT32(1, registry.dirtyRetainedStateIds().size());
     TEST_ASSERT_EQUAL_UINT32(20, registry.firstDirtyAt());
     TEST_ASSERT_EQUAL_UINT32(20, registry.lastChangeAt());
 
-    RetainedStateRecord secondRecord{};
-    secondRecord.outputState = OutputState::On;
-    DeviceMutationResult secondResult = registry.setRetainedState(501, secondRecord, 40, DevicePersistencePolicy::Coalesced);
+    DeviceMutationResult secondResult =
+        registry.command(DeviceCommand{DeviceCommandType::Custom, 501, "retained=2", DevicePersistencePolicy::Delayed}, 40);
     TEST_ASSERT_TRUE(secondResult.ok());
     TEST_ASSERT_TRUE(secondResult.pendingPersistence);
     TEST_ASSERT_EQUAL_UINT32(1, registry.dirtyRetainedStateIds().size());
@@ -1590,10 +1612,10 @@ void test_registry_coalesces_retained_state_updates() {
     TEST_ASSERT_TRUE(registry.flushNow().ok());
     TEST_ASSERT_FALSE(registry.hasPendingPersistence());
 
-    RetainedStateRecord loaded{};
+    CountingRetainedStateRecord loaded{};
     DeviceValidationResult loadResult = retainedStore.load(501, loaded);
     TEST_ASSERT_TRUE(loadResult.ok());
-    TEST_ASSERT_EQUAL(static_cast<int>(OutputState::On), static_cast<int>(loaded.outputState));
+    TEST_ASSERT_EQUAL_UINT8(2, loaded.value);
 }
 
 int main(int, char**) {
@@ -1623,7 +1645,7 @@ int main(int, char**) {
     RUN_TEST(test_registry_load_resets_unsupported_registry_format_without_crashing);
     RUN_TEST(test_registry_selective_flush_writes_only_dirty_record_and_not_index);
     RUN_TEST(test_registry_delayed_rename_does_not_dirty_or_rewrite_index);
-    RUN_TEST(test_registry_create_orphan_and_delete_cleanup_ordering);
+    RUN_TEST(test_registry_delayed_delete_cleanup_ordering);
     RUN_TEST(test_registry_max_delay_flushes_after_repeated_dirty_updates);
     RUN_TEST(test_registry_coalesces_retained_state_updates);
     return UNITY_END();

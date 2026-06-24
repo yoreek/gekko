@@ -27,10 +27,6 @@ void test_persistence_coordinator_tracks_dirty_state_and_flush_window() {
     coordinator.markRetainedDirty(101, 40);
     TEST_ASSERT_EQUAL_UINT32(1, coordinator.dirtyRetainedStateIds().size());
 
-    RetainedStateRecord retained{};
-    retained.deviceId = 101;
-    retained.outputState = OutputState::On;
-    coordinator.pendingRetainedStateRecords()[101] = retained;
     TEST_ASSERT_TRUE(coordinator.hasAnyPersistenceWork());
 
     coordinator.clearConfigDirtyAfterImmediateFlush();

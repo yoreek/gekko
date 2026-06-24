@@ -85,7 +85,6 @@ DeviceCreateRequest makeCreateRequest(const char* name = "Living Room Lamp") {
     request.enabled = true;
     request.configVersion = DummyDevice::descriptor().currentConfigVersion;
     request.configBlob = makeDeviceConfigBlob(name);
-    request.persistencePolicy = DevicePersistencePolicy::Immediate;
     return request;
 }
 
@@ -98,9 +97,9 @@ void test_ws_message_builders_create_compact_envelopes() {
     TEST_ASSERT_FALSE(deserializeJson(upsertDoc, upsert));
     TEST_ASSERT_EQUAL_STRING("device.upsert", upsertDoc["topic"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT32(12, upsertDoc["revision"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_UINT32(42, upsertDoc["payload"]["device_id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32(42, upsertDoc["payload"]["deviceId"].as<uint32_t>());
     TEST_ASSERT_EQUAL_STRING("device_updated", upsertDoc["payload"]["eventKind"].as<const char*>());
-    TEST_ASSERT_EQUAL_UINT32(99, upsertDoc["payload"]["type_id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32(99, upsertDoc["payload"]["typeId"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(7, upsertDoc["payload"]["configRevision"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint8_t>(DeviceStatus::Starting), upsertDoc["payload"]["previousStatus"].as<uint8_t>());
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint8_t>(DeviceStatus::Ready), upsertDoc["payload"]["status"].as<uint8_t>());
@@ -179,8 +178,8 @@ void test_ws_manager_receives_device_events_when_attached() {
     TEST_ASSERT_FALSE(deserializeJson(doc, message));
     TEST_ASSERT_EQUAL_STRING("device.upsert", doc["topic"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT32(33, doc["revision"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_UINT32(42, doc["payload"]["device_id"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_UINT32(99, doc["payload"]["type_id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32(42, doc["payload"]["deviceId"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32(99, doc["payload"]["typeId"].as<uint32_t>());
     TEST_ASSERT_EQUAL_STRING("device_updated", doc["payload"]["eventKind"].as<const char*>());
     TEST_ASSERT_FALSE(doc["payload"]["commandAccepted"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("detail", doc["payload"]["detail"].as<const char*>());
@@ -221,26 +220,26 @@ void test_ws_manager_ignores_registry_persistence_cleared_events() {
 void test_ws_manager_broadcasts_snapshots_only_when_clients_are_connected() {
     PortalWebSocketManager manager;
 
-    manager.publishSnapshotPayloadsForTest("{\"topic\":\"wifi.status\",\"revision\":1,\"payload\":{\"wifi_status\":\"idle\"}}",
+    manager.publishSnapshotPayloadsForTest("{\"topic\":\"wifi.status\",\"revision\":1,\"payload\":{\"wifiStatus\":\"idle\"}}",
                                            "{\"topic\":\"ota.status\",\"revision\":1,\"payload\":{\"enabled\":true}}");
     TEST_ASSERT_EQUAL_UINT32(0, static_cast<uint32_t>(manager.sentMessageCount()));
 
     manager.setClientCountForTest(1);
-    manager.publishSnapshotPayloadsForTest("{\"topic\":\"wifi.status\",\"revision\":1,\"payload\":{\"wifi_status\":\"idle\"}}",
+    manager.publishSnapshotPayloadsForTest("{\"topic\":\"wifi.status\",\"revision\":1,\"payload\":{\"wifiStatus\":\"idle\"}}",
                                            "{\"topic\":\"ota.status\",\"revision\":1,\"payload\":{\"enabled\":true}}");
     TEST_ASSERT_EQUAL_UINT32(2, static_cast<uint32_t>(manager.sentMessageCount()));
 
-    manager.publishSnapshotPayloadsForTest("{\"topic\":\"wifi.status\",\"revision\":1,\"payload\":{\"wifi_status\":\"idle\"}}",
+    manager.publishSnapshotPayloadsForTest("{\"topic\":\"wifi.status\",\"revision\":1,\"payload\":{\"wifiStatus\":\"idle\"}}",
                                            "{\"topic\":\"ota.status\",\"revision\":1,\"payload\":{\"enabled\":true}}");
     TEST_ASSERT_EQUAL_UINT32(2, static_cast<uint32_t>(manager.sentMessageCount()));
 
     manager.setClientCountForTest(0);
-    manager.publishSnapshotPayloadsForTest("{\"topic\":\"wifi.status\",\"revision\":2,\"payload\":{\"wifi_status\":\"ap\"}}",
+    manager.publishSnapshotPayloadsForTest("{\"topic\":\"wifi.status\",\"revision\":2,\"payload\":{\"wifiStatus\":\"ap\"}}",
                                            "{\"topic\":\"ota.status\",\"revision\":2,\"payload\":{\"enabled\":false}}");
     TEST_ASSERT_EQUAL_UINT32(2, static_cast<uint32_t>(manager.sentMessageCount()));
 
     manager.setClientCountForTest(1);
-    manager.publishSnapshotPayloadsForTest("{\"topic\":\"wifi.status\",\"revision\":2,\"payload\":{\"wifi_status\":\"ap\"}}",
+    manager.publishSnapshotPayloadsForTest("{\"topic\":\"wifi.status\",\"revision\":2,\"payload\":{\"wifiStatus\":\"ap\"}}",
                                            "{\"topic\":\"ota.status\",\"revision\":2,\"payload\":{\"enabled\":false}}");
     TEST_ASSERT_EQUAL_UINT32(4, static_cast<uint32_t>(manager.sentMessageCount()));
 }
@@ -294,8 +293,8 @@ void test_ws_status_messages_are_serializable() {
     TEST_ASSERT_EQUAL_STRING("ota.status", otaDoc["topic"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT32(17, otaDoc["revision"].as<uint32_t>());
     TEST_ASSERT_TRUE(otaDoc["payload"]["enabled"].as<bool>());
-    TEST_ASSERT_FALSE(otaDoc["payload"]["has_error"].as<bool>());
-    TEST_ASSERT_EQUAL_UINT32(1234, otaDoc["payload"]["free_sketch_space"].as<uint32_t>());
+    TEST_ASSERT_FALSE(otaDoc["payload"]["hasError"].as<bool>());
+    TEST_ASSERT_EQUAL_UINT32(1234, otaDoc["payload"]["freeSketchSpace"].as<uint32_t>());
 
     const std::string system = PortalWebSocketMessages::buildSystemStatus("ok", false, 18);
     DynamicJsonDocument systemDoc(1024);

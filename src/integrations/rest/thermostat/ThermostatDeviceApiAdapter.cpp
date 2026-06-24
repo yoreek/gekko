@@ -26,7 +26,7 @@ bool parseDepsField(const JsonObjectConst& input, std::array<DeviceDependencyLin
             error = "thermostat dependency role is invalid";
             return false;
         }
-        const DeviceId deviceId = static_cast<DeviceId>(item["device_id"] | 0U);
+        const DeviceId deviceId = static_cast<DeviceId>(item["deviceId"] | 0U);
         if (deviceId == 0U) {
             error = "thermostat dependency device id is required";
             return false;
@@ -90,7 +90,6 @@ const char* ThermostatDeviceApiAdapter::typeName() const {
 bool ThermostatDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, const char*& error) const {
     request = {};
     request.typeId = typeId();
-    request.persistencePolicy = ThermostatDevice::descriptor().defaultPersistencePolicy;
     request.configVersion = kThermostatDeviceConfigVersion;
 
     DeviceBaseConfigV1 base{};

@@ -18,7 +18,6 @@ DeviceRegistryEntry makeRecord(DeviceId id, DeviceTypeId typeId, uint32_t config
     (void)name;
     record.depCount = 0;
     record.status = DeviceStatus::Ready;
-    record.persistencePolicy = DevicePersistencePolicy::Delayed;
     return record;
 }
 

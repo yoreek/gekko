@@ -1,5 +1,7 @@
 #include "devices/switch/SwitchDeviceBase.h"
 
+#include "devices/registry/RetainedStateStore.h"
+
 namespace ewfm {
 
 #undef SM_CLASS
@@ -81,22 +83,25 @@ bool SwitchDeviceBase::applyConfig(const DeviceConfigBlob& configBlob, uint32_t 
     return true;
 }
 
-bool SwitchDeviceBase::serializeRetainedState(RetainedStateRecord& record) const {
+DeviceValidationResult SwitchDeviceBase::saveRetainedState(RetainedStateStore& store) const {
     if (!restorePreviousState()) {
-        return false;
+        return {};
     }
+    SwitchRetainedStateRecord record{};
     record.recordVersion = kRetainedStateRecordVersion;
+    record.deviceId = deviceId();
     record.outputState = outputState_;
-    return true;
+    return store.save(record);
 }
 
-bool SwitchDeviceBase::applyRetainedStateRecord(const RetainedStateRecord& record) {
-    if (record.recordVersion != kRetainedStateRecordVersion) {
-        return false;
+DeviceValidationResult SwitchDeviceBase::loadRetainedState(RetainedStateStore& store) {
+    SwitchRetainedStateRecord record{};
+    const DeviceValidationResult result = store.load(deviceId(), record);
+    if (!result.ok()) {
+        return result;
     }
-
     applyRetainedState(record.outputState);
-    return true;
+    return {};
 }
 
 void SwitchDeviceBase::clearRetainedStateDirty() {

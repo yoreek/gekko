@@ -47,7 +47,6 @@ private:
     bool parseCreateAdapter(const JsonVariantConst& json, const char*& error, const IDeviceApiAdapter*& adapter) const;
     static const char* statusToString(DeviceStatus status);
     static const char* errorCodeForDeviceError(DeviceError error);
-    static DevicePersistencePolicy parsePolicy(const JsonObjectConst& input);
 };
 
 } // namespace ewfm

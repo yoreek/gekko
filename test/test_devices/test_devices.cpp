@@ -172,32 +172,32 @@ void test_retained_state_store_round_trip_and_remove() {
     RetainedStateStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
 
-    RetainedStateRecord record{};
+    SwitchRetainedStateRecord record{};
     record.deviceId = 7;
     record.outputState = OutputState::On;
     TEST_ASSERT_TRUE(store.save(record).ok());
 
-    RetainedStateRecord loaded;
+    SwitchRetainedStateRecord loaded;
     DeviceValidationResult loadResult = store.load(7, loaded);
     TEST_ASSERT_TRUE(loadResult.ok());
     TEST_ASSERT_EQUAL_UINT32(7, loaded.deviceId);
     TEST_ASSERT_EQUAL(static_cast<int>(record.outputState), static_cast<int>(loaded.outputState));
 
     TEST_ASSERT_TRUE(store.remove(7));
-    RetainedStateRecord missing;
+    SwitchRetainedStateRecord missing;
     DeviceValidationResult missingResult = store.load(7, missing);
     TEST_ASSERT_FALSE(missingResult.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::MissingRecord), static_cast<int>(missingResult.error));
 }
 
-void test_retained_state_store_rejects_corrupt_payload() {
+void test_retained_state_store_rejects_corrupt_record() {
     MemoryConfigStorage storage;
     TEST_ASSERT_TRUE(storage.putString("state_00000007", "zz"));
 
     RetainedStateStore store(storage);
     TEST_ASSERT_TRUE(store.begin(true));
 
-    RetainedStateRecord loaded;
+    SwitchRetainedStateRecord loaded;
     DeviceValidationResult result = store.load(7, loaded);
     TEST_ASSERT_FALSE(result.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::MissingRecord), static_cast<int>(result.error));
@@ -276,7 +276,7 @@ int main(int, char**) {
     RUN_TEST(test_device_registry_store_resets_on_missing_registry_version);
     RUN_TEST(test_device_registry_store_resets_on_registry_version_mismatch);
     RUN_TEST(test_retained_state_store_round_trip_and_remove);
-    RUN_TEST(test_retained_state_store_rejects_corrupt_payload);
+    RUN_TEST(test_retained_state_store_rejects_corrupt_record);
     RUN_TEST(test_dummy_device_lifecycle_and_command_output);
     RUN_TEST(test_dummy_device_base_config_is_loaded_and_runtime_starts_disabled);
     RUN_TEST(test_dummy_device_dependency_wiring_survive_base_refactor);

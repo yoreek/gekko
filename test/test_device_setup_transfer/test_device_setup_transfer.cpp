@@ -112,7 +112,6 @@ DeviceCreateRequest makeDummyCreateRequest(const char* name) {
     request.configBlob = encodeDummyConfig(config);
     request.configVersion = DummyDevice::descriptor().currentConfigVersion;
     request.enabled = true;
-    request.persistencePolicy = DevicePersistencePolicy::Immediate;
     return request;
 }
 } // namespace
@@ -134,7 +133,7 @@ void test_device_setup_export_includes_metadata_and_redacts_secret_strings() {
     TEST_ASSERT_TRUE(bundle.find("\"deps\":[]") != std::string::npos);
     TEST_ASSERT_TRUE(bundle.find("config_blob_hex") == std::string::npos);
     TEST_ASSERT_EQUAL(std::string::npos, bundle.find("\"status\""));
-    TEST_ASSERT_EQUAL(std::string::npos, bundle.find("persistence_policy"));
+    TEST_ASSERT_EQUAL(std::string::npos, bundle.find("persistencePolicy"));
     TEST_ASSERT_EQUAL(std::string::npos, bundle.find("password"));
 }
 
@@ -168,14 +167,28 @@ void test_device_setup_export_round_trips_back_into_registry() {
 }
 
 void test_device_setup_transfer_rejects_unsupported_version() {
-    const std::string bundle = "{\"kind\":\"transfer_envelope\",\"transfer_schema_version\":99,\"registry_schema_version\":1,\"registry_"
-                               "revision\":1,\"device_count\":0}\n";
+    const std::string bundle = "{\"kind\":\"transfer_envelope\",\"transferSchemaVersion\":99,\"registrySchemaVersion\":1,\"registry"
+                               "Revision\":1,\"deviceCount\":0}\n";
     const char* path = "/tmp/device_setup_transfer_bad_version.ndjson";
     writeTextFile(path, bundle);
 
     DeviceSetupTransferCodec::ParseResult parsed = DeviceSetupTransferCodec::parseFile(path, bundle.size());
     TEST_ASSERT_FALSE(parsed.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::InvalidVersion), static_cast<int>(parsed.validation.error));
+}
+
+void test_device_setup_transfer_rejects_legacy_flat_device_record() {
+    const std::string bundle =
+        "{\"kind\":\"transfer_envelope\",\"transferSchemaVersion\":1,\"registrySchemaVersion\":1,\"registryRevision\":1,"
+        "\"deviceCount\":1}\n"
+        "{\"kind\":\"device\",\"id\":1001,\"typeName\":\"dummy\",\"configRevision\":1,\"name\":\"legacy\",\"enabled\":true,"
+        "\"config_blob_hex\":\"00\"}\n";
+    const char* path = "/tmp/device_setup_transfer_flat_legacy.ndjson";
+    writeTextFile(path, bundle);
+
+    DeviceSetupTransferCodec::ParseResult parsed = DeviceSetupTransferCodec::parseFile(path, bundle.size());
+    TEST_ASSERT_FALSE(parsed.ok());
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::InvalidConfig), static_cast<int>(parsed.validation.error));
 }
 
 void test_device_setup_restore_failure_leaves_live_registry_unchanged() {
@@ -216,6 +229,7 @@ int main(int, char**) {
     RUN_TEST(test_device_setup_export_includes_metadata_and_redacts_secret_strings);
     RUN_TEST(test_device_setup_export_round_trips_back_into_registry);
     RUN_TEST(test_device_setup_transfer_rejects_unsupported_version);
+    RUN_TEST(test_device_setup_transfer_rejects_legacy_flat_device_record);
     RUN_TEST(test_device_setup_restore_failure_leaves_live_registry_unchanged);
     return UNITY_END();
 }

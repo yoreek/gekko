@@ -21,7 +21,6 @@ const char* GpioSwitchDeviceApiAdapter::typeName() const {
 bool GpioSwitchDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, const char*& error) const {
     request = {};
     request.typeId = typeId();
-    request.persistencePolicy = GpioSwitchDevice::descriptor().defaultPersistencePolicy;
     request.configVersion = GpioSwitchDevice::descriptor().currentConfigVersion;
 
     DeviceBaseConfigV1 base{};
@@ -90,7 +89,7 @@ bool GpioSwitchDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst&
 }
 
 void GpioSwitchDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus,
-                                                  JsonObject output) const {
+                                                 JsonObject output) const {
     writeCommonDeviceJson(runtime, effectiveStatus, typeName(), output);
     const GpioSwitchDevice& device = static_cast<const GpioSwitchDevice&>(runtime);
     JsonObject config = output["config"].as<JsonObject>();

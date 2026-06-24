@@ -57,7 +57,6 @@ DeviceRegistryEntry makeGpioSwitchRecord() {
     GpioSwitchDevicePersistedConfigV1 config{};
     record.header.payloadLength = static_cast<uint32_t>(gpioSwitchDeviceConfigSize(config));
     record.status = DeviceStatus::Ready;
-    record.persistencePolicy = DevicePersistencePolicy::Delayed;
     return record;
 }
 
@@ -95,7 +94,6 @@ void test_gpio_switch_api_adapter_parses_create_request() {
     StaticJsonDocument<512> doc;
     doc["name"] = "relay";
     doc["enabled"] = true;
-    doc["persistence_policy"] = "delayed";
     JsonObject config = doc.createNestedObject("config");
     config["name"] = "relay";
     config["enabled"] = true;
@@ -111,7 +109,6 @@ void test_gpio_switch_api_adapter_parses_create_request() {
     TEST_ASSERT_TRUE_MESSAGE(ok, error);
     TEST_ASSERT_EQUAL_UINT32(GpioSwitchDevice::descriptor().typeId, request.typeId);
     TEST_ASSERT_EQUAL_STRING("relay", request.name.c_str());
-    TEST_ASSERT_EQUAL(static_cast<int>(DevicePersistencePolicy::Delayed), static_cast<int>(request.persistencePolicy));
 
     GpioSwitchDevicePersistedConfigV1 parsed{};
     TEST_ASSERT_TRUE(

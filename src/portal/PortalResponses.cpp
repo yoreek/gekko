@@ -25,8 +25,8 @@ void writeWifiScanResponseJson(::AsyncResponseStream& out, const std::vector<Wif
 void writeOtaStatusResponseJson(::AsyncResponseStream& out, size_t freeSketchSpace, bool hasError) {
     StaticJsonDocument<128> doc;
     doc["enabled"] = true;
-    doc["free_sketch_space"] = freeSketchSpace;
-    doc["has_error"] = hasError;
+    doc["freeSketchSpace"] = freeSketchSpace;
+    doc["hasError"] = hasError;
 
     serializeJson(doc, out);
 }

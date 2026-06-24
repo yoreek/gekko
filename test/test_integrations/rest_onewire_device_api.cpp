@@ -112,10 +112,9 @@ void test_device_api_adapter_registry_resolves_onewire() {
 
 void test_onewire_api_adapter_parses_create_request() {
     StaticJsonDocument<256> doc;
-    doc["type_id"] = OneWireBusDevice::descriptor().typeId;
+    doc["typeId"] = OneWireBusDevice::descriptor().typeId;
     doc["name"] = "onewire";
     doc["enabled"] = true;
-    doc["persistence_policy"] = "delayed";
     JsonObject config = doc.createNestedObject("config");
     config["gpioPin"] = 18;
     config["internalPullup"] = true;

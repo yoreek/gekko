@@ -247,7 +247,6 @@ DeviceCreateRequest makeBusCreateRequest(const char* name) {
     request.enabled = true;
     request.configVersion = OneWireBusDevice::descriptor().currentConfigVersion;
     request.configBlob = encodeOneWirePayload(makeBusConfig());
-    request.persistencePolicy = DevicePersistencePolicy::Delayed;
     return request;
 }
 
@@ -260,7 +259,6 @@ DeviceCreateRequest makeSensorCreateRequest(const char* name, DeviceId dependenc
     request.deps[0] = {DeviceDependencyRole::OneWireBus, dependencyId};
     request.configVersion = kDs18b20TemperatureSensorConfigVersion;
     request.configBlob = encodeDs18b20Payload(config);
-    request.persistencePolicy = DevicePersistencePolicy::Delayed;
     return request;
 }
 
@@ -343,13 +341,13 @@ void test_ds18b20_type_and_api_adapter_are_registered() {
 
 void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input() {
     StaticJsonDocument<512> doc;
-    doc["type_id"] = kDs18b20TemperatureSensorTypeId;
+    doc["typeId"] = kDs18b20TemperatureSensorTypeId;
     doc["name"] = "temperature";
     doc["enabled"] = true;
     JsonArray deps = doc.createNestedArray("deps");
     JsonObject dep = deps.createNestedObject();
     dep["role"] = "onewire_bus";
-    dep["device_id"] = 44;
+    dep["deviceId"] = 44;
     JsonObject config = doc.createNestedObject("config");
     config["address"] = "28FF641D621603AD";
     config["resolution"] = 11;
@@ -380,7 +378,7 @@ void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input() {
     JsonArray updateDeps = updateDoc.createNestedArray("deps");
     JsonObject updateDep = updateDeps.createNestedObject();
     updateDep["role"] = "onewire_bus";
-    updateDep["device_id"] = 45;
+    updateDep["deviceId"] = 45;
     JsonObject updateConfig = updateDoc.createNestedObject("config");
     updateConfig["address"] = "28FF641D621603AD";
     updateConfig["resolution"] = 12;
@@ -420,7 +418,7 @@ void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input() {
     JsonArray badDeps = badAddressDoc.createNestedArray("deps");
     JsonObject badDep = badDeps.createNestedObject();
     badDep["role"] = "onewire_bus";
-    badDep["device_id"] = 44;
+    badDep["deviceId"] = 44;
     JsonObject badConfig = badAddressDoc.createNestedObject("config");
     badConfig["address"] = "10FF641D6216037B";
     TEST_ASSERT_FALSE(

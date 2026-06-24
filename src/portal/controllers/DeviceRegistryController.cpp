@@ -151,7 +151,7 @@ bool DeviceRegistryController::parseCreateAdapter(const JsonVariantConst& json, 
     }
 
     const JsonObjectConst object = json.as<JsonObjectConst>();
-    const uint32_t typeId = object["type_id"] | 0U;
+    const uint32_t typeId = object["typeId"] | 0U;
     if (typeId != 0U) {
         adapter = adapters_.find(static_cast<DeviceTypeId>(typeId));
         if (adapter == nullptr) {
@@ -224,17 +224,6 @@ const char* DeviceRegistryController::errorCodeForDeviceError(const DeviceError 
     }
 }
 
-DevicePersistencePolicy DeviceRegistryController::parsePolicy(const JsonObjectConst& input) {
-    const char* value = input["persistence_policy"] | "immediate";
-    if (std::strcmp(value, "delayed") == 0) {
-        return DevicePersistencePolicy::Delayed;
-    }
-    if (std::strcmp(value, "coalesced") == 0) {
-        return DevicePersistencePolicy::Coalesced;
-    }
-    return DevicePersistencePolicy::Immediate;
-}
-
 namespace {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 const char* statusToString(DeviceStatus status) {
@@ -263,8 +252,7 @@ const char* statusToString(DeviceStatus status) {
     }
 }
 
-void writeFallbackDeviceJson(JsonObject device, const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus,
-                             const char* typeName) {
+void writeFallbackDeviceJson(JsonObject device, const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus, const char* typeName) {
     JsonObject record = device.createNestedObject("record");
     record["id"] = runtime.deviceId();
     record["typeName"] = typeName;
@@ -402,8 +390,7 @@ void DeviceRegistryController::destroy() {
         renderError(404, "NOT_FOUND", "device not found");
         return;
     }
-    const DeviceMutationResult result =
-        registry_.command(DeviceCommand{DeviceCommandType::Delete, deviceId_, "", DevicePersistencePolicy::Immediate}, 0);
+    const DeviceMutationResult result = registry_.command(DeviceCommand{DeviceCommandType::Delete, deviceId_, ""}, 0);
     if (!result.ok()) {
         StaticJsonDocument<384> doc;
         doc["success"] = false;
@@ -435,9 +422,9 @@ void DeviceRegistryController::cmd() {
         return;
     }
     const JsonObjectConst input = getDoc()->as<JsonObjectConst>();
-    const DeviceId bodyDeviceId = static_cast<DeviceId>(input["device_id"] | 0U);
+    const DeviceId bodyDeviceId = static_cast<DeviceId>(input["deviceId"] | 0U);
     if (bodyDeviceId != 0U && bodyDeviceId != deviceId_) {
-        renderError(400, "BAD_ARGS", "device_id mismatch");
+        renderError(400, "BAD_ARGS", "deviceId mismatch");
         return;
     }
 
@@ -449,19 +436,19 @@ void DeviceRegistryController::cmd() {
 
     DeviceMutationResult mutationResult{};
     if (std::strcmp(commandName, "enable") == 0) {
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Enable, deviceId_, "", parsePolicy(input)}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Enable, deviceId_, ""}, 0);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
     } else if (std::strcmp(commandName, "disable") == 0) {
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Disable, deviceId_, "", parsePolicy(input)}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Disable, deviceId_, ""}, 0);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
     } else if (std::strcmp(commandName, "delete") == 0) {
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Delete, deviceId_, "", parsePolicy(input)}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Delete, deviceId_, ""}, 0);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -472,7 +459,7 @@ void DeviceRegistryController::cmd() {
             renderError(400, "BAD_ARGS", "name is required");
             return;
         }
-        mutationResult = registry_.rename(deviceId_, name, 0, parsePolicy(input));
+        mutationResult = registry_.rename(deviceId_, name, 0);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -483,13 +470,13 @@ void DeviceRegistryController::cmd() {
             renderError(400, "BAD_ARGS", "status is required");
             return;
         }
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetStatus, deviceId_, status, parsePolicy(input)}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetStatus, deviceId_, status}, 0);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
     } else if (std::strcmp(commandName, "scan") == 0) {
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Scan, deviceId_, "", parsePolicy(input)}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Scan, deviceId_, ""}, 0);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -500,7 +487,7 @@ void DeviceRegistryController::cmd() {
             renderError(400, "BAD_ARGS", "state is required");
             return;
         }
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetOutput, deviceId_, state, parsePolicy(input)}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetOutput, deviceId_, state}, 0);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -523,9 +510,9 @@ void DeviceRegistryController::cmd() {
                 renderError(400, "BAD_ARGS", "dependency role is invalid");
                 return;
             }
-            const DeviceId dependencyDeviceId = static_cast<DeviceId>(item["device_id"] | 0U);
+            const DeviceId dependencyDeviceId = static_cast<DeviceId>(item["deviceId"] | 0U);
             if (dependencyDeviceId == 0U) {
-                renderError(400, "BAD_ARGS", "dependency device_id is required");
+                renderError(400, "BAD_ARGS", "dependency deviceId is required");
                 return;
             }
             depsPayload.deps[depCount++] = DeviceDependencyLink{role, dependencyDeviceId};
@@ -541,7 +528,7 @@ void DeviceRegistryController::cmd() {
                 return;
             }
         }
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetDeps, deviceId_, depsPayload, parsePolicy(input)}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetDeps, deviceId_, depsPayload}, 0);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -568,9 +555,8 @@ void DeviceRegistryController::cmd() {
             renderError(400, errorCodeForDeviceError(updateValidation.error), updateValidation.message);
             return;
         }
-        mutationResult =
-            registry_.updateConfigAndDeps(deviceId_, updateRequest.configBlob, updateRequest.configVersion, updateRequest.depsProvided,
-                                          updateRequest.deps, updateRequest.depCount, 0, parsePolicy(input));
+        mutationResult = registry_.updateConfigAndDeps(deviceId_, updateRequest.configBlob, updateRequest.configVersion,
+                                                       updateRequest.depsProvided, updateRequest.deps, updateRequest.depCount, 0);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -581,8 +567,8 @@ void DeviceRegistryController::cmd() {
     }
 
     StaticJsonDocument<1536> doc;
-    doc["registry_revision"] = registry_.registryRevision();
-    doc["pending_persistence"] = mutationResult.pendingPersistence;
+    doc["registryRevision"] = registry_.registryRevision();
+    doc["pendingPersistence"] = mutationResult.pendingPersistence;
     if (const IDeviceRuntime* runtime = registry_.runtime(deviceId_); runtime != nullptr) {
         JsonObject device = doc.createNestedObject("device");
         const IDeviceApiAdapter* adapter = adapters_.find(runtime->typeId());

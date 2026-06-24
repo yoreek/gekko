@@ -2,8 +2,8 @@
 
 Define the canonical device record, configuration persistence, and JSON interchange model used by the firmware.
 ## Requirements
-### Requirement: Canonical flat device record
-The firmware SHALL define each dynamic device as a flat record with top-level identity, common config, dependency links, and type-specific fields.
+### Requirement: Canonical device record
+The firmware SHALL define each dynamic device as a nested record with separate identity, persisted config, and runtime state sections.
 
 #### Scenario: Defaults are loaded
 - **WHEN** no configuration exists in NVS
@@ -14,7 +14,7 @@ The firmware SHALL define each dynamic device as a flat record with top-level id
 - **THEN** the firmware loads it, validates it, and exposes typed values to application modules
 
 ### Requirement: Configuration class hierarchy example
-The firmware documentation SHALL show device configuration as a compact C++ inheritance chain instead of scattering the shared fields across unrelated descriptions.
+The firmware documentation SHALL show device configuration as a compact C++ inheritance chain that keeps shared persisted fields inside the base config layer instead of scattering them across unrelated descriptions.
 
 #### Scenario: DS18B20 config derives from base config classes
 - **WHEN** the documentation describes a DS18B20 configuration model
@@ -25,7 +25,7 @@ The firmware documentation SHALL show device configuration as a compact C++ inhe
   class BaseOneWireSensorConfig : public BaseSensorConfig {};
   class Ds18b20SensorConfig : public BaseOneWireSensorConfig {};
   ```
-- **AND** `BaseDeviceConfig` owns the shared device fields, `BaseOneWireSensorConfig` adds the OneWire-specific address, `Ds18b20SensorConfig` adds the DS18B20-specific settings, and `deps` remain top-level device record data
+- **AND** `BaseDeviceConfig` owns the shared persisted fields `name`, `enabled`, and `deps`, `BaseOneWireSensorConfig` adds the OneWire-specific address, and `Ds18b20SensorConfig` adds the DS18B20-specific settings while record identity stays in the record wrapper
 
 ### Requirement: NVS persistence
 The firmware SHALL persist boot-critical configuration in NVS through Arduino ESP32 `Preferences` or an equivalent adapter.
@@ -54,20 +54,19 @@ The firmware SHALL support migrating stored configuration from older supported c
 - **THEN** Unity tests cover supported defaults, valid stored data, older supported config formats, and corrupt or unsupported config inputs
 
 ### Requirement: JSON import and export
-The firmware SHALL support JSON as an external configuration interchange format.
+The firmware SHALL support JSON as an external setup-bundle interchange format using nested device setup records.
 
 #### Scenario: Configuration is exported
 - **WHEN** a caller requests a configuration export
 - **THEN** the firmware returns JSON containing the current non-secret configuration fields and metadata needed for future import
 
-#### Scenario: Exported device records are flat JSON objects
+#### Scenario: Exported device records use record/config nesting
 - **WHEN** the firmware exports a device setup transfer bundle
-- **THEN** each device record contains top-level identity fields such as `id`, `type`, `name`, `enabled`, `deps`, `config_revision`, and the device-specific configuration fields
-- **AND** the export does not wrap the device configuration in a separate binary `config_blob_hex` field
+- **THEN** each device record contains nested `record` and `config` sections, includes `id`, `typeName`, and `configRevision` inside `record`, and does not duplicate those fields at the top level
 
 #### Scenario: Configuration is imported
 - **WHEN** a caller submits JSON configuration within the accepted size limit
-- **THEN** the firmware parses, validates, migrates if needed, and persists only accepted fields from the flat device record
+- **THEN** the firmware parses, validates, migrates if needed, and persists only accepted fields from the nested device setup record
 
 #### Scenario: Secret handling during export
 - **WHEN** configuration contains WiFi passwords or other secrets

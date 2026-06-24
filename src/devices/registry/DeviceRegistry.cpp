@@ -85,10 +85,31 @@ bool sameDependencyLinks(const DeviceDependencyLink* leftLinks, uint8_t leftCoun
     return true;
 }
 
-DeviceMutationResult handleUpdateConfigCommand(DeviceRegistry& registry, const DeviceCommand& command, uint32_t now) {
+DeviceMutationResult handleUpdateConfigCommand(DeviceRegistry& registry, const DeviceCommand& command, uint32_t now,
+                                               DevicePersistencePolicy policy) {
     BoundedBlob<kMaxDeviceConfigBytes> payload{};
     (void)payload.assign(reinterpret_cast<const uint8_t*>(command.payload.view().data()), command.payload.view().size());
-    return registry.updateConfig(command.deviceId, payload, 0, now, command.persistencePolicy);
+    return registry.updateConfig(command.deviceId, payload, 0, now, policy);
+}
+
+DevicePersistencePolicy policyForCommand(const DeviceCommandType type) {
+    switch (type) {
+    case DeviceCommandType::Delete:
+    case DeviceCommandType::SetDeps:
+        return DevicePersistencePolicy::Immediate;
+    case DeviceCommandType::Rename:
+    case DeviceCommandType::Enable:
+    case DeviceCommandType::Disable:
+    case DeviceCommandType::UpdateConfig:
+    case DeviceCommandType::SetStatus:
+    case DeviceCommandType::Scan:
+    case DeviceCommandType::SetOutput:
+    case DeviceCommandType::Custom:
+    case DeviceCommandType::Create:
+    case DeviceCommandType::None:
+        return DevicePersistencePolicy::Delayed;
+    }
+    return DevicePersistencePolicy::Delayed;
 }
 
 } // namespace
@@ -315,7 +336,7 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
     for (uint8_t index = 0; index < request.dependencyCount() && index < kMaxDeviceDependencies && requestDeps != nullptr; ++index) {
         record.deps[index] = requestDeps[index];
     }
-    record.persistencePolicy = request.persistencePolicy;
+    record.persistencePolicy = DevicePersistencePolicy::Immediate;
     record.status = request.enabled ? DeviceStatus::Creating : DeviceStatus::Disabled;
 
     DeviceRegistrySnapshot next{};
@@ -347,20 +368,14 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
         return result;
     }
 
-    if (request.persistencePolicy == DevicePersistencePolicy::Immediate) {
-        const DeviceValidationResult persistResult = persistIfNeeded(request.persistencePolicy);
-        if (!persistResult.ok()) {
-            clearRuntime(deviceId);
-            result.validation = persistResult;
-            return result;
-        }
-        ++registryRevision_;
-        persistence_.clearConfigDirtyAfterImmediateFlush();
-    } else {
-        ++registryRevision_;
-        persistence_.markIndexDirty(now);
-        persistence_.markConfigDirty(deviceId, now);
+    const DeviceValidationResult persistResult = persistIfNeeded(DevicePersistencePolicy::Immediate);
+    if (!persistResult.ok()) {
+        clearRuntime(deviceId);
+        result.validation = persistResult;
+        return result;
     }
+    ++registryRevision_;
+    persistence_.clearConfigDirtyAfterImmediateFlush();
 
     result.pendingPersistence = persistence_.hasPendingPersistence();
     syncRuntimeDependencyLinks(deviceId);
@@ -378,6 +393,18 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
     emitRuntimeStatusChanges();
 
     if (auto* runtimePtr = this->runtime(deviceId); runtimePtr != nullptr) {
+        DeviceEvent persisted{};
+        persisted.kind = DeviceEventKind::ConfigPersisted;
+        persisted.registryRevision = registryRevision_;
+        persisted.configRevision = record.header.configRevision;
+        persisted.deviceId = deviceId;
+        persisted.typeId = record.header.typeId;
+        setRuntimeMetadata(persisted, *runtimePtr, descriptor != nullptr ? descriptor->name : nullptr);
+        persisted.status = effectiveStatusForRuntime(*runtimePtr);
+        persisted.pendingPersistence = false;
+        DeviceRegistryEventReporter::setEventDetail(persisted, "config persisted");
+        eventReporter_.emit(persisted);
+
         DeviceEvent created{};
         created.kind = DeviceEventKind::DeviceCreated;
         created.registryRevision = registryRevision_;
@@ -404,9 +431,8 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
     }
 
     result.validation = {};
-    EWFM_DEVICE_REGISTRY_LOG_INFO("device created id=%u type=%u policy=%u pending=%d", static_cast<unsigned>(deviceId),
-                                  static_cast<unsigned>(record.header.typeId), static_cast<unsigned>(request.persistencePolicy),
-                                  static_cast<int>(result.pendingPersistence));
+    EWFM_DEVICE_REGISTRY_LOG_INFO("device created id=%u type=%u pending=%d", static_cast<unsigned>(deviceId),
+                                  static_cast<unsigned>(record.header.typeId), static_cast<int>(result.pendingPersistence));
     return result;
 }
 
@@ -989,72 +1015,6 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
     return result;
 }
 
-DeviceMutationResult DeviceRegistry::setRetainedState(DeviceId deviceId, const RetainedStateRecord& record, uint32_t now,
-                                                      DevicePersistencePolicy policy) {
-    DeviceMutationResult result{};
-    const IDeviceRuntime* runtimePtr = runtime(deviceId);
-    if (runtimePtr == nullptr) {
-        result.validation = {DeviceError::MissingRecord, "device not found"};
-        return result;
-    }
-
-    const DeviceTypeDescriptor* descriptor = typeRegistry_.find(runtimePtr->typeId());
-    if (descriptor == nullptr) {
-        result.validation = {DeviceError::UnsupportedType, "unsupported device type"};
-        return result;
-    }
-
-    if (!descriptor->supportsRetainedState) {
-        result.validation = {DeviceError::InvalidConfig, "device type does not support retained state"};
-        return result;
-    }
-
-    RetainedStateRecord retained = record;
-    retained.deviceId = deviceId;
-
-    if (policy == DevicePersistencePolicy::Immediate) {
-        if (retainedStateStore_ == nullptr) {
-            result.validation = {DeviceError::StorageError, "retained state store is unavailable"};
-            return result;
-        }
-
-        const DeviceValidationResult persistResult = retainedStateStore_->save(retained);
-        if (!persistResult.ok()) {
-            result.validation = persistResult;
-            return result;
-        }
-        persistence_.clearRetainedTracking(deviceId);
-        if (!persistence_.hasAnyPersistenceWork()) {
-            persistence_.markClean();
-        }
-        result.pendingPersistence = persistence_.hasPendingPersistence();
-        result.validation = {};
-        DeviceEvent updated{};
-        updated.kind = DeviceEventKind::RetainedStateChanged;
-        updated.registryRevision = registryRevision_;
-        updated.deviceId = deviceId;
-        updated.typeId = runtimePtr->typeId();
-        updated.pendingPersistence = persistence_.hasPendingPersistence();
-        DeviceRegistryEventReporter::setEventDetail(updated, "retained state persisted");
-        eventReporter_.emit(updated);
-        return result;
-    }
-
-    persistence_.pendingRetainedStateRecords()[deviceId] = retained;
-    persistence_.markRetainedDirty(deviceId, now);
-    result.pendingPersistence = persistence_.hasPendingPersistence();
-    result.validation = {};
-    DeviceEvent updated{};
-    updated.kind = DeviceEventKind::RetainedStateChanged;
-    updated.registryRevision = registryRevision_;
-    updated.deviceId = deviceId;
-    updated.typeId = runtimePtr->typeId();
-    updated.pendingPersistence = persistence_.hasPendingPersistence();
-    DeviceRegistryEventReporter::setEventDetail(updated, "retained state updated");
-    eventReporter_.emit(updated);
-    return result;
-}
-
 DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint32_t now) {
     if (!command.valid()) {
         DeviceMutationResult result{{DeviceError::BoundsExceeded, "command payload exceeds supported size"}, false};
@@ -1068,17 +1028,18 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
         return result;
     }
 
+    const DevicePersistencePolicy policy = policyForCommand(command.type);
     switch (command.type) {
     case DeviceCommandType::Rename:
-        return rename(command.deviceId, std::string(command.payload.view()), now, command.persistencePolicy);
+        return rename(command.deviceId, std::string(command.payload.view()), now, policy);
     case DeviceCommandType::Enable:
-        return setEnabled(command.deviceId, true, now, command.persistencePolicy);
+        return setEnabled(command.deviceId, true, now, policy);
     case DeviceCommandType::Disable:
-        return setEnabled(command.deviceId, false, now, command.persistencePolicy);
+        return setEnabled(command.deviceId, false, now, policy);
     case DeviceCommandType::Delete:
-        return remove(command.deviceId, now, command.persistencePolicy);
+        return remove(command.deviceId, now, policy);
     case DeviceCommandType::UpdateConfig:
-        return handleUpdateConfigCommand(*this, command, now);
+        return handleUpdateConfigCommand(*this, command, now, policy);
     case DeviceCommandType::SetStatus:
     case DeviceCommandType::Scan:
     case DeviceCommandType::SetOutput:
@@ -1141,7 +1102,7 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
             eventReporter_.emit(rejected);
             return result;
         }
-        return setDeps(command.deviceId, command.depsPayload.deps, command.depsPayload.depCount, now, command.persistencePolicy);
+        return setDeps(command.deviceId, command.depsPayload.deps, command.depsPayload.depCount, now, policy);
     }
     case DeviceCommandType::Create:
     case DeviceCommandType::None:
@@ -1165,17 +1126,24 @@ DeviceValidationResult DeviceRegistry::captureRuntimeRetainedState(DeviceId devi
         return {};
     }
 
-    RetainedStateRecord retained{};
-    retained.deviceId = deviceId;
-    if (!runtimeInstance->serializeRetainedState(retained)) {
-        return {};
+    const DeviceTypeDescriptor* descriptor = typeRegistry_.find(runtimeInstance->typeId());
+    if (descriptor == nullptr) {
+        return {DeviceError::UnsupportedType, "unsupported device type"};
+    }
+    if (!descriptor->supportsRetainedState) {
+        return {DeviceError::InvalidConfig, "device type does not support retained state"};
     }
 
-    DeviceMutationResult result = setRetainedState(deviceId, retained, now, DevicePersistencePolicy::Coalesced);
-    if (!result.ok()) {
-        return result.validation;
-    }
+    persistence_.markRetainedDirty(deviceId, now);
     runtimeInstance->clearRetainedStateDirty();
+    DeviceEvent updated{};
+    updated.kind = DeviceEventKind::RetainedStateChanged;
+    updated.registryRevision = registryRevision_;
+    updated.deviceId = deviceId;
+    updated.typeId = runtimeInstance->typeId();
+    updated.pendingPersistence = persistence_.hasPendingPersistence();
+    DeviceRegistryEventReporter::setEventDetail(updated, "retained state updated");
+    eventReporter_.emit(updated);
     return {};
 }
 
@@ -1224,13 +1192,12 @@ DeviceValidationResult DeviceRegistry::flushNow() {
         }
 
         for (const DeviceId deviceId : dirtyRetainedIds) {
-            const auto& pending = persistence_.pendingRetainedStateRecords();
-            const auto pendingIt = pending.find(deviceId);
-            if (pendingIt == pending.end()) {
+            const IDeviceRuntime* runtimePtr = runtime(deviceId);
+            if (runtimePtr == nullptr) {
                 continue;
             }
 
-            const DeviceValidationResult saveResult = retainedStateStore_->save(pendingIt->second);
+            const DeviceValidationResult saveResult = runtimePtr->saveRetainedState(*retainedStateStore_);
             if (!saveResult.ok()) {
                 return saveResult;
             }
@@ -1264,12 +1231,6 @@ DeviceValidationResult DeviceRegistry::flushNow() {
     }
 
     for (const DeviceId deviceId : dirtyRetainedIds) {
-        const auto& pending = persistence_.pendingRetainedStateRecords();
-        const auto pendingIt = pending.find(deviceId);
-        if (pendingIt == pending.end()) {
-            continue;
-        }
-
         const IDeviceRuntime* runtimePtr = runtime(deviceId);
         if (runtimePtr == nullptr) {
             continue;
@@ -1678,11 +1639,8 @@ DeviceValidationResult DeviceRegistry::reloadRuntimeFor(DeviceRuntimeMap& target
     }
     entry.runtime->bindDeviceIdentity(record, configBlob);
     if (descriptor->supportsRetainedState && retainedStateStore_ != nullptr) {
-        RetainedStateRecord retained{};
-        const DeviceValidationResult retainedResult = retainedStateStore_->load(record.header.deviceId, retained);
-        if (retainedResult.ok()) {
-            (void)entry.runtime->applyRetainedStateRecord(retained);
-        } else if (retainedResult.error != DeviceError::MissingRecord) {
+        const DeviceValidationResult retainedResult = entry.runtime->loadRetainedState(*retainedStateStore_);
+        if (!retainedResult.ok() && retainedResult.error != DeviceError::MissingRecord) {
             return retainedResult;
         }
     }

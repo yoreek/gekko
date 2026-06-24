@@ -35,7 +35,6 @@ const char* OneWireBusDeviceApiAdapter::typeName() const {
 bool OneWireBusDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, const char*& error) const {
     request = {};
     request.typeId = typeId();
-    request.persistencePolicy = OneWireBusDevice::descriptor().defaultPersistencePolicy;
     request.configVersion = OneWireBusDevice::descriptor().currentConfigVersion;
 
     DeviceBaseConfigV1 base{};

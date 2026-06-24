@@ -17,6 +17,12 @@ public:
     explicit RegistrySwitch(const SwitchDeviceConfigV1& config) : TriStateSwitchDeviceBase(config) {}
 
 private:
+    bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override {
+        uint8_t buffer[kMaxDeviceConfigBytes]{};
+        const size_t size = switchDeviceConfigSize(switchConfig());
+        return encodeSwitchDeviceConfig(switchConfig(), buffer, size) && configBlob.assign(buffer, size);
+    }
+
     DeviceValidationResult configureHardware(uint32_t now) override {
         (void)now;
         return {};
@@ -90,7 +96,8 @@ DeviceCreateRequest makeCreateRequest() {
     request.configBlob = encodeSwitchPayload(config);
     request.configVersion = 1;
     request.enabled = true;
-    request.persistencePolicy = DevicePersistencePolicy::Delayed;
+    SwitchDeviceConfigV1 decoded{};
+    TEST_ASSERT_TRUE(decodeSwitchDeviceConfig(request.configBlob.data(), request.configBlob.size(), decoded));
     return request;
 }
 
@@ -99,9 +106,9 @@ DeviceCreateRequest makeCreateRequest() {
 void test_registry_custom_switch_command_marks_retained_state_without_config_revision_change() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
-    TEST_ASSERT_TRUE(store.begin(true));
+    TEST_ASSERT_TRUE(store.begin(false));
     RetainedStateStore retainedStore(storage);
-    TEST_ASSERT_TRUE(retainedStore.begin(true));
+    TEST_ASSERT_TRUE(retainedStore.begin(false));
     SequentialDeviceIdSource ids(100);
     DeviceTypeRegistry types = makeRegistry();
     DeviceRegistry registry(store, types, ids, &retainedStore);

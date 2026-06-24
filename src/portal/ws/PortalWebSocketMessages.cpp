@@ -38,8 +38,8 @@ void fillDeviceEventPayload(JsonDocument& payload, const DeviceEvent& event) {
     } else {
         payload["eventKind"] = deviceEventKindName(event.kind);
     }
-    payload["device_id"] = event.deviceId;
-    payload["type_id"] = event.typeId;
+    payload["deviceId"] = event.deviceId;
+    payload["typeId"] = event.typeId;
     if (!event.name.empty()) {
         payload["name"] = JsonString(event.name.c_str(), JsonString::Copied);
     }
@@ -172,17 +172,17 @@ std::string PortalWebSocketMessages::buildWifiStatus(const WifiManager& wifiMana
     DynamicJsonDocument payload(384);
     const std::string stationIp = wifiDriver.stationIp();
     const std::string setupApIp = wifiDriver.setupApIp();
-    payload["wifi_status"] = wifiManager.connected()          ? "connected"
-                             : wifiManager.connecting()       ? "connecting"
-                             : wifiManager.apMode()           ? "ap"
-                             : wifiManager.bleConfigRunning() ? "ble_config"
-                                                              : "idle";
-    payload["wifi_interface_up"] = wifiManager.networkStackReady();
-    payload["station_ready"] = wifiManager.stationReady();
-    payload["setup_ap_ready"] = wifiManager.setupApReady();
-    payload["station_ip"] = JsonString(stationIp.c_str(), JsonString::Copied);
-    payload["setup_ap_ip"] = JsonString(setupApIp.c_str(), JsonString::Copied);
-    payload["retry_count"] = wifiManager.retryCount();
+    payload["wifiStatus"] = wifiManager.connected()          ? "connected"
+                            : wifiManager.connecting()       ? "connecting"
+                            : wifiManager.apMode()           ? "ap"
+                            : wifiManager.bleConfigRunning() ? "ble_config"
+                                                             : "idle";
+    payload["wifiInterfaceUp"] = wifiManager.networkStackReady();
+    payload["stationReady"] = wifiManager.stationReady();
+    payload["setupApReady"] = wifiManager.setupApReady();
+    payload["stationIp"] = JsonString(stationIp.c_str(), JsonString::Copied);
+    payload["setupApIp"] = JsonString(setupApIp.c_str(), JsonString::Copied);
+    payload["retryCount"] = wifiManager.retryCount();
     return buildEnvelope("wifi.status", revision, payload);
 }
 
@@ -190,8 +190,8 @@ std::string PortalWebSocketMessages::buildOtaStatus(const bool enabled, const bo
                                                     const uint32_t revision) {
     DynamicJsonDocument payload(128);
     payload["enabled"] = enabled;
-    payload["has_error"] = hasError;
-    payload["free_sketch_space"] = freeSketchSpace;
+    payload["hasError"] = hasError;
+    payload["freeSketchSpace"] = freeSketchSpace;
     return buildEnvelope("ota.status", revision, payload);
 }
 

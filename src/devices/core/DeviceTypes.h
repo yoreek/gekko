@@ -19,6 +19,7 @@ using DeviceTypeId = uint16_t;
 using DeviceRevision = uint32_t;
 
 struct OneWireRomAddress;
+class RetainedStateStore;
 
 constexpr uint32_t kDeviceRegistrySchemaVersion = 1;
 constexpr uint16_t kDeviceRegistryIndexVersion = 2;
@@ -377,7 +378,7 @@ struct DeviceRegistrySnapshot {
     std::vector<DeviceRegistryEntry> records{};
 };
 
-struct RetainedStateRecord {
+struct SwitchRetainedStateRecord {
     uint16_t recordVersion{kRetainedStateRecordVersion};
     DeviceId deviceId{0};
     OutputState outputState{OutputState::Off};
@@ -552,13 +553,13 @@ public:
         (void)baseConfig;
         return false;
     }
-    virtual bool serializeRetainedState(RetainedStateRecord& record) const {
-        (void)record;
-        return false;
+    virtual DeviceValidationResult saveRetainedState(RetainedStateStore& store) const {
+        (void)store;
+        return {DeviceError::InvalidConfig, "device type does not support retained state"};
     }
-    virtual bool applyRetainedStateRecord(const RetainedStateRecord& record) {
-        (void)record;
-        return false;
+    virtual DeviceValidationResult loadRetainedState(RetainedStateStore& store) {
+        (void)store;
+        return {DeviceError::InvalidConfig, "device type does not support retained state"};
     }
     virtual void clearRetainedStateDirty() {}
     virtual void clearRuntimeStateDirty() {}

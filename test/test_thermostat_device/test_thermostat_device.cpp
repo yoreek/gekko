@@ -100,6 +100,12 @@ public:
     std::vector<OutputWrite> writes{};
 
 private:
+    bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override {
+        uint8_t buffer[kMaxDeviceConfigBytes]{};
+        const size_t size = switchDeviceConfigSize(switchConfig());
+        return encodeSwitchDeviceConfig(switchConfig(), buffer, size) && configBlob.assign(buffer, size);
+    }
+
     DeviceValidationResult configureHardware(uint32_t now) override {
         (void)now;
         ++configureCalls;
@@ -132,6 +138,12 @@ struct RegistrySwitchRuntime final : public TriStateSwitchDeviceBase {
     std::vector<OutputWrite> writes{};
 
 private:
+    bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override {
+        uint8_t buffer[kMaxDeviceConfigBytes]{};
+        const size_t size = switchDeviceConfigSize(switchConfig());
+        return encodeSwitchDeviceConfig(switchConfig(), buffer, size) && configBlob.assign(buffer, size);
+    }
+
     DeviceValidationResult configureHardware(uint32_t now) override {
         (void)now;
         return {};
@@ -327,7 +339,6 @@ void test_registry_captures_retained_state_after_internal_switch_output_change()
     request.name = "registry-switch";
     request.enabled = true;
     request.configVersion = 1;
-    request.persistencePolicy = DevicePersistencePolicy::Delayed;
     request.configBlob = encodeSwitchPayload(config);
 
     const DeviceCreateResult created = registry.create(request, 20);

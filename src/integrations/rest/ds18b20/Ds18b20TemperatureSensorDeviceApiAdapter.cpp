@@ -23,7 +23,7 @@ bool parseDepsField(const JsonObjectConst& input, std::array<DeviceDependencyLin
             error = "ds18b20 dependency role is invalid";
             return false;
         }
-        const DeviceId deviceId = static_cast<DeviceId>(item["device_id"] | 0U);
+        const DeviceId deviceId = static_cast<DeviceId>(item["deviceId"] | 0U);
         if (deviceId == 0U) {
             error = "ds18b20 dependency device id is required";
             return false;
@@ -76,7 +76,6 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseCreateRequest(const JsonObje
                                                                   const char*& error) const {
     request = {};
     request.typeId = typeId();
-    request.persistencePolicy = Ds18b20TemperatureSensorDevice::descriptor().defaultPersistencePolicy;
     request.configVersion = kDs18b20TemperatureSensorConfigVersion;
 
     DeviceBaseConfigV1 base{};
@@ -202,9 +201,10 @@ void Ds18b20TemperatureSensorDeviceApiAdapter::writeDeviceJson(const IDeviceRunt
 
     JsonObject runtimeJson = output["runtime"].as<JsonObject>();
     JsonObject temperature = runtimeJson.createNestedObject("temperature");
-    writeTemperatureOutputJson(device.reading(), device.config().outputUnit == temperatureUnitToByte(TemperatureUnit::Fahrenheit)
-                                                        ? TemperatureUnit::Fahrenheit
-                                                        : TemperatureUnit::Celsius,
+    writeTemperatureOutputJson(device.reading(),
+                               device.config().outputUnit == temperatureUnitToByte(TemperatureUnit::Fahrenheit)
+                                   ? TemperatureUnit::Fahrenheit
+                                   : TemperatureUnit::Celsius,
                                device.outputStatus(), temperature);
     runtimeJson["consecutiveErrors"] = device.consecutiveErrors();
     runtimeJson["lastDependencyGeneration"] = device.lastDependencyGeneration();

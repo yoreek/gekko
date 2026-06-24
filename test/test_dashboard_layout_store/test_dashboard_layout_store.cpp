@@ -44,7 +44,6 @@ DeviceCreateRequest makeDummyCreateRequest(const std::string& name) {
     request.enabled = true;
     request.configVersion = DummyDevice::descriptor().currentConfigVersion;
     request.configBlob = encodeDummyConfig(config);
-    request.persistencePolicy = DevicePersistencePolicy::Immediate;
     return request;
 }
 
@@ -172,7 +171,7 @@ void test_dashboard_layout_save_json_rejects_invalid_shape_and_schema() {
     panel["name"] = "Main";
     JsonArray widgets = panel.createNestedArray("widgets");
     JsonObject widget = widgets.createNestedObject();
-    widget["device_id"] = 101;
+    widget["deviceId"] = 101;
     widget["x"] = -1;
     widget["y"] = 0;
     widget["w"] = 1;
@@ -282,7 +281,7 @@ void test_dashboard_layout_legacy_json_storage_resets_to_default() {
     panel["order"] = 0;
     JsonArray widgets = panel.createNestedArray("widgets");
     JsonObject widget = widgets.createNestedObject();
-    widget["device_id"] = 101;
+    widget["deviceId"] = 101;
     widget["x"] = 0;
     widget["y"] = 0;
     widget["w"] = 1;

@@ -126,9 +126,9 @@ void WifiController::show() {
     StaticJsonDocument<320> doc;
     const std::string stationIp = wifiDriver_.stationIp();
     const std::string setupApIp = wifiDriver_.setupApIp();
-    doc["wifi_status"] = statusText;
-    doc["station_ip"] = stationIp;
-    doc["setup_ap_ip"] = setupApIp;
+    doc["wifiStatus"] = statusText;
+    doc["stationIp"] = stationIp;
+    doc["setupApIp"] = setupApIp;
     renderOk(doc);
 #endif
 }

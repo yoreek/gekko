@@ -24,7 +24,6 @@ struct DeviceCreateRequest {
     bool enabled{true};
     std::array<DeviceDependencyLink, kMaxDeviceDependencies> deps{};
     uint8_t depCount{0};
-    DevicePersistencePolicy persistencePolicy{DevicePersistencePolicy::Immediate};
 
     bool hasDeps() const {
         return dependencyCount() > 0;
@@ -105,8 +104,6 @@ public:
     DeviceMutationResult setEnabled(DeviceId deviceId, bool enabled, uint32_t now,
                                     DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
     DeviceMutationResult remove(DeviceId deviceId, uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Immediate);
-    DeviceMutationResult setRetainedState(DeviceId deviceId, const RetainedStateRecord& record, uint32_t now,
-                                          DevicePersistencePolicy policy = DevicePersistencePolicy::Coalesced);
     DeviceMutationResult command(const DeviceCommand& command, uint32_t now);
     DeviceValidationResult flushNow();
     DeviceValidationResult restore(const DeviceRegistrySnapshot& snapshot, const DeviceConfigBlobMap& configBlobs,

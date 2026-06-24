@@ -34,7 +34,6 @@ DeviceCreateRequest makeGpioSwitchCreateRequest() {
     request.configBlob = encodeGpioPayload(config);
     request.configVersion = GpioSwitchDevice::descriptor().currentConfigVersion;
     request.enabled = true;
-    request.persistencePolicy = DevicePersistencePolicy::Delayed;
     return request;
 }
 

@@ -7,7 +7,6 @@ void DeviceRegistryPersistenceCoordinator::reset(uint32_t now) {
     dirtyIndex_ = false;
     dirtyConfigRecordIds_.clear();
     dirtyRetainedStateIds_.clear();
-    pendingRetainedStateRecords_.clear();
     firstDirtyAt_ = kDirtyTimestampUnset;
     lastChangeAt_ = now;
 }
@@ -68,7 +67,7 @@ void DeviceRegistryPersistenceCoordinator::markRetainedDirty(DeviceId deviceId, 
 void DeviceRegistryPersistenceCoordinator::clearConfigDirtyAfterImmediateFlush() {
     dirtyIndex_ = false;
     dirtyConfigRecordIds_.clear();
-    if (dirtyRetainedStateIds_.empty() && pendingRetainedStateRecords_.empty()) {
+    if (dirtyRetainedStateIds_.empty()) {
         markClean();
         return;
     }
@@ -77,7 +76,6 @@ void DeviceRegistryPersistenceCoordinator::clearConfigDirtyAfterImmediateFlush()
 
 void DeviceRegistryPersistenceCoordinator::clearRetainedTracking(DeviceId deviceId) {
     eraseDirtyId(dirtyRetainedStateIds_, deviceId);
-    pendingRetainedStateRecords_.erase(deviceId);
 }
 
 bool DeviceRegistryPersistenceCoordinator::hasConfigPersistenceWork() const {
@@ -89,7 +87,7 @@ bool DeviceRegistryPersistenceCoordinator::hasRetainedPersistenceWork() const {
 }
 
 bool DeviceRegistryPersistenceCoordinator::hasAnyPersistenceWork() const {
-    return dirtyIndex_ || !dirtyConfigRecordIds_.empty() || !dirtyRetainedStateIds_.empty() || !pendingRetainedStateRecords_.empty();
+    return dirtyIndex_ || !dirtyConfigRecordIds_.empty() || !dirtyRetainedStateIds_.empty();
 }
 
 const std::vector<DeviceId>& DeviceRegistryPersistenceCoordinator::dirtyConfigRecordIdsRef() const {
@@ -98,14 +96,6 @@ const std::vector<DeviceId>& DeviceRegistryPersistenceCoordinator::dirtyConfigRe
 
 const std::vector<DeviceId>& DeviceRegistryPersistenceCoordinator::dirtyRetainedStateIdsRef() const {
     return dirtyRetainedStateIds_;
-}
-
-const std::map<DeviceId, RetainedStateRecord>& DeviceRegistryPersistenceCoordinator::pendingRetainedStateRecords() const {
-    return pendingRetainedStateRecords_;
-}
-
-std::map<DeviceId, RetainedStateRecord>& DeviceRegistryPersistenceCoordinator::pendingRetainedStateRecords() {
-    return pendingRetainedStateRecords_;
 }
 
 void DeviceRegistryPersistenceCoordinator::clearConfigDirtyAfterPersisted() {
@@ -118,7 +108,7 @@ void DeviceRegistryPersistenceCoordinator::clearRetainedDirtyAfterPersisted() {
 }
 
 void DeviceRegistryPersistenceCoordinator::markRetainedPersisted(DeviceId deviceId) {
-    pendingRetainedStateRecords_.erase(deviceId);
+    clearRetainedTracking(deviceId);
 }
 
 void DeviceRegistryPersistenceCoordinator::markClean() {
@@ -128,7 +118,6 @@ void DeviceRegistryPersistenceCoordinator::markClean() {
     dirtyRetainedStateIds_.clear();
     firstDirtyAt_ = kDirtyTimestampUnset;
     lastChangeAt_ = kDirtyTimestampUnset;
-    pendingRetainedStateRecords_.clear();
 }
 
 void DeviceRegistryPersistenceCoordinator::markDirty(uint32_t now) {

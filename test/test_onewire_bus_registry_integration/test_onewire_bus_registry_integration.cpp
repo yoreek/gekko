@@ -123,7 +123,6 @@ DeviceCreateRequest makeCreateRequest(uint8_t pin) {
     request.enabled = true;
     request.configVersion = OneWireBusDevice::descriptor().currentConfigVersion;
     request.configBlob = encodeOneWirePayload(makeConfig(pin));
-    request.persistencePolicy = DevicePersistencePolicy::Delayed;
     return request;
 }
 

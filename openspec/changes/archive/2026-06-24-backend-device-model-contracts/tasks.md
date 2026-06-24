@@ -13,8 +13,8 @@
 ## 3. Registry persistence and setup transfer
 
 - [x] 3.1 Rewrite `src/devices/registry/DeviceSetupTransferCodec.cpp` so export/import uses `DeviceSetupRecord`-style `record/config` entries and omits runtime from the bundle.
-- [ ] 3.2 Align `src/devices/registry/DeviceRegistry.cpp`, `src/devices/registry/DeviceRegistryStore.cpp`, and related load/save code so persisted records reconstruct the canonical nested shape on read and preserve revision ownership correctly.
-- [ ] 3.3 Update registry migration and validation paths so legacy flat bundle assumptions are rejected or migrated intentionally, not mixed into the new contract.
+- [x] 3.2 Align `src/devices/registry/DeviceRegistry.cpp`, `src/devices/registry/DeviceRegistryStore.cpp`, and related load/save code so persisted records reconstruct the canonical nested shape on read and preserve revision ownership correctly.
+- [x] 3.3 Update registry migration and validation paths so legacy flat bundle assumptions are rejected or migrated intentionally, not mixed into the new contract.
 
 ## 4. Tests and verification
 

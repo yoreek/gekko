@@ -61,8 +61,8 @@ void OtaController::show() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     StaticJsonDocument<128> doc;
     doc["enabled"] = true;
-    doc["free_sketch_space"] = ESP.getFreeSketchSpace();
-    doc["has_error"] = Update.hasError();
+    doc["freeSketchSpace"] = ESP.getFreeSketchSpace();
+    doc["hasError"] = Update.hasError();
     renderOk(doc);
 #endif
 }

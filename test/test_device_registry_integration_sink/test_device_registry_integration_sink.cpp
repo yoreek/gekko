@@ -59,7 +59,6 @@ DeviceCreateRequest makeDummyCreateRequest(const std::string& name) {
     request.enabled = true;
     request.configVersion = DummyDevice::descriptor().currentConfigVersion;
     request.configBlob = encodeDummyPayload(config);
-    request.persistencePolicy = DevicePersistencePolicy::Immediate;
     return request;
 }
 

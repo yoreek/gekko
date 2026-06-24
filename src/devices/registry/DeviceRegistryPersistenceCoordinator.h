@@ -3,7 +3,6 @@
 #include "devices/core/DeviceTypes.h"
 
 #include <algorithm>
-#include <map>
 #include <vector>
 
 namespace ewfm {
@@ -34,9 +33,6 @@ public:
 
     const std::vector<DeviceId>& dirtyConfigRecordIdsRef() const;
     const std::vector<DeviceId>& dirtyRetainedStateIdsRef() const;
-    const std::map<DeviceId, RetainedStateRecord>& pendingRetainedStateRecords() const;
-    std::map<DeviceId, RetainedStateRecord>& pendingRetainedStateRecords();
-
     void clearConfigDirtyAfterPersisted();
     void clearRetainedDirtyAfterPersisted();
     void markRetainedPersisted(DeviceId deviceId);
@@ -50,7 +46,6 @@ private:
     bool dirtyIndex_{false};
     std::vector<DeviceId> dirtyConfigRecordIds_{};
     std::vector<DeviceId> dirtyRetainedStateIds_{};
-    std::map<DeviceId, RetainedStateRecord> pendingRetainedStateRecords_{};
     uint32_t firstDirtyAt_{kDirtyTimestampUnset};
     uint32_t lastChangeAt_{kDirtyTimestampUnset};
 };
