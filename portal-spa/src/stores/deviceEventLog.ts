@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 
 import type { DeviceRecord } from '@/api'
 import type { RealtimeMessage } from '@/realtime/messages'
-import { deviceTypeIdFromName } from '../models/device-types'
 
 export type DeviceJournalTypeFilter = number | 'all'
 export type DeviceJournalEventKindFilter = string | 'all'
@@ -31,6 +30,23 @@ export interface DeviceEventJournalFilters {
 }
 
 const kMaxEntries = 200
+
+function deviceTypeIdFromName(typeName: string | undefined | null): number {
+  switch (typeName) {
+    case 'dummy':
+      return 1
+    case 'gpio_switch':
+      return 2
+    case 'onewire_bus':
+      return 3
+    case 'ds18b20_temperature_sensor':
+      return 4
+    case 'thermostat':
+      return 5
+    default:
+      return 0
+  }
+}
 
 function asNumber(value: unknown): number | null {
   const numeric = Number(value)

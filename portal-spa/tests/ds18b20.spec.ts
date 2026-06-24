@@ -39,17 +39,20 @@ test('renders DS18B20 temperature and merges realtime unavailable updates', asyn
 
   await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) ?? '{}')
-    const sensor = db.devices.find((device: { deviceId: number }) => device.deviceId === 670845752)
+    const sensor = db.devices.find((device: { record?: { id?: number } }) => device.record?.id === 670845752)
     window.__gekkoMockRealtime?.upsertDevice({
       ...sensor,
-      output: {
-        temperature: {
-          value: 25.5,
-          unit: 'celsius',
-          unitSymbol: 'C',
-          measuredAtMs: 24000,
-          valid: true,
-          status: 'ok',
+      runtime: {
+        ...sensor.runtime,
+        output: {
+          temperature: {
+            value: 25.5,
+            unit: 'celsius',
+            unitSymbol: 'C',
+            measuredAtMs: 24000,
+            valid: true,
+            status: 'ok',
+          },
         },
       },
     })
@@ -58,31 +61,36 @@ test('renders DS18B20 temperature and merges realtime unavailable updates', asyn
 
   await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) ?? '{}')
-    const dependency = db.devices.find((device: { deviceId: number }) => device.deviceId === 670845751)
-    const sensor = db.devices.find((device: { deviceId: number }) => device.deviceId === 670845752)
+    const dependency = db.devices.find((device: { record?: { id?: number } }) => device.record?.id === 670845751)
+    const sensor = db.devices.find((device: { record?: { id?: number } }) => device.record?.id === 670845752)
     window.__gekkoMockRealtime?.upsertDevice({
       ...dependency,
-      enabled: false,
-      lifecycleStatus: 'disabled',
-      effectiveStatus: 'disabled',
-      status: 'disabled',
       config: {
         ...dependency.config,
         enabled: false,
       },
+      runtime: {
+        ...dependency.runtime,
+        lifecycleStatus: 'disabled',
+        effectiveStatus: 'disabled',
+        status: 'disabled',
+      },
     })
     window.__gekkoMockRealtime?.upsertDevice({
       ...sensor,
-      effectiveStatus: 'disabled',
-      status: 'disabled',
-      output: {
-        temperature: {
-          value: 0,
-          unit: 'celsius',
-          unitSymbol: 'C',
-          measuredAtMs: 0,
-          valid: false,
-          status: 'dependency_disabled',
+      runtime: {
+        ...sensor.runtime,
+        effectiveStatus: 'disabled',
+        status: 'disabled',
+        output: {
+          temperature: {
+            value: 0,
+            unit: 'celsius',
+            unitSymbol: 'C',
+            measuredAtMs: 0,
+            valid: false,
+            status: 'dependency_disabled',
+          },
         },
       },
     })

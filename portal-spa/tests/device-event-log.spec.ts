@@ -12,27 +12,42 @@ function createStore() {
   return useDeviceEventLogStore(pinia)
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 function makeSnapshotMessage(
   eventKind: string,
   deviceId = 11,
   overrides: Record<string, unknown> = {},
 ): RealtimeMessage<Record<string, unknown>> {
+  const recordOverrides = isRecord(overrides.record) ? overrides.record : {}
+  const configOverrides = isRecord(overrides.config) ? overrides.config : {}
+  const runtimeOverrides = isRecord(overrides.runtime) ? overrides.runtime : {}
   return {
     topic: eventKind === 'command_accepted' || eventKind === 'command_rejected' ? 'device.command_result' : 'device.upsert',
     revision: 19,
     payload: {
       eventKind,
-      deviceId,
-      typeId: 2,
-      typeName: 'gpio_switch',
-      name: `Device ${deviceId}`,
-      enabled: true,
-      configRevision: 3,
-      lifecycleStatus: 'ready',
-      effectiveStatus: 'ready',
-      status: 'ready',
+      record: {
+        id: deviceId,
+        typeName: typeof overrides.typeName === 'string' ? overrides.typeName : 'gpio_switch',
+        configRevision: typeof overrides.configRevision === 'number' ? overrides.configRevision : 3,
+        ...recordOverrides,
+      },
+      config: {
+        name: typeof overrides.name === 'string' ? overrides.name : `Device ${deviceId}`,
+        enabled: typeof overrides.enabled === 'boolean' ? overrides.enabled : true,
+        deps: Array.isArray(overrides.deps) ? overrides.deps : [],
+        ...configOverrides,
+      },
+      runtime: {
+        lifecycleStatus: typeof overrides.lifecycleStatus === 'string' ? overrides.lifecycleStatus : 'ready',
+        effectiveStatus: typeof overrides.effectiveStatus === 'string' ? overrides.effectiveStatus : 'ready',
+        status: typeof overrides.status === 'string' ? overrides.status : 'ready',
+        ...runtimeOverrides,
+      },
       registryRevision: 19,
-      ...overrides,
     },
   }
 }
@@ -49,10 +64,21 @@ test('classifies and stores event kinds in the journal', () => {
     revision: 20,
     payload: {
       eventKind: 'device_deleted',
-      deviceId: 25,
-      typeId: 2,
-      typeName: 'gpio_switch',
-      name: 'Removed Device',
+      record: {
+        id: 25,
+        typeName: 'gpio_switch',
+        configRevision: 3,
+      },
+      config: {
+        name: 'Removed Device',
+        enabled: true,
+        deps: [],
+      },
+      runtime: {
+        lifecycleStatus: 'ready',
+        effectiveStatus: 'ready',
+        status: 'ready',
+      },
       registryRevision: 20,
     },
   }, 105)

@@ -13,11 +13,11 @@ test('switch commands use structured output state fields', async ({ page }) => {
     return page.evaluate(key => {
       const db = JSON.parse(localStorage.getItem(key) || '{}')
       const devices = db.devices || []
-      const device = devices.find(entry => entry.deviceId === 670845750)
-      if (!device || !device.output) {
+      const device = devices.find((entry: { record?: { id?: number } }) => entry.record?.id === 670845750)
+      if (!device || !device.runtime || !device.runtime.output) {
         return ''
       }
-      return device.output.state || ''
+      return device.runtime.output.state || ''
     }, storageKey)
   }).toBe('on')
 })
@@ -27,14 +27,17 @@ test('dashboard switch power remains enabled when snapshot only has ready status
 
   await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) || '{}')
-    const device = db.devices?.find((entry: { deviceId: number }) => entry.deviceId === 670845750)
+    const device = db.devices?.find((entry: { record?: { id?: number } }) => entry.record?.id === 670845750)
     window.__gekkoMockRealtime?.upsertDevice({
       ...device,
-      lifecycleStatus: undefined,
-      effectiveStatus: undefined,
-      status: 'ready',
-      output: {
-        state: 'off',
+      runtime: {
+        ...device.runtime,
+        lifecycleStatus: undefined,
+        effectiveStatus: undefined,
+        status: 'ready',
+        output: {
+          state: 'off',
+        },
       },
     })
   }, storageKey)
@@ -52,8 +55,8 @@ test('onewire scan commands use the named scan action', async ({ page }) => {
     return page.evaluate(key => {
       const db = JSON.parse(localStorage.getItem(key) || '{}')
       const devices = db.devices || []
-      const device = devices.find(entry => entry.deviceId === 670845751)
-      return !!(device && device.scan && device.scan.ready)
+      const device = devices.find((entry: { record?: { id?: number } }) => entry.record?.id === 670845751)
+      return !!(device && device.runtime && device.runtime.scan && device.runtime.scan.ready)
     }, storageKey)
   }).toBe(true)
 })
@@ -72,7 +75,7 @@ test('onewire edit flows persist JSON config objects', async ({ page }) => {
     return page.evaluate(key => {
       const db = JSON.parse(localStorage.getItem(key) || '{}')
       const devices = db.devices || []
-      const device = devices.find(entry => entry.deviceId === 670845751)
+      const device = devices.find((entry: { record?: { id?: number } }) => entry.record?.id === 670845751)
       if (!device || !device.config) {
         return 0
       }
@@ -98,19 +101,21 @@ test('dummy device has no command UI and creates only base config', async ({ pag
   const created = await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) || '{}')
     const devices = db.devices || []
-    return devices.find((entry: { name?: string }) => entry.name === 'Dummy Basic')
+    return devices.find((entry: { config?: { name?: string } }) => entry.config?.name === 'Dummy Basic')
   }, storageKey)
 
   expect(created).toMatchObject({
-    typeId: 1,
-    retainedStateSupported: false,
+    record: {
+      typeName: 'dummy',
+    },
     config: {
       enabled: true,
       name: 'Dummy Basic',
+      deps: [],
     },
   })
   expect(created?.config).not.toHaveProperty('restorePreviousState')
   expect(created?.config).not.toHaveProperty('defaultOutput')
   expect(created?.config).not.toHaveProperty('currentOutput')
-  expect(created).not.toHaveProperty('output')
+  expect(created?.runtime).not.toHaveProperty('output')
 })

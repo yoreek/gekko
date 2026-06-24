@@ -280,29 +280,42 @@ export function canonicalizeDeviceRecord(value: unknown): MockDeviceRecord {
         : true,
     deps,
   }
-  const runtime: MockDeviceRuntime = {
-    ...runtimeSource,
-    status: typeof runtimeSource.status === 'string'
+  const runtimeStatus = typeof runtimeSource.status === 'string'
+    ? runtimeSource.status
+    : typeof source.status === 'string'
+      ? source.status
+      : typeof runtimeSource.effectiveStatus === 'string'
+        ? runtimeSource.effectiveStatus
+        : typeof runtimeSource.lifecycleStatus === 'string'
+          ? runtimeSource.lifecycleStatus
+          : 'unknown'
+  const runtimeLifecycleStatus = typeof runtimeSource.lifecycleStatus === 'string'
+    ? runtimeSource.lifecycleStatus
+    : typeof runtimeSource.status === 'string'
       ? runtimeSource.status
-      : typeof source.status === 'string'
-        ? source.status
-        : 'unknown',
-    lifecycleStatus: typeof runtimeSource.lifecycleStatus === 'string'
-      ? runtimeSource.lifecycleStatus
       : typeof source.lifecycleStatus === 'string'
         ? source.lifecycleStatus
         : typeof source.status === 'string'
           ? source.status
-          : 'unknown',
-    effectiveStatus: typeof runtimeSource.effectiveStatus === 'string'
-      ? runtimeSource.effectiveStatus
+          : runtimeStatus
+  const runtimeEffectiveStatus = typeof runtimeSource.effectiveStatus === 'string'
+    ? runtimeSource.effectiveStatus
+    : typeof runtimeSource.status === 'string'
+      ? runtimeSource.status
       : typeof source.effectiveStatus === 'string'
         ? source.effectiveStatus
-        : typeof source.lifecycleStatus === 'string'
-          ? source.lifecycleStatus
-          : typeof source.status === 'string'
-            ? source.status
-            : 'unknown',
+        : typeof runtimeSource.lifecycleStatus === 'string'
+          ? runtimeSource.lifecycleStatus
+          : typeof source.lifecycleStatus === 'string'
+            ? source.lifecycleStatus
+            : typeof source.status === 'string'
+              ? source.status
+              : runtimeStatus
+  const runtime: MockDeviceRuntime = {
+    ...runtimeSource,
+    status: runtimeStatus,
+    lifecycleStatus: runtimeLifecycleStatus,
+    effectiveStatus: runtimeEffectiveStatus,
   }
 
   if (runtimeSource.dependencyStatus === undefined && typeof source.dependencyStatus === 'string') {

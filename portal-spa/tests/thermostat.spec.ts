@@ -31,33 +31,36 @@ test('creates thermostat devices with deps and config', async ({ page }) => {
   await expect(page.getByText('Greenhouse Thermostat')).toBeVisible()
   const created = await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) ?? '{}')
-    return db.devices?.find((device: { name?: string }) => device.name === 'Greenhouse Thermostat')
+    return db.devices?.find((device: { config?: { name?: string } }) => device.config?.name === 'Greenhouse Thermostat')
   }, storageKey)
   expect(created).toMatchObject({
-    typeId: 5,
-    hasDeps: true,
-    deps: [
-      {
-        role: 'temperature_sensor',
-        deviceId: 670845752,
-      },
-      {
-        role: 'switch',
-        deviceId: 670845750,
-      },
-    ],
+    record: {
+      typeName: 'thermostat',
+    },
     config: {
+      enabled: true,
+      name: 'Greenhouse Thermostat',
+      deps: [
+        {
+          role: 'temperature_sensor',
+          deviceId: 670845752,
+        },
+        {
+          role: 'switch',
+          deviceId: 670845750,
+        },
+      ],
       mode: 'heat',
       algorithm: 'hysteresis',
       targetMilliCelsius: 25000,
       hysteresisCentiCelsius: 50,
-      temperatureSensorDeviceId: 670845752,
-      switchDeviceId: 670845750,
     },
-    output: {
-      desiredSwitchState: 'off',
-      actualSwitchState: 'off',
-      controlStatus: 'idle',
+    runtime: {
+      output: {
+        desiredSwitchState: 'off',
+        actualSwitchState: 'off',
+        controlStatus: 'idle',
+      },
     },
   })
 })
@@ -72,17 +75,20 @@ test('realtime thermostat updates merge temperature and control state', async ({
 
   await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) ?? '{}')
-    const sensor = db.devices.find((device: { deviceId: number }) => device.deviceId === 670845752)
+    const sensor = db.devices.find((device: { record?: { id?: number } }) => device.record?.id === 670845752)
     window.__gekkoMockRealtime?.upsertDevice({
       ...sensor,
-      output: {
-        temperature: {
-          value: 26.4,
-          unit: 'celsius',
-          unitSymbol: 'C',
-          measuredAtMs: 30500,
-          valid: true,
-          status: 'ok',
+      runtime: {
+        ...sensor.runtime,
+        output: {
+          temperature: {
+            value: 26.4,
+            unit: 'celsius',
+            unitSymbol: 'C',
+            measuredAtMs: 30500,
+            valid: true,
+            status: 'ok',
+          },
         },
       },
     })
