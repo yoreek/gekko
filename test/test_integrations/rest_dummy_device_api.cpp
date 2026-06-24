@@ -55,13 +55,10 @@ void test_device_api_adapter_registry_resolves_dummy() {
 
 void test_dummy_device_api_adapter_parses_create_request() {
     StaticJsonDocument<1024> doc;
-    doc["type"] = "dummy";
-    doc["name"] = "api-dummy";
-    doc["enabled"] = true;
-    doc["config_version"] = 1;
+    doc["typeName"] = "dummy";
     JsonObject config = doc.createNestedObject("config");
-    config["enabled"] = true;
     config["name"] = "api-dummy";
+    config["enabled"] = true;
 
     DeviceCreateRequest request;
     const char* error = nullptr;
@@ -81,9 +78,10 @@ void test_dummy_device_api_adapter_parses_create_request() {
 
 void test_dummy_device_api_adapter_rejects_invalid_payload() {
     StaticJsonDocument<256> doc;
-    doc["type"] = "dummy";
-    doc["name"] = "";
-    doc["config_version"] = 9;
+    doc["typeName"] = "dummy";
+    doc["configVersion"] = 9;
+    JsonObject config = doc.createNestedObject("config");
+    config["name"] = "";
 
     DeviceCreateRequest request;
     const char* error = nullptr;

@@ -104,7 +104,7 @@ void test_ws_message_builders_create_compact_envelopes() {
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint8_t>(DeviceStatus::Starting), upsertDoc["payload"]["previousStatus"].as<uint8_t>());
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint8_t>(DeviceStatus::Ready), upsertDoc["payload"]["status"].as<uint8_t>());
     TEST_ASSERT_EQUAL_STRING("Living Room Lamp", upsertDoc["payload"]["name"].as<const char*>());
-    TEST_ASSERT_EQUAL_STRING("Dummy device", upsertDoc["payload"]["type"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("Dummy device", upsertDoc["payload"]["typeName"].as<const char*>());
     TEST_ASSERT_TRUE(upsertDoc["payload"]["pendingPersistence"].as<bool>());
     TEST_ASSERT_FALSE(upsertDoc["payload"]["commandAccepted"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("detail", upsertDoc["payload"]["detail"].as<const char*>());

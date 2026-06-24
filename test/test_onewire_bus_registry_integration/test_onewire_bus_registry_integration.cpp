@@ -109,8 +109,8 @@ OneWireRomAddress makeRom(uint8_t family, const std::array<uint8_t, 6>& serial, 
 
 OneWireBusDeviceConfigV1 makeConfig(uint8_t pin) {
     OneWireBusDeviceConfigV1 config{};
-    config.base.enabled = 1;
-    std::snprintf(config.base.name, sizeof(config.base.name), "%s", "onewire");
+    config.enabled = 1;
+    std::snprintf(config.name, sizeof(config.name), "%s", "onewire");
     config.gpioPin = pin;
     config.internalPullup = 0;
     return config;

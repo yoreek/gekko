@@ -9,13 +9,16 @@
 namespace ewfm {
 
 #pragma pack(push, 1)
-struct SwitchDeviceConfigV1 {
+struct SwitchDeviceConfigV1 : DeviceBaseConfigV1 {
     static constexpr char kMagic[] = "SWCFG1";
-    DeviceBaseConfigV1 base{};
     bool restorePreviousState{false};
     OutputState startupState{OutputState::Off};
     OutputState safeState{OutputState::Off};
     bool inverted{false};
+
+    bool parseJson(const JsonObjectConst& input, const char*& error);
+    DeviceValidationResult validate() const;
+    void writeJson(JsonObject output) const;
 };
 #pragma pack(pop)
 

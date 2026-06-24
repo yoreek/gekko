@@ -58,11 +58,11 @@ The firmware SHALL publish realtime `device.upsert` and `device.command_result` 
 - **THEN** the firmware sends a `device.remove` message that identifies the removed device by id without requiring a separate device record model
 
 ### Requirement: Realtime snapshots expose deps
-The firmware SHALL publish canonical realtime device snapshots using `deps` and computed `has_deps`.
+The firmware SHALL publish canonical realtime device snapshots using `config.deps`.
 
 #### Scenario: Device update includes deps
 - **WHEN** a device realtime snapshot is published
-- **THEN** the payload includes the same `deps` and computed `has_deps` fields used by REST snapshots
+- **THEN** the payload includes the same `config.deps` field used by REST snapshots
 
 #### Scenario: Legacy relationship fields are absent from realtime
 - **WHEN** a device realtime snapshot is published after the dependency migration

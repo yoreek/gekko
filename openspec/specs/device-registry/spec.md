@@ -180,9 +180,9 @@ The firmware SHALL persist dependency links in each device record as bounded rol
 - **WHEN** the registry loads or mutates records
 - **THEN** it derives dependent relationships by scanning each record's `deps`
 
-#### Scenario: Has deps is computed
+#### Scenario: Dependency presence is derived from deps
 - **WHEN** a registry snapshot is serialized
-- **THEN** `has_deps` is computed from the number of dependency links and is not read from persistent storage
+- **THEN** dependency presence is derived from the serialized `config.deps` links and no persisted `hasDeps` field is required
 
 ### Requirement: Configuration and registry revisions
 The firmware SHALL keep configuration layout version, per-device configuration revision, and registry revision as separate concepts.

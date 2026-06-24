@@ -37,20 +37,22 @@ bool OneWireBusDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
     request.typeId = typeId();
     request.configVersion = OneWireBusDevice::descriptor().currentConfigVersion;
 
-    DeviceBaseConfigV1 base{};
-    if (!parseDeviceBaseConfigJson(input, base, error)) {
+    const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
+    if (configInput.isNull()) {
+        error = "onewire bus config is required";
         return false;
     }
-    request.name = base.name;
-    request.enabled = base.enabled != 0U;
 
-    const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
-    const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
     OneWireBusDeviceConfigV1 config{};
-    if (!parseOneWireBusDeviceConfigJson(configInput, config, error)) {
+    if (!config.parseJson(configInput, error)) {
         return false;
     }
-    config.base = base;
+    request.name = config.name;
+    request.enabled = config.enabled != 0U;
+    if (!config.validate().ok()) {
+        error = "onewire bus config is invalid";
+        return false;
+    }
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = oneWireBusDeviceConfigSize(config);
     if (!encodeOneWireBusDeviceConfig(config, buffer, size) || !request.configBlob.assign(buffer, size)) {
@@ -62,26 +64,25 @@ bool OneWireBusDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
 
 bool OneWireBusDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
                                                           DeviceConfigUpdateRequest& request, const char*& error) const {
-    const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
-    const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
-    if (configObject.isNull() && input["gpioPin"].isNull() && input["internalPullup"].isNull()) {
+    const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
+    if (configInput.isNull()) {
         error = "onewire bus config is required";
         return false;
     }
 
-    DeviceBaseConfigV1 base{};
-    base.enabled = runtime.enabled() ? 1U : 0U;
-    if (!copyBoundedText(base.name, runtime.name())) {
+    OneWireBusDeviceConfigV1 config{};
+    if (!config.parseJson(configInput, error)) {
+        return false;
+    }
+    config.enabled = runtime.enabled() ? 1U : 0U;
+    if (!copyBoundedText(config.name, runtime.name())) {
         error = "device base config is invalid";
         return false;
     }
-
-    OneWireBusDeviceConfigV1 config{};
-    if (!parseOneWireBusDeviceConfigJson(configInput, config, error)) {
+    if (!config.validate().ok()) {
+        error = "onewire bus config is invalid";
         return false;
     }
-    config.base = base;
-
     request = {};
     request.configVersion = OneWireBusDevice::descriptor().currentConfigVersion;
     uint8_t buffer[kMaxDeviceConfigBytes]{};
@@ -98,14 +99,14 @@ void OneWireBusDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, 
     writeCommonDeviceJson(runtime, effectiveStatus, typeName(), output);
     const OneWireBusDevice& device = static_cast<const OneWireBusDevice&>(runtime);
     JsonObject config = output["config"].as<JsonObject>();
-    writeOneWireBusDeviceConfigJson(device.config(), config);
+    device.config().writeJson(config);
     JsonObject runtimeJson = output["runtime"].as<JsonObject>();
     JsonObject scanObject = runtimeJson.createNestedObject("scan");
     scanObject["inProgress"] = device.scan().inProgress;
     scanObject["ready"] = device.scan().ready;
     scanObject["deviceCount"] = device.scan().deviceCount;
     scanObject["truncated"] = device.scan().truncated;
-    scanObject["invalidCandidateSeen"] = device.scan().invalidCandidateSeen;
+    scanObject["invalidCrcSeen"] = device.scan().invalidCandidateSeen;
     JsonArray devices = scanObject.createNestedArray("devices");
     for (uint8_t index = 0; index < device.scan().deviceCount; ++index) {
         JsonObject item = devices.createNestedObject();

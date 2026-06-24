@@ -174,8 +174,8 @@ OneWireRomAddress makeRom(uint8_t serial0 = 0xFF) {
 
 OneWireBusDeviceConfigV1 makeBusConfig() {
     OneWireBusDeviceConfigV1 config{};
-    config.base.enabled = 1;
-    std::snprintf(config.base.name, sizeof(config.base.name), "%s", "onewire");
+    config.enabled = 1;
+    std::snprintf(config.name, sizeof(config.name), "%s", "onewire");
     config.gpioPin = 4;
     config.internalPullup = 0;
     return config;
@@ -183,8 +183,8 @@ OneWireBusDeviceConfigV1 makeBusConfig() {
 
 Ds18b20TemperatureSensorConfigV1 makeSensorConfig(uint8_t serial0 = 0xFF) {
     Ds18b20TemperatureSensorConfigV1 config{};
-    config.base.enabled = 1;
-    std::snprintf(config.base.name, sizeof(config.base.name), "%s", "temperature");
+    config.enabled = 1;
+    std::snprintf(config.name, sizeof(config.name), "%s", "temperature");
     config.address = makeRom(serial0);
     config.resolution = 12;
     config.outputUnit = temperatureUnitToByte(TemperatureUnit::Celsius);
@@ -341,19 +341,19 @@ void test_ds18b20_type_and_api_adapter_are_registered() {
 
 void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input() {
     StaticJsonDocument<512> doc;
-    doc["typeId"] = kDs18b20TemperatureSensorTypeId;
-    doc["name"] = "temperature";
-    doc["enabled"] = true;
-    JsonArray deps = doc.createNestedArray("deps");
+    doc["typeName"] = "ds18b20_temperature_sensor";
+    JsonObject config = doc.createNestedObject("config");
+    config["name"] = "temperature";
+    config["enabled"] = true;
+    JsonArray deps = config.createNestedArray("deps");
     JsonObject dep = deps.createNestedObject();
     dep["role"] = "onewire_bus";
     dep["deviceId"] = 44;
-    JsonObject config = doc.createNestedObject("config");
     config["address"] = "28FF641D621603AD";
     config["resolution"] = 11;
     config["unit"] = "fahrenheit";
     config["pollMs"] = 2000;
-    config["reportDeltaCentiCelsius"] = 25;
+    config["reportDeltaCelsius"] = 0.25;
     config["reportAlways"] = true;
 
     DeviceCreateRequest request{};
@@ -373,18 +373,24 @@ void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input() {
 
     DeviceRegistryEntry record = makeSensorRecord(50, 44, parsed);
     Ds18b20TemperatureSensorDevice runtime(record, encodeDs18b20Payload(parsed));
-    StaticJsonDocument<512> updateDoc;
-    updateDoc["command"] = "update_config";
+    StaticJsonDocument<1024> updateDoc;
+    updateDoc["command"] = "updateConfig";
     JsonArray updateDeps = updateDoc.createNestedArray("deps");
     JsonObject updateDep = updateDeps.createNestedObject();
     updateDep["role"] = "onewire_bus";
     updateDep["deviceId"] = 45;
     JsonObject updateConfig = updateDoc.createNestedObject("config");
+    updateConfig["name"] = "temperature";
+    updateConfig["enabled"] = true;
+    JsonArray updateConfigDeps = updateConfig.createNestedArray("deps");
+    JsonObject updateConfigDep = updateConfigDeps.createNestedObject();
+    updateConfigDep["role"] = "onewire_bus";
+    updateConfigDep["deviceId"] = 45;
     updateConfig["address"] = "28FF641D621603AD";
     updateConfig["resolution"] = 12;
     updateConfig["unit"] = "celsius";
     updateConfig["pollMs"] = 3000;
-    updateConfig["reportDeltaCentiCelsius"] = 2;
+    updateConfig["reportDeltaCelsius"] = 0.25;
     updateConfig["reportAlways"] = false;
     DeviceConfigUpdateRequest updateRequest{};
     error = nullptr;
@@ -397,29 +403,33 @@ void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input() {
     TEST_ASSERT_TRUE(decodeDs18b20TemperatureSensorConfig(reinterpret_cast<const uint8_t*>(updateRequest.configBlob.data()),
                                                           updateRequest.configBlob.size(), parsed));
     TEST_ASSERT_EQUAL_UINT8(12, parsed.resolution);
-    TEST_ASSERT_EQUAL_UINT16(2, parsed.reportDeltaCentiCelsius);
+    TEST_ASSERT_EQUAL_UINT16(25, parsed.reportDeltaCentiCelsius);
 
     StaticJsonDocument<128> missingUpdateConfigDoc;
-    missingUpdateConfigDoc["command"] = "update_config";
+    missingUpdateConfigDoc["command"] = "updateConfig";
     DeviceConfigUpdateRequest missingUpdateRequest{};
     TEST_ASSERT_FALSE(Ds18b20TemperatureSensorDeviceApiAdapter::instance().parseUpdateConfigRequest(
         missingUpdateConfigDoc.as<JsonObjectConst>(), runtime, missingUpdateRequest, error));
     TEST_ASSERT_NOT_NULL(error);
 
     StaticJsonDocument<256> missingDependencyDoc;
-    missingDependencyDoc["name"] = "bad";
+    missingDependencyDoc["typeName"] = "ds18b20_temperature_sensor";
     JsonObject missingConfig = missingDependencyDoc.createNestedObject("config");
+    missingConfig["name"] = "bad";
+    missingConfig["enabled"] = true;
     missingConfig["address"] = "28FF641D621603AD";
     TEST_ASSERT_FALSE(Ds18b20TemperatureSensorDeviceApiAdapter::instance().parseCreateRequest(missingDependencyDoc.as<JsonObjectConst>(),
                                                                                               request, error));
 
     StaticJsonDocument<256> badAddressDoc;
-    badAddressDoc["name"] = "bad-address";
-    JsonArray badDeps = badAddressDoc.createNestedArray("deps");
-    JsonObject badDep = badDeps.createNestedObject();
-    badDep["role"] = "onewire_bus";
-    badDep["deviceId"] = 44;
+    badAddressDoc["typeName"] = "ds18b20_temperature_sensor";
     JsonObject badConfig = badAddressDoc.createNestedObject("config");
+    badConfig["name"] = "bad-address";
+    badConfig["enabled"] = true;
+    JsonArray badConfigDeps = badConfig.createNestedArray("deps");
+    JsonObject badConfigDep = badConfigDeps.createNestedObject();
+    badConfigDep["role"] = "onewire_bus";
+    badConfigDep["deviceId"] = 44;
     badConfig["address"] = "10FF641D6216037B";
     TEST_ASSERT_FALSE(
         Ds18b20TemperatureSensorDeviceApiAdapter::instance().parseCreateRequest(badAddressDoc.as<JsonObjectConst>(), request, error));
@@ -476,7 +486,9 @@ void test_ds18b20_runtime_serializes_fahrenheit_output_and_quiet_delta() {
     JsonObject output = doc.to<JsonObject>();
     Ds18b20TemperatureSensorDeviceApiAdapter::instance().writeDeviceJson(sensor, sensor.status(), output);
     TEST_ASSERT_EQUAL_STRING("ds18b20_temperature_sensor", output["record"]["typeName"].as<const char*>());
-    TEST_ASSERT_EQUAL_STRING("fahrenheit", output["runtime"]["temperature"]["unit"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("fahrenheit", output["runtime"]["output"]["temperature"]["unit"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("F", output["runtime"]["output"]["temperature"]["unitSymbol"].as<const char*>());
+    TEST_ASSERT_TRUE(output["runtime"]["output"]["temperature"]["measuredAtMs"].as<uint32_t>() > 0U);
 
     const std::string upsert = PortalWebSocketMessages::buildDeviceUpsert(
         sensor, sensor.status(), 99, false, &Ds18b20TemperatureSensorDeviceApiAdapter::instance(), "device_updated");
@@ -484,8 +496,8 @@ void test_ds18b20_runtime_serializes_fahrenheit_output_and_quiet_delta() {
     TEST_ASSERT_FALSE(deserializeJson(wsDoc, upsert));
     TEST_ASSERT_EQUAL_STRING("device.upsert", wsDoc["topic"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("device_updated", wsDoc["payload"]["eventKind"].as<const char*>());
-    TEST_ASSERT_EQUAL_STRING("fahrenheit", wsDoc["payload"]["runtime"]["temperature"]["unit"].as<const char*>());
-    TEST_ASSERT_TRUE(wsDoc["payload"]["runtime"]["temperature"]["valid"].as<bool>());
+    TEST_ASSERT_EQUAL_STRING("fahrenheit", wsDoc["payload"]["runtime"]["output"]["temperature"]["unit"].as<const char*>());
+    TEST_ASSERT_TRUE(wsDoc["payload"]["runtime"]["output"]["temperature"]["valid"].as<bool>());
 }
 
 void test_ds18b20_runtime_report_always_marks_repeated_reading_dirty() {
@@ -535,7 +547,7 @@ void test_ds18b20_runtime_publishes_invalid_crc_and_recovers() {
     StaticJsonDocument<1024> invalidDoc;
     JsonObject invalidOutput = invalidDoc.to<JsonObject>();
     Ds18b20TemperatureSensorDeviceApiAdapter::instance().writeDeviceJson(sensor, sensor.status(), invalidOutput);
-    TEST_ASSERT_FALSE(invalidOutput["runtime"]["temperature"]["valid"].as<bool>());
+    TEST_ASSERT_FALSE(invalidOutput["runtime"]["output"]["temperature"]["valid"].as<bool>());
 
     driver.setTemperatureRaw(0x0180, 12);
     for (uint32_t now = 5900; now < 29000 && !sensor.reading().valid; now += 100U) {

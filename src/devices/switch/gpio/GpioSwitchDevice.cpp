@@ -85,11 +85,7 @@ bool parseGpioSwitchDeviceConfigJson(const JsonObjectConst& input, GpioSwitchDev
 }
 
 void writeGpioSwitchDeviceConfigJson(const GpioSwitchDevicePersistedConfigV1& config, JsonObject output) {
-    writeDeviceBaseConfigJson(config.switchConfig.base, output);
-    output["restorePreviousState"] = config.switchConfig.restorePreviousState;
-    output["startupState"] = outputStateName(config.switchConfig.startupState);
-    output["safeState"] = outputStateName(config.switchConfig.safeState);
-    output["inverted"] = config.switchConfig.inverted;
+    config.switchConfig.writeJson(output);
     output["gpioPin"] = config.gpioConfig.gpioPin;
 }
 
@@ -141,7 +137,8 @@ bool GpioSwitchDevice::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
 bool GpioSwitchDevice::replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const {
     GpioSwitchDevicePersistedConfigV1 config{};
     config.switchConfig = switchConfig();
-    config.switchConfig.base = baseConfig;
+    config.switchConfig.enabled = baseConfig.enabled;
+    std::memcpy(config.switchConfig.name, baseConfig.name, sizeof(config.switchConfig.name));
     config.gpioConfig = config_;
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = gpioSwitchDeviceConfigSize(config);

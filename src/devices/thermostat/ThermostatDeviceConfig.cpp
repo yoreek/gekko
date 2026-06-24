@@ -79,35 +79,16 @@ bool parseDuration(const JsonVariantConst& variant, uint32_t& value, const char*
     return true;
 }
 
-bool parseMilliCelsiusField(const JsonVariantConst& variant, int32_t& milliCelsius, const char*& error) {
-    if (variant.isNull()) {
+bool parseTemperatureField(const JsonObjectConst& input, const char* key, int32_t& milliCelsius, const char*& error) {
+    const JsonVariantConst celsiusVariant = input[key];
+    if (celsiusVariant.isNull()) {
         return true;
     }
-    if (!variant.is<float>() && !variant.is<double>() && !variant.is<int>() && !variant.is<long>() && !variant.is<unsigned long>() &&
-        !variant.is<unsigned int>()) {
-        error = "temperature value must be numeric";
-        return false;
-    }
-    const double milli = variant.as<double>();
-    if (milli < static_cast<double>(INT32_MIN) || milli > static_cast<double>(INT32_MAX)) {
-        error = "temperature value is out of range";
-        return false;
-    }
-    milliCelsius = static_cast<int32_t>(std::round(milli));
-    return true;
-}
-
-bool parseTemperatureField(const JsonObjectConst& input, const char* milliKey, const char* celsiusKey, int32_t& milliCelsius,
-                           const char*& error) {
-    const JsonVariantConst milliVariant = input[milliKey];
-    if (!milliVariant.isNull()) {
-        return parseMilliCelsiusField(milliVariant, milliCelsius, error);
-    }
-    return parseTemperatureMilliCelsius(input[celsiusKey], milliCelsius, error);
+    return parseTemperatureMilliCelsius(celsiusVariant, milliCelsius, error);
 }
 
 bool parseHysteresisField(const JsonObjectConst& input, uint16_t& centiCelsius, const char*& error) {
-    const JsonVariantConst centiVariant = input["hysteresis_centi_celsius"];
+    const JsonVariantConst centiVariant = input["hysteresisCentiCelsius"];
     if (!centiVariant.isNull()) {
         if (!centiVariant.is<float>() && !centiVariant.is<double>() && !centiVariant.is<int>() && !centiVariant.is<long>()) {
             error = "thermostat hysteresis must be numeric";
@@ -122,7 +103,7 @@ bool parseHysteresisField(const JsonObjectConst& input, uint16_t& centiCelsius, 
         return true;
     }
 
-    const JsonVariantConst celsiusVariant = input["hysteresis_celsius"];
+    const JsonVariantConst celsiusVariant = input["hysteresisCelsius"];
     if (celsiusVariant.isNull()) {
         return true;
     }
@@ -222,44 +203,22 @@ bool decodeThermostatDeviceConfig(const uint8_t* blob, size_t size, ThermostatDe
 }
 
 DeviceValidationResult validateThermostatDeviceConfig(const ThermostatDeviceConfigV1& config) {
-    const DeviceValidationResult baseValidation = validateDeviceBaseConfig(config.base);
-    if (!baseValidation.ok()) {
-        return baseValidation;
-    }
-
-    ThermostatMode mode{};
-    ThermostatAlgorithm algorithm{};
-    if (!thermostatModeFromByte(config.mode, mode)) {
-        return {DeviceError::InvalidConfig, "thermostat mode is invalid"};
-    }
-    if (!thermostatAlgorithmFromByte(config.algorithm, algorithm)) {
-        return {DeviceError::InvalidConfig, "thermostat algorithm is invalid"};
-    }
-    if (config.minSafeMilliCelsius >= config.maxSafeMilliCelsius) {
-        return {DeviceError::InvalidConfig, "thermostat safe range is invalid"};
-    }
-    if (!(config.minSafeMilliCelsius < config.targetMilliCelsius && config.targetMilliCelsius < config.maxSafeMilliCelsius)) {
-        return {DeviceError::InvalidConfig, "thermostat target must be inside safe range"};
-    }
-    if (config.hysteresisCentiCelsius == 0U || config.hysteresisCentiCelsius > kThermostatMaxHysteresisCentiCelsius) {
-        return {DeviceError::InvalidConfig, "thermostat hysteresis is invalid"};
-    }
-    if (config.checkIntervalMs < kThermostatMinIntervalMs || config.checkIntervalMs > kThermostatMaxIntervalMs) {
-        return {DeviceError::InvalidConfig, "thermostat check interval is invalid"};
-    }
-    if (config.sensorTimeoutMs < kThermostatMinIntervalMs || config.sensorTimeoutMs > kThermostatMaxIntervalMs) {
-        return {DeviceError::InvalidConfig, "thermostat sensor timeout is invalid"};
-    }
-    if (config.retryAfterErrorMs < kThermostatMinIntervalMs || config.retryAfterErrorMs > kThermostatMaxIntervalMs) {
-        return {DeviceError::InvalidConfig, "thermostat retry timeout is invalid"};
-    }
-    if (config.minSwitchIntervalMs > kThermostatMaxIntervalMs) {
-        return {DeviceError::InvalidConfig, "thermostat minimum switch interval is invalid"};
-    }
-    return {};
+    return config.validate();
 }
 
 bool parseThermostatDeviceConfigJson(const JsonObjectConst& input, ThermostatDeviceConfigV1& config, const char*& error) {
+    return config.parseJson(input, error);
+}
+
+void writeThermostatDeviceConfigJson(const ThermostatDeviceConfigV1& config, JsonObject output) {
+    config.writeJson(output);
+}
+
+bool ThermostatDeviceConfigV1::parseJson(const JsonObjectConst& input, const char*& error) {
+    if (!DeviceBaseConfigV1::parseJson(input, error)) {
+        return false;
+    }
+
     ThermostatMode mode{};
     ThermostatAlgorithm algorithm{};
     if (!parseMode(input["mode"], mode, error)) {
@@ -268,50 +227,88 @@ bool parseThermostatDeviceConfigJson(const JsonObjectConst& input, ThermostatDev
     if (!parseAlgorithm(input["algorithm"], algorithm, error)) {
         return false;
     }
-    config.mode = static_cast<uint8_t>(mode);
-    config.algorithm = static_cast<uint8_t>(algorithm);
+    this->mode = static_cast<uint8_t>(mode);
+    this->algorithm = static_cast<uint8_t>(algorithm);
 
-    if (!parseTemperatureField(input, "target_milli_celsius", "target_celsius", config.targetMilliCelsius, error) ||
-        !parseTemperatureField(input, "min_safe_milli_celsius", "min_safe_celsius", config.minSafeMilliCelsius, error) ||
-        !parseTemperatureField(input, "max_safe_milli_celsius", "max_safe_celsius", config.maxSafeMilliCelsius, error)) {
+    if (!parseTemperatureField(input, "targetCelsius", targetMilliCelsius, error) ||
+        !parseTemperatureField(input, "minSafeCelsius", minSafeMilliCelsius, error) ||
+        !parseTemperatureField(input, "maxSafeCelsius", maxSafeMilliCelsius, error)) {
         return false;
     }
 
-    if (!parseHysteresisField(input, config.hysteresisCentiCelsius, error)) {
+    if (!parseHysteresisField(input, hysteresisCentiCelsius, error)) {
         return false;
     }
 
-    if (!parseDuration(input["check_interval_ms"], config.checkIntervalMs, error) ||
-        !parseDuration(input["sensor_timeout_ms"], config.sensorTimeoutMs, error) ||
-        !parseDuration(input["retry_after_error_ms"], config.retryAfterErrorMs, error) ||
-        !parseDuration(input["min_switch_interval_ms"], config.minSwitchIntervalMs, error)) {
+    if (!parseDuration(input["checkIntervalMs"], checkIntervalMs, error) ||
+        !parseDuration(input["sensorTimeoutMs"], sensorTimeoutMs, error) ||
+        !parseDuration(input["retryAfterErrorMs"], retryAfterErrorMs, error) ||
+        !parseDuration(input["minSwitchIntervalMs"], minSwitchIntervalMs, error)) {
         return false;
     }
 
     return true;
 }
 
-void writeThermostatDeviceConfigJson(const ThermostatDeviceConfigV1& config, JsonObject output) {
+DeviceValidationResult ThermostatDeviceConfigV1::validate() const {
+    const DeviceValidationResult baseValidation = DeviceBaseConfigV1::validate();
+    if (!baseValidation.ok()) {
+        return baseValidation;
+    }
+
     ThermostatMode mode{};
     ThermostatAlgorithm algorithm{};
-    (void)thermostatModeFromByte(config.mode, mode);
-    (void)thermostatAlgorithmFromByte(config.algorithm, algorithm);
+    if (!thermostatModeFromByte(this->mode, mode)) {
+        return {DeviceError::InvalidConfig, "thermostat mode is invalid"};
+    }
+    if (!thermostatAlgorithmFromByte(this->algorithm, algorithm)) {
+        return {DeviceError::InvalidConfig, "thermostat algorithm is invalid"};
+    }
+    if (minSafeMilliCelsius >= maxSafeMilliCelsius) {
+        return {DeviceError::InvalidConfig, "thermostat safe range is invalid"};
+    }
+    if (!(minSafeMilliCelsius < targetMilliCelsius && targetMilliCelsius < maxSafeMilliCelsius)) {
+        return {DeviceError::InvalidConfig, "thermostat target must be inside safe range"};
+    }
+    if (hysteresisCentiCelsius == 0U || hysteresisCentiCelsius > kThermostatMaxHysteresisCentiCelsius) {
+        return {DeviceError::InvalidConfig, "thermostat hysteresis is invalid"};
+    }
+    if (checkIntervalMs < kThermostatMinIntervalMs || checkIntervalMs > kThermostatMaxIntervalMs) {
+        return {DeviceError::InvalidConfig, "thermostat check interval is invalid"};
+    }
+    if (sensorTimeoutMs < kThermostatMinIntervalMs || sensorTimeoutMs > kThermostatMaxIntervalMs) {
+        return {DeviceError::InvalidConfig, "thermostat sensor timeout is invalid"};
+    }
+    if (retryAfterErrorMs < kThermostatMinIntervalMs || retryAfterErrorMs > kThermostatMaxIntervalMs) {
+        return {DeviceError::InvalidConfig, "thermostat retry timeout is invalid"};
+    }
+    if (minSwitchIntervalMs > kThermostatMaxIntervalMs) {
+        return {DeviceError::InvalidConfig, "thermostat minimum switch interval is invalid"};
+    }
+    return {};
+}
 
-    writeDeviceBaseConfigJson(config.base, output);
+void ThermostatDeviceConfigV1::writeJson(JsonObject output) const {
+    ThermostatMode mode{};
+    ThermostatAlgorithm algorithm{};
+    (void)thermostatModeFromByte(this->mode, mode);
+    (void)thermostatAlgorithmFromByte(this->algorithm, algorithm);
+
+    DeviceBaseConfigV1::writeJson(output);
     output["mode"] = thermostatModeName(mode);
     output["algorithm"] = thermostatAlgorithmName(algorithm);
-    output["targetCelsius"] = static_cast<float>(config.targetMilliCelsius) / 1000.0F;
-    output["targetMilliCelsius"] = config.targetMilliCelsius;
-    output["minSafeCelsius"] = static_cast<float>(config.minSafeMilliCelsius) / 1000.0F;
-    output["minSafeMilliCelsius"] = config.minSafeMilliCelsius;
-    output["maxSafeCelsius"] = static_cast<float>(config.maxSafeMilliCelsius) / 1000.0F;
-    output["maxSafeMilliCelsius"] = config.maxSafeMilliCelsius;
-    output["hysteresisCelsius"] = static_cast<float>(config.hysteresisCentiCelsius) / 100.0F;
-    output["hysteresisCentiCelsius"] = config.hysteresisCentiCelsius;
-    output["checkIntervalMs"] = config.checkIntervalMs;
-    output["sensorTimeoutMs"] = config.sensorTimeoutMs;
-    output["retryAfterErrorMs"] = config.retryAfterErrorMs;
-    output["minSwitchIntervalMs"] = config.minSwitchIntervalMs;
+    output["targetCelsius"] = static_cast<float>(targetMilliCelsius) / 1000.0F;
+    output["targetMilliCelsius"] = targetMilliCelsius;
+    output["minSafeCelsius"] = static_cast<float>(minSafeMilliCelsius) / 1000.0F;
+    output["minSafeMilliCelsius"] = minSafeMilliCelsius;
+    output["maxSafeCelsius"] = static_cast<float>(maxSafeMilliCelsius) / 1000.0F;
+    output["maxSafeMilliCelsius"] = maxSafeMilliCelsius;
+    output["hysteresisCelsius"] = static_cast<float>(hysteresisCentiCelsius) / 100.0F;
+    output["hysteresisCentiCelsius"] = hysteresisCentiCelsius;
+    output["checkIntervalMs"] = checkIntervalMs;
+    output["sensorTimeoutMs"] = sensorTimeoutMs;
+    output["retryAfterErrorMs"] = retryAfterErrorMs;
+    output["minSwitchIntervalMs"] = minSwitchIntervalMs;
 }
 
 } // namespace ewfm

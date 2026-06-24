@@ -173,8 +173,8 @@ DeviceValidationResult validateRegistrySwitchConfig(const DeviceRegistryEntry&, 
 
 SwitchDeviceConfigV1 makeSwitchConfig(OutputState startup = OutputState::Off, OutputState safe = OutputState::Off) {
     SwitchDeviceConfigV1 config{};
-    config.base.enabled = true;
-    std::snprintf(config.base.name, sizeof(config.base.name), "%s", "switch");
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "switch");
     config.restorePreviousState = true;
     config.startupState = startup;
     config.safeState = safe;
@@ -184,8 +184,8 @@ SwitchDeviceConfigV1 makeSwitchConfig(OutputState startup = OutputState::Off, Ou
 
 ThermostatDeviceConfigV1 makeThermostatConfig(ThermostatMode mode, int32_t targetMilliCelsius) {
     ThermostatDeviceConfigV1 config{};
-    config.base.enabled = true;
-    std::snprintf(config.base.name, sizeof(config.base.name), "%s", "thermostat");
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "thermostat");
     config.mode = static_cast<uint8_t>(mode);
     config.algorithm = static_cast<uint8_t>(ThermostatAlgorithm::Hysteresis);
     config.targetMilliCelsius = targetMilliCelsius;
@@ -268,14 +268,14 @@ void test_thermostat_parser_accepts_spa_milli_celsius_fields() {
     JsonObject input = doc.to<JsonObject>();
     input["mode"] = "heat";
     input["algorithm"] = "hysteresis";
-    input["target_milli_celsius"] = 28000;
-    input["min_safe_milli_celsius"] = 0;
-    input["max_safe_milli_celsius"] = 50000;
-    input["hysteresis_centi_celsius"] = 50;
-    input["check_interval_ms"] = 1000;
-    input["sensor_timeout_ms"] = 6000;
-    input["retry_after_error_ms"] = 30000;
-    input["min_switch_interval_ms"] = 5000;
+    input["targetCelsius"] = 28.0;
+    input["minSafeCelsius"] = 0.0;
+    input["maxSafeCelsius"] = 50.0;
+    input["hysteresisCelsius"] = 0.5;
+    input["checkIntervalMs"] = 1000;
+    input["sensorTimeoutMs"] = 6000;
+    input["retryAfterErrorMs"] = 30000;
+    input["minSwitchIntervalMs"] = 5000;
 
     ThermostatDeviceConfigV1 config = makeThermostatConfig(ThermostatMode::Heat, 25000);
     const char* error = nullptr;

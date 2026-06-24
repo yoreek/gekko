@@ -74,37 +74,53 @@ bool decodeDs18b20TemperatureSensorConfig(const uint8_t* blob, size_t size, Ds18
 }
 
 DeviceValidationResult validateDs18b20TemperatureSensorConfig(const Ds18b20TemperatureSensorConfigV1& config) {
-    const DeviceValidationResult baseValidation = validateDeviceBaseConfig(config.base);
+    return config.validate();
+}
+
+bool parseDs18b20TemperatureSensorConfigJson(const JsonObjectConst& input, Ds18b20TemperatureSensorConfigV1& config, const char*& error) {
+    return config.parseJson(input, error);
+}
+
+void writeDs18b20TemperatureSensorConfigJson(const Ds18b20TemperatureSensorConfigV1& config, JsonObject output) {
+    config.writeJson(output);
+}
+
+DeviceValidationResult Ds18b20TemperatureSensorConfigV1::validate() const {
+    const DeviceValidationResult baseValidation = DeviceBaseConfigV1::validate();
     if (!baseValidation.ok()) {
         return baseValidation;
     }
-    if (!ds18b20AddressIsValid(config.address)) {
+    if (!ds18b20AddressIsValid(address)) {
         return {DeviceError::InvalidConfig, "ds18b20 address is invalid"};
     }
-    if (!ds18b20ResolutionIsValid(config.resolution)) {
+    if (!ds18b20ResolutionIsValid(resolution)) {
         return {DeviceError::InvalidConfig, "ds18b20 resolution is invalid"};
     }
     TemperatureUnit unit{};
-    if (!temperatureUnitFromByte(config.outputUnit, unit)) {
+    if (!temperatureUnitFromByte(outputUnit, unit)) {
         return {DeviceError::InvalidConfig, "ds18b20 output unit is invalid"};
     }
-    if (config.reportAlways > 1U) {
+    if (reportAlways > 1U) {
         return {DeviceError::InvalidConfig, "ds18b20 report policy is invalid"};
     }
-    if (config.reportDeltaCentiCelsius == 0U) {
+    if (reportDeltaCentiCelsius == 0U) {
         return {DeviceError::InvalidConfig, "ds18b20 report delta is invalid"};
     }
-    if (config.pollMs < kDs18b20MinPollMs || config.pollMs > kDs18b20MaxPollMs) {
+    if (pollMs < kDs18b20MinPollMs || pollMs > kDs18b20MaxPollMs) {
         return {DeviceError::InvalidConfig, "ds18b20 poll period is invalid"};
     }
     return {};
 }
 
-bool parseDs18b20TemperatureSensorConfigJson(const JsonObjectConst& input, Ds18b20TemperatureSensorConfigV1& config, const char*& error) {
-    config.reportAlways = parseBoolField(input, "reportAlways", false) ? 1U : 0U;
+bool Ds18b20TemperatureSensorConfigV1::parseJson(const JsonObjectConst& input, const char*& error) {
+    if (!DeviceBaseConfigV1::parseJson(input, error)) {
+        return false;
+    }
+
+    reportAlways = parseBoolField(input, "reportAlways", false) ? 1U : 0U;
 
     const char* address = input["address"] | "";
-    if (!parseOneWireRomAddress(address, config.address)) {
+    if (!parseOneWireRomAddress(address, this->address)) {
         error = "ds18b20 address must be 16 hex characters";
         return false;
     }
@@ -120,7 +136,7 @@ bool parseDs18b20TemperatureSensorConfigJson(const JsonObjectConst& input, Ds18b
             error = "ds18b20 resolution is invalid";
             return false;
         }
-        config.resolution = static_cast<uint8_t>(resolution);
+        this->resolution = static_cast<uint8_t>(resolution);
     }
 
     TemperatureUnit unit{};
@@ -128,61 +144,61 @@ bool parseDs18b20TemperatureSensorConfigJson(const JsonObjectConst& input, Ds18b
         error = "ds18b20 output unit is invalid";
         return false;
     }
-    config.outputUnit = temperatureUnitToByte(unit);
+    outputUnit = temperatureUnitToByte(unit);
 
-    uint32_t pollMs = config.pollMs;
+    uint32_t pollMs = this->pollMs;
     if (!parseUint32(input["pollMs"], pollMs)) {
         error = "ds18b20 poll period must be numeric";
         return false;
     }
-    config.pollMs = pollMs;
+    this->pollMs = pollMs;
 
-    uint16_t reportDelta = config.reportDeltaCentiCelsius;
+    uint16_t reportDelta = this->reportDeltaCentiCelsius;
     if (!parseReportDelta(input, reportDelta)) {
         error = "ds18b20 report delta is invalid";
         return false;
     }
-    config.reportDeltaCentiCelsius = reportDelta;
-    if (!ds18b20AddressIsValid(config.address)) {
+    reportDeltaCentiCelsius = reportDelta;
+    if (!ds18b20AddressIsValid(this->address)) {
         error = "ds18b20 address is invalid";
         return false;
     }
-    if (!ds18b20ResolutionIsValid(config.resolution)) {
+    if (!ds18b20ResolutionIsValid(resolution)) {
         error = "ds18b20 resolution is invalid";
         return false;
     }
     TemperatureUnit validatedUnit{};
-    if (!temperatureUnitFromByte(config.outputUnit, validatedUnit)) {
+    if (!temperatureUnitFromByte(outputUnit, validatedUnit)) {
         error = "ds18b20 output unit is invalid";
         return false;
     }
-    if (config.reportAlways > 1U) {
+    if (reportAlways > 1U) {
         error = "ds18b20 report policy is invalid";
         return false;
     }
-    if (config.reportDeltaCentiCelsius == 0U) {
+    if (reportDeltaCentiCelsius == 0U) {
         error = "ds18b20 report delta is invalid";
         return false;
     }
-    if (config.pollMs < kDs18b20MinPollMs || config.pollMs > kDs18b20MaxPollMs) {
+    if (pollMs < kDs18b20MinPollMs || pollMs > kDs18b20MaxPollMs) {
         error = "ds18b20 poll period is invalid";
         return false;
     }
     return true;
 }
 
-void writeDs18b20TemperatureSensorConfigJson(const Ds18b20TemperatureSensorConfigV1& config, JsonObject output) {
+void Ds18b20TemperatureSensorConfigV1::writeJson(JsonObject output) const {
     char address[17]{};
-    (void)formatOneWireRomAddress(config.address, address);
+    (void)formatOneWireRomAddress(this->address, address);
 
-    writeDeviceBaseConfigJson(config.base, output);
+    DeviceBaseConfigV1::writeJson(output);
     output["address"] = address;
-    output["resolution"] = config.resolution;
-    output["unit"] = temperatureUnitName(static_cast<TemperatureUnit>(config.outputUnit));
-    output["pollMs"] = config.pollMs;
-    output["reportDeltaCelsius"] = static_cast<float>(config.reportDeltaCentiCelsius) / 100.0F;
-    output["reportDeltaCentiCelsius"] = config.reportDeltaCentiCelsius;
-    output["reportAlways"] = config.reportAlways != 0U;
+    output["resolution"] = resolution;
+    output["unit"] = temperatureUnitName(static_cast<TemperatureUnit>(outputUnit));
+    output["pollMs"] = pollMs;
+    output["reportDeltaCelsius"] = static_cast<float>(reportDeltaCentiCelsius) / 100.0F;
+    output["reportDeltaCentiCelsius"] = reportDeltaCentiCelsius;
+    output["reportAlways"] = reportAlways != 0U;
 }
 
 } // namespace ewfm

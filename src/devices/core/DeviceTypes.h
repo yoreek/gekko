@@ -50,6 +50,7 @@ struct DeviceDependencyLink {
 };
 
 enum class DeviceStatus : uint8_t;
+struct DeviceValidationResult;
 
 enum class DeviceStatus : uint8_t {
     Unknown = 0,
@@ -329,6 +330,10 @@ struct DeviceBaseConfigV1 {
     static constexpr char kMagic[] = "BASE-1";
     uint8_t enabled{1};
     char name[kMaxDeviceBaseNameLength + 1]{};
+
+    DeviceValidationResult validate() const;
+    bool parseJson(const JsonObjectConst& input, const char*& error);
+    void writeJson(JsonObject output) const;
 };
 #pragma pack(pop)
 

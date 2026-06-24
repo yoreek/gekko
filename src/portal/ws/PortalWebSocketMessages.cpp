@@ -44,7 +44,7 @@ void fillDeviceEventPayload(JsonDocument& payload, const DeviceEvent& event) {
         payload["name"] = JsonString(event.name.c_str(), JsonString::Copied);
     }
     if (!event.typeName.empty()) {
-        payload["type"] = JsonString(event.typeName.c_str(), JsonString::Copied);
+        payload["typeName"] = JsonString(event.typeName.c_str(), JsonString::Copied);
     }
     payload["registryRevision"] = event.registryRevision;
     payload["configRevision"] = event.configRevision;

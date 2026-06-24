@@ -23,15 +23,19 @@ bool DummyDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, Dev
     request.typeId = typeId();
     request.configVersion = DummyDevice::descriptor().currentConfigVersion;
 
-    DeviceBaseConfigV1 base{};
-    if (!parseDeviceBaseConfigJson(input, base, error)) {
+    const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
+    if (configInput.isNull()) {
+        error = "dummy config is required";
         return false;
     }
-    request.name = base.name;
-    request.enabled = base.enabled != 0U;
+    DummyDeviceConfigV1 config{};
+    if (!config.parseJson(configInput, error)) {
+        return false;
+    }
+    request.name = config.name;
+    request.enabled = config.enabled != 0U;
 
-    const uint32_t configVersion = input["config_version"] | request.configVersion;
-    DummyDeviceConfigV1 config = base;
+    const uint32_t configVersion = input["configVersion"] | request.configVersion;
     request.configVersion = configVersion;
     if (configVersion != 1U) {
         error = "unsupported DummyDevice config version";
@@ -51,7 +55,7 @@ void DummyDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, const
     writeCommonDeviceJson(runtime, effectiveStatus, typeName(), output);
     const DummyDevice& device = static_cast<const DummyDevice&>(runtime);
     JsonObject config = output["config"].as<JsonObject>();
-    writeDummyDeviceConfigJson(device.config(), config);
+    device.config().writeJson(config);
 }
 
 } // namespace ewfm

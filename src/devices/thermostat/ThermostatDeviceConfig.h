@@ -33,9 +33,8 @@ enum class ThermostatAlgorithm : uint8_t {
 };
 
 #pragma pack(push, 1)
-struct ThermostatDeviceConfigV1 {
+struct ThermostatDeviceConfigV1 : DeviceBaseConfigV1 {
     static constexpr char kMagic[] = "THRM-1";
-    DeviceBaseConfigV1 base{};
     uint8_t mode{static_cast<uint8_t>(ThermostatMode::Off)};
     uint8_t algorithm{static_cast<uint8_t>(ThermostatAlgorithm::Hysteresis)};
     int32_t targetMilliCelsius{kThermostatDefaultTargetMilliCelsius};
@@ -46,6 +45,10 @@ struct ThermostatDeviceConfigV1 {
     uint32_t sensorTimeoutMs{kThermostatDefaultSensorTimeoutMs};
     uint32_t retryAfterErrorMs{kThermostatDefaultRetryAfterErrorMs};
     uint32_t minSwitchIntervalMs{kThermostatDefaultMinSwitchIntervalMs};
+
+    bool parseJson(const JsonObjectConst& input, const char*& error);
+    DeviceValidationResult validate() const;
+    void writeJson(JsonObject output) const;
 };
 #pragma pack(pop)
 

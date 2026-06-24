@@ -78,15 +78,15 @@ The DS18B20 runtime SHALL expose the latest valid temperature as runtime output 
 
 #### Scenario: Celsius output is serialized
 - **WHEN** a DS18B20 sensor configured for Celsius has a valid reading
-- **THEN** device snapshots include `output.temperature.value`, `output.temperature.unit = "celsius"`, `output.temperature.unit_symbol = "C"`, `output.temperature.measured_at_ms`, and `output.temperature.valid = true`
+- **THEN** device snapshots include `runtime.output.temperature.value`, `runtime.output.temperature.unit = "celsius"`, `runtime.output.temperature.unitSymbol = "C"`, `runtime.output.temperature.measuredAtMs`, and `runtime.output.temperature.valid = true`
 
 #### Scenario: Fahrenheit output is serialized
 - **WHEN** a DS18B20 sensor configured for Fahrenheit has a valid reading
-- **THEN** device snapshots include the Fahrenheit-converted value with `unit = "fahrenheit"` and `unit_symbol = "F"` while the runtime keeps its internal reading in Celsius
+- **THEN** device snapshots include the Fahrenheit-converted value with `unit = "fahrenheit"` and `unitSymbol = "F"` while the runtime keeps its internal reading in Celsius
 
 #### Scenario: Missing reading is serialized as invalid
 - **WHEN** a DS18B20 runtime has no valid current reading after startup, reconfiguration, dependency blocking, or read failure
-- **THEN** device snapshots include `output.temperature.valid = false` and do not require JSON `null` or `NaN` to represent the missing reading
+- **THEN** device snapshots include `runtime.output.temperature.valid = false` and do not require JSON `null` or `NaN` to represent the missing reading
 
 #### Scenario: Changed value publishes output
 - **WHEN** report-always is disabled and a completed reading differs from the previous valid internal reading by at least the configured report delta

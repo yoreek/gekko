@@ -112,10 +112,10 @@ void test_device_api_adapter_registry_resolves_onewire() {
 
 void test_onewire_api_adapter_parses_create_request() {
     StaticJsonDocument<256> doc;
-    doc["typeId"] = OneWireBusDevice::descriptor().typeId;
-    doc["name"] = "onewire";
-    doc["enabled"] = true;
+    doc["typeName"] = "onewire_bus";
     JsonObject config = doc.createNestedObject("config");
+    config["name"] = "onewire";
+    config["enabled"] = true;
     config["gpioPin"] = 18;
     config["internalPullup"] = true;
 
@@ -150,8 +150,8 @@ void test_onewire_api_adapter_serializes_runtime_scan_snapshot() {
     const OneWireRomAddress valid = makeRom(0x28, {0xFF, 0x64, 0x1D, 0x62, 0x16, 0x03}, driver);
     driver.candidates = {valid};
     OneWireBusDeviceConfigV1 config{};
-    config.base.enabled = true;
-    std::snprintf(config.base.name, sizeof(config.base.name), "%s", "onewire");
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "onewire");
     config.gpioPin = 4;
     config.internalPullup = 0;
     const BoundedBlob<kMaxDeviceConfigBytes> payload = encodeOneWirePayload(config);
@@ -174,18 +174,20 @@ void test_onewire_api_adapter_serializes_runtime_scan_snapshot() {
     TEST_ASSERT_EQUAL_UINT8(1, output["runtime"]["scan"]["deviceCount"].as<uint8_t>());
     TEST_ASSERT_EQUAL_STRING("28FF641D621603AD", output["runtime"]["scan"]["devices"][0]["address"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("28", output["runtime"]["scan"]["devices"][0]["familyCode"].as<const char*>());
+    TEST_ASSERT_FALSE(output["runtime"]["scan"]["invalidCrcSeen"].as<bool>());
 }
 
 void test_onewire_api_adapter_parses_update_config_request() {
     StaticJsonDocument<256> doc;
     JsonObject config = doc.createNestedObject("config");
+    config["name"] = "onewire";
     config["enabled"] = false;
     config["gpioPin"] = 19;
     config["internalPullup"] = true;
 
     OneWireBusDeviceConfigV1 current{};
-    current.base.enabled = true;
-    std::snprintf(current.base.name, sizeof(current.base.name), "%s", "onewire");
+    current.enabled = true;
+    std::snprintf(current.name, sizeof(current.name), "%s", "onewire");
     current.gpioPin = 4;
     current.internalPullup = 0;
     const DeviceConfigBlob currentBlob = encodeOneWirePayload(current);
@@ -201,8 +203,8 @@ void test_onewire_api_adapter_parses_update_config_request() {
     OneWireBusDeviceConfigV1 parsed{};
     TEST_ASSERT_TRUE(
         decodeOneWireBusDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
-    TEST_ASSERT_TRUE(parsed.base.enabled != 0U);
-    TEST_ASSERT_EQUAL_STRING("onewire", parsed.base.name);
+    TEST_ASSERT_TRUE(parsed.enabled != 0U);
+    TEST_ASSERT_EQUAL_STRING("onewire", parsed.name);
     TEST_ASSERT_EQUAL_UINT8(19, parsed.gpioPin);
     TEST_ASSERT_TRUE(parsed.internalPullup != 0U);
 }
@@ -210,8 +212,8 @@ void test_onewire_api_adapter_parses_update_config_request() {
 void test_onewire_api_adapter_rejects_missing_update_config() {
     StaticJsonDocument<64> doc;
     OneWireBusDeviceConfigV1 current{};
-    current.base.enabled = true;
-    std::snprintf(current.base.name, sizeof(current.base.name), "%s", "onewire");
+    current.enabled = true;
+    std::snprintf(current.name, sizeof(current.name), "%s", "onewire");
     current.gpioPin = 4;
     current.internalPullup = 0;
     const DeviceConfigBlob currentBlob = encodeOneWirePayload(current);

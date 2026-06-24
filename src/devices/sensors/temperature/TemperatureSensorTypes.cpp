@@ -77,8 +77,8 @@ void writeTemperatureOutputJson(const TemperatureReading& reading, TemperatureUn
     const int32_t displayMilli = reading.valid ? convertMilliCelsiusToUnit(reading.milliCelsius, unit) : 0;
     output["value"] = static_cast<float>(displayMilli) / 1000.0F;
     output["unit"] = temperatureUnitName(unit);
-    output["unit_symbol"] = temperatureUnitSymbol(unit);
-    output["measured_at_ms"] = reading.valid ? reading.measuredAtMs : 0U;
+    output["unitSymbol"] = temperatureUnitSymbol(unit);
+    output["measuredAtMs"] = reading.valid ? reading.measuredAtMs : 0U;
     output["valid"] = reading.valid;
     output["status"] = status != nullptr ? status : (reading.valid ? "ok" : "not_ready");
 }

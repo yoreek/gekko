@@ -103,8 +103,8 @@ public:
 
 SwitchDeviceConfigV1 makeConfig(OutputState startup = OutputState::Off, OutputState safe = OutputState::Off) {
     SwitchDeviceConfigV1 config{};
-    config.base.enabled = true;
-    std::snprintf(config.base.name, sizeof(config.base.name), "%s", "switch");
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "switch");
     config.restorePreviousState = false;
     config.startupState = startup;
     config.safeState = safe;
@@ -130,8 +130,8 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeGpioSwitchPayload(const GpioSwitchDevic
 
 GpioSwitchDevicePersistedConfigV1 makeGpioSwitchConfig(uint8_t pin, OutputState startup = OutputState::Off, bool restorePrevious = false) {
     GpioSwitchDevicePersistedConfigV1 config{};
-    config.switchConfig.base.enabled = 1;
-    std::snprintf(config.switchConfig.base.name, sizeof(config.switchConfig.base.name), "%s", "gpio-switch");
+    config.switchConfig.enabled = 1;
+    std::snprintf(config.switchConfig.name, sizeof(config.switchConfig.name), "%s", "gpio-switch");
     config.switchConfig.restorePreviousState = restorePrevious;
     config.switchConfig.startupState = startup;
     config.switchConfig.safeState = OutputState::Disabled;
@@ -155,8 +155,8 @@ void test_switch_config_round_trip_validates_output_states() {
     SwitchDeviceConfigV1 decoded{};
     const BoundedBlob<kMaxDeviceConfigBytes> payload = encodeSwitchPayload(config);
     TEST_ASSERT_TRUE(decodeSwitchDeviceConfig(payload.data(), payload.size(), decoded));
-    TEST_ASSERT_EQUAL_UINT8(config.base.enabled, decoded.base.enabled);
-    TEST_ASSERT_EQUAL_STRING(config.base.name, decoded.base.name);
+    TEST_ASSERT_EQUAL_UINT8(config.enabled, decoded.enabled);
+    TEST_ASSERT_EQUAL_STRING(config.name, decoded.name);
     TEST_ASSERT_EQUAL_UINT8(config.restorePreviousState, decoded.restorePreviousState);
     TEST_ASSERT_EQUAL_UINT8(config.startupState, decoded.startupState);
     TEST_ASSERT_EQUAL_UINT8(config.safeState, decoded.safeState);

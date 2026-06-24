@@ -53,16 +53,14 @@ void DeviceSetupTransferController::registerRoutes(AsyncWebServer& server, Devic
     server.on(
         "/api/device-setup/import", HTTP_POST,
         [&registry](AsyncWebServerRequest* request) { DeviceSetupTransferController(request, Action::Create, registry).dispatch(); },
-        nullptr,
         [&registry](AsyncWebServerRequest* request, const String& filename, size_t index, uint8_t* data, size_t len, bool final) {
+            size_t fileIndex = 0U;
             if (index == 0U) {
-                size_t fileIndex = 0U;
                 if (!BaseController::beginUploadFile(request, filename.c_str(), "application/x-ndjson", 0U, fileIndex)) {
                     return;
                 }
             }
 
-            const size_t fileIndex = 0U;
             const size_t total = index + len;
             if (!BaseController::appendUploadFile(request, fileIndex, data, len, index, total)) {
                 return;
@@ -70,7 +68,8 @@ void DeviceSetupTransferController::registerRoutes(AsyncWebServer& server, Devic
             if (final) {
                 (void)BaseController::finishUploadFile(request, fileIndex, true);
             }
-        });
+        },
+        nullptr);
     server.on("/api/device-setup/export", HTTP_OPTIONS, [&registry](AsyncWebServerRequest* request) {
         DeviceSetupTransferController(request, Action::Options, registry).dispatch();
     });

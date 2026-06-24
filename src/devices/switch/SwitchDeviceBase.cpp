@@ -28,11 +28,11 @@ bool SwitchDeviceBase::restorePreviousState() const {
 }
 
 bool SwitchDeviceBase::enabled() const {
-    return config_.base.enabled != 0U;
+    return config_.enabled != 0U;
 }
 
 const char* SwitchDeviceBase::name() const {
-    return config_.base.name;
+    return config_.name;
 }
 
 bool SwitchDeviceBase::retainedStateDirty() const {
@@ -170,11 +170,7 @@ const SwitchDeviceConfigV1& SwitchDeviceBase::switchConfig() const {
 
 void SwitchDeviceBase::writeDeviceJson(JsonObject output) const {
     writeCommonDeviceJson(output);
-    writeDeviceBaseConfigJson(config_.base, output);
-    output["restorePreviousState"] = config_.restorePreviousState;
-    output["startupState"] = outputStateName(startupState());
-    output["safeState"] = outputStateName(safeState());
-    output["inverted"] = config_.inverted;
+    config_.writeJson(output);
     JsonObject outputObject = output.createNestedObject("output");
     outputObject["state"] = outputStateName(outputState_);
     outputObject["physical_level"] = physicalOutputState_;
@@ -271,7 +267,7 @@ SM_STATE(SwitchDeviceBase::Starting) {
         status_ = DeviceStatus::Faulted;
         SM_GOTO(Faulted);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         (void)applyConfiguredOutput(safeState(), uptime(), false);
         status_ = DeviceStatus::Disabled;
         SM_GOTO(Disabled);
@@ -300,7 +296,7 @@ SM_STATE(SwitchDeviceBase::Ready) {
         releaseHardware(uptime());
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         (void)applyConfiguredOutput(safeState(), uptime(), false);
         status_ = DeviceStatus::Disabled;
         SM_GOTO(Disabled);

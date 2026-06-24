@@ -151,16 +151,7 @@ bool DeviceRegistryController::parseCreateAdapter(const JsonVariantConst& json, 
     }
 
     const JsonObjectConst object = json.as<JsonObjectConst>();
-    const uint32_t typeId = object["typeId"] | 0U;
-    if (typeId != 0U) {
-        adapter = adapters_.find(static_cast<DeviceTypeId>(typeId));
-        if (adapter == nullptr) {
-            error = "unsupported device type";
-        }
-        return adapter != nullptr;
-    }
-
-    const char* typeName = object["type"] | "";
+    const char* typeName = object["typeName"] | "";
     adapter = adapters_.findByName(typeName);
     if (adapter == nullptr) {
         error = "unsupported device type";
@@ -464,7 +455,7 @@ void DeviceRegistryController::cmd() {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
-    } else if (std::strcmp(commandName, "set_status") == 0) {
+    } else if (std::strcmp(commandName, "setStatus") == 0) {
         const char* status = input["status"] | "";
         if (*status == '\0') {
             renderError(400, "BAD_ARGS", "status is required");
@@ -481,7 +472,7 @@ void DeviceRegistryController::cmd() {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
-    } else if (std::strcmp(commandName, "set_output") == 0) {
+    } else if (std::strcmp(commandName, "setOutput") == 0) {
         const char* state = input["state"] | "";
         if (*state == '\0') {
             renderError(400, "BAD_ARGS", "state is required");
@@ -492,7 +483,7 @@ void DeviceRegistryController::cmd() {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
-    } else if (std::strcmp(commandName, "set_deps") == 0) {
+    } else if (std::strcmp(commandName, "setDeps") == 0) {
         const JsonArrayConst depsArray = input["deps"].as<JsonArrayConst>();
         if (depsArray.isNull()) {
             renderError(400, "BAD_ARGS", "deps are required");
@@ -533,7 +524,7 @@ void DeviceRegistryController::cmd() {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
-    } else if (std::strcmp(commandName, "update_config") == 0) {
+    } else if (std::strcmp(commandName, "updateConfig") == 0) {
         const IDeviceApiAdapter* adapter = adapters_.find(currentRuntime->typeId());
         if (adapter == nullptr) {
             renderError(400, "BAD_ARGS", "unsupported device type");

@@ -49,10 +49,22 @@ bool writeDeviceBaseConfig(DeviceConfigBlob& blob, const DeviceBaseConfigV1& con
 }
 
 DeviceValidationResult validateDeviceBaseConfig(const DeviceBaseConfigV1& config) {
-    if (config.enabled > 1U) {
+    return config.validate();
+}
+
+bool parseDeviceBaseConfigJson(const JsonObjectConst& input, DeviceBaseConfigV1& config, const char*& error) {
+    return config.parseJson(input, error);
+}
+
+void writeDeviceBaseConfigJson(const DeviceBaseConfigV1& config, JsonObject output) {
+    config.writeJson(output);
+}
+
+DeviceValidationResult DeviceBaseConfigV1::validate() const {
+    if (enabled > 1U) {
         return {DeviceError::InvalidConfig, "device enabled flag is invalid"};
     }
-    const size_t nameLength = boundedNameLength(config.name, kMaxDeviceBaseNameLength + 1U);
+    const size_t nameLength = boundedNameLength(name, kMaxDeviceBaseNameLength + 1U);
     if (nameLength == 0U) {
         return {DeviceError::InvalidConfig, "device name is required"};
     }
@@ -62,25 +74,25 @@ DeviceValidationResult validateDeviceBaseConfig(const DeviceBaseConfigV1& config
     return {};
 }
 
-bool parseDeviceBaseConfigJson(const JsonObjectConst& input, DeviceBaseConfigV1& config, const char*& error) {
-    config.enabled = (input["enabled"] | true) ? 1U : 0U;
+bool DeviceBaseConfigV1::parseJson(const JsonObjectConst& input, const char*& error) {
+    enabled = (input["enabled"] | true) ? 1U : 0U;
     const char* name = input["name"] | "";
     const size_t nameLength = boundedNameLength(name, kMaxDeviceBaseNameLength + 1U);
     if (nameLength > kMaxDeviceBaseNameLength) {
         error = "device name exceeds supported length";
         return false;
     }
-    std::memset(config.name, 0, sizeof(config.name));
+    std::memset(this->name, 0, sizeof(this->name));
     if (nameLength != 0U) {
-        std::memcpy(config.name, name, nameLength);
+        std::memcpy(this->name, name, nameLength);
     }
-    config.name[nameLength] = '\0';
+    this->name[nameLength] = '\0';
     return true;
 }
 
-void writeDeviceBaseConfigJson(const DeviceBaseConfigV1& config, JsonObject output) {
-    output["enabled"] = config.enabled != 0U;
-    output["name"] = JsonString(config.name, JsonString::Copied);
+void DeviceBaseConfigV1::writeJson(JsonObject output) const {
+    output["enabled"] = enabled != 0U;
+    output["name"] = JsonString(name, JsonString::Copied);
 }
 
 } // namespace ewfm

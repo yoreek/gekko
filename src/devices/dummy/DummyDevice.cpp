@@ -40,7 +40,7 @@ bool parseDummyDeviceConfigJson(const JsonObjectConst& input, uint32_t configVer
 }
 
 void writeDummyDeviceConfigJson(const DummyDeviceConfigV1& config, JsonObject output) {
-    writeDeviceBaseConfigJson(config, output);
+    config.writeJson(output);
 }
 
 DummyDevice::DummyDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob)
@@ -97,7 +97,7 @@ bool DummyDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) 
 
 void DummyDevice::writeDeviceJson(JsonObject output) const {
     writeCommonDeviceJson(output);
-    writeDeviceBaseConfigJson(config_, output);
+    config_.writeJson(output);
 }
 
 DeviceTypeDescriptor DummyDevice::descriptor() {

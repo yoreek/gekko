@@ -20,8 +20,8 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeGpioPayload(const GpioSwitchDevicePersi
 
 DeviceCreateRequest makeGpioSwitchCreateRequest() {
     GpioSwitchDevicePersistedConfigV1 config{};
-    config.switchConfig.base.enabled = true;
-    std::snprintf(config.switchConfig.base.name, sizeof(config.switchConfig.base.name), "%s", "relay");
+    config.switchConfig.enabled = true;
+    std::snprintf(config.switchConfig.name, sizeof(config.switchConfig.name), "%s", "relay");
     config.switchConfig.restorePreviousState = true;
     config.switchConfig.startupState = OutputState::Off;
     config.switchConfig.safeState = OutputState::Disabled;

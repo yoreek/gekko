@@ -83,8 +83,8 @@ DeviceTypeRegistry makeRegistry() {
 
 DeviceCreateRequest makeCreateRequest() {
     SwitchDeviceConfigV1 config{};
-    config.base.enabled = true;
-    std::snprintf(config.base.name, sizeof(config.base.name), "%s", "switch");
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "switch");
     config.restorePreviousState = true;
     config.startupState = OutputState::Off;
     config.safeState = OutputState::Disabled;

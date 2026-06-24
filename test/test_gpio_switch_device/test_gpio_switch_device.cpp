@@ -50,8 +50,8 @@ public:
 
 GpioSwitchDevicePersistedConfigV1 makeGpioConfig(OutputState startup = OutputState::Off, OutputState safe = OutputState::Off) {
     GpioSwitchDevicePersistedConfigV1 config{};
-    config.switchConfig.base.enabled = true;
-    std::snprintf(config.switchConfig.base.name, sizeof(config.switchConfig.base.name), "%s", "relay");
+    config.switchConfig.enabled = true;
+    std::snprintf(config.switchConfig.name, sizeof(config.switchConfig.name), "%s", "relay");
     config.switchConfig.restorePreviousState = true;
     config.switchConfig.startupState = startup;
     config.switchConfig.safeState = safe;
@@ -83,8 +83,8 @@ void test_gpio_switch_config_round_trip() {
     GpioSwitchDevicePersistedConfigV1 decoded{};
     const BoundedBlob<kMaxDeviceConfigBytes> payload = encodeGpioPayload(config);
     TEST_ASSERT_TRUE(decodeGpioSwitchDeviceConfig(payload.data(), payload.size(), decoded));
-    TEST_ASSERT_EQUAL(config.switchConfig.base.enabled, decoded.switchConfig.base.enabled);
-    TEST_ASSERT_EQUAL_STRING(config.switchConfig.base.name, decoded.switchConfig.base.name);
+    TEST_ASSERT_EQUAL(config.switchConfig.enabled, decoded.switchConfig.enabled);
+    TEST_ASSERT_EQUAL_STRING(config.switchConfig.name, decoded.switchConfig.name);
     TEST_ASSERT_EQUAL(config.switchConfig.restorePreviousState, decoded.switchConfig.restorePreviousState);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(config.switchConfig.startupState),
                             static_cast<uint8_t>(decoded.switchConfig.startupState));

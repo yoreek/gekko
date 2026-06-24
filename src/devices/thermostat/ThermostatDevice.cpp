@@ -47,11 +47,11 @@ const ThermostatDeviceConfigV1& ThermostatDevice::config() const {
 }
 
 bool ThermostatDevice::enabled() const {
-    return config_.base.enabled != 0U;
+    return config_.enabled != 0U;
 }
 
 const char* ThermostatDevice::name() const {
-    return config_.base.name;
+    return config_.name;
 }
 
 const TemperatureReading& ThermostatDevice::latestTemperature() const {
@@ -92,7 +92,8 @@ bool ThermostatDevice::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
 
 bool ThermostatDevice::replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const {
     ThermostatDeviceConfigV1 config = config_;
-    config.base = baseConfig;
+    config.enabled = baseConfig.enabled;
+    std::memcpy(config.name, baseConfig.name, sizeof(config.name));
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = thermostatDeviceConfigSize(config);
     return encodeThermostatDeviceConfig(config, buffer, size) && configBlob.assign(buffer, size);
@@ -129,7 +130,7 @@ bool ThermostatDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t 
 
 void ThermostatDevice::writeDeviceJson(JsonObject output) const {
     writeCommonDeviceJson(output);
-    writeThermostatDeviceConfigJson(config_, output);
+    config_.writeJson(output);
     JsonObject outputObject = output.createNestedObject("output");
     JsonObject temperatureObject = outputObject.createNestedObject("temperature");
     writeTemperatureOutputJson(latestTemperature_, TemperatureUnit::Celsius, controlStatus_, temperatureObject);
@@ -173,7 +174,7 @@ DeviceValidationResult ThermostatDevice::validateConfig(const DeviceRegistryEntr
     if (!decodeThermostatDeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "thermostat config is invalid"};
     }
-    return validateThermostatDeviceConfig(config);
+    return config.validate();
 }
 
 void ThermostatDevice::refreshCapabilityCache() {
@@ -332,7 +333,7 @@ SM_STATE(ThermostatDevice::Idle) {
         (void)requestSafeOff(now);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         (void)requestSafeOff(now);
         SM_GOTO(Disabled);
@@ -352,7 +353,7 @@ SM_STATE(ThermostatDevice::Starting) {
         (void)requestSafeOff(now);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         (void)requestSafeOff(now);
         SM_GOTO(Disabled);
@@ -396,7 +397,7 @@ SM_STATE(ThermostatDevice::Reconfiguring) {
         (void)requestSafeOff(now);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         (void)requestSafeOff(now);
         SM_GOTO(Disabled);
@@ -430,7 +431,7 @@ SM_STATE(ThermostatDevice::Ready) {
         (void)requestSafeOff(now);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         (void)requestSafeOff(now);
         SM_GOTO(Disabled);
@@ -516,7 +517,7 @@ SM_STATE(ThermostatDevice::ApplyOutput) {
         (void)requestSafeOff(now);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         (void)requestSafeOff(now);
         SM_GOTO(Disabled);
@@ -567,7 +568,7 @@ SM_STATE(ThermostatDevice::RetryBackoff) {
         setDeleted();
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         SM_GOTO(Disabled);
     }
@@ -595,7 +596,7 @@ SM_STATE(ThermostatDevice::DependencyBlocked) {
         setDeleted();
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         SM_GOTO(Disabled);
     }
@@ -619,7 +620,7 @@ SM_STATE(ThermostatDevice::Disabled) {
         setDeleted();
         SM_GOTO(Deleting);
     }
-    if (!disableRequested_ && config_.base.enabled != 0U && dependenciesReady()) {
+    if (!disableRequested_ && config_.enabled != 0U && dependenciesReady()) {
         SM_GOTO(Reconfiguring);
     }
 }
@@ -636,7 +637,7 @@ SM_STATE(ThermostatDevice::Faulted) {
         setDeleted();
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         SM_GOTO(Disabled);
     }

@@ -1,6 +1,7 @@
 # Device Model Structures
 
 This file is the canonical reference for the device configuration and API object model used in this firmware.
+The public REST endpoint contract is fixed separately in [REST API Contract](rest-api-contract.md).
 
 Rules:
 - `name`, `enabled`, and `deps` belong to the persisted config object.

@@ -92,24 +92,22 @@ bool ThermostatDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
     request.typeId = typeId();
     request.configVersion = kThermostatDeviceConfigVersion;
 
-    DeviceBaseConfigV1 base{};
-    if (!parseDeviceBaseConfigJson(input, base, error)) {
-        return false;
-    }
-    request.name = base.name;
-    request.enabled = base.enabled != 0U;
-    if (!parseDepsField(input, request.deps, request.depCount, error)) {
+    const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
+    if (configInput.isNull()) {
+        error = "thermostat config is required";
         return false;
     }
 
-    const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
-    const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
     ThermostatDeviceConfigV1 config{};
-    if (!parseThermostatDeviceConfigJson(configInput, config, error)) {
+    if (!config.parseJson(configInput, error)) {
         return false;
     }
-    config.base = base;
-    if (!validateThermostatDeviceConfig(config).ok()) {
+    request.name = config.name;
+    request.enabled = config.enabled != 0U;
+    if (!parseDepsField(configInput, request.deps, request.depCount, error)) {
+        return false;
+    }
+    if (!config.validate().ok()) {
         error = "thermostat config is invalid";
         return false;
     }
@@ -124,30 +122,22 @@ bool ThermostatDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
 
 bool ThermostatDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
                                                           DeviceConfigUpdateRequest& request, const char*& error) const {
-    const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
-    const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
-    if (configObject.isNull() && input["mode"].isNull() && input["algorithm"].isNull() && input["target_milli_celsius"].isNull() &&
-        input["target_celsius"].isNull() && input["min_safe_milli_celsius"].isNull() && input["min_safe_celsius"].isNull() &&
-        input["max_safe_milli_celsius"].isNull() && input["max_safe_celsius"].isNull() && input["hysteresis_centi_celsius"].isNull() &&
-        input["hysteresis_celsius"].isNull() && input["check_interval_ms"].isNull() && input["sensor_timeout_ms"].isNull() &&
-        input["retry_after_error_ms"].isNull() && input["min_switch_interval_ms"].isNull()) {
+    const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
+    if (configInput.isNull()) {
         error = "thermostat config is required";
         return false;
     }
 
-    DeviceBaseConfigV1 base{};
-    base.enabled = runtime.enabled() ? 1U : 0U;
-    if (!copyBoundedText(base.name, runtime.name())) {
+    ThermostatDeviceConfigV1 config{};
+    if (!config.parseJson(configInput, error)) {
+        return false;
+    }
+    config.enabled = runtime.enabled() ? 1U : 0U;
+    if (!copyBoundedText(config.name, runtime.name())) {
         error = "device base config is invalid";
         return false;
     }
-
-    ThermostatDeviceConfigV1 config{};
-    if (!parseThermostatDeviceConfigJson(configInput, config, error)) {
-        return false;
-    }
-    config.base = base;
-    if (!validateThermostatDeviceConfig(config).ok()) {
+    if (!config.validate().ok()) {
         error = "thermostat config is invalid";
         return false;
     }
@@ -199,7 +189,7 @@ DeviceValidationResult ThermostatDeviceApiAdapter::validateCreateRequest(const D
     if (!switchResult.ok()) {
         return switchResult;
     }
-    return validateThermostatDeviceConfig(config);
+    return config.validate();
 }
 
 DeviceValidationResult ThermostatDeviceApiAdapter::validateUpdateConfigRequest(const IDeviceRuntime& runtime,
@@ -237,7 +227,7 @@ DeviceValidationResult ThermostatDeviceApiAdapter::validateUpdateConfigRequest(c
     if (!switchResult.ok()) {
         return switchResult;
     }
-    return validateThermostatDeviceConfig(config);
+    return config.validate();
 }
 
 DeviceValidationResult
@@ -278,15 +268,16 @@ void ThermostatDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, 
     writeCommonDeviceJson(runtime, effectiveStatus, typeName(), output);
     const ThermostatDevice& device = static_cast<const ThermostatDevice&>(runtime);
     JsonObject config = output["config"].as<JsonObject>();
-    writeThermostatDeviceConfigJson(device.config(), config);
+    device.config().writeJson(config);
 
     JsonObject runtimeJson = output["runtime"].as<JsonObject>();
-    JsonObject temperature = runtimeJson.createNestedObject("temperature");
+    JsonObject outputJson = runtimeJson.createNestedObject("output");
+    JsonObject temperature = outputJson.createNestedObject("temperature");
     writeTemperatureOutputJson(device.latestTemperature(), TemperatureUnit::Celsius, device.controlStatus(), temperature);
-    runtimeJson["desiredSwitchState"] = outputStateName(device.desiredOutputState());
-    runtimeJson["actualSwitchState"] = outputStateName(device.actualOutputState());
-    runtimeJson["lastCheckAtMs"] = device.lastCheckAtMs();
-    runtimeJson["controlStatus"] = device.controlStatus();
+    outputJson["desiredSwitchState"] = outputStateName(device.desiredOutputState());
+    outputJson["actualSwitchState"] = outputStateName(device.actualOutputState());
+    outputJson["lastCheckAtMs"] = device.lastCheckAtMs();
+    outputJson["controlStatus"] = device.controlStatus();
 }
 
 } // namespace ewfm

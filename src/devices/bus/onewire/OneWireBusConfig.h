@@ -9,11 +9,14 @@
 namespace ewfm {
 
 #pragma pack(push, 1)
-struct OneWireBusDeviceConfigV1 {
+struct OneWireBusDeviceConfigV1 : DeviceBaseConfigV1 {
     static constexpr char kMagic[] = "OWB1";
-    DeviceBaseConfigV1 base{};
     uint8_t gpioPin{4};
     uint8_t internalPullup{0};
+
+    bool parseJson(const JsonObjectConst& input, const char*& error);
+    DeviceValidationResult validate() const;
+    void writeJson(JsonObject output) const;
 };
 #pragma pack(pop)
 

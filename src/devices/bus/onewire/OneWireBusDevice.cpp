@@ -95,11 +95,11 @@ const OneWireBusDeviceConfigV1& OneWireBusDevice::config() const {
 }
 
 bool OneWireBusDevice::enabled() const {
-    return config_.base.enabled != 0U;
+    return config_.enabled != 0U;
 }
 
 const char* OneWireBusDevice::name() const {
-    return config_.base.name;
+    return config_.name;
 }
 
 const OneWireScanResult& OneWireBusDevice::scan() const {
@@ -126,7 +126,8 @@ bool OneWireBusDevice::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
 
 bool OneWireBusDevice::replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const {
     OneWireBusDeviceConfigV1 config = config_;
-    config.base = baseConfig;
+    config.enabled = baseConfig.enabled;
+    std::memcpy(config.name, baseConfig.name, sizeof(config.name));
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = oneWireBusDeviceConfigSize(config);
     return encodeOneWireBusDeviceConfig(config, buffer, size) && configBlob.assign(buffer, size);
@@ -159,7 +160,7 @@ bool OneWireBusDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t 
 
 void OneWireBusDevice::writeDeviceJson(JsonObject output) const {
     writeCommonDeviceJson(output);
-    writeOneWireBusDeviceConfigJson(config_, output);
+    config_.writeJson(output);
     JsonObject scanObject = output.createNestedObject("scan");
     scanObject["in_progress"] = scan_.inProgress;
     scanObject["ready"] = scan_.ready;
@@ -182,7 +183,7 @@ void OneWireBusDevice::writeDeviceJson(JsonObject output) const {
 
 OneWireBusDevice::DependencyTransaction OneWireBusDevice::beginDependencyTransaction() {
     if (status_ != DeviceStatus::Ready || isScanning() || dependencyTransactionActive_ || disableRequested_ || deleteRequested_ ||
-        reconfigureRequested_ || config_.base.enabled == 0U) {
+        reconfigureRequested_ || config_.enabled == 0U) {
         return {};
     }
 
@@ -249,7 +250,7 @@ bool OneWireBusDevice::handleCommand(const DeviceCommand& command) {
         return false;
     }
     if (status_ != DeviceStatus::Ready || isScanning() || disableRequested_ || deleteRequested_ || reconfigureRequested_ ||
-        !config_.base.enabled) {
+        !config_.enabled) {
         return false;
     }
 
@@ -339,7 +340,7 @@ SM_STATE(OneWireBusDevice::Idle) {
         releaseHardware();
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || !config_.base.enabled) {
+    if (disableRequested_ || !config_.enabled) {
         resetScanResult();
         releaseHardware();
         status_ = DeviceStatus::Disabled;
@@ -370,7 +371,7 @@ SM_STATE(OneWireBusDevice::Starting) {
         releaseHardware();
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || !config_.base.enabled) {
+    if (disableRequested_ || !config_.enabled) {
         if (hasVisibleScanState()) {
             markRuntimeStateDirty();
         }
@@ -410,7 +411,7 @@ SM_STATE(OneWireBusDevice::Ready) {
         releaseHardware();
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || !config_.base.enabled) {
+    if (disableRequested_ || !config_.enabled) {
         if (hasVisibleScanState()) {
             markRuntimeStateDirty();
         }
@@ -444,7 +445,7 @@ SM_STATE(OneWireBusDevice::Scanning) {
         releaseHardware();
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || !config_.base.enabled) {
+    if (disableRequested_ || !config_.enabled) {
         if (hasVisibleScanState()) {
             markRuntimeStateDirty();
         }

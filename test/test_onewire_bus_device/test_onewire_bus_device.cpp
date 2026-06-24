@@ -89,8 +89,8 @@ OneWireRomAddress makeRom(uint8_t family, std::array<uint8_t, 6> serial, const F
 
 OneWireBusDeviceConfigV1 makeConfig() {
     OneWireBusDeviceConfigV1 config{};
-    config.base.enabled = 1;
-    std::snprintf(config.base.name, sizeof(config.base.name), "%s", "onewire");
+    config.enabled = 1;
+    std::snprintf(config.name, sizeof(config.name), "%s", "onewire");
     config.gpioPin = 23;
     config.internalPullup = 1;
     return config;
@@ -134,8 +134,8 @@ void test_onewire_config_codec_and_json_helpers() {
 
     OneWireBusDeviceConfigV1 decoded{};
     TEST_ASSERT_TRUE(decodeOneWireBusDeviceConfig(blob.data(), blob.size(), decoded));
-    TEST_ASSERT_EQUAL_UINT8(config.base.enabled, decoded.base.enabled);
-    TEST_ASSERT_EQUAL_STRING(config.base.name, decoded.base.name);
+    TEST_ASSERT_EQUAL_UINT8(config.enabled, decoded.enabled);
+    TEST_ASSERT_EQUAL_STRING(config.name, decoded.name);
     TEST_ASSERT_EQUAL_UINT8(config.gpioPin, decoded.gpioPin);
     TEST_ASSERT_EQUAL_UINT8(config.internalPullup, decoded.internalPullup);
 

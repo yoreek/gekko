@@ -18,15 +18,18 @@ constexpr uint32_t kDs18b20MaxPollMs = 86400000UL;
 constexpr uint16_t kDs18b20DefaultReportDeltaCentiCelsius = 1;
 
 #pragma pack(push, 1)
-struct Ds18b20TemperatureSensorConfigV1 {
+struct Ds18b20TemperatureSensorConfigV1 : DeviceBaseConfigV1 {
     static constexpr char kMagic[] = "DS18B20-1";
-    DeviceBaseConfigV1 base{};
     OneWireRomAddress address{};
     uint8_t resolution{12};
     uint8_t outputUnit{static_cast<uint8_t>(TemperatureUnit::Celsius)};
     uint8_t reportAlways{0};
     uint16_t reportDeltaCentiCelsius{kDs18b20DefaultReportDeltaCentiCelsius};
     uint32_t pollMs{kDs18b20DefaultPollMs};
+
+    bool parseJson(const JsonObjectConst& input, const char*& error);
+    DeviceValidationResult validate() const;
+    void writeJson(JsonObject output) const;
 };
 #pragma pack(pop)
 

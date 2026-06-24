@@ -44,11 +44,11 @@ const Ds18b20TemperatureSensorConfigV1& Ds18b20TemperatureSensorDevice::config()
 }
 
 bool Ds18b20TemperatureSensorDevice::enabled() const {
-    return config_.base.enabled != 0U;
+    return config_.enabled != 0U;
 }
 
 const char* Ds18b20TemperatureSensorDevice::name() const {
-    return config_.base.name;
+    return config_.name;
 }
 
 const TemperatureReading& Ds18b20TemperatureSensorDevice::reading() const {
@@ -92,7 +92,8 @@ bool Ds18b20TemperatureSensorDevice::serializeConfigBlob(DeviceConfigBlob& confi
 
 bool Ds18b20TemperatureSensorDevice::replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const {
     Ds18b20TemperatureSensorConfigV1 config = config_;
-    config.base = baseConfig;
+    config.enabled = baseConfig.enabled;
+    std::memcpy(config.name, baseConfig.name, sizeof(config.name));
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = ds18b20TemperatureSensorConfigSize(config);
     return encodeDs18b20TemperatureSensorConfig(config, buffer, size) && configBlob.assign(buffer, size);
@@ -128,7 +129,7 @@ bool Ds18b20TemperatureSensorDevice::applyConfig(const DeviceConfigBlob& configB
 
 void Ds18b20TemperatureSensorDevice::writeDeviceJson(JsonObject output) const {
     writeCommonDeviceJson(output);
-    writeDs18b20TemperatureSensorConfigJson(config_, output);
+    config_.writeJson(output);
     JsonObject outputObject = output.createNestedObject("output");
     JsonObject temperatureObject = outputObject.createNestedObject("temperature");
     writeTemperatureOutputJson(reading_, outputUnit(), outputStatus_, temperatureObject);
@@ -168,7 +169,7 @@ DeviceValidationResult Ds18b20TemperatureSensorDevice::validateConfig(const Devi
     if (!decodeDs18b20TemperatureSensorConfig(configBlob.data(), configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "ds18b20 config is invalid"};
     }
-    return validateDs18b20TemperatureSensorConfig(config);
+    return config.validate();
 }
 
 OneWireBusDevice* Ds18b20TemperatureSensorDevice::dependencyBus() const {
@@ -327,7 +328,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::Idle) {
         invalidateReading(kOutputNotReady);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         invalidateReading(kOutputDisabled);
         SM_GOTO(Disabled);
@@ -346,7 +347,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::Starting) {
         invalidateReading(kOutputNotReady);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         invalidateReading(kOutputDisabled);
         SM_GOTO(Disabled);
@@ -376,7 +377,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::PowerUpDelay) {
         invalidateReading(kOutputNotReady);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         invalidateReading(kOutputDisabled);
         SM_GOTO(Disabled);
@@ -406,7 +407,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::ConfigureSensor) {
         invalidateReading(kOutputNotReady);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         invalidateReading(kOutputDisabled);
         SM_GOTO(Disabled);
@@ -456,7 +457,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::RequestConversion) {
         invalidateReading(kOutputNotReady);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         invalidateReading(kOutputDisabled);
         SM_GOTO(Disabled);
@@ -510,7 +511,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::WaitConversion) {
         invalidateReading(kOutputNotReady);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         invalidateReading(kOutputDisabled);
         SM_GOTO(Disabled);
@@ -544,7 +545,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::ReadScratchpad) {
         invalidateReading(kOutputNotReady);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         invalidateReading(kOutputDisabled);
         SM_GOTO(Disabled);
@@ -600,7 +601,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::Ready) {
         invalidateReading(kOutputNotReady);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         invalidateReading(kOutputDisabled);
         SM_GOTO(Disabled);
@@ -634,7 +635,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::RetryBackoff) {
         invalidateReading(kOutputNotReady);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         invalidateReading(kOutputDisabled);
         SM_GOTO(Disabled);
@@ -672,7 +673,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::DependencyBlocked) {
         invalidateReading(kOutputNotReady);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         invalidateReading(kOutputDisabled);
         SM_GOTO(Disabled);
@@ -694,7 +695,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::Reconfiguring) {
         setDeleted();
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         invalidateReading(kOutputDisabled);
         SM_GOTO(Disabled);
@@ -722,7 +723,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::Disabled) {
         invalidateReading(kOutputNotReady);
         SM_GOTO(Deleting);
     }
-    if (reconfigureRequested_ && config_.base.enabled != 0U) {
+    if (reconfigureRequested_ && config_.enabled != 0U) {
         status_ = DeviceStatus::Reconfiguring;
         SM_GOTO(Reconfiguring);
     }
@@ -736,7 +737,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::Faulted) {
         invalidateReading(kOutputNotReady);
         SM_GOTO(Deleting);
     }
-    if (disableRequested_ || config_.base.enabled == 0U) {
+    if (disableRequested_ || config_.enabled == 0U) {
         status_ = DeviceStatus::Disabled;
         invalidateReading(kOutputDisabled);
         SM_GOTO(Disabled);

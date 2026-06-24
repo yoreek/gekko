@@ -108,7 +108,7 @@ The SPA SHALL submit migrated device commands with named JSON fields and SHALL s
 
 #### Scenario: Status command sends status
 - **WHEN** the user exposes a set-status action for a device
-- **THEN** the SPA sends `command = "set_status"` with `status` containing the requested status and omits `payload`
+- **THEN** the SPA sends `command = "setStatus"` with `status` containing the requested status and omits `payload`
 
 #### Scenario: OneWire scan sends scan command
 - **WHEN** the user starts a OneWire scan directly or from DS18B20 address selection
@@ -116,19 +116,19 @@ The SPA SHALL submit migrated device commands with named JSON fields and SHALL s
 
 #### Scenario: Switch output sends state
 - **WHEN** the user controls a switch-like device output
-- **THEN** the SPA sends `command = "set_output"` with a `state` field and omits packed strings such as `state=on`
+- **THEN** the SPA sends `command = "setOutput"` with a `state` field and omits packed strings such as `state=on`
 
 #### Scenario: DS18B20 edit sends config object
 - **WHEN** the user edits a DS18B20 temperature sensor configuration
-- **THEN** the SPA sends `command = "update_config"` with a JSON `config` object and omits binary `payload`
+- **THEN** the SPA sends `command = "updateConfig"` with a JSON `config` object and omits binary `payload`
 
 #### Scenario: OneWire edit sends config object
 - **WHEN** the user edits a OneWire bus GPIO pin, internal pull-up, or enabled config state
-- **THEN** the SPA sends `command = "update_config"` with `config.enabled`, `config.gpio_pin`, and `config.internal_pullup`
+- **THEN** the SPA sends `command = "updateConfig"` with `config.enabled`, `config.gpioPin`, and `config.internalPullup`
 
 #### Scenario: GPIO switch edit sends config object
 - **WHEN** the user edits GPIO switch configuration
-- **THEN** the SPA sends `command = "update_config"` with named config fields for enabled state, GPIO pin, startup state, safe state, restore-previous-state, and inversion
+- **THEN** the SPA sends `command = "updateConfig"` with named camelCase config fields for enabled state, GPIO pin, startup state, safe state, restore-previous-state, and inversion
 
 #### Scenario: Frontend binary config encoders are removed
 - **WHEN** device edit commands are built
@@ -151,7 +151,7 @@ The SPA SHALL let users create and edit thermostat devices by selecting compatib
 
 #### Scenario: Edit can update config and deps together
 - **WHEN** the user edits thermostat settings or dep selections
-- **THEN** the SPA sends one structured `update_config` command containing the JSON config and deps
+- **THEN** the SPA sends one structured `updateConfig` command containing the JSON config and deps
 
 ### Requirement: Thermostat config fields
 The SPA SHALL expose thermostat configuration fields using shared form structure and Vuetify controls.
@@ -219,7 +219,7 @@ The SPA SHALL model and display device relationships as dependencies and depende
 
 #### Scenario: Mock data uses deps
 - **WHEN** the SPA runs in mock mode
-- **THEN** mock device records use `deps` and computed `has_deps` in the same shape as production snapshots
+- **THEN** mock device records use `config.deps` in the same shape as production snapshots
 
 #### Scenario: Mock mode matches production command shape
 - **WHEN** the SPA runs in mock mode

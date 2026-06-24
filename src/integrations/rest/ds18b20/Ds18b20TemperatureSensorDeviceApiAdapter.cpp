@@ -78,24 +78,23 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseCreateRequest(const JsonObje
     request.typeId = typeId();
     request.configVersion = kDs18b20TemperatureSensorConfigVersion;
 
-    DeviceBaseConfigV1 base{};
-    if (!parseDeviceBaseConfigJson(input, base, error)) {
-        return false;
-    }
-    request.name = base.name;
-    request.enabled = base.enabled != 0U;
-    if (!parseDepsField(input, request.deps, request.depCount, error)) {
+    const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
+    if (configInput.isNull()) {
+        error = "ds18b20 config is required";
         return false;
     }
 
-    const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
-    const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
     Ds18b20TemperatureSensorConfigV1 config{};
-    if (!parseDs18b20TemperatureSensorConfigJson(configInput, config, error)) {
+    if (!config.parseJson(configInput, error)) {
         return false;
     }
-    config.base = base;
-    if (!validateDs18b20TemperatureSensorConfig(config).ok()) {
+    request.name = config.name;
+    request.enabled = config.enabled != 0U;
+    if (!parseDepsField(configInput, request.deps, request.depCount, error)) {
+        return false;
+    }
+
+    if (!config.validate().ok()) {
         error = "ds18b20 config is invalid";
         return false;
     }
@@ -110,28 +109,22 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseCreateRequest(const JsonObje
 
 bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
                                                                         DeviceConfigUpdateRequest& request, const char*& error) const {
-    const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
-    const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
-    if (configObject.isNull() && input["address"].isNull() && input["resolution"].isNull() && input["unit"].isNull() &&
-        input["pollMs"].isNull() && input["reportDeltaCelsius"].isNull() && input["reportDeltaCentiCelsius"].isNull() &&
-        input["reportAlways"].isNull()) {
+    const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
+    if (configInput.isNull()) {
         error = "ds18b20 config is required";
         return false;
     }
 
-    DeviceBaseConfigV1 base{};
-    base.enabled = runtime.enabled() ? 1U : 0U;
-    if (!copyBoundedText(base.name, runtime.name())) {
+    Ds18b20TemperatureSensorConfigV1 config{};
+    if (!config.parseJson(configInput, error)) {
+        return false;
+    }
+    config.enabled = runtime.enabled() ? 1U : 0U;
+    if (!copyBoundedText(config.name, runtime.name())) {
         error = "device base config is invalid";
         return false;
     }
-
-    Ds18b20TemperatureSensorConfigV1 config{};
-    if (!parseDs18b20TemperatureSensorConfigJson(configInput, config, error)) {
-        return false;
-    }
-    config.base = base;
-    if (!validateDs18b20TemperatureSensorConfig(config).ok()) {
+    if (!config.validate().ok()) {
         error = "ds18b20 config is invalid";
         return false;
     }
@@ -197,10 +190,11 @@ void Ds18b20TemperatureSensorDeviceApiAdapter::writeDeviceJson(const IDeviceRunt
     writeCommonDeviceJson(runtime, effectiveStatus, typeName(), output);
     const Ds18b20TemperatureSensorDevice& device = static_cast<const Ds18b20TemperatureSensorDevice&>(runtime);
     JsonObject config = output["config"].as<JsonObject>();
-    writeDs18b20TemperatureSensorConfigJson(device.config(), config);
+    device.config().writeJson(config);
 
     JsonObject runtimeJson = output["runtime"].as<JsonObject>();
-    JsonObject temperature = runtimeJson.createNestedObject("temperature");
+    JsonObject outputJson = runtimeJson.createNestedObject("output");
+    JsonObject temperature = outputJson.createNestedObject("temperature");
     writeTemperatureOutputJson(device.reading(),
                                device.config().outputUnit == temperatureUnitToByte(TemperatureUnit::Fahrenheit)
                                    ? TemperatureUnit::Fahrenheit

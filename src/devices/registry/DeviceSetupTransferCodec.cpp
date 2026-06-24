@@ -129,7 +129,8 @@ bool encodeTransferConfigBlob(const JsonObjectConst& input, const DeviceBaseConf
             error = parseError != nullptr ? parseError : "gpio switch config is invalid";
             return false;
         }
-        config.switchConfig.base = base;
+        config.switchConfig.enabled = base.enabled;
+        std::memcpy(config.switchConfig.name, base.name, sizeof(config.switchConfig.name));
         size = gpioSwitchDeviceConfigSize(config);
         if (!encodeGpioSwitchDeviceConfig(config, buffer, size)) {
             error = "gpio switch config is invalid";
@@ -144,11 +145,12 @@ bool encodeTransferConfigBlob(const JsonObjectConst& input, const DeviceBaseConf
         }
         OneWireBusDeviceConfigV1 config{};
         const char* parseError = nullptr;
-        if (!parseOneWireBusDeviceConfigJson(input, config, parseError)) {
+        if (!config.parseJson(input, parseError)) {
             error = parseError != nullptr ? parseError : "onewire bus config is invalid";
             return false;
         }
-        config.base = base;
+        config.enabled = base.enabled;
+        std::memcpy(config.name, base.name, sizeof(config.name));
         size = oneWireBusDeviceConfigSize(config);
         if (!encodeOneWireBusDeviceConfig(config, buffer, size)) {
             error = "onewire bus config is invalid";
@@ -163,11 +165,12 @@ bool encodeTransferConfigBlob(const JsonObjectConst& input, const DeviceBaseConf
         }
         Ds18b20TemperatureSensorConfigV1 config{};
         const char* parseError = nullptr;
-        if (!parseDs18b20TemperatureSensorConfigJson(input, config, parseError)) {
+        if (!config.parseJson(input, parseError)) {
             error = parseError != nullptr ? parseError : "ds18b20 config is invalid";
             return false;
         }
-        config.base = base;
+        config.enabled = base.enabled;
+        std::memcpy(config.name, base.name, sizeof(config.name));
         size = ds18b20TemperatureSensorConfigSize(config);
         if (!encodeDs18b20TemperatureSensorConfig(config, buffer, size)) {
             error = "ds18b20 config is invalid";
@@ -182,11 +185,12 @@ bool encodeTransferConfigBlob(const JsonObjectConst& input, const DeviceBaseConf
         }
         ThermostatDeviceConfigV1 config{};
         const char* parseError = nullptr;
-        if (!parseThermostatDeviceConfigJson(input, config, parseError)) {
+        if (!config.parseJson(input, parseError)) {
             error = parseError != nullptr ? parseError : "thermostat config is invalid";
             return false;
         }
-        config.base = base;
+        config.enabled = base.enabled;
+        std::memcpy(config.name, base.name, sizeof(config.name));
         size = thermostatDeviceConfigSize(config);
         if (!encodeThermostatDeviceConfig(config, buffer, size)) {
             error = "thermostat config is invalid";
@@ -233,7 +237,7 @@ bool parseDeviceLine(const JsonObjectConst& input, DeviceRegistryEntry& record, 
 
     DeviceBaseConfigV1 base{};
     const char* baseError = nullptr;
-    if (!parseDeviceBaseConfigJson(configInput, base, baseError)) {
+    if (!base.parseJson(configInput, baseError)) {
         error = baseError != nullptr ? baseError : "device bundle base config is invalid";
         return false;
     }
@@ -328,19 +332,19 @@ template <typename Writer> bool writeBundleImpl(Writer& writer, const DeviceRegi
 
         switch (runtime.typeId()) {
         case 1:
-            writeDummyDeviceConfigJson(static_cast<const DummyDevice&>(runtime).config(), config);
+            static_cast<const DummyDevice&>(runtime).config().writeJson(config);
             break;
         case 2:
             writeGpioSwitchDeviceConfigJson(static_cast<const GpioSwitchDevice&>(runtime).config(), config);
             break;
         case 3:
-            writeOneWireBusDeviceConfigJson(static_cast<const OneWireBusDevice&>(runtime).config(), config);
+            static_cast<const OneWireBusDevice&>(runtime).config().writeJson(config);
             break;
         case 4:
-            writeDs18b20TemperatureSensorConfigJson(static_cast<const Ds18b20TemperatureSensorDevice&>(runtime).config(), config);
+            static_cast<const Ds18b20TemperatureSensorDevice&>(runtime).config().writeJson(config);
             break;
         case 5:
-            writeThermostatDeviceConfigJson(static_cast<const ThermostatDevice&>(runtime).config(), config);
+            static_cast<const ThermostatDevice&>(runtime).config().writeJson(config);
             break;
         default:
             break;

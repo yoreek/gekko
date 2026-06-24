@@ -23,7 +23,18 @@ bool decodeOneWireBusDeviceConfig(const uint8_t* blob, size_t size, OneWireBusDe
 }
 
 bool parseOneWireBusDeviceConfigJson(const JsonObjectConst& input, OneWireBusDeviceConfigV1& config, const char*& error) {
-    config.internalPullup = (input["internalPullup"] | false) ? 1U : 0U;
+    return config.parseJson(input, error);
+}
+
+void writeOneWireBusDeviceConfigJson(const OneWireBusDeviceConfigV1& config, JsonObject output) {
+    config.writeJson(output);
+}
+
+bool OneWireBusDeviceConfigV1::parseJson(const JsonObjectConst& input, const char*& error) {
+    if (!DeviceBaseConfigV1::parseJson(input, error)) {
+        return false;
+    }
+    internalPullup = (input["internalPullup"] | false) ? 1U : 0U;
 
     const JsonVariantConst pinVariant = input["gpioPin"];
     if (!pinVariant.isNull()) {
@@ -36,16 +47,24 @@ bool parseOneWireBusDeviceConfigJson(const JsonObjectConst& input, OneWireBusDev
             error = "onewire bus pin is out of bounds";
             return false;
         }
-        config.gpioPin = static_cast<uint8_t>(pin);
+        gpioPin = static_cast<uint8_t>(pin);
     }
 
     return true;
 }
 
-void writeOneWireBusDeviceConfigJson(const OneWireBusDeviceConfigV1& config, JsonObject output) {
-    writeDeviceBaseConfigJson(config.base, output);
-    output["gpioPin"] = config.gpioPin;
-    output["internalPullup"] = config.internalPullup != 0U;
+DeviceValidationResult OneWireBusDeviceConfigV1::validate() const {
+    const DeviceValidationResult baseValidation = DeviceBaseConfigV1::validate();
+    if (!baseValidation.ok()) {
+        return baseValidation;
+    }
+    return {};
+}
+
+void OneWireBusDeviceConfigV1::writeJson(JsonObject output) const {
+    DeviceBaseConfigV1::writeJson(output);
+    output["gpioPin"] = gpioPin;
+    output["internalPullup"] = internalPullup != 0U;
 }
 
 } // namespace ewfm

@@ -23,21 +23,22 @@ bool GpioSwitchDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
     request.typeId = typeId();
     request.configVersion = GpioSwitchDevice::descriptor().currentConfigVersion;
 
-    DeviceBaseConfigV1 base{};
-    if (!parseDeviceBaseConfigJson(input, base, error)) {
+    const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
+    if (configInput.isNull()) {
+        error = "gpio switch config is required";
         return false;
     }
-    request.name = base.name;
-    request.enabled = base.enabled != 0U;
 
-    const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
-    const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
     GpioSwitchDevicePersistedConfigV1 config{};
+    if (!config.switchConfig.parseJson(configInput, error)) {
+        return false;
+    }
+    request.name = config.switchConfig.name;
+    request.enabled = config.switchConfig.enabled != 0U;
     if (!parseGpioSwitchDeviceConfigJson(configInput, config, error)) {
         return false;
     }
-    config.switchConfig.base = base;
-    if (!validateSwitchDeviceConfig(config.switchConfig).ok()) {
+    if (!config.switchConfig.validate().ok()) {
         error = "gpio switch config is invalid";
         return false;
     }
@@ -52,18 +53,9 @@ bool GpioSwitchDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
 
 bool GpioSwitchDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
                                                           DeviceConfigUpdateRequest& request, const char*& error) const {
-    const JsonObjectConst configObject = input["config"].as<JsonObjectConst>();
-    const JsonObjectConst configInput = configObject.isNull() ? input : configObject;
-    if (configObject.isNull() && input["gpioPin"].isNull() && input["restorePreviousState"].isNull() && input["startupState"].isNull() &&
-        input["safeState"].isNull() && input["inverted"].isNull()) {
+    const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
+    if (configInput.isNull()) {
         error = "gpio switch config is required";
-        return false;
-    }
-
-    DeviceBaseConfigV1 base{};
-    base.enabled = runtime.enabled() ? 1U : 0U;
-    if (!copyBoundedText(base.name, runtime.name())) {
-        error = "device base config is invalid";
         return false;
     }
 
@@ -71,8 +63,12 @@ bool GpioSwitchDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst&
     if (!parseGpioSwitchDeviceConfigJson(configInput, config, error)) {
         return false;
     }
-    config.switchConfig.base = base;
-    if (!validateSwitchDeviceConfig(config.switchConfig).ok()) {
+    config.switchConfig.enabled = runtime.enabled() ? 1U : 0U;
+    if (!copyBoundedText(config.switchConfig.name, runtime.name())) {
+        error = "device base config is invalid";
+        return false;
+    }
+    if (!config.switchConfig.validate().ok()) {
         error = "gpio switch config is invalid";
         return false;
     }
