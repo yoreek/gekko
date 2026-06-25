@@ -1687,8 +1687,7 @@ DeviceValidationResult DeviceRegistry::reloadRuntimeFor(DeviceRuntimeMap& target
         }
     }
     if (persistedStateStore_ != nullptr) {
-        if (IDevicePersistedState* persistedRuntime = dynamic_cast<IDevicePersistedState*>(entry.runtime.get());
-            persistedRuntime != nullptr) {
+        if (IDevicePersistedState* persistedRuntime = entry.runtime->persistedStateRuntime(); persistedRuntime != nullptr) {
             const DeviceValidationResult persistedResult = persistedRuntime->loadPersistedState(*persistedStateStore_);
             if (!persistedResult.ok() && persistedResult.error != DeviceError::MissingRecord) {
                 return persistedResult;
@@ -1760,12 +1759,12 @@ void DeviceRegistry::clearRuntime(DeviceId deviceId) {
 
 IDevicePersistedState* DeviceRegistry::persistedStateRuntime(DeviceId deviceId) {
     IDeviceRuntime* runtimePtr = runtime(deviceId);
-    return runtimePtr == nullptr ? nullptr : dynamic_cast<IDevicePersistedState*>(runtimePtr);
+    return runtimePtr == nullptr ? nullptr : runtimePtr->persistedStateRuntime();
 }
 
 const IDevicePersistedState* DeviceRegistry::persistedStateRuntime(DeviceId deviceId) const {
     const IDeviceRuntime* runtimePtr = runtime(deviceId);
-    return runtimePtr == nullptr ? nullptr : dynamic_cast<const IDevicePersistedState*>(runtimePtr);
+    return runtimePtr == nullptr ? nullptr : runtimePtr->persistedStateRuntime();
 }
 
 } // namespace ewfm

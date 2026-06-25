@@ -544,7 +544,7 @@ void DeviceRegistryController::cmd() {
         }
         const char* error = nullptr;
         DeviceConfigUpdateRequest updateRequest{};
-        const IDeviceRuntime* runtime = registry_.runtime(deviceId_);
+        IDeviceRuntime* runtime = registry_.runtime(deviceId_);
         if (runtime == nullptr) {
             renderError(404, "NOT_FOUND", "device not found");
             return;

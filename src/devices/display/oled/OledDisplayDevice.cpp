@@ -72,6 +72,14 @@ bool OledDisplayDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t
     return true;
 }
 
+IDevicePersistedState* OledDisplayDevice::persistedStateRuntime() {
+    return this;
+}
+
+const IDevicePersistedState* OledDisplayDevice::persistedStateRuntime() const {
+    return this;
+}
+
 DeviceValidationResult OledDisplayDevice::loadPersistedState(DeviceScopedDataStore& store) {
     OledDisplayLayoutStore layoutStore(store);
     OledDisplayLayoutRecordV1 layout{};

@@ -504,6 +504,12 @@ public:
     virtual const ISwitchOutputRuntime* switchOutputRuntime() const {
         return nullptr;
     }
+    virtual IDevicePersistedState* persistedStateRuntime() {
+        return nullptr;
+    }
+    virtual const IDevicePersistedState* persistedStateRuntime() const {
+        return nullptr;
+    }
     virtual uint8_t dependencyCount() const {
         return 0;
     }

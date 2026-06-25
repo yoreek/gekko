@@ -19,6 +19,8 @@ public:
     bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override;
     DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const override;
     bool applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) override;
+    IDevicePersistedState* persistedStateRuntime() override;
+    const IDevicePersistedState* persistedStateRuntime() const override;
     DeviceValidationResult loadPersistedState(DeviceScopedDataStore& store) override;
     DeviceValidationResult savePersistedState(DeviceScopedDataStore& store) const override;
     DeviceValidationResult clearPersistedState(DeviceScopedDataStore& store) override;
