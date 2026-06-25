@@ -1,0 +1,93 @@
+#include "integrations/rest/i2c_bus/I2cBusDeviceApiAdapter.h"
+
+#include "devices/bus/i2c/I2cBusDevice.h"
+#include "devices/core/DeviceBaseConfig.h"
+
+namespace ewfm {
+
+const I2cBusDeviceApiAdapter& I2cBusDeviceApiAdapter::instance() {
+    static const I2cBusDeviceApiAdapter adapter;
+    return adapter;
+}
+
+DeviceTypeId I2cBusDeviceApiAdapter::typeId() const {
+    return I2cBusDevice::descriptor().typeId;
+}
+
+const char* I2cBusDeviceApiAdapter::typeName() const {
+    return "i2c_bus";
+}
+
+bool I2cBusDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, const char*& error) const {
+    request = {};
+    request.typeId = typeId();
+    request.configVersion = I2cBusDevice::descriptor().currentConfigVersion;
+
+    const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
+    if (configInput.isNull()) {
+        error = "i2c bus config is required";
+        return false;
+    }
+
+    I2cBusDeviceConfigV1 config{};
+    if (!config.parseJson(configInput, error)) {
+        return false;
+    }
+    request.name = config.name;
+    request.enabled = config.enabled != 0U;
+    if (!config.validate().ok()) {
+        error = "i2c bus config is invalid";
+        return false;
+    }
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = i2cBusDeviceConfigSize(config);
+    if (!encodeI2cBusDeviceConfig(config, buffer, size) || !request.configBlob.assign(buffer, size)) {
+        error = "failed to encode i2c bus config";
+        return false;
+    }
+    return true;
+}
+
+bool I2cBusDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
+                                                      DeviceConfigUpdateRequest& request, const char*& error) const {
+    const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
+    if (configInput.isNull()) {
+        error = "i2c bus config is required";
+        return false;
+    }
+
+    I2cBusDeviceConfigV1 config{};
+    if (!config.parseJson(configInput, error)) {
+        return false;
+    }
+    config.enabled = runtime.enabled() ? 1U : 0U;
+    if (!copyBoundedText(config.name, runtime.name())) {
+        error = "device base config is invalid";
+        return false;
+    }
+    if (!config.validate().ok()) {
+        error = "i2c bus config is invalid";
+        return false;
+    }
+    request = {};
+    request.configVersion = I2cBusDevice::descriptor().currentConfigVersion;
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = i2cBusDeviceConfigSize(config);
+    if (!encodeI2cBusDeviceConfig(config, buffer, size) || !request.configBlob.assign(buffer, size)) {
+        error = "failed to encode i2c bus config";
+        return false;
+    }
+    return true;
+}
+
+void I2cBusDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus, JsonObject output) const {
+    writeCommonDeviceJson(runtime, effectiveStatus, typeName(), output);
+    const I2cBusDevice& device = static_cast<const I2cBusDevice&>(runtime);
+    JsonObject config = output["config"].as<JsonObject>();
+    device.config().writeJson(config);
+    JsonObject runtimeJson = output["runtime"].as<JsonObject>();
+    runtimeJson["generation"] = device.generation();
+    runtimeJson["transactionActive"] = device.dependencyTransactionActive();
+}
+
+} // namespace ewfm

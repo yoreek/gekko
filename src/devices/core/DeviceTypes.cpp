@@ -1,5 +1,6 @@
 #include "devices/core/DeviceTypes.h"
 
+#include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/bus/onewire/OneWireBusDevice.h"
 #include "devices/dummy/DummyDevice.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
@@ -10,10 +11,7 @@ namespace ewfm {
 
 namespace {
 constexpr const char* kDeviceDependencyRoleNames[] = {
-    "unknown",
-    "onewire_bus",
-    "temperature_sensor",
-    "switch",
+    "unknown", "onewire_bus", "temperature_sensor", "switch", "i2c_bus",
 };
 
 constexpr const char* kDeviceEventKindNames[] = {
@@ -50,6 +48,10 @@ bool parseDeviceDependencyRole(std::string_view value, DeviceDependencyRole& rol
     }
     if (value == "switch") {
         role = DeviceDependencyRole::Switch;
+        return true;
+    }
+    if (value == "i2c_bus") {
+        role = DeviceDependencyRole::I2CBus;
         return true;
     }
     role = DeviceDependencyRole::Unknown;
@@ -91,6 +93,7 @@ DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     (void)registry.registerDescriptor(DummyDevice::descriptor());
     (void)registry.registerDescriptor(GpioSwitchDevice::descriptor());
     (void)registry.registerDescriptor(OneWireBusDevice::descriptor());
+    (void)registry.registerDescriptor(I2cBusDevice::descriptor());
     (void)registry.registerDescriptor(Ds18b20TemperatureSensorDevice::descriptor());
     (void)registry.registerDescriptor(ThermostatDevice::descriptor());
     return registry;

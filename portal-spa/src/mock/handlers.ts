@@ -253,6 +253,7 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
       typeName !== 'dummy' &&
       typeName !== 'gpio_switch' &&
       typeName !== 'onewire_bus' &&
+      typeName !== 'i2c_bus' &&
       typeName !== 'ds18b20_temperature_sensor' &&
       typeName !== 'thermostat'
     ) {
@@ -313,6 +314,19 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
           invalidCrcSeen: false,
           devices: [],
         },
+      })
+    } else if (typeName === 'i2c_bus') {
+      const config = normalizeI2cBusConfigPayload(configSource, enabled)
+      device = createDeviceRecord(nextId, typeName, 1, {
+        ...config,
+        name,
+        deps: baseDeps,
+      }, {
+        status: 'ready',
+        lifecycleStatus: 'ready',
+        effectiveStatus: 'ready',
+        generation: 1,
+        transactionActive: false,
       })
     } else if (typeName === 'ds18b20_temperature_sensor') {
       const deps = normalizeDependencyLinks(configSource.deps)
@@ -473,6 +487,25 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           device.runtime.lifecycleStatus = 'ready'
           device.runtime.effectiveStatus = 'ready'
           device.runtime.status = 'ready'
+        } else if (device.record.typeName === 'i2c_bus') {
+          const currentConfig = (isRecordPayload(device.config) ? device.config : {}) as Record<string, unknown>
+          device.config = {
+            ...device.config,
+            enabled: Boolean(payload.config.enabled ?? device.config.enabled),
+            name: typeof payload.config.name === 'string' && payload.config.name.length > 0
+              ? payload.config.name
+              : device.config.name,
+            deps: device.config.deps,
+            sdaPin: normalizeFiniteNumber(payload.config.sdaPin, normalizeFiniteNumber(currentConfig['sdaPin'], 21)),
+            sclPin: normalizeFiniteNumber(payload.config.sclPin, normalizeFiniteNumber(currentConfig['sclPin'], 22)),
+            internalPullup: Boolean(payload.config.internalPullup ?? true),
+            frequencyHz: Math.max(1, Math.round(normalizeFiniteNumber(payload.config.frequencyHz, normalizeFiniteNumber(currentConfig['frequencyHz'], 100000)))),
+          }
+          device.runtime.lifecycleStatus = 'ready'
+          device.runtime.effectiveStatus = 'ready'
+          device.runtime.status = 'ready'
+          device.runtime.transactionActive = false
+          device.runtime.generation = normalizeFiniteNumber(device.runtime.generation, 0) + 1
         } else if (device.record.typeName === 'ds18b20_temperature_sensor') {
           const dependencyLinks = normalizeDependencyLinks(payload.deps ?? device.config.deps)
           const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'onewire_bus')
@@ -844,6 +877,23 @@ function normalizeFiniteNumber(value: unknown, fallback: number): number {
   return Number.isFinite(numeric) ? numeric : fallback
 }
 
+function normalizeI2cFrequency(value: unknown): number {
+  return Math.max(1, Math.round(normalizeFiniteNumber(value, 100000)))
+}
+
+function normalizeI2cBusConfigPayload(value: unknown, enabledFallback: boolean): Record<string, unknown> & { enabled: boolean } {
+  if (!isRecordPayload(value)) {
+    throw new ApiClientError('invalid i2c config', 'BAD_ARGS', 400, null)
+  }
+  return {
+    enabled: typeof value.enabled === 'boolean' ? value.enabled : enabledFallback,
+    sdaPin: normalizeFiniteNumber(value.sdaPin, 21),
+    sclPin: normalizeFiniteNumber(value.sclPin, 22),
+    internalPullup: typeof value.internalPullup === 'boolean' ? value.internalPullup : true,
+    frequencyHz: normalizeI2cFrequency(value.frequencyHz),
+  }
+}
+
 function normalizeDs18b20ConfigPayload(value: unknown, enabledFallback: boolean): Record<string, unknown> & { enabled: boolean } {
   if (!isRecordPayload(value)) {
     throw new ApiClientError('invalid ds18b20 config', 'BAD_ARGS', 400, null)
@@ -1114,20 +1164,24 @@ export function mockImportDeviceSetupBundle(file: File): Promise<DeviceSetupTran
 }
 
 function normalizeDashboardLayout(layout: DashboardLayoutRecord, deviceIds: number[]): DashboardLayoutRecord {
+  const source = layout as unknown as Record<string, unknown>
   const allowedIds = new Set(deviceIds)
-  const panels = layout.panels.slice(0, 8).map((panel, index) => ({
-    id: panel.id || `panel-${index + 1}`,
-    name: panel.name.slice(0, 32),
+  const rawPanels = Array.isArray(source.panels) ? (source.panels as Array<Record<string, unknown>>) : []
+  const panels = rawPanels.slice(0, 8).map((panel, index) => ({
+    id: String(panel.id ?? `panel-${index + 1}`),
+    name: String(panel.name ?? 'Panel').slice(0, 32),
     order: index,
-    widgets: panel.widgets
-      .filter(widget => allowedIds.has(widget[0]))
+    widgets: (Array.isArray(panel.widgets) ? panel.widgets : [])
+      .map(widget => Array.isArray(widget) ? widget : null)
+      .filter((widget): widget is Array<unknown> => widget !== null && widget.length >= 5)
       .map(widget => [
-        widget[0],
-        Math.max(0, widget[1]),
-        Math.max(0, widget[2]),
-        Math.max(1, widget[3]),
-        Math.max(1, widget[4]),
-      ] as DashboardLayoutWidgetRecord),
+        Number(widget[0]),
+        Math.max(0, Number(widget[1])),
+        Math.max(0, Number(widget[2])),
+        Math.max(1, Number(widget[3])),
+        Math.max(1, Number(widget[4])),
+      ] as DashboardLayoutWidgetRecord)
+      .filter(widget => allowedIds.has(widget[0])),
   }))
   if (panels.length === 0) {
     panels.push({
@@ -1137,9 +1191,10 @@ function normalizeDashboardLayout(layout: DashboardLayoutRecord, deviceIds: numb
       widgets: deviceIds.map((deviceId, index) => [deviceId, index % 6, Math.floor(index / 6), 1, 1]),
     })
   }
+  const activePanelId = String(source.active_panel_id ?? source.activePanelId ?? 'main')
   return {
     schemaVersion: 1,
-    activePanelId: panels.some(panel => panel.id === layout.activePanelId) ? layout.activePanelId : panels[0].id,
+    activePanelId: panels.some(panel => panel.id === activePanelId) ? activePanelId : panels[0].id,
     panels,
   }
 }
@@ -1149,49 +1204,62 @@ function pruneDashboardLayout(db: ReturnType<typeof createSeedMockDatabase>): vo
 }
 
 function validateDashboardLayout(layout: DashboardLayoutRecord): void {
-  if (layout.schemaVersion !== 1) {
+  const source = layout as unknown as Record<string, unknown>
+  const schemaVersion = Number(source.schema_version ?? source.schemaVersion ?? 0)
+  const panels = Array.isArray(source.panels) ? (source.panels as Array<Record<string, unknown>>) : []
+  const activePanelId = String(source.active_panel_id ?? source.activePanelId ?? '')
+  if (schemaVersion !== 1) {
     throw new ApiClientError('unsupported dashboard layout schema', 'UNSUPPORTED_SCHEMA', 400, null)
   }
-  if (layout.panels.length === 0) {
+  if (panels.length === 0) {
     throw new ApiClientError('dashboard layout must contain at least one panel', 'EMPTY_PANELS', 400, null)
   }
-  if (layout.panels.length > 8) {
+  if (panels.length > 8) {
     throw new ApiClientError('dashboard layout exceeds panel limit', 'TOO_MANY_PANELS', 400, null)
   }
 
   const ids = new Set<string>()
   const names = new Set<string>()
-  for (const panel of layout.panels) {
-    if (!panel.id || ids.has(panel.id)) {
+  for (const panel of panels) {
+    const panelId = String(panel.id ?? '')
+    const panelName = String(panel.name ?? '')
+    const widgets = Array.isArray(panel.widgets) ? panel.widgets : []
+    if (!panelId || ids.has(panelId)) {
       throw new ApiClientError('dashboard panel id is duplicated', 'DUPLICATE_PANEL_ID', 400, null)
     }
-    if (!panel.name || panel.name.length > 32) {
+    if (!panelName || panelName.length > 32) {
       throw new ApiClientError('dashboard panel name is invalid', 'PANEL_NAME_TOO_LONG', 400, null)
     }
-    const name = panel.name.toLowerCase()
+    const name = panelName.toLowerCase()
     if (names.has(name)) {
       throw new ApiClientError('dashboard panel name is duplicated', 'DUPLICATE_PANEL_NAME', 400, null)
     }
-    ids.add(panel.id)
+    ids.add(panelId)
     names.add(name)
 
     const widgetDeviceIds = new Set<number>()
-    for (const widget of panel.widgets) {
+    for (const widget of widgets) {
+      const tuple = Array.isArray(widget) ? widget : []
+      const deviceId = Number(tuple[0] ?? 0)
+      const x = Number(tuple[1] ?? 0)
+      const y = Number(tuple[2] ?? 0)
+      const w = Number(tuple[3] ?? 0)
+      const h = Number(tuple[4] ?? 0)
       if (
-        widget[0] <= 0 ||
-        widget[1] < 0 ||
-        widget[2] < 0 ||
-        widget[3] <= 0 ||
-        widget[4] <= 0 ||
-        widgetDeviceIds.has(widget[0])
+        deviceId <= 0 ||
+        x < 0 ||
+        y < 0 ||
+        w <= 0 ||
+        h <= 0 ||
+        widgetDeviceIds.has(deviceId)
       ) {
         throw new ApiClientError('dashboard widget coordinates are invalid', 'INVALID_WIDGET', 400, null)
       }
-      widgetDeviceIds.add(widget[0])
+      widgetDeviceIds.add(deviceId)
     }
   }
 
-  if (!ids.has(layout.activePanelId)) {
+  if (!ids.has(activePanelId)) {
     throw new ApiClientError('dashboard active panel does not exist', 'INVALID_ACTIVE_PANEL', 400, null)
   }
 }

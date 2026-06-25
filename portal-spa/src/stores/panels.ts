@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 
 import { fetchDashboardLayout, saveDashboardLayout, type DashboardLayoutRecord } from '@/api'
+import { ApiClientError } from '@/api/http'
 import { safeRemoveStorage } from '@/utils/storage'
 
 export interface DashboardPanelWidget {
@@ -31,6 +32,10 @@ const maxPanelNameLength = 32
 const saveDebounceMs = 300
 
 let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+function isUnsupportedSchemaError(error: unknown): boolean {
+  return error instanceof ApiClientError && error.code === 'UNSUPPORTED_SCHEMA'
+}
 
 function widgetCells(widget: DashboardPanelWidget): string[] {
   const cells: string[] = []
@@ -205,8 +210,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function snapshotToApi(snapshot: PanelSnapshot): DashboardLayoutRecord {
   return {
-    schemaVersion: 1,
-    activePanelId: snapshot.activePanelId,
+    schema_version: 1,
+    active_panel_id: snapshot.activePanelId,
     panels: snapshot.panels.map((panel, order) => ({
       id: panel.id,
       name: panel.name,
@@ -215,7 +220,7 @@ function snapshotToApi(snapshot: PanelSnapshot): DashboardLayoutRecord {
         .filter(widget => Number.isFinite(widget.deviceId) && widget.deviceId > 0)
         .map(widget => [widget.deviceId, widget.x, widget.y, widget.w, widget.h]),
     })),
-  }
+  } as unknown as DashboardLayoutRecord
 }
 
 function readWidgetRecord(widget: unknown): DashboardPanelWidget | null {
@@ -247,15 +252,21 @@ function readWidgetRecord(widget: unknown): DashboardPanelWidget | null {
 }
 
 function apiToSnapshot(layout: DashboardLayoutRecord): PanelSnapshot {
+  const source = layout as unknown as Record<string, unknown>
+  const panels = Array.isArray(source.panels) ? source.panels : []
   return {
-    activePanelId: layout.activePanelId,
-    panels: [...layout.panels]
-      .sort((a, b) => a.order - b.order)
-      .map(panel => ({
-        id: panel.id,
-        name: panel.name,
-        widgets: panel.widgets.map(widget => readWidgetRecord(widget)).filter((widget): widget is DashboardPanelWidget => widget !== null),
-      })),
+    activePanelId: String(source.active_panel_id ?? source.activePanelId ?? 'main'),
+    panels: [...panels]
+      .sort((a, b) => Number((a as Record<string, unknown>).order ?? 0) - Number((b as Record<string, unknown>).order ?? 0))
+      .map(panel => {
+        const panelRecord = panel as Record<string, unknown>
+        const widgets = Array.isArray(panelRecord.widgets) ? panelRecord.widgets : []
+        return {
+          id: String(panelRecord.id ?? ''),
+          name: String(panelRecord.name ?? ''),
+          widgets: widgets.map(widget => readWidgetRecord(widget)).filter((widget): widget is DashboardPanelWidget => widget !== null),
+        }
+      }),
   }
 }
 
@@ -309,7 +320,11 @@ export const usePanelStore = defineStore('panels', {
           this.panels = snapshot.panels
           this.activePanelId = snapshot.activePanelId
           this.initialized = true
-          this.errorMessage = error instanceof Error ? error.message : 'dashboard layout unavailable'
+          this.errorMessage = isUnsupportedSchemaError(error)
+            ? ''
+            : error instanceof Error
+              ? error.message
+              : 'dashboard layout unavailable'
         } finally {
           this.initializePromise = null
         }
@@ -334,7 +349,11 @@ export const usePanelStore = defineStore('panels', {
         this.panels = snapshot.panels
         this.activePanelId = snapshot.activePanelId
         this.initialized = true
-        this.errorMessage = error instanceof Error ? error.message : 'dashboard layout unavailable'
+        this.errorMessage = isUnsupportedSchemaError(error)
+          ? ''
+          : error instanceof Error
+            ? error.message
+            : 'dashboard layout unavailable'
       }
     },
     async persistNow(): Promise<void> {
@@ -350,7 +369,11 @@ export const usePanelStore = defineStore('panels', {
         this.revision += 1
         this.errorMessage = ''
       } catch (error) {
-        this.errorMessage = error instanceof Error ? error.message : 'dashboard layout save failed'
+        this.errorMessage = isUnsupportedSchemaError(error)
+          ? ''
+          : error instanceof Error
+            ? error.message
+            : 'dashboard layout save failed'
       } finally {
         this.saving = false
       }

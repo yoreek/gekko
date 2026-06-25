@@ -1,5 +1,7 @@
 #include "devices/registry/DeviceSetupTransferCodec.h"
 
+#include "devices/bus/i2c/I2cBusConfig.h"
+#include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/bus/onewire/OneWireBusConfig.h"
 #include "devices/bus/onewire/OneWireBusDevice.h"
 #include "devices/core/DeviceBaseConfig.h"
@@ -66,6 +68,8 @@ const char* deviceTypeNameFromId(const DeviceTypeId typeId) {
         return "ds18b20_temperature_sensor";
     case 5:
         return "thermostat";
+    case 6:
+        return "i2c_bus";
     default:
         return "unknown";
     }
@@ -91,6 +95,10 @@ bool deviceTypeIdFromTransferJson(const JsonObjectConst& input, DeviceTypeId& ty
     }
     if (std::strcmp(typeName, "thermostat") == 0) {
         typeId = 5U;
+        return true;
+    }
+    if (std::strcmp(typeName, "i2c_bus") == 0) {
+        typeId = 6U;
         return true;
     }
 
@@ -154,6 +162,26 @@ bool encodeTransferConfigBlob(const JsonObjectConst& input, const DeviceBaseConf
         size = oneWireBusDeviceConfigSize(config);
         if (!encodeOneWireBusDeviceConfig(config, buffer, size)) {
             error = "onewire bus config is invalid";
+            return false;
+        }
+        break;
+    }
+    case 6: {
+        if (configVersion != 1U) {
+            error = "unsupported i2c bus config version";
+            return false;
+        }
+        I2cBusDeviceConfigV1 config{};
+        const char* parseError = nullptr;
+        if (!config.parseJson(input, parseError)) {
+            error = parseError != nullptr ? parseError : "i2c bus config is invalid";
+            return false;
+        }
+        config.enabled = base.enabled;
+        std::memcpy(config.name, base.name, sizeof(config.name));
+        size = i2cBusDeviceConfigSize(config);
+        if (!encodeI2cBusDeviceConfig(config, buffer, size)) {
+            error = "i2c bus config is invalid";
             return false;
         }
         break;

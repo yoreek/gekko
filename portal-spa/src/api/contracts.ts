@@ -47,6 +47,11 @@ export interface OneWireScanSnapshot {
   devices: OneWireScanDeviceSnapshot[]
 }
 
+export interface I2cBusRuntimeSnapshot {
+  generation?: number
+  transactionActive?: boolean
+}
+
 export interface DeviceDependencyLink {
   role: string
   deviceId: number

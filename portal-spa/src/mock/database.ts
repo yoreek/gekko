@@ -12,7 +12,7 @@ import type {
 } from '@/api'
 import { safeReadStorage, safeWriteStorage } from '@/utils/storage'
 
-const storageKey = 'gekko.mockDb.v6'
+const storageKey = 'gekko.mockDb.v7'
 
 type MockDeviceConfig = BaseDeviceConfig & Record<string, unknown>
 type MockDeviceRuntime = BaseDeviceRuntime & {
@@ -81,6 +81,8 @@ const seedDatabase: SeedDatabase = {
           [670845750, 2, 0, 1, 1],
           [670845752, 3, 0, 1, 1],
           [670845753, 4, 0, 1, 1],
+          [670845751, 5, 0, 1, 1],
+          [670845754, 6, 0, 1, 1],
         ],
       },
     ],
@@ -148,6 +150,21 @@ const seedDatabase: SeedDatabase = {
           },
         ],
       },
+    }),
+    createDeviceRecord(670845754, 'i2c_bus', 1, {
+      enabled: true,
+      name: 'I2C Bus',
+      deps: [],
+      sdaPin: 21,
+      sclPin: 22,
+      internalPullup: true,
+      frequencyHz: 100000,
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      generation: 1,
+      transactionActive: false,
     }),
     createDeviceRecord(670845752, 'ds18b20_temperature_sensor', 1, {
       enabled: true,
@@ -390,7 +407,7 @@ function isDashboardLayoutRecord(value: unknown): value is DashboardLayoutRecord
   if (!isRecord(value)) {
     return false
   }
-  return Array.isArray(value.panels) && typeof value.activePanelId === 'string' && typeof value.schemaVersion === 'number'
+  return Array.isArray(value.panels) && typeof value.activePanelId === 'string' && value.schemaVersion === 1
 }
 
 function normalizeStoredDatabase(stored: unknown): MockDatabase {

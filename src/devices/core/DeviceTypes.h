@@ -42,6 +42,7 @@ enum class DeviceDependencyRole : uint8_t {
     OneWireBus = 1,
     TemperatureSensor = 2,
     Switch = 3,
+    I2CBus = 4,
 };
 
 struct DeviceDependencyLink {
@@ -573,6 +574,15 @@ public:
         return false;
     }
     virtual bool hasDuplicateDependentRomAddress(const OneWireRomAddress& address, const IDeviceRuntime* ignoreDependent = nullptr) const {
+        (void)address;
+        (void)ignoreDependent;
+        return false;
+    }
+    virtual bool i2cAddress(uint8_t& address) const {
+        (void)address;
+        return false;
+    }
+    virtual bool hasDuplicateDependentI2cAddress(uint8_t address, const IDeviceRuntime* ignoreDependent = nullptr) const {
         (void)address;
         (void)ignoreDependent;
         return false;
