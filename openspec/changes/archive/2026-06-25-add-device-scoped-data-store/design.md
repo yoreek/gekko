@@ -7,7 +7,7 @@ The current firmware already uses `Preferences`-backed NVS for controller config
 ## Concrete Shape
 
 - New storage helper: `DeviceScopedDataStore`
-- Legacy source to migrate away from: `DeviceRetainedDataStore`
+- Legacy source to migrate away from: none
 - Initial device-owned data types:
   - `retained_state`
   - `display_layout`
@@ -48,11 +48,6 @@ Each payload remains a bounded typed blob owned by its own codec. The store is r
   - The storage helper should know how to read/write/clear data for one device and type, but it should not know registry rules or device-specific retention policy.
   - Alternative: keep a single retained-state-only wrapper and add separate stores for new data types. Rejected because that spreads cleanup and migration logic across multiple one-off helpers.
 
-- Migrate retained state lazily and compatibly.
-  - On first access, the new store should read the legacy retained-state record, write it into the new device-scoped location, and then remove the legacy entry after the new write succeeds.
-  - This keeps boot working even when only some devices touch retained state after an upgrade.
-  - Alternative: one-time boot migration scan. Rejected because the project cannot rely on cheap namespace enumeration and because lazy migration is bounded to real devices.
-
 - Clear scoped data only after the delete commit point is durable.
   - `DeviceRegistry` remains the lifecycle authority and should request scoped cleanup only after the device deletion is committed in the same way it commits other durable registry changes.
   - Immediate delete can clear the namespace before returning success.
@@ -80,13 +75,11 @@ Each payload remains a bounded typed blob owned by its own codec. The store is r
 
 ## Migration Plan
 
-1. Introduce the new device-scoped data abstraction and keep it side-by-side with the legacy retained-state path.
-2. Add retained-state read compatibility so existing devices can load legacy data and rewrite it into the new store.
-3. Switch retained-state writes to the new store after migration succeeds.
-4. Teach `DeviceRegistry` to clear all scoped data on device deletion.
-5. Remove the old retained-state-only helper once all callers and tests use the new store.
+1. Introduce the new device-scoped data abstraction.
+2. Switch retained-state writes to the new store.
+3. Teach `DeviceRegistry` to clear all scoped data on device deletion.
+4. Remove the old retained-state-only helper once all callers and tests use the new store.
 
 ## Open Questions
 
 - Should `display_layout` be implemented in this change or only reserved as the first non-retained data type?
-- Do we want a boot-time scavenger for legacy keys, or is lazy migration on access sufficient?

@@ -5,8 +5,8 @@
 #include "devices/registry/DeviceRegistryEventReporter.h"
 #include "devices/registry/DeviceRegistryPersistenceCoordinator.h"
 #include "devices/registry/DeviceRegistryStore.h"
-#include "devices/registry/DeviceRuntimeStore.h"
 #include "devices/registry/DeviceRetainedDataStore.h"
+#include "devices/registry/DeviceRuntimeStore.h"
 
 #include <map>
 #include <memory>

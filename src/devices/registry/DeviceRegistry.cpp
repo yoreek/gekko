@@ -174,10 +174,6 @@ DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
 
     refreshDependentRuntimeStates(now);
 
-    if (retainedStateStore_ != nullptr) {
-        (void)retainedStateStore_->clearLegacyNamespace();
-    }
-
     return {};
 }
 

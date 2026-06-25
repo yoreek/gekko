@@ -14,7 +14,9 @@ public:
         readOnly_ = readOnly;
         return true;
     }
-    void end() override {}
+    void end() override {
+        readOnly_ = false;
+    }
     bool hasKey(const char* key) const override {
         return strings_.count(key) || blobs_.count(key) || uints_.count(key) || bools_.count(key);
     }

@@ -1,9 +1,9 @@
 #include "config/MemoryConfigStorage.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/dummy/DummyDevice.h"
-#include "devices/registry/DeviceScopedDataStore.h"
 #include "devices/registry/DeviceRegistryStore.h"
 #include "devices/registry/DeviceRetainedDataStore.h"
+#include "devices/registry/DeviceScopedDataStore.h"
 
 #include <cstdio>
 #include <unity.h>
@@ -213,41 +213,15 @@ void test_device_scoped_data_store_round_trip_and_clear() {
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::MissingRecord), static_cast<int>(result.error));
 }
 
-void test_device_retained_data_store_migrates_legacy_record() {
+void test_device_scoped_data_store_missing_namespace_is_missing_record() {
     MemoryConfigStorage storage;
-    TEST_ASSERT_TRUE(storage.begin("device_retained", false));
-    SwitchRetainedStateRecord legacy{};
-    legacy.deviceId = 9;
-    legacy.outputState = OutputState::On;
-    TEST_ASSERT_TRUE(putStruct(storage, "state_00000009", legacy));
-    storage.end();
-
-    DeviceRetainedDataStore store(storage);
+    DeviceScopedDataStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
 
     SwitchRetainedStateRecord loaded{};
-    DeviceValidationResult result = store.load(9, loaded);
-    TEST_ASSERT_TRUE(result.ok());
-    TEST_ASSERT_EQUAL_UINT32(9, loaded.deviceId);
-    TEST_ASSERT_EQUAL(static_cast<int>(OutputState::On), static_cast<int>(loaded.outputState));
-}
-
-void test_device_retained_data_store_clears_legacy_namespace() {
-    MemoryConfigStorage storage;
-    TEST_ASSERT_TRUE(storage.begin("device_retained", false));
-    SwitchRetainedStateRecord legacy{};
-    legacy.deviceId = 12;
-    legacy.outputState = OutputState::Off;
-    TEST_ASSERT_TRUE(putStruct(storage, "state_0000000c", legacy));
-    storage.end();
-
-    DeviceRetainedDataStore store(storage);
-    TEST_ASSERT_TRUE(store.begin(false));
-    TEST_ASSERT_TRUE(store.clearLegacyNamespace());
-
-    TEST_ASSERT_TRUE(storage.begin("device_retained", true));
-    TEST_ASSERT_FALSE(storage.hasKey("state_0000000c"));
-    storage.end();
+    DeviceValidationResult result = store.load(99, "retained_state", loaded);
+    TEST_ASSERT_FALSE(result.ok());
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::MissingRecord), static_cast<int>(result.error));
 }
 
 void test_device_retained_data_store_rejects_corrupt_record() {
@@ -338,8 +312,7 @@ int main(int, char**) {
     RUN_TEST(test_device_retained_data_store_round_trip_and_remove);
     RUN_TEST(test_device_retained_data_store_rejects_corrupt_record);
     RUN_TEST(test_device_scoped_data_store_round_trip_and_clear);
-    RUN_TEST(test_device_retained_data_store_migrates_legacy_record);
-    RUN_TEST(test_device_retained_data_store_clears_legacy_namespace);
+    RUN_TEST(test_device_scoped_data_store_missing_namespace_is_missing_record);
     RUN_TEST(test_dummy_device_lifecycle_and_command_output);
     RUN_TEST(test_dummy_device_base_config_is_loaded_and_runtime_starts_disabled);
     RUN_TEST(test_dummy_device_dependency_wiring_survive_base_refactor);

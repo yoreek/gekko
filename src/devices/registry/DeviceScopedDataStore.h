@@ -26,7 +26,7 @@ public:
 
         bool opened = false;
         if (!openDeviceNamespace(deviceId, true, opened)) {
-            return {DeviceError::StorageError, "failed to open device scoped storage"};
+            return {DeviceError::MissingRecord, "device scoped data is missing"};
         }
 
         const std::string key = makeDataKey(dataType);

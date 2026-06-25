@@ -21,11 +21,11 @@ The technical contract is fixed in [technical.md](technical.md).
 1. Device data is loaded by `DeviceId` and type.
 2. Writes are bounded and type-specific.
 3. Deleting the device clears all scoped data.
-4. Legacy retained-state entries are migrated on access and removed after the new write succeeds.
+4. Legacy retained-state entries are not supported in the final design.
 
 ## Fixed Names
 
 - Store: `DeviceScopedDataStore`
-- Legacy source: retained-state-only wrapper
+- Legacy source: none
 - Namespace format: `dev_<8hex>`
 - Payload keys: `retained_state`, `display_layout`

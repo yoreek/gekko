@@ -12,8 +12,7 @@ This document fixes the technical vocabulary for the new device-owned storage me
   - Owns lifecycle orchestration.
   - Decides when device-scoped cleanup is committed.
 - retained-state-only wrapper
-  - Legacy helper being migrated away from.
-  - Should not remain the public long-term owner of retained data.
+  - Removed from the final implementation.
 - `DisplayLayoutStore`
   - Future device-scoped payload user for OLED layouts.
 
@@ -46,13 +45,6 @@ device deleted
   -> DeviceScopedDataStore clears namespace dev_0000002a
   -> retained_state and display_layout are gone together
 ```
-
-## Migration Rule
-
-1. Try new `DeviceScopedDataStore` first.
-2. If `retained_state` is missing, read the legacy retained-state record.
-3. On successful read, write the new scoped payload.
-4. Remove the legacy record only after the new write succeeds.
 
 ## Design Boundary
 
