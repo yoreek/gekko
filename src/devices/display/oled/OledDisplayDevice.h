@@ -15,6 +15,7 @@ public:
     const OledDisplayDeviceConfigV1& config() const;
     bool enabled() const override;
     const char* name() const override;
+    bool i2cAddress(uint8_t& address) const override;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override;
     DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const override;

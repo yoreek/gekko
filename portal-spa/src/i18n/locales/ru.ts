@@ -262,6 +262,7 @@ export default {
       },
       oledDisplay: {
         noDependency: 'Перед добавлением OLED дисплея создайте устройство I2C шины.',
+        i2cAddressHint: 'Введите шестнадцатеричный адрес от 00 до 7F.',
       },
       thermostat: {
         noTemperatureSensor: 'Сначала подключите датчик температуры DS18B20.',

@@ -1,5 +1,7 @@
 #include "devices/display/oled/OledDisplayDevice.h"
 
+#include "devices/bus/i2c/I2cBusDevice.h"
+
 #include <cstring>
 #include <type_traits>
 
@@ -33,6 +35,11 @@ bool OledDisplayDevice::enabled() const {
 
 const char* OledDisplayDevice::name() const {
     return config_.name;
+}
+
+bool OledDisplayDevice::i2cAddress(uint8_t& address) const {
+    address = config_.i2cAddress;
+    return true;
 }
 
 bool OledDisplayDevice::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
@@ -151,6 +158,9 @@ DeviceTypeDescriptor OledDisplayDevice::descriptor() {
     descriptor.supportsRetainedState = false;
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
     descriptor.ticks100ms = true;
+    descriptor.dependencyRequirements = {
+        {DeviceDependencyRole::I2CBus, true, {I2cBusDevice::descriptor().typeId}},
+    };
     descriptor.createRuntime = &OledDisplayDevice::createRuntime;
     descriptor.validateConfig = &OledDisplayDevice::validateConfig;
     return descriptor;

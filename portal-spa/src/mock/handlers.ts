@@ -254,6 +254,7 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
       typeName !== 'gpio_switch' &&
       typeName !== 'onewire_bus' &&
       typeName !== 'i2c_bus' &&
+      typeName !== 'oled_display' &&
       typeName !== 'ds18b20_temperature_sensor' &&
       typeName !== 'thermostat'
     ) {
@@ -327,6 +328,41 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
         effectiveStatus: 'ready',
         generation: 1,
         transactionActive: false,
+      })
+    } else if (typeName === 'oled_display') {
+      const dependencyDeviceId = dependencyDeviceIdForRole(baseDeps, 'i2c_bus') || normalizeDependencyDeviceId(configSource.i2cBusDeviceId)
+      if (dependencyDeviceId <= 0) {
+        throw new ApiClientError('oled display i2c dependency is required', 'BAD_ARGS', 400, null)
+      }
+      requireI2cDependency(db, dependencyDeviceId)
+      const i2cAddress = normalizeFiniteNumber(configSource.i2cAddress, 60)
+      ensureUniqueI2cAddress(db, dependencyDeviceId, i2cAddress, nextId)
+      const layout = isRecordPayload(configSource.layout)
+        ? configSource.layout
+        : {
+            schemaVersion: 1,
+            activePageId: 'main',
+            pages: [],
+          }
+      const config = {
+        enabled,
+        name,
+        deps: [
+          {
+            role: 'i2c_bus',
+            deviceId: dependencyDeviceId,
+          },
+        ],
+        i2cBusDeviceId: dependencyDeviceId,
+        i2cAddress,
+        layoutWidth: normalizeFiniteNumber(configSource.layoutWidth, 128),
+        layoutHeight: normalizeFiniteNumber(configSource.layoutHeight, 64),
+        layout,
+      }
+      device = createDeviceRecord(nextId, typeName, 1, config, {
+        status: 'ready',
+        lifecycleStatus: 'ready',
+        effectiveStatus: 'ready',
       })
     } else if (typeName === 'ds18b20_temperature_sensor') {
       const deps = normalizeDependencyLinks(configSource.deps)
@@ -506,6 +542,29 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           device.runtime.status = 'ready'
           device.runtime.transactionActive = false
           device.runtime.generation = normalizeFiniteNumber(device.runtime.generation, 0) + 1
+        } else if (device.record.typeName === 'oled_display') {
+          const dependencyLinks = normalizeDependencyLinks(payload.deps ?? device.config.deps)
+          const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'i2c_bus')
+          if (dependencyDeviceId <= 0) {
+            throw new ApiClientError('oled display i2c dependency is required', 'BAD_ARGS', 400, null)
+          }
+          requireI2cDependency(db, dependencyDeviceId)
+          const currentConfig = (isRecordPayload(device.config) ? device.config : {}) as Record<string, unknown>
+          const i2cAddress = normalizeFiniteNumber(payload.config.i2cAddress, normalizeFiniteNumber(currentConfig['i2cAddress'], 60))
+          ensureUniqueI2cAddress(db, dependencyDeviceId, i2cAddress, device.record.id)
+          device.config = {
+            ...device.config,
+            enabled: Boolean(payload.config.enabled ?? device.config.enabled),
+            name: typeof payload.config.name === 'string' && payload.config.name.length > 0
+              ? payload.config.name
+              : device.config.name,
+            deps: dependencyLinks,
+            i2cBusDeviceId: dependencyDeviceId,
+            i2cAddress,
+            layoutWidth: normalizeFiniteNumber(payload.config.layoutWidth, normalizeFiniteNumber(currentConfig['layoutWidth'], 128)),
+            layoutHeight: normalizeFiniteNumber(payload.config.layoutHeight, normalizeFiniteNumber(currentConfig['layoutHeight'], 64)),
+            layout: isRecordPayload(payload.config.layout) ? payload.config.layout : device.config.layout,
+          }
         } else if (device.record.typeName === 'ds18b20_temperature_sensor') {
           const dependencyLinks = normalizeDependencyLinks(payload.deps ?? device.config.deps)
           const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'onewire_bus')
@@ -544,6 +603,47 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
         }
         device.record.configRevision += 1
         break
+      case 'setDeps':
+      case 'set_deps': {
+        const dependencyLinks = normalizeDependencyLinks(payload.deps)
+        if (device.record.typeName === 'oled_display') {
+          const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'i2c_bus')
+          if (dependencyDeviceId <= 0) {
+            throw new ApiClientError('oled display i2c dependency is required', 'BAD_ARGS', 400, null)
+          }
+          requireI2cDependency(db, dependencyDeviceId)
+          const currentConfig = (isRecordPayload(device.config) ? device.config : {}) as Record<string, unknown>
+          ensureUniqueI2cAddress(db, dependencyDeviceId, normalizeFiniteNumber(currentConfig['i2cAddress'], 60), device.record.id)
+          device.config = {
+            ...device.config,
+            deps: dependencyLinks,
+            i2cBusDeviceId: dependencyDeviceId,
+          }
+        } else if (device.record.typeName === 'ds18b20_temperature_sensor') {
+          const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'onewire_bus')
+          if (dependencyDeviceId <= 0) {
+            throw new ApiClientError('ds18b20 dependency is required', 'BAD_ARGS', 400, null)
+          }
+          requireOneWireDependency(db, dependencyDeviceId)
+          device.config = {
+            ...device.config,
+            deps: dependencyLinks,
+          }
+        } else if (device.record.typeName === 'thermostat') {
+          requireThermostatDependencies(db, dependencyLinks)
+          device.config = {
+            ...device.config,
+            deps: dependencyLinks,
+          }
+        } else {
+          device.config = {
+            ...device.config,
+            deps: dependencyLinks,
+          }
+        }
+        device.record.configRevision += 1
+        break
+      }
       case 'setStatus':
       case 'set_status':
         if (device.record.typeName === 'dummy') {
@@ -929,6 +1029,31 @@ function ensureUniqueDs18b20Address(
   ))
   if (duplicate) {
     throw new ApiClientError('ds18b20 address already exists on this dependency', 'DUPLICATE_ADDRESS', 400, null)
+  }
+}
+
+function requireI2cDependency(db: ReturnType<typeof createSeedMockDatabase>, dependencyDeviceId: number): DeviceRecord {
+  const dependency = db.devices.find(device => device.record.id === dependencyDeviceId)
+  if (!dependency || dependency.record.typeName !== 'i2c_bus') {
+    throw new ApiClientError('oled display i2c dependency is required', 'BAD_ARGS', 400, null)
+  }
+  return dependency
+}
+
+function ensureUniqueI2cAddress(
+  db: ReturnType<typeof createSeedMockDatabase>,
+  dependencyDeviceId: number,
+  address: number,
+  currentDeviceId: number,
+): void {
+  const duplicate = db.devices.some(device => (
+    device.record.id !== currentDeviceId &&
+    device.record.typeName === 'oled_display' &&
+    dependencyDeviceIdForRole((device.config.deps ?? []) as Array<{ role: string; deviceId: number }>, 'i2c_bus') === dependencyDeviceId &&
+    normalizeFiniteNumber((device.config as Record<string, unknown>).i2cAddress, -1) === address
+  ))
+  if (duplicate) {
+    throw new ApiClientError('oled display i2c address already exists on this dependency', 'DUPLICATE_ADDRESS', 400, null)
   }
 }
 

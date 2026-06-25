@@ -80,6 +80,18 @@ export namespace OledDisplay {
     return { ...config }
   }
 
+  export function formatI2cAddress(value: number): string {
+    return value.toString(16).toUpperCase().padStart(2, '0')
+  }
+
+  export function parseI2cAddress(value: string | number): number {
+    const text = String(value).trim().replace(/^0x/i, '')
+    if (!/^[0-9a-fA-F]{1,2}$/.test(text)) {
+      return Number.NaN
+    }
+    return Number.parseInt(text, 16)
+  }
+
   export class Device extends BaseDevice<ConfigDraft, CreateDraft, Record<string, never>> {
     readonly typeName = 'oled_display'
     readonly typeId = 7
@@ -96,6 +108,17 @@ export namespace OledDisplay {
       if (draft.name.trim() !== currentConfig.name) commands.push({ command: 'rename', name: draft.name.trim() })
       if (draft.enabled !== currentConfig.enabled) commands.push({ command: draft.enabled ? 'enable' : 'disable' })
       const nextConfig = this.normalizeConfig(draft)
+      if (nextConfig.i2cBusDeviceId !== currentConfig.i2cBusDeviceId) {
+        commands.push({
+          command: 'setDeps',
+          deps: [
+            {
+              role: 'i2c_bus',
+              deviceId: nextConfig.i2cBusDeviceId,
+            },
+          ],
+        })
+      }
       if (nextConfig.i2cBusDeviceId !== currentConfig.i2cBusDeviceId || nextConfig.i2cAddress !== currentConfig.i2cAddress || nextConfig.layoutWidth !== currentConfig.layoutWidth || nextConfig.layoutHeight !== currentConfig.layoutHeight) {
         commands.push({ command: 'updateConfig', config: this.encodeConfig(nextConfig) })
       }

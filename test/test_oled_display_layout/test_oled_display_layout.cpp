@@ -1,4 +1,5 @@
 #include "config/MemoryConfigStorage.h"
+#include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/display/oled/OledDisplayDevice.h"
 #include "devices/display/oled/OledDisplayDeviceConfig.h"
@@ -8,6 +9,7 @@
 #include "devices/registry/DeviceRegistryStore.h"
 #include "devices/registry/DeviceRetainedDataStore.h"
 #include "devices/registry/DeviceScopedDataStore.h"
+#include "integrations/rest/i2c_bus/I2cBusDeviceApiAdapter.h"
 #include "integrations/rest/oled_display/OledDisplayDeviceApiAdapter.h"
 
 #include <unity.h>
@@ -16,13 +18,6 @@
 using namespace ewfm;
 
 namespace {
-
-struct FixedDeviceIdSource final : public IDeviceIdSource {
-    bool next(DeviceId& out) override {
-        out = 77;
-        return true;
-    }
-};
 
 OledDisplayLayoutRecordV1 makeLayoutRecord() {
     OledDisplayLayoutRecordV1 layout{};
@@ -83,6 +78,18 @@ void fillOledDeviceDocument(StaticJsonDocument<1024>& doc, bool includeLayout) {
     widget["width"] = 64;
     widget["height"] = 16;
     widget["text"] = "temp";
+}
+
+void fillI2cBusDocument(StaticJsonDocument<512>& doc, const char* name, uint8_t sdaPin, uint8_t sclPin) {
+    doc.clear();
+    doc["typeName"] = "i2c_bus";
+    JsonObject config = doc.createNestedObject("config");
+    config["name"] = name;
+    config["enabled"] = true;
+    config["sdaPin"] = sdaPin;
+    config["sclPin"] = sclPin;
+    config["internalPullup"] = true;
+    config["frequencyHz"] = 100000U;
 }
 
 } // namespace
@@ -165,15 +172,24 @@ void test_oled_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_TRUE(retainedStore.begin(false));
     TEST_ASSERT_TRUE(scopedStore.begin(false));
 
-    FixedDeviceIdSource idSource;
+    SequentialDeviceIdSource idSource(100);
     DeviceTypeRegistry typeRegistry = DeviceTypeRegistry::withDefaults();
     DeviceRegistry registry(registryStore, typeRegistry, idSource, &retainedStore, &scopedStore);
     TEST_ASSERT_TRUE(registry.begin(0).ok());
 
+    StaticJsonDocument<512> busDoc;
+    fillI2cBusDocument(busDoc, "bus", 21, 22);
+    DeviceCreateRequest busRequest{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(I2cBusDeviceApiAdapter::instance().parseCreateRequest(busDoc.as<JsonObjectConst>(), busRequest, error));
+    TEST_ASSERT_NULL(error);
+    const DeviceCreateResult busResult = registry.create(busRequest, 0);
+    TEST_ASSERT_TRUE(busResult.ok());
+
     StaticJsonDocument<1024> createDoc;
     fillOledDeviceDocument(createDoc, false);
+    createDoc["config"]["i2cBusDeviceId"] = busResult.deviceId;
     DeviceCreateRequest createRequest{};
-    const char* error = nullptr;
     TEST_ASSERT_TRUE(OledDisplayDeviceApiAdapter::instance().parseCreateRequest(createDoc.as<JsonObjectConst>(), createRequest, error));
     TEST_ASSERT_NULL(error);
     const DeviceCreateResult createResult = registry.create(createRequest, 0);
@@ -184,6 +200,7 @@ void test_oled_layout_update_round_trip_via_registry_binary_store() {
 
     StaticJsonDocument<1024> updateDoc;
     fillOledDeviceDocument(updateDoc, true);
+    updateDoc["config"]["i2cBusDeviceId"] = busResult.deviceId;
     DeviceConfigUpdateRequest updateRequest{};
     TEST_ASSERT_TRUE(
         OledDisplayDeviceApiAdapter::instance().parseUpdateConfigRequest(updateDoc.as<JsonObjectConst>(), *runtime, updateRequest, error));
@@ -260,6 +277,70 @@ void test_oled_layout_create_request_accepts_large_i2c_bus_device_id() {
     TEST_ASSERT_EQUAL_UINT32(4249059392UL, decoded.i2cBusDeviceId);
 }
 
+void test_oled_layout_rejects_duplicate_i2c_address_on_same_bus() {
+    MemoryConfigStorage registryStorage;
+    MemoryConfigStorage retainedStorage;
+    MemoryConfigStorage scopedStorage;
+    DeviceRegistryStore registryStore(registryStorage);
+    DeviceRetainedDataStore retainedStore(retainedStorage);
+    DeviceScopedDataStore scopedStore(scopedStorage);
+    TEST_ASSERT_TRUE(registryStore.begin(false));
+    TEST_ASSERT_TRUE(retainedStore.begin(false));
+    TEST_ASSERT_TRUE(scopedStore.begin(false));
+
+    SequentialDeviceIdSource idSource(100);
+    DeviceTypeRegistry typeRegistry = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(registryStore, typeRegistry, idSource, &retainedStore, &scopedStore);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+
+    StaticJsonDocument<512> busDoc;
+    fillI2cBusDocument(busDoc, "bus", 21, 22);
+    DeviceCreateRequest busRequest{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(I2cBusDeviceApiAdapter::instance().parseCreateRequest(busDoc.as<JsonObjectConst>(), busRequest, error));
+    TEST_ASSERT_NULL(error);
+    const DeviceCreateResult busResult = registry.create(busRequest, 0);
+    TEST_ASSERT_TRUE(busResult.ok());
+
+    StaticJsonDocument<1024> firstDoc;
+    fillOledDeviceDocument(firstDoc, false);
+    JsonObject firstConfig = firstDoc["config"].as<JsonObject>();
+    firstConfig["i2cBusDeviceId"] = busResult.deviceId;
+    firstConfig["i2cAddress"] = 60;
+    JsonObject firstLayout = firstConfig.createNestedObject("layout");
+    firstLayout["schemaVersion"] = 1;
+    firstLayout["activePageId"] = "main";
+    JsonArray firstPages = firstLayout.createNestedArray("pages");
+    JsonObject firstPage = firstPages.createNestedObject();
+    firstPage["id"] = "main";
+    firstPage.createNestedArray("widgets");
+    DeviceCreateRequest firstRequest{};
+    TEST_ASSERT_TRUE(OledDisplayDeviceApiAdapter::instance().parseCreateRequest(firstDoc.as<JsonObjectConst>(), firstRequest, error));
+    TEST_ASSERT_NULL(error);
+    TEST_ASSERT_TRUE(registry.create(firstRequest, 0).ok());
+
+    StaticJsonDocument<1024> secondDoc;
+    fillOledDeviceDocument(secondDoc, false);
+    JsonObject secondConfig = secondDoc["config"].as<JsonObject>();
+    secondConfig["i2cBusDeviceId"] = busResult.deviceId;
+    secondConfig["i2cAddress"] = 60;
+    JsonObject secondLayout = secondConfig.createNestedObject("layout");
+    secondLayout["schemaVersion"] = 1;
+    secondLayout["activePageId"] = "main";
+    JsonArray secondPages = secondLayout.createNestedArray("pages");
+    JsonObject secondPage = secondPages.createNestedObject();
+    secondPage["id"] = "main";
+    secondPage.createNestedArray("widgets");
+
+    DeviceCreateRequest secondRequest{};
+    TEST_ASSERT_TRUE(OledDisplayDeviceApiAdapter::instance().parseCreateRequest(secondDoc.as<JsonObjectConst>(), secondRequest, error));
+    TEST_ASSERT_NULL(error);
+
+    const DeviceValidationResult validation = OledDisplayDeviceApiAdapter::instance().validateCreateRequest(secondRequest, registry);
+    TEST_ASSERT_FALSE(validation.ok());
+    TEST_ASSERT_EQUAL_UINT32(static_cast<uint32_t>(DeviceError::InvalidRelationship), static_cast<uint32_t>(validation.error));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_oled_layout_codec_round_trip_json);
@@ -269,5 +350,6 @@ int main(int, char**) {
     RUN_TEST(test_oled_layout_update_round_trip_via_registry_binary_store);
     RUN_TEST(test_oled_layout_create_request_accepts_empty_pages);
     RUN_TEST(test_oled_layout_create_request_accepts_large_i2c_bus_device_id);
+    RUN_TEST(test_oled_layout_rejects_duplicate_i2c_address_on_same_bus);
     return UNITY_END();
 }

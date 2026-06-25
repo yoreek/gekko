@@ -1,5 +1,6 @@
 #include "integrations/rest/oled_display/OledDisplayDeviceApiAdapter.h"
 
+#include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/core/DeviceBaseConfig.h"
 #include "devices/display/oled/OledDisplayDevice.h"
 #include "devices/display/oled/OledDisplayLayoutCodec.h"
@@ -8,6 +9,18 @@
 
 namespace ewfm {
 namespace {
+DeviceValidationResult validateI2cBusDependency(const DeviceRegistry& registry, DeviceId busDeviceId, uint8_t i2cAddress,
+                                                const IDeviceRuntime* ignoreDependent) {
+    const IDeviceRuntime* busRuntime = registry.runtime(busDeviceId);
+    if (busRuntime == nullptr || busRuntime->typeId() != I2cBusDevice::descriptor().typeId) {
+        return {DeviceError::InvalidRelationship, "oled display i2c bus dependency is missing or invalid"};
+    }
+    if (busRuntime->hasDuplicateDependentI2cAddress(i2cAddress, ignoreDependent)) {
+        return {DeviceError::InvalidRelationship, "duplicate oled display i2c address on dependency"};
+    }
+    return {};
+}
+
 bool encodeLayoutRequest(const JsonObjectConst& input, DeviceId deviceId, BoundedBlob<kMaxDeviceConfigBytes>& blob, const char*& error) {
     const JsonObjectConst layoutInput = input["config"]["layout"].as<JsonObjectConst>();
     if (layoutInput.isNull()) {
@@ -65,6 +78,8 @@ bool OledDisplayDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& inpu
     }
     request.name = config.name;
     request.enabled = config.enabled != 0U;
+    request.deps[0] = DeviceDependencyLink{DeviceDependencyRole::I2CBus, config.i2cBusDeviceId};
+    request.depCount = 1U;
     if (!config.validate().ok()) {
         error = "oled display config is invalid";
         return false;
@@ -88,6 +103,20 @@ bool OledDisplayDeviceApiAdapter::parseCreatePersistedStateRequest(const JsonObj
     }
     persistedRequest.persistedStateProvided = !persistedRequest.persistedStateBlob.empty();
     return true;
+}
+
+DeviceValidationResult OledDisplayDeviceApiAdapter::validateCreateRequest(const DeviceCreateRequest& request,
+                                                                          const DeviceRegistry& registry) const {
+    if (request.dependencyCount() != 1U || request.dependencyLinks() == nullptr || request.dependencyLinks()[0].deviceId == 0U ||
+        request.dependencyLinks()[0].role != DeviceDependencyRole::I2CBus) {
+        return {DeviceError::InvalidRelationship, "oled display requires i2c bus dependency"};
+    }
+
+    OledDisplayDeviceConfigV1 config{};
+    if (!decodeOledDisplayDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), config)) {
+        return {DeviceError::InvalidConfig, "oled display config is invalid"};
+    }
+    return validateI2cBusDependency(registry, request.dependencyLinks()[0].deviceId, config.i2cAddress, nullptr);
 }
 
 bool OledDisplayDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, IDeviceRuntime& runtime,
@@ -123,6 +152,36 @@ bool OledDisplayDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst
     }
     request.persistedStateProvided = !request.persistedStateBlob.empty();
     return true;
+}
+
+DeviceValidationResult OledDisplayDeviceApiAdapter::validateUpdateConfigRequest(const IDeviceRuntime& runtime,
+                                                                                const DeviceConfigUpdateRequest& request,
+                                                                                const DeviceRegistry& registry) const {
+    OledDisplayDeviceConfigV1 config{};
+    if (!decodeOledDisplayDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), config)) {
+        return {DeviceError::InvalidConfig, "oled display config is invalid"};
+    }
+
+    DeviceId busDeviceId = runtime.dependencyDeviceId(DeviceDependencyRole::I2CBus);
+    if (request.depsProvided) {
+        if (request.depCount != 1U || request.deps[0].role != DeviceDependencyRole::I2CBus || request.deps[0].deviceId == 0U) {
+            return {DeviceError::InvalidRelationship, "oled display requires i2c bus dependency"};
+        }
+        busDeviceId = request.deps[0].deviceId;
+    }
+
+    return validateI2cBusDependency(registry, busDeviceId, config.i2cAddress, &runtime);
+}
+
+DeviceValidationResult
+OledDisplayDeviceApiAdapter::validateSetDepsRequest(const IDeviceRuntime& runtime,
+                                                    const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t depCount,
+                                                    const DeviceRegistry& registry) const {
+    if (depCount != 1U || deps[0].role != DeviceDependencyRole::I2CBus || deps[0].deviceId == 0U) {
+        return {DeviceError::InvalidRelationship, "oled display requires i2c bus dependency"};
+    }
+    const OledDisplayDevice& device = static_cast<const OledDisplayDevice&>(runtime);
+    return validateI2cBusDependency(registry, deps[0].deviceId, device.config().i2cAddress, &runtime);
 }
 
 void OledDisplayDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus,

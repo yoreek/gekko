@@ -294,6 +294,7 @@ export default {
       },
       oledDisplay: {
         noDependency: 'Create an I2C bus device before adding an OLED display.',
+        i2cAddressHint: 'Enter a hexadecimal address from 00 to 7F.',
       },
       thermostat: {
         noTemperatureSensor: 'Create or connect a DS18B20 temperature sensor before configuring the thermostat.',

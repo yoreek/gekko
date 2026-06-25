@@ -118,7 +118,7 @@ export interface DeviceRegistryResponse<TRecord extends DeviceRecord = DeviceRec
 
 export interface DeviceCommandRequest {
   deviceId?: number
-  command: 'rename' | 'enable' | 'disable' | 'delete' | 'updateConfig' | 'setStatus' | 'scan' | 'setOutput'
+  command: 'rename' | 'enable' | 'disable' | 'delete' | 'updateConfig' | 'setStatus' | 'scan' | 'setOutput' | 'setDeps'
   name?: string
   status?: string
   state?: DeviceOutputState

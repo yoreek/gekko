@@ -17,7 +17,16 @@
           />
         </v-col>
         <v-col cols="12" md="6">
-          <v-text-field :label="t('device.fields.oledI2cAddress')" :model-value="currentValue.i2cAddress" :disabled="busy" inputmode="numeric" type="number" min="0" max="127" @update:model-value="updateNumber('i2cAddress', $event)" />
+          <v-text-field
+            :label="t('device.fields.oledI2cAddress')"
+            :model-value="i2cAddressText"
+            :disabled="busy"
+            inputmode="text"
+            prefix="0x"
+            persistent-hint
+            :hint="t('device.dialog.oledDisplay.i2cAddressHint')"
+            @update:model-value="updateHex('i2cAddress', $event)"
+          />
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field :label="t('device.fields.oledLayoutWidth')" :model-value="currentValue.layoutWidth" :disabled="busy" inputmode="numeric" type="number" min="1" @update:model-value="updateNumber('layoutWidth', $event)" />
@@ -53,11 +62,18 @@ const fallbackValue: OledDisplay.CreateDraft = {
   typeName: 'oled_display',
 }
 const currentValue = computed<FormValue>(() => props.modelValue ?? fallbackValue)
+const i2cAddressText = computed(() => OledDisplay.formatI2cAddress(currentValue.value.i2cAddress))
 const dependencyDevices = computed(() => deviceStore.devices.filter(device => deviceTypeIdFromName(device.record.typeName) === I2C_BUS_DEVICE_TYPE_ID))
 const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ title: `${device.config.name} #${device.record.id}`, value: device.record.id })))
 const dependencyRules = computed(() => [
   (value: unknown) => Number(value) > 0 || t('device.dialog.oledDisplay.noDependency'),
 ])
+
+function updateHex(key: 'i2cAddress', value: string | number): void {
+  const numeric = OledDisplay.parseI2cAddress(value)
+  if (!Number.isFinite(numeric) || numeric < 0 || numeric > 0x7F) return
+  emit('update:modelValue', { ...fallbackValue, ...(currentValue.value as Partial<OledDisplay.CreateDraft>), [key]: numeric } as FormValue)
+}
 
 function updateNumber(key: keyof Pick<OledDisplay.CreateDraft, 'i2cBusDeviceId' | 'i2cAddress' | 'layoutWidth' | 'layoutHeight'>, value: string | number): void {
   const numeric = Number(value)
