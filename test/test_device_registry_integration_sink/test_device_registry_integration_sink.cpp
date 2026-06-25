@@ -2,7 +2,7 @@
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/dummy/DummyDevice.h"
 #include "devices/registry/DeviceRegistry.h"
-#include "devices/registry/RetainedStateStore.h"
+#include "devices/registry/DeviceRetainedDataStore.h"
 #include "integrations/common/DeviceEventDispatcher.h"
 #include "integrations/common/DeviceIntegrationIdentity.h"
 
@@ -85,7 +85,7 @@ const DeviceEvent* findLastEvent(const std::vector<DeviceEvent>& events, DeviceE
 void test_integration_sink_observes_order_revisions_and_pending_flags() {
     MemoryConfigStorage storage;
     DeviceRegistryStore registryStore(storage);
-    RetainedStateStore retainedStore(storage);
+    DeviceRetainedDataStore retainedStore(storage);
     TEST_ASSERT_TRUE(registryStore.begin(false));
     TEST_ASSERT_TRUE(retainedStore.begin(false));
 

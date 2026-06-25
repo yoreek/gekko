@@ -1,6 +1,6 @@
 #include "devices/switch/SwitchDeviceBase.h"
 
-#include "devices/registry/RetainedStateStore.h"
+#include "devices/registry/DeviceRetainedDataStore.h"
 
 namespace ewfm {
 
@@ -83,7 +83,7 @@ bool SwitchDeviceBase::applyConfig(const DeviceConfigBlob& configBlob, uint32_t 
     return true;
 }
 
-DeviceValidationResult SwitchDeviceBase::saveRetainedState(RetainedStateStore& store) const {
+DeviceValidationResult SwitchDeviceBase::saveRetainedState(DeviceRetainedDataStore& store) const {
     if (!restorePreviousState()) {
         return {};
     }
@@ -94,7 +94,7 @@ DeviceValidationResult SwitchDeviceBase::saveRetainedState(RetainedStateStore& s
     return store.save(record);
 }
 
-DeviceValidationResult SwitchDeviceBase::loadRetainedState(RetainedStateStore& store) {
+DeviceValidationResult SwitchDeviceBase::loadRetainedState(DeviceRetainedDataStore& store) {
     SwitchRetainedStateRecord record{};
     const DeviceValidationResult result = store.load(deviceId(), record);
     if (!result.ok()) {

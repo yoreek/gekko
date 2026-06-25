@@ -115,7 +115,7 @@ DevicePersistencePolicy policyForCommand(const DeviceCommandType type) {
 } // namespace
 
 DeviceRegistry::DeviceRegistry(DeviceRegistryStore& store, const DeviceTypeRegistry& typeRegistry, IDeviceIdSource& idSource,
-                               RetainedStateStore* retainedStateStore, DeviceEventDispatcher* eventDispatcher)
+                               DeviceRetainedDataStore* retainedStateStore, DeviceEventDispatcher* eventDispatcher)
     : store_(store), typeRegistry_(typeRegistry), idSource_(idSource), retainedStateStore_(retainedStateStore),
       eventReporter_(eventDispatcher) {}
 
@@ -173,6 +173,10 @@ DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
     }
 
     refreshDependentRuntimeStates(now);
+
+    if (retainedStateStore_ != nullptr) {
+        (void)retainedStateStore_->clearLegacyNamespace();
+    }
 
     return {};
 }
@@ -980,6 +984,9 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
         ++registryRevision_;
         persistence_.clearConfigDirtyAfterImmediateFlush();
         (void)store_.removeRecord(deviceId);
+        if (retainedStateStore_ != nullptr) {
+            (void)retainedStateStore_->clearDevice(deviceId);
+        }
     } else {
         ++registryRevision_;
         persistence_.markIndexDirty(now);

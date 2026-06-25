@@ -19,8 +19,8 @@ public:
     OutputStateMask supportedOutputStateMask() const override;
     OutputState currentOutputState() const override;
     bool requestOutputState(OutputState state, uint32_t now) override;
-    DeviceValidationResult saveRetainedState(RetainedStateStore& store) const override;
-    DeviceValidationResult loadRetainedState(RetainedStateStore& store) override;
+    DeviceValidationResult saveRetainedState(DeviceRetainedDataStore& store) const override;
+    DeviceValidationResult loadRetainedState(DeviceRetainedDataStore& store) override;
     void clearRetainedStateDirty() override;
     void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
     void applyRetainedState(OutputState state);

@@ -19,7 +19,7 @@ using DeviceTypeId = uint16_t;
 using DeviceRevision = uint32_t;
 
 struct OneWireRomAddress;
-class RetainedStateStore;
+class DeviceRetainedDataStore;
 
 constexpr uint32_t kDeviceRegistrySchemaVersion = 1;
 constexpr uint16_t kDeviceRegistryIndexVersion = 2;
@@ -559,11 +559,11 @@ public:
         (void)baseConfig;
         return false;
     }
-    virtual DeviceValidationResult saveRetainedState(RetainedStateStore& store) const {
+    virtual DeviceValidationResult saveRetainedState(DeviceRetainedDataStore& store) const {
         (void)store;
         return {DeviceError::InvalidConfig, "device type does not support retained state"};
     }
-    virtual DeviceValidationResult loadRetainedState(RetainedStateStore& store) {
+    virtual DeviceValidationResult loadRetainedState(DeviceRetainedDataStore& store) {
         (void)store;
         return {DeviceError::InvalidConfig, "device type does not support retained state"};
     }

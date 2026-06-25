@@ -107,7 +107,7 @@ void test_registry_custom_switch_command_marks_retained_state_without_config_rev
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
-    RetainedStateStore retainedStore(storage);
+    DeviceRetainedDataStore retainedStore(storage);
     TEST_ASSERT_TRUE(retainedStore.begin(false));
     SequentialDeviceIdSource ids(100);
     DeviceTypeRegistry types = makeRegistry();

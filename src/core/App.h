@@ -5,7 +5,7 @@
 #include "devices/core/DeviceTypes.h"
 #include "devices/registry/DeviceRegistry.h"
 #include "devices/registry/DeviceRegistryStore.h"
-#include "devices/registry/RetainedStateStore.h"
+#include "devices/registry/DeviceRetainedDataStore.h"
 #include "integrations/common/DeviceEventDispatcher.h"
 #include "platform/ArduinoClock.h"
 #include "platform/ArduinoOtaService.h"
@@ -38,7 +38,7 @@ private:
     WifiManager wifiManager_;
     DeviceTypeRegistry deviceTypeRegistry_{DeviceTypeRegistry::withDefaults()};
     DeviceRegistryStore deviceRegistryStore_;
-    RetainedStateStore retainedStateStore_;
+    DeviceRetainedDataStore retainedStateStore_;
     DeviceEventDispatcher deviceEventDispatcher_{};
 #if defined(ARDUINO)
     EspRandomDeviceIdSource deviceIdSource_;

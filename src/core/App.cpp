@@ -70,11 +70,11 @@ bool App::begin() {
 #endif
     EWFM_BOOT_PRINTF("BOOT App::begin retainedStateStore\n");
     if (!retainedStateStore_.begin(false)) {
-        EWFM_BOOT_PRINTF("BOOT App::begin RetainedStateStore failed\n");
+        EWFM_BOOT_PRINTF("BOOT App::begin DeviceRetainedDataStore failed\n");
         return false;
     }
 #if EWFM_BOOT_PROBE_STAGE <= 4
-    EWFM_BOOT_PRINTF("BOOT App::begin probe stop after RetainedStateStore\n");
+    EWFM_BOOT_PRINTF("BOOT App::begin probe stop after DeviceRetainedDataStore\n");
     return true;
 #endif
     EWFM_BOOT_PRINTF("BOOT App::begin dashboardLayoutStore\n");

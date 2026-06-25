@@ -47,7 +47,7 @@ void test_gpio_switch_registry_create_command_retain_reload_and_delete() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
-    RetainedStateStore retainedStore(storage);
+    DeviceRetainedDataStore retainedStore(storage);
     TEST_ASSERT_TRUE(retainedStore.begin(false));
     SequentialDeviceIdSource ids(200);
     DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();

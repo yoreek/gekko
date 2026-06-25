@@ -1,7 +1,7 @@
 #include "config/MemoryConfigStorage.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/registry/DeviceRegistry.h"
-#include "devices/registry/RetainedStateStore.h"
+#include "devices/registry/DeviceRetainedDataStore.h"
 #include "devices/switch/BinarySwitchDeviceBase.h"
 #include "devices/switch/TriStateSwitchDeviceBase.h"
 #include "devices/thermostat/ThermostatDevice.h"
@@ -309,7 +309,7 @@ void test_runtime_capabilities_are_exposed() {
 
 void test_registry_captures_retained_state_after_internal_switch_output_change() {
     MemoryConfigStorage storage;
-    RetainedStateStore retainedStore(storage);
+    DeviceRetainedDataStore retainedStore(storage);
     TEST_ASSERT_TRUE(retainedStore.begin(false));
 
     DeviceRegistryStore registryStore(storage);

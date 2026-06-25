@@ -6,7 +6,7 @@
 #include "devices/registry/DeviceRegistryPersistenceCoordinator.h"
 #include "devices/registry/DeviceRegistryStore.h"
 #include "devices/registry/DeviceRuntimeStore.h"
-#include "devices/registry/RetainedStateStore.h"
+#include "devices/registry/DeviceRetainedDataStore.h"
 
 #include <map>
 #include <memory>
@@ -66,7 +66,7 @@ public:
     static constexpr uint32_t kPersistenceMaxDelayMs = 2000;
 
     DeviceRegistry(DeviceRegistryStore& store, const DeviceTypeRegistry& typeRegistry, IDeviceIdSource& idSource,
-                   RetainedStateStore* retainedStateStore = nullptr, DeviceEventDispatcher* eventDispatcher = nullptr);
+                   DeviceRetainedDataStore* retainedStateStore = nullptr, DeviceEventDispatcher* eventDispatcher = nullptr);
 
     DeviceValidationResult begin(uint32_t now = 0);
     void tick(uint32_t now);
@@ -140,7 +140,7 @@ private:
     DeviceRegistryStore& store_;
     const DeviceTypeRegistry& typeRegistry_;
     IDeviceIdSource& idSource_;
-    RetainedStateStore* retainedStateStore_{nullptr};
+    DeviceRetainedDataStore* retainedStateStore_{nullptr};
     DeviceRegistryEventReporter eventReporter_{};
     DeviceRegistryPersistenceCoordinator persistence_{};
     DeviceRuntimeMap runtimes_{};

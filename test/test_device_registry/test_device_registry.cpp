@@ -190,13 +190,13 @@ struct CountingRuntime final : public IDeviceRuntime {
     bool retainedStateDirty() const override {
         return retainedStateDirty_;
     }
-    DeviceValidationResult saveRetainedState(RetainedStateStore& store) const override {
+    DeviceValidationResult saveRetainedState(DeviceRetainedDataStore& store) const override {
         CountingRetainedStateRecord record{};
         record.deviceId = deviceId_;
         record.value = retainedValue_;
         return store.save(record);
     }
-    DeviceValidationResult loadRetainedState(RetainedStateStore& store) override {
+    DeviceValidationResult loadRetainedState(DeviceRetainedDataStore& store) override {
         CountingRetainedStateRecord record{};
         const DeviceValidationResult result = store.load(deviceId_, record);
         if (result.ok()) {
@@ -1169,7 +1169,7 @@ void test_registry_set_deps_command_normalization() {
 void test_registry_emits_required_event_kinds() {
     MemoryConfigStorage storage;
     DeviceRegistryStore registryStore(storage);
-    RetainedStateStore retainedStore(storage);
+    DeviceRetainedDataStore retainedStore(storage);
     TEST_ASSERT_TRUE(registryStore.begin(false));
     TEST_ASSERT_TRUE(retainedStore.begin(false));
 
@@ -1580,7 +1580,7 @@ void test_registry_max_delay_flushes_after_repeated_dirty_updates() {
 void test_registry_coalesces_retained_state_updates() {
     MemoryConfigStorage storage;
     DeviceRegistryStore registryStore(storage);
-    RetainedStateStore retainedStore(storage);
+    DeviceRetainedDataStore retainedStore(storage);
     TEST_ASSERT_TRUE(registryStore.begin(false));
     TEST_ASSERT_TRUE(retainedStore.begin(false));
     FixedDeviceIdSource idSource({501, 502});
