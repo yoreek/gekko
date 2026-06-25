@@ -292,6 +292,9 @@ export default {
         scanAction: 'Scan dependency',
         resolution: '{value}-bit',
       },
+      oledDisplay: {
+        noDependency: 'Create an I2C bus device before adding an OLED display.',
+      },
       thermostat: {
         noTemperatureSensor: 'Create or connect a DS18B20 temperature sensor before configuring the thermostat.',
         noSwitch: 'Create or connect a GPIO switch before configuring the thermostat.',

@@ -35,7 +35,11 @@ export namespace OledDisplay {
       i2cAddress: 60,
       layoutWidth: 128,
       layoutHeight: 64,
-      layout: { schemaVersion: 1, activePageId: 'main', pages: [] },
+      layout: {
+        schemaVersion: 1,
+        activePageId: 'main',
+        pages: [{ id: 'main', name: 'Main', order: 0, widgets: [] }],
+      },
     }
   }
 
@@ -43,6 +47,8 @@ export namespace OledDisplay {
     const defaults = defaultConfig()
     if (typeof value !== 'object' || value === null || Array.isArray(value)) return defaults
     const raw = value as Record<string, unknown>
+    const layoutRaw = raw.layout
+    const layoutObject = typeof layoutRaw === 'object' && layoutRaw !== null && !Array.isArray(layoutRaw) ? (layoutRaw as Record<string, unknown>) : null
     return {
       name: typeof raw.name === 'string' ? raw.name : defaults.name,
       enabled: typeof raw.enabled === 'boolean' ? raw.enabled : defaults.enabled,
@@ -52,18 +58,18 @@ export namespace OledDisplay {
       layoutWidth: typeof raw.layoutWidth === 'number' ? raw.layoutWidth : defaults.layoutWidth,
       layoutHeight: typeof raw.layoutHeight === 'number' ? raw.layoutHeight : defaults.layoutHeight,
       layout:
-        typeof raw.layout === 'object' && raw.layout !== null && !Array.isArray(raw.layout)
+        layoutObject !== null
           ? {
               schemaVersion:
-                typeof (raw.layout as Record<string, unknown>).schemaVersion === 'number'
-                  ? ((raw.layout as Record<string, unknown>).schemaVersion as number)
+                typeof layoutObject.schemaVersion === 'number'
+                  ? (layoutObject.schemaVersion as number)
                   : defaults.layout.schemaVersion,
               activePageId:
-                typeof (raw.layout as Record<string, unknown>).activePageId === 'string'
-                  ? ((raw.layout as Record<string, unknown>).activePageId as string)
+                typeof layoutObject.activePageId === 'string'
+                  ? (layoutObject.activePageId as string)
                   : defaults.layout.activePageId,
-              pages: Array.isArray((raw.layout as Record<string, unknown>).pages)
-                ? ((raw.layout as Record<string, unknown>).pages as LayoutPage[])
+              pages: Array.isArray(layoutObject.pages) && layoutObject.pages.length > 0
+                ? (layoutObject.pages as LayoutPage[])
                 : defaults.layout.pages,
             }
           : defaults.layout,
@@ -95,6 +101,9 @@ export namespace OledDisplay {
       }
       return commands
     }
-    protected extractCreateConfig(draft: CreateDraft): ConfigDraft { return { ...draft } }
+    protected extractCreateConfig(draft: CreateDraft): ConfigDraft {
+      const { typeName: _typeName, ...config } = draft
+      return config
+    }
   }
 }

@@ -39,6 +39,12 @@ bool copyText(char* dest, size_t capacity, const char* source) {
     return true;
 }
 
+OledDisplayLayoutPageV1 defaultLayoutPage() {
+    OledDisplayLayoutPageV1 page{};
+    copyText(page.id, sizeof(page.id), "main");
+    return page;
+}
+
 bool validateLayout(const OledDisplayLayoutRecordV1& layout) {
     if (layout.recordVersion != 1U || layout.schemaVersion != kOledDisplayLayoutSchemaVersion) {
         return false;
@@ -61,7 +67,13 @@ bool validateLayout(const OledDisplayLayoutRecordV1& layout) {
 
 void writeOledDisplayLayoutJson(const OledDisplayLayoutRecordV1& layout, JsonObject output) {
     output["schemaVersion"] = layout.schemaVersion;
-    output["activePageIndex"] = layout.activePageIndex;
+    const char* activePageId = "main";
+    if (layout.activePageIndex < layout.pages.size()) {
+        activePageId = layout.pages[layout.activePageIndex].id;
+    } else if (!layout.pages.empty()) {
+        activePageId = layout.pages.front().id;
+    }
+    output["activePageId"] = activePageId;
     JsonArray pages = output.createNestedArray("pages");
     for (const OledDisplayLayoutPageV1& page : layout.pages) {
         JsonObject pageJson = pages.createNestedObject();
@@ -86,7 +98,9 @@ bool parseOledDisplayLayoutJson(const JsonObjectConst& input, OledDisplayLayoutR
     layout.deviceId = 0;
     layout.recordVersion = 1;
     layout.schemaVersion = input["schemaVersion"] | kOledDisplayLayoutSchemaVersion;
-    layout.activePageIndex = input["activePageIndex"] | 0U;
+    const char* activePageId = input["activePageId"] | nullptr;
+    const bool hasActivePageIndex = !input["activePageIndex"].isNull();
+    const uint8_t requestedActivePageIndex = input["activePageIndex"] | 0U;
 
     const JsonArrayConst pages = input["pages"].as<JsonArrayConst>();
     if (pages.isNull()) {
@@ -133,10 +147,29 @@ bool parseOledDisplayLayoutJson(const JsonObjectConst& input, OledDisplayLayoutR
     }
 
     if (layout.pages.empty()) {
-        return false;
+        layout.pages.push_back(defaultLayoutPage());
     }
+
+    if (activePageId != nullptr && activePageId[0] != '\0') {
+        bool found = false;
+        for (size_t index = 0; index < layout.pages.size(); ++index) {
+            if (std::strcmp(layout.pages[index].id, activePageId) == 0) {
+                layout.activePageIndex = static_cast<uint8_t>(index);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            layout.activePageIndex = 0U;
+        }
+    } else if (hasActivePageIndex) {
+        layout.activePageIndex = requestedActivePageIndex;
+    } else {
+        layout.activePageIndex = 0U;
+    }
+
     if (layout.activePageIndex >= layout.pages.size()) {
-        return false;
+        layout.activePageIndex = 0U;
     }
     return validateLayout(layout);
 }

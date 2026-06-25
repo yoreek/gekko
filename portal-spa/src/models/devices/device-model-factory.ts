@@ -5,6 +5,7 @@ import { Ds18b20 } from '@/models/devices/ds18b20'
 import { Dummy } from '@/models/devices/dummy'
 import { GpioSwitch } from '@/models/devices/gpio-switch'
 import { I2cBus } from '@/models/devices/i2c-bus'
+import { OledDisplay } from '@/models/devices/oled-display'
 import { OneWireBus } from '@/models/devices/onewire-bus'
 import { Thermostat } from '@/models/devices/thermostat'
 import { UnknownDevice } from '@/models/devices/unknown-device'
@@ -16,6 +17,7 @@ const deviceModelsByTypeId: Record<number, BaseDevice<any, any, any>> = {
   [deviceTypeIdFromName('gpio_switch')]: new GpioSwitch.Device(),
   [deviceTypeIdFromName('onewire_bus')]: new OneWireBus.Device(),
   [deviceTypeIdFromName('i2c_bus')]: new I2cBus.Device(),
+  [deviceTypeIdFromName('oled_display')]: new OledDisplay.Device(),
   [deviceTypeIdFromName('ds18b20_temperature_sensor')]: new Ds18b20.Device(),
   [deviceTypeIdFromName('thermostat')]: new Thermostat.Device(),
 }

@@ -260,6 +260,9 @@ export default {
         scanAction: 'Сканировать зависимость',
         resolution: '{value}-бит',
       },
+      oledDisplay: {
+        noDependency: 'Перед добавлением OLED дисплея создайте устройство I2C шины.',
+      },
       thermostat: {
         noTemperatureSensor: 'Сначала подключите датчик температуры DS18B20.',
         noSwitch: 'Сначала подключите GPIO выключатель.',

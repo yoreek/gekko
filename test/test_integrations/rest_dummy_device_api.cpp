@@ -158,7 +158,7 @@ void test_oled_device_api_adapter_encodes_layout_update_payload() {
     config["layoutHeight"] = 64;
     JsonObject layout = config.createNestedObject("layout");
     layout["schemaVersion"] = 1;
-    layout["activePageIndex"] = 0;
+    layout["activePageId"] = "main";
     JsonArray pages = layout.createNestedArray("pages");
     JsonObject page = pages.createNestedObject();
     page["id"] = "main";
@@ -191,6 +191,7 @@ void test_oled_device_api_adapter_encodes_layout_update_payload() {
     JsonObject output = outputDoc.to<JsonObject>();
     OledDisplayDeviceApiAdapter::instance().writeDeviceJson(runtime, runtime.status(), output);
     TEST_ASSERT_TRUE(output["config"]["layout"].is<JsonObjectConst>());
+    TEST_ASSERT_EQUAL_STRING("main", output["config"]["layout"]["activePageId"].as<const char*>());
 }
 
 int main(int, char**) {

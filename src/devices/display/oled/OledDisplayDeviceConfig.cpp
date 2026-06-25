@@ -30,8 +30,8 @@ bool OledDisplayDeviceConfigV1::parseJson(const JsonObjectConst& input, const ch
             error = "oled display i2c bus device id must be numeric";
             return false;
         }
-        const long parsed = busDeviceId.as<long>();
-        if (parsed < 0 || static_cast<unsigned long>(parsed) > 0xFFFFFFFFUL) {
+        const unsigned long parsed = busDeviceId.as<unsigned long>();
+        if (parsed > 0xFFFFFFFFUL) {
             error = "oled display i2c bus device id is out of bounds";
             return false;
         }

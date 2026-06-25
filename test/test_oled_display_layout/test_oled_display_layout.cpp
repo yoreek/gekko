@@ -1,6 +1,7 @@
 #include "config/MemoryConfigStorage.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/display/oled/OledDisplayDevice.h"
+#include "devices/display/oled/OledDisplayDeviceConfig.h"
 #include "devices/display/oled/OledDisplayLayoutCodec.h"
 #include "devices/display/oled/OledDisplayLayoutStore.h"
 #include "devices/registry/DeviceRegistry.h"
@@ -70,7 +71,7 @@ void fillOledDeviceDocument(StaticJsonDocument<1024>& doc, bool includeLayout) {
     }
     JsonObject layout = config.createNestedObject("layout");
     layout["schemaVersion"] = 1;
-    layout["activePageIndex"] = 0;
+    layout["activePageId"] = "main";
     JsonArray pages = layout.createNestedArray("pages");
     JsonObject page = pages.createNestedObject();
     page["id"] = "main";
@@ -99,6 +100,21 @@ void test_oled_layout_codec_round_trip_json() {
     TEST_ASSERT_EQUAL_STRING(original.pages[0].id, decoded.pages[0].id);
     TEST_ASSERT_EQUAL_UINT8(original.pages[0].widgets[1].bindingKind, decoded.pages[0].widgets[1].bindingKind);
     TEST_ASSERT_EQUAL_STRING(original.pages[0].widgets[1].text, decoded.pages[0].widgets[1].text);
+    TEST_ASSERT_EQUAL_UINT8(0, decoded.activePageIndex);
+}
+
+void test_oled_layout_codec_defaults_empty_pages_to_main_page() {
+    StaticJsonDocument<512> doc;
+    JsonObject root = doc.to<JsonObject>();
+    root["schemaVersion"] = 1;
+    root["activePageId"] = "main";
+    root.createNestedArray("pages");
+
+    OledDisplayLayoutRecordV1 decoded{};
+    TEST_ASSERT_TRUE(parseOledDisplayLayoutJson(root, decoded));
+    TEST_ASSERT_EQUAL_UINT8(1, decoded.pages.size());
+    TEST_ASSERT_EQUAL_STRING("main", decoded.pages[0].id);
+    TEST_ASSERT_EQUAL_UINT8(0, decoded.activePageIndex);
 }
 
 void test_oled_layout_store_round_trip_binary() {
@@ -201,11 +217,57 @@ void test_oled_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_EQUAL_STRING("temp", reloadedRuntime->layout().pages[0].widgets[0].text);
 }
 
+void test_oled_layout_create_request_accepts_empty_pages() {
+    StaticJsonDocument<1024> doc;
+    fillOledDeviceDocument(doc, false);
+    JsonObject config = doc["config"].as<JsonObject>();
+    JsonObject layout = config.createNestedObject("layout");
+    layout["activePageId"] = "main";
+    layout.createNestedArray("pages");
+
+    DeviceCreateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(OledDisplayDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error));
+    TEST_ASSERT_NULL(error);
+    TEST_ASSERT_TRUE(request.configBlob.size() > 0U);
+
+    DeviceCreatePersistenceRequest persistedRequest{};
+    TEST_ASSERT_TRUE(OledDisplayDeviceApiAdapter::instance().parseCreatePersistedStateRequest(doc.as<JsonObjectConst>(), request,
+                                                                                              persistedRequest, error));
+    TEST_ASSERT_NULL(error);
+    TEST_ASSERT_TRUE(persistedRequest.persistedStateProvided);
+    OledDisplayLayoutRecordV1 decoded{};
+    TEST_ASSERT_TRUE(
+        decodeOledDisplayLayoutBinary(persistedRequest.persistedStateBlob.data(), persistedRequest.persistedStateBlob.size(), decoded));
+    TEST_ASSERT_EQUAL_UINT8(1, decoded.pages.size());
+    TEST_ASSERT_EQUAL_STRING("main", decoded.pages[0].id);
+}
+
+void test_oled_layout_create_request_accepts_large_i2c_bus_device_id() {
+    StaticJsonDocument<1024> doc;
+    fillOledDeviceDocument(doc, true);
+    JsonObject config = doc["config"].as<JsonObject>();
+    config["i2cBusDeviceId"] = 4249059392UL;
+
+    DeviceCreateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(OledDisplayDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error));
+    TEST_ASSERT_NULL(error);
+
+    OledDisplayDeviceConfigV1 decoded{};
+    TEST_ASSERT_TRUE(
+        decodeOledDisplayDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), decoded));
+    TEST_ASSERT_EQUAL_UINT32(4249059392UL, decoded.i2cBusDeviceId);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_oled_layout_codec_round_trip_json);
+    RUN_TEST(test_oled_layout_codec_defaults_empty_pages_to_main_page);
     RUN_TEST(test_oled_layout_store_round_trip_binary);
     RUN_TEST(test_oled_layout_store_rejects_invalid_device_id);
     RUN_TEST(test_oled_layout_update_round_trip_via_registry_binary_store);
+    RUN_TEST(test_oled_layout_create_request_accepts_empty_pages);
+    RUN_TEST(test_oled_layout_create_request_accepts_large_i2c_bus_device_id);
     return UNITY_END();
 }
