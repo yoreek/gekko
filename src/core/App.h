@@ -3,9 +3,11 @@
 #include "config/ConfigStore.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/core/DeviceTypes.h"
+#include "devices/display/oled/OledDisplayLayoutStore.h"
 #include "devices/registry/DeviceRegistry.h"
 #include "devices/registry/DeviceRegistryStore.h"
 #include "devices/registry/DeviceRetainedDataStore.h"
+#include "devices/registry/DeviceScopedDataStore.h"
 #include "integrations/common/DeviceEventDispatcher.h"
 #include "platform/ArduinoClock.h"
 #include "platform/ArduinoOtaService.h"
@@ -32,6 +34,7 @@ private:
     PreferencesConfigStorage storage_;
     PreferencesConfigStorage deviceStorage_;
     PreferencesConfigStorage retainedStateStorage_;
+    PreferencesConfigStorage oledDisplayLayoutStorage_;
     PreferencesConfigStorage dashboardLayoutStorage_;
     ArduinoWifiDriver wifiDriver_;
     ConfigStore configStore_;
@@ -39,6 +42,8 @@ private:
     DeviceTypeRegistry deviceTypeRegistry_{DeviceTypeRegistry::withDefaults()};
     DeviceRegistryStore deviceRegistryStore_;
     DeviceRetainedDataStore retainedStateStore_;
+    DeviceScopedDataStore deviceScopedDataStore_;
+    OledDisplayLayoutStore oledDisplayLayoutStore_;
     DeviceEventDispatcher deviceEventDispatcher_{};
 #if defined(ARDUINO)
     EspRandomDeviceIdSource deviceIdSource_;

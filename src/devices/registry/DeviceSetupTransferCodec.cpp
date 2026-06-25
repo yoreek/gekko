@@ -5,6 +5,8 @@
 #include "devices/bus/onewire/OneWireBusConfig.h"
 #include "devices/bus/onewire/OneWireBusDevice.h"
 #include "devices/core/DeviceBaseConfig.h"
+#include "devices/display/oled/OledDisplayDevice.h"
+#include "devices/display/oled/OledDisplayDeviceConfig.h"
 #include "devices/dummy/DummyDevice.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorConfig.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
@@ -70,6 +72,8 @@ const char* deviceTypeNameFromId(const DeviceTypeId typeId) {
         return "thermostat";
     case 6:
         return "i2c_bus";
+    case 7:
+        return "oled_display";
     default:
         return "unknown";
     }
@@ -99,6 +103,10 @@ bool deviceTypeIdFromTransferJson(const JsonObjectConst& input, DeviceTypeId& ty
     }
     if (std::strcmp(typeName, "i2c_bus") == 0) {
         typeId = 6U;
+        return true;
+    }
+    if (std::strcmp(typeName, "oled_display") == 0) {
+        typeId = 7U;
         return true;
     }
 
@@ -182,6 +190,26 @@ bool encodeTransferConfigBlob(const JsonObjectConst& input, const DeviceBaseConf
         size = i2cBusDeviceConfigSize(config);
         if (!encodeI2cBusDeviceConfig(config, buffer, size)) {
             error = "i2c bus config is invalid";
+            return false;
+        }
+        break;
+    }
+    case 7: {
+        if (configVersion != 1U) {
+            error = "unsupported oled display config version";
+            return false;
+        }
+        OledDisplayDeviceConfigV1 config{};
+        const char* parseError = nullptr;
+        if (!config.parseJson(input, parseError)) {
+            error = parseError != nullptr ? parseError : "oled display config is invalid";
+            return false;
+        }
+        config.enabled = base.enabled;
+        std::memcpy(config.name, base.name, sizeof(config.name));
+        size = oledDisplayDeviceConfigSize(config);
+        if (!encodeOledDisplayDeviceConfig(config, buffer, size)) {
+            error = "oled display config is invalid";
             return false;
         }
         break;

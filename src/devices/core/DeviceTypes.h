@@ -20,6 +20,7 @@ using DeviceRevision = uint32_t;
 
 struct OneWireRomAddress;
 class DeviceRetainedDataStore;
+class DeviceScopedDataStore;
 
 constexpr uint32_t kDeviceRegistrySchemaVersion = 1;
 constexpr uint16_t kDeviceRegistryIndexVersion = 2;
@@ -43,6 +44,7 @@ enum class DeviceDependencyRole : uint8_t {
     TemperatureSensor = 2,
     Switch = 3,
     I2CBus = 4,
+    OledDisplay = 5,
 };
 
 struct DeviceDependencyLink {
@@ -122,6 +124,21 @@ public:
     virtual OutputStateMask supportedOutputStateMask() const = 0;
     virtual OutputState currentOutputState() const = 0;
     virtual bool requestOutputState(OutputState state, uint32_t now) = 0;
+};
+
+class IDevicePersistedState {
+public:
+    IDevicePersistedState() = default;
+    IDevicePersistedState(const IDevicePersistedState&) = delete;
+    IDevicePersistedState& operator=(const IDevicePersistedState&) = delete;
+    IDevicePersistedState(IDevicePersistedState&&) = delete;
+    IDevicePersistedState& operator=(IDevicePersistedState&&) = delete;
+    virtual ~IDevicePersistedState() = default;
+
+    virtual DeviceValidationResult loadPersistedState(DeviceScopedDataStore& store) = 0;
+    virtual DeviceValidationResult savePersistedState(DeviceScopedDataStore& store) const = 0;
+    virtual DeviceValidationResult clearPersistedState(DeviceScopedDataStore& store) = 0;
+    virtual DeviceValidationResult applyPersistedStateUpdate(const uint8_t* data, size_t size) = 0;
 };
 
 template <size_t kCapacity> struct BoundedText {

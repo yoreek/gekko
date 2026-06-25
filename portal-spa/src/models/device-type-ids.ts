@@ -3,8 +3,9 @@ export const GPIO_SWITCH_DEVICE_TYPE_ID = 2 as const
 export const ONEWIRE_BUS_DEVICE_TYPE_ID = 3 as const
 export const DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID = 4 as const
 export const THERMOSTAT_DEVICE_TYPE_ID = 5 as const
+export const OLED_DISPLAY_DEVICE_TYPE_ID = 7 as const
 
-export type DeviceTypeName = 'dummy' | 'gpio_switch' | 'onewire_bus' | 'ds18b20_temperature_sensor' | 'thermostat'
+export type DeviceTypeName = 'dummy' | 'gpio_switch' | 'onewire_bus' | 'ds18b20_temperature_sensor' | 'thermostat' | 'oled_display'
 export type DeviceTypeId = number
 
 const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
@@ -13,6 +14,7 @@ const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
   onewire_bus: ONEWIRE_BUS_DEVICE_TYPE_ID,
   ds18b20_temperature_sensor: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
   thermostat: THERMOSTAT_DEVICE_TYPE_ID,
+  oled_display: OLED_DISPLAY_DEVICE_TYPE_ID,
 }
 
 const deviceTypeNames: Record<DeviceTypeId, DeviceTypeName> = {
@@ -21,6 +23,7 @@ const deviceTypeNames: Record<DeviceTypeId, DeviceTypeName> = {
   [ONEWIRE_BUS_DEVICE_TYPE_ID]: 'onewire_bus',
   [DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID]: 'ds18b20_temperature_sensor',
   [THERMOSTAT_DEVICE_TYPE_ID]: 'thermostat',
+  [OLED_DISPLAY_DEVICE_TYPE_ID]: 'oled_display',
 }
 
 export function deviceTypeIdFromName(typeName: string | undefined | null): DeviceTypeId {

@@ -115,9 +115,14 @@ DevicePersistencePolicy policyForCommand(const DeviceCommandType type) {
 } // namespace
 
 DeviceRegistry::DeviceRegistry(DeviceRegistryStore& store, const DeviceTypeRegistry& typeRegistry, IDeviceIdSource& idSource,
-                               DeviceRetainedDataStore* retainedStateStore, DeviceEventDispatcher* eventDispatcher)
+                               DeviceRetainedDataStore* retainedStateStore, DeviceScopedDataStore* persistedStateStore,
+                               DeviceEventDispatcher* eventDispatcher)
     : store_(store), typeRegistry_(typeRegistry), idSource_(idSource), retainedStateStore_(retainedStateStore),
-      eventReporter_(eventDispatcher) {}
+      persistedStateStore_(persistedStateStore), eventReporter_(eventDispatcher) {}
+
+DeviceRegistry::DeviceRegistry(DeviceRegistryStore& store, const DeviceTypeRegistry& typeRegistry, IDeviceIdSource& idSource,
+                               DeviceRetainedDataStore* retainedStateStore, DeviceEventDispatcher* eventDispatcher)
+    : DeviceRegistry(store, typeRegistry, idSource, retainedStateStore, nullptr, eventDispatcher) {}
 
 DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
     runtimes_.clear();
@@ -969,6 +974,15 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
     if (descriptor != nullptr) {
         (void)removedTypeName.assign(descriptor->name);
     }
+    if (persistedStateStore_ != nullptr) {
+        if (IDevicePersistedState* persistedRuntime = persistedStateRuntime(deviceId); persistedRuntime != nullptr) {
+            const DeviceValidationResult persistedResult = persistedRuntime->clearPersistedState(*persistedStateStore_);
+            if (!persistedResult.ok() && persistedResult.error != DeviceError::MissingRecord) {
+                result.validation = persistedResult;
+                return result;
+            }
+        }
+    }
     clearRuntime(deviceId);
 
     if (policy == DevicePersistencePolicy::Immediate) {
@@ -982,6 +996,9 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
         (void)store_.removeRecord(deviceId);
         if (retainedStateStore_ != nullptr) {
             (void)retainedStateStore_->clearDevice(deviceId);
+        }
+        if (persistedStateStore_ != nullptr) {
+            (void)persistedStateStore_->clearDevice(deviceId);
         }
     } else {
         ++registryRevision_;
@@ -1016,6 +1033,14 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
     EWFM_DEVICE_REGISTRY_LOG_INFO("device deleted id=%u pending=%d", static_cast<unsigned>(deviceId),
                                   static_cast<int>(result.pendingPersistence));
     return result;
+}
+
+DeviceValidationResult DeviceRegistry::applyPersistedStateUpdate(DeviceId deviceId, const uint8_t* data, size_t size) {
+    IDevicePersistedState* persistedRuntime = persistedStateRuntime(deviceId);
+    if (persistedRuntime == nullptr) {
+        return {DeviceError::InvalidConfig, "device type does not support persisted state"};
+    }
+    return persistedRuntime->applyPersistedStateUpdate(data, size);
 }
 
 DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint32_t now) {
@@ -1201,6 +1226,20 @@ DeviceValidationResult DeviceRegistry::flushNow() {
             }
 
             const DeviceValidationResult saveResult = runtimePtr->saveRetainedState(*retainedStateStore_);
+            if (!saveResult.ok()) {
+                return saveResult;
+            }
+        }
+    }
+
+    if (persistedStateStore_ != nullptr) {
+        for (const DeviceId deviceId : dirtyConfigIds) {
+            const IDevicePersistedState* persistedRuntime = persistedStateRuntime(deviceId);
+            if (persistedRuntime == nullptr) {
+                continue;
+            }
+
+            const DeviceValidationResult saveResult = persistedRuntime->savePersistedState(*persistedStateStore_);
             if (!saveResult.ok()) {
                 return saveResult;
             }
@@ -1647,6 +1686,15 @@ DeviceValidationResult DeviceRegistry::reloadRuntimeFor(DeviceRuntimeMap& target
             return retainedResult;
         }
     }
+    if (persistedStateStore_ != nullptr) {
+        if (IDevicePersistedState* persistedRuntime = dynamic_cast<IDevicePersistedState*>(entry.runtime.get());
+            persistedRuntime != nullptr) {
+            const DeviceValidationResult persistedResult = persistedRuntime->loadPersistedState(*persistedStateStore_);
+            if (!persistedResult.ok() && persistedResult.error != DeviceError::MissingRecord) {
+                return persistedResult;
+            }
+        }
+    }
     target[record.header.deviceId] = std::move(entry);
     return {};
 }
@@ -1708,6 +1756,16 @@ void DeviceRegistry::clearRuntime(DeviceId deviceId) {
     }
     runtimes_.erase(deviceId);
     eventReporter_.clearRuntimeStatus(deviceId);
+}
+
+IDevicePersistedState* DeviceRegistry::persistedStateRuntime(DeviceId deviceId) {
+    IDeviceRuntime* runtimePtr = runtime(deviceId);
+    return runtimePtr == nullptr ? nullptr : dynamic_cast<IDevicePersistedState*>(runtimePtr);
+}
+
+const IDevicePersistedState* DeviceRegistry::persistedStateRuntime(DeviceId deviceId) const {
+    const IDeviceRuntime* runtimePtr = runtime(deviceId);
+    return runtimePtr == nullptr ? nullptr : dynamic_cast<const IDevicePersistedState*>(runtimePtr);
 }
 
 } // namespace ewfm

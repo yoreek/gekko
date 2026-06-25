@@ -5,6 +5,7 @@
 #include "integrations/rest/dummy/DummyDeviceApiAdapter.h"
 #include "integrations/rest/gpio_switch/GpioSwitchDeviceApiAdapter.h"
 #include "integrations/rest/i2c_bus/I2cBusDeviceApiAdapter.h"
+#include "integrations/rest/oled_display/OledDisplayDeviceApiAdapter.h"
 #include "integrations/rest/onewire_bus/OneWireBusDeviceApiAdapter.h"
 #include "integrations/rest/thermostat/ThermostatDeviceApiAdapter.h"
 
@@ -62,8 +63,8 @@ void IDeviceApiAdapter::writeCommonDeviceJson(const IDeviceRuntime& runtime, con
     runtimeJson["effectiveStatus"] = deviceStatusToString(effectiveStatus);
 }
 
-bool IDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
-                                                 DeviceConfigUpdateRequest& request, const char*& error) const {
+bool IDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, IDeviceRuntime& runtime, DeviceConfigUpdateRequest& request,
+                                                 const char*& error) const {
     (void)runtime;
     request = {};
     if (input["config"].isNull()) {
@@ -72,6 +73,15 @@ bool IDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, c
     }
     error = "typed config update is unsupported";
     return false;
+}
+
+bool IDeviceApiAdapter::parseCreatePersistedStateRequest(const JsonObjectConst& input, const DeviceCreateRequest& request,
+                                                         DeviceCreatePersistenceRequest& persistedRequest, const char*& error) const {
+    (void)input;
+    (void)request;
+    persistedRequest = {};
+    error = nullptr;
+    return true;
 }
 
 DeviceValidationResult IDeviceApiAdapter::validateCreateRequest(const DeviceCreateRequest& request, const DeviceRegistry& registry) const {
@@ -137,6 +147,7 @@ DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(GpioSwitchDeviceApiAdapter::instance());
     (void)registry.registerAdapter(OneWireBusDeviceApiAdapter::instance());
     (void)registry.registerAdapter(I2cBusDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(OledDisplayDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Ds18b20TemperatureSensorDeviceApiAdapter::instance());
     (void)registry.registerAdapter(ThermostatDeviceApiAdapter::instance());
     return registry;

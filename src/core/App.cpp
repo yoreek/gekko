@@ -30,8 +30,10 @@ constexpr uint32_t kTick1sIntervalMs = 1000;
 
 App::App()
     : configStore_(storage_), wifiManager_(wifiDriver_, &configStore_), deviceRegistryStore_(deviceStorage_),
-      retainedStateStore_(retainedStateStorage_),
-      deviceRegistry_(deviceRegistryStore_, deviceTypeRegistry_, deviceIdSource_, &retainedStateStore_, &deviceEventDispatcher_),
+      retainedStateStore_(retainedStateStorage_), deviceScopedDataStore_(oledDisplayLayoutStorage_),
+      oledDisplayLayoutStore_(oledDisplayLayoutStorage_),
+      deviceRegistry_(deviceRegistryStore_, deviceTypeRegistry_, deviceIdSource_, &retainedStateStore_, &deviceScopedDataStore_,
+                      &deviceEventDispatcher_),
       dashboardLayoutStore_(dashboardLayoutStorage_, &deviceRegistry_),
       portalServer_(wifiManager_, wifiDriver_, &deviceRegistry_, &deviceEventDispatcher_, &dashboardLayoutStore_) {}
 
@@ -75,6 +77,15 @@ bool App::begin() {
     }
 #if EWFM_BOOT_PROBE_STAGE <= 4
     EWFM_BOOT_PRINTF("BOOT App::begin probe stop after DeviceRetainedDataStore\n");
+    return true;
+#endif
+    EWFM_BOOT_PRINTF("BOOT App::begin oledDisplayLayoutStore\n");
+    if (!oledDisplayLayoutStore_.begin(false)) {
+        EWFM_BOOT_PRINTF("BOOT App::begin OledDisplayLayoutStore failed\n");
+        return false;
+    }
+#if EWFM_BOOT_PROBE_STAGE <= 4
+    EWFM_BOOT_PRINTF("BOOT App::begin probe stop after OledDisplayLayoutStore\n");
     return true;
 #endif
     EWFM_BOOT_PRINTF("BOOT App::begin dashboardLayoutStore\n");

@@ -1,6 +1,11 @@
+#include "config/MemoryConfigStorage.h"
+#include "devices/display/oled/OledDisplayDevice.h"
+#include "devices/display/oled/OledDisplayLayoutCodec.h"
+#include "devices/display/oled/OledDisplayLayoutStore.h"
 #include "devices/dummy/DummyDevice.h"
 #include "integrations/common/DeviceApiAdapter.h"
 #include "integrations/rest/dummy/DummyDeviceApiAdapter.h"
+#include "integrations/rest/oled_display/OledDisplayDeviceApiAdapter.h"
 
 #include <ArduinoJson.h>
 #include <cstdio>
@@ -14,6 +19,7 @@ void test_onewire_api_adapter_rejects_invalid_config_shape();
 void test_onewire_api_adapter_serializes_runtime_scan_snapshot();
 void test_onewire_api_adapter_parses_update_config_request();
 void test_onewire_api_adapter_rejects_missing_update_config();
+void test_oled_device_api_adapter_encodes_layout_update_payload();
 
 namespace {
 
@@ -43,6 +49,33 @@ DummyDeviceConfigV1 makeDummyConfig() {
     config.enabled = true;
     std::snprintf(config.name, sizeof(config.name), "%s", "dummy-api");
     return config;
+}
+
+DeviceRegistryEntry makeOledRecord() {
+    DeviceRegistryEntry record{};
+    record.header.recordVersion = kDeviceRecordHeaderVersion;
+    record.header.deviceId = 77;
+    record.header.typeId = OledDisplayDevice::descriptor().typeId;
+    record.header.configVersion = OledDisplayDevice::descriptor().currentConfigVersion;
+    record.header.configRevision = 1;
+    record.status = DeviceStatus::Ready;
+    return record;
+}
+
+BoundedBlob<kMaxDeviceConfigBytes> encodeOledConfig() {
+    OledDisplayDeviceConfigV1 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "oled");
+    config.i2cBusDeviceId = 12;
+    config.i2cAddress = 0x3C;
+    config.layoutWidth = 128;
+    config.layoutHeight = 64;
+
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    BoundedBlob<kMaxDeviceConfigBytes> blob{};
+    TEST_ASSERT_TRUE(encodeOledDisplayDeviceConfig(config, buffer, oledDisplayDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(blob.assign(buffer, oledDisplayDeviceConfigSize(config)));
+    return blob;
 }
 
 } // namespace
@@ -110,6 +143,56 @@ void test_dummy_device_api_adapter_serializes_record() {
     TEST_ASSERT_EQUAL_STRING("ready", output["runtime"]["effectiveStatus"].as<const char*>());
 }
 
+void test_oled_device_api_adapter_encodes_layout_update_payload() {
+    const DeviceRegistryEntry record = makeOledRecord();
+    OledDisplayDevice runtime(record, encodeOledConfig());
+
+    StaticJsonDocument<1024> doc;
+    JsonObject root = doc.to<JsonObject>();
+    JsonObject config = root.createNestedObject("config");
+    config["name"] = "oled";
+    config["enabled"] = true;
+    config["i2cBusDeviceId"] = 12;
+    config["i2cAddress"] = 0x3C;
+    config["layoutWidth"] = 128;
+    config["layoutHeight"] = 64;
+    JsonObject layout = config.createNestedObject("layout");
+    layout["schemaVersion"] = 1;
+    layout["activePageIndex"] = 0;
+    JsonArray pages = layout.createNestedArray("pages");
+    JsonObject page = pages.createNestedObject();
+    page["id"] = "main";
+    JsonArray widgets = page.createNestedArray("widgets");
+    JsonObject widget = widgets.createNestedObject();
+    widget["bindingKind"] = static_cast<uint8_t>(OledDisplayLayoutBindingKind::ConstantText);
+    widget["x"] = 0;
+    widget["y"] = 0;
+    widget["width"] = 64;
+    widget["height"] = 16;
+    widget["text"] = "temp";
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(OledDisplayDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error));
+    TEST_ASSERT_NULL(error);
+    TEST_ASSERT_TRUE(request.persistedStateProvided);
+    TEST_ASSERT_TRUE(request.persistedStateBlob.size() > 0U);
+    TEST_ASSERT_EQUAL_UINT8(0, runtime.layout().pages.size());
+
+    OledDisplayLayoutRecordV1 decoded{};
+    TEST_ASSERT_TRUE(decodeOledDisplayLayoutBinary(request.persistedStateBlob.data(), request.persistedStateBlob.size(), decoded));
+    TEST_ASSERT_EQUAL_UINT32(runtime.deviceId(), decoded.deviceId);
+    TEST_ASSERT_EQUAL_UINT8(1, decoded.pages.size());
+    TEST_ASSERT_EQUAL_UINT8(1, decoded.pages[0].widgets.size());
+    TEST_ASSERT_EQUAL_STRING("main", decoded.pages[0].id);
+    TEST_ASSERT_EQUAL_STRING("temp", decoded.pages[0].widgets[0].text);
+
+    StaticJsonDocument<1024> outputDoc;
+    JsonObject output = outputDoc.to<JsonObject>();
+    OledDisplayDeviceApiAdapter::instance().writeDeviceJson(runtime, runtime.status(), output);
+    TEST_ASSERT_TRUE(output["config"]["layout"].is<JsonObjectConst>());
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_device_api_adapter_registry_resolves_dummy);
@@ -122,5 +205,6 @@ int main(int, char**) {
     RUN_TEST(test_onewire_api_adapter_serializes_runtime_scan_snapshot);
     RUN_TEST(test_onewire_api_adapter_parses_update_config_request);
     RUN_TEST(test_onewire_api_adapter_rejects_missing_update_config);
+    RUN_TEST(test_oled_device_api_adapter_encodes_layout_update_payload);
     return UNITY_END();
 }

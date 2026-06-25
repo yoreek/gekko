@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 namespace ewfm {
 
@@ -16,10 +17,12 @@ public:
     explicit DeviceScopedDataStore(IConfigStorage& storage);
 
     bool begin(bool readOnly = false);
+    DeviceValidationResult loadBlob(DeviceId deviceId, const char* dataType, std::vector<uint8_t>& blob);
+    DeviceValidationResult saveBlob(DeviceId deviceId, const char* dataType, const uint8_t* data, size_t size);
 
     template <typename TRecord> DeviceValidationResult load(DeviceId deviceId, const char* dataType, TRecord& record) {
         static_assert(std::is_trivially_copyable<TRecord>::value, "device scoped record must be trivially copyable");
-        static_assert(sizeof(TRecord) <= kMaxRetainedStateBytes, "device scoped record exceeds storage limit");
+        static_assert(sizeof(TRecord) <= kMaxDeviceConfigBytes, "device scoped record exceeds storage limit");
 
         record = {};
         record.deviceId = deviceId;
@@ -63,7 +66,7 @@ public:
 
     template <typename TRecord> DeviceValidationResult save(DeviceId deviceId, const char* dataType, const TRecord& record) {
         static_assert(std::is_trivially_copyable<TRecord>::value, "device scoped record must be trivially copyable");
-        static_assert(sizeof(TRecord) <= kMaxRetainedStateBytes, "device scoped record exceeds storage limit");
+        static_assert(sizeof(TRecord) <= kMaxDeviceConfigBytes, "device scoped record exceeds storage limit");
 
         if (record.deviceId == 0 || record.deviceId != deviceId) {
             return {DeviceError::InvalidDeviceId, "device scoped data device id is invalid"};

@@ -15,6 +15,7 @@
 namespace ewfm {
 
 class DeviceEventDispatcher;
+class DeviceScopedDataStore;
 
 struct DeviceCreateRequest {
     DeviceTypeId typeId{0};
@@ -66,7 +67,10 @@ public:
     static constexpr uint32_t kPersistenceMaxDelayMs = 2000;
 
     DeviceRegistry(DeviceRegistryStore& store, const DeviceTypeRegistry& typeRegistry, IDeviceIdSource& idSource,
-                   DeviceRetainedDataStore* retainedStateStore = nullptr, DeviceEventDispatcher* eventDispatcher = nullptr);
+                   DeviceRetainedDataStore* retainedStateStore = nullptr, DeviceScopedDataStore* persistedStateStore = nullptr,
+                   DeviceEventDispatcher* eventDispatcher = nullptr);
+    DeviceRegistry(DeviceRegistryStore& store, const DeviceTypeRegistry& typeRegistry, IDeviceIdSource& idSource,
+                   DeviceRetainedDataStore* retainedStateStore, DeviceEventDispatcher* eventDispatcher);
 
     DeviceValidationResult begin(uint32_t now = 0);
     void tick(uint32_t now);
@@ -108,6 +112,7 @@ public:
     DeviceValidationResult flushNow();
     DeviceValidationResult restore(const DeviceRegistrySnapshot& snapshot, const DeviceConfigBlobMap& configBlobs,
                                    uint32_t registryRevision, uint32_t now);
+    DeviceValidationResult applyPersistedStateUpdate(DeviceId deviceId, const uint8_t* data, size_t size);
 
     bool dirtyIndex() const;
     std::vector<DeviceId> dirtyConfigRecordIds() const;
@@ -136,11 +141,14 @@ private:
     void clearRuntime(DeviceId deviceId);
     void emitRuntimeStatusChanges();
     DeviceValidationResult captureRuntimeRetainedState(DeviceId deviceId, uint32_t now);
+    IDevicePersistedState* persistedStateRuntime(DeviceId deviceId);
+    const IDevicePersistedState* persistedStateRuntime(DeviceId deviceId) const;
 
     DeviceRegistryStore& store_;
     const DeviceTypeRegistry& typeRegistry_;
     IDeviceIdSource& idSource_;
     DeviceRetainedDataStore* retainedStateStore_{nullptr};
+    DeviceScopedDataStore* persistedStateStore_{nullptr};
     DeviceRegistryEventReporter eventReporter_{};
     DeviceRegistryPersistenceCoordinator persistence_{};
     DeviceRuntimeMap runtimes_{};

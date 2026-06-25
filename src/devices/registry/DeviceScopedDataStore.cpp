@@ -15,6 +15,41 @@ bool DeviceScopedDataStore::begin(bool readOnly) {
     return true;
 }
 
+DeviceValidationResult DeviceScopedDataStore::loadBlob(DeviceId deviceId, const char* dataType, std::vector<uint8_t>& blob) {
+    blob.clear();
+    bool opened = false;
+    if (!openDeviceNamespace(deviceId, true, opened)) {
+        return {DeviceError::MissingRecord, "device scoped data is missing"};
+    }
+    const std::string key = makeDataKey(dataType);
+    if (!storage_.getBlob(key.c_str(), blob) || blob.empty()) {
+        if (opened) {
+            storage_.end();
+        }
+        return {DeviceError::MissingRecord, "device scoped data is missing"};
+    }
+    if (opened) {
+        storage_.end();
+    }
+    return {};
+}
+
+DeviceValidationResult DeviceScopedDataStore::saveBlob(DeviceId deviceId, const char* dataType, const uint8_t* data, size_t size) {
+    if (deviceId == 0U) {
+        return {DeviceError::InvalidDeviceId, "device scoped data device id is invalid"};
+    }
+    bool opened = false;
+    if (!openDeviceNamespace(deviceId, false, opened)) {
+        return {DeviceError::StorageError, "failed to open device scoped storage"};
+    }
+    const std::string key = makeDataKey(dataType);
+    const bool ok = storage_.putBlob(key.c_str(), data, size);
+    if (opened) {
+        storage_.end();
+    }
+    return ok ? DeviceValidationResult{} : DeviceValidationResult{DeviceError::StorageError, "failed to persist device scoped data"};
+}
+
 bool DeviceScopedDataStore::remove(DeviceId deviceId, const char* dataType) {
     bool opened = false;
     if (!openDeviceNamespace(deviceId, false, opened)) {

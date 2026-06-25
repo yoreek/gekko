@@ -15,6 +15,13 @@ struct DeviceConfigUpdateRequest {
     bool depsProvided{false};
     std::array<DeviceDependencyLink, kMaxDeviceDependencies> deps{};
     uint8_t depCount{0};
+    BoundedBlob<kMaxDeviceConfigBytes> persistedStateBlob{};
+    bool persistedStateProvided{false};
+};
+
+struct DeviceCreatePersistenceRequest {
+    BoundedBlob<kMaxDeviceConfigBytes> persistedStateBlob{};
+    bool persistedStateProvided{false};
 };
 
 class IDeviceApiAdapter {
@@ -29,7 +36,9 @@ public:
     virtual DeviceTypeId typeId() const = 0;
     virtual const char* typeName() const = 0;
     virtual bool parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, const char*& error) const = 0;
-    virtual bool parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime, DeviceConfigUpdateRequest& request,
+    virtual bool parseCreatePersistedStateRequest(const JsonObjectConst& input, const DeviceCreateRequest& request,
+                                                  DeviceCreatePersistenceRequest& persistedRequest, const char*& error) const;
+    virtual bool parseUpdateConfigRequest(const JsonObjectConst& input, IDeviceRuntime& runtime, DeviceConfigUpdateRequest& request,
                                           const char*& error) const;
     virtual DeviceValidationResult validateCreateRequest(const DeviceCreateRequest& request, const DeviceRegistry& registry) const;
     virtual DeviceValidationResult validateUpdateConfigRequest(const IDeviceRuntime& runtime, const DeviceConfigUpdateRequest& request,

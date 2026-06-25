@@ -62,7 +62,7 @@ bool OneWireBusDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
     return true;
 }
 
-bool OneWireBusDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
+bool OneWireBusDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, IDeviceRuntime& runtime,
                                                           DeviceConfigUpdateRequest& request, const char*& error) const {
     const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
     if (configInput.isNull()) {

@@ -351,6 +351,11 @@ void DeviceRegistryController::create() {
         renderError(400, "BAD_ARGS", error);
         return;
     }
+    DeviceCreatePersistenceRequest createPersistedRequest{};
+    if (!adapter->parseCreatePersistedStateRequest(input, createRequest, createPersistedRequest, error)) {
+        renderError(400, "BAD_ARGS", error);
+        return;
+    }
     const DeviceValidationResult createValidation = adapter->validateCreateRequest(createRequest, registry_);
     if (!createValidation.ok()) {
         renderError(400, errorCodeForDeviceError(createValidation.error), createValidation.message);
@@ -362,7 +367,14 @@ void DeviceRegistryController::create() {
         renderError(400, errorCodeForDeviceError(result.validation.error), result.validation.message);
         return;
     }
-
+    if (createPersistedRequest.persistedStateProvided) {
+        const DeviceValidationResult persistedResult = registry_.applyPersistedStateUpdate(
+            result.deviceId, createPersistedRequest.persistedStateBlob.data(), createPersistedRequest.persistedStateBlob.size());
+        if (!persistedResult.ok()) {
+            renderError(400, errorCodeForDeviceError(persistedResult.error), persistedResult.message);
+            return;
+        }
+    }
     StaticJsonDocument<1024> doc;
     doc["registryRevision"] = registry_.registryRevision();
     doc["pendingPersistence"] = result.pendingPersistence;
@@ -551,6 +563,14 @@ void DeviceRegistryController::cmd() {
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
+        }
+        if (updateRequest.persistedStateProvided) {
+            const DeviceValidationResult persistedResult = registry_.applyPersistedStateUpdate(
+                deviceId_, updateRequest.persistedStateBlob.data(), updateRequest.persistedStateBlob.size());
+            if (!persistedResult.ok()) {
+                renderError(400, errorCodeForDeviceError(persistedResult.error), persistedResult.message);
+                return;
+            }
         }
     } else {
         renderError(400, "BAD_ARGS", "unsupported command");

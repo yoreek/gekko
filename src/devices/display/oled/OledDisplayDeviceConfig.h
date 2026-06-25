@@ -1,0 +1,32 @@
+#pragma once
+
+#include "devices/core/DeviceBaseConfig.h"
+
+#include <ArduinoJson.h>
+#include <cstddef>
+#include <cstdint>
+
+namespace ewfm {
+
+#pragma pack(push, 1)
+struct OledDisplayDeviceConfigV1 : DeviceBaseConfigV1 {
+    static constexpr char kMagic[] = "OLV1";
+    uint32_t i2cBusDeviceId{0};
+    uint8_t i2cAddress{0x3C};
+    uint16_t layoutWidth{128};
+    uint16_t layoutHeight{64};
+
+    bool parseJson(const JsonObjectConst& input, const char*& error);
+    DeviceValidationResult validate() const;
+    void writeJson(JsonObject output) const;
+};
+#pragma pack(pop)
+
+constexpr size_t oledDisplayDeviceConfigSize(const OledDisplayDeviceConfigV1&) {
+    return sizeof(OledDisplayDeviceConfigV1::kMagic) - 1U + sizeof(OledDisplayDeviceConfigV1);
+}
+
+bool encodeOledDisplayDeviceConfig(const OledDisplayDeviceConfigV1& config, uint8_t* blob, size_t capacity);
+bool decodeOledDisplayDeviceConfig(const uint8_t* blob, size_t size, OledDisplayDeviceConfigV1& config);
+
+} // namespace ewfm

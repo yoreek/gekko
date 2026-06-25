@@ -120,7 +120,7 @@ bool ThermostatDeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input
     return true;
 }
 
-bool ThermostatDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
+bool ThermostatDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, IDeviceRuntime& runtime,
                                                           DeviceConfigUpdateRequest& request, const char*& error) const {
     const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
     if (configInput.isNull()) {

@@ -5,6 +5,7 @@ import type { PortalIconName } from '@/icons'
 import DummyDeviceWidget from '@/components/devices/dummy/DummyDeviceWidget.vue'
 import GpioSwitchDeviceWidget from '@/components/devices/gpio-switch/GpioSwitchDeviceWidget.vue'
 import I2cBusDeviceWidget from '@/components/devices/i2c-bus/I2cBusDeviceWidget.vue'
+import OledDisplayDeviceWidget from '@/components/devices/oled-display/OledDisplayDeviceWidget.vue'
 import OneWireBusDeviceWidget from '@/components/devices/onewire-bus/OneWireBusDeviceWidget.vue'
 import Ds18b20TemperatureSensorDeviceWidget from '@/components/devices/ds18b20/Ds18b20TemperatureSensorDeviceWidget.vue'
 import ThermostatDeviceWidget from '@/components/devices/thermostat/ThermostatDeviceWidget.vue'
@@ -15,6 +16,7 @@ export const ONEWIRE_BUS_DEVICE_TYPE_ID = 3 as const
 export const DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID = 4 as const
 export const THERMOSTAT_DEVICE_TYPE_ID = 5 as const
 export const I2C_BUS_DEVICE_TYPE_ID = 6 as const
+export const OLED_DISPLAY_DEVICE_TYPE_ID = 7 as const
 
 export type DeviceTypeId = number
 export type DeviceTypeName =
@@ -24,6 +26,7 @@ export type DeviceTypeName =
   | 'ds18b20_temperature_sensor'
   | 'thermostat'
   | 'i2c_bus'
+  | 'oled_display'
 
 export interface DeviceTypeOption {
   id: DeviceTypeId
@@ -64,6 +67,13 @@ export const deviceTypeOptions: DeviceTypeOption[] = [
     componentKey: 'i2c-bus',
   },
   {
+    id: OLED_DISPLAY_DEVICE_TYPE_ID,
+    typeName: 'oled_display',
+    labelKey: 'device.type.oledDisplay',
+    icon: 'device',
+    componentKey: 'oled-display',
+  },
+  {
     id: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
     typeName: 'ds18b20_temperature_sensor',
     labelKey: 'device.type.ds18b20TemperatureSensor',
@@ -84,6 +94,7 @@ const deviceTypeLabelKeys: Record<number, string> = {
   [GPIO_SWITCH_DEVICE_TYPE_ID]: 'device.type.gpioSwitch',
   [ONEWIRE_BUS_DEVICE_TYPE_ID]: 'device.type.onewireBus',
   [I2C_BUS_DEVICE_TYPE_ID]: 'device.type.i2cBus',
+  [OLED_DISPLAY_DEVICE_TYPE_ID]: 'device.type.oledDisplay',
   [DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID]: 'device.type.ds18b20TemperatureSensor',
   [THERMOSTAT_DEVICE_TYPE_ID]: 'device.type.thermostat',
 }
@@ -93,6 +104,7 @@ const deviceTypeNames: Record<number, DeviceTypeName> = {
   [GPIO_SWITCH_DEVICE_TYPE_ID]: 'gpio_switch',
   [ONEWIRE_BUS_DEVICE_TYPE_ID]: 'onewire_bus',
   [I2C_BUS_DEVICE_TYPE_ID]: 'i2c_bus',
+  [OLED_DISPLAY_DEVICE_TYPE_ID]: 'oled_display',
   [DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID]: 'ds18b20_temperature_sensor',
   [THERMOSTAT_DEVICE_TYPE_ID]: 'thermostat',
 }
@@ -102,6 +114,7 @@ const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
   gpio_switch: GPIO_SWITCH_DEVICE_TYPE_ID,
   onewire_bus: ONEWIRE_BUS_DEVICE_TYPE_ID,
   i2c_bus: I2C_BUS_DEVICE_TYPE_ID,
+  oled_display: OLED_DISPLAY_DEVICE_TYPE_ID,
   ds18b20_temperature_sensor: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
   thermostat: THERMOSTAT_DEVICE_TYPE_ID,
 }
@@ -122,6 +135,10 @@ export const deviceComponentRegistry: DeviceComponentRegistryEntry[] = [
   {
     typeId: I2C_BUS_DEVICE_TYPE_ID,
     component: I2cBusDeviceWidget,
+  },
+  {
+    typeId: OLED_DISPLAY_DEVICE_TYPE_ID,
+    component: OledDisplayDeviceWidget,
   },
   {
     typeId: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,

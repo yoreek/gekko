@@ -107,7 +107,7 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseCreateRequest(const JsonObje
     return true;
 }
 
-bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, const IDeviceRuntime& runtime,
+bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, IDeviceRuntime& runtime,
                                                                         DeviceConfigUpdateRequest& request, const char*& error) const {
     const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
     if (configInput.isNull()) {
