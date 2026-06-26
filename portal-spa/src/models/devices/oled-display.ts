@@ -1,27 +1,21 @@
 import type { BaseDeviceConfig, DeviceCommandRequest, DeviceRecord } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import { BaseDevice } from '@/models/devices/base-device'
+import {
+  defaultOledDisplayLayout,
+  encodeOledDisplayLayout,
+  oledDisplayLayoutChanged,
+  normalizeOledDisplayLayout,
+  type OledDisplayLayoutDraft,
+} from '@/models/devices/oled-display-layout'
 
 export namespace OledDisplay {
-  export interface LayoutPage {
-    id: string
-    name: string
-    order: number
-    widgets: unknown[]
-  }
-
-  export interface LayoutDraft {
-    schemaVersion: number
-    activePageId: string
-    pages: LayoutPage[]
-  }
-
   export interface ConfigDraft extends BaseDeviceConfig {
     i2cBusDeviceId: number
     i2cAddress: number
     layoutWidth: number
     layoutHeight: number
-    layout: LayoutDraft
+    layout: OledDisplayLayoutDraft
   }
 
   export interface CreateDraft extends DeviceCreateDraftBase, ConfigDraft {}
@@ -35,11 +29,7 @@ export namespace OledDisplay {
       i2cAddress: 60,
       layoutWidth: 128,
       layoutHeight: 64,
-      layout: {
-        schemaVersion: 1,
-        activePageId: 'main',
-        pages: [{ id: 'main', name: 'Main', order: 0, widgets: [] }],
-      },
+      layout: defaultOledDisplayLayout(),
     }
   }
 
@@ -57,27 +47,15 @@ export namespace OledDisplay {
       i2cAddress: typeof raw.i2cAddress === 'number' ? raw.i2cAddress : defaults.i2cAddress,
       layoutWidth: typeof raw.layoutWidth === 'number' ? raw.layoutWidth : defaults.layoutWidth,
       layoutHeight: typeof raw.layoutHeight === 'number' ? raw.layoutHeight : defaults.layoutHeight,
-      layout:
-        layoutObject !== null
-          ? {
-              schemaVersion:
-                typeof layoutObject.schemaVersion === 'number'
-                  ? (layoutObject.schemaVersion as number)
-                  : defaults.layout.schemaVersion,
-              activePageId:
-                typeof layoutObject.activePageId === 'string'
-                  ? (layoutObject.activePageId as string)
-                  : defaults.layout.activePageId,
-              pages: Array.isArray(layoutObject.pages) && layoutObject.pages.length > 0
-                ? (layoutObject.pages as LayoutPage[])
-                : defaults.layout.pages,
-            }
-          : defaults.layout,
+      layout: normalizeOledDisplayLayout(layoutObject ?? defaults.layout),
     }
   }
 
   export function encodeConfig(config: ConfigDraft): Record<string, unknown> {
-    return { ...config }
+    return {
+      ...config,
+      layout: encodeOledDisplayLayout(config.layout),
+    }
   }
 
   export function formatI2cAddress(value: number): string {
@@ -119,7 +97,13 @@ export namespace OledDisplay {
           ],
         })
       }
-      if (nextConfig.i2cBusDeviceId !== currentConfig.i2cBusDeviceId || nextConfig.i2cAddress !== currentConfig.i2cAddress || nextConfig.layoutWidth !== currentConfig.layoutWidth || nextConfig.layoutHeight !== currentConfig.layoutHeight) {
+      if (
+        nextConfig.i2cBusDeviceId !== currentConfig.i2cBusDeviceId ||
+        nextConfig.i2cAddress !== currentConfig.i2cAddress ||
+        nextConfig.layoutWidth !== currentConfig.layoutWidth ||
+        nextConfig.layoutHeight !== currentConfig.layoutHeight ||
+        oledDisplayLayoutChanged(nextConfig.layout, currentConfig.layout)
+      ) {
         commands.push({ command: 'updateConfig', config: this.encodeConfig(nextConfig) })
       }
       return commands

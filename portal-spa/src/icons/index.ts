@@ -31,6 +31,17 @@ export type PortalIconName =
   | 'locale'
   | 'sun'
   | 'moon'
+  | 'layers'
+  | 'oled-text'
+  | 'oled-icon'
+  | 'oled-rect'
+  | 'oled-line'
+  | 'oled-circle'
+  | 'oled-page'
+  | 'oled-layer-up'
+  | 'oled-layer-down'
+  | 'oled-duplicate'
+  | 'design-display'
   | 'refresh'
   | 'close'
   | 'edit'
@@ -85,7 +96,18 @@ const localIconRegistry: Record<
   | 'journal'
   | 'locale'
   | 'sun'
-  | 'moon',
+  | 'moon'
+  | 'layers'
+  | 'oled-text'
+  | 'oled-icon'
+  | 'oled-rect'
+  | 'oled-line'
+  | 'oled-circle'
+  | 'oled-page'
+  | 'oled-layer-up'
+  | 'oled-layer-down'
+  | 'oled-duplicate'
+  | 'design-display',
   IconShape
 > = {
   portal: createIconShape(['M4 5h16v14H4z', 'M8 9h3v3H8z', 'M13 9h3v3h-3z', 'M8 14h8']),
@@ -102,6 +124,17 @@ const localIconRegistry: Record<
   locale: createIconShape(['M12 4a8 8 0 100 16 8 8 0 000-16z', 'M4 12h16', 'M12 4a12 12 0 010 16', 'M12 4a12 12 0 000 16']),
   sun: createIconShape(['M12 8a4 4 0 100 8 4 4 0 000-8z', 'M12 3v2', 'M12 19v2', 'M5 12H3', 'M21 12h-2', 'M6.3 6.3L4.9 4.9', 'M19.1 19.1l-1.4-1.4', 'M6.3 17.7l-1.4 1.4', 'M19.1 4.9l-1.4 1.4']),
   moon: createIconShape(['M19 15.4A7.8 7.8 0 018.6 5a8 8 0 1010.4 10.4z']),
+  layers: createIconShape(['M12 5l8 4-8 4-8-4 8-4z', 'M4 12l8 4 8-4', 'M4 16l8 4 8-4']),
+  'oled-text': createIconShape(['M5 6h14', 'M12 6v12', 'M7 18h10']),
+  'oled-icon': createIconShape(['M12 5l3 6 6 1-4.5 4.3 1.2 6.2L12 18.9 5.3 22.5l1.2-6.2L2 12l6-1z']),
+  'oled-rect': createIconShape(['M5 6h14v12H5z']),
+  'oled-line': createIconShape(['M5 12h14']),
+  'oled-circle': createIconShape(['M12 5a7 7 0 100 14 7 7 0 000-14z']),
+  'oled-page': createIconShape(['M6 4h9l3 3v13H6z', 'M15 4v4h4']),
+  'oled-layer-up': createIconShape(['M12 4l6 6H6z', 'M6 18h12']),
+  'oled-layer-down': createIconShape(['M6 6h12l-6 6z', 'M6 18h12']),
+  'oled-duplicate': createIconShape(['M8 8h10v10H8z', 'M6 6h10']),
+  'design-display': createIconShape(['M4 6h16v10H4z', 'M7 18h10']),
 }
 
 const mdiIconRegistry: Record<

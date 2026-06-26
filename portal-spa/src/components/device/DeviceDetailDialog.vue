@@ -35,6 +35,16 @@
       >
         <v-icon icon="edit" />
       </v-btn>
+      <v-btn
+        v-if="device && device.record.typeName === 'oled_display' && !editing"
+        class="device-dialog__icon-button"
+        variant="text"
+        :disabled="busy"
+        :aria-label="t('device.dialog.oledDisplay.designDisplay')"
+        @click="designerOpen = true"
+      >
+        <v-icon icon="design-display" />
+      </v-btn>
     </template>
 
     <template v-if="device">
@@ -55,10 +65,19 @@
           :output-state="outputState"
           show-output-state
           :busy="busy"
+          @design-display="designerOpen = true"
         />
 
+        <v-alert
+          v-if="layoutReviewWarning"
+          type="warning"
+          variant="tonal"
+        >
+          {{ layoutReviewWarning }}
+        </v-alert>
+
         <component
-          v-else-if="!editing && hasTypeDetails"
+          v-if="!editing && hasTypeDetails"
           :is="detailComponent"
           :device="device"
           :busy="busyAction === 'command'"
@@ -92,6 +111,12 @@
       </v-btn>
     </template>
   </DeviceDialogShell>
+
+  <OledDisplayDesignerDialog
+    v-model="designerOpen"
+    :device="device"
+    @save="handleDesignerSave"
+  />
 </template>
 
 <script setup lang="ts">
@@ -102,6 +127,7 @@ import { useI18n } from 'vue-i18n'
 import DeviceCommonFields from '@/components/device/DeviceCommonFields.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import RecentDeviceEvents from '@/components/device/RecentDeviceEvents.vue'
+import OledDisplayDesignerDialog from '@/components/devices/oled-display/OledDisplayDesignerDialog.vue'
 import {
   buildDeviceEditCommands,
   createDeviceEditDraft,
@@ -133,6 +159,7 @@ const { smAndDown } = useDisplay()
 const draft = ref<any>(createDeviceEditDraft(props.device ?? null))
 const busy = computed(() => props.busyAction !== null)
 const fullscreen = computed(() => smAndDown.value)
+const designerOpen = ref(false)
 const device = computed(() => props.device)
 const hasTypeDetails = computed(() => device.value !== null)
 const deviceId = computed(() => (device.value === null ? 0 : device.value.record.id))
@@ -191,6 +218,20 @@ const outputState = computed(() => {
   }
   return (device.value.runtime as { state?: string }).state
 })
+const layoutReviewWarning = computed(() => {
+  if (device.value === null || !props.editing || device.value.record.typeName !== 'oled_display') {
+    return ''
+  }
+  const currentConfig = device.value.config as unknown as Record<string, unknown>
+  const currentWidth = Number(currentConfig.layoutWidth ?? 0)
+  const currentHeight = Number(currentConfig.layoutHeight ?? 0)
+  const draftWidth = Number(draft.value.layoutWidth ?? 0)
+  const draftHeight = Number(draft.value.layoutHeight ?? 0)
+  if (currentWidth === draftWidth && currentHeight === draftHeight) {
+    return ''
+  }
+  return t('device.dialog.oledDisplay.layoutResizeWarning')
+})
 const canSave = computed(() => {
   if (device.value === null) {
     return false
@@ -219,6 +260,15 @@ watch(
     }
     if (!editing && props.device !== null) {
       resetDrafts(props.device)
+    }
+  },
+)
+
+watch(
+  () => props.modelValue,
+  open => {
+    if (!open) {
+      designerOpen.value = false
     }
   },
 )
@@ -259,6 +309,10 @@ function submitSave(): void {
     ...draft.value,
     name: draft.value.name.trim(),
   })
+}
+
+function handleDesignerSave(payload: Record<string, unknown>): void {
+  emit('save', payload as DeviceEditDraft)
 }
 
 </script>

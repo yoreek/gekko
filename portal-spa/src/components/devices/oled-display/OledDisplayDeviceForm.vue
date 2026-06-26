@@ -39,6 +39,13 @@
     <section class="device-type-section">
       <div class="text-subtitle-2">{{ t('device.fields.oledLayout') }}</div>
       <div class="text-body-2">{{ t('device.dialog.oledLayoutHint') }}</div>
+      <OledDisplayLayoutPreview :layout="currentValue.layout" :device-width="currentValue.layoutWidth" :device-height="currentValue.layoutHeight" />
+      <div v-if="mode === 'edit'" class="d-flex justify-end">
+        <v-btn variant="text" color="primary" :disabled="busy" @click="emit('design-display')">
+          <v-icon class="me-1" icon="design-display" />
+          {{ t('device.dialog.oledDisplay.designDisplay') }}
+        </v-btn>
+      </div>
     </section>
   </div>
 </template>
@@ -47,14 +54,18 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import OledDisplayLayoutPreview from '@/components/devices/oled-display/OledDisplayLayoutPreview.vue'
 import { I2C_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-types'
 import { OledDisplay } from '@/models/devices/oled-display'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
 type FormValue = OledDisplay.CreateDraft | OledDisplay.ConfigDraft
 
-const props = defineProps<{ modelValue?: FormValue; busy?: boolean }>()
-const emit = defineEmits<{ 'update:modelValue': [value: FormValue] }>()
+const props = defineProps<{ modelValue?: FormValue; busy?: boolean; mode?: 'create' | 'edit' }>()
+const emit = defineEmits<{
+  'update:modelValue': [value: FormValue]
+  'design-display': []
+}>()
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
 const fallbackValue: OledDisplay.CreateDraft = {

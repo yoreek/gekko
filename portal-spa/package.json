@@ -10,6 +10,7 @@
     "deploy:data": "pnpm build && node scripts/export-data.mjs && node scripts/check-data-budget.mjs",
     "check:data-budget": "node scripts/check-data-budget.mjs",
     "test:unit": "node --experimental-strip-types --test tests/**/*.ts",
+    "test:unit:coverage": "node --experimental-strip-types --experimental-test-coverage --test tests/oled-display.spec.ts",
     "smoke": "playwright test"
   },
   "dependencies": {

@@ -9,10 +9,15 @@ import type {
   OtaStatusResponse,
   WifiScanNetwork,
   WifiStatusResponse,
-} from '@/api'
-import { safeReadStorage, safeWriteStorage } from '@/utils/storage'
+} from '../api/contracts.ts'
+import {
+  defaultOledDisplayLayout,
+  defaultOledDisplayWidget,
+  normalizeOledDisplayLayout,
+} from '../models/devices/oled-display-layout.ts'
+import { safeReadStorage, safeWriteStorage } from '../utils/storage.ts'
 
-const storageKey = 'gekko.mockDb.v7'
+const storageKey = 'gekko.mockDb.v6'
 
 type MockDeviceConfig = BaseDeviceConfig & Record<string, unknown>
 type MockDeviceRuntime = BaseDeviceRuntime & {
@@ -65,7 +70,7 @@ export function createDeviceRecord(
 }
 
 const seedDatabase: SeedDatabase = {
-  registryRevision: 19,
+  registryRevision: 20,
   dashboardLayoutRevision: 1,
   dashboardLayout: {
     schemaVersion: 1,
@@ -83,6 +88,7 @@ const seedDatabase: SeedDatabase = {
           [670845753, 4, 0, 1, 1],
           [670845751, 5, 0, 1, 1],
           [670845754, 6, 0, 1, 1],
+          [670845755, 7, 0, 1, 1],
         ],
       },
     ],
@@ -163,8 +169,39 @@ const seedDatabase: SeedDatabase = {
       status: 'ready',
       lifecycleStatus: 'ready',
       effectiveStatus: 'ready',
-      generation: 1,
-      transactionActive: false,
+        generation: 1,
+        transactionActive: false,
+      }),
+    createDeviceRecord(670845755, 'oled_display', 1, {
+      enabled: true,
+      name: 'OLED Display',
+      deps: [
+        {
+          role: 'i2c_bus',
+          deviceId: 670845754,
+        },
+      ],
+      i2cBusDeviceId: 670845754,
+      i2cAddress: 60,
+      layoutWidth: 128,
+      layoutHeight: 64,
+      layout: {
+        ...defaultOledDisplayLayout(),
+        pages: [
+          {
+            id: 'main',
+            name: 'Main',
+            order: 0,
+            widgets: [
+              defaultOledDisplayWidget('text', 0),
+            ],
+          },
+        ],
+      },
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
     }),
     createDeviceRecord(670845752, 'ds18b20_temperature_sensor', 1, {
       enabled: true,
@@ -297,6 +334,9 @@ export function canonicalizeDeviceRecord(value: unknown): MockDeviceRecord {
         : true,
     deps,
   }
+  if (typeName === 'oled_display') {
+    config.layout = normalizeOledDisplayLayout(configSource.layout ?? defaultOledDisplayLayout())
+  }
   const runtimeStatus = typeof runtimeSource.status === 'string'
     ? runtimeSource.status
     : typeof source.status === 'string'
@@ -410,7 +450,7 @@ function isDashboardLayoutRecord(value: unknown): value is DashboardLayoutRecord
   return Array.isArray(value.panels) && typeof value.activePanelId === 'string' && value.schemaVersion === 1
 }
 
-function normalizeStoredDatabase(stored: unknown): MockDatabase {
+export function normalizeStoredDatabase(stored: unknown): MockDatabase {
   const seed = createSeedMockDatabase()
   if (!isRecord(stored)) {
     return seed

@@ -14,6 +14,10 @@ import type {
   WifiStatusResponse,
 } from '@/api'
 import type { TemperatureOutputSnapshot } from '@/api/contracts'
+import {
+  defaultOledDisplayLayout,
+  normalizeOledDisplayLayout,
+} from '@/models/devices/oled-display-layout'
 import { ApiClientError } from '@/api/http'
 import { publishRealtimeMessage } from '@/realtime/bus'
 import { scheduleMockPersistenceFlush } from '@/realtime/mockRuntime'
@@ -338,12 +342,8 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
       const i2cAddress = normalizeFiniteNumber(configSource.i2cAddress, 60)
       ensureUniqueI2cAddress(db, dependencyDeviceId, i2cAddress, nextId)
       const layout = isRecordPayload(configSource.layout)
-        ? configSource.layout
-        : {
-            schemaVersion: 1,
-            activePageId: 'main',
-            pages: [],
-          }
+        ? normalizeOledDisplayLayout(configSource.layout)
+        : defaultOledDisplayLayout()
       const config = {
         enabled,
         name,
@@ -563,7 +563,9 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
             i2cAddress,
             layoutWidth: normalizeFiniteNumber(payload.config.layoutWidth, normalizeFiniteNumber(currentConfig['layoutWidth'], 128)),
             layoutHeight: normalizeFiniteNumber(payload.config.layoutHeight, normalizeFiniteNumber(currentConfig['layoutHeight'], 64)),
-            layout: isRecordPayload(payload.config.layout) ? payload.config.layout : device.config.layout,
+            layout: isRecordPayload(payload.config.layout)
+              ? normalizeOledDisplayLayout(payload.config.layout)
+              : normalizeOledDisplayLayout(device.config.layout),
           }
         } else if (device.record.typeName === 'ds18b20_temperature_sensor') {
           const dependencyLinks = normalizeDependencyLinks(payload.deps ?? device.config.deps)

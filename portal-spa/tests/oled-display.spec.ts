@@ -1,0 +1,681 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+
+import {
+  canonicalizeDeviceRecord,
+  normalizeStoredDatabase,
+} from '../src/mock/database.ts'
+import {
+  classicFontGlyphForCodePoint,
+  classicFontGlyphs,
+  classicFontScale,
+  drawClassicFontText,
+  layoutClassicFontLines,
+  measureClassicFontText,
+  normalizeClassicFontDrawBound,
+  normalizeClassicFontDrawScale,
+  resolveClassicFontColumnsPerLine,
+} from '../src/components/devices/oled-display/classic-font.ts'
+import {
+  resolveOledDisplayCanvasBitmapSize,
+  resolveOledDisplayCanvasStyle,
+  resolveOledDisplayIconSize,
+  resolveOledDisplayTextRenderScale,
+  resolveOledDisplayWidgetBitmapSize,
+  resolveOledDisplayWidgetDuplicatePosition,
+  resolveOledDisplayWidgetFrameStyle,
+  resolveOledDisplayWidgetSpawnPosition,
+} from '../src/components/devices/oled-display/oled-display-layout-math.ts'
+import {
+  autoSizeOledDisplayTextWidget,
+  measureOledDisplayTextWidget,
+} from '../src/components/devices/oled-display/oled-display-text-layout.ts'
+import {
+  defaultOledDisplayLayout,
+  defaultOledDisplayWidget,
+  normalizeOledDisplayLayout,
+  oledDisplayLayoutChanged,
+} from '../src/models/devices/oled-display-layout.ts'
+
+function createFakeCanvasContext(width: number, height: number): {
+  context: CanvasRenderingContext2D
+  fillRects: Array<{ x: number; y: number; width: number; height: number; style: string }>
+  saveCount: () => number
+  restoreCount: () => number
+} {
+  const fillRects: Array<{ x: number; y: number; width: number; height: number; style: string }> = []
+  let currentStyle = '#000000'
+  let saves = 0
+  let restores = 0
+  const context = {
+    canvas: { width, height },
+    imageSmoothingEnabled: true,
+    save: () => { saves += 1 },
+    restore: () => { restores += 1 },
+    fillRect: (x: number, y: number, rectWidth: number, rectHeight: number) => {
+      fillRects.push({ x, y, width: rectWidth, height: rectHeight, style: currentStyle })
+    },
+    get fillStyle() {
+      return currentStyle
+    },
+    set fillStyle(value: string) {
+      currentStyle = value
+    },
+  } as unknown as CanvasRenderingContext2D
+  return { context, fillRects, saveCount: () => saves, restoreCount: () => restores }
+}
+
+test('normalizes OLED layout widgets and preserves typed data', () => {
+  const layout = normalizeOledDisplayLayout({
+    pages: [
+      {
+        id: 'main',
+        name: 'Main',
+        order: 0,
+        widgets: [
+          {
+            id: 'title',
+            x: 3,
+            y: 4,
+            width: 10,
+            height: 2,
+            text: 'Water',
+          },
+        ],
+      },
+    ],
+  })
+
+  assert.equal(layout.schemaVersion, 1)
+  assert.equal(layout.activePageId, 'main')
+  assert.equal(layout.pages[0].widgets[0].type, 'text')
+  assert.equal(layout.pages[0].widgets[0].text, 'Water')
+})
+
+test('normalizes OLED text auto size and preserves the flag', () => {
+  const widget = defaultOledDisplayWidget('text', 0)
+  widget.autoSize = true
+
+  const layout = normalizeOledDisplayLayout({
+    pages: [
+      {
+        id: 'main',
+        name: 'Main',
+        order: 0,
+        widgets: [widget],
+      },
+    ],
+  })
+
+  assert.equal(layout.pages[0].widgets[0].autoSize, true)
+  assert.equal(layout.pages[0].widgets[0].width > 0, true)
+  assert.equal(layout.pages[0].widgets[0].height > 0, true)
+})
+
+test('classic font helper keeps the Adafruit glyph table and size mapping', () => {
+  assert.equal(classicFontGlyphs.length, 256)
+  assert.equal(classicFontGlyphs[32].advance, 6)
+  assert.equal(classicFontGlyphs[65].width, 5)
+  assert.equal(classicFontGlyphs[65].height, 8)
+  assert.equal(classicFontGlyphForCodePoint(65).codePoint, 65)
+  assert.equal(classicFontGlyphForCodePoint(-1).codePoint, 63)
+  assert.equal(classicFontGlyphForCodePoint(256).codePoint, 63)
+  assert.equal(classicFontScale(1), 1)
+  assert.equal(classicFontScale(2), 2)
+  assert.equal(classicFontScale(8), 8)
+  assert.equal(classicFontScale(Number.NaN), 1)
+})
+
+test('classic font measurement uses Adafruit 6x8 cell metrics without extra vertical gap', () => {
+  assert.deepEqual(layoutClassicFontLines('ABC', true, 18, 1), ['ABC'])
+  assert.deepEqual(layoutClassicFontLines('ABCD', true, 18, 1), ['ABC', 'D'])
+  assert.equal(resolveClassicFontColumnsPerLine(18, 1), 3)
+
+  assert.deepEqual(measureClassicFontText('ABC', 1, true, 18), {
+    width: 18,
+    height: 8,
+    lineHeight: 8,
+    lineCount: 1,
+    columnsPerLine: 3,
+  })
+  assert.deepEqual(measureClassicFontText('ABCD', 1, true, 18), {
+    width: 18,
+    height: 16,
+    lineHeight: 8,
+    lineCount: 2,
+    columnsPerLine: 3,
+  })
+})
+
+test('classic font measurement scales wrapped text exactly by integer scale', () => {
+  assert.deepEqual(layoutClassicFontLines('ABCD', true, 36, 2), ['ABC', 'D'])
+  assert.deepEqual(measureClassicFontText('ABCD', 2, true, 36), {
+    width: 36,
+    height: 32,
+    lineHeight: 16,
+    lineCount: 2,
+    columnsPerLine: 3,
+  })
+})
+
+test('classic font draw scale preserves fractional zoom instead of rounding up', () => {
+  assert.equal(normalizeClassicFontDrawScale(1.75), 1.75)
+  assert.equal(normalizeClassicFontDrawScale(0.5), 1)
+  assert.equal(normalizeClassicFontDrawScale(Number.NaN), 1)
+  assert.equal(normalizeClassicFontDrawBound(31.5), 31.5)
+  assert.equal(normalizeClassicFontDrawBound(Number.NaN), 1)
+  assert.equal(resolveClassicFontColumnsPerLine(31.5, 1.75), 3)
+  assert.equal(resolveClassicFontColumnsPerLine(31.49999, 1.75), 3)
+  assert.equal(resolveClassicFontColumnsPerLine(31, 1.75), 2)
+})
+
+test('classic font measurement keeps explicit newlines without wrap', () => {
+  assert.deepEqual(layoutClassicFontLines('ABC\nD', false, 128, 1), ['ABC', 'D'])
+  assert.deepEqual(measureClassicFontText('ABC\nD', 1, false, 128), {
+    width: 18,
+    height: 16,
+    lineHeight: 8,
+    lineCount: 2,
+    columnsPerLine: 21,
+  })
+})
+
+test('classic font measurement preserves empty wrapped paragraphs as real lines', () => {
+  assert.deepEqual(layoutClassicFontLines('A\n\nB', true, 6, 1), ['A', '', 'B'])
+  assert.deepEqual(measureClassicFontText('A\n\nB', 1, true, 6), {
+    width: 6,
+    height: 24,
+    lineHeight: 8,
+    lineCount: 3,
+    columnsPerLine: 1,
+  })
+})
+
+test('classic font wrap never allows less than one column', () => {
+  assert.equal(resolveClassicFontColumnsPerLine(1, 1), 1)
+  assert.deepEqual(layoutClassicFontLines('ABC', true, 1, 1), ['A', 'B', 'C'])
+  assert.deepEqual(measureClassicFontText('ABC', 1, true, 1), {
+    width: 6,
+    height: 24,
+    lineHeight: 8,
+    lineCount: 3,
+    columnsPerLine: 1,
+  })
+})
+
+test('classic font wrap breaks exactly at the column boundary without an empty line', () => {
+  assert.deepEqual(layoutClassicFontLines('ABCDEF', true, 18, 1), ['ABC', 'DEF'])
+  assert.deepEqual(measureClassicFontText('ABCDEF', 1, true, 18), {
+    width: 18,
+    height: 16,
+    lineHeight: 8,
+    lineCount: 2,
+    columnsPerLine: 3,
+  })
+})
+
+test('classic font drawing clears the bounded canvas and draws glyph pixels inside bounds', () => {
+  const { context, fillRects, saveCount, restoreCount } = createFakeCanvasContext(6, 8)
+
+  drawClassicFontText(context, 'A', {
+    scale: 1,
+    maxWidth: 6,
+    maxHeight: 8,
+    color: '#ffffff',
+    backgroundColor: '#000000',
+  })
+
+  assert.equal(saveCount(), 1)
+  assert.equal(restoreCount(), 1)
+  assert.deepEqual(fillRects[0], { x: 0, y: 0, width: 6, height: 8, style: '#000000' })
+  assert.equal(fillRects.slice(1).every(rect => rect.style === '#ffffff'), true)
+  assert.equal(fillRects.slice(1).every(rect => rect.x >= 0 && rect.x < 6 && rect.y >= 0 && rect.y < 8), true)
+})
+
+test('classic font drawing with fractional zoom fits the same fractional widget box', () => {
+  const { context, fillRects } = createFakeCanvasContext(32, 14)
+
+  drawClassicFontText(context, 'ABC', {
+    scale: 1.75,
+    maxWidth: 32,
+    maxHeight: 14,
+    color: '#ffffff',
+    backgroundColor: '#000000',
+  })
+
+  assert.equal(fillRects.slice(1).some(rect => rect.x >= 32 || rect.y >= 14), false)
+  assert.equal(fillRects.slice(1).some(rect => rect.x >= 21), true)
+})
+
+test('classic font drawing uses fractional zoom for wrapped column calculation', () => {
+  const { context, fillRects } = createFakeCanvasContext(32, 14)
+
+  drawClassicFontText(context, 'ABC', {
+    scale: 1.75,
+    wrap: true,
+    maxWidth: 32,
+    maxHeight: 14,
+    color: '#ffffff',
+    backgroundColor: '#000000',
+  })
+
+  assert.equal(fillRects.slice(1).some(rect => rect.y >= 14), false)
+  assert.equal(fillRects.slice(1).some(rect => rect.x >= 21), true)
+})
+
+test('classic font drawing wraps onto the next line when enabled', () => {
+  const { context, fillRects } = createFakeCanvasContext(6, 16)
+
+  drawClassicFontText(context, 'AB', {
+    scale: 1,
+    wrap: true,
+    maxWidth: 6,
+    maxHeight: 16,
+    color: '#ffffff',
+    backgroundColor: '#000000',
+  })
+
+  assert.equal(fillRects.some(rect => rect.style === '#ffffff' && rect.y >= 8), true)
+})
+
+test('classic font drawing clips wrapped lines at max height', () => {
+  const { context, fillRects } = createFakeCanvasContext(6, 8)
+
+  drawClassicFontText(context, 'AB', {
+    scale: 1,
+    wrap: true,
+    maxWidth: 6,
+    maxHeight: 8,
+    color: '#ffffff',
+    backgroundColor: '#000000',
+  })
+
+  assert.equal(fillRects.some(rect => rect.style === '#ffffff' && rect.y >= 8), false)
+})
+
+test('classic font drawing stops a line when the next character starts outside max width', () => {
+  const { context, fillRects } = createFakeCanvasContext(1, 8)
+
+  drawClassicFontText(context, 'AB', {
+    scale: 1,
+    wrap: false,
+    maxWidth: 1,
+    maxHeight: 8,
+    color: '#ffffff',
+    backgroundColor: '#000000',
+  })
+
+  assert.equal(fillRects.every(rect => rect.x < 1), true)
+})
+
+test('classic font drawing can skip clearing the target canvas', () => {
+  const { context, fillRects } = createFakeCanvasContext(6, 8)
+
+  drawClassicFontText(context, 'A', {
+    scale: 1,
+    maxWidth: 6,
+    maxHeight: 8,
+    color: '#ffffff',
+    backgroundColor: '#000000',
+    clear: false,
+  })
+
+  assert.equal(fillRects.some(rect => rect.style === '#000000'), false)
+  assert.equal(fillRects.every(rect => rect.style === '#ffffff'), true)
+})
+
+test('OLED text widget measurement reports wrap lines and fit from the same metrics', () => {
+  const widget = defaultOledDisplayWidget('text', 0)
+  widget.text = 'ABCasdasdasdggggg'
+  widget.width = 72
+  widget.height = 16
+  widget.styleFlags.wrap = true
+
+  assert.deepEqual(measureOledDisplayTextWidget(widget), {
+    scale: 1,
+    measuredWidth: 72,
+    measuredHeight: 16,
+    lineHeight: 8,
+    lineCount: 2,
+    columnsPerLine: 12,
+    boxWidth: 72,
+    boxHeight: 16,
+    fits: true,
+    wrappedLines: 2,
+  })
+})
+
+test('OLED text widget measurement reports clipped height when wrapped text exceeds the box', () => {
+  const widget = defaultOledDisplayWidget('text', 0)
+  widget.text = 'ABCD'
+  widget.width = 18
+  widget.height = 8
+  widget.styleFlags.wrap = true
+
+  assert.deepEqual(measureOledDisplayTextWidget(widget), {
+    scale: 1,
+    measuredWidth: 18,
+    measuredHeight: 16,
+    lineHeight: 8,
+    lineCount: 2,
+    columnsPerLine: 3,
+    boxWidth: 18,
+    boxHeight: 8,
+    fits: false,
+    wrappedLines: 2,
+  })
+})
+
+test('OLED text widget measurement reports clipped width when wrapping is disabled', () => {
+  const widget = defaultOledDisplayWidget('text', 0)
+  widget.text = 'ABCD'
+  widget.width = 18
+  widget.height = 8
+  widget.styleFlags.wrap = false
+
+  assert.deepEqual(measureOledDisplayTextWidget(widget), {
+    scale: 1,
+    measuredWidth: 24,
+    measuredHeight: 8,
+    lineHeight: 8,
+    lineCount: 1,
+    columnsPerLine: Number.POSITIVE_INFINITY,
+    boxWidth: 18,
+    boxHeight: 8,
+    fits: false,
+    wrappedLines: 1,
+  })
+})
+
+test('OLED text auto size expands horizontally before growing vertically', () => {
+  const widget = defaultOledDisplayWidget('text', 0)
+  widget.text = 'ABCD'
+  widget.width = 18
+  widget.height = 8
+  widget.autoSize = true
+  widget.styleFlags.wrap = false
+
+  const sized = autoSizeOledDisplayTextWidget(widget, 128, 64)
+  assert.equal(sized.width, 24)
+  assert.equal(sized.height, 8)
+})
+
+test('OLED text auto size uses the right screen edge before adding lines', () => {
+  const widget = defaultOledDisplayWidget('text', 0)
+  widget.text = 'ABCasdasdasdggggg'
+  widget.x = 32
+  widget.width = 72
+  widget.height = 8
+  widget.autoSize = true
+  widget.styleFlags.wrap = true
+
+  const sized = autoSizeOledDisplayTextWidget(widget, 128, 64)
+  assert.equal(sized.width, 96)
+  assert.equal(sized.height, 16)
+})
+
+test('OLED text auto size stays one line when text fits before the right screen edge', () => {
+  const widget = defaultOledDisplayWidget('text', 0)
+  widget.text = 'ABCasdasdasdggggg'
+  widget.x = 0
+  widget.width = 72
+  widget.height = 8
+  widget.autoSize = true
+  widget.styleFlags.wrap = false
+
+  const sized = autoSizeOledDisplayTextWidget(widget, 128, 64)
+  assert.equal(sized.width, 102)
+  assert.equal(sized.height, 8)
+})
+
+test('OLED text auto size grows both width and height without requiring wrap', () => {
+  const widget = defaultOledDisplayWidget('text', 0)
+  widget.text = 'ABCD'
+  widget.width = 1
+  widget.height = 1
+  widget.autoSize = true
+  widget.styleFlags.wrap = false
+
+  const sized = autoSizeOledDisplayTextWidget(widget, 128, 64)
+  assert.equal(sized.width, 24)
+  assert.equal(sized.height, 8)
+})
+
+test('OLED text auto size clamps to the display bounds', () => {
+  const widget = defaultOledDisplayWidget('text', 0)
+  widget.text = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  widget.width = 6
+  widget.height = 8
+  widget.autoSize = true
+  widget.styleFlags.wrap = false
+
+  const sized = autoSizeOledDisplayTextWidget(widget, 32, 16)
+  assert.equal(sized.width, 32)
+  assert.equal(sized.height, 8)
+})
+
+test('OLED text auto size clamps wrapped height to the display bounds', () => {
+  const widget = defaultOledDisplayWidget('text', 0)
+  widget.text = 'ABCDEFG'
+  widget.width = 6
+  widget.height = 8
+  widget.autoSize = true
+  widget.styleFlags.wrap = true
+
+  const sized = autoSizeOledDisplayTextWidget(widget, 128, 16)
+  assert.equal(sized.width, 42)
+  assert.equal(sized.height, 8)
+})
+
+test('OLED text auto size clamps height after using available width', () => {
+  const widget = defaultOledDisplayWidget('text', 0)
+  widget.text = 'ABCDEFG'
+  widget.x = 124
+  widget.width = 1
+  widget.height = 8
+  widget.autoSize = true
+  widget.styleFlags.wrap = true
+
+  const sized = autoSizeOledDisplayTextWidget(widget, 128, 16)
+  assert.equal(sized.width, 4)
+  assert.equal(sized.height, 16)
+})
+
+test('OLED text auto size width is independent from the wrap flag', () => {
+  const widget = defaultOledDisplayWidget('text', 0)
+  widget.text = 'ABCasdasdasdggggg'
+  widget.x = 32
+  widget.width = 72
+  widget.height = 8
+  widget.autoSize = true
+  widget.styleFlags.wrap = false
+
+  const withoutWrap = autoSizeOledDisplayTextWidget(widget, 128, 64)
+  const withWrap = autoSizeOledDisplayTextWidget({
+    ...widget,
+    styleFlags: {
+      ...widget.styleFlags,
+      wrap: true,
+    },
+  }, 128, 64)
+
+  assert.equal(withoutWrap.width, withWrap.width)
+  assert.equal(withoutWrap.height, 8)
+  assert.equal(withWrap.height, 16)
+})
+
+test('OLED text auto size is a no-op when disabled', () => {
+  const widget = defaultOledDisplayWidget('text', 0)
+  widget.text = 'ABCD'
+  widget.width = 1
+  widget.height = 1
+  widget.autoSize = false
+
+  const sized = autoSizeOledDisplayTextWidget(widget, 128, 64)
+  assert.equal(sized.width, 1)
+  assert.equal(sized.height, 1)
+})
+
+test('OLED text auto size is a no-op for non-text widgets', () => {
+  const widget = defaultOledDisplayWidget('rect', 0)
+  widget.width = 10
+  widget.height = 5
+  widget.autoSize = true
+
+  const sized = autoSizeOledDisplayTextWidget(widget, 128, 64)
+  assert.equal(sized.width, 10)
+  assert.equal(sized.height, 5)
+})
+
+test('OLED display layout math keeps zoom geometry and text scale separate but consistent', () => {
+  assert.deepEqual(resolveOledDisplayCanvasStyle(128, 64, 2), {
+    width: '256px',
+    height: '128px',
+    backgroundSize: '16px 16px',
+  })
+  assert.deepEqual(resolveOledDisplayWidgetFrameStyle({ x: 0, y: 0, width: 24, height: 12 }, 2), {
+    left: '0px',
+    top: '0px',
+    width: '48px',
+    height: '24px',
+  })
+  assert.equal(resolveOledDisplayTextRenderScale(1, 1), 1)
+  assert.equal(resolveOledDisplayTextRenderScale(1, 2), 2)
+  assert.equal(resolveOledDisplayTextRenderScale(2, 2), 4)
+})
+
+test('OLED display layout math keeps fractional CSS size while rounding bitmap up', () => {
+  assert.deepEqual(resolveOledDisplayCanvasBitmapSize(31.5, 14, 1), {
+    cssWidth: 31.5,
+    cssHeight: 14,
+    bitmapWidth: 32,
+    bitmapHeight: 14,
+    bitmapScaleX: 32 / 31.5,
+    bitmapScaleY: 1,
+  })
+  assert.deepEqual(resolveOledDisplayCanvasBitmapSize(31.1, 13.2, 2), {
+    cssWidth: 31.1,
+    cssHeight: 13.2,
+    bitmapWidth: 63,
+    bitmapHeight: 27,
+    bitmapScaleX: 63 / 31.1,
+    bitmapScaleY: 27 / 13.2,
+  })
+})
+
+test('OLED display layout math keeps text widget bitmap in OLED logical pixels', () => {
+  assert.deepEqual(resolveOledDisplayWidgetBitmapSize(24, 12), {
+    cssWidth: 24,
+    cssHeight: 12,
+    bitmapWidth: 24,
+    bitmapHeight: 12,
+  })
+  assert.deepEqual(resolveOledDisplayWidgetBitmapSize(24.4, 7.6), {
+    cssWidth: 24,
+    cssHeight: 8,
+    bitmapWidth: 24,
+    bitmapHeight: 8,
+  })
+})
+
+test('OLED display layout math resolves icon scale from a single display scale', () => {
+  assert.equal(resolveOledDisplayIconSize(1), 18)
+  assert.equal(resolveOledDisplayIconSize(2), 36)
+  assert.equal(resolveOledDisplayIconSize(0), 18)
+})
+
+test('OLED display layout math clamps widget spawn position inside the display', () => {
+  assert.deepEqual(resolveOledDisplayWidgetSpawnPosition(0, 128, 64, 24, 12), { x: 0, y: 0 })
+  assert.deepEqual(resolveOledDisplayWidgetSpawnPosition(2, 128, 64, 24, 12), { x: 16, y: 16 })
+  assert.deepEqual(resolveOledDisplayWidgetSpawnPosition(20, 32, 16, 24, 12), { x: 8, y: 4 })
+  assert.deepEqual(resolveOledDisplayWidgetSpawnPosition(20, 16, 8, 24, 12), { x: 0, y: 0 })
+})
+
+test('OLED display layout math clamps duplicated widget position inside the display', () => {
+  assert.deepEqual(resolveOledDisplayWidgetDuplicatePosition(0, 0, 24, 12, 128, 64), { x: 4, y: 4 })
+  assert.deepEqual(resolveOledDisplayWidgetDuplicatePosition(104, 52, 24, 12, 128, 64), { x: 104, y: 52 })
+  assert.deepEqual(resolveOledDisplayWidgetDuplicatePosition(0, 0, 24, 12, 16, 8), { x: 0, y: 0 })
+})
+
+test('OLED edit commands include layout-only updateConfig changes', () => {
+  const left = defaultOledDisplayLayout()
+  const right = {
+    ...defaultOledDisplayLayout(),
+    pages: [
+      {
+        id: 'main',
+        name: 'Main',
+        order: 0,
+        widgets: [defaultOledDisplayWidget('text', 0)],
+      },
+    ],
+  }
+
+  assert.equal(oledDisplayLayoutChanged(left, right), true)
+})
+
+test('mock database normalization preserves typed OLED layouts', () => {
+  const database = normalizeStoredDatabase({
+    registryRevision: 1,
+    dashboardLayoutRevision: 1,
+    dashboardLayout: {
+      schemaVersion: 1,
+      activePanelId: 'main',
+      panels: [],
+    },
+    devices: [
+      {
+        record: { id: 21, typeName: 'oled_display', configRevision: 1 },
+        config: {
+          enabled: true,
+          name: 'OLED',
+          deps: [],
+          i2cBusDeviceId: 3,
+          i2cAddress: 60,
+          layoutWidth: 128,
+          layoutHeight: 64,
+          layout: {
+            pages: [
+              {
+                id: 'main',
+                order: 0,
+                widgets: [
+                  {
+                    id: 'title',
+                    text: 'Hello',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        runtime: {
+          status: 'ready',
+          lifecycleStatus: 'ready',
+          effectiveStatus: 'ready',
+        },
+      },
+    ],
+    wifi: {
+      status: 'idle',
+      stationIp: '',
+      setupApIp: '',
+      scan: [],
+    },
+    ota: {
+      enabled: false,
+      freeSketchSpace: 0,
+      hasError: false,
+      status: 'ok',
+      success: true,
+    },
+    system: {
+      status: 'idle',
+      rebooting: false,
+    },
+  })
+
+  const device = canonicalizeDeviceRecord(database.devices[0])
+  assert.equal(device.config.layout.pages[0].widgets[0].type, 'text')
+  assert.equal(device.config.layout.pages[0].widgets[0].text, 'Hello')
+})

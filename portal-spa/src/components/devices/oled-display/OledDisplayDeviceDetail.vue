@@ -10,6 +10,9 @@
         <v-col cols="12" md="6"><v-text-field :label="t('device.fields.oledLayoutHeight')" :model-value="config.layoutHeight" readonly /></v-col>
       </v-row>
     </section>
+    <section class="device-type-section">
+      <OledDisplayLayoutPreview :layout="config.layout" :device-width="config.layoutWidth" :device-height="config.layoutHeight" />
+    </section>
   </div>
 </template>
 
@@ -18,6 +21,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceRecord } from '@/api/contracts'
+import OledDisplayLayoutPreview from '@/components/devices/oled-display/OledDisplayLayoutPreview.vue'
 import { OledDisplay } from '@/models/devices/oled-display'
 
 const props = defineProps<{ device: DeviceRecord }>()
