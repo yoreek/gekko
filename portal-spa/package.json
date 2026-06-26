@@ -9,8 +9,8 @@
     "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "deploy:data": "pnpm build && node scripts/export-data.mjs && node scripts/check-data-budget.mjs",
     "check:data-budget": "node scripts/check-data-budget.mjs",
-    "test:unit": "node --experimental-strip-types --test tests/**/*.ts",
-    "test:unit:coverage": "node --experimental-strip-types --experimental-test-coverage --test tests/oled-display.spec.ts",
+    "test:unit": "node --experimental-strip-types --test tests/unit/*.spec.ts",
+    "test:unit:coverage": "node --experimental-strip-types --experimental-test-coverage --test tests/unit/oled-display.spec.ts",
     "smoke": "playwright test"
   },
   "dependencies": {

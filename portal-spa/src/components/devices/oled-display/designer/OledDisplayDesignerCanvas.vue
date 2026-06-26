@@ -1,57 +1,46 @@
 <template>
-  <GridLayout
-    v-model:layout="gridLayout"
+  <div
     class="oled-canvas"
-    :col-num="deviceWidth"
-    :is-draggable="true"
-    :is-resizable="true"
-    :is-bounded="true"
-    :margin="[0, 0]"
-    :prevent-collision="false"
-    :row-height="zoom"
     :style="canvasStyle"
-    :use-css-transforms="true"
-    :vertical-compact="false"
+    role="application"
   >
-    <GridItem
+    <div
       v-for="item in widgets"
       :key="item.id"
-      :i="item.id"
-      :x="item.x"
-      :y="item.y"
-      :w="item.width"
-      :h="item.height"
       class="oled-canvas__item"
+      :style="widgetFrameStyle(item)"
     >
       <div
         class="oled-canvas__widget"
         :class="{ 'oled-canvas__widget--selected': item.id === selectedWidgetId }"
         role="button"
         tabindex="0"
+        @pointerdown="startDrag($event, item)"
         @click="$emit('select-widget', item.id)"
         @keydown.enter.prevent="$emit('select-widget', item.id)"
         @keydown.space.prevent="$emit('select-widget', item.id)"
       >
         <OledDisplayWidgetPreview :widget="item" :display-scale="zoom" />
+        <span
+          class="oled-canvas__resize-handle"
+          aria-hidden="true"
+          @pointerdown.stop="startResize($event, item)"
+        />
       </div>
-    </GridItem>
-  </GridLayout>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { GridItem, GridLayout } from 'vue-grid-layout-v3'
+import { computed, ref } from 'vue'
 
 import OledDisplayWidgetPreview from '@/components/devices/oled-display/OledDisplayWidgetPreview.vue'
-import { resolveOledDisplayCanvasStyle } from '@/components/devices/oled-display/oled-display-layout-math'
+import { resolveOledDisplayInteractionWidgets, type OledDisplayCanvasInteraction } from '@/components/devices/oled-display/oled-display-editor-interaction'
+import { resolveOledDisplayCanvasStyle, resolveOledDisplayWidgetFrameStyle } from '@/components/devices/oled-display/oled-display-layout-math'
 import type { OledDisplayWidget } from '@/models/devices/oled-display-layout'
 
-interface GridLayoutItem {
-  i: string
-  x: number
-  y: number
-  w: number
-  h: number
+type CanvasInteraction = OledDisplayCanvasInteraction & {
+  pointerId: number
 }
 
 const props = defineProps<{
@@ -67,68 +56,90 @@ const emit = defineEmits<{
   'update-widgets': [widgets: OledDisplayWidget[]]
 }>()
 
-const gridLayout = computed<GridLayoutItem[]>({
-  get: () => props.widgets.map(widget => ({
-    i: widget.id,
-    x: widget.x,
-    y: widget.y,
-    w: widget.width,
-    h: widget.height,
-  })),
-  set: layoutUpdated,
-})
+const activeInteraction = ref<CanvasInteraction | null>(null)
 
 const canvasStyle = computed(() => resolveOledDisplayCanvasStyle(props.deviceWidth, props.deviceHeight, props.zoom))
 
-function layoutUpdated(layout: GridLayoutItem[]): void {
-  const nextWidgets = layout.map(item => {
-    const current = props.widgets.find(widget => widget.id === item.i)
-    if (current !== undefined) {
-      return {
-        ...current,
-        x: item.x,
-        y: item.y,
-        width: item.w,
-        height: item.h,
-      } as OledDisplayWidget
-    }
-    return {
-      id: item.i,
-      type: 'text',
-      x: item.x,
-      y: item.y,
-      width: item.w,
-      height: item.h,
-      bindingKind: 'unbound',
-      sourceDeviceId: 0,
-      metricId: 0,
-      text: 'ABC',
-      fontSize: 1,
-      strokeWidth: 1,
-      styleFlags: { filled: false, inverted: false, wrap: false },
-    } as OledDisplayWidget
-  })
+function widgetFrameStyle(widget: OledDisplayWidget): Record<string, string> {
+  return resolveOledDisplayWidgetFrameStyle(widget, props.zoom)
+}
+
+function startDrag(event: PointerEvent, widget: OledDisplayWidget): void {
+  if (event.button !== 0) {
+    return
+  }
+  startInteraction(event, widget, 'drag')
+}
+
+function startResize(event: PointerEvent, widget: OledDisplayWidget): void {
+  if (event.button !== 0) {
+    return
+  }
+  startInteraction(event, widget, 'resize')
+}
+
+function startInteraction(event: PointerEvent, widget: OledDisplayWidget, mode: CanvasInteraction['mode']): void {
+  emit('select-widget', widget.id)
+  activeInteraction.value = {
+    pointerId: event.pointerId,
+    mode,
+    widgetId: widget.id,
+    startClientX: event.clientX,
+    startClientY: event.clientY,
+    startX: widget.x,
+    startY: widget.y,
+    startWidth: widget.width,
+    startHeight: widget.height,
+  }
+  const target = event.currentTarget
+  if (target instanceof HTMLElement) {
+    target.setPointerCapture(event.pointerId)
+    target.addEventListener('pointermove', updateInteraction)
+    target.addEventListener('pointerup', finishInteraction, { once: true })
+    target.addEventListener('pointercancel', finishInteraction, { once: true })
+  }
+  event.preventDefault()
+}
+
+function updateInteraction(event: PointerEvent): void {
+  const interaction = activeInteraction.value
+  if (interaction === null || interaction.pointerId !== event.pointerId) {
+    return
+  }
+  const nextWidgets = resolveOledDisplayInteractionWidgets(props.widgets, interaction, event.clientX, event.clientY, props.zoom, props.deviceWidth, props.deviceHeight)
   emit('update-widgets', nextWidgets)
 }
+
+function finishInteraction(event: PointerEvent): void {
+  const target = event.currentTarget
+  if (target instanceof HTMLElement) {
+    target.releasePointerCapture(event.pointerId)
+    target.removeEventListener('pointermove', updateInteraction)
+    target.removeEventListener('pointerup', finishInteraction)
+    target.removeEventListener('pointercancel', finishInteraction)
+  }
+  activeInteraction.value = null
+}
+
 </script>
 
 <style scoped>
 .oled-canvas {
   position: relative;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
   padding: 0;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.16);
   border-radius: 0;
   background:
-    linear-gradient(90deg, rgba(var(--v-theme-on-surface), 0.1) 1px, transparent 1px),
-    linear-gradient(rgba(var(--v-theme-on-surface), 0.1) 1px, transparent 1px),
-    linear-gradient(rgba(var(--v-theme-on-surface), 0.02), rgba(var(--v-theme-on-surface), 0.02)),
-    rgb(var(--v-theme-surface));
-  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.06);
+    linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+    rgb(0 0 0);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .oled-canvas__item {
+  position: absolute;
   overflow: visible;
 }
 
@@ -152,6 +163,24 @@ function layoutUpdated(layout: GridLayoutItem[]): void {
   box-sizing: content-box;
   background: transparent;
   color: rgb(var(--v-theme-on-surface));
-  cursor: pointer;
+  cursor: move;
+  touch-action: none;
+}
+
+.oled-canvas__resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid rgb(var(--v-theme-primary));
+  border-bottom: 2px solid rgb(var(--v-theme-primary));
+  opacity: 0;
+  cursor: nwse-resize;
+  pointer-events: auto;
+}
+
+.oled-canvas__widget--selected .oled-canvas__resize-handle {
+  opacity: 1;
 }
 </style>

@@ -4,7 +4,7 @@ import test from 'node:test'
 import {
   canonicalizeDeviceRecord,
   normalizeStoredDatabase,
-} from '../src/mock/database.ts'
+} from '../../src/mock/database.ts'
 import {
   classicFontGlyphForCodePoint,
   classicFontGlyphs,
@@ -15,7 +15,7 @@ import {
   normalizeClassicFontDrawBound,
   normalizeClassicFontDrawScale,
   resolveClassicFontColumnsPerLine,
-} from '../src/components/devices/oled-display/classic-font.ts'
+} from '../../src/components/devices/oled-display/classic-font.ts'
 import {
   resolveOledDisplayCanvasBitmapSize,
   resolveOledDisplayCanvasStyle,
@@ -25,17 +25,20 @@ import {
   resolveOledDisplayWidgetDuplicatePosition,
   resolveOledDisplayWidgetFrameStyle,
   resolveOledDisplayWidgetSpawnPosition,
-} from '../src/components/devices/oled-display/oled-display-layout-math.ts'
+} from '../../src/components/devices/oled-display/oled-display-layout-math.ts'
+import {
+  resolveOledDisplayInteractionWidgets,
+} from '../../src/components/devices/oled-display/oled-display-editor-interaction.ts'
 import {
   autoSizeOledDisplayTextWidget,
   measureOledDisplayTextWidget,
-} from '../src/components/devices/oled-display/oled-display-text-layout.ts'
+} from '../../src/components/devices/oled-display/oled-display-text-layout.ts'
 import {
   defaultOledDisplayLayout,
   defaultOledDisplayWidget,
   normalizeOledDisplayLayout,
   oledDisplayLayoutChanged,
-} from '../src/models/devices/oled-display-layout.ts'
+} from '../../src/models/devices/oled-display-layout.ts'
 
 function createFakeCanvasContext(width: number, height: number): {
   context: CanvasRenderingContext2D
@@ -595,6 +598,89 @@ test('OLED display layout math clamps duplicated widget position inside the disp
   assert.deepEqual(resolveOledDisplayWidgetDuplicatePosition(0, 0, 24, 12, 128, 64), { x: 4, y: 4 })
   assert.deepEqual(resolveOledDisplayWidgetDuplicatePosition(104, 52, 24, 12, 128, 64), { x: 104, y: 52 })
   assert.deepEqual(resolveOledDisplayWidgetDuplicatePosition(0, 0, 24, 12, 16, 8), { x: 0, y: 0 })
+})
+
+test('OLED editor drag updates only the active widget and allows overlap', () => {
+  const text = defaultOledDisplayWidget('text', 0)
+  text.id = 'text'
+  text.x = 0
+  text.y = 0
+  text.width = 42
+  text.height = 12
+  const circle = defaultOledDisplayWidget('circle', 1)
+  circle.id = 'circle'
+  circle.x = 0
+  circle.y = 18
+  circle.width = 18
+  circle.height = 18
+  const line = defaultOledDisplayWidget('line', 2)
+  line.id = 'line'
+  line.x = 28
+  line.y = 24
+  line.width = 36
+  line.height = 1
+
+  const next = resolveOledDisplayInteractionWidgets([text, circle, line], {
+    mode: 'drag',
+    widgetId: 'circle',
+    startClientX: 100,
+    startClientY: 100,
+    startX: circle.x,
+    startY: circle.y,
+    startWidth: circle.width,
+    startHeight: circle.height,
+  }, 124, 64, 2, 128, 64)
+
+  assert.equal(next[0], text)
+  assert.deepEqual({ x: next[1].x, y: next[1].y, width: next[1].width, height: next[1].height }, { x: 12, y: 0, width: 18, height: 18 })
+  assert.equal(next[2], line)
+})
+
+test('OLED editor drag clamps the active widget inside the display', () => {
+  const widget = defaultOledDisplayWidget('rect', 0)
+  widget.id = 'rect'
+  widget.x = 100
+  widget.y = 50
+  widget.width = 32
+  widget.height = 20
+
+  const next = resolveOledDisplayInteractionWidgets([widget], {
+    mode: 'drag',
+    widgetId: 'rect',
+    startClientX: 10,
+    startClientY: 10,
+    startX: widget.x,
+    startY: widget.y,
+    startWidth: widget.width,
+    startHeight: widget.height,
+  }, 210, 210, 2, 128, 64)
+
+  assert.deepEqual({ x: next[0].x, y: next[0].y }, { x: 96, y: 44 })
+})
+
+test('OLED editor resize updates only the active widget and clamps to display bounds', () => {
+  const rect = defaultOledDisplayWidget('rect', 0)
+  rect.id = 'rect'
+  rect.x = 120
+  rect.y = 60
+  rect.width = 4
+  rect.height = 3
+  const text = defaultOledDisplayWidget('text', 1)
+  text.id = 'text'
+
+  const next = resolveOledDisplayInteractionWidgets([rect, text], {
+    mode: 'resize',
+    widgetId: 'rect',
+    startClientX: 0,
+    startClientY: 0,
+    startX: rect.x,
+    startY: rect.y,
+    startWidth: rect.width,
+    startHeight: rect.height,
+  }, 100, 100, 2, 128, 64)
+
+  assert.deepEqual({ width: next[0].width, height: next[0].height }, { width: 8, height: 4 })
+  assert.equal(next[1], text)
 })
 
 test('OLED edit commands include layout-only updateConfig changes', () => {

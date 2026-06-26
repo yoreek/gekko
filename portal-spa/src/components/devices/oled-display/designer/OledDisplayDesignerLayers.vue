@@ -87,6 +87,8 @@ function iconForType(type: OledDisplayWidget['type']): string {
       return 'oled-line'
     case 'circle':
       return 'oled-circle'
+    case 'ellipse':
+      return 'oled-ellipse'
     default:
       return 'oled-text'
   }

@@ -340,6 +340,7 @@ export default {
           rect: 'Rectangle',
           line: 'Line',
           circle: 'Circle',
+          ellipse: 'Ellipse',
         },
         bindingKinds: {
           unbound: 'Unbound',

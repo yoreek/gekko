@@ -308,6 +308,7 @@ export default {
           rect: 'Прямоугольник',
           line: 'Линия',
           circle: 'Круг',
+          ellipse: 'Эллипс',
         },
         bindingKinds: {
           unbound: 'Без привязки',

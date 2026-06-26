@@ -3,8 +3,8 @@ import test from 'node:test'
 
 import { createPinia, setActivePinia } from 'pinia'
 
-import { useDeviceEventLogStore } from '../src/stores/deviceEventLog.ts'
-import type { RealtimeMessage } from '../src/realtime/messages.ts'
+import { useDeviceEventLogStore } from '../../src/stores/deviceEventLog.ts'
+import type { RealtimeMessage } from '../../src/realtime/messages.ts'
 
 function createStore() {
   const pinia = createPinia()

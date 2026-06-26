@@ -1,6 +1,6 @@
 import { autoSizeOledDisplayTextWidget } from '../../components/devices/oled-display/oled-display-text-layout.ts'
 
-export type OledDisplayWidgetType = 'text' | 'icon' | 'rect' | 'line' | 'circle'
+export type OledDisplayWidgetType = 'text' | 'icon' | 'rect' | 'line' | 'circle' | 'ellipse'
 
 export type OledDisplayBindingKind = 'unbound' | 'device' | 'metric' | 'constant_text'
 
@@ -47,12 +47,17 @@ export interface OledDisplayCircleWidget extends OledDisplayWidgetBase {
   type: 'circle'
 }
 
+export interface OledDisplayEllipseWidget extends OledDisplayWidgetBase {
+  type: 'ellipse'
+}
+
 export type OledDisplayWidget =
   | OledDisplayTextWidget
   | OledDisplayIconWidget
   | OledDisplayRectWidget
   | OledDisplayLineWidget
   | OledDisplayCircleWidget
+  | OledDisplayEllipseWidget
 
 export interface OledDisplayLayoutPage {
   id: string
@@ -69,11 +74,11 @@ export interface OledDisplayLayoutDraft {
 
 export const OLED_DISPLAY_LAYOUT_SCHEMA_VERSION = 1
 export const OLED_DISPLAY_LAYOUT_MAX_PAGES = 2
-export const OLED_DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE = 4
+export const OLED_DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE = 10
 export const OLED_DISPLAY_LAYOUT_TEXT_CAPACITY = 32
 export const OLED_DISPLAY_LAYOUT_PAGE_ID_CAPACITY = 16
 
-const widgetTypes: OledDisplayWidgetType[] = ['text', 'icon', 'rect', 'line', 'circle']
+const widgetTypes: OledDisplayWidgetType[] = ['text', 'icon', 'rect', 'line', 'circle', 'ellipse']
 
 export function defaultOledDisplayWidget(type: OledDisplayWidgetType = 'text', index = 0): OledDisplayWidget {
   return {
@@ -82,7 +87,7 @@ export function defaultOledDisplayWidget(type: OledDisplayWidgetType = 'text', i
     x: 0,
     y: 0,
     width: type === 'line' ? 16 : 24,
-    height: type === 'line' ? 1 : 12,
+    height: type === 'line' ? 1 : type === 'circle' ? 24 : 12,
     bindingKind: 'unbound',
     sourceDeviceId: 0,
     metricId: 0,
@@ -91,7 +96,7 @@ export function defaultOledDisplayWidget(type: OledDisplayWidgetType = 'text', i
     strokeWidth: 1,
     autoSize: false,
     styleFlags: {
-      filled: type === 'rect' || type === 'circle',
+      filled: type === 'rect' || type === 'circle' || type === 'ellipse',
       inverted: false,
       wrap: false,
     },

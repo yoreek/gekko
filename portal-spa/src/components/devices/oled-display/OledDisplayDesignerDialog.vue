@@ -61,9 +61,6 @@
                 {{ canvasLabel }}
               </div>
             </div>
-            <v-chip v-if="overlapWarning" color="warning" variant="tonal">
-              {{ t('device.dialog.oledDisplay.overlapWarning') }}
-            </v-chip>
           </div>
           <OledDisplayDesignerCanvas
             :widgets="activePage.widgets"
@@ -187,17 +184,16 @@ const layoutWidth = computed(() => Math.max(1, Math.round(draft.value.layoutWidt
 const layoutHeight = computed(() => Math.max(1, Math.round(draft.value.layoutHeight)))
 const canAddPage = computed(() => pages.value.length < OLED_DISPLAY_LAYOUT_MAX_PAGES)
 const canAddWidget = computed(() => activePageWidgets.value.length < OLED_DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE)
-const overlapWarning = computed(() => hasOverlap(activePageWidgets.value))
 const canvasLabel = computed(() => `${layoutWidth.value} × ${layoutHeight.value}`)
 const busy = computed(() => false)
 const sublineText = computed(() => `${draft.value.name} · ${canvasLabel.value}`)
 
 const widgetTypeOptions: Array<{ value: OledDisplayWidgetType; label: string; icon: string }> = [
   { value: 'text', label: t('device.dialog.oledDisplay.widgetTypes.text'), icon: 'oled-text' },
-  { value: 'icon', label: t('device.dialog.oledDisplay.widgetTypes.icon'), icon: 'oled-icon' },
   { value: 'rect', label: t('device.dialog.oledDisplay.widgetTypes.rect'), icon: 'oled-rect' },
   { value: 'line', label: t('device.dialog.oledDisplay.widgetTypes.line'), icon: 'oled-line' },
   { value: 'circle', label: t('device.dialog.oledDisplay.widgetTypes.circle'), icon: 'oled-circle' },
+  { value: 'ellipse', label: t('device.dialog.oledDisplay.widgetTypes.ellipse'), icon: 'oled-ellipse' },
 ]
 
 watch(
@@ -301,7 +297,8 @@ function selectWidget(widgetId: string | null): void {
 }
 
 function updateActiveWidgets(widgets: OledDisplayWidget[]): void {
-  const nextPages = pages.value.map(page => (page.id === activePage.value.id ? { ...page, widgets } : page))
+  const normalizedWidgets = widgets.map(widget => normalizeWidget(widget))
+  const nextPages = pages.value.map(page => (page.id === activePage.value.id ? { ...page, widgets: normalizedWidgets } : page))
   draft.value.layout = {
     ...layout.value,
     pages: nextPages,
@@ -322,12 +319,20 @@ function updateSelectedWidget(patch: Partial<OledDisplayWidget>): void {
 }
 
 function normalizeWidget(widget: OledDisplayWidget): OledDisplayWidget {
+  const maxWidgetWidth = widget.type === 'circle' ? Math.min(layoutWidth.value, layoutHeight.value) : layoutWidth.value
+  const width = Math.max(1, Math.min(maxWidgetWidth, Math.round(widget.width)))
+  const height = widget.type === 'circle'
+    ? width
+    : Math.max(1, Math.min(layoutHeight.value, Math.round(widget.height)))
+  const boundedHeight = Math.max(1, Math.min(layoutHeight.value, height))
+  const x = Math.max(0, Math.min(Math.max(0, layoutWidth.value - width), Math.round(widget.x)))
+  const y = Math.max(0, Math.min(Math.max(0, layoutHeight.value - boundedHeight), Math.round(widget.y)))
   return {
     ...widget,
-    x: Math.max(0, Math.min(layoutWidth.value - 1, Math.round(widget.x))),
-    y: Math.max(0, Math.min(layoutHeight.value - 1, Math.round(widget.y))),
-    width: Math.max(1, Math.min(layoutWidth.value, Math.round(widget.width))),
-    height: Math.max(1, Math.min(layoutHeight.value, Math.round(widget.height))),
+    x,
+    y,
+    width,
+    height: boundedHeight,
     fontSize: Math.max(1, Math.min(8, Math.round(widget.fontSize))),
     strokeWidth: Math.max(1, Math.min(32, Math.round(widget.strokeWidth))),
     autoSize: Boolean(widget.autoSize),
@@ -378,19 +383,6 @@ function removeWidget(widgetId: string): void {
   }
 }
 
-function hasOverlap(widgets: OledDisplayWidget[]): boolean {
-  for (let leftIndex = 0; leftIndex < widgets.length; leftIndex += 1) {
-    const left = widgets[leftIndex]
-    for (let rightIndex = leftIndex + 1; rightIndex < widgets.length; rightIndex += 1) {
-      const right = widgets[rightIndex]
-      const intersects = left.x < right.x + right.width && left.x + left.width > right.x && left.y < right.y + right.height && left.y + left.height > right.y
-      if (intersects) {
-        return true
-      }
-    }
-  }
-  return false
-}
 </script>
 
 <style scoped>

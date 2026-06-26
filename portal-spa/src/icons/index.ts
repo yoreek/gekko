@@ -37,6 +37,7 @@ export type PortalIconName =
   | 'oled-rect'
   | 'oled-line'
   | 'oled-circle'
+  | 'oled-ellipse'
   | 'oled-page'
   | 'oled-layer-up'
   | 'oled-layer-down'
@@ -103,6 +104,7 @@ const localIconRegistry: Record<
   | 'oled-rect'
   | 'oled-line'
   | 'oled-circle'
+  | 'oled-ellipse'
   | 'oled-page'
   | 'oled-layer-up'
   | 'oled-layer-down'
@@ -130,6 +132,7 @@ const localIconRegistry: Record<
   'oled-rect': createIconShape(['M5 6h14v12H5z']),
   'oled-line': createIconShape(['M5 12h14']),
   'oled-circle': createIconShape(['M12 5a7 7 0 100 14 7 7 0 000-14z']),
+  'oled-ellipse': createIconShape(['M4 12a8 5 0 1016 0 8 5 0 10-16 0z']),
   'oled-page': createIconShape(['M6 4h9l3 3v13H6z', 'M15 4v4h4']),
   'oled-layer-up': createIconShape(['M12 4l6 6H6z', 'M6 18h12']),
   'oled-layer-down': createIconShape(['M6 6h12l-6 6z', 'M6 18h12']),

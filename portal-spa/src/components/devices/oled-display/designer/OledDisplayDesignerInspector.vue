@@ -10,34 +10,36 @@
     <v-row>
       <v-col cols="6"><v-text-field :label="t('device.dialog.oledDisplay.x')" :model-value="widget.x" type="number" min="0" :max="deviceWidth" @update:model-value="updateNumber('x', $event)" /></v-col>
       <v-col cols="6"><v-text-field :label="t('device.dialog.oledDisplay.y')" :model-value="widget.y" type="number" min="0" :max="deviceHeight" @update:model-value="updateNumber('y', $event)" /></v-col>
-      <v-col cols="6"><v-text-field :label="t('device.dialog.oledDisplay.width')" :model-value="widget.width" type="number" min="1" :max="deviceWidth" :disabled="widget.type === 'text' && widget.autoSize" @update:model-value="updateNumber('width', $event)" /></v-col>
-      <v-col cols="6"><v-text-field :label="t('device.dialog.oledDisplay.height')" :model-value="widget.height" type="number" min="1" :max="deviceHeight" :disabled="widget.type === 'text' && widget.autoSize" @update:model-value="updateNumber('height', $event)" /></v-col>
-      <v-col cols="6"><v-text-field :label="t('device.dialog.oledDisplay.fontSize')" :model-value="widget.fontSize" type="number" min="1" :max="8" @update:model-value="updateNumber('fontSize', $event)" /></v-col>
+      <v-col cols="6"><v-text-field :label="t('device.dialog.oledDisplay.width')" :model-value="widget.width" type="number" min="1" :max="widget.type === 'circle' ? Math.min(deviceWidth, deviceHeight) : deviceWidth" :disabled="widget.type === 'text' && widget.autoSize" @update:model-value="updateNumber('width', $event)" /></v-col>
+      <v-col cols="6"><v-text-field :label="t('device.dialog.oledDisplay.height')" :model-value="widget.height" type="number" min="1" :max="deviceHeight" :disabled="(widget.type === 'text' && widget.autoSize) || widget.type === 'circle'" @update:model-value="updateNumber('height', $event)" /></v-col>
+      <v-col v-if="isTextWidget" cols="6"><v-text-field :label="t('device.dialog.oledDisplay.fontSize')" :model-value="widget.fontSize" type="number" min="1" :max="8" @update:model-value="updateNumber('fontSize', $event)" /></v-col>
       <v-col cols="6"><v-text-field :label="t('device.dialog.oledDisplay.strokeWidth')" :model-value="widget.strokeWidth" type="number" min="1" :max="32" @update:model-value="updateNumber('strokeWidth', $event)" /></v-col>
     </v-row>
-    <v-alert v-if="widget.type === 'text'" class="oled-inspector__fit" :type="fitInfo.type" variant="tonal" density="compact">
+    <v-alert v-if="isTextWidget" class="oled-inspector__fit" :type="fitInfo.type" variant="tonal" density="compact">
       <div class="oled-inspector__fit-title">{{ fitInfo.title }}</div>
       <div class="text-caption">{{ fitInfo.details }}</div>
     </v-alert>
     <v-text-field
-      :label="widget.type === 'icon' ? t('device.dialog.oledDisplay.iconToken') : t('device.dialog.oledDisplay.text')"
+      v-if="isTextWidget"
+      :label="t('device.dialog.oledDisplay.text')"
       :model-value="widget.text"
       @update:model-value="updateField('text', String($event))"
     />
     <v-select
+      v-if="isTextWidget"
       :label="t('device.dialog.oledDisplay.bindingKind')"
       :items="bindingKindItems"
       :model-value="widget.bindingKind"
       @update:model-value="updateBindingKind(String($event))"
     />
-    <v-row>
+    <v-row v-if="isTextWidget">
       <v-col cols="6"><v-text-field :label="t('device.dialog.oledDisplay.sourceDeviceId')" :model-value="widget.sourceDeviceId" type="number" min="0" @update:model-value="updateNumber('sourceDeviceId', $event)" /></v-col>
       <v-col cols="6"><v-text-field :label="t('device.dialog.oledDisplay.metricId')" :model-value="widget.metricId" type="number" @update:model-value="updateNumber('metricId', $event)" /></v-col>
     </v-row>
-    <v-switch v-if="widget.type === 'text'" :label="t('device.dialog.oledDisplay.autoSize')" :model-value="widget.autoSize" inset @update:model-value="updateField('autoSize', Boolean($event))" />
-    <v-switch :label="t('device.dialog.oledDisplay.filled')" :model-value="widget.styleFlags.filled" inset @update:model-value="updateFlag('filled', Boolean($event))" />
+    <v-switch v-if="isTextWidget" :label="t('device.dialog.oledDisplay.autoSize')" :model-value="widget.autoSize" inset @update:model-value="updateField('autoSize', Boolean($event))" />
+    <v-switch v-if="supportsFill" :label="t('device.dialog.oledDisplay.filled')" :model-value="widget.styleFlags.filled" inset @update:model-value="updateFlag('filled', Boolean($event))" />
     <v-switch :label="t('device.dialog.oledDisplay.inverted')" :model-value="widget.styleFlags.inverted" inset @update:model-value="updateFlag('inverted', Boolean($event))" />
-    <v-switch :label="t('device.dialog.oledDisplay.wrap')" :model-value="widget.styleFlags.wrap" inset @update:model-value="updateFlag('wrap', Boolean($event))" />
+    <v-switch v-if="isTextWidget" :label="t('device.dialog.oledDisplay.wrap')" :model-value="widget.styleFlags.wrap" inset @update:model-value="updateFlag('wrap', Boolean($event))" />
   </div>
 </template>
 
@@ -61,8 +63,10 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const widgetTypeItems = ['text', 'icon', 'rect', 'line', 'circle'].map(value => ({ title: t(`device.dialog.oledDisplay.widgetTypes.${value}`), value }))
+const widgetTypeItems = ['text', 'rect', 'line', 'circle', 'ellipse'].map(value => ({ title: t(`device.dialog.oledDisplay.widgetTypes.${value}`), value }))
 const bindingKindItems = ['unbound', 'device', 'metric', 'constant_text'].map(value => ({ title: t(`device.dialog.oledDisplay.bindingKinds.${value}`), value }))
+const isTextWidget = computed(() => props.widget.type === 'text')
+const supportsFill = computed(() => props.widget.type === 'rect' || props.widget.type === 'circle' || props.widget.type === 'ellipse')
 const previewStyle = computed(() => ({
   width: `${Math.max(48, Math.round(props.widget.width * 2))}px`,
   height: `${Math.max(24, Math.round(props.widget.height * 2))}px`,
@@ -89,7 +93,7 @@ function updateField<K extends keyof OledDisplayWidget>(key: K, value: OledDispl
 }
 
 function updateWidgetType(value: string): void {
-  if (!['text', 'icon', 'rect', 'line', 'circle'].includes(value)) {
+  if (!['text', 'rect', 'line', 'circle', 'ellipse'].includes(value)) {
     return
   }
   emit('update-widget', { type: value as OledDisplayWidget['type'] })
