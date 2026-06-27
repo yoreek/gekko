@@ -81,6 +81,8 @@ function iconForType(type: OledDisplayWidget['type']): string {
   switch (type) {
     case 'icon':
       return 'oled-icon'
+    case 'bitmap':
+      return 'oled-bitmap'
     case 'rect':
       return 'oled-rect'
     case 'line':

@@ -9,6 +9,12 @@
     </canvas>
     <v-icon v-else-if="widget.type === 'icon'" :icon="iconName" :size="iconSize" />
     <canvas
+      v-else-if="widget.type === 'bitmap'"
+      ref="bitmapCanvasRef"
+      class="oled-widget-preview__bitmap"
+      aria-hidden="true"
+    />
+    <canvas
       v-else-if="isShapeWidget"
       ref="shapeCanvasRef"
       class="oled-widget-preview__shape"
@@ -34,6 +40,7 @@ const props = defineProps<{
 const { t } = useI18n()
 
 const textCanvasRef = ref<HTMLCanvasElement | null>(null)
+const bitmapCanvasRef = ref<HTMLCanvasElement | null>(null)
 const shapeCanvasRef = ref<HTMLCanvasElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 let drawFrame = 0
@@ -42,6 +49,7 @@ const iconName = computed(() => (props.widget.text.trim().length > 0 ? props.wid
 const displayScale = computed(() => Math.max(1, props.displayScale ?? 1))
 const iconSize = computed(() => resolveOledDisplayIconSize(displayScale.value))
 const isShapeWidget = computed(() => props.widget.type === 'rect' || props.widget.type === 'line' || props.widget.type === 'circle' || props.widget.type === 'ellipse')
+const isBitmapWidget = computed(() => props.widget.type === 'bitmap')
 const previewLabel = computed(() => props.widget.text.trim().length > 0 ? props.widget.text : t('device.dialog.oledDisplay.widgetEmpty'))
 const renderScale = computed(() => resolveOledDisplayTextRenderScale(props.widget.fontSize, 1))
 const oledOnColor = 'rgb(255 255 255)'
@@ -55,6 +63,51 @@ function scheduleDraw(): void {
     drawFrame = 0
     drawTextCanvas()
   })
+}
+
+function drawBitmapCanvas(): void {
+  const canvas = bitmapCanvasRef.value
+  if (canvas === null || !isBitmapWidget.value) {
+    return
+  }
+
+  const canvasSize = resolveOledDisplayWidgetBitmapSize(props.widget.width, props.widget.height)
+  if (canvas.width !== canvasSize.bitmapWidth) {
+    canvas.width = canvasSize.bitmapWidth
+  }
+  if (canvas.height !== canvasSize.bitmapHeight) {
+    canvas.height = canvasSize.bitmapHeight
+  }
+
+  const context = canvas.getContext('2d')
+  if (context === null) {
+    return
+  }
+
+  const image = context.createImageData(canvasSize.bitmapWidth, canvasSize.bitmapHeight)
+  let bytes = new Uint8Array(canvasSize.bitmapHeight * Math.ceil(canvasSize.bitmapWidth / 8))
+  try {
+    bytes = Uint8Array.from(globalThis.atob(typeof props.widget.bitmapData === 'string' ? props.widget.bitmapData : ''), char => char.charCodeAt(0))
+  } catch {
+    // keep default blank data
+  }
+  const inverted = props.widget.styleFlags.inverted
+  const rowBytes = Math.ceil(canvasSize.bitmapWidth / 8)
+  for (let y = 0; y < canvasSize.bitmapHeight; y += 1) {
+    const rowOffset = y * rowBytes
+    for (let x = 0; x < canvasSize.bitmapWidth; x += 1) {
+      const byte = bytes[rowOffset + Math.floor(x / 8)] ?? 0
+      const bit = (byte >> (7 - (x % 8))) & 1
+      const on = inverted ? bit === 0 : bit === 1
+      const index = (y * canvasSize.bitmapWidth + x) * 4
+      const value = on ? 255 : 0
+      image.data[index] = value
+      image.data[index + 1] = value
+      image.data[index + 2] = value
+      image.data[index + 3] = 255
+    }
+  }
+  context.putImageData(image, 0, 0)
 }
 
 function drawShapeCanvas(): void {
@@ -119,6 +172,7 @@ function drawShapeCanvas(): void {
   }
 }
 
+
 function drawTextCanvas(): void {
   const canvas = textCanvasRef.value
   if (canvas === null) {
@@ -152,7 +206,7 @@ function drawTextCanvas(): void {
 }
 
 onMounted(() => {
-  const canvas = textCanvasRef.value ?? shapeCanvasRef.value
+  const canvas = textCanvasRef.value ?? shapeCanvasRef.value ?? bitmapCanvasRef.value
   if (canvas === null) {
     return
   }
@@ -163,6 +217,7 @@ onMounted(() => {
   resizeObserver.observe(canvas.parentElement ?? canvas)
   scheduleDraw()
   drawShapeCanvas()
+  drawBitmapCanvas()
 })
 
 onBeforeUnmount(() => {
@@ -205,6 +260,15 @@ watch(
   },
   { immediate: true, flush: 'post' },
 )
+
+watch(
+  () => [props.widget.type, props.widget.width, props.widget.height, props.widget.type === 'bitmap' && typeof props.widget.bitmapData === 'string' ? props.widget.bitmapData : '', props.widget.styleFlags.inverted],
+  async () => {
+    await nextTick()
+    drawBitmapCanvas()
+  },
+  { immediate: true, flush: 'post' },
+)
 </script>
 
 <style scoped>
@@ -233,6 +297,15 @@ watch(
 }
 
 .oled-widget-preview__shape {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  image-rendering: pixelated;
+}
+
+.oled-widget-preview__bitmap {
   display: block;
   width: 100%;
   height: 100%;

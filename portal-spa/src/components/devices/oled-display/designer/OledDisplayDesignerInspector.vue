@@ -1,6 +1,9 @@
 <template>
   <div class="oled-inspector">
     <OledDisplayWidgetPreview :widget="widget" :display-scale="2" class="oled-inspector__preview" :style="previewStyle" />
+    <v-alert v-if="bitmapError.length > 0" type="error" variant="tonal" density="compact">
+      {{ bitmapError }}
+    </v-alert>
     <v-select
       :label="t('device.dialog.oledDisplay.widgetType')"
       :items="widgetTypeItems"
@@ -10,11 +13,50 @@
     <v-row>
       <v-col cols="6"><v-text-field :label="t('device.dialog.oledDisplay.x')" :model-value="widget.x" type="number" min="0" :max="deviceWidth" @update:model-value="updateNumber('x', $event)" /></v-col>
       <v-col cols="6"><v-text-field :label="t('device.dialog.oledDisplay.y')" :model-value="widget.y" type="number" min="0" :max="deviceHeight" @update:model-value="updateNumber('y', $event)" /></v-col>
-      <v-col cols="6"><v-text-field :label="t('device.dialog.oledDisplay.width')" :model-value="widget.width" type="number" min="1" :max="widget.type === 'circle' ? Math.min(deviceWidth, deviceHeight) : deviceWidth" :disabled="widget.type === 'text' && widget.autoSize" @update:model-value="updateNumber('width', $event)" /></v-col>
-      <v-col cols="6"><v-text-field :label="t('device.dialog.oledDisplay.height')" :model-value="widget.height" type="number" min="1" :max="deviceHeight" :disabled="(widget.type === 'text' && widget.autoSize) || widget.type === 'circle'" @update:model-value="updateNumber('height', $event)" /></v-col>
+      <v-col cols="6">
+        <v-text-field
+          v-if="!isBitmapWidget"
+          :label="t('device.dialog.oledDisplay.width')"
+          :model-value="widget.width"
+          type="number"
+          min="1"
+          :max="deviceWidth"
+          @update:model-value="updateNumber('width', $event)"
+        />
+        <v-text-field
+          v-else
+          v-model="bitmapWidthField"
+          :label="t('device.dialog.oledDisplay.width')"
+          type="number"
+          min="1"
+          :max="deviceWidth"
+        />
+      </v-col>
+      <v-col cols="6">
+        <v-text-field
+          v-if="!isBitmapWidget"
+          :label="t('device.dialog.oledDisplay.height')"
+          :model-value="widget.height"
+          type="number"
+          min="1"
+          :max="deviceHeight"
+          @update:model-value="updateNumber('height', $event)"
+        />
+        <v-text-field
+          v-else
+          v-model="bitmapHeightField"
+          :label="t('device.dialog.oledDisplay.height')"
+          type="number"
+          min="1"
+          :max="deviceHeight"
+        />
+      </v-col>
       <v-col v-if="isTextWidget" cols="6"><v-text-field :label="t('device.dialog.oledDisplay.fontSize')" :model-value="widget.fontSize" type="number" min="1" :max="8" @update:model-value="updateNumber('fontSize', $event)" /></v-col>
       <v-col cols="6"><v-text-field :label="t('device.dialog.oledDisplay.strokeWidth')" :model-value="widget.strokeWidth" type="number" min="1" :max="32" @update:model-value="updateNumber('strokeWidth', $event)" /></v-col>
     </v-row>
+    <v-alert v-if="isBitmapWidget" type="info" variant="tonal" density="compact">
+      {{ t('device.dialog.oledDisplay.bitmapSize', { size: `${widget.width} × ${widget.height}` }) }}
+    </v-alert>
     <v-alert v-if="isTextWidget" class="oled-inspector__fit" :type="fitInfo.type" variant="tonal" density="compact">
       <div class="oled-inspector__fit-title">{{ fitInfo.title }}</div>
       <div class="text-caption">{{ fitInfo.details }}</div>
@@ -25,6 +67,27 @@
       :model-value="widget.text"
       @update:model-value="updateField('text', String($event))"
     />
+    <v-file-input
+      v-if="isBitmapWidget"
+      accept="image/*"
+      :label="t('device.dialog.oledDisplay.bitmapImport')"
+      prepend-icon="upload"
+      density="comfortable"
+      @update:model-value="onBitmapFileSelected"
+    />
+    <v-slider
+      v-if="isBitmapWidget"
+      :model-value="bitmapThreshold"
+      :min="0"
+      :max="255"
+      :step="1"
+      hide-details
+      :label="t('device.dialog.oledDisplay.bitmapThreshold')"
+      @update:model-value="updateBitmapThreshold"
+    />
+    <div v-if="isBitmapWidget" class="oled-inspector__bitmap-actions">
+      <v-btn variant="text" @click="clearBitmap">{{ t('device.dialog.oledDisplay.bitmapClear') }}</v-btn>
+    </div>
     <v-select
       v-if="isTextWidget"
       :label="t('device.dialog.oledDisplay.bindingKind')"
@@ -44,10 +107,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import OledDisplayWidgetPreview from '@/components/devices/oled-display/OledDisplayWidgetPreview.vue'
+import {
+  createOledDisplayBitmapPlaceholder,
+  importOledDisplayBitmapFromFile,
+} from '@/components/devices/oled-display/oled-display-bitmap'
 import { measureOledDisplayTextWidget } from '@/components/devices/oled-display/oled-display-text-layout'
 import type { OledDisplayWidget } from '@/models/devices/oled-display-layout'
 
@@ -62,11 +129,18 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const importedBitmapFile = ref<File | null>(null)
+const bitmapError = ref('')
+const bitmapWidthField = ref(props.widget.width)
+const bitmapHeightField = ref(props.widget.height)
+const bitmapDraftData = ref<string>(props.widget.type === 'bitmap' ? props.widget.bitmapData : createOledDisplayBitmapPlaceholder().bitmapData)
 
-const widgetTypeItems = ['text', 'rect', 'line', 'circle', 'ellipse'].map(value => ({ title: t(`device.dialog.oledDisplay.widgetTypes.${value}`), value }))
+const widgetTypeItems = ['text', 'bitmap', 'rect', 'line', 'circle', 'ellipse'].map(value => ({ title: t(`device.dialog.oledDisplay.widgetTypes.${value}`), value }))
 const bindingKindItems = ['unbound', 'device', 'metric', 'constant_text'].map(value => ({ title: t(`device.dialog.oledDisplay.bindingKinds.${value}`), value }))
 const isTextWidget = computed(() => props.widget.type === 'text')
+const isBitmapWidget = computed(() => props.widget.type === 'bitmap')
 const supportsFill = computed(() => props.widget.type === 'rect' || props.widget.type === 'circle' || props.widget.type === 'ellipse')
+const bitmapThreshold = ref(128)
 const previewStyle = computed(() => ({
   width: `${Math.max(48, Math.round(props.widget.width * 2))}px`,
   height: `${Math.max(24, Math.round(props.widget.height * 2))}px`,
@@ -93,10 +167,46 @@ function updateField<K extends keyof OledDisplayWidget>(key: K, value: OledDispl
 }
 
 function updateWidgetType(value: string): void {
-  if (!['text', 'rect', 'line', 'circle', 'ellipse'].includes(value)) {
+  if (!['text', 'bitmap', 'rect', 'line', 'circle', 'ellipse'].includes(value)) {
     return
   }
   emit('update-widget', { type: value as OledDisplayWidget['type'] })
+}
+
+async function onBitmapFileSelected(value: File | File[] | null): Promise<void> {
+  const file = Array.isArray(value) ? value[0] ?? null : value
+  if (file === null || !isBitmapWidget.value) {
+    return
+  }
+  importedBitmapFile.value = file
+  bitmapError.value = ''
+  try {
+    const imported = await importOledDisplayBitmapFromFile(file, props.widget.width, props.widget.height, bitmapThreshold.value)
+    bitmapDraftData.value = imported.bitmapData
+    emit('update-widget', {
+      bitmapData: imported.bitmapData,
+    } as Partial<OledDisplayWidget>)
+  } catch (error) {
+    bitmapError.value = error instanceof Error ? error.message : t('device.dialog.oledDisplay.bitmapImportFailed')
+  }
+}
+
+function updateBitmapThreshold(value: string | number): void {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) {
+    return
+  }
+  bitmapThreshold.value = Math.max(0, Math.min(255, Math.round(numeric)))
+  if (importedBitmapFile.value !== null) {
+    void onBitmapFileSelected(importedBitmapFile.value)
+  }
+}
+
+function clearBitmap(): void {
+  importedBitmapFile.value = null
+  bitmapError.value = ''
+  bitmapDraftData.value = createOledDisplayBitmapPlaceholder(props.widget.width, props.widget.height).bitmapData
+  emit('update-widget', { bitmapData: createOledDisplayBitmapPlaceholder(props.widget.width, props.widget.height).bitmapData } as Partial<OledDisplayWidget>)
 }
 
 function updateBindingKind(value: string): void {
@@ -111,7 +221,28 @@ function updateNumber(key: keyof Pick<OledDisplayWidget, 'x' | 'y' | 'width' | '
   if (!Number.isFinite(numeric)) {
     return
   }
+  if (props.widget.type === 'bitmap' && (key === 'width' || key === 'height')) {
+    if (key === 'width') {
+      bitmapWidthField.value = Math.max(1, Math.round(numeric))
+    }
+    if (key === 'height') {
+      bitmapHeightField.value = Math.max(1, Math.round(numeric))
+    }
+    emit('update-widget', { [key]: Math.max(1, Math.round(numeric)) } as Partial<OledDisplayWidget>)
+    scheduleBitmapResize()
+    return
+  }
   emit('update-widget', { [key]: Math.round(numeric) } as Partial<OledDisplayWidget>)
+}
+
+function scheduleBitmapResize(): void {
+  if (!isBitmapWidget.value) {
+    return
+  }
+  if (importedBitmapFile.value === null) {
+    return
+  }
+  void onBitmapFileSelected(importedBitmapFile.value)
 }
 
 function updateFlag(key: keyof OledDisplayWidget['styleFlags'], value: boolean): void {
@@ -122,6 +253,45 @@ function updateFlag(key: keyof OledDisplayWidget['styleFlags'], value: boolean):
     },
   })
 }
+
+watch(
+  () => [props.widget.width, props.widget.height, bitmapThreshold.value],
+  async () => {
+    if (importedBitmapFile.value === null) {
+      return
+    }
+    await onBitmapFileSelected(importedBitmapFile.value)
+  },
+)
+
+watch(
+  () => [bitmapWidthField.value, bitmapHeightField.value],
+  () => {
+    if (!isBitmapWidget.value) {
+      return
+    }
+    emit('update-widget', {
+      width: Math.max(1, Math.round(bitmapWidthField.value)),
+      height: Math.max(1, Math.round(bitmapHeightField.value)),
+    } as Partial<OledDisplayWidget>)
+    scheduleBitmapResize()
+  },
+)
+
+watch(
+  () => [props.widget.width, props.widget.height, props.widget.type],
+  () => {
+    bitmapWidthField.value = props.widget.width
+    bitmapHeightField.value = props.widget.height
+  },
+)
+
+watch(
+  () => props.widget.type,
+  () => {
+    bitmapError.value = ''
+  },
+)
 </script>
 
 <style scoped>
@@ -143,4 +313,5 @@ function updateFlag(key: keyof OledDisplayWidget['styleFlags'], value: boolean):
   border: 1px solid rgb(var(--v-theme-outline-variant));
   border-radius: 0;
 }
+
 </style>

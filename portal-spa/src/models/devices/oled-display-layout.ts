@@ -1,6 +1,6 @@
 import { autoSizeOledDisplayTextWidget } from '../../components/devices/oled-display/oled-display-text-layout.ts'
 
-export type OledDisplayWidgetType = 'text' | 'icon' | 'rect' | 'line' | 'circle' | 'ellipse'
+export type OledDisplayWidgetType = 'text' | 'icon' | 'bitmap' | 'rect' | 'line' | 'circle' | 'ellipse'
 
 export type OledDisplayBindingKind = 'unbound' | 'device' | 'metric' | 'constant_text'
 
@@ -25,6 +25,11 @@ export interface OledDisplayWidgetBase {
   strokeWidth: number
   autoSize: boolean
   styleFlags: OledDisplayWidgetStyleFlags
+}
+
+export interface OledDisplayBitmapWidget extends OledDisplayWidgetBase {
+  type: 'bitmap'
+  bitmapData: string
 }
 
 export interface OledDisplayTextWidget extends OledDisplayWidgetBase {
@@ -54,6 +59,7 @@ export interface OledDisplayEllipseWidget extends OledDisplayWidgetBase {
 export type OledDisplayWidget =
   | OledDisplayTextWidget
   | OledDisplayIconWidget
+  | OledDisplayBitmapWidget
   | OledDisplayRectWidget
   | OledDisplayLineWidget
   | OledDisplayCircleWidget
@@ -77,17 +83,42 @@ export const OLED_DISPLAY_LAYOUT_MAX_PAGES = 2
 export const OLED_DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE = 10
 export const OLED_DISPLAY_LAYOUT_TEXT_CAPACITY = 32
 export const OLED_DISPLAY_LAYOUT_PAGE_ID_CAPACITY = 16
+export const OLED_DISPLAY_BITMAP_MAX_BYTES = 1024
+export const OLED_DISPLAY_BITMAP_DEFAULT_WIDTH = 16
+export const OLED_DISPLAY_BITMAP_DEFAULT_HEIGHT = 16
 
-const widgetTypes: OledDisplayWidgetType[] = ['text', 'icon', 'rect', 'line', 'circle', 'ellipse']
+const widgetTypes: OledDisplayWidgetType[] = ['text', 'icon', 'bitmap', 'rect', 'line', 'circle', 'ellipse']
+
+function resolveBitmapByteLength(width: number, height: number): number {
+  return Math.ceil(Math.max(1, width) / 8) * Math.max(1, height)
+}
+
+export function createDefaultOledDisplayBitmapData(width = OLED_DISPLAY_BITMAP_DEFAULT_WIDTH, height = OLED_DISPLAY_BITMAP_DEFAULT_HEIGHT): string {
+  return globalThis.btoa('\0'.repeat(resolveBitmapByteLength(width, height)))
+}
+
+function normalizeBitmapData(value: unknown, width: number, height: number): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    return createDefaultOledDisplayBitmapData(width, height)
+  }
+  try {
+    const decoded = globalThis.atob(value)
+    return decoded.length === resolveBitmapByteLength(width, height)
+      ? globalThis.btoa(decoded)
+      : createDefaultOledDisplayBitmapData(width, height)
+  } catch {
+    return createDefaultOledDisplayBitmapData(width, height)
+  }
+}
 
 export function defaultOledDisplayWidget(type: OledDisplayWidgetType = 'text', index = 0): OledDisplayWidget {
-  return {
+  const widget: OledDisplayWidgetBase = {
     id: `${type}-${index}`,
     type,
     x: 0,
     y: 0,
-    width: type === 'line' ? 16 : 24,
-    height: type === 'line' ? 1 : type === 'circle' ? 24 : 12,
+    width: type === 'bitmap' ? OLED_DISPLAY_BITMAP_DEFAULT_WIDTH : type === 'line' ? 16 : 24,
+    height: type === 'bitmap' ? OLED_DISPLAY_BITMAP_DEFAULT_HEIGHT : type === 'line' ? 1 : type === 'circle' ? 24 : 12,
     bindingKind: 'unbound',
     sourceDeviceId: 0,
     metricId: 0,
@@ -101,6 +132,14 @@ export function defaultOledDisplayWidget(type: OledDisplayWidgetType = 'text', i
       wrap: false,
     },
   }
+  if (type === 'bitmap') {
+    return {
+      ...widget,
+      type,
+      bitmapData: createDefaultOledDisplayBitmapData(),
+    } as OledDisplayBitmapWidget
+  }
+  return widget as OledDisplayWidget
 }
 
 export function defaultOledDisplayLayout(): OledDisplayLayoutDraft {
@@ -159,7 +198,7 @@ export function normalizeOledDisplayWidget(value: unknown, index = 0): OledDispl
 
   const raw = value as Record<string, unknown>
   const type = normalizeWidgetType(raw.type)
-  const widget: OledDisplayWidget = {
+  const baseWidget: OledDisplayWidgetBase = {
     ...defaults,
     id: typeof raw.id === 'string' && raw.id.trim().length > 0 ? raw.id.trim() : defaults.id,
     type,
@@ -180,14 +219,21 @@ export function normalizeOledDisplayWidget(value: unknown, index = 0): OledDispl
       wrap: Boolean((raw.styleFlags as Record<string, unknown> | undefined)?.wrap ?? defaults.styleFlags.wrap),
     },
   }
+  const widget = type === 'bitmap'
+    ? {
+        ...baseWidget,
+        type,
+        bitmapData: normalizeBitmapData(raw.bitmapData, clampInteger(raw.width, defaults.width, 1, 0x7fff), clampInteger(raw.height, defaults.height, 1, 0x7fff)),
+      }
+    : baseWidget
   return normalizeWidgetAutoSize(widget)
 }
 
-function normalizeWidgetAutoSize(widget: OledDisplayWidget): OledDisplayWidget {
+function normalizeWidgetAutoSize(widget: OledDisplayWidgetBase): OledDisplayWidget {
   if (!widget.autoSize || widget.type !== 'text') {
-    return widget
+    return widget as OledDisplayWidget
   }
-  return autoSizeOledDisplayTextWidget(widget, 0x7fff, 0x7fff)
+  return autoSizeOledDisplayTextWidget(widget as OledDisplayWidget, 0x7fff, 0x7fff) as OledDisplayWidget
 }
 
 export function normalizeOledDisplayLayout(value: unknown): OledDisplayLayoutDraft {
@@ -272,6 +318,7 @@ export function encodeOledDisplayLayout(layout: OledDisplayLayoutDraft): Record<
           inverted: widget.styleFlags.inverted,
           wrap: widget.styleFlags.wrap,
         },
+        ...(widget.type === 'bitmap' ? { bitmapData: widget.bitmapData } : {}),
       })),
     })),
   }

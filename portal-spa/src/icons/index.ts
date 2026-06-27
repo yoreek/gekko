@@ -9,6 +9,7 @@ import {
   mdiInformationOutline as infoPath,
   mdiMenu as menuPath,
   mdiPencil as editPath,
+  mdiImageOutline as imageOutlinePath,
   mdiPlus as plusPath,
   mdiPower as powerPath,
   mdiRefresh as refreshPath,
@@ -34,6 +35,7 @@ export type PortalIconName =
   | 'layers'
   | 'oled-text'
   | 'oled-icon'
+  | 'oled-bitmap'
   | 'oled-rect'
   | 'oled-line'
   | 'oled-circle'
@@ -101,6 +103,7 @@ const localIconRegistry: Record<
   | 'layers'
   | 'oled-text'
   | 'oled-icon'
+  | 'oled-bitmap'
   | 'oled-rect'
   | 'oled-line'
   | 'oled-circle'
@@ -129,6 +132,7 @@ const localIconRegistry: Record<
   layers: createIconShape(['M12 5l8 4-8 4-8-4 8-4z', 'M4 12l8 4 8-4', 'M4 16l8 4 8-4']),
   'oled-text': createIconShape(['M5 6h14', 'M12 6v12', 'M7 18h10']),
   'oled-icon': createIconShape(['M12 5l3 6 6 1-4.5 4.3 1.2 6.2L12 18.9 5.3 22.5l1.2-6.2L2 12l6-1z']),
+  'oled-bitmap': createIconShape([imageOutlinePath]),
   'oled-rect': createIconShape(['M5 6h14v12H5z']),
   'oled-line': createIconShape(['M5 12h14']),
   'oled-circle': createIconShape(['M12 5a7 7 0 100 14 7 7 0 000-14z']),

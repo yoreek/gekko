@@ -139,6 +139,9 @@ import {
   type OledDisplayWidgetType,
   OLED_DISPLAY_LAYOUT_MAX_PAGES,
   OLED_DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE,
+  OLED_DISPLAY_BITMAP_DEFAULT_HEIGHT,
+  OLED_DISPLAY_BITMAP_DEFAULT_WIDTH,
+  createDefaultOledDisplayBitmapData,
 } from '@/models/devices/oled-display-layout'
 import type { DeviceRecord } from '@/api/contracts'
 
@@ -190,6 +193,7 @@ const sublineText = computed(() => `${draft.value.name} · ${canvasLabel.value}`
 
 const widgetTypeOptions: Array<{ value: OledDisplayWidgetType; label: string; icon: string }> = [
   { value: 'text', label: t('device.dialog.oledDisplay.widgetTypes.text'), icon: 'oled-text' },
+  { value: 'bitmap', label: t('device.dialog.oledDisplay.widgetTypes.bitmap'), icon: 'oled-bitmap' },
   { value: 'rect', label: t('device.dialog.oledDisplay.widgetTypes.rect'), icon: 'oled-rect' },
   { value: 'line', label: t('device.dialog.oledDisplay.widgetTypes.line'), icon: 'oled-line' },
   { value: 'circle', label: t('device.dialog.oledDisplay.widgetTypes.circle'), icon: 'oled-circle' },
@@ -313,7 +317,7 @@ function updateSelectedWidget(patch: Partial<OledDisplayWidget>): void {
     if (widget.id !== selectedWidget.value?.id) {
       return widget
     }
-    const merged = normalizeWidget({ ...widget, ...patch })
+    const merged = normalizeWidget({ ...(widget as OledDisplayWidget), ...patch } as OledDisplayWidget)
     return autoSizeOledDisplayTextWidget(merged, layoutWidth.value, layoutHeight.value)
   }))
 }
@@ -336,7 +340,14 @@ function normalizeWidget(widget: OledDisplayWidget): OledDisplayWidget {
     fontSize: Math.max(1, Math.min(8, Math.round(widget.fontSize))),
     strokeWidth: Math.max(1, Math.min(32, Math.round(widget.strokeWidth))),
     autoSize: Boolean(widget.autoSize),
-  }
+    ...(widget.type === 'bitmap'
+      ? {
+          bitmapData: typeof widget.bitmapData === 'string' && widget.bitmapData.length > 0
+            ? widget.bitmapData
+            : createDefaultOledDisplayBitmapData(Math.max(1, Math.min(width, OLED_DISPLAY_BITMAP_DEFAULT_WIDTH)), Math.max(1, Math.min(boundedHeight, OLED_DISPLAY_BITMAP_DEFAULT_HEIGHT))),
+        }
+      : {}),
+  } as OledDisplayWidget
 }
 
 function moveWidgetUp(widgetId: string): void {

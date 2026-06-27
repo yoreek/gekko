@@ -36,9 +36,16 @@ import {
 import {
   defaultOledDisplayLayout,
   defaultOledDisplayWidget,
+  createDefaultOledDisplayBitmapData,
   normalizeOledDisplayLayout,
   oledDisplayLayoutChanged,
+  OLED_DISPLAY_BITMAP_DEFAULT_HEIGHT,
+  OLED_DISPLAY_BITMAP_DEFAULT_WIDTH,
 } from '../../src/models/devices/oled-display-layout.ts'
+import {
+  decodeOledDisplayBitmapBytes,
+  encodeOledDisplayBitmapBytes,
+} from '../../src/components/devices/oled-display/oled-display-bitmap.ts'
 
 function createFakeCanvasContext(width: number, height: number): {
   context: CanvasRenderingContext2D
@@ -113,6 +120,45 @@ test('normalizes OLED text auto size and preserves the flag', () => {
   assert.equal(layout.pages[0].widgets[0].autoSize, true)
   assert.equal(layout.pages[0].widgets[0].width > 0, true)
   assert.equal(layout.pages[0].widgets[0].height > 0, true)
+})
+
+test('bitmap widgets receive a valid default payload and survive normalization', () => {
+  const widget = defaultOledDisplayWidget('bitmap', 0)
+  assert.equal(widget.type, 'bitmap')
+  assert.equal(widget.width, OLED_DISPLAY_BITMAP_DEFAULT_WIDTH)
+  assert.equal(widget.height, OLED_DISPLAY_BITMAP_DEFAULT_HEIGHT)
+  assert.equal(globalThis.atob(widget.bitmapData).length, 32)
+
+  const layout = normalizeOledDisplayLayout({
+    pages: [
+      {
+        id: 'main',
+        name: 'Main',
+        order: 0,
+        widgets: [widget],
+      },
+    ],
+  })
+
+  const normalized = layout.pages[0].widgets[0]
+  assert.equal(normalized.type, 'bitmap')
+  assert.equal('bitmapData' in normalized, true)
+  assert.equal((normalized as typeof widget).bitmapData, widget.bitmapData)
+})
+
+test('bitmap helper creates the expected encoded byte length', () => {
+  const encoded = createDefaultOledDisplayBitmapData(8, 8)
+  assert.equal(globalThis.atob(encoded).length, 8)
+})
+
+test('bitmap pack helpers preserve drawBitmap row order', () => {
+  const bytes = Uint8Array.from([0b10000001, 0b01000000])
+  const encoded = encodeOledDisplayBitmapBytes(bytes, 8, 2)
+  assert.deepEqual(Array.from(decodeOledDisplayBitmapBytes(encoded, 8, 2)), Array.from(bytes))
+})
+
+test('bitmap pack helpers reject byte length mismatches', () => {
+  assert.throws(() => encodeOledDisplayBitmapBytes(Uint8Array.from([1, 2]), 8, 8))
 })
 
 test('classic font helper keeps the Adafruit glyph table and size mapping', () => {

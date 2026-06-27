@@ -39,7 +39,7 @@ export function autoSizeOledDisplayTextWidget(
   layoutHeight: number,
 ): OledDisplayWidget {
   if (widget.type !== 'text' || !widget.autoSize) {
-    return widget
+    return widget as OledDisplayWidget
   }
 
   const scale = classicFontScale(widget.fontSize)
@@ -52,5 +52,5 @@ export function autoSizeOledDisplayTextWidget(
     ...widget,
     width,
     height: Math.max(1, Math.min(availableHeight, sized.height)),
-  }
+  } as OledDisplayWidget
 }
