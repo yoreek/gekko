@@ -1,6 +1,6 @@
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 
-import type { RasterImageImportResult } from '@/raster/raster-image'
+import type { RasterImageImportResult } from '@/raster/raster-image-types'
 
 export interface RasterImageImportState {
   imageError: Ref<string>

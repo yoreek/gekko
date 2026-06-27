@@ -1,6 +1,6 @@
 import type { ComputedRef, Ref } from 'vue'
 
-import type { RasterImageImportResult } from '@/raster/raster-image'
+import type { RasterImageImportResult } from '@/raster/raster-image-types'
 import { useRasterImageImportState } from '../useRasterImageImportState.ts'
 
 export interface DisplayWidgetLike {

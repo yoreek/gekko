@@ -11,7 +11,7 @@
 namespace ewfm {
 
 namespace {
-constexpr size_t kMaxControllerJsonBodyBytes = 4096;
+constexpr size_t kMaxControllerJsonBodyBytes = 8192;
 
 BaseController::RequestFile* requestFilesStorage(AsyncWebServerRequest* request, size_t& fileCount) {
 #if defined(ARDUINO) || defined(UNIT_TEST)

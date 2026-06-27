@@ -1,14 +1,15 @@
-import type { BaseDeviceConfig, DeviceCommandRequest, DeviceRecord } from '@/api/contracts'
-import type { DeviceCreateDraftBase } from '@/models/devices/base'
-import { BaseDevice } from '@/models/devices/base-device'
-import { isSupportedRasterFormat, type DisplayBaseConfig, type DisplayCapabilities } from '@/models/devices/display/base'
+import type { BaseDeviceConfig, DeviceCommandRequest, DeviceRecord } from '../../../api/contracts.ts'
+import type { DeviceCreateDraftBase } from '../base.ts'
+import { BaseDevice } from '../base-device.ts'
+import { ssd1306Display } from '../display/display.ts'
+import type { DisplayBaseConfig, DisplayCapabilities } from '../display/base.ts'
 import {
   defaultSsd1306Layout,
   encodeSsd1306Layout,
   normalizeSsd1306Layout,
   ssd1306LayoutChanged,
   type Ssd1306LayoutDraft,
-} from '@/models/devices/ssd1306/layout'
+} from './layout.ts'
 
 export interface Ssd1306ConfigDraft extends BaseDeviceConfig, DisplayBaseConfig {
   i2cBusDeviceId: number
@@ -18,13 +19,7 @@ export interface Ssd1306ConfigDraft extends BaseDeviceConfig, DisplayBaseConfig 
 
 export interface Ssd1306CreateDraft extends DeviceCreateDraftBase, Ssd1306ConfigDraft {}
 
-export const displayCapabilities: DisplayCapabilities = {
-  supportedRasterFormats: ['mono1'],
-  defaultRasterFormat: 'mono1',
-  supportsBitmapImport: true,
-  supportsAspectRatioLock: true,
-  maxBitmapBytes: 1024,
-}
+export const displayCapabilities: DisplayCapabilities = ssd1306Display.displayCapabilities
 
 export function defaultConfig(): Ssd1306ConfigDraft {
   return {
@@ -122,5 +117,5 @@ export class Device extends BaseDevice<Ssd1306ConfigDraft, Ssd1306CreateDraft, R
 }
 
 export function supportsBitmapFormat(format: string): format is 'mono1' {
-  return isSupportedRasterFormat(displayCapabilities, format as never)
+  return ssd1306Display.supportsBitmapFormat(format as never)
 }

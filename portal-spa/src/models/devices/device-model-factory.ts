@@ -7,6 +7,7 @@ import { GpioSwitch } from './gpio-switch.ts'
 import { I2cBus } from './i2c-bus.ts'
 import { Device as Ssd1306Device } from './ssd1306/device.ts'
 import { Device as St7735Device } from './st7735/device.ts'
+import { SpiBusDevice } from './spi-bus.ts'
 import { OneWireBus } from './onewire-bus.ts'
 import { Thermostat } from './thermostat.ts'
 import { UnknownDevice } from './unknown-device.ts'
@@ -18,6 +19,7 @@ const deviceModelsByTypeId: Record<number, BaseDevice<any, any, any>> = {
   [deviceTypeIdFromName('gpio_switch')]: new GpioSwitch.Device(),
   [deviceTypeIdFromName('onewire_bus')]: new OneWireBus.Device(),
   [deviceTypeIdFromName('i2c_bus')]: new I2cBus.Device(),
+  [deviceTypeIdFromName('spi_bus')]: new SpiBusDevice(),
   [deviceTypeIdFromName('ssd1306')]: new Ssd1306Device(),
   [deviceTypeIdFromName('st7735')]: new St7735Device(),
   [deviceTypeIdFromName('ds18b20_temperature_sensor')]: new Ds18b20.Device(),

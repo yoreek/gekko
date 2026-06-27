@@ -52,6 +52,8 @@ void test_spi_runtime_reconfigures_and_advances_generation();
 void test_spi_setup_transfer_round_trip_and_api_serialization();
 void test_ssd1306_layout_codec_round_trip_json();
 void test_ssd1306_layout_codec_defaults_empty_pages_to_main_page();
+void test_ssd1306_layout_codec_accepts_legacy_numeric_binding_kind();
+void test_ssd1306_layout_codec_rejects_invalid_bitmap_payload();
 void test_ssd1306_layout_store_round_trip_binary();
 void test_ssd1306_layout_store_rejects_invalid_device_id();
 void test_ssd1306_layout_update_round_trip_via_registry_binary_store();
@@ -133,6 +135,8 @@ int main(int, char**) {
     RUN_TEST(test_spi_setup_transfer_round_trip_and_api_serialization);
     RUN_TEST(test_ssd1306_layout_codec_round_trip_json);
     RUN_TEST(test_ssd1306_layout_codec_defaults_empty_pages_to_main_page);
+    RUN_TEST(test_ssd1306_layout_codec_accepts_legacy_numeric_binding_kind);
+    RUN_TEST(test_ssd1306_layout_codec_rejects_invalid_bitmap_payload);
     RUN_TEST(test_ssd1306_layout_store_round_trip_binary);
     RUN_TEST(test_ssd1306_layout_store_rejects_invalid_device_id);
     RUN_TEST(test_ssd1306_layout_update_round_trip_via_registry_binary_store);

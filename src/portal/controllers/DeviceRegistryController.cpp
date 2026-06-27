@@ -283,7 +283,7 @@ void writeIndexResponse(AsyncResponseStream* response, DeviceRegistry& registry,
         }
         first = false;
 
-        StaticJsonDocument<1024> item;
+        StaticJsonDocument<8192> item;
         JsonObject device = item.to<JsonObject>();
         const DeviceStatus effectiveStatus = registry.effectiveStatus(runtime.deviceId());
         const IDeviceApiAdapter* adapter = adapters.find(runtime.typeId());
@@ -319,7 +319,7 @@ void DeviceRegistryController::show() {
         return;
     }
 
-    StaticJsonDocument<1024> doc;
+    StaticJsonDocument<8192> doc;
     doc["registryRevision"] = registry_.registryRevision();
     doc["pendingPersistence"] = registry_.hasPendingPersistence();
     JsonObject device = doc.createNestedObject("device");
@@ -375,7 +375,7 @@ void DeviceRegistryController::create() {
             return;
         }
     }
-    StaticJsonDocument<1024> doc;
+    StaticJsonDocument<8192> doc;
     doc["registryRevision"] = registry_.registryRevision();
     doc["pendingPersistence"] = result.pendingPersistence;
     JsonObject device = doc.createNestedObject("device");
@@ -577,7 +577,7 @@ void DeviceRegistryController::cmd() {
         return;
     }
 
-    StaticJsonDocument<1536> doc;
+    StaticJsonDocument<8192> doc;
     doc["registryRevision"] = registry_.registryRevision();
     doc["pendingPersistence"] = mutationResult.pendingPersistence;
     if (const IDeviceRuntime* runtime = registry_.runtime(deviceId_); runtime != nullptr) {

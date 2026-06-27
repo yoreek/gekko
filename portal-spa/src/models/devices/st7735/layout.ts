@@ -1,6 +1,7 @@
 import type { DisplayLayoutDraft } from '../display/layout.ts'
 import {
   defaultDisplayLayout,
+  displayLayoutChanged,
   encodeDisplayLayout,
   normalizeDisplayLayout,
 } from '../display/layout-normalizer.ts'
@@ -30,4 +31,8 @@ export function encodeSt7735Layout(layout: St7735LayoutDraft): Record<string, un
     ...encodeDisplayLayout(ST7735_DISPLAY_LAYOUT_PROFILE, layout),
     colorMode: 'rgb565',
   }
+}
+
+export function st7735LayoutChanged(left: unknown, right: unknown): boolean {
+  return displayLayoutChanged(ST7735_DISPLAY_LAYOUT_PROFILE, left, right)
 }

@@ -20,7 +20,7 @@ DeviceValidationResult validateSpiBusDependency(const DeviceRegistry& registry, 
     return {};
 }
 
-bool encodeLayoutRequest(const JsonObjectConst& input, DeviceId deviceId, BoundedBlob<kMaxDeviceConfigBytes>& blob, const char*& error) {
+bool encodeLayoutRequest(const JsonObjectConst& input, DeviceId deviceId, BoundedBlob<kMaxDisplayLayoutBytes>& blob, const char*& error) {
     const JsonObjectConst layoutInput = input["config"]["layout"].as<JsonObjectConst>();
     if (layoutInput.isNull()) {
         blob.clear();

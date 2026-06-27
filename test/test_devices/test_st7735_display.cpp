@@ -1,6 +1,7 @@
 #include "config/MemoryConfigStorage.h"
 #include "devices/bus/spi/SpiBusDevice.h"
 #include "devices/core/DeviceIdGenerator.h"
+#include "devices/display/DisplayLayoutCodec.h"
 #include "devices/display/st7735/St7735Device.h"
 #include "devices/display/st7735/St7735DeviceConfig.h"
 #include "devices/registry/DeviceRegistry.h"
@@ -61,7 +62,18 @@ void fillDisplayDocument(StaticJsonDocument<1024>& doc, uint32_t spiBusDeviceId,
     JsonArray pages = layout.createNestedArray("pages");
     JsonObject page = pages.createNestedObject();
     page["id"] = "main";
-    page.createNestedArray("widgets");
+    JsonArray widgets = page.createNestedArray("widgets");
+    JsonObject widget = widgets.createNestedObject();
+    widget["id"] = "bitmap";
+    widget["type"] = "bitmap";
+    widget["bindingKind"] = static_cast<uint8_t>(DisplayLayoutBindingKind::Unbound);
+    widget["x"] = 0;
+    widget["y"] = 0;
+    widget["width"] = 2;
+    widget["height"] = 2;
+    widget["bitmapFormat"] = "rgb565";
+    widget["keepAspectRatio"] = true;
+    widget["bitmapData"] = "AAECAw==";
 }
 
 DeviceCreateRequest makeCreateRequest(uint32_t spiBusDeviceId, uint8_t chipSelectPin) {
@@ -194,4 +206,10 @@ void test_st7735_update_round_trip_includes_layout() {
     TEST_ASSERT_EQUAL_UINT32(busResult.deviceId, reloadedRuntime->config().spiBusDeviceId);
     TEST_ASSERT_EQUAL_UINT8(5U, reloadedRuntime->config().chipSelectPin);
     TEST_ASSERT_EQUAL_UINT8(1U, reloadedRuntime->layout().pages.size());
+    TEST_ASSERT_EQUAL_UINT8(1U, reloadedRuntime->layout().pages[0].widgets.size());
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap), reloadedRuntime->layout().pages[0].widgets[0].type);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutBitmapFormat::Rgb565),
+                            reloadedRuntime->layout().pages[0].widgets[0].bitmapFormat);
+    TEST_ASSERT_EQUAL_UINT8(1U, reloadedRuntime->layout().pages[0].widgets[0].keepAspectRatio);
+    TEST_ASSERT_EQUAL_UINT8(4U, reloadedRuntime->layout().pages[0].widgets[0].bitmapData.size());
 }

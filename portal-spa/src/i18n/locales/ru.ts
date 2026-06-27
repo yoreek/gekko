@@ -150,6 +150,7 @@ export default {
       gpioSwitch: 'GPIO выключатель',
       onewireBus: 'Шина OneWire',
       i2cBus: 'Шина I2C',
+      spiBus: 'Шина SPI',
       ssd1306: 'Дисплей SSD1306',
       ssd1306Display: 'Дисплей SSD1306',
       st7735: 'Дисплей ST7735',
@@ -180,6 +181,12 @@ export default {
       i2cSclPin: 'I2C пин SCL',
       i2cFrequency: 'Частота I2C (Гц)',
       i2cBusDeviceId: 'ID I2C шины',
+      spiBusDeviceId: 'ID SPI шины',
+      chipSelectPin: 'Пин chip select',
+      spiHost: 'Хост SPI',
+      spiSckPin: 'SPI пин SCK',
+      spiMosiPin: 'SPI пин MOSI',
+      spiMisoPin: 'SPI пин MISO',
       display: {
         width: 'Ширина',
         height: 'Высота',
@@ -335,6 +342,19 @@ export default {
           device: 'Устройство',
           metric: 'Метрика',
           constant_text: 'Постоянный текст',
+        },
+      },
+      st7735Display: {
+        noDependency: 'Перед добавлением дисплея ST7735 создайте устройство SPI шины.',
+        layoutHint: 'Здесь настраиваются страницы, виджеты и RGB565 bitmap payloads.',
+        designDisplay: 'Редактор дисплея',
+        designerTitle: 'Редактор дисплея ST7735',
+        previewTitle: 'Предпросмотр',
+      },
+      spiBus: {
+        hosts: {
+          hspi: 'HSPI',
+          vspi: 'VSPI',
         },
       },
       thermostat: {

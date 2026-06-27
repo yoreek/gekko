@@ -15,12 +15,12 @@ struct DeviceConfigUpdateRequest {
     bool depsProvided{false};
     std::array<DeviceDependencyLink, kMaxDeviceDependencies> deps{};
     uint8_t depCount{0};
-    BoundedBlob<kMaxDeviceConfigBytes> persistedStateBlob{};
+    BoundedBlob<kMaxDisplayLayoutBytes> persistedStateBlob{};
     bool persistedStateProvided{false};
 };
 
 struct DeviceCreatePersistenceRequest {
-    BoundedBlob<kMaxDeviceConfigBytes> persistedStateBlob{};
+    BoundedBlob<kMaxDisplayLayoutBytes> persistedStateBlob{};
     bool persistedStateProvided{false};
 };
 

@@ -6,6 +6,7 @@ import {
   DUMMY_DEVICE_TYPE_ID,
   GPIO_SWITCH_DEVICE_TYPE_ID,
   SSD1306_DEVICE_TYPE_ID,
+  ST7735_DEVICE_TYPE_ID,
   ONEWIRE_BUS_DEVICE_TYPE_ID,
   THERMOSTAT_DEVICE_TYPE_ID,
   deviceTypeIdFromName,
@@ -23,6 +24,8 @@ import I2cBusDeviceDetail from '@/components/devices/i2c-bus/I2cBusDeviceDetail.
 import I2cBusDeviceForm from '@/components/devices/i2c-bus/I2cBusDeviceForm.vue'
 import Ssd1306DeviceDetail from '@/components/devices/display/ssd1306/Ssd1306DeviceDetail.vue'
 import Ssd1306DeviceForm from '@/components/devices/display/ssd1306/Ssd1306DeviceForm.vue'
+import St7735DeviceDetail from '@/components/devices/display/st7735/St7735DeviceDetail.vue'
+import St7735DeviceForm from '@/components/devices/display/st7735/St7735DeviceForm.vue'
 import OneWireBusDeviceDetail from '@/components/devices/onewire-bus/OneWireBusDeviceDetail.vue'
 import OneWireBusDeviceForm from '@/components/devices/onewire-bus/OneWireBusDeviceForm.vue'
 import ThermostatDeviceDetail from '@/components/devices/thermostat/ThermostatDeviceDetail.vue'
@@ -66,6 +69,12 @@ const deviceUiRegistry: DeviceUiRegistryEntry[] = [
     typeName: deviceTypeName(SSD1306_DEVICE_TYPE_ID),
     detail: Ssd1306DeviceDetail,
     form: Ssd1306DeviceForm,
+  },
+  {
+    typeId: ST7735_DEVICE_TYPE_ID,
+    typeName: deviceTypeName(ST7735_DEVICE_TYPE_ID),
+    detail: St7735DeviceDetail,
+    form: St7735DeviceForm,
   },
   {
     typeId: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,

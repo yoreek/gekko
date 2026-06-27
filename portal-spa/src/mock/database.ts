@@ -15,9 +15,17 @@ import {
   defaultSsd1306Widget,
   normalizeSsd1306Layout,
 } from '../models/devices/ssd1306/layout.ts'
+import {
+  defaultDisplayWidget,
+} from '../models/devices/display/layout-normalizer.ts'
+import { ST7735_DISPLAY_LAYOUT_PROFILE } from '../models/devices/display/profile.ts'
+import {
+  defaultSt7735Layout,
+  normalizeSt7735Layout,
+} from '../models/devices/st7735/layout.ts'
 import { safeReadStorage, safeWriteStorage } from '../utils/storage.ts'
 
-const storageKey = 'gekko.mockDb.v6'
+const storageKey = 'gekko.mockDb.v7'
 
 type MockDeviceConfig = BaseDeviceConfig & Record<string, unknown>
 type MockDeviceRuntime = BaseDeviceRuntime & {
@@ -89,6 +97,7 @@ const seedDatabase: SeedDatabase = {
           [670845751, 5, 0, 1, 1],
           [670845754, 6, 0, 1, 1],
           [670845755, 7, 0, 1, 1],
+          [670845756, 8, 0, 1, 1],
         ],
       },
     ],
@@ -172,6 +181,19 @@ const seedDatabase: SeedDatabase = {
         generation: 1,
         transactionActive: false,
       }),
+    createDeviceRecord(670845757, 'spi_bus', 1, {
+      enabled: true,
+      name: 'SPI Bus',
+      deps: [],
+      host: 2,
+      sckPin: 18,
+      mosiPin: 23,
+      misoPin: -1,
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+    }),
     createDeviceRecord(670845755, 'ssd1306', 1, {
       enabled: true,
       name: 'OLED Display',
@@ -203,24 +225,34 @@ const seedDatabase: SeedDatabase = {
                 text: 'ABC',
               },
               {
-                ...defaultSsd1306Widget('circle', 1),
-                id: 'circle-1',
+                ...defaultSsd1306Widget('bitmap', 1),
+                id: 'bitmap-1',
+                x: 46,
+                y: 0,
+                width: 16,
+                height: 16,
+                bitmapData: 'AAAAAAAAB+AIEBQoEAgQCBAIEAgX6A/wB+AAAAAAAAA=',
+                keepAspectRatio: true,
+              },
+              {
+                ...defaultSsd1306Widget('circle', 2),
+                id: 'circle-2',
                 x: 0,
                 y: 18,
                 width: 18,
                 height: 18,
               },
               {
-                ...defaultSsd1306Widget('line', 2),
-                id: 'line-2',
+                ...defaultSsd1306Widget('line', 3),
+                id: 'line-3',
                 x: 28,
                 y: 24,
                 width: 36,
                 height: 1,
               },
               {
-                ...defaultSsd1306Widget('ellipse', 3),
-                id: 'ellipse-3',
+                ...defaultSsd1306Widget('ellipse', 4),
+                id: 'ellipse-4',
                 x: 72,
                 y: 16,
                 width: 32,
@@ -240,21 +272,98 @@ const seedDatabase: SeedDatabase = {
       name: 'TFT Display',
       deps: [
         {
-          role: 'i2c_bus',
-          deviceId: 670845754,
+          role: 'spi_bus',
+          deviceId: 670845757,
         },
       ],
+      spiBusDeviceId: 670845757,
+      chipSelectPin: 5,
       width: 128,
       height: 160,
       layout: {
-        schemaVersion: 1,
-        activePageId: 'main',
+        ...defaultSt7735Layout(),
         pages: [
           {
             id: 'main',
             name: 'Main',
             order: 0,
-            widgets: [],
+            widgets: [
+              {
+                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'text', 0),
+                id: 'title-0',
+                x: 4,
+                y: 4,
+                width: 80,
+                height: 18,
+                text: 'TFT Demo',
+                fontSize: 2,
+              },
+              {
+                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'icon', 1),
+                id: 'icon-1',
+                x: 4,
+                y: 30,
+                width: 20,
+                height: 20,
+              },
+              {
+                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'bitmap', 2),
+                id: 'bitmap-2',
+                x: 32,
+                y: 24,
+                width: 16,
+                height: 16,
+                bitmapData: 'hn2GfYZ9hn2GfYZ9hn2GfYZ9hn2Gff8M/wz/DP8M/wyGfYZ9hn2GfYZ9hn2GfYZ9hn2GfYZ9/wz+oP8M/wz/DIZ9hn2GfYZ9hn2GfYZ9hn2GfYZ9/wz+oP6g/qD/DP8Mhn2GfYZ9hn2GfYZ9hn2GfYZ9hn3+oP6g/qD+oP6g/wyGfYZ9hn2GfSREJEQkRCREJEQkRCRE/qD+oP6g/wz/DIZ9hn2GfYZ9JEQkRCREJEQkRCREJESGff6ghn2GfYZ9hn2GfYZ9hn0kRCREJET4ACREJEQkRIZ9hn2GfYZ9hn2GfYZ9hn2GfYZ9JEQkRCREJEQkRCREhn2GfYZ9hn2GfYZ9hn2GfYZ9hn2GfSREJEQkRCREJESGfYZ9hn2GfYZ9hn2GfYZ9hn2GfYZ9iiKKIooihn2GfYZ9hn2GfYZ9hn2GfYZ9hn2GfYZ9hn2KIooiiiKGfYZ9hn2GfYZ9hn2GfYZ9hn2GfYZ9hn2GfYoiiiKKIoZ9hn2GfYZ9hn2GfYZ9NEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs=',
+                keepAspectRatio: true,
+              },
+              {
+                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'rect', 3),
+                id: 'rect-3',
+                x: 62,
+                y: 26,
+                width: 46,
+                height: 24,
+                styleFlags: {
+                  filled: false,
+                  inverted: false,
+                  wrap: false,
+                },
+              },
+              {
+                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'line', 4),
+                id: 'line-4',
+                x: 8,
+                y: 78,
+                width: 96,
+                height: 1,
+              },
+              {
+                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'circle', 5),
+                id: 'circle-5',
+                x: 12,
+                y: 92,
+                width: 24,
+                height: 24,
+                styleFlags: {
+                  filled: false,
+                  inverted: false,
+                  wrap: false,
+                },
+              },
+              {
+                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'ellipse', 6),
+                id: 'ellipse-6',
+                x: 48,
+                y: 88,
+                width: 52,
+                height: 28,
+                styleFlags: {
+                  filled: false,
+                  inverted: false,
+                  wrap: false,
+                },
+              },
+            ],
           },
         ],
         colorMode: 'rgb565',
@@ -397,6 +506,8 @@ export function canonicalizeDeviceRecord(value: unknown): MockDeviceRecord {
   }
   if (typeName === 'ssd1306') {
     config.layout = normalizeSsd1306Layout(configSource.layout ?? defaultSsd1306Layout())
+  } else if (typeName === 'st7735') {
+    config.layout = normalizeSt7735Layout(configSource.layout ?? defaultSt7735Layout())
   }
   const runtimeStatus = typeof runtimeSource.status === 'string'
     ? runtimeSource.status

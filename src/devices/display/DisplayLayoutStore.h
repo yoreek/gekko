@@ -16,13 +16,34 @@ enum class DisplayLayoutBindingKind : uint8_t {
     ConstantText = 3,
 };
 
+enum class DisplayLayoutWidgetType : uint8_t {
+    Text = 0,
+    Icon = 1,
+    Bitmap = 2,
+    Rect = 3,
+    Line = 4,
+    Circle = 5,
+    Ellipse = 6,
+};
+
+enum class DisplayLayoutBitmapFormat : uint8_t {
+    Mono1 = 0,
+    Gray8 = 1,
+    Rgb565 = 2,
+};
+
 constexpr uint8_t kDisplayLayoutSchemaVersion = 1;
 constexpr size_t kDisplayLayoutMaxPages = 2;
-constexpr size_t kDisplayLayoutMaxWidgetsPerPage = 4;
+constexpr size_t kDisplayLayoutMaxWidgetsPerPage = 10;
 constexpr size_t kDisplayLayoutPageIdCapacity = 16;
+constexpr size_t kDisplayLayoutPageNameCapacity = 16;
+constexpr size_t kDisplayLayoutWidgetIdCapacity = 16;
 constexpr size_t kDisplayLayoutTextCapacity = 32;
+constexpr size_t kDisplayLayoutBitmapDataCapacity = 3072;
 
 struct DisplayLayoutWidgetV1 {
+    char id[kDisplayLayoutWidgetIdCapacity]{};
+    uint8_t type{static_cast<uint8_t>(DisplayLayoutWidgetType::Text)};
     uint8_t bindingKind{static_cast<uint8_t>(DisplayLayoutBindingKind::Unbound)};
     uint8_t x{0};
     uint8_t y{0};
@@ -30,11 +51,20 @@ struct DisplayLayoutWidgetV1 {
     uint8_t height{1};
     uint32_t sourceDeviceId{0};
     int32_t metricId{0};
+    uint8_t fontSize{1};
+    uint8_t strokeWidth{1};
+    uint8_t autoSize{0};
+    uint8_t styleFlags{0};
+    uint8_t bitmapFormat{static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1)};
+    uint8_t keepAspectRatio{0};
     char text[kDisplayLayoutTextCapacity]{};
+    std::vector<uint8_t> bitmapData{};
 };
 
 struct DisplayLayoutPageV1 {
     char id[kDisplayLayoutPageIdCapacity]{};
+    char name[kDisplayLayoutPageNameCapacity]{};
+    uint8_t order{0};
     std::vector<DisplayLayoutWidgetV1> widgets{};
 };
 
@@ -59,9 +89,13 @@ struct DisplayLayoutBinaryHeaderV1 {
 struct DisplayLayoutBinaryPageHeaderV1 {
     uint8_t widgetCount{0};
     char id[kDisplayLayoutPageIdCapacity]{};
+    char name[kDisplayLayoutPageNameCapacity]{};
+    uint8_t order{0};
 };
 
 struct DisplayLayoutBinaryWidgetV1 {
+    char id[kDisplayLayoutWidgetIdCapacity]{};
+    uint8_t type{static_cast<uint8_t>(DisplayLayoutWidgetType::Text)};
     uint8_t bindingKind{static_cast<uint8_t>(DisplayLayoutBindingKind::Unbound)};
     uint8_t x{0};
     uint8_t y{0};
@@ -69,6 +103,13 @@ struct DisplayLayoutBinaryWidgetV1 {
     uint8_t height{1};
     uint32_t sourceDeviceId{0};
     int32_t metricId{0};
+    uint8_t fontSize{1};
+    uint8_t strokeWidth{1};
+    uint8_t autoSize{0};
+    uint8_t styleFlags{0};
+    uint8_t bitmapFormat{static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1)};
+    uint8_t keepAspectRatio{0};
+    uint16_t bitmapDataLength{0};
     char text[kDisplayLayoutTextCapacity]{};
 };
 #pragma pack(pop)

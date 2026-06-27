@@ -150,6 +150,7 @@ export default {
       gpioSwitch: 'GPIO switch',
       onewireBus: 'OneWire bus',
       i2cBus: 'I2C bus',
+      spiBus: 'SPI bus',
       ssd1306: 'SSD1306 display',
       ssd1306Display: 'SSD1306 display',
       st7735: 'ST7735 display',
@@ -180,6 +181,12 @@ export default {
       i2cSclPin: 'I2C SCL pin',
       i2cFrequency: 'I2C frequency (Hz)',
       i2cBusDeviceId: 'I2C bus device ID',
+      spiBusDeviceId: 'SPI bus device ID',
+      chipSelectPin: 'Chip select pin',
+      spiHost: 'SPI host',
+      spiSckPin: 'SPI SCK pin',
+      spiMosiPin: 'SPI MOSI pin',
+      spiMisoPin: 'SPI MISO pin',
       display: {
         width: 'Width',
         height: 'Height',
@@ -367,6 +374,19 @@ export default {
           device: 'Device',
           metric: 'Metric',
           constant_text: 'Constant text',
+        },
+      },
+      st7735Display: {
+        noDependency: 'Create an SPI bus device before adding an ST7735 display.',
+        layoutHint: 'Pages, widgets, and RGB565 bitmap payloads are configured here.',
+        designDisplay: 'Design display',
+        designerTitle: 'ST7735 display designer',
+        previewTitle: 'Preview',
+      },
+      spiBus: {
+        hosts: {
+          hspi: 'HSPI',
+          vspi: 'VSPI',
         },
       },
       thermostat: {

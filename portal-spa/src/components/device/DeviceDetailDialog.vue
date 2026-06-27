@@ -36,11 +36,11 @@
         <v-icon icon="edit" />
       </v-btn>
       <v-btn
-        v-if="device && device.record.typeName === 'ssd1306' && !editing"
+        v-if="device && (device.record.typeName === 'ssd1306' || device.record.typeName === 'st7735') && !editing"
         class="device-dialog__icon-button"
         variant="text"
         :disabled="busy"
-        :aria-label="t('device.dialog.ssd1306Display.designDisplay')"
+        :aria-label="device.record.typeName === 'st7735' ? t('device.dialog.st7735Display.designDisplay') : t('device.dialog.ssd1306Display.designDisplay')"
         @click="designerOpen = true"
       >
         <v-icon icon="design-display" />
@@ -81,6 +81,7 @@
           :is="detailComponent"
           :device="device"
           :busy="busyAction === 'command'"
+          @design-display="designerOpen = true"
           @command="$emit('command', $event)"
         />
 
@@ -113,6 +114,14 @@
   </DeviceDialogShell>
 
   <Ssd1306DesignerDialog
+    v-if="device && device.record.typeName === 'ssd1306'"
+    v-model="designerOpen"
+    :device="device"
+    @save="handleDesignerSave"
+  />
+
+  <St7735DesignerDialog
+    v-else-if="device && device.record.typeName === 'st7735'"
     v-model="designerOpen"
     :device="device"
     @save="handleDesignerSave"
@@ -128,6 +137,7 @@ import DeviceCommonFields from '@/components/device/DeviceCommonFields.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import RecentDeviceEvents from '@/components/device/RecentDeviceEvents.vue'
 import Ssd1306DesignerDialog from '@/components/devices/display/ssd1306/Ssd1306DesignerDialog.vue'
+import St7735DesignerDialog from '@/components/devices/display/st7735/St7735DesignerDialog.vue'
 import {
   buildDeviceEditCommands,
   createDeviceEditDraft,

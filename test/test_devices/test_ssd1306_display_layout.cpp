@@ -28,6 +28,7 @@ DisplayLayoutRecordV1 makeLayoutRecord() {
 
     DisplayLayoutPageV1 page{};
     std::snprintf(page.id, sizeof(page.id), "%s", "main");
+    std::snprintf(page.name, sizeof(page.name), "%s", "Main");
 
     DisplayLayoutWidgetV1 first{};
     first.bindingKind = static_cast<uint8_t>(DisplayLayoutBindingKind::Metric);
@@ -45,13 +46,24 @@ DisplayLayoutRecordV1 makeLayoutRecord() {
     second.height = 16;
     std::snprintf(second.text, sizeof(second.text), "%s", "hello");
 
+    DisplayLayoutWidgetV1 third{};
+    third.type = static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap);
+    std::snprintf(third.id, sizeof(third.id), "%s", "bitmap");
+    third.bindingKind = static_cast<uint8_t>(DisplayLayoutBindingKind::Unbound);
+    third.width = 2;
+    third.height = 2;
+    third.bitmapFormat = static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1);
+    third.keepAspectRatio = 1;
+    third.bitmapData = {0x00, 0x01, 0x02, 0x03};
+
     page.widgets.push_back(first);
     page.widgets.push_back(second);
+    page.widgets.push_back(third);
     layout.pages.push_back(page);
     return layout;
 }
 
-void fillSsd1306DeviceDocument(StaticJsonDocument<1024>& doc, bool includeLayout) {
+template <size_t N> void fillSsd1306DeviceDocument(StaticJsonDocument<N>& doc, bool includeLayout) {
     doc.clear();
     doc["typeName"] = "ssd1306";
     JsonObject config = doc.createNestedObject("config");
@@ -72,12 +84,25 @@ void fillSsd1306DeviceDocument(StaticJsonDocument<1024>& doc, bool includeLayout
     page["id"] = "main";
     JsonArray widgets = page.createNestedArray("widgets");
     JsonObject widget = widgets.createNestedObject();
+    widget["id"] = "text";
+    widget["type"] = "text";
     widget["bindingKind"] = static_cast<uint8_t>(DisplayLayoutBindingKind::ConstantText);
     widget["x"] = 0;
     widget["y"] = 0;
     widget["width"] = 64;
     widget["height"] = 16;
     widget["text"] = "temp";
+    JsonObject bitmapWidget = widgets.createNestedObject();
+    bitmapWidget["id"] = "bitmap";
+    bitmapWidget["type"] = "bitmap";
+    bitmapWidget["bindingKind"] = static_cast<uint8_t>(DisplayLayoutBindingKind::Unbound);
+    bitmapWidget["x"] = 0;
+    bitmapWidget["y"] = 16;
+    bitmapWidget["width"] = 2;
+    bitmapWidget["height"] = 2;
+    bitmapWidget["bitmapFormat"] = "mono1";
+    bitmapWidget["keepAspectRatio"] = true;
+    bitmapWidget["bitmapData"] = "AAECAw==";
 }
 
 void fillI2cBusDocument(StaticJsonDocument<512>& doc, const char* name, uint8_t sdaPin, uint8_t sclPin) {
@@ -96,7 +121,7 @@ void fillI2cBusDocument(StaticJsonDocument<512>& doc, const char* name, uint8_t 
 
 void test_ssd1306_layout_codec_round_trip_json() {
     const DisplayLayoutRecordV1 original = makeLayoutRecord();
-    DynamicJsonDocument doc(1024);
+    DynamicJsonDocument doc(4096);
     JsonObject root = doc.to<JsonObject>();
     writeDisplayLayoutJson(original, root);
 
@@ -107,6 +132,10 @@ void test_ssd1306_layout_codec_round_trip_json() {
     TEST_ASSERT_EQUAL_STRING(original.pages[0].id, decoded.pages[0].id);
     TEST_ASSERT_EQUAL_UINT8(original.pages[0].widgets[1].bindingKind, decoded.pages[0].widgets[1].bindingKind);
     TEST_ASSERT_EQUAL_STRING(original.pages[0].widgets[1].text, decoded.pages[0].widgets[1].text);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap), decoded.pages[0].widgets[2].type);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1), decoded.pages[0].widgets[2].bitmapFormat);
+    TEST_ASSERT_EQUAL_UINT8(1, decoded.pages[0].widgets[2].keepAspectRatio);
+    TEST_ASSERT_EQUAL_UINT8(4, decoded.pages[0].widgets[2].bitmapData.size());
     TEST_ASSERT_EQUAL_UINT8(0, decoded.activePageIndex);
 }
 
@@ -141,6 +170,9 @@ void test_ssd1306_layout_store_round_trip_binary() {
     TEST_ASSERT_EQUAL_UINT8(original.pages[0].widgets[0].bindingKind, loaded.pages[0].widgets[0].bindingKind);
     TEST_ASSERT_EQUAL_UINT8(original.pages[0].widgets[1].bindingKind, loaded.pages[0].widgets[1].bindingKind);
     TEST_ASSERT_EQUAL_STRING(original.pages[0].widgets[1].text, loaded.pages[0].widgets[1].text);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap), loaded.pages[0].widgets[2].type);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1), loaded.pages[0].widgets[2].bitmapFormat);
+    TEST_ASSERT_EQUAL_UINT8(4, loaded.pages[0].widgets[2].bitmapData.size());
 
     std::vector<uint8_t> blob;
     TEST_ASSERT_TRUE(encodeDisplayLayoutBinary(original, blob));
@@ -186,7 +218,7 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     const DeviceCreateResult busResult = registry.create(busRequest, 0);
     TEST_ASSERT_TRUE(busResult.ok());
 
-    StaticJsonDocument<1024> createDoc;
+    StaticJsonDocument<2048> createDoc;
     fillSsd1306DeviceDocument(createDoc, false);
     createDoc["config"]["i2cBusDeviceId"] = busResult.deviceId;
     DeviceCreateRequest createRequest{};
@@ -198,7 +230,7 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     IDeviceRuntime* runtime = registry.runtime(createResult.deviceId);
     TEST_ASSERT_NOT_NULL(runtime);
 
-    StaticJsonDocument<1024> updateDoc;
+    StaticJsonDocument<2048> updateDoc;
     fillSsd1306DeviceDocument(updateDoc, true);
     updateDoc["config"]["i2cBusDeviceId"] = busResult.deviceId;
     DeviceConfigUpdateRequest updateRequest{};
@@ -224,6 +256,9 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_EQUAL_UINT8(1, storedLayout.pages.size());
     TEST_ASSERT_EQUAL_STRING("main", storedLayout.pages[0].id);
     TEST_ASSERT_EQUAL_STRING("temp", storedLayout.pages[0].widgets[0].text);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap), storedLayout.pages[0].widgets[1].type);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1), storedLayout.pages[0].widgets[1].bitmapFormat);
+    TEST_ASSERT_EQUAL_UINT8(4, storedLayout.pages[0].widgets[1].bitmapData.size());
 
     DeviceRegistry reloadedRegistry(registryStore, typeRegistry, idSource, &retainedStore, &scopedStore);
     TEST_ASSERT_TRUE(reloadedRegistry.begin(0).ok());
@@ -232,10 +267,14 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_EQUAL_UINT8(1, reloadedRuntime->layout().pages.size());
     TEST_ASSERT_EQUAL_STRING("main", reloadedRuntime->layout().pages[0].id);
     TEST_ASSERT_EQUAL_STRING("temp", reloadedRuntime->layout().pages[0].widgets[0].text);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap), reloadedRuntime->layout().pages[0].widgets[1].type);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1),
+                            reloadedRuntime->layout().pages[0].widgets[1].bitmapFormat);
+    TEST_ASSERT_EQUAL_UINT8(4, reloadedRuntime->layout().pages[0].widgets[1].bitmapData.size());
 }
 
 void test_ssd1306_layout_create_request_accepts_empty_pages() {
-    StaticJsonDocument<1024> doc;
+    StaticJsonDocument<2048> doc;
     fillSsd1306DeviceDocument(doc, false);
     JsonObject config = doc["config"].as<JsonObject>();
     JsonObject layout = config.createNestedObject("layout");
@@ -258,6 +297,48 @@ void test_ssd1306_layout_create_request_accepts_empty_pages() {
         decodeDisplayLayoutBinary(persistedRequest.persistedStateBlob.data(), persistedRequest.persistedStateBlob.size(), decoded));
     TEST_ASSERT_EQUAL_UINT8(1, decoded.pages.size());
     TEST_ASSERT_EQUAL_STRING("main", decoded.pages[0].id);
+}
+
+void test_ssd1306_layout_codec_accepts_legacy_numeric_binding_kind() {
+    StaticJsonDocument<1024> doc;
+    JsonObject root = doc.to<JsonObject>();
+    root["schemaVersion"] = 1;
+    root["activePageId"] = "main";
+    JsonArray pages = root.createNestedArray("pages");
+    JsonObject page = pages.createNestedObject();
+    page["id"] = "main";
+    JsonArray widgets = page.createNestedArray("widgets");
+    JsonObject widget = widgets.createNestedObject();
+    widget["bindingKind"] = static_cast<uint8_t>(DisplayLayoutBindingKind::ConstantText);
+    widget["x"] = 0;
+    widget["y"] = 0;
+    widget["width"] = 8;
+    widget["height"] = 8;
+    widget["text"] = "legacy";
+
+    DisplayLayoutRecordV1 decoded{};
+    TEST_ASSERT_TRUE(parseDisplayLayoutJson(root, decoded));
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutBindingKind::ConstantText), decoded.pages[0].widgets[0].bindingKind);
+    TEST_ASSERT_EQUAL_STRING("legacy", decoded.pages[0].widgets[0].text);
+}
+
+void test_ssd1306_layout_codec_rejects_invalid_bitmap_payload() {
+    StaticJsonDocument<1024> doc;
+    JsonObject root = doc.to<JsonObject>();
+    root["schemaVersion"] = 1;
+    root["activePageId"] = "main";
+    JsonArray pages = root.createNestedArray("pages");
+    JsonObject page = pages.createNestedObject();
+    page["id"] = "main";
+    JsonArray widgets = page.createNestedArray("widgets");
+    JsonObject widget = widgets.createNestedObject();
+    widget["id"] = "bitmap";
+    widget["type"] = "bitmap";
+    widget["bitmapFormat"] = "mono1";
+    widget["bitmapData"] = "not-base64";
+
+    DisplayLayoutRecordV1 decoded{};
+    TEST_ASSERT_FALSE(parseDisplayLayoutJson(root, decoded));
 }
 
 void test_ssd1306_layout_create_request_accepts_large_i2c_bus_device_id() {

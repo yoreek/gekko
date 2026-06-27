@@ -30,6 +30,7 @@ constexpr size_t kMaxDynamicDevices = 200;
 constexpr size_t kMaxDynamicDeviceNameLength = 32;
 constexpr size_t kMaxDeviceBaseNameLength = kMaxDynamicDeviceNameLength;
 constexpr size_t kMaxDeviceConfigBytes = 512;
+constexpr size_t kMaxDisplayLayoutBytes = 4096;
 constexpr size_t kMaxRetainedStateBytes = 64;
 constexpr size_t kMaxDeviceEventBytes = 256;
 constexpr size_t kMaxDeviceEventKindBytes = 32;

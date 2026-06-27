@@ -122,7 +122,7 @@ void PortalWebSocketMessages::fillDeviceRuntimePayload(JsonDocument& payload, co
 std::string PortalWebSocketMessages::buildDeviceUpsert(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus,
                                                        const uint32_t revision, const bool pendingPersistence,
                                                        const IDeviceApiAdapter* adapter, const char* eventKind) {
-    DynamicJsonDocument payload(1536);
+    DynamicJsonDocument payload(4096);
     fillDeviceRuntimePayload(payload, runtime, effectiveStatus, revision, pendingPersistence, adapter, eventKind);
     return buildEnvelope("device.upsert", revision, payload);
 }
@@ -130,7 +130,7 @@ std::string PortalWebSocketMessages::buildDeviceUpsert(const IDeviceRuntime& run
 std::string PortalWebSocketMessages::buildDeviceCommandResult(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus,
                                                               const uint32_t revision, const bool pendingPersistence,
                                                               const IDeviceApiAdapter* adapter, const char* eventKind) {
-    DynamicJsonDocument payload(1536);
+    DynamicJsonDocument payload(4096);
     fillDeviceRuntimePayload(payload, runtime, effectiveStatus, revision, pendingPersistence, adapter, eventKind);
     return buildEnvelope("device.command_result", revision, payload);
 }

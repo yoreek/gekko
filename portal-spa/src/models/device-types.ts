@@ -6,6 +6,8 @@ import DummyDeviceWidget from '@/components/devices/dummy/DummyDeviceWidget.vue'
 import GpioSwitchDeviceWidget from '@/components/devices/gpio-switch/GpioSwitchDeviceWidget.vue'
 import I2cBusDeviceWidget from '@/components/devices/i2c-bus/I2cBusDeviceWidget.vue'
 import DisplayDeviceWidget from '@/components/devices/display/DisplayDeviceWidget.vue'
+import SpiBusDeviceWidget from '@/components/devices/spi-bus/SpiBusDeviceWidget.vue'
+import St7735DeviceWidget from '@/components/devices/display/st7735/St7735DeviceWidget.vue'
 import OneWireBusDeviceWidget from '@/components/devices/onewire-bus/OneWireBusDeviceWidget.vue'
 import Ds18b20TemperatureSensorDeviceWidget from '@/components/devices/ds18b20/Ds18b20TemperatureSensorDeviceWidget.vue'
 import ThermostatDeviceWidget from '@/components/devices/thermostat/ThermostatDeviceWidget.vue'
@@ -19,6 +21,7 @@ export const ONEWIRE_BUS_DEVICE_TYPE_ID = 3 as const
 export const DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID = 4 as const
 export const THERMOSTAT_DEVICE_TYPE_ID = 5 as const
 export const I2C_BUS_DEVICE_TYPE_ID = 6 as const
+export const SPI_BUS_DEVICE_TYPE_ID = 8 as const
 export type DeviceTypeId = number
 export type DeviceTypeName =
   | 'dummy'
@@ -27,6 +30,7 @@ export type DeviceTypeName =
   | 'ds18b20_temperature_sensor'
   | 'thermostat'
   | 'i2c_bus'
+  | 'spi_bus'
   | 'ssd1306'
   | 'st7735'
 
@@ -69,6 +73,13 @@ export const deviceTypeOptions: DeviceTypeOption[] = [
     componentKey: 'i2c-bus',
   },
   {
+    id: SPI_BUS_DEVICE_TYPE_ID,
+    typeName: 'spi_bus',
+    labelKey: 'device.type.spiBus',
+    icon: 'bus',
+    componentKey: 'spi-bus',
+  },
+  {
     id: SSD1306_DEVICE_TYPE_ID,
     typeName: 'ssd1306',
     labelKey: 'device.type.ssd1306Display',
@@ -103,6 +114,7 @@ const deviceTypeLabelKeys: Record<number, string> = {
   [GPIO_SWITCH_DEVICE_TYPE_ID]: 'device.type.gpioSwitch',
   [ONEWIRE_BUS_DEVICE_TYPE_ID]: 'device.type.onewireBus',
   [I2C_BUS_DEVICE_TYPE_ID]: 'device.type.i2cBus',
+  [SPI_BUS_DEVICE_TYPE_ID]: 'device.type.spiBus',
   [SSD1306_DEVICE_TYPE_ID]: 'device.type.ssd1306Display',
   [ST7735_DEVICE_TYPE_ID]: 'device.type.st7735',
   [DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID]: 'device.type.ds18b20TemperatureSensor',
@@ -114,6 +126,7 @@ const deviceTypeNames: Record<number, DeviceTypeName> = {
   [GPIO_SWITCH_DEVICE_TYPE_ID]: 'gpio_switch',
   [ONEWIRE_BUS_DEVICE_TYPE_ID]: 'onewire_bus',
   [I2C_BUS_DEVICE_TYPE_ID]: 'i2c_bus',
+  [SPI_BUS_DEVICE_TYPE_ID]: 'spi_bus',
   [SSD1306_DEVICE_TYPE_ID]: 'ssd1306',
   [ST7735_DEVICE_TYPE_ID]: 'st7735',
   [DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID]: 'ds18b20_temperature_sensor',
@@ -125,6 +138,7 @@ const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
   gpio_switch: GPIO_SWITCH_DEVICE_TYPE_ID,
   onewire_bus: ONEWIRE_BUS_DEVICE_TYPE_ID,
   i2c_bus: I2C_BUS_DEVICE_TYPE_ID,
+  spi_bus: SPI_BUS_DEVICE_TYPE_ID,
   ssd1306: SSD1306_DEVICE_TYPE_ID,
   st7735: ST7735_DEVICE_TYPE_ID,
   ds18b20_temperature_sensor: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
@@ -149,12 +163,16 @@ export const deviceComponentRegistry: DeviceComponentRegistryEntry[] = [
     component: I2cBusDeviceWidget,
   },
   {
+    typeId: SPI_BUS_DEVICE_TYPE_ID,
+    component: SpiBusDeviceWidget,
+  },
+  {
     typeId: SSD1306_DEVICE_TYPE_ID,
     component: DisplayDeviceWidget,
   },
   {
     typeId: ST7735_DEVICE_TYPE_ID,
-    component: DisplayDeviceWidget,
+    component: St7735DeviceWidget,
   },
   {
     typeId: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
