@@ -28,6 +28,9 @@ const portalIconAliases: Partial<IconAliases> = {
   eye: 'eye',
   'eye-off': 'eye-off',
   info: 'info',
+  success: 'checkboxOn',
+  warning: 'info',
+  error: 'cancel',
   trash: 'trash',
   menu: 'menu',
   plus: 'plus',
@@ -42,6 +45,7 @@ const portalIconAliases: Partial<IconAliases> = {
   subgroup: 'chevron-right',
   treeviewCollapse: 'chevron-down',
   treeviewExpand: 'chevron-right',
+  clear: 'clear',
   delete: 'trash',
   next: 'chevron-right',
   prev: 'chevron-left',
@@ -49,6 +53,11 @@ const portalIconAliases: Partial<IconAliases> = {
   last: 'chevron-right',
   arrowleft: 'chevron-left',
   arrowright: 'chevron-right',
+  checkboxOn: 'checkboxOn',
+  checkboxOff: 'checkboxOff',
+  checkboxIndeterminate: 'checkboxIndeterminate',
+  radioOn: 'radioOn',
+  radioOff: 'radioOff',
 }
 
 const sharedColors = {

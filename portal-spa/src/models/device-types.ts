@@ -5,10 +5,13 @@ import type { PortalIconName } from '@/icons'
 import DummyDeviceWidget from '@/components/devices/dummy/DummyDeviceWidget.vue'
 import GpioSwitchDeviceWidget from '@/components/devices/gpio-switch/GpioSwitchDeviceWidget.vue'
 import I2cBusDeviceWidget from '@/components/devices/i2c-bus/I2cBusDeviceWidget.vue'
-import OledDisplayDeviceWidget from '@/components/devices/oled-display/OledDisplayDeviceWidget.vue'
+import DisplayDeviceWidget from '@/components/devices/display/DisplayDeviceWidget.vue'
 import OneWireBusDeviceWidget from '@/components/devices/onewire-bus/OneWireBusDeviceWidget.vue'
 import Ds18b20TemperatureSensorDeviceWidget from '@/components/devices/ds18b20/Ds18b20TemperatureSensorDeviceWidget.vue'
 import ThermostatDeviceWidget from '@/components/devices/thermostat/ThermostatDeviceWidget.vue'
+import { SSD1306_DEVICE_TYPE_ID, ST7735_DEVICE_TYPE_ID } from './device-type-ids'
+
+export { SSD1306_DEVICE_TYPE_ID, ST7735_DEVICE_TYPE_ID } from './device-type-ids'
 
 export const DUMMY_DEVICE_TYPE_ID = 1 as const
 export const GPIO_SWITCH_DEVICE_TYPE_ID = 2 as const
@@ -16,8 +19,6 @@ export const ONEWIRE_BUS_DEVICE_TYPE_ID = 3 as const
 export const DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID = 4 as const
 export const THERMOSTAT_DEVICE_TYPE_ID = 5 as const
 export const I2C_BUS_DEVICE_TYPE_ID = 6 as const
-export const OLED_DISPLAY_DEVICE_TYPE_ID = 7 as const
-
 export type DeviceTypeId = number
 export type DeviceTypeName =
   | 'dummy'
@@ -26,7 +27,8 @@ export type DeviceTypeName =
   | 'ds18b20_temperature_sensor'
   | 'thermostat'
   | 'i2c_bus'
-  | 'oled_display'
+  | 'ssd1306'
+  | 'st7735'
 
 export interface DeviceTypeOption {
   id: DeviceTypeId
@@ -67,11 +69,18 @@ export const deviceTypeOptions: DeviceTypeOption[] = [
     componentKey: 'i2c-bus',
   },
   {
-    id: OLED_DISPLAY_DEVICE_TYPE_ID,
-    typeName: 'oled_display',
-    labelKey: 'device.type.oledDisplay',
+    id: SSD1306_DEVICE_TYPE_ID,
+    typeName: 'ssd1306',
+    labelKey: 'device.type.ssd1306Display',
     icon: 'device',
-    componentKey: 'oled-display',
+    componentKey: 'ssd1306',
+  },
+  {
+    id: ST7735_DEVICE_TYPE_ID,
+    typeName: 'st7735',
+    labelKey: 'device.type.st7735',
+    icon: 'device',
+    componentKey: 'st7735',
   },
   {
     id: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
@@ -94,7 +103,8 @@ const deviceTypeLabelKeys: Record<number, string> = {
   [GPIO_SWITCH_DEVICE_TYPE_ID]: 'device.type.gpioSwitch',
   [ONEWIRE_BUS_DEVICE_TYPE_ID]: 'device.type.onewireBus',
   [I2C_BUS_DEVICE_TYPE_ID]: 'device.type.i2cBus',
-  [OLED_DISPLAY_DEVICE_TYPE_ID]: 'device.type.oledDisplay',
+  [SSD1306_DEVICE_TYPE_ID]: 'device.type.ssd1306Display',
+  [ST7735_DEVICE_TYPE_ID]: 'device.type.st7735',
   [DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID]: 'device.type.ds18b20TemperatureSensor',
   [THERMOSTAT_DEVICE_TYPE_ID]: 'device.type.thermostat',
 }
@@ -104,7 +114,8 @@ const deviceTypeNames: Record<number, DeviceTypeName> = {
   [GPIO_SWITCH_DEVICE_TYPE_ID]: 'gpio_switch',
   [ONEWIRE_BUS_DEVICE_TYPE_ID]: 'onewire_bus',
   [I2C_BUS_DEVICE_TYPE_ID]: 'i2c_bus',
-  [OLED_DISPLAY_DEVICE_TYPE_ID]: 'oled_display',
+  [SSD1306_DEVICE_TYPE_ID]: 'ssd1306',
+  [ST7735_DEVICE_TYPE_ID]: 'st7735',
   [DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID]: 'ds18b20_temperature_sensor',
   [THERMOSTAT_DEVICE_TYPE_ID]: 'thermostat',
 }
@@ -114,7 +125,8 @@ const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
   gpio_switch: GPIO_SWITCH_DEVICE_TYPE_ID,
   onewire_bus: ONEWIRE_BUS_DEVICE_TYPE_ID,
   i2c_bus: I2C_BUS_DEVICE_TYPE_ID,
-  oled_display: OLED_DISPLAY_DEVICE_TYPE_ID,
+  ssd1306: SSD1306_DEVICE_TYPE_ID,
+  st7735: ST7735_DEVICE_TYPE_ID,
   ds18b20_temperature_sensor: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
   thermostat: THERMOSTAT_DEVICE_TYPE_ID,
 }
@@ -137,8 +149,12 @@ export const deviceComponentRegistry: DeviceComponentRegistryEntry[] = [
     component: I2cBusDeviceWidget,
   },
   {
-    typeId: OLED_DISPLAY_DEVICE_TYPE_ID,
-    component: OledDisplayDeviceWidget,
+    typeId: SSD1306_DEVICE_TYPE_ID,
+    component: DisplayDeviceWidget,
+  },
+  {
+    typeId: ST7735_DEVICE_TYPE_ID,
+    component: DisplayDeviceWidget,
   },
   {
     typeId: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,

@@ -15,9 +15,9 @@ import type {
 } from '@/api'
 import type { TemperatureOutputSnapshot } from '@/api/contracts'
 import {
-  defaultOledDisplayLayout,
-  normalizeOledDisplayLayout,
-} from '@/models/devices/oled-display-layout'
+  defaultSsd1306Layout,
+  normalizeSsd1306Layout,
+} from '@/models/devices/ssd1306/layout'
 import { ApiClientError } from '@/api/http'
 import { publishRealtimeMessage } from '@/realtime/bus'
 import { scheduleMockPersistenceFlush } from '@/realtime/mockRuntime'
@@ -258,7 +258,8 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
       typeName !== 'gpio_switch' &&
       typeName !== 'onewire_bus' &&
       typeName !== 'i2c_bus' &&
-      typeName !== 'oled_display' &&
+      typeName !== 'ssd1306' &&
+      typeName !== 'st7735' &&
       typeName !== 'ds18b20_temperature_sensor' &&
       typeName !== 'thermostat'
     ) {
@@ -333,17 +334,17 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
         generation: 1,
         transactionActive: false,
       })
-    } else if (typeName === 'oled_display') {
+    } else if (typeName === 'ssd1306') {
       const dependencyDeviceId = dependencyDeviceIdForRole(baseDeps, 'i2c_bus') || normalizeDependencyDeviceId(configSource.i2cBusDeviceId)
       if (dependencyDeviceId <= 0) {
-        throw new ApiClientError('oled display i2c dependency is required', 'BAD_ARGS', 400, null)
+        throw new ApiClientError('ssd1306 display i2c dependency is required', 'BAD_ARGS', 400, null)
       }
       requireI2cDependency(db, dependencyDeviceId)
       const i2cAddress = normalizeFiniteNumber(configSource.i2cAddress, 60)
       ensureUniqueI2cAddress(db, dependencyDeviceId, i2cAddress, nextId)
       const layout = isRecordPayload(configSource.layout)
-        ? normalizeOledDisplayLayout(configSource.layout)
-        : defaultOledDisplayLayout()
+        ? normalizeSsd1306Layout(configSource.layout)
+        : defaultSsd1306Layout()
       const config = {
         enabled,
         name,
@@ -355,9 +356,40 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
         ],
         i2cBusDeviceId: dependencyDeviceId,
         i2cAddress,
-        layoutWidth: normalizeFiniteNumber(configSource.layoutWidth, 128),
-        layoutHeight: normalizeFiniteNumber(configSource.layoutHeight, 64),
+        width: normalizeFiniteNumber(configSource.width, 128),
+        height: normalizeFiniteNumber(configSource.height, 64),
         layout,
+      }
+      device = createDeviceRecord(nextId, typeName, 1, config, {
+        status: 'ready',
+        lifecycleStatus: 'ready',
+        effectiveStatus: 'ready',
+      })
+    } else if (typeName === 'st7735') {
+      const dependencyDeviceId = dependencyDeviceIdForRole(baseDeps, 'i2c_bus') || normalizeDependencyDeviceId(configSource.i2cBusDeviceId)
+      if (dependencyDeviceId <= 0) {
+        throw new ApiClientError('st7735 display i2c dependency is required', 'BAD_ARGS', 400, null)
+      }
+      requireI2cDependency(db, dependencyDeviceId)
+      const layoutRaw = isRecordPayload(configSource.layout) ? configSource.layout : {}
+      const config = {
+        enabled,
+        name,
+        deps: [
+          {
+            role: 'i2c_bus',
+            deviceId: dependencyDeviceId,
+          },
+        ],
+        i2cBusDeviceId: dependencyDeviceId,
+        width: normalizeFiniteNumber(configSource.width, 128),
+        height: normalizeFiniteNumber(configSource.height, 160),
+        layout: {
+          schemaVersion: 1,
+          activePageId: typeof layoutRaw.activePageId === 'string' ? layoutRaw.activePageId : 'main',
+          pages: Array.isArray(layoutRaw.pages) ? layoutRaw.pages : [],
+          colorMode: 'rgb565',
+        },
       }
       device = createDeviceRecord(nextId, typeName, 1, config, {
         status: 'ready',
@@ -542,11 +574,11 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           device.runtime.status = 'ready'
           device.runtime.transactionActive = false
           device.runtime.generation = normalizeFiniteNumber(device.runtime.generation, 0) + 1
-        } else if (device.record.typeName === 'oled_display') {
+        } else if (device.record.typeName === 'ssd1306') {
           const dependencyLinks = normalizeDependencyLinks(payload.deps ?? device.config.deps)
           const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'i2c_bus')
           if (dependencyDeviceId <= 0) {
-            throw new ApiClientError('oled display i2c dependency is required', 'BAD_ARGS', 400, null)
+            throw new ApiClientError('ssd1306 display i2c dependency is required', 'BAD_ARGS', 400, null)
           }
           requireI2cDependency(db, dependencyDeviceId)
           const currentConfig = (isRecordPayload(device.config) ? device.config : {}) as Record<string, unknown>
@@ -561,11 +593,38 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
             deps: dependencyLinks,
             i2cBusDeviceId: dependencyDeviceId,
             i2cAddress,
-            layoutWidth: normalizeFiniteNumber(payload.config.layoutWidth, normalizeFiniteNumber(currentConfig['layoutWidth'], 128)),
-            layoutHeight: normalizeFiniteNumber(payload.config.layoutHeight, normalizeFiniteNumber(currentConfig['layoutHeight'], 64)),
+            width: normalizeFiniteNumber(payload.config.width, normalizeFiniteNumber(currentConfig['width'], 128)),
+            height: normalizeFiniteNumber(payload.config.height, normalizeFiniteNumber(currentConfig['height'], 64)),
             layout: isRecordPayload(payload.config.layout)
-              ? normalizeOledDisplayLayout(payload.config.layout)
-              : normalizeOledDisplayLayout(device.config.layout),
+              ? normalizeSsd1306Layout(payload.config.layout)
+              : normalizeSsd1306Layout(device.config.layout),
+          }
+        } else if (device.record.typeName === 'st7735') {
+          const dependencyLinks = normalizeDependencyLinks(payload.deps ?? device.config.deps)
+          const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'i2c_bus')
+          if (dependencyDeviceId <= 0) {
+            throw new ApiClientError('st7735 display i2c dependency is required', 'BAD_ARGS', 400, null)
+          }
+          requireI2cDependency(db, dependencyDeviceId)
+          const currentConfig = (isRecordPayload(device.config) ? device.config : {}) as Record<string, unknown>
+          device.config = {
+            ...device.config,
+            enabled: Boolean(payload.config.enabled ?? device.config.enabled),
+            name: typeof payload.config.name === 'string' && payload.config.name.length > 0
+              ? payload.config.name
+              : device.config.name,
+            deps: dependencyLinks,
+            i2cBusDeviceId: dependencyDeviceId,
+            width: normalizeFiniteNumber(payload.config.width, normalizeFiniteNumber(currentConfig['width'], 128)),
+            height: normalizeFiniteNumber(payload.config.height, normalizeFiniteNumber(currentConfig['height'], 160)),
+            layout: isRecordPayload(payload.config.layout)
+              ? {
+                  schemaVersion: 1,
+                  activePageId: typeof payload.config.layout.activePageId === 'string' ? payload.config.layout.activePageId : 'main',
+                  pages: Array.isArray(payload.config.layout.pages) ? payload.config.layout.pages : [],
+                  colorMode: 'rgb565',
+                }
+              : device.config.layout,
           }
         } else if (device.record.typeName === 'ds18b20_temperature_sensor') {
           const dependencyLinks = normalizeDependencyLinks(payload.deps ?? device.config.deps)
@@ -608,10 +667,10 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
       case 'setDeps':
       case 'set_deps': {
         const dependencyLinks = normalizeDependencyLinks(payload.deps)
-        if (device.record.typeName === 'oled_display') {
+        if (device.record.typeName === 'ssd1306' || device.record.typeName === 'st7735') {
           const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'i2c_bus')
           if (dependencyDeviceId <= 0) {
-            throw new ApiClientError('oled display i2c dependency is required', 'BAD_ARGS', 400, null)
+            throw new ApiClientError(`${device.record.typeName} display i2c dependency is required`, 'BAD_ARGS', 400, null)
           }
           requireI2cDependency(db, dependencyDeviceId)
           const currentConfig = (isRecordPayload(device.config) ? device.config : {}) as Record<string, unknown>
@@ -1037,7 +1096,7 @@ function ensureUniqueDs18b20Address(
 function requireI2cDependency(db: ReturnType<typeof createSeedMockDatabase>, dependencyDeviceId: number): DeviceRecord {
   const dependency = db.devices.find(device => device.record.id === dependencyDeviceId)
   if (!dependency || dependency.record.typeName !== 'i2c_bus') {
-    throw new ApiClientError('oled display i2c dependency is required', 'BAD_ARGS', 400, null)
+    throw new ApiClientError('ssd1306 display i2c dependency is required', 'BAD_ARGS', 400, null)
   }
   return dependency
 }
@@ -1050,12 +1109,12 @@ function ensureUniqueI2cAddress(
 ): void {
   const duplicate = db.devices.some(device => (
     device.record.id !== currentDeviceId &&
-    device.record.typeName === 'oled_display' &&
+    device.record.typeName === 'ssd1306' &&
     dependencyDeviceIdForRole((device.config.deps ?? []) as Array<{ role: string; deviceId: number }>, 'i2c_bus') === dependencyDeviceId &&
     normalizeFiniteNumber((device.config as Record<string, unknown>).i2cAddress, -1) === address
   ))
   if (duplicate) {
-    throw new ApiClientError('oled display i2c address already exists on this dependency', 'DUPLICATE_ADDRESS', 400, null)
+    throw new ApiClientError('ssd1306 display i2c address already exists on this dependency', 'DUPLICATE_ADDRESS', 400, null)
   }
 }
 

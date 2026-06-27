@@ -1,5 +1,7 @@
 # Project Rules
 
+See also: [portal-spa/AGENTS.md](portal-spa/AGENTS.md)
+
 ## Structure
 
 - Keep firmware-internal headers in `src/` next to their `.cpp` files.
@@ -51,6 +53,13 @@
 - Keep component markup semantic and minimal; do not invent one-off styles for names, titles, or labels that should follow the global typography layer.
 - When describing UI work, specify the global rule, the forbidden local overrides, the scope, and the definition of done.
 
+## Text And Font Layout
+
+- Treat text rendering as a separate shared domain from any specific display backend.
+- Model fonts through a base contract plus explicit implementations for monospace and proportional/custom fonts.
+- Derive glyph width, line wrapping, autosize, and bounding-box calculations from font metrics, not from a single fixed character width.
+- Keep text layout logic in shared classes or services before adding display-specific adapters for OLED, TFT, or matrix backends.
+
 ## Vue And Vuetify UI Rules
 
 - Prefer standard Vuetify components, props, and slots before any custom markup or CSS.
@@ -61,3 +70,4 @@
 - Use theme tokens and Vuetify defaults for color, contrast, labels, and surface styling.
 - For expansion panels, use the standard Vuetify accordion behavior and built-in expand/collapse UI.
 - If a UI change would deviate from a standard Vuetify pattern, state that explicitly before editing and get confirmation first.
+- For icon registry work, follow [app-icon-registry](openspec/specs/app-icon-registry/spec.md) so Vuetify aliases, local SVG icons, and fallback behavior stay consistent with the shared registry contract.

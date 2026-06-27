@@ -36,11 +36,11 @@
         <v-icon icon="edit" />
       </v-btn>
       <v-btn
-        v-if="device && device.record.typeName === 'oled_display' && !editing"
+        v-if="device && device.record.typeName === 'ssd1306' && !editing"
         class="device-dialog__icon-button"
         variant="text"
         :disabled="busy"
-        :aria-label="t('device.dialog.oledDisplay.designDisplay')"
+        :aria-label="t('device.dialog.ssd1306Display.designDisplay')"
         @click="designerOpen = true"
       >
         <v-icon icon="design-display" />
@@ -112,7 +112,7 @@
     </template>
   </DeviceDialogShell>
 
-  <OledDisplayDesignerDialog
+  <Ssd1306DesignerDialog
     v-model="designerOpen"
     :device="device"
     @save="handleDesignerSave"
@@ -127,7 +127,7 @@ import { useI18n } from 'vue-i18n'
 import DeviceCommonFields from '@/components/device/DeviceCommonFields.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import RecentDeviceEvents from '@/components/device/RecentDeviceEvents.vue'
-import OledDisplayDesignerDialog from '@/components/devices/oled-display/OledDisplayDesignerDialog.vue'
+import Ssd1306DesignerDialog from '@/components/devices/display/ssd1306/Ssd1306DesignerDialog.vue'
 import {
   buildDeviceEditCommands,
   createDeviceEditDraft,
@@ -219,7 +219,7 @@ const outputState = computed(() => {
   return (device.value.runtime as { state?: string }).state
 })
 const layoutReviewWarning = computed(() => {
-  if (device.value === null || !props.editing || device.value.record.typeName !== 'oled_display') {
+  if (device.value === null || !props.editing || device.value.record.typeName !== 'ssd1306') {
     return ''
   }
   const currentConfig = device.value.config as unknown as Record<string, unknown>
@@ -230,7 +230,7 @@ const layoutReviewWarning = computed(() => {
   if (currentWidth === draftWidth && currentHeight === draftHeight) {
     return ''
   }
-  return t('device.dialog.oledDisplay.layoutResizeWarning')
+  return t('device.dialog.ssd1306Display.layoutResizeWarning')
 })
 const canSave = computed(() => {
   if (device.value === null) {

@@ -2,7 +2,11 @@ import {
   mdiChevronDown as chevronDownPath,
   mdiChevronLeft as chevronLeftPath,
   mdiChevronRight as chevronRightPath,
+  mdiCheckboxBlankOutline as checkboxBlankOutlinePath,
+  mdiCheckboxMarked as checkboxMarkedPath,
+  mdiMinusBox as checkboxIndeterminatePath,
   mdiClose as closePath,
+  mdiCancel as cancelPath,
   mdiDownload as downloadPath,
   mdiEye as eyePath,
   mdiEyeOff as eyeOffPath,
@@ -11,6 +15,8 @@ import {
   mdiPencil as editPath,
   mdiImageOutline as imageOutlinePath,
   mdiPlus as plusPath,
+  mdiRadioboxBlank as radioBlankPath,
+  mdiRadioboxMarked as radioMarkedPath,
   mdiPower as powerPath,
   mdiRefresh as refreshPath,
   mdiUpload as uploadPath,
@@ -45,6 +51,11 @@ export type PortalIconName =
   | 'oled-layer-down'
   | 'oled-duplicate'
   | 'design-display'
+  | 'checkboxOn'
+  | 'checkboxOff'
+  | 'checkboxIndeterminate'
+  | 'radioOn'
+  | 'radioOff'
   | 'refresh'
   | 'close'
   | 'edit'
@@ -112,7 +123,15 @@ const localIconRegistry: Record<
   | 'oled-layer-up'
   | 'oled-layer-down'
   | 'oled-duplicate'
-  | 'design-display',
+  | 'design-display'
+  | 'checkboxOn'
+  | 'checkboxOff'
+  | 'checkboxIndeterminate'
+  | 'radioOn'
+  | 'radioOff'
+  | 'clear'
+  | 'cancel'
+  ,
   IconShape
 > = {
   portal: createIconShape(['M4 5h16v14H4z', 'M8 9h3v3H8z', 'M13 9h3v3h-3z', 'M8 14h8']),
@@ -142,6 +161,13 @@ const localIconRegistry: Record<
   'oled-layer-down': createIconShape(['M6 6h12l-6 6z', 'M6 18h12']),
   'oled-duplicate': createIconShape(['M8 8h10v10H8z', 'M6 6h10']),
   'design-display': createIconShape(['M4 6h16v10H4z', 'M7 18h10']),
+  checkboxOn: createFilledIconShape(checkboxMarkedPath),
+  checkboxOff: createIconShape(checkboxBlankOutlinePath),
+  checkboxIndeterminate: createFilledIconShape(checkboxIndeterminatePath),
+  radioOn: createFilledIconShape(radioMarkedPath),
+  radioOff: createIconShape(radioBlankPath),
+  clear: createFilledIconShape(cancelPath),
+  cancel: createFilledIconShape(cancelPath),
 }
 
 const mdiIconRegistry: Record<

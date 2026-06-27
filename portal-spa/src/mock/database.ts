@@ -11,10 +11,10 @@ import type {
   WifiStatusResponse,
 } from '../api/contracts.ts'
 import {
-  defaultOledDisplayLayout,
-  defaultOledDisplayWidget,
-  normalizeOledDisplayLayout,
-} from '../models/devices/oled-display-layout.ts'
+  defaultSsd1306Layout,
+  defaultSsd1306Widget,
+  normalizeSsd1306Layout,
+} from '../models/devices/ssd1306/layout.ts'
 import { safeReadStorage, safeWriteStorage } from '../utils/storage.ts'
 
 const storageKey = 'gekko.mockDb.v6'
@@ -172,7 +172,7 @@ const seedDatabase: SeedDatabase = {
         generation: 1,
         transactionActive: false,
       }),
-    createDeviceRecord(670845755, 'oled_display', 1, {
+    createDeviceRecord(670845755, 'ssd1306', 1, {
       enabled: true,
       name: 'OLED Display',
       deps: [
@@ -183,10 +183,10 @@ const seedDatabase: SeedDatabase = {
       ],
       i2cBusDeviceId: 670845754,
       i2cAddress: 60,
-      layoutWidth: 128,
-      layoutHeight: 64,
+      width: 128,
+      height: 64,
       layout: {
-        ...defaultOledDisplayLayout(),
+        ...defaultSsd1306Layout(),
         pages: [
           {
             id: 'main',
@@ -194,7 +194,7 @@ const seedDatabase: SeedDatabase = {
             order: 0,
             widgets: [
               {
-                ...defaultOledDisplayWidget('text', 0),
+                ...defaultSsd1306Widget('text', 0),
                 id: 'text-0',
                 x: 0,
                 y: 0,
@@ -203,7 +203,7 @@ const seedDatabase: SeedDatabase = {
                 text: 'ABC',
               },
               {
-                ...defaultOledDisplayWidget('circle', 1),
+                ...defaultSsd1306Widget('circle', 1),
                 id: 'circle-1',
                 x: 0,
                 y: 18,
@@ -211,7 +211,7 @@ const seedDatabase: SeedDatabase = {
                 height: 18,
               },
               {
-                ...defaultOledDisplayWidget('line', 2),
+                ...defaultSsd1306Widget('line', 2),
                 id: 'line-2',
                 x: 28,
                 y: 24,
@@ -219,7 +219,7 @@ const seedDatabase: SeedDatabase = {
                 height: 1,
               },
               {
-                ...defaultOledDisplayWidget('ellipse', 3),
+                ...defaultSsd1306Widget('ellipse', 3),
                 id: 'ellipse-3',
                 x: 72,
                 y: 16,
@@ -229,6 +229,35 @@ const seedDatabase: SeedDatabase = {
             ],
           },
         ],
+      },
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+    }),
+    createDeviceRecord(670845756, 'st7735', 1, {
+      enabled: true,
+      name: 'TFT Display',
+      deps: [
+        {
+          role: 'i2c_bus',
+          deviceId: 670845754,
+        },
+      ],
+      width: 128,
+      height: 160,
+      layout: {
+        schemaVersion: 1,
+        activePageId: 'main',
+        pages: [
+          {
+            id: 'main',
+            name: 'Main',
+            order: 0,
+            widgets: [],
+          },
+        ],
+        colorMode: 'rgb565',
       },
     }, {
       status: 'ready',
@@ -366,8 +395,8 @@ export function canonicalizeDeviceRecord(value: unknown): MockDeviceRecord {
         : true,
     deps,
   }
-  if (typeName === 'oled_display') {
-    config.layout = normalizeOledDisplayLayout(configSource.layout ?? defaultOledDisplayLayout())
+  if (typeName === 'ssd1306') {
+    config.layout = normalizeSsd1306Layout(configSource.layout ?? defaultSsd1306Layout())
   }
   const runtimeStatus = typeof runtimeSource.status === 'string'
     ? runtimeSource.status

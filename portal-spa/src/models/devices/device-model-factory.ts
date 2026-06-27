@@ -1,14 +1,15 @@
 import type { DeviceRecord } from '@/api/contracts'
-import { deviceTypeIdFromName } from '@/models/device-types'
-import { BaseDevice } from '@/models/devices/base-device'
-import { Ds18b20 } from '@/models/devices/ds18b20'
-import { Dummy } from '@/models/devices/dummy'
-import { GpioSwitch } from '@/models/devices/gpio-switch'
-import { I2cBus } from '@/models/devices/i2c-bus'
-import { OledDisplay } from '@/models/devices/oled-display'
-import { OneWireBus } from '@/models/devices/onewire-bus'
-import { Thermostat } from '@/models/devices/thermostat'
-import { UnknownDevice } from '@/models/devices/unknown-device'
+import { deviceTypeIdFromName } from '../device-types.ts'
+import { BaseDevice } from './base-device.ts'
+import { Ds18b20 } from './ds18b20.ts'
+import { Dummy } from './dummy.ts'
+import { GpioSwitch } from './gpio-switch.ts'
+import { I2cBus } from './i2c-bus.ts'
+import { Device as Ssd1306Device } from './ssd1306/device.ts'
+import { Device as St7735Device } from './st7735/device.ts'
+import { OneWireBus } from './onewire-bus.ts'
+import { Thermostat } from './thermostat.ts'
+import { UnknownDevice } from './unknown-device.ts'
 
 const fallbackDevice = new UnknownDevice()
 
@@ -17,7 +18,8 @@ const deviceModelsByTypeId: Record<number, BaseDevice<any, any, any>> = {
   [deviceTypeIdFromName('gpio_switch')]: new GpioSwitch.Device(),
   [deviceTypeIdFromName('onewire_bus')]: new OneWireBus.Device(),
   [deviceTypeIdFromName('i2c_bus')]: new I2cBus.Device(),
-  [deviceTypeIdFromName('oled_display')]: new OledDisplay.Device(),
+  [deviceTypeIdFromName('ssd1306')]: new Ssd1306Device(),
+  [deviceTypeIdFromName('st7735')]: new St7735Device(),
   [deviceTypeIdFromName('ds18b20_temperature_sensor')]: new Ds18b20.Device(),
   [deviceTypeIdFromName('thermostat')]: new Thermostat.Device(),
 }

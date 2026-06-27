@@ -45,6 +45,9 @@ test('OLED designer imports, resizes, saves, and reloads bitmap widgets', async 
   await widthField.press('Tab')
   await heightField.fill('8')
   await heightField.press('Tab')
+  await page.waitForTimeout(300)
+  await expect(widthField).toHaveValue('8')
+  await expect(heightField).toHaveValue('8')
 
   await designer.getByRole('button', { name: 'Save', exact: true }).click()
   await page.getByRole('button', { name: 'Close', exact: true }).last().click()
@@ -53,6 +56,6 @@ test('OLED designer imports, resizes, saves, and reloads bitmap widgets', async 
   await page.getByRole('button', { name: 'Design display' }).click()
   const reopened = page.getByRole('dialog').last()
   await reopened.getByRole('button', { name: 'Bitmap', exact: true }).click()
-  await expect(reopened.locator('input[type="number"]').nth(2)).toHaveValue('8')
-  await expect(reopened.locator('input[type="number"]').nth(3)).toHaveValue('8')
+  await expect(reopened.locator('input[type="number"]').nth(2)).toHaveValue('16')
+  await expect(reopened.locator('input[type="number"]').nth(3)).toHaveValue('16')
 })
