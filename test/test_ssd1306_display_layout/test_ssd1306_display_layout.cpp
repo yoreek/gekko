@@ -1,16 +1,16 @@
 #include "config/MemoryConfigStorage.h"
 #include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/core/DeviceIdGenerator.h"
-#include "devices/display/oled/OledDisplayDevice.h"
-#include "devices/display/oled/OledDisplayDeviceConfig.h"
-#include "devices/display/oled/OledDisplayLayoutCodec.h"
-#include "devices/display/oled/OledDisplayLayoutStore.h"
+#include "devices/display/DisplayLayoutCodec.h"
+#include "devices/display/DisplayLayoutStore.h"
+#include "devices/display/ssd1306/Ssd1306Device.h"
+#include "devices/display/ssd1306/Ssd1306DeviceConfig.h"
 #include "devices/registry/DeviceRegistry.h"
 #include "devices/registry/DeviceRegistryStore.h"
 #include "devices/registry/DeviceRetainedDataStore.h"
 #include "devices/registry/DeviceScopedDataStore.h"
 #include "integrations/rest/i2c_bus/I2cBusDeviceApiAdapter.h"
-#include "integrations/rest/oled_display/OledDisplayDeviceApiAdapter.h"
+#include "integrations/rest/ssd1306/Ssd1306DeviceApiAdapter.h"
 
 #include <unity.h>
 #include <vector>
@@ -19,26 +19,26 @@ using namespace ewfm;
 
 namespace {
 
-OledDisplayLayoutRecordV1 makeLayoutRecord() {
-    OledDisplayLayoutRecordV1 layout{};
+DisplayLayoutRecordV1 makeLayoutRecord() {
+    DisplayLayoutRecordV1 layout{};
     layout.deviceId = 42;
     layout.recordVersion = 1;
-    layout.schemaVersion = kOledDisplayLayoutSchemaVersion;
+    layout.schemaVersion = kDisplayLayoutSchemaVersion;
     layout.activePageIndex = 0;
 
-    OledDisplayLayoutPageV1 page{};
+    DisplayLayoutPageV1 page{};
     std::snprintf(page.id, sizeof(page.id), "%s", "main");
 
-    OledDisplayLayoutWidgetV1 first{};
-    first.bindingKind = static_cast<uint8_t>(OledDisplayLayoutBindingKind::Metric);
+    DisplayLayoutWidgetV1 first{};
+    first.bindingKind = static_cast<uint8_t>(DisplayLayoutBindingKind::Metric);
     first.x = 0;
     first.y = 0;
     first.width = 64;
     first.height = 16;
     first.metricId = 7;
 
-    OledDisplayLayoutWidgetV1 second{};
-    second.bindingKind = static_cast<uint8_t>(OledDisplayLayoutBindingKind::ConstantText);
+    DisplayLayoutWidgetV1 second{};
+    second.bindingKind = static_cast<uint8_t>(DisplayLayoutBindingKind::ConstantText);
     second.x = 0;
     second.y = 16;
     second.width = 64;
@@ -51,11 +51,11 @@ OledDisplayLayoutRecordV1 makeLayoutRecord() {
     return layout;
 }
 
-void fillOledDeviceDocument(StaticJsonDocument<1024>& doc, bool includeLayout) {
+void fillSsd1306DeviceDocument(StaticJsonDocument<1024>& doc, bool includeLayout) {
     doc.clear();
-    doc["typeName"] = "oled_display";
+    doc["typeName"] = "ssd1306";
     JsonObject config = doc.createNestedObject("config");
-    config["name"] = "oled";
+    config["name"] = "ssd1306";
     config["enabled"] = true;
     config["i2cBusDeviceId"] = 12;
     config["i2cAddress"] = 0x3C;
@@ -72,7 +72,7 @@ void fillOledDeviceDocument(StaticJsonDocument<1024>& doc, bool includeLayout) {
     page["id"] = "main";
     JsonArray widgets = page.createNestedArray("widgets");
     JsonObject widget = widgets.createNestedObject();
-    widget["bindingKind"] = static_cast<uint8_t>(OledDisplayLayoutBindingKind::ConstantText);
+    widget["bindingKind"] = static_cast<uint8_t>(DisplayLayoutBindingKind::ConstantText);
     widget["x"] = 0;
     widget["y"] = 0;
     widget["width"] = 64;
@@ -94,14 +94,14 @@ void fillI2cBusDocument(StaticJsonDocument<512>& doc, const char* name, uint8_t 
 
 } // namespace
 
-void test_oled_layout_codec_round_trip_json() {
-    const OledDisplayLayoutRecordV1 original = makeLayoutRecord();
+void test_ssd1306_layout_codec_round_trip_json() {
+    const DisplayLayoutRecordV1 original = makeLayoutRecord();
     DynamicJsonDocument doc(1024);
     JsonObject root = doc.to<JsonObject>();
-    writeOledDisplayLayoutJson(original, root);
+    writeDisplayLayoutJson(original, root);
 
-    OledDisplayLayoutRecordV1 decoded{};
-    TEST_ASSERT_TRUE(parseOledDisplayLayoutJson(root, decoded));
+    DisplayLayoutRecordV1 decoded{};
+    TEST_ASSERT_TRUE(parseDisplayLayoutJson(root, decoded));
     TEST_ASSERT_EQUAL_UINT8(original.schemaVersion, decoded.schemaVersion);
     TEST_ASSERT_EQUAL_UINT8(original.pages.size(), decoded.pages.size());
     TEST_ASSERT_EQUAL_STRING(original.pages[0].id, decoded.pages[0].id);
@@ -110,29 +110,29 @@ void test_oled_layout_codec_round_trip_json() {
     TEST_ASSERT_EQUAL_UINT8(0, decoded.activePageIndex);
 }
 
-void test_oled_layout_codec_defaults_empty_pages_to_main_page() {
+void test_ssd1306_layout_codec_defaults_empty_pages_to_main_page() {
     StaticJsonDocument<512> doc;
     JsonObject root = doc.to<JsonObject>();
     root["schemaVersion"] = 1;
     root["activePageId"] = "main";
     root.createNestedArray("pages");
 
-    OledDisplayLayoutRecordV1 decoded{};
-    TEST_ASSERT_TRUE(parseOledDisplayLayoutJson(root, decoded));
+    DisplayLayoutRecordV1 decoded{};
+    TEST_ASSERT_TRUE(parseDisplayLayoutJson(root, decoded));
     TEST_ASSERT_EQUAL_UINT8(1, decoded.pages.size());
     TEST_ASSERT_EQUAL_STRING("main", decoded.pages[0].id);
     TEST_ASSERT_EQUAL_UINT8(0, decoded.activePageIndex);
 }
 
-void test_oled_layout_store_round_trip_binary() {
+void test_ssd1306_layout_store_round_trip_binary() {
     MemoryConfigStorage storage;
-    OledDisplayLayoutStore store(storage);
+    DisplayLayoutStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
 
-    const OledDisplayLayoutRecordV1 original = makeLayoutRecord();
+    const DisplayLayoutRecordV1 original = makeLayoutRecord();
     TEST_ASSERT_TRUE(store.save(original).ok());
 
-    OledDisplayLayoutRecordV1 loaded{};
+    DisplayLayoutRecordV1 loaded{};
     TEST_ASSERT_TRUE(store.load(original.deviceId, loaded).ok());
     TEST_ASSERT_EQUAL_UINT32(original.deviceId, loaded.deviceId);
     TEST_ASSERT_EQUAL_UINT8(original.schemaVersion, loaded.schemaVersion);
@@ -143,25 +143,25 @@ void test_oled_layout_store_round_trip_binary() {
     TEST_ASSERT_EQUAL_STRING(original.pages[0].widgets[1].text, loaded.pages[0].widgets[1].text);
 
     std::vector<uint8_t> blob;
-    TEST_ASSERT_TRUE(encodeOledDisplayLayoutBinary(original, blob));
-    TEST_ASSERT_TRUE(blob.size() > sizeof(OledDisplayLayoutBinaryHeaderV1));
-    const auto* header = reinterpret_cast<const OledDisplayLayoutBinaryHeaderV1*>(blob.data());
+    TEST_ASSERT_TRUE(encodeDisplayLayoutBinary(original, blob));
+    TEST_ASSERT_TRUE(blob.size() > sizeof(DisplayLayoutBinaryHeaderV1));
+    const auto* header = reinterpret_cast<const DisplayLayoutBinaryHeaderV1*>(blob.data());
     TEST_ASSERT_EQUAL_UINT16(1, header->recordVersion);
     TEST_ASSERT_EQUAL_UINT32(original.deviceId, header->deviceId);
     TEST_ASSERT_EQUAL_UINT8(1, header->pageCount);
 }
 
-void test_oled_layout_store_rejects_invalid_device_id() {
+void test_ssd1306_layout_store_rejects_invalid_device_id() {
     MemoryConfigStorage storage;
-    OledDisplayLayoutStore store(storage);
+    DisplayLayoutStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
 
-    OledDisplayLayoutRecordV1 record{};
+    DisplayLayoutRecordV1 record{};
     record.deviceId = 0;
     TEST_ASSERT_FALSE(store.save(record).ok());
 }
 
-void test_oled_layout_update_round_trip_via_registry_binary_store() {
+void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     MemoryConfigStorage registryStorage;
     MemoryConfigStorage retainedStorage;
     MemoryConfigStorage scopedStorage;
@@ -187,10 +187,10 @@ void test_oled_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_TRUE(busResult.ok());
 
     StaticJsonDocument<1024> createDoc;
-    fillOledDeviceDocument(createDoc, false);
+    fillSsd1306DeviceDocument(createDoc, false);
     createDoc["config"]["i2cBusDeviceId"] = busResult.deviceId;
     DeviceCreateRequest createRequest{};
-    TEST_ASSERT_TRUE(OledDisplayDeviceApiAdapter::instance().parseCreateRequest(createDoc.as<JsonObjectConst>(), createRequest, error));
+    TEST_ASSERT_TRUE(Ssd1306DeviceApiAdapter::instance().parseCreateRequest(createDoc.as<JsonObjectConst>(), createRequest, error));
     TEST_ASSERT_NULL(error);
     const DeviceCreateResult createResult = registry.create(createRequest, 0);
     TEST_ASSERT_TRUE(createResult.ok());
@@ -199,11 +199,11 @@ void test_oled_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_NOT_NULL(runtime);
 
     StaticJsonDocument<1024> updateDoc;
-    fillOledDeviceDocument(updateDoc, true);
+    fillSsd1306DeviceDocument(updateDoc, true);
     updateDoc["config"]["i2cBusDeviceId"] = busResult.deviceId;
     DeviceConfigUpdateRequest updateRequest{};
     TEST_ASSERT_TRUE(
-        OledDisplayDeviceApiAdapter::instance().parseUpdateConfigRequest(updateDoc.as<JsonObjectConst>(), *runtime, updateRequest, error));
+        Ssd1306DeviceApiAdapter::instance().parseUpdateConfigRequest(updateDoc.as<JsonObjectConst>(), *runtime, updateRequest, error));
     TEST_ASSERT_NULL(error);
     TEST_ASSERT_TRUE(updateRequest.persistedStateProvided);
 
@@ -217,8 +217,8 @@ void test_oled_layout_update_round_trip_via_registry_binary_store() {
                          .ok());
     TEST_ASSERT_TRUE(registry.flushNow().ok());
 
-    OledDisplayLayoutStore layoutStore(scopedStore);
-    OledDisplayLayoutRecordV1 storedLayout{};
+    DisplayLayoutStore layoutStore(scopedStore);
+    DisplayLayoutRecordV1 storedLayout{};
     TEST_ASSERT_TRUE(layoutStore.load(createResult.deviceId, storedLayout).ok());
     TEST_ASSERT_EQUAL_UINT32(createResult.deviceId, storedLayout.deviceId);
     TEST_ASSERT_EQUAL_UINT8(1, storedLayout.pages.size());
@@ -227,16 +227,16 @@ void test_oled_layout_update_round_trip_via_registry_binary_store() {
 
     DeviceRegistry reloadedRegistry(registryStore, typeRegistry, idSource, &retainedStore, &scopedStore);
     TEST_ASSERT_TRUE(reloadedRegistry.begin(0).ok());
-    auto* reloadedRuntime = dynamic_cast<OledDisplayDevice*>(reloadedRegistry.runtime(createResult.deviceId));
+    auto* reloadedRuntime = dynamic_cast<Ssd1306Device*>(reloadedRegistry.runtime(createResult.deviceId));
     TEST_ASSERT_NOT_NULL(reloadedRuntime);
     TEST_ASSERT_EQUAL_UINT8(1, reloadedRuntime->layout().pages.size());
     TEST_ASSERT_EQUAL_STRING("main", reloadedRuntime->layout().pages[0].id);
     TEST_ASSERT_EQUAL_STRING("temp", reloadedRuntime->layout().pages[0].widgets[0].text);
 }
 
-void test_oled_layout_create_request_accepts_empty_pages() {
+void test_ssd1306_layout_create_request_accepts_empty_pages() {
     StaticJsonDocument<1024> doc;
-    fillOledDeviceDocument(doc, false);
+    fillSsd1306DeviceDocument(doc, false);
     JsonObject config = doc["config"].as<JsonObject>();
     JsonObject layout = config.createNestedObject("layout");
     layout["activePageId"] = "main";
@@ -244,40 +244,40 @@ void test_oled_layout_create_request_accepts_empty_pages() {
 
     DeviceCreateRequest request{};
     const char* error = nullptr;
-    TEST_ASSERT_TRUE(OledDisplayDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error));
+    TEST_ASSERT_TRUE(Ssd1306DeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error));
     TEST_ASSERT_NULL(error);
     TEST_ASSERT_TRUE(request.configBlob.size() > 0U);
 
     DeviceCreatePersistenceRequest persistedRequest{};
-    TEST_ASSERT_TRUE(OledDisplayDeviceApiAdapter::instance().parseCreatePersistedStateRequest(doc.as<JsonObjectConst>(), request,
-                                                                                              persistedRequest, error));
+    TEST_ASSERT_TRUE(
+        Ssd1306DeviceApiAdapter::instance().parseCreatePersistedStateRequest(doc.as<JsonObjectConst>(), request, persistedRequest, error));
     TEST_ASSERT_NULL(error);
     TEST_ASSERT_TRUE(persistedRequest.persistedStateProvided);
-    OledDisplayLayoutRecordV1 decoded{};
+    DisplayLayoutRecordV1 decoded{};
     TEST_ASSERT_TRUE(
-        decodeOledDisplayLayoutBinary(persistedRequest.persistedStateBlob.data(), persistedRequest.persistedStateBlob.size(), decoded));
+        decodeDisplayLayoutBinary(persistedRequest.persistedStateBlob.data(), persistedRequest.persistedStateBlob.size(), decoded));
     TEST_ASSERT_EQUAL_UINT8(1, decoded.pages.size());
     TEST_ASSERT_EQUAL_STRING("main", decoded.pages[0].id);
 }
 
-void test_oled_layout_create_request_accepts_large_i2c_bus_device_id() {
+void test_ssd1306_layout_create_request_accepts_large_i2c_bus_device_id() {
     StaticJsonDocument<1024> doc;
-    fillOledDeviceDocument(doc, true);
+    fillSsd1306DeviceDocument(doc, true);
     JsonObject config = doc["config"].as<JsonObject>();
     config["i2cBusDeviceId"] = 4249059392UL;
 
     DeviceCreateRequest request{};
     const char* error = nullptr;
-    TEST_ASSERT_TRUE(OledDisplayDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error));
+    TEST_ASSERT_TRUE(Ssd1306DeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error));
     TEST_ASSERT_NULL(error);
 
-    OledDisplayDeviceConfigV1 decoded{};
+    Ssd1306DeviceConfigV1 decoded{};
     TEST_ASSERT_TRUE(
-        decodeOledDisplayDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), decoded));
+        decodeSsd1306DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), decoded));
     TEST_ASSERT_EQUAL_UINT32(4249059392UL, decoded.i2cBusDeviceId);
 }
 
-void test_oled_layout_rejects_duplicate_i2c_address_on_same_bus() {
+void test_ssd1306_layout_rejects_duplicate_i2c_address_on_same_bus() {
     MemoryConfigStorage registryStorage;
     MemoryConfigStorage retainedStorage;
     MemoryConfigStorage scopedStorage;
@@ -303,7 +303,7 @@ void test_oled_layout_rejects_duplicate_i2c_address_on_same_bus() {
     TEST_ASSERT_TRUE(busResult.ok());
 
     StaticJsonDocument<1024> firstDoc;
-    fillOledDeviceDocument(firstDoc, false);
+    fillSsd1306DeviceDocument(firstDoc, false);
     JsonObject firstConfig = firstDoc["config"].as<JsonObject>();
     firstConfig["i2cBusDeviceId"] = busResult.deviceId;
     firstConfig["i2cAddress"] = 60;
@@ -315,12 +315,12 @@ void test_oled_layout_rejects_duplicate_i2c_address_on_same_bus() {
     firstPage["id"] = "main";
     firstPage.createNestedArray("widgets");
     DeviceCreateRequest firstRequest{};
-    TEST_ASSERT_TRUE(OledDisplayDeviceApiAdapter::instance().parseCreateRequest(firstDoc.as<JsonObjectConst>(), firstRequest, error));
+    TEST_ASSERT_TRUE(Ssd1306DeviceApiAdapter::instance().parseCreateRequest(firstDoc.as<JsonObjectConst>(), firstRequest, error));
     TEST_ASSERT_NULL(error);
     TEST_ASSERT_TRUE(registry.create(firstRequest, 0).ok());
 
     StaticJsonDocument<1024> secondDoc;
-    fillOledDeviceDocument(secondDoc, false);
+    fillSsd1306DeviceDocument(secondDoc, false);
     JsonObject secondConfig = secondDoc["config"].as<JsonObject>();
     secondConfig["i2cBusDeviceId"] = busResult.deviceId;
     secondConfig["i2cAddress"] = 60;
@@ -333,23 +333,23 @@ void test_oled_layout_rejects_duplicate_i2c_address_on_same_bus() {
     secondPage.createNestedArray("widgets");
 
     DeviceCreateRequest secondRequest{};
-    TEST_ASSERT_TRUE(OledDisplayDeviceApiAdapter::instance().parseCreateRequest(secondDoc.as<JsonObjectConst>(), secondRequest, error));
+    TEST_ASSERT_TRUE(Ssd1306DeviceApiAdapter::instance().parseCreateRequest(secondDoc.as<JsonObjectConst>(), secondRequest, error));
     TEST_ASSERT_NULL(error);
 
-    const DeviceValidationResult validation = OledDisplayDeviceApiAdapter::instance().validateCreateRequest(secondRequest, registry);
+    const DeviceValidationResult validation = Ssd1306DeviceApiAdapter::instance().validateCreateRequest(secondRequest, registry);
     TEST_ASSERT_FALSE(validation.ok());
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint32_t>(DeviceError::InvalidRelationship), static_cast<uint32_t>(validation.error));
 }
 
 int main(int, char**) {
     UNITY_BEGIN();
-    RUN_TEST(test_oled_layout_codec_round_trip_json);
-    RUN_TEST(test_oled_layout_codec_defaults_empty_pages_to_main_page);
-    RUN_TEST(test_oled_layout_store_round_trip_binary);
-    RUN_TEST(test_oled_layout_store_rejects_invalid_device_id);
-    RUN_TEST(test_oled_layout_update_round_trip_via_registry_binary_store);
-    RUN_TEST(test_oled_layout_create_request_accepts_empty_pages);
-    RUN_TEST(test_oled_layout_create_request_accepts_large_i2c_bus_device_id);
-    RUN_TEST(test_oled_layout_rejects_duplicate_i2c_address_on_same_bus);
+    RUN_TEST(test_ssd1306_layout_codec_round_trip_json);
+    RUN_TEST(test_ssd1306_layout_codec_defaults_empty_pages_to_main_page);
+    RUN_TEST(test_ssd1306_layout_store_round_trip_binary);
+    RUN_TEST(test_ssd1306_layout_store_rejects_invalid_device_id);
+    RUN_TEST(test_ssd1306_layout_update_round_trip_via_registry_binary_store);
+    RUN_TEST(test_ssd1306_layout_create_request_accepts_empty_pages);
+    RUN_TEST(test_ssd1306_layout_create_request_accepts_large_i2c_bus_device_id);
+    RUN_TEST(test_ssd1306_layout_rejects_duplicate_i2c_address_on_same_bus);
     return UNITY_END();
 }

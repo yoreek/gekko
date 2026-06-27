@@ -44,7 +44,7 @@ enum class DeviceDependencyRole : uint8_t {
     TemperatureSensor = 2,
     Switch = 3,
     I2CBus = 4,
-    OledDisplay = 5,
+    Ssd1306 = 5,
     SpiBus = 6,
 };
 

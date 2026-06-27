@@ -1,13 +1,13 @@
 #pragma once
 
-#include "devices/display/oled/OledDisplayLayoutStore.h"
+#include "devices/display/DisplayLayoutStore.h"
 #include "integrations/common/DeviceApiAdapter.h"
 
 namespace ewfm {
 
-class OledDisplayDeviceApiAdapter final : public IDeviceApiAdapter {
+class Ssd1306DeviceApiAdapter final : public IDeviceApiAdapter {
 public:
-    static const OledDisplayDeviceApiAdapter& instance();
+    static const Ssd1306DeviceApiAdapter& instance();
 
     DeviceTypeId typeId() const override;
     const char* typeName() const override;

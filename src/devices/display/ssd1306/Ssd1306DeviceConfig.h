@@ -9,7 +9,7 @@
 namespace ewfm {
 
 #pragma pack(push, 1)
-struct OledDisplayDeviceConfigV1 : DeviceBaseConfigV1 {
+struct Ssd1306DeviceConfigV1 : DeviceBaseConfigV1 {
     static constexpr char kMagic[] = "OLV1";
     uint32_t i2cBusDeviceId{0};
     uint8_t i2cAddress{0x3C};
@@ -22,11 +22,11 @@ struct OledDisplayDeviceConfigV1 : DeviceBaseConfigV1 {
 };
 #pragma pack(pop)
 
-constexpr size_t oledDisplayDeviceConfigSize(const OledDisplayDeviceConfigV1&) {
-    return sizeof(OledDisplayDeviceConfigV1::kMagic) - 1U + sizeof(OledDisplayDeviceConfigV1);
+constexpr size_t ssd1306DeviceConfigSize(const Ssd1306DeviceConfigV1&) {
+    return sizeof(Ssd1306DeviceConfigV1::kMagic) - 1U + sizeof(Ssd1306DeviceConfigV1);
 }
 
-bool encodeOledDisplayDeviceConfig(const OledDisplayDeviceConfigV1& config, uint8_t* blob, size_t capacity);
-bool decodeOledDisplayDeviceConfig(const uint8_t* blob, size_t size, OledDisplayDeviceConfigV1& config);
+bool encodeSsd1306DeviceConfig(const Ssd1306DeviceConfigV1& config, uint8_t* blob, size_t capacity);
+bool decodeSsd1306DeviceConfig(const uint8_t* blob, size_t size, Ssd1306DeviceConfigV1& config);
 
 } // namespace ewfm

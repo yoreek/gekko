@@ -3,7 +3,7 @@
 #include "config/ConfigStore.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/core/DeviceTypes.h"
-#include "devices/display/oled/OledDisplayLayoutStore.h"
+#include "devices/display/DisplayLayoutStore.h"
 #include "devices/registry/DeviceRegistry.h"
 #include "devices/registry/DeviceRegistryStore.h"
 #include "devices/registry/DeviceRetainedDataStore.h"
@@ -34,7 +34,7 @@ private:
     PreferencesConfigStorage storage_;
     PreferencesConfigStorage deviceStorage_;
     PreferencesConfigStorage retainedStateStorage_;
-    PreferencesConfigStorage oledDisplayLayoutStorage_;
+    PreferencesConfigStorage displayLayoutStorage_;
     PreferencesConfigStorage dashboardLayoutStorage_;
     ArduinoWifiDriver wifiDriver_;
     ConfigStore configStore_;
@@ -43,7 +43,7 @@ private:
     DeviceRegistryStore deviceRegistryStore_;
     DeviceRetainedDataStore retainedStateStore_;
     DeviceScopedDataStore deviceScopedDataStore_;
-    OledDisplayLayoutStore oledDisplayLayoutStore_;
+    DisplayLayoutStore displayLayoutStore_;
     DeviceEventDispatcher deviceEventDispatcher_{};
 #if defined(ARDUINO)
     EspRandomDeviceIdSource deviceIdSource_;

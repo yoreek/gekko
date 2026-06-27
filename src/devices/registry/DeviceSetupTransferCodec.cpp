@@ -7,8 +7,10 @@
 #include "devices/bus/spi/SpiBusConfig.h"
 #include "devices/bus/spi/SpiBusDevice.h"
 #include "devices/core/DeviceBaseConfig.h"
-#include "devices/display/oled/OledDisplayDevice.h"
-#include "devices/display/oled/OledDisplayDeviceConfig.h"
+#include "devices/display/ssd1306/Ssd1306Device.h"
+#include "devices/display/ssd1306/Ssd1306DeviceConfig.h"
+#include "devices/display/st7735/St7735Device.h"
+#include "devices/display/st7735/St7735DeviceConfig.h"
 #include "devices/dummy/DummyDevice.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorConfig.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
@@ -75,9 +77,11 @@ const char* deviceTypeNameFromId(const DeviceTypeId typeId) {
     case 6:
         return "i2c_bus";
     case 7:
-        return "oled_display";
+        return "ssd1306";
     case 8:
         return "spi_bus";
+    case 9:
+        return "st7735";
     default:
         return "unknown";
     }
@@ -109,12 +113,16 @@ bool deviceTypeIdFromTransferJson(const JsonObjectConst& input, DeviceTypeId& ty
         typeId = 6U;
         return true;
     }
-    if (std::strcmp(typeName, "oled_display") == 0) {
+    if (std::strcmp(typeName, "ssd1306") == 0) {
         typeId = 7U;
         return true;
     }
     if (std::strcmp(typeName, "spi_bus") == 0) {
         typeId = 8U;
+        return true;
+    }
+    if (std::strcmp(typeName, "st7735") == 0) {
+        typeId = 9U;
         return true;
     }
 
@@ -204,20 +212,40 @@ bool encodeTransferConfigBlob(const JsonObjectConst& input, const DeviceBaseConf
     }
     case 7: {
         if (configVersion != 1U) {
-            error = "unsupported oled display config version";
+            error = "unsupported ssd1306 config version";
             return false;
         }
-        OledDisplayDeviceConfigV1 config{};
+        Ssd1306DeviceConfigV1 config{};
         const char* parseError = nullptr;
         if (!config.parseJson(input, parseError)) {
-            error = parseError != nullptr ? parseError : "oled display config is invalid";
+            error = parseError != nullptr ? parseError : "ssd1306 config is invalid";
             return false;
         }
         config.enabled = base.enabled;
         std::memcpy(config.name, base.name, sizeof(config.name));
-        size = oledDisplayDeviceConfigSize(config);
-        if (!encodeOledDisplayDeviceConfig(config, buffer, size)) {
-            error = "oled display config is invalid";
+        size = ssd1306DeviceConfigSize(config);
+        if (!encodeSsd1306DeviceConfig(config, buffer, size)) {
+            error = "ssd1306 config is invalid";
+            return false;
+        }
+        break;
+    }
+    case 9: {
+        if (configVersion != 1U) {
+            error = "unsupported st7735 config version";
+            return false;
+        }
+        St7735DeviceConfigV1 config{};
+        const char* parseError = nullptr;
+        if (!config.parseJson(input, parseError)) {
+            error = parseError != nullptr ? parseError : "st7735 config is invalid";
+            return false;
+        }
+        config.enabled = base.enabled;
+        std::memcpy(config.name, base.name, sizeof(config.name));
+        size = st7735DeviceConfigSize(config);
+        if (!encodeSt7735DeviceConfig(config, buffer, size)) {
+            error = "st7735 config is invalid";
             return false;
         }
         break;

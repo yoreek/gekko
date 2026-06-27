@@ -3,7 +3,8 @@
 #include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/bus/onewire/OneWireBusDevice.h"
 #include "devices/bus/spi/SpiBusDevice.h"
-#include "devices/display/oled/OledDisplayDevice.h"
+#include "devices/display/ssd1306/Ssd1306Device.h"
+#include "devices/display/st7735/St7735Device.h"
 #include "devices/dummy/DummyDevice.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
 #include "devices/switch/gpio/GpioSwitchDevice.h"
@@ -13,7 +14,7 @@ namespace ewfm {
 
 namespace {
 constexpr const char* kDeviceDependencyRoleNames[] = {
-    "unknown", "onewire_bus", "temperature_sensor", "switch", "i2c_bus", "oled_display", "spi_bus",
+    "unknown", "onewire_bus", "temperature_sensor", "switch", "i2c_bus", "ssd1306", "spi_bus",
 };
 
 constexpr const char* kDeviceEventKindNames[] = {
@@ -56,8 +57,8 @@ bool parseDeviceDependencyRole(std::string_view value, DeviceDependencyRole& rol
         role = DeviceDependencyRole::I2CBus;
         return true;
     }
-    if (value == "oled_display") {
-        role = DeviceDependencyRole::OledDisplay;
+    if (value == "ssd1306") {
+        role = DeviceDependencyRole::Ssd1306;
         return true;
     }
     if (value == "spi_bus") {
@@ -105,7 +106,8 @@ DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     (void)registry.registerDescriptor(OneWireBusDevice::descriptor());
     (void)registry.registerDescriptor(I2cBusDevice::descriptor());
     (void)registry.registerDescriptor(SpiBusDevice::descriptor());
-    (void)registry.registerDescriptor(OledDisplayDevice::descriptor());
+    (void)registry.registerDescriptor(Ssd1306Device::descriptor());
+    (void)registry.registerDescriptor(St7735Device::descriptor());
     (void)registry.registerDescriptor(Ds18b20TemperatureSensorDevice::descriptor());
     (void)registry.registerDescriptor(ThermostatDevice::descriptor());
     return registry;

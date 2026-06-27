@@ -1,4 +1,4 @@
-#include "devices/display/oled/OledDisplayLayoutCodec.h"
+#include "devices/display/DisplayLayoutCodec.h"
 
 #include "devices/core/DeviceBaseConfig.h"
 
@@ -39,24 +39,24 @@ bool copyText(char* dest, size_t capacity, const char* source) {
     return true;
 }
 
-OledDisplayLayoutPageV1 defaultLayoutPage() {
-    OledDisplayLayoutPageV1 page{};
+DisplayLayoutPageV1 defaultLayoutPage() {
+    DisplayLayoutPageV1 page{};
     copyText(page.id, sizeof(page.id), "main");
     return page;
 }
 
-bool validateLayout(const OledDisplayLayoutRecordV1& layout) {
-    if (layout.recordVersion != 1U || layout.schemaVersion != kOledDisplayLayoutSchemaVersion) {
+bool validateLayout(const DisplayLayoutRecordV1& layout) {
+    if (layout.recordVersion != 1U || layout.schemaVersion != kDisplayLayoutSchemaVersion) {
         return false;
     }
     if (layout.activePageIndex >= layout.pages.size() && !layout.pages.empty()) {
         return false;
     }
-    if (layout.pages.size() > kOledDisplayLayoutMaxPages) {
+    if (layout.pages.size() > kDisplayLayoutMaxPages) {
         return false;
     }
-    for (const OledDisplayLayoutPageV1& page : layout.pages) {
-        if (std::strlen(page.id) == 0U || page.widgets.size() > kOledDisplayLayoutMaxWidgetsPerPage) {
+    for (const DisplayLayoutPageV1& page : layout.pages) {
+        if (std::strlen(page.id) == 0U || page.widgets.size() > kDisplayLayoutMaxWidgetsPerPage) {
             return false;
         }
     }
@@ -65,7 +65,7 @@ bool validateLayout(const OledDisplayLayoutRecordV1& layout) {
 
 } // namespace
 
-void writeOledDisplayLayoutJson(const OledDisplayLayoutRecordV1& layout, JsonObject output) {
+void writeDisplayLayoutJson(const DisplayLayoutRecordV1& layout, JsonObject output) {
     output["schemaVersion"] = layout.schemaVersion;
     const char* activePageId = "main";
     if (layout.activePageIndex < layout.pages.size()) {
@@ -75,11 +75,11 @@ void writeOledDisplayLayoutJson(const OledDisplayLayoutRecordV1& layout, JsonObj
     }
     output["activePageId"] = activePageId;
     JsonArray pages = output.createNestedArray("pages");
-    for (const OledDisplayLayoutPageV1& page : layout.pages) {
+    for (const DisplayLayoutPageV1& page : layout.pages) {
         JsonObject pageJson = pages.createNestedObject();
         pageJson["id"] = page.id;
         JsonArray widgets = pageJson.createNestedArray("widgets");
-        for (const OledDisplayLayoutWidgetV1& widget : page.widgets) {
+        for (const DisplayLayoutWidgetV1& widget : page.widgets) {
             JsonObject widgetJson = widgets.createNestedObject();
             widgetJson["bindingKind"] = widget.bindingKind;
             widgetJson["x"] = widget.x;
@@ -93,11 +93,11 @@ void writeOledDisplayLayoutJson(const OledDisplayLayoutRecordV1& layout, JsonObj
     }
 }
 
-bool parseOledDisplayLayoutJson(const JsonObjectConst& input, OledDisplayLayoutRecordV1& layout) {
+bool parseDisplayLayoutJson(const JsonObjectConst& input, DisplayLayoutRecordV1& layout) {
     layout = {};
     layout.deviceId = 0;
     layout.recordVersion = 1;
-    layout.schemaVersion = input["schemaVersion"] | kOledDisplayLayoutSchemaVersion;
+    layout.schemaVersion = input["schemaVersion"] | kDisplayLayoutSchemaVersion;
     const char* activePageId = input["activePageId"] | nullptr;
     const bool hasActivePageIndex = !input["activePageIndex"].isNull();
     const uint8_t requestedActivePageIndex = input["activePageIndex"] | 0U;
@@ -111,11 +111,11 @@ bool parseOledDisplayLayoutJson(const JsonObjectConst& input, OledDisplayLayoutR
         if (!pageVariant.is<JsonObjectConst>()) {
             return false;
         }
-        if (layout.pages.size() >= kOledDisplayLayoutMaxPages) {
+        if (layout.pages.size() >= kDisplayLayoutMaxPages) {
             return false;
         }
         const JsonObjectConst pageJson = pageVariant.as<JsonObjectConst>();
-        OledDisplayLayoutPageV1 page{};
+        DisplayLayoutPageV1 page{};
         if (!copyText(page.id, sizeof(page.id), pageJson["id"] | "")) {
             return false;
         }
@@ -125,11 +125,11 @@ bool parseOledDisplayLayoutJson(const JsonObjectConst& input, OledDisplayLayoutR
                 if (!widgetVariant.is<JsonObjectConst>()) {
                     return false;
                 }
-                if (page.widgets.size() >= kOledDisplayLayoutMaxWidgetsPerPage) {
+                if (page.widgets.size() >= kDisplayLayoutMaxWidgetsPerPage) {
                     return false;
                 }
                 const JsonObjectConst widgetJson = widgetVariant.as<JsonObjectConst>();
-                OledDisplayLayoutWidgetV1 widget{};
+                DisplayLayoutWidgetV1 widget{};
                 widget.bindingKind = widgetJson["bindingKind"] | 0U;
                 widget.x = widgetJson["x"] | 0U;
                 widget.y = widgetJson["y"] | 0U;
@@ -174,13 +174,13 @@ bool parseOledDisplayLayoutJson(const JsonObjectConst& input, OledDisplayLayoutR
     return validateLayout(layout);
 }
 
-bool encodeOledDisplayLayoutBinary(const OledDisplayLayoutRecordV1& layout, std::vector<uint8_t>& blob) {
+bool encodeDisplayLayoutBinary(const DisplayLayoutRecordV1& layout, std::vector<uint8_t>& blob) {
     if (!validateLayout(layout)) {
         return false;
     }
 
     blob.clear();
-    OledDisplayLayoutBinaryHeaderV1 header{};
+    DisplayLayoutBinaryHeaderV1 header{};
     header.recordVersion = layout.recordVersion;
     header.deviceId = layout.deviceId;
     header.schemaVersion = layout.schemaVersion;
@@ -190,8 +190,8 @@ bool encodeOledDisplayLayoutBinary(const OledDisplayLayoutRecordV1& layout, std:
         return false;
     }
 
-    for (const OledDisplayLayoutPageV1& page : layout.pages) {
-        OledDisplayLayoutBinaryPageHeaderV1 pageHeader{};
+    for (const DisplayLayoutPageV1& page : layout.pages) {
+        DisplayLayoutBinaryPageHeaderV1 pageHeader{};
         pageHeader.widgetCount = static_cast<uint8_t>(page.widgets.size());
         if (!copyText(pageHeader.id, sizeof(pageHeader.id), page.id)) {
             return false;
@@ -199,8 +199,8 @@ bool encodeOledDisplayLayoutBinary(const OledDisplayLayoutRecordV1& layout, std:
         if (!appendBinary(blob, pageHeader)) {
             return false;
         }
-        for (const OledDisplayLayoutWidgetV1& widget : page.widgets) {
-            OledDisplayLayoutBinaryWidgetV1 binaryWidget{};
+        for (const DisplayLayoutWidgetV1& widget : page.widgets) {
+            DisplayLayoutBinaryWidgetV1 binaryWidget{};
             binaryWidget.bindingKind = widget.bindingKind;
             binaryWidget.x = widget.x;
             binaryWidget.y = widget.y;
@@ -219,21 +219,21 @@ bool encodeOledDisplayLayoutBinary(const OledDisplayLayoutRecordV1& layout, std:
     return true;
 }
 
-bool decodeOledDisplayLayoutBinary(const uint8_t* data, size_t size, OledDisplayLayoutRecordV1& layout) {
+bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRecordV1& layout) {
     layout = {};
-    if (data == nullptr || size < sizeof(OledDisplayLayoutBinaryHeaderV1)) {
+    if (data == nullptr || size < sizeof(DisplayLayoutBinaryHeaderV1)) {
         return false;
     }
 
     size_t offset = 0;
-    OledDisplayLayoutBinaryHeaderV1 header{};
+    DisplayLayoutBinaryHeaderV1 header{};
     if (!readBinary(data, size, offset, header)) {
         return false;
     }
-    if (header.recordVersion != 1U || header.schemaVersion != kOledDisplayLayoutSchemaVersion) {
+    if (header.recordVersion != 1U || header.schemaVersion != kDisplayLayoutSchemaVersion) {
         return false;
     }
-    if (header.pageCount == 0U || header.pageCount > kOledDisplayLayoutMaxPages) {
+    if (header.pageCount == 0U || header.pageCount > kDisplayLayoutMaxPages) {
         return false;
     }
     if (header.activePageIndex >= header.pageCount) {
@@ -247,24 +247,24 @@ bool decodeOledDisplayLayoutBinary(const uint8_t* data, size_t size, OledDisplay
     layout.pages.reserve(header.pageCount);
 
     for (uint8_t pageIndex = 0; pageIndex < header.pageCount; ++pageIndex) {
-        OledDisplayLayoutBinaryPageHeaderV1 pageHeader{};
+        DisplayLayoutBinaryPageHeaderV1 pageHeader{};
         if (!readBinary(data, size, offset, pageHeader)) {
             return false;
         }
-        if (pageHeader.widgetCount > kOledDisplayLayoutMaxWidgetsPerPage) {
+        if (pageHeader.widgetCount > kDisplayLayoutMaxWidgetsPerPage) {
             return false;
         }
-        OledDisplayLayoutPageV1 page{};
+        DisplayLayoutPageV1 page{};
         if (!copyText(page.id, sizeof(page.id), pageHeader.id)) {
             return false;
         }
         page.widgets.reserve(pageHeader.widgetCount);
         for (uint8_t widgetIndex = 0; widgetIndex < pageHeader.widgetCount; ++widgetIndex) {
-            OledDisplayLayoutBinaryWidgetV1 binaryWidget{};
+            DisplayLayoutBinaryWidgetV1 binaryWidget{};
             if (!readBinary(data, size, offset, binaryWidget)) {
                 return false;
             }
-            OledDisplayLayoutWidgetV1 widget{};
+            DisplayLayoutWidgetV1 widget{};
             widget.bindingKind = binaryWidget.bindingKind;
             widget.x = binaryWidget.x;
             widget.y = binaryWidget.y;
