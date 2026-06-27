@@ -1,4 +1,4 @@
-import type { RasterImageFormat } from '@/raster/raster-image'
+import type { RasterImageFormat } from '../../../raster/raster-image-types.ts'
 
 export type DisplayWidgetType = 'text' | 'icon' | 'bitmap' | 'rect' | 'line' | 'circle' | 'ellipse'
 

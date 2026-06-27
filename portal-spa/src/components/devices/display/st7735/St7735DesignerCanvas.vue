@@ -1,18 +1,14 @@
 <template>
-  <div
-    class="oled-canvas"
-    :style="canvasStyle"
-    role="application"
-  >
+  <div class="tft-canvas" :style="canvasStyle" role="application">
     <div
       v-for="item in widgets"
       :key="item.id"
-      class="oled-canvas__item"
+      class="tft-canvas__item"
       :style="widgetFrameStyle(item)"
     >
       <div
-        class="oled-canvas__widget"
-        :class="{ 'oled-canvas__widget--selected': item.id === selectedWidgetId }"
+        class="tft-canvas__widget"
+        :class="{ 'tft-canvas__widget--selected': item.id === selectedWidgetId }"
         role="button"
         tabindex="0"
         @pointerdown="startDrag($event, item)"
@@ -20,14 +16,14 @@
         @keydown.enter.prevent="$emit('select-widget', item.id)"
         @keydown.space.prevent="$emit('select-widget', item.id)"
       >
-        <Ssd1306WidgetPreview
+        <St7735WidgetPreview
           :widget="item"
-          :display="ssd1306Display"
+          :display="st7735Display"
           :display-scale="zoom"
           :freeze-render="false"
         />
         <span
-          class="oled-canvas__resize-handle"
+          class="tft-canvas__resize-handle"
           aria-hidden="true"
           @pointerdown.stop="startResize($event, item)"
         />
@@ -39,10 +35,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-import Ssd1306WidgetPreview from '@/components/devices/display/ssd1306/Ssd1306WidgetPreview.vue'
+import St7735WidgetPreview from '@/components/devices/display/st7735/St7735WidgetPreview.vue'
 import { resolveSsd1306InteractionWidgets, type Ssd1306CanvasInteraction } from '@/components/devices/display/ssd1306/ssd1306-editor-interaction'
 import { resolveSsd1306CanvasStyle, resolveSsd1306WidgetFrameStyle } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
-import { ssd1306Display } from '@/models/devices/display/display'
+import { st7735Display } from '@/models/devices/display/display'
 import type { Ssd1306Widget } from '@/models/devices/ssd1306/layout'
 
 type CanvasInteraction = Ssd1306CanvasInteraction & {
@@ -87,10 +83,10 @@ function startResize(event: PointerEvent, widget: Ssd1306Widget): void {
 
 function startInteraction(event: PointerEvent, widget: Ssd1306Widget, mode: CanvasInteraction['mode']): void {
   emit('select-widget', widget.id)
-    activeInteraction.value = {
-      pointerId: event.pointerId,
-      mode,
-      widgetId: widget.id,
+  activeInteraction.value = {
+    pointerId: event.pointerId,
+    mode,
+    widgetId: widget.id,
     keepAspectRatio: widget.type === 'bitmap' && 'keepAspectRatio' in widget ? widget.keepAspectRatio : false,
     startClientX: event.clientX,
     startClientY: event.clientY,
@@ -131,11 +127,10 @@ function finishInteraction(event: PointerEvent): void {
   activeInteraction.value = null
   emit('interaction-change', { widgetId: null, mode: null })
 }
-
 </script>
 
 <style scoped>
-.oled-canvas {
+.tft-canvas {
   position: relative;
   overflow-x: hidden;
   overflow-y: hidden;
@@ -149,12 +144,12 @@ function finishInteraction(event: PointerEvent): void {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-.oled-canvas__item {
+.tft-canvas__item {
   position: absolute;
   overflow: visible;
 }
 
-.oled-canvas__widget--selected::after {
+.tft-canvas__widget--selected::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -163,7 +158,7 @@ function finishInteraction(event: PointerEvent): void {
   box-sizing: border-box;
 }
 
-.oled-canvas__widget {
+.tft-canvas__widget {
   position: relative;
   display: grid;
   place-items: center;
@@ -178,7 +173,7 @@ function finishInteraction(event: PointerEvent): void {
   touch-action: none;
 }
 
-.oled-canvas__resize-handle {
+.tft-canvas__resize-handle {
   position: absolute;
   right: 0;
   bottom: 0;
@@ -191,7 +186,7 @@ function finishInteraction(event: PointerEvent): void {
   pointer-events: auto;
 }
 
-.oled-canvas__widget--selected .oled-canvas__resize-handle {
+.tft-canvas__widget--selected .tft-canvas__resize-handle {
   opacity: 1;
 }
 </style>

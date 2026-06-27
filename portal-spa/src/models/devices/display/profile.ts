@@ -1,4 +1,4 @@
-import type { RasterImageFormat } from '../../../raster/raster-image.ts'
+import type { RasterImageFormat } from '../../../raster/raster-image-types.ts'
 import {
   DISPLAY_LAYOUT_MAX_PAGES,
   DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE,

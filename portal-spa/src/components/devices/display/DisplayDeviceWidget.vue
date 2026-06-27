@@ -27,15 +27,17 @@ defineEmits<{
 const { t } = useI18n()
 
 const summaryText = computed(() => {
-  const width = Number((props.device.config as Record<string, unknown>).width ?? 0)
-  const height = Number((props.device.config as Record<string, unknown>).height ?? 0)
+  const config = props.device.config as unknown as Record<string, unknown>
+  const width = Number(config.width ?? 0)
+  const height = Number(config.height ?? 0)
   return width > 0 && height > 0 ? `${Math.round(width)} × ${Math.round(height)}` : t('device.dialog.display.widgetFallback')
 })
 
 const summaryTitle = computed(() => {
   const typeName = props.device.record.typeName
-  const width = Number((props.device.config as Record<string, unknown>).width ?? 0)
-  const height = Number((props.device.config as Record<string, unknown>).height ?? 0)
+  const config = props.device.config as unknown as Record<string, unknown>
+  const width = Number(config.width ?? 0)
+  const height = Number(config.height ?? 0)
   const format = typeName === 'st7735' ? 'RGB565' : 'MONO1'
   return [
     t(`device.type.${typeName}`),

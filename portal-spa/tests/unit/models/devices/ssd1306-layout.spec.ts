@@ -43,10 +43,9 @@ import {
   OLED_DISPLAY_BITMAP_DEFAULT_HEIGHT,
   OLED_DISPLAY_BITMAP_DEFAULT_WIDTH,
 } from '../../../../src/models/devices/ssd1306/layout.ts'
-import {
-  decodeSsd1306BitmapBytes,
-  encodeSsd1306BitmapBytes,
-} from '../../../../src/components/devices/display/ssd1306/ssd1306-bitmap.ts'
+import { Mono1RasterImageCodec } from '../../../../src/raster/mono1/Mono1RasterImageCodec.ts'
+
+const mono1Codec = new Mono1RasterImageCodec()
 
 function createFakeCanvasContext(width: number, height: number): {
   context: CanvasRenderingContext2D
@@ -174,12 +173,12 @@ test('OLED wrapper keeps bitmap defaults and encoded layout shape stable', () =>
 
 test('bitmap pack helpers preserve drawBitmap row order', () => {
   const bytes = Uint8Array.from([0b10000001, 0b01000000])
-  const encoded = encodeSsd1306BitmapBytes(bytes, 8, 2)
-  assert.deepEqual(Array.from(decodeSsd1306BitmapBytes(encoded, 8, 2)), Array.from(bytes))
+  const encoded = mono1Codec.encode(bytes, 8, 2)
+  assert.deepEqual(Array.from(mono1Codec.decode(encoded, 8, 2)), Array.from(bytes))
 })
 
 test('bitmap pack helpers reject byte length mismatches', () => {
-  assert.throws(() => encodeSsd1306BitmapBytes(Uint8Array.from([1, 2]), 8, 8))
+  assert.throws(() => mono1Codec.encode(Uint8Array.from([1, 2]), 8, 8))
 })
 
 test('classic font helper keeps the Adafruit glyph table and size mapping', () => {

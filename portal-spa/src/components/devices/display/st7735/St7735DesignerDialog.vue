@@ -1,7 +1,7 @@
 <template>
   <DeviceDialogShell
     :model-value="modelValue"
-    :headline="t('device.dialog.ssd1306Display.designerTitle')"
+    :headline="t('device.dialog.st7735Display.designerTitle')"
     :subline="sublineText"
     fullscreen
     max-width="none"
@@ -13,8 +13,8 @@
       </v-chip>
     </template>
 
-    <div class="oled-designer">
-      <div class="oled-designer__toolbar">
+    <div class="tft-designer">
+      <div class="tft-designer__toolbar">
         <v-btn
           v-for="type in widgetTypeOptions"
           :key="type.value"
@@ -33,14 +33,14 @@
         </v-btn>
       </div>
 
-    <v-tabs v-model="activePageId" color="primary" mandatory class="oled-designer__tabs">
+      <v-tabs v-model="activePageId" color="primary" mandatory class="tft-designer__tabs">
         <v-tab v-for="page in pages" :key="page.id" :value="page.id">
           {{ page.name }}
         </v-tab>
       </v-tabs>
 
-      <div class="oled-designer__body">
-        <section class="oled-designer__panel oled-designer__panel--layers">
+      <div class="tft-designer__body">
+        <section class="tft-designer__panel tft-designer__panel--layers">
           <div class="text-subtitle-2">{{ t('device.dialog.ssd1306Display.layersTitle') }}</div>
           <Ssd1306DesignerLayers
             :widgets="activePage.widgets"
@@ -53,8 +53,8 @@
           />
         </section>
 
-        <section ref="canvasPanelRef" class="oled-designer__panel oled-designer__panel--canvas">
-          <div class="oled-designer__panel-heading">
+        <section ref="canvasPanelRef" class="tft-designer__panel tft-designer__panel--canvas">
+          <div class="tft-designer__panel-heading">
             <div>
               <div class="text-subtitle-2">{{ t('device.dialog.ssd1306Display.canvasTitle') }}</div>
               <div class="text-caption text-medium-emphasis">
@@ -62,7 +62,7 @@
               </div>
             </div>
           </div>
-          <Ssd1306DesignerCanvas
+          <St7735DesignerCanvas
             :widgets="activePage.widgets"
             :device-width="layoutWidth"
             :device-height="layoutHeight"
@@ -81,9 +81,9 @@
             density="compact"
             :label="t('device.dialog.ssd1306Display.zoom')"
           />
-          <Ssd1306LayoutPreview
+          <St7735LayoutPreview
             :layout="layout"
-            :display="ssd1306Display"
+            :display="st7735Display"
             :device-width="layoutWidth"
             :device-height="layoutHeight"
             :preview-scale="editorZoom"
@@ -91,12 +91,12 @@
           />
         </section>
 
-        <section class="oled-designer__panel oled-designer__panel--inspector">
+        <section class="tft-designer__panel tft-designer__panel--inspector">
           <div class="text-subtitle-2">{{ t('device.dialog.ssd1306Display.inspectorTitle') }}</div>
-          <Ssd1306DesignerInspector
+          <St7735DesignerInspector
             v-if="selectedWidget !== null"
             :widget="selectedWidget"
-            :display="ssd1306Display"
+            :display="st7735Display"
             :device-width="layoutWidth"
             :device-height="layoutHeight"
             @update-widget="updateSelectedWidget"
@@ -109,7 +109,7 @@
     </div>
 
     <template #footer>
-      <v-alert v-if="errorMessage" class="oled-designer__error" type="error" variant="tonal">
+      <v-alert v-if="errorMessage" class="tft-designer__error" type="error" variant="tonal">
         {{ errorMessage }}
       </v-alert>
       <v-spacer />
@@ -128,31 +128,28 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
-import Ssd1306DesignerCanvas from '@/components/devices/display/ssd1306/designer/Ssd1306DesignerCanvas.vue'
-import Ssd1306DesignerInspector from '@/components/devices/display/ssd1306/designer/Ssd1306DesignerInspector.vue'
+import St7735DesignerCanvas from '@/components/devices/display/st7735/St7735DesignerCanvas.vue'
 import Ssd1306DesignerLayers from '@/components/devices/display/ssd1306/designer/Ssd1306DesignerLayers.vue'
-import Ssd1306LayoutPreview from '@/components/devices/display/ssd1306/Ssd1306LayoutPreview.vue'
+import St7735LayoutPreview from '@/components/devices/display/st7735/St7735LayoutPreview.vue'
+import St7735DesignerInspector from '@/components/devices/display/st7735/St7735DesignerInspector.vue'
 import { useDisplayBitmapRenderLock } from '@/composables/display/useDisplayBitmapRenderLock'
 import { resolveSsd1306WidgetDuplicatePosition, resolveSsd1306WidgetSpawnPosition } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
 import { autoSizeSsd1306TextWidget } from '@/components/devices/display/ssd1306/ssd1306-text-layout'
 import {
-  defaultSsd1306Layout,
-  normalizeSsd1306Layout,
-  type Ssd1306LayoutDraft,
-  type Ssd1306Widget,
-  type Ssd1306WidgetType,
-  OLED_DISPLAY_LAYOUT_MAX_PAGES,
-  OLED_DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE,
-} from '@/models/devices/ssd1306/layout'
+  defaultSt7735Layout,
+  normalizeSt7735Layout,
+  type St7735LayoutDraft,
+} from '@/models/devices/st7735/layout'
+import type { DisplayWidget, DisplayWidgetType } from '@/models/devices/display/layout'
 import type { DeviceRecord } from '@/api/contracts'
-import { ssd1306Display } from '@/models/devices/display/display'
+import { st7735Display } from '@/models/devices/display/display'
 
 type DesignerDraft = Record<string, unknown> & {
   name: string
   enabled: boolean
   width: number
   height: number
-  layout: Ssd1306LayoutDraft
+  layout: St7735LayoutDraft
 }
 
 const props = defineProps<{
@@ -170,7 +167,7 @@ const editorZoom = ref(2)
 const canvasPanelRef = ref<HTMLElement | null>(null)
 const errorMessage = ref('')
 const draft = ref<DesignerDraft>(createDraft(props.device))
-const selectedPageId = ref(defaultSsd1306Layout().activePageId)
+const selectedPageId = ref(defaultSt7735Layout().activePageId)
 const selectedWidgetId = ref<string | null>(null)
 const { bitmapRenderFrozen, setBitmapRenderLock } = useDisplayBitmapRenderLock()
 
@@ -183,24 +180,24 @@ const activePageId = computed<string>({
     selectedWidgetId.value = null
   },
 })
-const activePage = computed(() => pages.value.find(page => page.id === selectedPageId.value) ?? pages.value[0] ?? defaultSsd1306Layout().pages[0])
+const activePage = computed(() => pages.value.find(page => page.id === selectedPageId.value) ?? pages.value[0] ?? defaultSt7735Layout().pages[0])
 const activePageWidgets = computed(() => activePage.value.widgets)
 const selectedWidget = computed(() => activePageWidgets.value.find(widget => widget.id === selectedWidgetId.value) ?? null)
 const layoutWidth = computed(() => Math.max(1, Math.round(draft.value.width)))
 const layoutHeight = computed(() => Math.max(1, Math.round(draft.value.height)))
-const canAddPage = computed(() => pages.value.length < OLED_DISPLAY_LAYOUT_MAX_PAGES)
-const canAddWidget = computed(() => activePageWidgets.value.length < OLED_DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE)
+const canAddPage = computed(() => pages.value.length < 2)
+const canAddWidget = computed(() => activePageWidgets.value.length < 10)
 const canvasLabel = computed(() => `${layoutWidth.value} × ${layoutHeight.value}`)
 const busy = computed(() => false)
 const sublineText = computed(() => `${draft.value.name} · ${canvasLabel.value}`)
 
-const widgetTypeOptions: Array<{ value: Ssd1306WidgetType; label: string; icon: string }> = [
-  { value: 'text', label: t('device.dialog.ssd1306Display.widgetTypes.text'), icon: 'oled-text' },
-  { value: 'bitmap', label: t('device.dialog.ssd1306Display.widgetTypes.bitmap'), icon: 'oled-bitmap' },
-  { value: 'rect', label: t('device.dialog.ssd1306Display.widgetTypes.rect'), icon: 'oled-rect' },
-  { value: 'line', label: t('device.dialog.ssd1306Display.widgetTypes.line'), icon: 'oled-line' },
-  { value: 'circle', label: t('device.dialog.ssd1306Display.widgetTypes.circle'), icon: 'oled-circle' },
-  { value: 'ellipse', label: t('device.dialog.ssd1306Display.widgetTypes.ellipse'), icon: 'oled-ellipse' },
+const widgetTypeOptions: Array<{ value: DisplayWidgetType; label: string; icon: string }> = [
+  { value: 'text' as DisplayWidgetType, label: t('device.dialog.ssd1306Display.widgetTypes.text'), icon: 'oled-text' },
+  { value: 'bitmap' as DisplayWidgetType, label: t('device.dialog.ssd1306Display.widgetTypes.bitmap'), icon: 'oled-bitmap' },
+  { value: 'rect' as DisplayWidgetType, label: t('device.dialog.ssd1306Display.widgetTypes.rect'), icon: 'oled-rect' },
+  { value: 'line' as DisplayWidgetType, label: t('device.dialog.ssd1306Display.widgetTypes.line'), icon: 'oled-line' },
+  { value: 'circle' as DisplayWidgetType, label: t('device.dialog.ssd1306Display.widgetTypes.circle'), icon: 'oled-circle' },
+  { value: 'ellipse' as DisplayWidgetType, label: t('device.dialog.ssd1306Display.widgetTypes.ellipse'), icon: 'oled-ellipse' },
 ]
 
 watch(
@@ -230,21 +227,21 @@ watch(
 function createDraft(device: DeviceRecord | null): DesignerDraft {
   if (device === null) {
     return {
-      name: 'OLED Layout',
+      name: 'TFT Layout',
       enabled: true,
       width: 128,
-      height: 64,
-      layout: defaultSsd1306Layout(),
+      height: 160,
+      layout: defaultSt7735Layout(),
     }
   }
   const config = device.config as unknown as Record<string, unknown>
   return {
     ...config,
-    name: typeof config.name === 'string' ? config.name : 'OLED Layout',
+    name: typeof config.name === 'string' ? config.name : 'TFT Layout',
     enabled: typeof config.enabled === 'boolean' ? config.enabled : true,
     width: typeof config.width === 'number' ? config.width : 128,
-    height: typeof config.height === 'number' ? config.height : 64,
-    layout: normalizeSsd1306Layout(config.layout),
+    height: typeof config.height === 'number' ? config.height : 160,
+    layout: normalizeSt7735Layout(config.layout),
   } as DesignerDraft
 }
 
@@ -257,17 +254,9 @@ function resetDraft(): void {
 
 function submit(): void {
   errorMessage.value = ''
-  if (selectedWidget.value === null) {
-    emit('save', {
-      ...draft.value,
-      layout: normalizeSsd1306Layout(draft.value.layout),
-    })
-    emit('update:modelValue', false)
-    return
-  }
   emit('save', {
     ...draft.value,
-    layout: normalizeSsd1306Layout(draft.value.layout),
+    layout: normalizeSt7735Layout(draft.value.layout),
   })
   emit('update:modelValue', false)
 }
@@ -287,11 +276,11 @@ function addPage(): void {
   selectedWidgetId.value = null
 }
 
-function addWidget(type: Ssd1306WidgetType): void {
+function addWidget(type: DisplayWidgetType): void {
   if (!canAddWidget.value) {
     return
   }
-  const nextWidget = ssd1306Display.createWidget(type, activePageWidgets.value.length) as Ssd1306Widget
+  const nextWidget = st7735Display.createWidget(type, activePageWidgets.value.length) as DisplayWidget
   const position = resolveSsd1306WidgetSpawnPosition(activePageWidgets.value.length, layoutWidth.value, layoutHeight.value, nextWidget.width, nextWidget.height)
   nextWidget.x = position.x
   nextWidget.y = position.y
@@ -303,7 +292,7 @@ function selectWidget(widgetId: string | null): void {
   selectedWidgetId.value = widgetId
 }
 
-function updateActiveWidgets(widgets: Ssd1306Widget[]): void {
+function updateActiveWidgets(widgets: DisplayWidget[]): void {
   const normalizedWidgets = widgets.map(widget => normalizeWidget(widget))
   const nextPages = pages.value.map(page => (page.id === activePage.value.id ? { ...page, widgets: normalizedWidgets } : page))
   draft.value.layout = {
@@ -316,7 +305,7 @@ function updateBitmapRenderLock(state: { widgetId: string | null; mode: 'drag' |
   setBitmapRenderLock(selectedWidgetId.value, state.widgetId, state.mode, selectedWidget.value?.type === 'bitmap')
 }
 
-function updateSelectedWidget(patch: Partial<Ssd1306Widget>): void {
+function updateSelectedWidget(patch: Partial<DisplayWidget>): void {
   if (selectedWidget.value === null) {
     return
   }
@@ -324,14 +313,14 @@ function updateSelectedWidget(patch: Partial<Ssd1306Widget>): void {
     if (widget.id !== selectedWidget.value?.id) {
       return widget
     }
-    const merged = normalizeWidget({ ...(widget as Ssd1306Widget), ...patch } as Ssd1306Widget)
+    const merged = normalizeWidget({ ...(widget as DisplayWidget), ...patch } as DisplayWidget)
     return merged.type === 'text'
       ? autoSizeSsd1306TextWidget(merged, layoutWidth.value, layoutHeight.value)
       : merged
   }))
 }
 
-function normalizeWidget(widget: Ssd1306Widget): Ssd1306Widget {
+function normalizeWidget(widget: DisplayWidget): DisplayWidget {
   const maxWidgetWidth = widget.type === 'circle' ? Math.min(layoutWidth.value, layoutHeight.value) : layoutWidth.value
   const width = Math.max(1, Math.min(maxWidgetWidth, Math.round(widget.width)))
   const height = widget.type === 'circle'
@@ -353,12 +342,12 @@ function normalizeWidget(widget: Ssd1306Widget): Ssd1306Widget {
       ? {
           bitmapData: typeof widget.bitmapData === 'string' && widget.bitmapData.length > 0
             ? widget.bitmapData
-            : ssd1306Display.createBitmapPlaceholder(width, boundedHeight).bitmapData,
-          bitmapFormat: 'mono1',
-          keepAspectRatio: Boolean((widget as Ssd1306Widget & { keepAspectRatio?: boolean }).keepAspectRatio ?? false),
+            : st7735Display.createBitmapPlaceholder(width, boundedHeight).bitmapData,
+          bitmapFormat: 'rgb565' as const,
+          keepAspectRatio: Boolean((widget as DisplayWidget & { keepAspectRatio?: boolean }).keepAspectRatio ?? false),
         }
       : {}),
-  } as Ssd1306Widget
+  } as DisplayWidget
 }
 
 function moveWidgetUp(widgetId: string): void {
@@ -404,11 +393,10 @@ function removeWidget(widgetId: string): void {
     selectedWidgetId.value = nextWidgets[0]?.id ?? null
   }
 }
-
 </script>
 
 <style scoped>
-.oled-designer {
+.tft-designer {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -424,18 +412,18 @@ function removeWidget(widgetId: string): void {
   overflow: hidden;
 }
 
-.oled-designer__toolbar {
+.tft-designer__toolbar {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.oled-designer__tabs {
+.tft-designer__tabs {
   border-bottom: 1px solid rgb(var(--v-theme-outline-variant));
 }
 
-.oled-designer__body {
+.tft-designer__body {
   flex: 1 1 auto;
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr) 320px;
@@ -447,7 +435,7 @@ function removeWidget(widgetId: string): void {
   padding-right: 4px;
 }
 
-.oled-designer__panel {
+.tft-designer__panel {
   display: grid;
   gap: 12px;
   padding: 14px;
@@ -460,23 +448,23 @@ function removeWidget(widgetId: string): void {
   min-width: 0;
 }
 
-.oled-designer__panel--canvas {
+.tft-designer__panel--canvas {
   overflow-x: auto;
 }
 
-.oled-designer__panel-heading {
+.tft-designer__panel-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.oled-designer__error {
+.tft-designer__error {
   flex: 1 1 auto;
 }
 
 @media (max-width: 1280px) {
-  .oled-designer__body {
+  .tft-designer__body {
     grid-template-columns: 1fr;
   }
 }

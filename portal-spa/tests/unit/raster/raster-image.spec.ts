@@ -1,16 +1,37 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { Gray8RasterImageCodec, Mono1RasterImageCodec, RasterImagePayload, Rgb565RasterImageCodec } from '../../../src/raster/raster-image.ts'
+import { Gray8RasterImagePayload } from '../../../src/raster/gray8/Gray8RasterImagePayload.ts'
+import { Mono1RasterImagePayload } from '../../../src/raster/mono1/Mono1RasterImagePayload.ts'
+import { Rgb565RasterImagePayload } from '../../../src/raster/rgb565/Rgb565RasterImagePayload.ts'
+import { Gray8RasterImageCodec } from '../../../src/raster/gray8/Gray8RasterImageCodec.ts'
+import { Mono1RasterImageCodec } from '../../../src/raster/mono1/Mono1RasterImageCodec.ts'
+import { Rgb565RasterImageCodec } from '../../../src/raster/rgb565/Rgb565RasterImageCodec.ts'
 
-test('raster payload class validates dimensions and encoding', () => {
-  const payload = new RasterImagePayload('mono1', 8, 2, Uint8Array.from([0xff, 0x00]))
+test('mono1 payload validates dimensions and encoding', () => {
+  const payload = new Mono1RasterImagePayload(8, 2, Uint8Array.from([0xff, 0x00]))
   assert.equal(payload.width, 8)
   assert.equal(payload.height, 2)
   assert.equal(payload.byteLength, 2)
   assert.equal(globalThis.atob(payload.toBase64()).length, 2)
 
-  assert.throws(() => RasterImagePayload.fromBase64('mono1', 8, 2, 'AA'))
+  assert.throws(() => Mono1RasterImagePayload.fromBase64(8, 2, 'AA'))
+})
+
+test('gray8 payload validates dimensions and encoding', () => {
+  const payload = new Gray8RasterImagePayload(2, 2, Uint8Array.from([0, 32, 64, 255]))
+  assert.equal(payload.width, 2)
+  assert.equal(payload.height, 2)
+  assert.equal(payload.byteLength, 4)
+  assert.deepEqual(Array.from(Gray8RasterImagePayload.fromBase64(2, 2, payload.toBase64()).data), Array.from(payload.data))
+})
+
+test('rgb565 payload validates dimensions and encoding', () => {
+  const payload = new Rgb565RasterImagePayload(2, 2, Uint8Array.from([0x00, 0x00, 0xff, 0xff, 0x12, 0x34, 0xab, 0xcd]))
+  assert.equal(payload.width, 2)
+  assert.equal(payload.height, 2)
+  assert.equal(payload.byteLength, 8)
+  assert.deepEqual(Array.from(Rgb565RasterImagePayload.fromBase64(2, 2, payload.toBase64()).data), Array.from(payload.data))
 })
 
 test('mono codec round-trips packed raster bytes', () => {

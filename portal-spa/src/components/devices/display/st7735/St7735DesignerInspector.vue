@@ -1,11 +1,11 @@
 <template>
-  <div class="oled-inspector">
-    <Ssd1306WidgetPreview
+  <div class="tft-inspector">
+    <St7735WidgetPreview
       :widget="widget"
       :display="display"
       :display-scale="2"
       :freeze-render="bitmapPreviewFrozen || bitmapRenderFrozen"
-      class="oled-inspector__preview"
+      class="tft-inspector__preview"
       :style="previewStyle"
     />
     <v-alert v-if="bitmapError.length > 0" type="error" variant="tonal" density="compact">
@@ -35,14 +35,14 @@
       inset
       @update:model-value="updateKeepAspectRatio(Boolean($event))"
     />
-    <v-alert v-if="isTextWidget" class="oled-inspector__fit" :type="fitInfo.type" variant="tonal" density="compact">
-      <div class="oled-inspector__fit-title">{{ fitInfo.title }}</div>
+    <v-alert v-if="isTextWidget" class="tft-inspector__fit" :type="fitInfo.type" variant="tonal" density="compact">
+      <div class="tft-inspector__fit-title">{{ fitInfo.title }}</div>
       <div class="text-caption">{{ fitInfo.details }}</div>
     </v-alert>
     <v-text-field v-if="isTextWidget" :label="t('device.dialog.ssd1306Display.text')" :model-value="widget.text" @update:model-value="updateField('text', String($event))" />
     <v-file-input v-if="isBitmapWidget" accept="image/*" :label="t('device.dialog.ssd1306Display.bitmapImport')" prepend-icon="upload" density="comfortable" @update:model-value="onBitmapFileSelected" />
     <v-slider v-if="isBitmapWidget" :model-value="bitmapThreshold" :min="0" :max="255" :step="1" hide-details :label="t('device.dialog.ssd1306Display.bitmapThreshold')" @update:model-value="updateBitmapThreshold" />
-    <div v-if="isBitmapWidget" class="oled-inspector__bitmap-actions">
+    <div v-if="isBitmapWidget" class="tft-inspector__bitmap-actions">
       <v-btn variant="text" @click="clearBitmap">{{ t('device.dialog.ssd1306Display.bitmapClear') }}</v-btn>
     </div>
     <v-select v-if="isTextWidget" :label="t('device.dialog.ssd1306Display.bindingKind')" :items="bindingKindItems" :model-value="widget.bindingKind" @update:model-value="updateBindingKind(String($event))" />
@@ -61,17 +61,17 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import Ssd1306WidgetPreview from '@/components/devices/display/ssd1306/Ssd1306WidgetPreview.vue'
+import St7735WidgetPreview from '@/components/devices/display/st7735/St7735WidgetPreview.vue'
 import { useDisplayBitmapImportState } from '@/composables/display/useDisplayBitmapImportState'
 import { measureSsd1306TextWidget } from '@/components/devices/display/ssd1306/ssd1306-text-layout'
 import type { BaseDisplay } from '@/models/devices/display/display'
-import type { Ssd1306BitmapWidget, Ssd1306Widget } from '@/models/devices/ssd1306/layout'
+import type { DisplayBitmapWidget, DisplayWidget, DisplayWidgetType } from '@/models/devices/display/layout'
 
-const props = defineProps<{ widget: Ssd1306Widget; deviceWidth: number; deviceHeight: number; bitmapRenderFrozen?: boolean; display: BaseDisplay<'mono1'> }>()
-const emit = defineEmits<{ 'update-widget': [patch: Partial<Ssd1306Widget>] }>()
+const props = defineProps<{ widget: DisplayWidget; deviceWidth: number; deviceHeight: number; bitmapRenderFrozen?: boolean; display: BaseDisplay<'rgb565'> }>()
+const emit = defineEmits<{ 'update-widget': [patch: Partial<DisplayWidget>] }>()
 const { t } = useI18n()
 
-const widgetTypeItems = ['text', 'bitmap', 'rect', 'line', 'circle', 'ellipse'].map(value => ({ title: t(`device.dialog.ssd1306Display.widgetTypes.${value}`), value }))
+const widgetTypeItems: Array<{ title: string; value: DisplayWidgetType }> = (['text', 'bitmap', 'rect', 'line', 'circle', 'ellipse'] as DisplayWidgetType[]).map(value => ({ title: t(`device.dialog.ssd1306Display.widgetTypes.${value}`), value }))
 const bindingKindItems = ['unbound', 'device', 'metric', 'constant_text'].map(value => ({ title: t(`device.dialog.ssd1306Display.bindingKinds.${value}`), value }))
 const isTextWidget = computed(() => props.widget.type === 'text')
 const isBitmapWidget = computed(() => props.widget.type === 'bitmap')
@@ -108,14 +108,14 @@ const bitmapThreshold = bitmapWorkflow.bitmapThreshold
 const bitmapPreviewFrozen = bitmapWorkflow.bitmapPreviewFrozen
 const bitmapWidthField = bitmapWorkflow.bitmapWidth
 const bitmapHeightField = bitmapWorkflow.bitmapHeight
-const bitmapWidget = computed<Ssd1306BitmapWidget | null>(() => (isBitmapWidget.value ? props.widget as Ssd1306BitmapWidget : null))
+const bitmapWidget = computed<DisplayBitmapWidget | null>(() => (isBitmapWidget.value ? props.widget as DisplayBitmapWidget : null))
 
-function updateField<K extends keyof Ssd1306Widget>(key: K, value: Ssd1306Widget[K]): void { emit('update-widget', { [key]: value } as Partial<Ssd1306Widget>) }
+function updateField<K extends keyof DisplayWidget>(key: K, value: DisplayWidget[K]): void { emit('update-widget', { [key]: value } as Partial<DisplayWidget>) }
 function updateKeepAspectRatio(value: boolean): void {
   if (props.widget.type !== 'bitmap') {
     return
   }
-  emit('update-widget', { keepAspectRatio: value } as Partial<Ssd1306Widget>)
+  emit('update-widget', { keepAspectRatio: value } as Partial<DisplayWidget>)
 }
 function updateWidgetType(value: string): void {
   if (!['text', 'bitmap', 'rect', 'line', 'circle', 'ellipse'].includes(value)) {
@@ -125,20 +125,20 @@ function updateWidgetType(value: string): void {
     emit('update-widget', {
       type: 'bitmap',
       bitmapData: props.display.createBitmapPlaceholder(props.widget.width, props.widget.height).bitmapData,
-      bitmapFormat: 'mono1',
+      bitmapFormat: 'rgb565',
       keepAspectRatio: false,
-    } as Partial<Ssd1306Widget>)
+    } as Partial<DisplayWidget>)
     return
   }
-  emit('update-widget', { type: value as Ssd1306Widget['type'] })
+  emit('update-widget', { type: value as DisplayWidget['type'] })
 }
-function updateBindingKind(value: string): void { if (['unbound', 'device', 'metric', 'constant_text'].includes(value)) emit('update-widget', { bindingKind: value as Ssd1306Widget['bindingKind'] }) }
-function updateFlag(key: keyof Ssd1306Widget['styleFlags'], value: boolean): void { emit('update-widget', { styleFlags: { ...props.widget.styleFlags, [key]: value } }) }
+function updateBindingKind(value: string): void { if (['unbound', 'device', 'metric', 'constant_text'].includes(value)) emit('update-widget', { bindingKind: value as DisplayWidget['bindingKind'] }) }
+function updateFlag(key: keyof DisplayWidget['styleFlags'], value: boolean): void { emit('update-widget', { styleFlags: { ...props.widget.styleFlags, [key]: value } }) }
 
-function updateNumber(key: keyof Pick<Ssd1306Widget, 'x' | 'y' | 'width' | 'height' | 'fontSize' | 'strokeWidth' | 'sourceDeviceId' | 'metricId'>, value: string | number): void {
+function updateNumber(key: keyof Pick<DisplayWidget, 'x' | 'y' | 'width' | 'height' | 'fontSize' | 'strokeWidth' | 'sourceDeviceId' | 'metricId'>, value: string | number): void {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return
-  emit('update-widget', { [key]: Math.round(numeric) } as Partial<Ssd1306Widget>)
+  emit('update-widget', { [key]: Math.round(numeric) } as Partial<DisplayWidget>)
 }
 
 function updateBitmapDimension(key: 'width' | 'height', value: string | number): void {
@@ -155,7 +155,7 @@ function updateBitmapDimension(key: 'width' | 'height', value: string | number):
     bitmapData: bitmapWidget.value !== null
       ? props.display.resizeBitmapData(bitmapWidget.value.bitmapData, bitmapWidthField.value, bitmapHeightField.value, nextWidth, nextHeight)
       : props.display.createBitmapPlaceholder(nextWidth, nextHeight).bitmapData,
-  } as Partial<Ssd1306Widget>)
+  } as Partial<DisplayWidget>)
 }
 
 function onBitmapFileSelected(value: File | File[] | null): void {
@@ -171,9 +171,9 @@ function clearBitmap(): void { bitmapWorkflow.clearBitmap() }
 </script>
 
 <style scoped>
-.oled-inspector { display: grid; gap: 12px; }
-.oled-inspector__fit { margin-top: -4px; }
-.oled-inspector__fit-title { font-weight: 600; }
-.oled-inspector__preview { justify-self: start; border: 1px solid rgb(var(--v-theme-outline-variant)); border-radius: 0; }
-.oled-inspector__preview { margin-bottom: 8px; }
+.tft-inspector { display: grid; gap: 12px; }
+.tft-inspector__fit { margin-top: -4px; }
+.tft-inspector__fit-title { font-weight: 600; }
+.tft-inspector__preview { justify-self: start; border: 1px solid rgb(var(--v-theme-outline-variant)); border-radius: 0; }
+.tft-inspector__preview { margin-bottom: 8px; }
 </style>

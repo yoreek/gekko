@@ -1,27 +1,25 @@
 <template>
-  <div class="oled-widget-preview" :class="[`oled-widget-preview--${widget.type}`]">
+  <div class="tft-widget-preview" :class="[`tft-widget-preview--${widget.type}`]">
     <canvas
       v-if="widget.type === 'text'"
       ref="textCanvasRef"
-      class="oled-widget-preview__text"
+      class="tft-widget-preview__text"
       :aria-label="previewLabel"
-    >
-    </canvas>
+    />
     <v-icon v-else-if="widget.type === 'icon'" :icon="iconName" :size="iconSize" />
     <canvas
       v-else-if="widget.type === 'bitmap'"
       ref="bitmapCanvasRef"
-      class="oled-widget-preview__bitmap"
-      :class="{ 'oled-widget-preview__bitmap--frozen': freezeRender }"
+      class="tft-widget-preview__bitmap"
+      :class="{ 'tft-widget-preview__bitmap--frozen': freezeRender }"
       aria-hidden="true"
     />
     <canvas
       v-else-if="isShapeWidget"
       ref="shapeCanvasRef"
-      class="oled-widget-preview__shape"
+      class="tft-widget-preview__shape"
       aria-hidden="true"
-    >
-    </canvas>
+    />
   </div>
 </template>
 
@@ -33,11 +31,11 @@ import { drawClassicFontText } from '@/components/devices/display/ssd1306/classi
 import { resolveSsd1306IconSize, resolveSsd1306TextRenderScale, resolveSsd1306WidgetBitmapSize } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
 import type { BaseDisplay } from '@/models/devices/display/display'
 import type { DisplayBitmapWidget } from '@/models/devices/display/layout'
-import type { Ssd1306Widget } from '@/models/devices/ssd1306/layout'
+import type { DisplayWidget } from '@/models/devices/display/layout'
 
 const props = defineProps<{
-  widget: Ssd1306Widget
-  display: BaseDisplay<'mono1'>
+  widget: DisplayWidget
+  display: BaseDisplay<'rgb565'>
   displayScale?: number
   freezeRender?: boolean
 }>()
@@ -58,8 +56,8 @@ const isBitmapWidget = computed(() => props.widget.type === 'bitmap')
 const previewLabel = computed(() => props.widget.text.trim().length > 0 ? props.widget.text : t('device.dialog.ssd1306Display.widgetEmpty'))
 const renderScale = computed(() => resolveSsd1306TextRenderScale(props.widget.fontSize, 1))
 const isRenderFrozen = computed(() => Boolean(props.freezeRender))
-const oledOnColor = 'rgb(255 255 255)'
-const oledOffColor = 'rgb(0 0 0)'
+const onColor = 'rgb(255 255 255)'
+const offColor = 'rgb(0 0 0)'
 
 function scheduleDraw(): void {
   if (drawFrame !== 0) {
@@ -89,7 +87,7 @@ function drawBitmapCanvas(): void {
   }
 
   try {
-    props.display.renderWidget(props.widget as DisplayBitmapWidget, canvas, props.widget.styleFlags.inverted)
+    props.display.renderWidget(props.widget as DisplayBitmapWidget, canvas)
   } catch {
     return
   }
@@ -115,7 +113,7 @@ function drawShapeCanvas(): void {
   }
 
   const inverted = props.widget.styleFlags.inverted
-  const color = inverted ? oledOffColor : oledOnColor
+  const color = inverted ? offColor : onColor
   const width = canvasSize.cssWidth
   const height = canvasSize.cssHeight
   const strokeWidth = Math.max(1, Math.round(props.widget.strokeWidth))
@@ -157,7 +155,6 @@ function drawShapeCanvas(): void {
   }
 }
 
-
 function drawTextCanvas(): void {
   const canvas = textCanvasRef.value
   if (canvas === null) {
@@ -185,8 +182,8 @@ function drawTextCanvas(): void {
     wrap: props.widget.styleFlags.wrap,
     maxWidth: canvasSize.cssWidth,
     maxHeight: canvasSize.cssHeight,
-    color: inverted ? oledOffColor : oledOnColor,
-    backgroundColor: inverted ? oledOnColor : oledOffColor,
+    color: inverted ? offColor : onColor,
+    backgroundColor: inverted ? onColor : offColor,
   })
 }
 
@@ -247,74 +244,36 @@ watch(
 )
 
 watch(
-  () => [props.widget.type, props.widget.width, props.widget.height, props.widget.type === 'bitmap' ? props.widget.bitmapData : '', props.widget.styleFlags.inverted],
+  () => [
+    props.widget.type,
+    props.widget.width,
+    props.widget.height,
+    props.widget.type === 'bitmap' ? props.widget.bitmapData : '',
+    isRenderFrozen.value,
+  ],
   async () => {
-    if (isRenderFrozen.value) {
-      return
-    }
     await nextTick()
     drawBitmapCanvas()
   },
   { immediate: true, flush: 'post' },
 )
-
-watch(
-  () => isRenderFrozen.value,
-  async frozen => {
-    if (frozen) {
-      return
-    }
-    await nextTick()
-    drawBitmapCanvas()
-  },
-)
 </script>
 
 <style scoped>
-.oled-widget-preview {
+.tft-widget-preview {
+  position: relative;
   display: grid;
-  align-items: start;
-  justify-items: start;
+  place-items: center;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: transparent;
   color: rgb(var(--v-theme-on-surface));
 }
 
-.oled-widget-preview--text {
-  background: rgb(0 0 0);
-}
-
-.oled-widget-preview__text {
-  display: block;
+.tft-widget-preview__text,
+.tft-widget-preview__bitmap,
+.tft-widget-preview__shape {
   width: 100%;
   height: 100%;
-  max-width: 100%;
-  max-height: 100%;
-  image-rendering: pixelated;
 }
-
-.oled-widget-preview__shape {
-  display: block;
-  width: 100%;
-  height: 100%;
-  max-width: 100%;
-  max-height: 100%;
-  image-rendering: pixelated;
-}
-
-.oled-widget-preview__bitmap {
-  display: block;
-  width: 100%;
-  height: 100%;
-  max-width: 100%;
-  max-height: 100%;
-  image-rendering: pixelated;
-}
-
-.oled-widget-preview__bitmap--frozen {
-  opacity: 1;
-}
-
 </style>

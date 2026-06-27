@@ -11,7 +11,7 @@
       </v-row>
     </section>
     <section class="device-type-section">
-      <Ssd1306LayoutPreview :layout="config.layout" :device-width="config.width" :device-height="config.height" />
+      <Ssd1306LayoutPreview :layout="config.layout" :display="ssd1306Display" :device-width="config.width" :device-height="config.height" />
     </section>
   </div>
 </template>
@@ -22,6 +22,7 @@ import { useI18n } from 'vue-i18n'
 
 import type { DeviceRecord } from '@/api/contracts'
 import Ssd1306LayoutPreview from '@/components/devices/display/ssd1306/Ssd1306LayoutPreview.vue'
+import { ssd1306Display } from '@/models/devices/display/display'
 import { Device as Ssd1306Device, formatI2cAddress } from '@/models/devices/ssd1306/device'
 
 const props = defineProps<{ device: DeviceRecord }>()

@@ -1,4 +1,4 @@
-import type { RasterImageFormat } from '@/raster/raster-image'
+import type { RasterImageFormat } from '../../../raster/raster-image-types.ts'
 
 export interface DisplayCapabilities {
   readonly supportedRasterFormats: readonly RasterImageFormat[]

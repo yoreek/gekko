@@ -1,4 +1,5 @@
-import { RasterImagePayload, type RasterImageFormat } from '../../../raster/raster-image.ts'
+import { rasterImageCodecRegistry } from '../../../raster/core/RasterImageCodecRegistry.ts'
+import type { RasterImageFormat } from '../../../raster/raster-image-types.ts'
 import type {
   DisplayBindingKind,
   DisplayBitmapWidget,
@@ -57,7 +58,7 @@ function normalizeBitmapFormat(profile: DisplayLayoutProfile, value: unknown): R
 }
 
 function resolveBitmapByteLength(profile: DisplayLayoutProfile, width: number, height: number): number {
-  return RasterImagePayload.resolveByteLength(profile.bitmapPayloadFormat, width, height)
+  return rasterImageCodecRegistry.get(profile.bitmapPayloadFormat).resolveByteLength(width, height)
 }
 
 function normalizeBitmapDimensions(profile: DisplayLayoutProfile, width: number, height: number): { width: number; height: number } {
@@ -72,7 +73,7 @@ export function createDefaultDisplayBitmapData(
   height = profile.defaultBitmapHeight,
 ): string {
   const dimensions = normalizeBitmapDimensions(profile, Math.max(1, width), Math.max(1, height))
-  return globalThis.btoa('\0'.repeat(resolveBitmapByteLength(profile, dimensions.width, dimensions.height)))
+  return rasterImageCodecRegistry.get(profile.bitmapPayloadFormat).placeholder(dimensions.width, dimensions.height).toBase64()
 }
 
 function normalizeBitmapData(profile: DisplayLayoutProfile, value: unknown, width: number, height: number): string {

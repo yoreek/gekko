@@ -1,17 +1,12 @@
 import {
   ST7735_BITMAP_DEFAULT_HEIGHT,
   ST7735_BITMAP_DEFAULT_WIDTH,
-} from '@/models/devices/st7735/device'
-import type { DisplayBitmapWidget } from '@/models/devices/display/layout'
-import {
-  Rgb565RasterImageCodec,
-  RasterImagePayload,
-  type RasterImageImportResult,
-} from '@/raster/raster-image'
-import { RasterImageImporter } from '@/raster/raster-image-importer'
+} from '../../../../models/devices/st7735/device.ts'
+import type { DisplayBitmapWidget } from '../../../../models/devices/display/layout.ts'
+import { Rgb565RasterImageCodec } from '../../../../raster/rgb565/Rgb565RasterImageCodec.ts'
+import { st7735Display } from '../../../../models/devices/display/display.ts'
 
 const rgb565Codec = new Rgb565RasterImageCodec()
-const rasterImageImporter = new RasterImageImporter()
 
 export function encodeSt7735BitmapBytes(bytes: Uint8Array, width: number, height: number): string {
   return rgb565Codec.encode(bytes, width, height)
@@ -19,6 +14,16 @@ export function encodeSt7735BitmapBytes(bytes: Uint8Array, width: number, height
 
 export function decodeSt7735BitmapBytes(bitmapData: string, width: number, height: number): Uint8Array {
   return rgb565Codec.decode(bitmapData, width, height)
+}
+
+export function resizeSt7735BitmapData(
+  bitmapData: string,
+  sourceWidth: number,
+  sourceHeight: number,
+  targetWidth: number,
+  targetHeight: number,
+): string {
+  return st7735Display.resizeBitmapData(bitmapData, sourceWidth, sourceHeight, targetWidth, targetHeight)
 }
 
 export function createSt7735BitmapPlaceholder(
@@ -44,17 +49,8 @@ export function createSt7735BitmapPlaceholder(
       inverted: false,
       wrap: false,
     },
-    bitmapData: rgb565Codec.placeholder(width, height).toBase64(),
+    bitmapData: st7735Display.createBitmapPlaceholder(width, height).bitmapData,
     bitmapFormat: 'rgb565',
     keepAspectRatio: false,
   }
-}
-
-export async function importSt7735BitmapFromFile(
-  file: File,
-  width: number,
-  height: number,
-  threshold = 128,
-): Promise<RasterImageImportResult> {
-  return await rasterImageImporter.importFromFile(file, width, height, { format: 'rgb565', threshold })
 }

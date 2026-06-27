@@ -39,7 +39,7 @@
     <section class="device-type-section">
       <div class="text-subtitle-2">{{ t('device.fields.display.layout') }}</div>
       <div class="text-body-2">{{ t('device.dialog.ssd1306LayoutHint') }}</div>
-      <Ssd1306LayoutPreview :layout="currentValue.layout" :device-width="currentValue.width" :device-height="currentValue.height" />
+      <Ssd1306LayoutPreview :layout="currentValue.layout" :display="ssd1306Display" :device-width="currentValue.width" :device-height="currentValue.height" />
       <div v-if="mode === 'edit'" class="d-flex justify-end">
         <v-btn variant="text" color="primary" :disabled="busy" @click="emit('design-display')">
           <v-icon class="me-1" icon="design-display" />
@@ -56,6 +56,7 @@ import { useI18n } from 'vue-i18n'
 
 import Ssd1306LayoutPreview from '@/components/devices/display/ssd1306/Ssd1306LayoutPreview.vue'
 import { I2C_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-types'
+import { ssd1306Display } from '@/models/devices/display/display'
 import { defaultConfig, formatI2cAddress, parseI2cAddress, type Ssd1306ConfigDraft, type Ssd1306CreateDraft } from '@/models/devices/ssd1306/device'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
