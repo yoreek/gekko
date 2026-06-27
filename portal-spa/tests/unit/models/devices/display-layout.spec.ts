@@ -14,6 +14,17 @@ import {
   OLED_DISPLAY_LAYOUT_TEXT_CAPACITY,
 } from '../../../../src/models/devices/display/layout.ts'
 import {
+  createDefaultDisplayBitmapData,
+  defaultDisplayLayout,
+  defaultDisplayWidget,
+  encodeDisplayLayout,
+  normalizeDisplayLayout,
+} from '../../../../src/models/devices/display/layout-normalizer.ts'
+import {
+  SSD1306_DISPLAY_LAYOUT_PROFILE,
+  ST7735_DISPLAY_LAYOUT_PROFILE,
+} from '../../../../src/models/devices/display/profile.ts'
+import {
   defaultSsd1306Layout,
   defaultSsd1306Widget,
   normalizeSsd1306Layout,
@@ -28,8 +39,8 @@ test('exports shared display layout constants and oled aliases', () => {
 })
 
 test('creates a default layout and default bitmap widget through the shared layer', () => {
-  const layout = defaultSsd1306Layout()
-  const bitmap = defaultSsd1306Widget('bitmap', 3)
+  const layout = defaultDisplayLayout(SSD1306_DISPLAY_LAYOUT_PROFILE)
+  const bitmap = defaultDisplayWidget(SSD1306_DISPLAY_LAYOUT_PROFILE, 'bitmap', 3)
 
   assert.equal(layout.schemaVersion, DISPLAY_LAYOUT_SCHEMA_VERSION)
   assert.equal(layout.pages.length, 1)
@@ -39,8 +50,19 @@ test('creates a default layout and default bitmap widget through the shared laye
   assert.equal(bitmap.keepAspectRatio, false)
 })
 
-test('normalizes layout pages and clamps widget/page capacities', () => {
-  const layout = normalizeSsd1306Layout({
+test('SSD1306 wrappers still expose default layout and bitmap helpers', () => {
+  const layout = defaultSsd1306Layout()
+  const bitmap = defaultSsd1306Widget('bitmap', 3)
+
+  assert.equal(layout.schemaVersion, DISPLAY_LAYOUT_SCHEMA_VERSION)
+  assert.equal(layout.pages[0].id, 'main')
+  assert.equal(bitmap.type, 'bitmap')
+  assert.equal(bitmap.bitmapFormat, 'mono1')
+  assert.equal(globalThis.atob(bitmap.bitmapData).length, 32)
+})
+
+test('normalizes layout pages and clamps widget/page capacities through the shared layer', () => {
+  const layout = normalizeDisplayLayout(SSD1306_DISPLAY_LAYOUT_PROFILE, {
     activePageId: 'primary',
     pages: Array.from({ length: 4 }, (_, index) => ({
       id: `page-${index + 1}`,
@@ -65,4 +87,57 @@ test('normalizes layout pages and clamps widget/page capacities', () => {
   assert.equal(layout.pages[0].widgets[0].width > 0, true)
   assert.equal(layout.pages[0].widgets[0].height > 0, true)
   assert.equal(layout.activePageId, 'page-1')
+})
+
+test('validates bitmap payload length and encodes the shared layout shape', () => {
+  const layout = normalizeDisplayLayout(SSD1306_DISPLAY_LAYOUT_PROFILE, {
+    pages: [
+      {
+        id: 'main',
+        name: 'Main',
+        order: 0,
+        widgets: [
+          {
+            id: 'bitmap',
+            type: 'bitmap',
+            width: 8,
+            height: 8,
+            bitmapData: globalThis.btoa('\0\0'),
+            bitmapFormat: 'mono1',
+          },
+        ],
+      },
+    ],
+  })
+  const widget = layout.pages[0].widgets[0]
+  const encoded = encodeDisplayLayout(SSD1306_DISPLAY_LAYOUT_PROFILE, layout)
+
+  assert.equal(widget.type, 'bitmap')
+  assert.equal(widget.type === 'bitmap' && globalThis.atob(widget.bitmapData).length, 8)
+  assert.deepEqual(Object.keys(encoded), ['schemaVersion', 'activePageId', 'pages'])
+})
+
+test('uses profile-specific bitmap defaults for RGB565 displays', () => {
+  const bitmap = defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'bitmap', 0)
+  const bitmapData = createDefaultDisplayBitmapData(ST7735_DISPLAY_LAYOUT_PROFILE, 2, 2)
+
+  assert.equal(bitmap.type, 'bitmap')
+  assert.equal(bitmap.bitmapFormat, 'rgb565')
+  assert.equal(globalThis.atob(bitmapData).length, 8)
+})
+
+test('SSD1306 wrapper normalization still follows the shared limits', () => {
+  const layout = normalizeSsd1306Layout({
+    pages: Array.from({ length: 3 }, (_, index) => ({
+      id: `page-${index}`,
+      order: index,
+      widgets: Array.from({ length: 11 }, (_, widgetIndex) => ({
+        id: `text-${widgetIndex}`,
+        type: 'text',
+      })),
+    })),
+  })
+
+  assert.equal(layout.pages.length, DISPLAY_LAYOUT_MAX_PAGES)
+  assert.equal(layout.pages[0].widgets.length, DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE)
 })

@@ -37,6 +37,7 @@ import {
   defaultSsd1306Layout,
   defaultSsd1306Widget,
   createDefaultSsd1306BitmapData,
+  encodeSsd1306Layout,
   normalizeSsd1306Layout,
   ssd1306LayoutChanged,
   OLED_DISPLAY_BITMAP_DEFAULT_HEIGHT,
@@ -149,6 +150,26 @@ test('bitmap widgets receive a valid default payload and survive normalization',
 test('bitmap helper creates the expected encoded byte length', () => {
   const encoded = createDefaultSsd1306BitmapData(8, 8)
   assert.equal(globalThis.atob(encoded).length, 8)
+})
+
+test('OLED wrapper keeps bitmap defaults and encoded layout shape stable', () => {
+  const widget = defaultSsd1306Widget('bitmap', 0)
+  const layout = normalizeSsd1306Layout({
+    pages: [
+      {
+        id: 'main',
+        name: 'Main',
+        order: 0,
+        widgets: [widget],
+      },
+    ],
+  })
+  const encoded = encodeSsd1306Layout(layout)
+
+  assert.deepEqual(Object.keys(encoded), ['schemaVersion', 'activePageId', 'pages'])
+  assert.equal(layout.pages[0].widgets[0].type, 'bitmap')
+  assert.equal(layout.pages[0].widgets[0].type === 'bitmap' && layout.pages[0].widgets[0].bitmapFormat, 'mono1')
+  assert.equal(ssd1306LayoutChanged(layout, normalizeSsd1306Layout(encoded)), false)
 })
 
 test('bitmap pack helpers preserve drawBitmap row order', () => {
