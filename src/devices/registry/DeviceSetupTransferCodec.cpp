@@ -4,6 +4,8 @@
 #include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/bus/onewire/OneWireBusConfig.h"
 #include "devices/bus/onewire/OneWireBusDevice.h"
+#include "devices/bus/spi/SpiBusConfig.h"
+#include "devices/bus/spi/SpiBusDevice.h"
 #include "devices/core/DeviceBaseConfig.h"
 #include "devices/display/oled/OledDisplayDevice.h"
 #include "devices/display/oled/OledDisplayDeviceConfig.h"
@@ -74,6 +76,8 @@ const char* deviceTypeNameFromId(const DeviceTypeId typeId) {
         return "i2c_bus";
     case 7:
         return "oled_display";
+    case 8:
+        return "spi_bus";
     default:
         return "unknown";
     }
@@ -107,6 +111,10 @@ bool deviceTypeIdFromTransferJson(const JsonObjectConst& input, DeviceTypeId& ty
     }
     if (std::strcmp(typeName, "oled_display") == 0) {
         typeId = 7U;
+        return true;
+    }
+    if (std::strcmp(typeName, "spi_bus") == 0) {
+        typeId = 8U;
         return true;
     }
 
@@ -210,6 +218,26 @@ bool encodeTransferConfigBlob(const JsonObjectConst& input, const DeviceBaseConf
         size = oledDisplayDeviceConfigSize(config);
         if (!encodeOledDisplayDeviceConfig(config, buffer, size)) {
             error = "oled display config is invalid";
+            return false;
+        }
+        break;
+    }
+    case 8: {
+        if (configVersion != 1U) {
+            error = "unsupported spi bus config version";
+            return false;
+        }
+        SpiBusDeviceConfigV1 config{};
+        const char* parseError = nullptr;
+        if (!config.parseJson(input, parseError)) {
+            error = parseError != nullptr ? parseError : "spi bus config is invalid";
+            return false;
+        }
+        config.enabled = base.enabled;
+        std::memcpy(config.name, base.name, sizeof(config.name));
+        size = spiBusDeviceConfigSize(config);
+        if (!encodeSpiBusDeviceConfig(config, buffer, size)) {
+            error = "spi bus config is invalid";
             return false;
         }
         break;
@@ -401,6 +429,9 @@ template <typename Writer> bool writeBundleImpl(Writer& writer, const DeviceRegi
             break;
         case 5:
             static_cast<const ThermostatDevice&>(runtime).config().writeJson(config);
+            break;
+        case 8:
+            static_cast<const SpiBusDevice&>(runtime).config().writeJson(config);
             break;
         default:
             break;

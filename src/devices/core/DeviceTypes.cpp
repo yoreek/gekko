@@ -2,6 +2,7 @@
 
 #include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/bus/onewire/OneWireBusDevice.h"
+#include "devices/bus/spi/SpiBusDevice.h"
 #include "devices/display/oled/OledDisplayDevice.h"
 #include "devices/dummy/DummyDevice.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
@@ -12,7 +13,7 @@ namespace ewfm {
 
 namespace {
 constexpr const char* kDeviceDependencyRoleNames[] = {
-    "unknown", "onewire_bus", "temperature_sensor", "switch", "i2c_bus", "oled_display",
+    "unknown", "onewire_bus", "temperature_sensor", "switch", "i2c_bus", "oled_display", "spi_bus",
 };
 
 constexpr const char* kDeviceEventKindNames[] = {
@@ -59,6 +60,10 @@ bool parseDeviceDependencyRole(std::string_view value, DeviceDependencyRole& rol
         role = DeviceDependencyRole::OledDisplay;
         return true;
     }
+    if (value == "spi_bus") {
+        role = DeviceDependencyRole::SpiBus;
+        return true;
+    }
     role = DeviceDependencyRole::Unknown;
     return false;
 }
@@ -99,6 +104,7 @@ DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     (void)registry.registerDescriptor(GpioSwitchDevice::descriptor());
     (void)registry.registerDescriptor(OneWireBusDevice::descriptor());
     (void)registry.registerDescriptor(I2cBusDevice::descriptor());
+    (void)registry.registerDescriptor(SpiBusDevice::descriptor());
     (void)registry.registerDescriptor(OledDisplayDevice::descriptor());
     (void)registry.registerDescriptor(Ds18b20TemperatureSensorDevice::descriptor());
     (void)registry.registerDescriptor(ThermostatDevice::descriptor());

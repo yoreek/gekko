@@ -7,6 +7,7 @@
 #include "integrations/rest/i2c_bus/I2cBusDeviceApiAdapter.h"
 #include "integrations/rest/oled_display/OledDisplayDeviceApiAdapter.h"
 #include "integrations/rest/onewire_bus/OneWireBusDeviceApiAdapter.h"
+#include "integrations/rest/spi_bus/SpiBusDeviceApiAdapter.h"
 #include "integrations/rest/thermostat/ThermostatDeviceApiAdapter.h"
 
 namespace ewfm {
@@ -147,6 +148,7 @@ DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(GpioSwitchDeviceApiAdapter::instance());
     (void)registry.registerAdapter(OneWireBusDeviceApiAdapter::instance());
     (void)registry.registerAdapter(I2cBusDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(SpiBusDeviceApiAdapter::instance());
     (void)registry.registerAdapter(OledDisplayDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Ds18b20TemperatureSensorDeviceApiAdapter::instance());
     (void)registry.registerAdapter(ThermostatDeviceApiAdapter::instance());

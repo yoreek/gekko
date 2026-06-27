@@ -45,6 +45,7 @@ enum class DeviceDependencyRole : uint8_t {
     Switch = 3,
     I2CBus = 4,
     OledDisplay = 5,
+    SpiBus = 6,
 };
 
 struct DeviceDependencyLink {
@@ -607,6 +608,15 @@ public:
     }
     virtual bool hasDuplicateDependentI2cAddress(uint8_t address, const IDeviceRuntime* ignoreDependent = nullptr) const {
         (void)address;
+        (void)ignoreDependent;
+        return false;
+    }
+    virtual bool spiChipSelectPin(uint8_t& pin) const {
+        (void)pin;
+        return false;
+    }
+    virtual bool hasDuplicateDependentSpiChipSelect(uint8_t pin, const IDeviceRuntime* ignoreDependent = nullptr) const {
+        (void)pin;
         (void)ignoreDependent;
         return false;
     }
