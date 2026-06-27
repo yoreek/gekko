@@ -19,6 +19,7 @@ ORIGINAL_PIO_HOME="${HOME}/.platformio"
 mkdir -p "$PIO_HOME_DIR"
 ln -sfn "$ORIGINAL_PIO_HOME/packages" "$PIO_HOME_DIR/packages"
 ln -sfn "$ORIGINAL_PIO_HOME/platforms" "$PIO_HOME_DIR/platforms"
+mkdir -p .pio/cppcheck-cache/esp32dev .pio/cppcheck-cache/native
 
 SOURCE_FILES="$(find src test -type f \( -name '*.h' -o -name '*.hpp' -o -name '*.cpp' -o -name '*.c' \) | sort)"
 
