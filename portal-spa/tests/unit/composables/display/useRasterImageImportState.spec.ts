@@ -21,10 +21,10 @@ test('queues raster image import and emits image data', async () => {
     () => true,
   )
 
-  await state.queueImageImport(file, 16, 8)
+  await state.queueImageImport(file)
 
   assert.equal(emitted.length, 1)
-  assert.deepEqual(emitted[0], { bitmapData: 'data:16x8:128' })
+  assert.deepEqual(emitted[0], { bitmapData: 'data:8x8:128' })
   assert.equal(state.imagePreviewFrozen.value, false)
   assert.equal(state.imageError.value, '')
 })
@@ -42,7 +42,7 @@ test('clearImage emits a placeholder payload and resets the transient file', () 
 
   state.clearImage()
 
-  assert.deepEqual(emitted, [{ bitmapData: 'placeholder:1x1' }])
+  assert.deepEqual(emitted, [{ bitmapData: 'placeholder:8x8' }])
   assert.equal(state.importedImageFile.value, null)
   assert.equal(state.imageError.value, '')
 })
@@ -58,7 +58,7 @@ test('ignores imports when the widget is not raster-capable', async () => {
     () => false,
   )
 
-  await state.queueImageImport(new File([new Uint8Array([1])], 'bitmap.png'), 8, 8)
+  await state.queueImageImport(new File([new Uint8Array([1])], 'bitmap.png'))
 
   assert.deepEqual(emitted, [])
 })

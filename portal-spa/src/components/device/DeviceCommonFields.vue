@@ -2,6 +2,7 @@
   <v-row>
     <v-col cols="12" md="6">
       <v-text-field
+        v-select-on-focus
         :label="t('device.actions.name')"
         :model-value="modelValue.name"
         :readonly="mode === 'view'"

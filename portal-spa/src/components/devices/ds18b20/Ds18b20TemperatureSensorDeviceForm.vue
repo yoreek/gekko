@@ -18,6 +18,7 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.ds18b20Address')"
             :model-value="currentValue.address"
             :hint="t('device.dialog.ds18b20.addressHint')"
@@ -80,6 +81,7 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.pollMs')"
             :model-value="currentValue.pollMs"
             inputmode="numeric"
@@ -91,6 +93,7 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.reportDelta')"
             :model-value="currentValue.reportDeltaCelsius"
             inputmode="decimal"

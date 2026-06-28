@@ -18,9 +18,9 @@
       >
         <St7735WidgetPreview
           :widget="item"
-          :display="st7735Display"
+          :display="display"
           :display-scale="zoom"
-          :freeze-render="false"
+          :freeze-render="isBitmapResizeActive(item.id, item.type)"
         />
         <span
           class="tft-canvas__resize-handle"
@@ -38,7 +38,7 @@ import { computed, ref } from 'vue'
 import St7735WidgetPreview from '@/components/devices/display/st7735/St7735WidgetPreview.vue'
 import { resolveSsd1306InteractionWidgets, type Ssd1306CanvasInteraction } from '@/components/devices/display/ssd1306/ssd1306-editor-interaction'
 import { resolveSsd1306CanvasStyle, resolveSsd1306WidgetFrameStyle } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
-import { st7735Display } from '@/models/devices/display/display'
+import type { BaseDisplay } from '@/models/devices/display/display'
 import type { Ssd1306Widget } from '@/models/devices/ssd1306/layout'
 
 type CanvasInteraction = Ssd1306CanvasInteraction & {
@@ -51,6 +51,7 @@ const props = defineProps<{
   deviceHeight: number
   selectedWidgetId: string | null
   zoom: number
+  display: BaseDisplay<'rgb565'>
 }>()
 
 const emit = defineEmits<{
@@ -65,6 +66,10 @@ const canvasStyle = computed(() => resolveSsd1306CanvasStyle(props.deviceWidth, 
 
 function widgetFrameStyle(widget: Ssd1306Widget): Record<string, string> {
   return resolveSsd1306WidgetFrameStyle(widget, props.zoom)
+}
+
+function isBitmapResizeActive(widgetId: string, widgetType: Ssd1306Widget['type']): boolean {
+  return widgetType === 'bitmap' && activeInteraction.value?.mode === 'resize' && activeInteraction.value.widgetId === widgetId
 }
 
 function startDrag(event: PointerEvent, widget: Ssd1306Widget): void {
@@ -112,8 +117,7 @@ function updateInteraction(event: PointerEvent): void {
   if (interaction === null || interaction.pointerId !== event.pointerId) {
     return
   }
-  const nextWidgets = resolveSsd1306InteractionWidgets(props.widgets, interaction, event.clientX, event.clientY, props.zoom, props.deviceWidth, props.deviceHeight)
-  emit('update-widgets', nextWidgets)
+  emit('update-widgets', resolveSsd1306InteractionWidgets(props.widgets, interaction, event.clientX, event.clientY, props.zoom, props.deviceWidth, props.deviceHeight))
 }
 
 function finishInteraction(event: PointerEvent): void {

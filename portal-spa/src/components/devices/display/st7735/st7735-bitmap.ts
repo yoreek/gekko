@@ -16,16 +16,6 @@ export function decodeSt7735BitmapBytes(bitmapData: string, width: number, heigh
   return rgb565Codec.decode(bitmapData, width, height)
 }
 
-export function resizeSt7735BitmapData(
-  bitmapData: string,
-  sourceWidth: number,
-  sourceHeight: number,
-  targetWidth: number,
-  targetHeight: number,
-): string {
-  return st7735Display.resizeBitmapData(bitmapData, sourceWidth, sourceHeight, targetWidth, targetHeight)
-}
-
 export function createSt7735BitmapPlaceholder(
   width = ST7735_BITMAP_DEFAULT_WIDTH,
   height = ST7735_BITMAP_DEFAULT_HEIGHT,

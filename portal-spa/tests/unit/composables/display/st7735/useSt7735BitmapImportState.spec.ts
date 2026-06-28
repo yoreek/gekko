@@ -15,7 +15,7 @@ test('queues st7735 bitmap import and emits image data', async () => {
     () => true,
   )
 
-  await state.queueBitmapImport(file, 16, 8)
+  await state.queueBitmapImport(file)
 
   assert.equal(emitted.length, 1)
   assert.equal(typeof emitted[0]?.bitmapData, 'string')

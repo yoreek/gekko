@@ -13,6 +13,7 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.spiSckPin')"
             :model-value="currentValue.sckPin"
             type="number"
@@ -23,6 +24,7 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.spiMosiPin')"
             :model-value="currentValue.mosiPin"
             type="number"
@@ -33,6 +35,7 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.spiMisoPin')"
             :model-value="currentValue.misoPin"
             type="number"

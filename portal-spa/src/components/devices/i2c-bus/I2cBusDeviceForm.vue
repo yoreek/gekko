@@ -4,8 +4,9 @@
       <v-row class="device-type-section__grid">
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.i2cSdaPin')"
-            :hint="t('device.dialog.i2cSdaHint')"
+            :hint="t('device.dialog.common.i2cSdaHint')"
             persistent-hint
             :model-value="currentValue.sdaPin"
             :rules="sdaRules"
@@ -19,8 +20,9 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.i2cSclPin')"
-            :hint="t('device.dialog.i2cSclHint')"
+            :hint="t('device.dialog.common.i2cSclHint')"
             persistent-hint
             :model-value="currentValue.sclPin"
             :rules="sclRules"
@@ -43,8 +45,9 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.i2cFrequency')"
-            :hint="t('device.dialog.i2cFrequencyHint')"
+            :hint="t('device.dialog.common.i2cFrequencyHint')"
             persistent-hint
             :model-value="currentValue.frequencyHz"
             :rules="frequencyRules"

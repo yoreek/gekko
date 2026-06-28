@@ -18,6 +18,7 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.chipSelectPin')"
             :model-value="currentValue.chipSelectPin"
             :disabled="busy"
@@ -30,6 +31,7 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.display.width')"
             :model-value="currentValue.width"
             :disabled="busy"
@@ -41,6 +43,7 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.display.height')"
             :model-value="currentValue.height"
             :disabled="busy"
@@ -55,7 +58,7 @@
 
     <section class="device-type-section">
       <div class="text-subtitle-2">{{ t('device.fields.display.layout') }}</div>
-      <div class="text-body-2">{{ t('device.dialog.st7735Display.layoutHint') }}</div>
+      <div class="text-body-2">{{ t('device.dialog.st7735.layoutHint') }}</div>
       <St7735LayoutPreview :layout="currentValue.layout" :display="st7735Display" :device-width="currentValue.width" :device-height="currentValue.height" />
       <div v-if="mode === 'edit'" class="d-flex justify-end">
         <v-btn variant="text" color="primary" :disabled="busy" @click="emit('design-display')">

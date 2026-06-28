@@ -19,6 +19,7 @@ import {
   defaultDisplayWidget,
 } from '../models/devices/display/layout-normalizer.ts'
 import { ST7735_DISPLAY_LAYOUT_PROFILE } from '../models/devices/display/profile.ts'
+import { Rgb565RasterImageCodec } from '../raster/rgb565/Rgb565RasterImageCodec.ts'
 import {
   defaultSt7735Layout,
   normalizeSt7735Layout,
@@ -40,6 +41,8 @@ export type MockDeviceRecord = DeviceRecord<MockDeviceConfig, MockDeviceRuntime>
 type SeedDatabase = Omit<MockDatabase, 'devices'> & {
   devices: MockDeviceRecord[]
 }
+
+const seededRgb565BitmapData = new Rgb565RasterImageCodec().placeholder(16, 16).toBase64()
 
 export interface MockDatabase {
   registryRevision: number
@@ -313,7 +316,7 @@ const seedDatabase: SeedDatabase = {
                 y: 24,
                 width: 16,
                 height: 16,
-                bitmapData: 'hn2GfYZ9hn2GfYZ9hn2GfYZ9hn2Gff8M/wz/DP8M/wyGfYZ9hn2GfYZ9hn2GfYZ9hn2GfYZ9/wz+oP8M/wz/DIZ9hn2GfYZ9hn2GfYZ9hn2GfYZ9/wz+oP6g/qD/DP8Mhn2GfYZ9hn2GfYZ9hn2GfYZ9hn3+oP6g/qD+oP6g/wyGfYZ9hn2GfSREJEQkRCREJEQkRCRE/qD+oP6g/wz/DIZ9hn2GfYZ9JEQkRCREJEQkRCREJESGff6ghn2GfYZ9hn2GfYZ9hn0kRCREJET4ACREJEQkRIZ9hn2GfYZ9hn2GfYZ9hn2GfYZ9JEQkRCREJEQkRCREhn2GfYZ9hn2GfYZ9hn2GfYZ9hn2GfSREJEQkRCREJESGfYZ9hn2GfYZ9hn2GfYZ9hn2GfYZ9iiKKIooihn2GfYZ9hn2GfYZ9hn2GfYZ9hn2GfYZ9hn2KIooiiiKGfYZ9hn2GfYZ9hn2GfYZ9hn2GfYZ9hn2GfYoiiiKKIoZ9hn2GfYZ9hn2GfYZ9NEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs0SzRLNEs=',
+                bitmapData: seededRgb565BitmapData,
                 keepAspectRatio: true,
               },
               {

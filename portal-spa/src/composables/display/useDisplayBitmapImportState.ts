@@ -13,14 +13,11 @@ export interface DisplayBitmapImportState {
   bitmapError: Ref<string>
   bitmapPreviewFrozen: Ref<boolean>
   bitmapThreshold: Ref<number>
-  bitmapWidth: Ref<number>
-  bitmapHeight: Ref<number>
   importedBitmapFile: Ref<File | null>
   isBitmapWidget: ComputedRef<boolean>
   clearBitmap: () => void
-  queueBitmapImport: (file: File | File[] | null, width: number, height: number) => Promise<void>
+  queueBitmapImport: (file: File | File[] | null) => Promise<void>
   setBitmapThreshold: (value: string | number) => void
-  setBitmapSize: (width: number, height: number) => void
 }
 
 export function useDisplayBitmapImportState(
@@ -44,13 +41,10 @@ export function useDisplayBitmapImportState(
     bitmapError: state.imageError,
     bitmapPreviewFrozen: state.imagePreviewFrozen,
     bitmapThreshold: state.imageThreshold,
-    bitmapWidth: state.imageWidth,
-    bitmapHeight: state.imageHeight,
     importedBitmapFile: state.importedImageFile,
     isBitmapWidget: state.isRasterWidget,
     clearBitmap: state.clearImage,
     queueBitmapImport: state.queueImageImport,
     setBitmapThreshold: state.setImageThreshold,
-    setBitmapSize: state.setImageSize,
   }
 }

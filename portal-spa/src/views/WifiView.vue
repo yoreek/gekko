@@ -99,6 +99,7 @@
           <v-card-text>
             <div class="stack">
               <v-text-field
+                v-select-on-focus
                 v-model="selectedSsid"
                 :label="t('wifi.ssid')"
                 :hint="t('wifi.ssidHint')"
@@ -107,6 +108,7 @@
                 autocomplete="off"
               />
               <v-text-field
+                v-select-on-focus
                 v-model="password"
                 :label="t('wifi.password')"
                 :hint="t('wifi.passwordHint')"

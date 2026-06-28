@@ -89,10 +89,71 @@ function drawBitmapCanvas(): void {
   }
 
   try {
+    const rect = canvas.getBoundingClientRect()
+    logDisplayBitmap('preview render', {
+      widgetId: (props.widget as DisplayBitmapWidget).id,
+      widget: {
+        width: props.widget.width,
+        height: props.widget.height,
+        bytes: safeBase64Length((props.widget as DisplayBitmapWidget).bitmapData),
+        onBounds: resolveMono1OnBounds((props.widget as DisplayBitmapWidget).bitmapData, props.widget.width, props.widget.height),
+      },
+      canvas: {
+        attrWidth: canvas.width,
+        attrHeight: canvas.height,
+        cssWidth: Math.round(rect.width),
+        cssHeight: Math.round(rect.height),
+      },
+    })
     props.display.renderWidget(props.widget as DisplayBitmapWidget, canvas, props.widget.styleFlags.inverted)
   } catch {
     return
   }
+}
+
+function safeBase64Length(value: string): number {
+  try {
+    return globalThis.atob(value).length
+  } catch {
+    return -1
+  }
+}
+
+function resolveMono1OnBounds(bitmapData: string, width: number, height: number): { x: number; y: number; width: number; height: number; pixels: number } | null {
+  let bytes: Uint8Array
+  try {
+    bytes = Uint8Array.from(globalThis.atob(bitmapData), char => char.charCodeAt(0))
+  } catch {
+    return null
+  }
+  const normalizedWidth = Math.max(1, Math.round(width))
+  const normalizedHeight = Math.max(1, Math.round(height))
+  const rowBytes = Math.ceil(normalizedWidth / 8)
+  let minX = normalizedWidth
+  let minY = normalizedHeight
+  let maxX = -1
+  let maxY = -1
+  let pixels = 0
+  for (let y = 0; y < normalizedHeight; y += 1) {
+    for (let x = 0; x < normalizedWidth; x += 1) {
+      const byte = bytes[y * rowBytes + Math.floor(x / 8)] ?? 0
+      if (((byte >> (7 - (x % 8))) & 1) === 0) {
+        continue
+      }
+      minX = Math.min(minX, x)
+      minY = Math.min(minY, y)
+      maxX = Math.max(maxX, x)
+      maxY = Math.max(maxY, y)
+      pixels += 1
+    }
+  }
+  return pixels === 0
+    ? null
+    : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1, pixels }
+}
+
+function logDisplayBitmap(message: string, payload: Record<string, unknown>): void {
+  console.log(`[display-bitmap] ${message} ${JSON.stringify(payload)}`)
 }
 
 function drawShapeCanvas(): void {

@@ -160,6 +160,7 @@
       :max-width="420"
     >
       <v-text-field
+        v-select-on-focus
         v-model="panelNameDraft"
         :label="t('dashboard.panelName')"
         autofocus

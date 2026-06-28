@@ -10,10 +10,29 @@ import { Rgb565RasterImagePayload } from '../../../src/raster/rgb565/Rgb565Raste
 
 function createCanvas(width: number, height: number) {
   const pixels = new Uint8ClampedArray(width * height * 4)
+  const calls: string[] = []
   const context = {
     imageSmoothingEnabled: true,
-    clearRect: () => {},
-    drawImage: () => {},
+    fillStyle: '#000000',
+    clearRect: () => {
+      calls.push('clearRect')
+    },
+    fillRect: () => {
+      calls.push('fillRect')
+      for (let index = 0; index < pixels.length; index += 4) {
+        pixels[index] = 255
+        pixels[index + 1] = 255
+        pixels[index + 2] = 255
+        pixels[index + 3] = 255
+      }
+    },
+    drawImage: () => {
+      calls.push('drawImage')
+      pixels[0] = 0
+      pixels[1] = 0
+      pixels[2] = 0
+      pixels[3] = 255
+    },
     getImageData: () => ({ data: pixels }),
   } as CanvasRenderingContext2D
   return {
@@ -21,6 +40,7 @@ function createCanvas(width: number, height: number) {
     height,
     getContext: () => context,
     context,
+    calls,
   } as unknown as HTMLCanvasElement
 }
 
@@ -53,6 +73,9 @@ test('mono1 importer returns packed bitmap payload', async () => {
   assert.equal(result.width, 2)
   assert.equal(result.height, 2)
   assert.equal(result.byteLength, Mono1RasterImagePayload.resolveByteLength(2, 2))
+  assert.equal(result.imageData, Buffer.from([0b01000000, 0b11000000]).toString('base64'))
+  assert.deepEqual((canvas as HTMLCanvasElement & { calls: string[] }).calls, ['clearRect', 'fillRect', 'drawImage'])
+  assert.equal((canvas as HTMLCanvasElement & { context: CanvasRenderingContext2D }).context.fillStyle, '#ffffff')
 })
 
 test('gray8 importer returns grayscale payload', async () => {

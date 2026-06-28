@@ -23,6 +23,7 @@
             <v-card-text class="panel-manager__row">
               <div class="panel-manager__main">
                 <v-text-field
+                  v-select-on-focus
                   :model-value="panelNameDrafts[panel.id] ?? panel.name"
                   :label="t('panels.name')"
                   @update:model-value="value => updateDraft(panel.id, String(value))"

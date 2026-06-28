@@ -38,6 +38,7 @@
         <v-row class="devices-toolbar">
           <v-col cols="12" md="4">
             <v-text-field
+              v-select-on-focus
               v-model="idFilter"
               :label="t('device.fields.deviceId')"
               inputmode="numeric"
@@ -45,6 +46,7 @@
           </v-col>
           <v-col cols="12" md="4">
             <v-text-field
+              v-select-on-focus
               v-model="nameFilter"
               :label="t('devices.search')"
             />

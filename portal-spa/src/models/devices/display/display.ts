@@ -13,6 +13,18 @@ function clampBitmapSize(width: number, height: number): { width: number; height
   }
 }
 
+function safeBase64Length(value: string): number {
+  try {
+    return globalThis.atob(value).length
+  } catch {
+    return -1
+  }
+}
+
+function logDisplayBitmap(message: string, payload: Record<string, unknown>): void {
+  console.log(`[display-bitmap] ${message} ${JSON.stringify(payload)}`)
+}
+
 export abstract class BaseDisplay<TBitmapFormat extends RasterImageFormat> {
   abstract readonly name: string
   abstract readonly defaultText: string
@@ -53,7 +65,46 @@ export abstract class BaseDisplay<TBitmapFormat extends RasterImageFormat> {
     return this.createBitmapWidget(size.width, size.height, this.createDefaultBitmapData(size.width, size.height), index)
   }
 
-  resizeBitmapData(
+  resizeWidget<TWidget extends DisplayWidget>(
+    widget: TWidget,
+    size: { width: number; height: number },
+  ): TWidget {
+    const target = clampBitmapSize(size.width, size.height)
+    if (widget.type === 'bitmap') {
+      return this.resizeBitmapWidget(widget, target.width, target.height) as TWidget
+    }
+    return {
+      ...widget,
+      width: target.width,
+      height: target.height,
+    } as TWidget
+  }
+
+  protected resizeBitmapWidget<TWidget extends DisplayBitmapWidget>(
+    widget: TWidget,
+    targetWidth: number,
+    targetHeight: number,
+  ): TWidget {
+    const size = clampBitmapSize(targetWidth, targetHeight)
+    const resizedBitmapData = this.resizeBitmapData(widget.bitmapData, widget.width, widget.height, size.width, size.height)
+    logDisplayBitmap('display resize widget', {
+      display: this.name,
+      format: this.bitmapFormat,
+      widgetId: widget.id,
+      source: { width: widget.width, height: widget.height, bytes: safeBase64Length(widget.bitmapData) },
+      target: { width: size.width, height: size.height },
+      result: { bytes: safeBase64Length(resizedBitmapData) },
+    })
+    return {
+      ...widget,
+      width: size.width,
+      height: size.height,
+      bitmapData: resizedBitmapData,
+      bitmapFormat: this.bitmapFormat,
+    } as TWidget
+  }
+
+  protected resizeBitmapData(
     bitmapData: string,
     sourceWidth: number,
     sourceHeight: number,
@@ -87,10 +138,6 @@ export abstract class BaseDisplay<TBitmapFormat extends RasterImageFormat> {
 
   renderWidget(widget: DisplayBitmapWidget, canvas: HTMLCanvasElement, inverted = false): void {
     this.render.draw(canvas, widget.bitmapData, widget.width, widget.height, inverted)
-  }
-
-  drawBitmapCanvas(canvas: HTMLCanvasElement, widget: DisplayBitmapWidget, inverted = false): void {
-    this.renderWidget(widget, canvas, inverted)
   }
 
   protected createDefaultBitmapData(width: number, height: number): string {

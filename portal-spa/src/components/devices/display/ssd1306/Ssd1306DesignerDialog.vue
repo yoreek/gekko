@@ -68,6 +68,7 @@
             :device-height="layoutHeight"
             :selected-widget-id="selectedWidgetId"
             :zoom="editorZoom"
+            :display="ssd1306Display"
             @select-widget="selectWidget"
             @update-widgets="updateActiveWidgets"
             @interaction-change="updateBitmapRenderLock"
@@ -100,6 +101,8 @@
             :device-width="layoutWidth"
             :device-height="layoutHeight"
             @update-widget="updateSelectedWidget"
+            @bitmap-resize-start="beginBitmapResizeTransaction"
+            @bitmap-resize-end="endBitmapResizeTransaction"
           />
           <v-alert v-else type="info" variant="tonal">
             {{ t('device.dialog.ssd1306Display.noSelection') }}
@@ -133,12 +136,14 @@ import Ssd1306DesignerInspector from '@/components/devices/display/ssd1306/desig
 import Ssd1306DesignerLayers from '@/components/devices/display/ssd1306/designer/Ssd1306DesignerLayers.vue'
 import Ssd1306LayoutPreview from '@/components/devices/display/ssd1306/Ssd1306LayoutPreview.vue'
 import { useDisplayBitmapRenderLock } from '@/composables/display/useDisplayBitmapRenderLock'
+import { useDisplayBitmapResizeTransaction } from '@/composables/display/useDisplayBitmapResizeTransaction'
 import { resolveSsd1306WidgetDuplicatePosition, resolveSsd1306WidgetSpawnPosition } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
 import { autoSizeSsd1306TextWidget } from '@/components/devices/display/ssd1306/ssd1306-text-layout'
 import {
   defaultSsd1306Layout,
   normalizeSsd1306Layout,
   type Ssd1306LayoutDraft,
+  type Ssd1306BitmapWidget,
   type Ssd1306Widget,
   type Ssd1306WidgetType,
   OLED_DISPLAY_LAYOUT_MAX_PAGES,
@@ -173,6 +178,10 @@ const draft = ref<DesignerDraft>(createDraft(props.device))
 const selectedPageId = ref(defaultSsd1306Layout().activePageId)
 const selectedWidgetId = ref<string | null>(null)
 const { bitmapRenderFrozen, setBitmapRenderLock } = useDisplayBitmapRenderLock()
+const bitmapResize = useDisplayBitmapResizeTransaction<Ssd1306BitmapWidget>(
+  () => activePageWidgets.value.filter((widget): widget is Ssd1306BitmapWidget => widget.type === 'bitmap'),
+)
+const { beginBitmapResizeTransaction, endBitmapResizeTransaction } = bitmapResize
 
 const layout = computed(() => draft.value.layout)
 const pages = computed(() => layout.value.pages)
@@ -304,7 +313,17 @@ function selectWidget(widgetId: string | null): void {
 }
 
 function updateActiveWidgets(widgets: Ssd1306Widget[]): void {
-  const normalizedWidgets = widgets.map(widget => normalizeWidget(widget))
+  const previousWidgets = new Map(activePageWidgets.value.map(widget => [widget.id, widget]))
+  const normalizedWidgets = widgets.map(widget => {
+    const normalized = normalizeWidget(widget)
+    if (normalized.type !== 'bitmap') {
+      return normalized
+    }
+    const previousBitmapWidget = previousWidgets.get(widget.id)?.type === 'bitmap'
+      ? previousWidgets.get(widget.id) as Ssd1306BitmapWidget
+      : null
+    return bitmapResize.syncBitmapWidget(previousBitmapWidget, normalized, (source, size) => ssd1306Display.resizeWidget(source, size))
+  })
   const nextPages = pages.value.map(page => (page.id === activePage.value.id ? { ...page, widgets: normalizedWidgets } : page))
   draft.value.layout = {
     ...layout.value,
@@ -314,17 +333,34 @@ function updateActiveWidgets(widgets: Ssd1306Widget[]): void {
 
 function updateBitmapRenderLock(state: { widgetId: string | null; mode: 'drag' | 'resize' | null }): void {
   setBitmapRenderLock(selectedWidgetId.value, state.widgetId, state.mode, selectedWidget.value?.type === 'bitmap')
+  if (state.mode === 'resize' && state.widgetId !== null) {
+    bitmapResize.beginBitmapResizeTransaction(state.widgetId)
+    return
+  }
+  bitmapResize.endBitmapResizeTransaction()
 }
 
 function updateSelectedWidget(patch: Partial<Ssd1306Widget>): void {
   if (selectedWidget.value === null) {
+    console.log('[display-bitmap] designer update selected ignored: no widget', { patch })
     return
   }
+  logDisplayBitmap('designer update selected', {
+    selectedWidgetId: selectedWidget.value.id,
+    patch,
+  })
   updateActiveWidgets(activePageWidgets.value.map(widget => {
     if (widget.id !== selectedWidget.value?.id) {
       return widget
     }
     const merged = normalizeWidget({ ...(widget as Ssd1306Widget), ...patch } as Ssd1306Widget)
+    if (widget.type === 'bitmap' || merged.type === 'bitmap') {
+      logDisplayBitmap('designer merged widget', {
+        widgetId: widget.id,
+        before: widget.type === 'bitmap' ? { width: widget.width, height: widget.height, bytes: safeBase64Length(widget.bitmapData) } : { type: widget.type },
+        after: merged.type === 'bitmap' ? { width: merged.width, height: merged.height, bytes: safeBase64Length(merged.bitmapData) } : { type: merged.type },
+      })
+    }
     return merged.type === 'text'
       ? autoSizeSsd1306TextWidget(merged, layoutWidth.value, layoutHeight.value)
       : merged
@@ -354,11 +390,23 @@ function normalizeWidget(widget: Ssd1306Widget): Ssd1306Widget {
           bitmapData: typeof widget.bitmapData === 'string' && widget.bitmapData.length > 0
             ? widget.bitmapData
             : ssd1306Display.createBitmapPlaceholder(width, boundedHeight).bitmapData,
-          bitmapFormat: 'mono1',
+          bitmapFormat: ssd1306Display.bitmapFormat,
           keepAspectRatio: Boolean((widget as Ssd1306Widget & { keepAspectRatio?: boolean }).keepAspectRatio ?? false),
         }
       : {}),
   } as Ssd1306Widget
+}
+
+function safeBase64Length(value: string): number {
+  try {
+    return globalThis.atob(value).length
+  } catch {
+    return -1
+  }
+}
+
+function logDisplayBitmap(message: string, payload: Record<string, unknown>): void {
+  console.log(`[display-bitmap] ${message} ${JSON.stringify(payload)}`)
 }
 
 function moveWidgetUp(widgetId: string): void {

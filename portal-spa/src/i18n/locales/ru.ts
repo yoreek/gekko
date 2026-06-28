@@ -1,3 +1,19 @@
+const deviceDialogCommon = {
+  gpioPinHint: 'Аппаратный вывод, которым управляет реле или выключатель.',
+  onewirePinHint: 'Номер линии данных, используемой шиной OneWire.',
+  i2cSdaHint: 'Линия данных для master-шины I2C.',
+  i2cSclHint: 'Линия тактирования для master-шины I2C.',
+  i2cFrequencyHint: 'Допустимо любое значение от 1 до 400000 Гц. 100000 Гц - дефолт ESP32.',
+}
+
+const ssd1306Dialog = {
+  layoutHint: 'Здесь настраиваются страницы, виджеты и шаблоны.',
+}
+
+const st7735Dialog = {
+  layoutHint: 'Здесь настраиваются страницы, виджеты и RGB565 bitmap payloads.',
+}
+
 export default {
   app: {
     title: 'Gekko Portal',
@@ -236,6 +252,11 @@ export default {
       display: {
         widgetFallback: 'Дисплей',
       },
+      common: deviceDialogCommon,
+      ssd1306: ssd1306Dialog,
+      st7735: st7735Dialog,
+      ssd1306LayoutHint: ssd1306Dialog.layoutHint,
+      oledLayoutHint: ssd1306Dialog.layoutHint,
       createTitle: 'Создание устройства',
       createHint: 'Добавьте новую запись реестра через текущий API портала.',
       title: 'Детали устройства',
@@ -247,17 +268,16 @@ export default {
       actions: 'Действия',
       details: 'Детали типа',
       dummyCompact: 'Дополнительных настроек нет.',
-      gpioPinHint: 'Аппаратный вывод, которым управляет реле или выключатель.',
-      onewirePinHint: 'Номер линии данных, используемой шиной OneWire.',
-      i2cSdaHint: 'Линия данных для master-шины I2C.',
-      i2cSclHint: 'Линия тактирования для master-шины I2C.',
+      gpioPinHint: deviceDialogCommon.gpioPinHint,
+      onewirePinHint: deviceDialogCommon.onewirePinHint,
+      i2cSdaHint: deviceDialogCommon.i2cSdaHint,
+      i2cSclHint: deviceDialogCommon.i2cSclHint,
       i2cPinTooLow: 'Пин I2C должен быть не меньше 0.',
       i2cPinTooHigh: 'Пин I2C не должен превышать GPIO 39.',
       i2cPinsMustDiffer: 'SDA и SCL должны использовать разные пины.',
-      i2cFrequencyHint: 'Допустимо любое значение от 1 до 400000 Гц. 100000 Гц - дефолт ESP32.',
+      i2cFrequencyHint: deviceDialogCommon.i2cFrequencyHint,
       i2cFrequencyTooLow: 'Частота I2C должна быть больше 0 Гц.',
       i2cFrequencyTooHigh: 'Частота I2C не должна превышать 400000 Гц.',
-      oledLayoutHint: 'Здесь настраиваются страницы, виджеты и шаблоны.',
       onewireScanTitle: 'Сканирование',
       onewireScanAction: 'Сканировать шину',
       onewireScanLoading: 'Сканирование',

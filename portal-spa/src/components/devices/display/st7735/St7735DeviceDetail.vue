@@ -19,7 +19,7 @@
 
     <section class="device-type-section">
       <div class="text-subtitle-2">{{ t('device.fields.display.layout') }}</div>
-      <div class="text-body-2">{{ t('device.dialog.st7735Display.layoutHint') }}</div>
+      <div class="text-body-2">{{ t('device.dialog.st7735.layoutHint') }}</div>
       <St7735LayoutPreview :layout="config.layout" :display="st7735Display" :device-width="config.width" :device-height="config.height" />
     </section>
   </div>

@@ -32,12 +32,14 @@
           </v-col>
           <v-col cols="12" md="3">
             <v-text-field
+              v-select-on-focus
               v-model="nameFilter"
               :label="t('journal.filters.name')"
             />
           </v-col>
           <v-col cols="12" md="3">
             <v-text-field
+              v-select-on-focus
               v-model="deviceIdFilter"
               :label="t('journal.filters.deviceId')"
               inputmode="numeric"

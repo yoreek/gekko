@@ -1,3 +1,19 @@
+const deviceDialogCommon = {
+  gpioPinHint: 'Hardware output pin used by the switch runtime.',
+  onewirePinHint: 'Numeric data line used by the OneWire bus runtime.',
+  i2cSdaHint: 'Data line for the I2C master bus.',
+  i2cSclHint: 'Clock line for the I2C master bus.',
+  i2cFrequencyHint: 'Any value from 1 to 400000 Hz is allowed. 100000 Hz is the ESP32 default.',
+}
+
+const ssd1306Dialog = {
+  layoutHint: 'Pages, widgets, and templates are configured here.',
+}
+
+const st7735Dialog = {
+  layoutHint: 'Pages, widgets, and RGB565 bitmap payloads are configured here.',
+}
+
 export default {
   app: {
     title: 'Gekko Portal',
@@ -268,6 +284,11 @@ export default {
       display: {
         widgetFallback: 'Display',
       },
+      common: deviceDialogCommon,
+      ssd1306: ssd1306Dialog,
+      st7735: st7735Dialog,
+      ssd1306LayoutHint: ssd1306Dialog.layoutHint,
+      oledLayoutHint: ssd1306Dialog.layoutHint,
       createTitle: 'Create device',
       createHint: 'Add a new registry record with the current portal API.',
       title: 'Device details',
@@ -279,17 +300,16 @@ export default {
       actions: 'Actions',
       details: 'Type-specific details',
       dummyCompact: 'No additional type-specific settings.',
-      gpioPinHint: 'Hardware output pin used by the switch runtime.',
-      onewirePinHint: 'Numeric data line used by the OneWire bus runtime.',
-      i2cSdaHint: 'Data line for the I2C master bus.',
-      i2cSclHint: 'Clock line for the I2C master bus.',
+      gpioPinHint: deviceDialogCommon.gpioPinHint,
+      onewirePinHint: deviceDialogCommon.onewirePinHint,
+      i2cSdaHint: deviceDialogCommon.i2cSdaHint,
+      i2cSclHint: deviceDialogCommon.i2cSclHint,
+      i2cFrequencyHint: deviceDialogCommon.i2cFrequencyHint,
       i2cPinTooLow: 'I2C pin must be 0 or higher.',
       i2cPinTooHigh: 'I2C pin must not exceed GPIO 39.',
       i2cPinsMustDiffer: 'SDA and SCL must use different pins.',
-      i2cFrequencyHint: 'Any value from 1 to 400000 Hz is allowed. 100000 Hz is the ESP32 default.',
       i2cFrequencyTooLow: 'I2C frequency must be greater than 0 Hz.',
       i2cFrequencyTooHigh: 'I2C frequency must not exceed 400000 Hz.',
-      oledLayoutHint: 'Pages, widgets, and templates are configured here.',
       onewireScanTitle: 'Scan',
       onewireScanAction: 'Scan bus',
       onewireScanLoading: 'Scanning',

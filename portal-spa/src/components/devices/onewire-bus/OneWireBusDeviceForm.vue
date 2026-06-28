@@ -4,8 +4,9 @@
       <v-row class="device-type-section__grid">
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.gpioPin')"
-            :hint="t('device.dialog.onewirePinHint')"
+            :hint="t('device.dialog.common.onewirePinHint')"
             persistent-hint
             :model-value="currentValue.gpioPin"
             inputmode="numeric"

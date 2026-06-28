@@ -68,6 +68,7 @@
             :device-height="layoutHeight"
             :selected-widget-id="selectedWidgetId"
             :zoom="editorZoom"
+            :display="st7735Display"
             @select-widget="selectWidget"
             @update-widgets="updateActiveWidgets"
             @interaction-change="updateBitmapRenderLock"
@@ -100,6 +101,8 @@
             :device-width="layoutWidth"
             :device-height="layoutHeight"
             @update-widget="updateSelectedWidget"
+            @bitmap-resize-start="beginBitmapResizeTransaction"
+            @bitmap-resize-end="endBitmapResizeTransaction"
           />
           <v-alert v-else type="info" variant="tonal">
             {{ t('device.dialog.ssd1306Display.noSelection') }}
@@ -133,6 +136,7 @@ import Ssd1306DesignerLayers from '@/components/devices/display/ssd1306/designer
 import St7735LayoutPreview from '@/components/devices/display/st7735/St7735LayoutPreview.vue'
 import St7735DesignerInspector from '@/components/devices/display/st7735/St7735DesignerInspector.vue'
 import { useDisplayBitmapRenderLock } from '@/composables/display/useDisplayBitmapRenderLock'
+import { useDisplayBitmapResizeTransaction } from '@/composables/display/useDisplayBitmapResizeTransaction'
 import { resolveSsd1306WidgetDuplicatePosition, resolveSsd1306WidgetSpawnPosition } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
 import { autoSizeSsd1306TextWidget } from '@/components/devices/display/ssd1306/ssd1306-text-layout'
 import {
@@ -140,7 +144,7 @@ import {
   normalizeSt7735Layout,
   type St7735LayoutDraft,
 } from '@/models/devices/st7735/layout'
-import type { DisplayWidget, DisplayWidgetType } from '@/models/devices/display/layout'
+import type { DisplayBitmapWidget, DisplayWidget, DisplayWidgetType } from '@/models/devices/display/layout'
 import type { DeviceRecord } from '@/api/contracts'
 import { st7735Display } from '@/models/devices/display/display'
 
@@ -170,6 +174,10 @@ const draft = ref<DesignerDraft>(createDraft(props.device))
 const selectedPageId = ref(defaultSt7735Layout().activePageId)
 const selectedWidgetId = ref<string | null>(null)
 const { bitmapRenderFrozen, setBitmapRenderLock } = useDisplayBitmapRenderLock()
+const bitmapResize = useDisplayBitmapResizeTransaction<DisplayBitmapWidget>(
+  () => activePageWidgets.value.filter((widget): widget is DisplayBitmapWidget => widget.type === 'bitmap'),
+)
+const { beginBitmapResizeTransaction, endBitmapResizeTransaction } = bitmapResize
 
 const layout = computed(() => draft.value.layout)
 const pages = computed(() => layout.value.pages)
@@ -293,7 +301,17 @@ function selectWidget(widgetId: string | null): void {
 }
 
 function updateActiveWidgets(widgets: DisplayWidget[]): void {
-  const normalizedWidgets = widgets.map(widget => normalizeWidget(widget))
+  const previousWidgets = new Map(activePageWidgets.value.map(widget => [widget.id, widget]))
+  const normalizedWidgets = widgets.map(widget => {
+    const normalized = normalizeWidget(widget)
+    if (normalized.type !== 'bitmap') {
+      return normalized
+    }
+    const previousBitmapWidget = previousWidgets.get(widget.id)?.type === 'bitmap'
+      ? previousWidgets.get(widget.id) as DisplayBitmapWidget
+      : null
+    return bitmapResize.syncBitmapWidget(previousBitmapWidget, normalized, (source, size) => st7735Display.resizeWidget(source, size))
+  })
   const nextPages = pages.value.map(page => (page.id === activePage.value.id ? { ...page, widgets: normalizedWidgets } : page))
   draft.value.layout = {
     ...layout.value,
@@ -303,6 +321,11 @@ function updateActiveWidgets(widgets: DisplayWidget[]): void {
 
 function updateBitmapRenderLock(state: { widgetId: string | null; mode: 'drag' | 'resize' | null }): void {
   setBitmapRenderLock(selectedWidgetId.value, state.widgetId, state.mode, selectedWidget.value?.type === 'bitmap')
+  if (state.mode === 'resize' && state.widgetId !== null) {
+    bitmapResize.beginBitmapResizeTransaction(state.widgetId)
+    return
+  }
+  bitmapResize.endBitmapResizeTransaction()
 }
 
 function updateSelectedWidget(patch: Partial<DisplayWidget>): void {
@@ -343,7 +366,7 @@ function normalizeWidget(widget: DisplayWidget): DisplayWidget {
           bitmapData: typeof widget.bitmapData === 'string' && widget.bitmapData.length > 0
             ? widget.bitmapData
             : st7735Display.createBitmapPlaceholder(width, boundedHeight).bitmapData,
-          bitmapFormat: 'rgb565' as const,
+          bitmapFormat: st7735Display.bitmapFormat,
           keepAspectRatio: Boolean((widget as DisplayWidget & { keepAspectRatio?: boolean }).keepAspectRatio ?? false),
         }
       : {}),

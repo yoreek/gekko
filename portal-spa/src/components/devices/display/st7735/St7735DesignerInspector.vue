@@ -16,15 +16,15 @@
       <v-col cols="6"><v-text-field :label="t('device.dialog.ssd1306Display.x')" :model-value="widget.x" type="number" min="0" :max="deviceWidth" @update:model-value="updateNumber('x', $event)" /></v-col>
       <v-col cols="6"><v-text-field :label="t('device.dialog.ssd1306Display.y')" :model-value="widget.y" type="number" min="0" :max="deviceHeight" @update:model-value="updateNumber('y', $event)" /></v-col>
       <v-col cols="6">
-        <v-text-field v-if="!isBitmapWidget" :label="t('device.dialog.ssd1306Display.width')" :model-value="widget.width" type="number" min="1" :max="deviceWidth" @update:model-value="updateNumber('width', $event)" />
-        <v-text-field v-else :model-value="bitmapWidthField" :label="t('device.dialog.ssd1306Display.width')" type="number" min="1" :max="deviceWidth" @update:model-value="updateBitmapDimension('width', $event)" />
+        <v-text-field v-if="!isBitmapWidget" v-select-on-focus :label="t('device.dialog.ssd1306Display.width')" :model-value="widget.width" type="number" min="1" :max="deviceWidth" @update:model-value="updateNumber('width', $event)" />
+        <v-text-field v-else v-select-on-focus :model-value="widget.width" :label="t('device.dialog.ssd1306Display.width')" type="number" min="1" :max="deviceWidth" @focus="beginBitmapResize" @blur="endBitmapResize" @update:model-value="updateBitmapDimension('width', $event)" />
       </v-col>
       <v-col cols="6">
-        <v-text-field v-if="!isBitmapWidget" :label="t('device.dialog.ssd1306Display.height')" :model-value="widget.height" type="number" min="1" :max="deviceHeight" @update:model-value="updateNumber('height', $event)" />
-        <v-text-field v-else :model-value="bitmapHeightField" :label="t('device.dialog.ssd1306Display.height')" type="number" min="1" :max="deviceHeight" @update:model-value="updateBitmapDimension('height', $event)" />
+        <v-text-field v-if="!isBitmapWidget" v-select-on-focus :label="t('device.dialog.ssd1306Display.height')" :model-value="widget.height" type="number" min="1" :max="deviceHeight" @update:model-value="updateNumber('height', $event)" />
+        <v-text-field v-else v-select-on-focus :model-value="widget.height" :label="t('device.dialog.ssd1306Display.height')" type="number" min="1" :max="deviceHeight" @focus="beginBitmapResize" @blur="endBitmapResize" @update:model-value="updateBitmapDimension('height', $event)" />
       </v-col>
       <v-col v-if="isTextWidget" cols="6"><v-text-field :label="t('device.dialog.ssd1306Display.fontSize')" :model-value="widget.fontSize" type="number" min="1" :max="8" @update:model-value="updateNumber('fontSize', $event)" /></v-col>
-      <v-col cols="6"><v-text-field :label="t('device.dialog.ssd1306Display.strokeWidth')" :model-value="widget.strokeWidth" type="number" min="1" :max="32" @update:model-value="updateNumber('strokeWidth', $event)" /></v-col>
+      <v-col v-if="supportsStroke" cols="6"><v-text-field :label="t('device.dialog.ssd1306Display.strokeWidth')" :model-value="widget.strokeWidth" type="number" min="1" :max="32" @update:model-value="updateNumber('strokeWidth', $event)" /></v-col>
     </v-row>
     <v-alert v-if="isBitmapWidget" type="info" variant="tonal" density="compact">{{ t('device.dialog.ssd1306Display.bitmapSize', { size: `${widget.width} × ${widget.height}` }) }}</v-alert>
     <v-switch
@@ -65,10 +65,15 @@ import St7735WidgetPreview from '@/components/devices/display/st7735/St7735Widge
 import { useDisplayBitmapImportState } from '@/composables/display/useDisplayBitmapImportState'
 import { measureSsd1306TextWidget } from '@/components/devices/display/ssd1306/ssd1306-text-layout'
 import type { BaseDisplay } from '@/models/devices/display/display'
+import { resolveDisplayBitmapDimensionUpdate } from '@/models/devices/display/widgets'
 import type { DisplayBitmapWidget, DisplayWidget, DisplayWidgetType } from '@/models/devices/display/layout'
 
 const props = defineProps<{ widget: DisplayWidget; deviceWidth: number; deviceHeight: number; bitmapRenderFrozen?: boolean; display: BaseDisplay<'rgb565'> }>()
-const emit = defineEmits<{ 'update-widget': [patch: Partial<DisplayWidget>] }>()
+const emit = defineEmits<{
+  'update-widget': [patch: Partial<DisplayWidget>]
+  'bitmap-resize-start': [widgetId: string]
+  'bitmap-resize-end': [widgetId: string]
+}>()
 const { t } = useI18n()
 
 const widgetTypeItems: Array<{ title: string; value: DisplayWidgetType }> = (['text', 'bitmap', 'rect', 'line', 'circle', 'ellipse'] as DisplayWidgetType[]).map(value => ({ title: t(`device.dialog.ssd1306Display.widgetTypes.${value}`), value }))
@@ -76,11 +81,10 @@ const bindingKindItems = ['unbound', 'device', 'metric', 'constant_text'].map(va
 const isTextWidget = computed(() => props.widget.type === 'text')
 const isBitmapWidget = computed(() => props.widget.type === 'bitmap')
 const supportsFill = computed(() => props.widget.type === 'rect' || props.widget.type === 'circle' || props.widget.type === 'ellipse')
+const supportsStroke = computed(() => props.widget.type === 'rect' || props.widget.type === 'line' || props.widget.type === 'circle' || props.widget.type === 'ellipse')
 const previewStyle = computed(() => ({
   width: `${Math.max(48, Math.round(props.widget.width * 2))}px`,
-  height: isBitmapWidget.value
-    ? `${Math.max(56, Math.round(props.widget.height * 2) + 20)}px`
-    : `${Math.max(24, Math.round(props.widget.height * 2))}px`,
+  height: `${Math.max(isBitmapWidget.value ? 48 : 24, Math.round(props.widget.height * 2))}px`,
 }))
 const fitInfo = computed<{ type: 'info' | 'success' | 'warning'; title: string; details: string }>(() => {
   if (props.widget.type !== 'text') return { type: 'info' as const, title: '', details: '' }
@@ -106,8 +110,6 @@ const bitmapWorkflow = useDisplayBitmapImportState(
 const bitmapError = bitmapWorkflow.bitmapError
 const bitmapThreshold = bitmapWorkflow.bitmapThreshold
 const bitmapPreviewFrozen = bitmapWorkflow.bitmapPreviewFrozen
-const bitmapWidthField = bitmapWorkflow.bitmapWidth
-const bitmapHeightField = bitmapWorkflow.bitmapHeight
 const bitmapWidget = computed<DisplayBitmapWidget | null>(() => (isBitmapWidget.value ? props.widget as DisplayBitmapWidget : null))
 
 function updateField<K extends keyof DisplayWidget>(key: K, value: DisplayWidget[K]): void { emit('update-widget', { [key]: value } as Partial<DisplayWidget>) }
@@ -125,7 +127,7 @@ function updateWidgetType(value: string): void {
     emit('update-widget', {
       type: 'bitmap',
       bitmapData: props.display.createBitmapPlaceholder(props.widget.width, props.widget.height).bitmapData,
-      bitmapFormat: 'rgb565',
+      bitmapFormat: props.display.bitmapFormat,
       keepAspectRatio: false,
     } as Partial<DisplayWidget>)
     return
@@ -142,20 +144,28 @@ function updateNumber(key: keyof Pick<DisplayWidget, 'x' | 'y' | 'width' | 'heig
 }
 
 function updateBitmapDimension(key: 'width' | 'height', value: string | number): void {
-  const numeric = Number(value)
-  if (!Number.isFinite(numeric)) {
+  const currentWidget = bitmapWidget.value
+  if (currentWidget === null) {
     return
   }
-  const nextWidth = key === 'width' ? Math.max(1, Math.round(numeric)) : bitmapWidthField.value
-  const nextHeight = key === 'height' ? Math.max(1, Math.round(numeric)) : bitmapHeightField.value
-  bitmapWorkflow.setBitmapSize(nextWidth, nextHeight)
-  emit('update-widget', {
-    width: nextWidth,
-    height: nextHeight,
-    bitmapData: bitmapWidget.value !== null
-      ? props.display.resizeBitmapData(bitmapWidget.value.bitmapData, bitmapWidthField.value, bitmapHeightField.value, nextWidth, nextHeight)
-      : props.display.createBitmapPlaceholder(nextWidth, nextHeight).bitmapData,
-  } as Partial<DisplayWidget>)
+  const nextSize = resolveDisplayBitmapDimensionUpdate(currentWidget, key, value)
+  if (nextSize !== null) {
+    emit('update-widget', nextSize as Partial<DisplayWidget>)
+  }
+}
+
+function beginBitmapResize(): void {
+  const currentWidget = bitmapWidget.value
+  if (currentWidget !== null) {
+    emit('bitmap-resize-start', currentWidget.id)
+  }
+}
+
+function endBitmapResize(): void {
+  const currentWidget = bitmapWidget.value
+  if (currentWidget !== null) {
+    emit('bitmap-resize-end', currentWidget.id)
+  }
 }
 
 function onBitmapFileSelected(value: File | File[] | null): void {
@@ -163,7 +173,7 @@ function onBitmapFileSelected(value: File | File[] | null): void {
     clearBitmap()
     return
   }
-  void bitmapWorkflow.queueBitmapImport(value, props.widget.width, props.widget.height)
+  void bitmapWorkflow.queueBitmapImport(value)
 }
 function updateBitmapThreshold(value: string | number): void { bitmapWorkflow.setBitmapThreshold(value) }
 function clearBitmap(): void { bitmapWorkflow.clearBitmap() }

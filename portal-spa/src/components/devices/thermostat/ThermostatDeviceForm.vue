@@ -45,6 +45,7 @@
         </v-col>
         <v-col cols="12" md="4">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.targetTemperature')"
             :model-value="currentValue.targetCelsius"
             inputmode="decimal"
@@ -56,6 +57,7 @@
         </v-col>
         <v-col cols="12" md="4">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.hysteresis')"
             :model-value="currentValue.hysteresisCelsius"
             inputmode="decimal"
@@ -68,6 +70,7 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.safeMinTemperature')"
             :model-value="currentValue.minSafeCelsius"
             inputmode="decimal"
@@ -79,6 +82,7 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.safeMaxTemperature')"
             :model-value="currentValue.maxSafeCelsius"
             inputmode="decimal"
@@ -95,6 +99,7 @@
       <v-row class="device-type-section__grid">
         <v-col cols="12" md="3">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.checkIntervalMs')"
             :model-value="currentValue.checkIntervalMs"
             inputmode="numeric"
@@ -107,6 +112,7 @@
         </v-col>
         <v-col cols="12" md="3">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.sensorTimeoutMs')"
             :model-value="currentValue.sensorTimeoutMs"
             inputmode="numeric"
@@ -119,6 +125,7 @@
         </v-col>
         <v-col cols="12" md="3">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.retryAfterErrorMs')"
             :model-value="currentValue.retryAfterErrorMs"
             inputmode="numeric"
@@ -131,6 +138,7 @@
         </v-col>
         <v-col cols="12" md="3">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.minSwitchIntervalMs')"
             :model-value="currentValue.minSwitchIntervalMs"
             inputmode="numeric"

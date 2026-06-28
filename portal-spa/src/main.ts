@@ -8,6 +8,7 @@ import { resetMockDatabase } from './mock/database'
 import { useAppStore } from './stores/app'
 import { resetStoredPanels } from './stores/panels'
 import { createAppVuetify } from './plugins/vuetify'
+import { selectOnFocus } from './directives/selectOnFocus'
 import { bindRealtimeBridge } from './realtime/bridge'
 import { connectMockRealtimeSocket } from './realtime/mockSocket'
 import { connectRealtimeSocket } from './realtime/socket'
@@ -33,6 +34,7 @@ app.use(pinia)
 app.use(router)
 app.use(appI18n)
 app.use(createAppVuetify())
+app.directive('select-on-focus', selectOnFocus)
 app.mount('#app')
 
 if (import.meta.hot) {

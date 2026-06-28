@@ -18,6 +18,7 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-text-field
+            v-select-on-focus
             :label="t('device.fields.display.i2cAddress')"
             :model-value="i2cAddressText"
             :disabled="busy"
@@ -29,16 +30,16 @@
           />
         </v-col>
         <v-col cols="12" md="6">
-          <v-text-field :label="t('device.fields.display.width')" :model-value="currentValue.width" :disabled="busy" inputmode="numeric" type="number" min="1" @update:model-value="updateNumber('width', $event)" />
+          <v-text-field v-select-on-focus :label="t('device.fields.display.width')" :model-value="currentValue.width" :disabled="busy" inputmode="numeric" type="number" min="1" @update:model-value="updateNumber('width', $event)" />
         </v-col>
         <v-col cols="12" md="6">
-          <v-text-field :label="t('device.fields.display.height')" :model-value="currentValue.height" :disabled="busy" inputmode="numeric" type="number" min="1" @update:model-value="updateNumber('height', $event)" />
+          <v-text-field v-select-on-focus :label="t('device.fields.display.height')" :model-value="currentValue.height" :disabled="busy" inputmode="numeric" type="number" min="1" @update:model-value="updateNumber('height', $event)" />
         </v-col>
       </v-row>
     </section>
     <section class="device-type-section">
       <div class="text-subtitle-2">{{ t('device.fields.display.layout') }}</div>
-      <div class="text-body-2">{{ t('device.dialog.ssd1306LayoutHint') }}</div>
+      <div class="text-body-2">{{ t('device.dialog.ssd1306.layoutHint') }}</div>
       <Ssd1306LayoutPreview :layout="currentValue.layout" :display="ssd1306Display" :device-width="currentValue.width" :device-height="currentValue.height" />
       <div v-if="mode === 'edit'" class="d-flex justify-end">
         <v-btn variant="text" color="primary" :disabled="busy" @click="emit('design-display')">

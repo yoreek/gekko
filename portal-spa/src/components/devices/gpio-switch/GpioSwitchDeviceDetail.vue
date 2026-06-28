@@ -5,7 +5,7 @@
         <v-col cols="12" md="6">
           <v-text-field
             :label="t('device.fields.gpioPin')"
-            :hint="t('device.dialog.gpioPinHint')"
+            :hint="t('device.dialog.common.gpioPinHint')"
             persistent-hint
             :model-value="config.gpioPin"
             readonly
