@@ -40,9 +40,9 @@
       </v-tabs>
 
       <div class="oled-designer__body">
-        <section class="oled-designer__panel oled-designer__panel--layers">
+        <v-sheet class="oled-designer__panel oled-designer__panel--layers pa-3" rounded="lg" border>
           <div class="text-subtitle-2">{{ t('device.dialog.ssd1306Display.layersTitle') }}</div>
-          <Ssd1306DesignerLayers
+          <DisplayDesignerLayers
             :widgets="activePage.widgets"
             :selected-widget-id="selectedWidgetId"
             @select-widget="selectWidget"
@@ -51,9 +51,9 @@
             @duplicate="duplicateWidget"
             @remove="removeWidget"
           />
-        </section>
+        </v-sheet>
 
-        <section ref="canvasPanelRef" class="oled-designer__panel oled-designer__panel--canvas">
+        <v-sheet ref="canvasPanelRef" class="oled-designer__panel oled-designer__panel--canvas pa-3" rounded="lg" border>
           <div class="oled-designer__panel-heading">
             <div>
               <div class="text-subtitle-2">{{ t('device.dialog.ssd1306Display.canvasTitle') }}</div>
@@ -95,6 +95,7 @@
             :selected-widget-id="selectedWidgetId"
             :zoom="editorZoom"
             :display="ssd1306Display"
+            :metric-catalog="metricCatalog"
             @select-widget="selectWidget"
             @update-widgets="updateActiveWidgets"
             @interaction-change="updateBitmapRenderLock"
@@ -107,10 +108,11 @@
             :device-height="layoutHeight"
             :preview-scale="editorZoom"
             :bitmap-render-frozen="bitmapRenderFrozen"
+            :metric-catalog="metricCatalog"
           />
-        </section>
+        </v-sheet>
 
-        <section class="oled-designer__panel oled-designer__panel--inspector">
+        <v-sheet class="oled-designer__panel oled-designer__panel--inspector pa-3" rounded="lg" border>
           <div class="text-subtitle-2">{{ t('device.dialog.ssd1306Display.inspectorTitle') }}</div>
           <Ssd1306DesignerInspector
             v-if="selectedWidget !== null"
@@ -118,6 +120,9 @@
             :display="ssd1306Display"
             :device-width="layoutWidth"
             :device-height="layoutHeight"
+            :metric-catalog="metricCatalog"
+            :metrics-loading="metricsLoading"
+            :refresh-metric-catalog="refreshMetricCatalog"
             @update-widget="updateSelectedWidget"
             @bitmap-resize-start="beginBitmapResizeTransaction"
             @bitmap-resize-end="endBitmapResizeTransaction"
@@ -125,7 +130,7 @@
           <v-alert v-else type="info" variant="tonal">
             {{ t('device.dialog.ssd1306Display.noSelection') }}
           </v-alert>
-        </section>
+        </v-sheet>
       </div>
     </div>
 
@@ -151,10 +156,11 @@ import { useI18n } from 'vue-i18n'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import Ssd1306DesignerCanvas from '@/components/devices/display/ssd1306/designer/Ssd1306DesignerCanvas.vue'
 import Ssd1306DesignerInspector from '@/components/devices/display/ssd1306/designer/Ssd1306DesignerInspector.vue'
-import Ssd1306DesignerLayers from '@/components/devices/display/ssd1306/designer/Ssd1306DesignerLayers.vue'
+import DisplayDesignerLayers from '@/components/devices/display/DisplayDesignerLayers.vue'
 import Ssd1306LayoutPreview from '@/components/devices/display/ssd1306/Ssd1306LayoutPreview.vue'
 import { useDisplayBitmapRenderLock } from '@/composables/display/useDisplayBitmapRenderLock'
 import { useDisplayBitmapResizeTransaction } from '@/composables/display/useDisplayBitmapResizeTransaction'
+import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
 import { resolveSsd1306WidgetDuplicatePosition, resolveSsd1306WidgetSpawnPosition } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
 import { autoSizeSsd1306TextWidget } from '@/components/devices/display/ssd1306/ssd1306-text-layout'
 import {
@@ -169,7 +175,7 @@ import {
 } from '@/models/devices/ssd1306/layout'
 import type { DeviceRecord } from '@/api/contracts'
 import { ssd1306Display } from '@/models/devices/display/display'
-import { hasInvalidMetricPlaceholders } from '@/models/metrics/placeholders'
+import { hasInvalidMetricPlaceholders, resolveMetricPlaceholderText } from '@/models/metrics/placeholders'
 
 type DesignerDraft = Record<string, unknown> & {
   name: string
@@ -193,6 +199,7 @@ const { t } = useI18n()
 const editorZoom = ref(2)
 const canvasPanelRef = ref<HTMLElement | null>(null)
 const errorMessage = ref('')
+const { metricCatalog, metricsLoading, refreshMetricCatalog } = useMetricPlaceholderCatalog()
 const draft = ref<DesignerDraft>(createDraft(props.device))
 const selectedPageId = ref(defaultSsd1306Layout().activePageId)
 const selectedWidgetId = ref<string | null>(null)
@@ -235,11 +242,15 @@ const widgetTypeOptions: Array<{ value: Ssd1306WidgetType; label: string; icon: 
 
 watch(
   () => [props.modelValue, props.device?.record.id, props.device?.record.configRevision],
-  () => {
+  async () => {
     if (!props.modelValue || props.device === null) {
       return
     }
-    resetDraft()
+    try {
+      await refreshMetricCatalog()
+    } finally {
+      resetDraft()
+    }
   },
   { immediate: true },
 )
@@ -274,7 +285,9 @@ function createDraft(device: DeviceRecord | null): DesignerDraft {
     enabled: typeof config.enabled === 'boolean' ? config.enabled : true,
     width: typeof config.width === 'number' ? config.width : 128,
     height: typeof config.height === 'number' ? config.height : 64,
-    layout: normalizeSsd1306Layout(config.layout),
+    layout: normalizeSsd1306Layout(config.layout, {
+      resolveText: widget => resolveMetricPlaceholderText(widget.text, metricCatalog.value),
+    }),
   } as DesignerDraft
 }
 
@@ -294,14 +307,18 @@ function submit(): void {
   if (selectedWidget.value === null) {
     emit('save', {
       ...draft.value,
-      layout: normalizeSsd1306Layout(draft.value.layout),
+      layout: normalizeSsd1306Layout(draft.value.layout, {
+        resolveText: widget => resolveMetricPlaceholderText(widget.text, metricCatalog.value),
+      }),
     })
     emit('update:modelValue', false)
     return
   }
   emit('save', {
     ...draft.value,
-    layout: normalizeSsd1306Layout(draft.value.layout),
+    layout: normalizeSsd1306Layout(draft.value.layout, {
+      resolveText: widget => resolveMetricPlaceholderText(widget.text, metricCatalog.value),
+    }),
   })
   emit('update:modelValue', false)
 }
@@ -387,7 +404,9 @@ function updateSelectedWidget(patch: Partial<Ssd1306Widget>): void {
       })
     }
     return merged.type === 'text'
-      ? autoSizeSsd1306TextWidget(merged, layoutWidth.value, layoutHeight.value)
+      ? autoSizeSsd1306TextWidget(merged, layoutWidth.value, layoutHeight.value, {
+        text: resolveMetricPlaceholderText(merged.text, metricCatalog.value),
+      })
       : merged
   }))
 }
@@ -535,10 +554,6 @@ function removeWidget(widgetId: string): void {
 .oled-designer__panel {
   display: grid;
   gap: 12px;
-  padding: 14px;
-  border: 1px solid rgb(var(--v-theme-outline-variant));
-  border-radius: 8px;
-  background: rgb(var(--v-theme-surface));
   min-height: 0;
   overflow: hidden;
   min-width: 0;

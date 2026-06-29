@@ -29,6 +29,10 @@ import {
 } from '../display/layout-normalizer.ts'
 import { SSD1306_DISPLAY_LAYOUT_PROFILE } from '../display/profile.ts'
 
+export interface Ssd1306WidgetNormalizationOptions {
+  readonly resolveText?: (widget: Ssd1306Widget) => string
+}
+
 export type {
   Ssd1306BindingKind,
   Ssd1306BitmapWidget,
@@ -57,11 +61,13 @@ export const OLED_DISPLAY_BITMAP_MAX_BYTES = SSD1306_DISPLAY_LAYOUT_PROFILE.maxB
 export const OLED_DISPLAY_BITMAP_DEFAULT_WIDTH = SSD1306_DISPLAY_LAYOUT_PROFILE.defaultBitmapWidth
 export const OLED_DISPLAY_BITMAP_DEFAULT_HEIGHT = SSD1306_DISPLAY_LAYOUT_PROFILE.defaultBitmapHeight
 
-function normalizeWidgetAutoSize(widget: Ssd1306Widget): Ssd1306Widget {
+function normalizeWidgetAutoSize(widget: Ssd1306Widget, options: Ssd1306WidgetNormalizationOptions = {}): Ssd1306Widget {
   if (!widget.autoSize || widget.type !== 'text') {
     return widget
   }
-  return autoSizeSsd1306TextWidget(widget, 0x7fff, 0x7fff) as Ssd1306Widget
+  return autoSizeSsd1306TextWidget(widget, 0x7fff, 0x7fff, {
+    text: options.resolveText?.(widget) ?? widget.text,
+  }) as Ssd1306Widget
 }
 
 export function createDefaultSsd1306BitmapData(
@@ -79,27 +85,27 @@ export function defaultSsd1306Layout(): DisplayLayoutDraft {
   return defaultDisplayLayout(SSD1306_DISPLAY_LAYOUT_PROFILE)
 }
 
-export function normalizeSsd1306Widget(value: unknown, index = 0): Ssd1306Widget {
+export function normalizeSsd1306Widget(value: unknown, index = 0, options: Ssd1306WidgetNormalizationOptions = {}): Ssd1306Widget {
   return normalizeDisplayWidget(SSD1306_DISPLAY_LAYOUT_PROFILE, value, index, {
-    normalizeWidget: widget => normalizeWidgetAutoSize(widget as Ssd1306Widget),
+    normalizeWidget: widget => normalizeWidgetAutoSize(widget as Ssd1306Widget, options),
   }) as Ssd1306Widget
 }
 
-export function normalizeSsd1306Layout(value: unknown): Ssd1306LayoutDraft {
+export function normalizeSsd1306Layout(value: unknown, options: Ssd1306WidgetNormalizationOptions = {}): Ssd1306LayoutDraft {
   return normalizeDisplayLayout(SSD1306_DISPLAY_LAYOUT_PROFILE, value, {
-    normalizeWidget: widget => normalizeWidgetAutoSize(widget as Ssd1306Widget),
+    normalizeWidget: widget => normalizeWidgetAutoSize(widget as Ssd1306Widget, options),
   }) as Ssd1306LayoutDraft
 }
 
-export function encodeSsd1306Layout(layout: Ssd1306LayoutDraft): Record<string, unknown> {
+export function encodeSsd1306Layout(layout: Ssd1306LayoutDraft, options: Ssd1306WidgetNormalizationOptions = {}): Record<string, unknown> {
   return encodeDisplayLayout(SSD1306_DISPLAY_LAYOUT_PROFILE, layout, {
-    normalizeWidget: widget => normalizeWidgetAutoSize(widget as Ssd1306Widget),
+    normalizeWidget: widget => normalizeWidgetAutoSize(widget as Ssd1306Widget, options),
   })
 }
 
-export function ssd1306LayoutChanged(left: unknown, right: unknown): boolean {
+export function ssd1306LayoutChanged(left: unknown, right: unknown, options: Ssd1306WidgetNormalizationOptions = {}): boolean {
   return displayLayoutChanged(SSD1306_DISPLAY_LAYOUT_PROFILE, left, right, {
-    normalizeWidget: widget => normalizeWidgetAutoSize(widget as Ssd1306Widget),
+    normalizeWidget: widget => normalizeWidgetAutoSize(widget as Ssd1306Widget, options),
   })
 }
 

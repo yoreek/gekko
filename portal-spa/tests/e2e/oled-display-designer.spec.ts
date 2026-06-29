@@ -23,6 +23,19 @@ test('OLED designer persists typed layout widgets in mock mode', async ({ page }
   await expect(page.getByRole('dialog').last().getByRole('textbox', { name: 'Text', exact: true })).toHaveValue('Hello OLED')
 })
 
+test('OLED designer preview resolves placeholder samples and filters', async ({ page }) => {
+  await page.goto(mockPath)
+
+  await page.getByRole('row').filter({ hasText: 'OLED Display' }).click()
+  await page.getByRole('button', { name: 'Design display' }).click()
+
+  const designer = page.getByRole('dialog').last()
+  await designer.getByRole('textbox', { name: 'Text', exact: true }).fill('{{dev.670845750.state | upper}}')
+
+  await expect(designer.locator('canvas[aria-label="OFF"]')).toHaveCount(1)
+  await expect(designer.locator('canvas[aria-label*="{{dev.670845750.state | upper}}"]')).toHaveCount(0)
+})
+
 test('OLED designer imports, resizes, saves, and reloads bitmap widgets', async ({ page }) => {
   await page.goto(mockPath)
   await page.getByRole('row').filter({ hasText: 'OLED Display' }).click()

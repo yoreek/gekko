@@ -20,6 +20,7 @@
             :display="display"
             :display-scale="previewScale"
             :freeze-render="isBitmapRenderFrozen && widget.type === 'bitmap'"
+            :preview-text="widgetPreviewText(widget)"
           />
         </div>
       </div>
@@ -33,8 +34,10 @@ import { useI18n } from 'vue-i18n'
 
 import St7735WidgetPreview from '@/components/devices/display/st7735/St7735WidgetPreview.vue'
 import { resolveSsd1306CanvasStyle, resolveSsd1306WidgetFrameStyle } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
+import type { MetricPlaceholderDescriptor } from '@/api/contracts'
 import type { BaseDisplay } from '@/models/devices/display/display'
 import type { Ssd1306LayoutDraft, Ssd1306Widget } from '@/models/devices/ssd1306/layout'
+import { resolveMetricPlaceholderText } from '@/models/metrics/placeholders'
 
 const props = defineProps<{
   layout: Ssd1306LayoutDraft
@@ -43,14 +46,20 @@ const props = defineProps<{
   deviceHeight?: number
   previewScale?: number
   bitmapRenderFrozen?: boolean
+  metricCatalog?: readonly MetricPlaceholderDescriptor[]
 }>()
 
 const { t } = useI18n()
 
 const previewScale = computed(() => props.previewScale ?? 1.75)
 const isBitmapRenderFrozen = computed(() => Boolean(props.bitmapRenderFrozen))
+const metricCatalog = computed(() => props.metricCatalog ?? [])
 const activePageWidgets = computed(() => props.layout.pages.find(page => page.id === props.layout.activePageId)?.widgets ?? [])
 const canvasStyle = computed(() => resolveSsd1306CanvasStyle(Math.max(1, props.deviceWidth ?? 128), Math.max(1, props.deviceHeight ?? 160), previewScale.value))
+
+function widgetPreviewText(widget: Ssd1306Widget): string {
+  return widget.type === 'text' ? resolveMetricPlaceholderText(widget.text, metricCatalog.value) : ''
+}
 
 function widgetStyle(widget: Ssd1306Widget): Record<string, string> {
   return resolveSsd1306WidgetFrameStyle(widget, previewScale.value)

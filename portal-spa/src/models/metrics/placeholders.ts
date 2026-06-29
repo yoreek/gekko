@@ -1,4 +1,11 @@
 import type { MetricNamespace, MetricPlaceholderDescriptor } from '@/api/contracts'
+import {
+  parseTemplatePlaceholderBody,
+  renderTemplate,
+  type TemplateFilterName,
+  type TemplatePlaceholderMetadata,
+  validateTemplate,
+} from '../template/template-engine.ts'
 
 export interface ParsedMetricPlaceholder {
   readonly raw: string
@@ -9,7 +16,7 @@ export interface ParsedMetricPlaceholder {
 }
 
 export type MetricPlaceholderValidationStatus = 'static' | 'valid' | 'unavailable' | 'invalid'
-export type MetricPlaceholderFilter = 'text' | 'upper' | 'lower' | 'trim'
+export type MetricPlaceholderFilter = TemplateFilterName
 
 export interface MetricPlaceholderValidation {
   readonly status: MetricPlaceholderValidationStatus
@@ -22,35 +29,6 @@ export interface MetricPlaceholderValidation {
   readonly staticCount: number
 }
 
-const placeholderPattern = /{{\s*([^{}]+?)\s*}}/g
-
-function parseMetricPlaceholderFilter(raw: string): MetricPlaceholderFilter | null {
-  const normalized = raw.trim().toLowerCase()
-  switch (normalized) {
-    case 'text':
-    case 'upper':
-    case 'lower':
-    case 'trim':
-      return normalized
-    default:
-      return null
-  }
-}
-
-function applyMetricPlaceholderFilter(value: string, filter: MetricPlaceholderFilter | null): string {
-  switch (filter) {
-    case 'text':
-    case null:
-      return value
-    case 'upper':
-      return value.toUpperCase()
-    case 'lower':
-      return value.toLowerCase()
-    case 'trim':
-      return value.trim()
-  }
-}
-
 export interface MetricPlaceholderValidationEntry {
   readonly raw: string
   readonly parsed: ParsedMetricPlaceholder | null
@@ -59,29 +37,24 @@ export interface MetricPlaceholderValidationEntry {
 }
 
 export function parseMetricPlaceholder(raw: string): ParsedMetricPlaceholder | null {
-  const [expression, filterText] = raw.trim().split('|', 2)
-  if (raw.includes('|') && raw.indexOf('|') !== raw.lastIndexOf('|')) {
+  const parsed = parseTemplatePlaceholderBody(raw)
+  if (parsed === null) {
     return null
   }
-  const filter = filterText === undefined || filterText.trim().length === 0
-    ? null
-    : parseMetricPlaceholderFilter(filterText)
-  if (filterText !== undefined && filterText.trim().length > 0 && filter === null) {
-    return null
-  }
+  const [expression] = raw.trim().split('|', 2)
   const parts = expression.trim().split('.').map(part => part.trim()).filter(Boolean)
   if (parts.length === 3 && parts[0] === 'dev') {
     const sourceId = Number(parts[1])
     return Number.isInteger(sourceId) && sourceId > 0 && parts[2].length > 0
-      ? { raw: `{{dev.${sourceId}.${parts[2]}}}`, namespace: 'dev', sourceId, metricKey: parts[2], filter }
+      ? { raw: `{{dev.${sourceId}.${parts[2]}}}`, namespace: 'dev', sourceId, metricKey: parts[2], filter: parsed.filter }
       : null
   }
   if (parts.length === 2 && parts[0] === 'system' && (parts[1] === 'time' || parts[1] === 'uptime')) {
-    return { raw: `{{system.${parts[1]}}}`, namespace: 'system', sourceId: 0, metricKey: parts[1], filter }
+    return { raw: `{{system.${parts[1]}}}`, namespace: 'system', sourceId: 0, metricKey: parts[1], filter: parsed.filter }
   }
   if (parts.length === 3 && parts[0] === 'system' && parts[1] === 'wifi' && (parts[2] === 'station_ip' || parts[2] === 'setup_ap_ip')) {
     const metricKey = `wifi.${parts[2]}`
-    return { raw: `{{system.${metricKey}}}`, namespace: 'system', sourceId: 0, metricKey, filter }
+    return { raw: `{{system.${metricKey}}}`, namespace: 'system', sourceId: 0, metricKey, filter: parsed.filter }
   }
   return null
 }
@@ -92,38 +65,49 @@ export function metricPlaceholderForDescriptor(descriptor: MetricPlaceholderDesc
     : `{{system.${descriptor.metricKey}}}`
 }
 
+export function metricPlaceholderResolverFromCatalog(catalog: readonly MetricPlaceholderDescriptor[] = []): Record<string, string> {
+  const resolver: Record<string, string> = {}
+  for (const descriptor of catalog) {
+    if (!descriptor.available) {
+      continue
+    }
+    resolver[metricPlaceholderResolverKey(descriptor)] = descriptor.preview ?? ''
+  }
+  return resolver
+}
+
 export function validateMetricPlaceholders(
   text: string,
-  catalog: readonly MetricPlaceholderDescriptor[],
+  catalog: readonly MetricPlaceholderDescriptor[] = [],
 ): MetricPlaceholderValidation {
-  const matches = [...text.matchAll(placeholderPattern)]
-  if (matches.length === 0) {
+  const validation = validateTemplate(text)
+  if (validation.placeholders.length === 0) {
     return {
-      status: text.includes('{{') || text.includes('}}') ? 'invalid' : 'static',
+      status: validation.valid ? 'static' : 'invalid',
       parsed: null,
       descriptor: null,
       placeholders: [],
-      invalidCount: text.includes('{{') || text.includes('}}') ? 1 : 0,
+      invalidCount: validation.issues.length,
       unavailableCount: 0,
       validCount: 0,
-      staticCount: text.includes('{{') || text.includes('}}') ? 0 : 1,
+      staticCount: validation.valid ? 1 : 0,
     }
   }
-  const placeholders = matches.map(match => {
-    const parsed = parseMetricPlaceholder(match[1] ?? '')
+  const placeholders = validation.placeholders.map((placeholder: TemplatePlaceholderMetadata) => {
+    const parsed = parseMetricPlaceholder(placeholder.raw.slice(2, -2))
     if (parsed === null) {
-      return { raw: match[0], parsed: null, descriptor: null, status: 'invalid' as const }
+      return { raw: placeholder.raw, parsed: null, descriptor: null, status: 'invalid' as const }
     }
     const descriptor = catalog.find(entry =>
       entry.namespace === parsed.namespace &&
       entry.sourceId === parsed.sourceId &&
       entry.metricKey === parsed.metricKey) ?? null
     if (descriptor === null) {
-      return { raw: match[0], parsed, descriptor: null, status: 'unavailable' as const }
+      return { raw: placeholder.raw, parsed, descriptor: null, status: 'unavailable' as const }
     }
-    return { raw: match[0], parsed, descriptor, status: descriptor.available ? 'valid' as const : 'unavailable' as const }
+    return { raw: placeholder.raw, parsed, descriptor, status: descriptor.available ? 'valid' as const : 'unavailable' as const }
   })
-  const invalidCount = placeholders.filter(entry => entry.status === 'invalid').length
+  const invalidCount = placeholders.filter(entry => entry.status === 'invalid').length + validation.issues.length
   const unavailableCount = placeholders.filter(entry => entry.status === 'unavailable').length
   const validCount = placeholders.filter(entry => entry.status === 'valid').length
   const staticCount = placeholders.length === 0 ? 1 : 0
@@ -137,25 +121,17 @@ export function validateMetricPlaceholders(
   return { status, parsed, descriptor, placeholders, invalidCount, unavailableCount, validCount, staticCount }
 }
 
-export function resolveMetricPlaceholderText(text: string, catalog: readonly MetricPlaceholderDescriptor[]): string {
-  const validation = validateMetricPlaceholders(text, catalog)
-  if (validation.placeholders.length === 0) {
-    return text
-  }
-  return text.replace(placeholderPattern, (match, raw: string) => {
-    const parsed = parseMetricPlaceholder(raw)
-    if (parsed === null) {
-      return match
-    }
-    const descriptor = catalog.find(entry =>
-      entry.namespace === parsed.namespace &&
-      entry.sourceId === parsed.sourceId &&
-      entry.metricKey === parsed.metricKey)
-    return descriptor?.available ? applyMetricPlaceholderFilter(descriptor.preview ?? '', parsed.filter) : match
-  })
+export function resolveMetricPlaceholderText(text: string, catalog: readonly MetricPlaceholderDescriptor[] = []): string {
+  return renderTemplate(text, metricPlaceholderResolverFromCatalog(catalog))
 }
 
 export function hasInvalidMetricPlaceholders(text: string): boolean {
   const validation = validateMetricPlaceholders(text, [])
   return validation.status === 'invalid'
+}
+
+function metricPlaceholderResolverKey(descriptor: MetricPlaceholderDescriptor): string {
+  return descriptor.namespace === 'dev'
+    ? `dev.${descriptor.sourceId}.${descriptor.metricKey}`
+    : `system.${descriptor.metricKey}`
 }

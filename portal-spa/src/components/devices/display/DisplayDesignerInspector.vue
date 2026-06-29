@@ -4,62 +4,68 @@
       {{ bitmapError }}
     </v-alert>
 
-    <div class="display-inspector__geometry">
-      <v-select class="display-inspector__type-field" density="compact" variant="outlined" hide-details :label="t('device.dialog.ssd1306Display.widgetType')" :items="widgetTypeItems" :model-value="widget.type" @update:model-value="updateWidgetType(String($event))" />
-      <v-text-field class="display-inspector__number-field" density="compact" variant="outlined" hide-details :label="t('device.dialog.ssd1306Display.x')" :model-value="widget.x" type="number" min="0" :max="deviceWidth" @update:model-value="updateNumber('x', $event)" />
-      <v-text-field class="display-inspector__number-field" density="compact" variant="outlined" hide-details :label="t('device.dialog.ssd1306Display.y')" :model-value="widget.y" type="number" min="0" :max="deviceHeight" @update:model-value="updateNumber('y', $event)" />
-      <v-text-field v-if="!isBitmapWidget" class="display-inspector__number-field" density="compact" variant="outlined" hide-details v-select-on-focus :label="t('device.dialog.ssd1306Display.width')" :model-value="widget.width" type="number" min="1" :max="deviceWidth" @update:model-value="updateNumber('width', $event)" />
-      <v-text-field v-else class="display-inspector__number-field" density="compact" variant="outlined" hide-details v-select-on-focus :label="t('device.dialog.ssd1306Display.width')" :model-value="widget.width" type="number" min="1" :max="deviceWidth" @focus="beginBitmapResize" @blur="endBitmapResize" @update:model-value="updateBitmapDimension('width', $event)" />
-      <v-text-field v-if="!isBitmapWidget" class="display-inspector__number-field" density="compact" variant="outlined" hide-details v-select-on-focus :label="t('device.dialog.ssd1306Display.height')" :model-value="widget.height" type="number" min="1" :max="deviceHeight" @update:model-value="updateNumber('height', $event)" />
-      <v-text-field v-else class="display-inspector__number-field" density="compact" variant="outlined" hide-details v-select-on-focus :label="t('device.dialog.ssd1306Display.height')" :model-value="widget.height" type="number" min="1" :max="deviceHeight" @focus="beginBitmapResize" @blur="endBitmapResize" @update:model-value="updateBitmapDimension('height', $event)" />
-      <v-text-field v-if="isTextWidget" class="display-inspector__number-field" density="compact" variant="outlined" hide-details :label="t('device.dialog.ssd1306Display.fontSize')" :model-value="widget.fontSize" type="number" min="1" :max="8" @update:model-value="updateNumber('fontSize', $event)" />
-      <v-text-field v-if="supportsStroke" class="display-inspector__number-field" density="compact" variant="outlined" hide-details :label="t('device.dialog.ssd1306Display.strokeWidth')" :model-value="widget.strokeWidth" type="number" min="1" :max="32" @update:model-value="updateNumber('strokeWidth', $event)" />
+    <div class="display-inspector__section display-inspector__section--geometry">
+      <div class="display-inspector__geometry">
+        <v-select class="display-inspector__type-field" density="compact" variant="outlined" hide-details :label="t('device.dialog.ssd1306Display.widgetType')" :items="widgetTypeItems" :model-value="widget.type" @update:model-value="updateWidgetType(String($event))" />
+        <v-text-field class="display-inspector__number-field" density="compact" variant="outlined" hide-details :label="t('device.dialog.ssd1306Display.x')" :model-value="widget.x" type="number" min="0" :max="deviceWidth" @update:model-value="updateNumber('x', $event)" />
+        <v-text-field class="display-inspector__number-field" density="compact" variant="outlined" hide-details :label="t('device.dialog.ssd1306Display.y')" :model-value="widget.y" type="number" min="0" :max="deviceHeight" @update:model-value="updateNumber('y', $event)" />
+        <v-text-field v-if="!isBitmapWidget" class="display-inspector__number-field" density="compact" variant="outlined" hide-details v-select-on-focus :label="t('device.dialog.ssd1306Display.width')" :model-value="widget.width" type="number" min="1" :max="deviceWidth" @update:model-value="updateNumber('width', $event)" />
+        <v-text-field v-else class="display-inspector__number-field" density="compact" variant="outlined" hide-details v-select-on-focus :label="t('device.dialog.ssd1306Display.width')" :model-value="widget.width" type="number" min="1" :max="deviceWidth" @focus="beginBitmapResize" @blur="endBitmapResize" @update:model-value="updateBitmapDimension('width', $event)" />
+        <v-text-field v-if="!isBitmapWidget" class="display-inspector__number-field" density="compact" variant="outlined" hide-details v-select-on-focus :label="t('device.dialog.ssd1306Display.height')" :model-value="widget.height" type="number" min="1" :max="deviceHeight" @update:model-value="updateNumber('height', $event)" />
+        <v-text-field v-else class="display-inspector__number-field" density="compact" variant="outlined" hide-details v-select-on-focus :label="t('device.dialog.ssd1306Display.height')" :model-value="widget.height" type="number" min="1" :max="deviceHeight" @focus="beginBitmapResize" @blur="endBitmapResize" @update:model-value="updateBitmapDimension('height', $event)" />
+        <v-text-field v-if="isTextWidget" class="display-inspector__number-field" density="compact" variant="outlined" hide-details :label="t('device.dialog.ssd1306Display.fontSize')" :model-value="widget.fontSize" type="number" min="1" :max="8" @update:model-value="updateNumber('fontSize', $event)" />
+        <v-text-field v-if="supportsStroke" class="display-inspector__number-field" density="compact" variant="outlined" hide-details :label="t('device.dialog.ssd1306Display.strokeWidth')" :model-value="widget.strokeWidth" type="number" min="1" :max="32" @update:model-value="updateNumber('strokeWidth', $event)" />
+      </div>
     </div>
 
-    <div v-if="isTextWidget" class="display-inspector__text-row">
-      <v-textarea
-        class="display-inspector__text"
-        :label="t('device.dialog.ssd1306Display.text')"
-        :model-value="widget.text"
-        density="compact"
-        variant="outlined"
-        auto-grow
-        rows="2"
-        hide-details
-        @update:model-value="updateText(String($event))"
-      />
-      <div class="display-inspector__fit">
-        <v-chip size="small" variant="tonal" :color="fitInfo.type">
-          {{ fitInfo.title }}
+    <div v-if="isTextWidget" class="display-inspector__section display-inspector__section--text">
+      <div class="display-inspector__text-row">
+        <v-textarea
+          class="display-inspector__text"
+          :label="t('device.dialog.ssd1306Display.text')"
+          :model-value="widget.text"
+          density="compact"
+          variant="outlined"
+          auto-grow
+          rows="2"
+          hide-details
+          @update:model-value="updateText(String($event))"
+        />
+        <div class="display-inspector__fit">
+          <v-chip size="small" variant="tonal" :color="fitInfo.type">
+            {{ fitInfo.title }}
+          </v-chip>
+          <div class="text-caption text-medium-emphasis">{{ fitInfo.details }}</div>
+        </div>
+      </div>
+
+      <div v-if="placeholderMessage.length > 0" class="display-inspector__inline-row">
+        <v-chip size="small" variant="tonal" :color="placeholderTone">
+          {{ placeholderMessage }}
         </v-chip>
-        <div class="text-caption text-medium-emphasis">{{ fitInfo.details }}</div>
+        <v-text-field
+          v-if="usesMetricPlaceholder"
+          class="display-inspector__refresh-field"
+          :label="t('device.dialog.ssd1306Display.refreshIntervalMs')"
+          :hint="t('device.dialog.ssd1306Display.refreshIntervalHint')"
+          :model-value="widget.refreshIntervalMs"
+          :min="refreshIntervalMinMs"
+          :max="refreshIntervalMaxMs"
+          density="compact"
+          variant="outlined"
+          type="number"
+          persistent-hint
+          @update:model-value="updateRefreshInterval"
+        />
       </div>
     </div>
 
     <MetricPlaceholderBuilder
       v-if="isTextWidget"
       :catalog="metricCatalog"
-      :loading="metricsLoading"
+      :loading="isMetricsLoading"
+      :surface="false"
     />
-    <div v-if="isTextWidget && placeholderMessage.length > 0" class="display-inspector__inline-row">
-      <v-chip size="small" variant="tonal" :color="placeholderTone">
-        {{ placeholderMessage }}
-      </v-chip>
-      <v-text-field
-        v-if="usesMetricPlaceholder"
-        class="display-inspector__refresh-field"
-        :label="t('device.dialog.ssd1306Display.refreshIntervalMs')"
-        :hint="t('device.dialog.ssd1306Display.refreshIntervalHint')"
-        :model-value="widget.refreshIntervalMs"
-        :min="refreshIntervalMinMs"
-        :max="refreshIntervalMaxMs"
-        density="compact"
-        variant="outlined"
-        type="number"
-        persistent-hint
-        @update:model-value="updateRefreshInterval"
-      />
-    </div>
 
     <div v-if="isBitmapWidget" class="display-inspector__bitmap-row">
       <v-chip size="small" variant="tonal" color="info">
@@ -103,10 +109,10 @@ import type { BaseDisplay } from '@/models/devices/display/display'
 import { resolveDisplayBitmapDimensionUpdate } from '@/models/devices/display/widgets'
 import type { DisplayBitmapWidget, DisplayWidget, DisplayWidgetType } from '@/models/devices/display/layout'
 import type { RasterImageFormat } from '@/raster/raster-image-types'
-import { fetchMetricPlaceholders } from '@/api'
 import type { MetricPlaceholderDescriptor } from '@/api/contracts'
 import {
   validateMetricPlaceholders,
+  resolveMetricPlaceholderText,
   type MetricPlaceholderValidation,
 } from '@/models/metrics/placeholders'
 import {
@@ -116,7 +122,16 @@ import {
   DISPLAY_WIDGET_REFRESH_INTERVAL_MIN_MS,
 } from '@/models/devices/display/layout-normalizer'
 
-const props = defineProps<{ widget: DisplayWidget; deviceWidth: number; deviceHeight: number; bitmapRenderFrozen?: boolean; display: BaseDisplay<RasterImageFormat> }>()
+const props = defineProps<{
+  widget: DisplayWidget
+  deviceWidth: number
+  deviceHeight: number
+  bitmapRenderFrozen?: boolean
+  display: BaseDisplay<RasterImageFormat>
+  metricCatalog: readonly MetricPlaceholderDescriptor[]
+  metricsLoading?: boolean
+  refreshMetricCatalog: () => Promise<void>
+}>()
 const emit = defineEmits<{
   'update-widget': [patch: Partial<DisplayWidget>]
   'bitmap-resize-start': [widgetId: string]
@@ -129,9 +144,10 @@ const isTextWidget = computed(() => props.widget.type === 'text')
 const isBitmapWidget = computed(() => props.widget.type === 'bitmap')
 const supportsFill = computed(() => props.widget.type === 'rect' || props.widget.type === 'circle' || props.widget.type === 'ellipse')
 const supportsStroke = computed(() => props.widget.type === 'rect' || props.widget.type === 'line' || props.widget.type === 'circle' || props.widget.type === 'ellipse')
+const resolvedPreviewText = computed(() => (isTextWidget.value ? resolveMetricPlaceholderText(props.widget.text, props.metricCatalog) : ''))
 const fitInfo = computed<{ type: 'info' | 'success' | 'warning'; title: string; details: string }>(() => {
   if (props.widget.type !== 'text') return { type: 'info' as const, title: '', details: '' }
-  const measurement = measureSsd1306TextWidget(props.widget)
+  const measurement = measureSsd1306TextWidget(props.widget, { text: resolvedPreviewText.value })
   return {
     type: measurement.fits ? 'success' : 'warning',
     title: measurement.fits ? t('device.dialog.ssd1306Display.fits') : props.widget.styleFlags.wrap ? t('device.dialog.ssd1306Display.clipsWrapped') : t('device.dialog.ssd1306Display.clips'),
@@ -153,8 +169,8 @@ const bitmapWorkflow = useDisplayBitmapImportState(
 const bitmapError = bitmapWorkflow.bitmapError
 const bitmapThreshold = bitmapWorkflow.bitmapThreshold
 const bitmapWidget = computed<DisplayBitmapWidget | null>(() => (isBitmapWidget.value ? props.widget as DisplayBitmapWidget : null))
-const metricCatalog = ref<MetricPlaceholderDescriptor[]>([])
 const metricsLoading = ref(false)
+const isMetricsLoading = computed(() => props.metricsLoading === true || metricsLoading.value)
 const placeholderValidation = ref<MetricPlaceholderValidation>(validateMetricPlaceholders('', []))
 const refreshIntervalMinMs = DISPLAY_WIDGET_REFRESH_INTERVAL_MIN_MS
 const refreshIntervalMaxMs = DISPLAY_WIDGET_REFRESH_INTERVAL_MAX_MS
@@ -184,7 +200,6 @@ const placeholderMessage = computed(() => {
 const usesMetricPlaceholder = computed(() => placeholderValidation.value.status === 'valid' || placeholderValidation.value.status === 'unavailable' || props.widget.bindingKind === 'metric')
 
 onMounted(() => {
-  void loadMetricCatalog()
   runPlaceholderValidation(props.widget.text)
   restartMetricRefresh()
 })
@@ -200,6 +215,9 @@ onBeforeUnmount(() => {
 watch(() => props.widget.text, text => {
   schedulePlaceholderValidation(text)
   restartMetricRefresh()
+})
+watch(() => props.metricCatalog, () => {
+  runPlaceholderValidation(props.widget.text)
 })
 watch(() => props.widget.refreshIntervalMs, () => restartMetricRefresh())
 watch(isTextWidget, () => restartMetricRefresh())
@@ -249,8 +267,7 @@ function updateRefreshInterval(value: string | number): void {
 async function loadMetricCatalog(): Promise<void> {
   metricsLoading.value = true
   try {
-    metricCatalog.value = (await fetchMetricPlaceholders()).placeholders
-    runPlaceholderValidation(props.widget.text)
+    await props.refreshMetricCatalog()
   } finally {
     metricsLoading.value = false
   }
@@ -264,11 +281,11 @@ function schedulePlaceholderValidation(text: string): void {
 }
 
 function runPlaceholderValidation(text: string): void {
-  placeholderValidation.value = validateMetricPlaceholders(text, metricCatalog.value)
+  placeholderValidation.value = validateMetricPlaceholders(text, props.metricCatalog)
 }
 
 function updateText(text: string): void {
-  const validation = validateMetricPlaceholders(text, metricCatalog.value)
+  const validation = validateMetricPlaceholders(text, props.metricCatalog)
   const patch: Partial<DisplayWidget> = { text }
   if (validation.status === 'static') {
     patch.bindingKind = 'constant_text'
@@ -302,7 +319,7 @@ function stopMetricRefresh(): void {
 
 function restartMetricRefresh(): void {
   stopMetricRefresh()
-  if (!isTextWidget.value || props.widget.refreshIntervalMs <= 0 || validateMetricPlaceholders(props.widget.text, metricCatalog.value).status === 'static') {
+  if (!isTextWidget.value || props.widget.refreshIntervalMs <= 0 || validateMetricPlaceholders(props.widget.text, props.metricCatalog).status === 'static') {
     return
   }
   refreshTimer = setInterval(() => {
@@ -358,6 +375,11 @@ function clearBitmap(): void { bitmapWorkflow.clearBitmap() }
   gap: 12px;
   grid-template-columns: minmax(160px, 1.6fr) repeat(auto-fit, minmax(86px, 0.7fr));
   align-items: start;
+}
+
+.display-inspector__section {
+  display: grid;
+  gap: 12px;
 }
 
 .display-inspector__type-field,

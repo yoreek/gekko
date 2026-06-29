@@ -413,6 +413,27 @@ test('OLED text widget measurement reports wrap lines and fit from the same metr
   })
 })
 
+test('OLED text widget measurement can use resolved preview text', () => {
+  const widget = defaultSsd1306Widget('text', 0)
+  widget.text = '{{name}}'
+  widget.width = 24
+  widget.height = 8
+  widget.styleFlags.wrap = false
+
+  assert.deepEqual(measureSsd1306TextWidget(widget, { text: 'Alex' }), {
+    scale: 1,
+    measuredWidth: 24,
+    measuredHeight: 8,
+    lineHeight: 8,
+    lineCount: 1,
+    columnsPerLine: Number.POSITIVE_INFINITY,
+    boxWidth: 24,
+    boxHeight: 8,
+    fits: true,
+    wrappedLines: 1,
+  })
+})
+
 test('OLED text widget measurement reports clipped height when wrapped text exceeds the box', () => {
   const widget = defaultSsd1306Widget('text', 0)
   widget.text = 'ABCD'
@@ -505,6 +526,19 @@ test('OLED text auto size grows both width and height without requiring wrap', (
   widget.styleFlags.wrap = false
 
   const sized = autoSizeSsd1306TextWidget(widget, 128, 64)
+  assert.equal(sized.width, 24)
+  assert.equal(sized.height, 8)
+})
+
+test('OLED text auto size can use resolved preview text', () => {
+  const widget = defaultSsd1306Widget('text', 0)
+  widget.text = '{{name}}'
+  widget.width = 1
+  widget.height = 1
+  widget.autoSize = true
+  widget.styleFlags.wrap = false
+
+  const sized = autoSizeSsd1306TextWidget(widget, 128, 64, { text: 'Alex' })
   assert.equal(sized.width, 24)
   assert.equal(sized.height, 8)
 })

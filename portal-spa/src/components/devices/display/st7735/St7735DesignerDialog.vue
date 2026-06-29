@@ -40,20 +40,22 @@
       </v-tabs>
 
       <div class="tft-designer__body">
-        <section class="tft-designer__panel tft-designer__panel--layers">
+        <v-sheet class="tft-designer__panel tft-designer__panel--layers pa-3" rounded="lg" border>
           <div class="text-subtitle-2">{{ t('device.dialog.ssd1306Display.layersTitle') }}</div>
-          <Ssd1306DesignerLayers
-            :widgets="activePage.widgets"
-            :selected-widget-id="selectedWidgetId"
-            @select-widget="selectWidget"
-            @move-up="moveWidgetUp"
-            @move-down="moveWidgetDown"
-            @duplicate="duplicateWidget"
-            @remove="removeWidget"
-          />
-        </section>
+          <div class="d-flex flex-column align-start">
+            <DisplayDesignerLayers
+              :widgets="activePage.widgets"
+              :selected-widget-id="selectedWidgetId"
+              @select-widget="selectWidget"
+              @move-up="moveWidgetUp"
+              @move-down="moveWidgetDown"
+              @duplicate="duplicateWidget"
+              @remove="removeWidget"
+            />
+          </div>
+        </v-sheet>
 
-        <section ref="canvasPanelRef" class="tft-designer__panel tft-designer__panel--canvas">
+        <v-sheet ref="canvasPanelRef" class="tft-designer__panel tft-designer__panel--canvas pa-3" rounded="lg" border>
           <div class="tft-designer__panel-heading">
             <div>
               <div class="text-subtitle-2">{{ canvasModeTitle }}</div>
@@ -95,6 +97,7 @@
             :selected-widget-id="selectedWidgetId"
             :zoom="editorZoom"
             :display="st7735Display"
+            :metric-catalog="metricCatalog"
             @select-widget="selectWidget"
             @update-widgets="updateActiveWidgets"
             @interaction-change="updateBitmapRenderLock"
@@ -107,10 +110,11 @@
             :device-height="layoutHeight"
             :preview-scale="editorZoom"
             :bitmap-render-frozen="bitmapRenderFrozen"
+            :metric-catalog="metricCatalog"
           />
-        </section>
+        </v-sheet>
 
-        <section class="tft-designer__panel tft-designer__panel--inspector">
+        <v-sheet class="tft-designer__panel tft-designer__panel--inspector pa-3" rounded="lg" border>
           <div class="text-subtitle-2">{{ t('device.dialog.ssd1306Display.inspectorTitle') }}</div>
           <St7735DesignerInspector
             v-if="selectedWidget !== null"
@@ -118,6 +122,9 @@
             :display="st7735Display"
             :device-width="layoutWidth"
             :device-height="layoutHeight"
+            :metric-catalog="metricCatalog"
+            :metrics-loading="metricsLoading"
+            :refresh-metric-catalog="refreshMetricCatalog"
             @update-widget="updateSelectedWidget"
             @bitmap-resize-start="beginBitmapResizeTransaction"
             @bitmap-resize-end="endBitmapResizeTransaction"
@@ -125,7 +132,7 @@
           <v-alert v-else type="info" variant="tonal">
             {{ t('device.dialog.ssd1306Display.noSelection') }}
           </v-alert>
-        </section>
+        </v-sheet>
       </div>
     </div>
 
@@ -150,11 +157,12 @@ import { useI18n } from 'vue-i18n'
 
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import St7735DesignerCanvas from '@/components/devices/display/st7735/St7735DesignerCanvas.vue'
-import Ssd1306DesignerLayers from '@/components/devices/display/ssd1306/designer/Ssd1306DesignerLayers.vue'
+import DisplayDesignerLayers from '@/components/devices/display/DisplayDesignerLayers.vue'
 import St7735LayoutPreview from '@/components/devices/display/st7735/St7735LayoutPreview.vue'
 import St7735DesignerInspector from '@/components/devices/display/st7735/St7735DesignerInspector.vue'
 import { useDisplayBitmapRenderLock } from '@/composables/display/useDisplayBitmapRenderLock'
 import { useDisplayBitmapResizeTransaction } from '@/composables/display/useDisplayBitmapResizeTransaction'
+import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
 import { resolveSsd1306WidgetDuplicatePosition, resolveSsd1306WidgetSpawnPosition } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
 import { autoSizeSsd1306TextWidget } from '@/components/devices/display/ssd1306/ssd1306-text-layout'
 import {
@@ -165,7 +173,7 @@ import {
 import type { DisplayBitmapWidget, DisplayWidget, DisplayWidgetType } from '@/models/devices/display/layout'
 import type { DeviceRecord } from '@/api/contracts'
 import { st7735Display } from '@/models/devices/display/display'
-import { hasInvalidMetricPlaceholders } from '@/models/metrics/placeholders'
+import { hasInvalidMetricPlaceholders, resolveMetricPlaceholderText } from '@/models/metrics/placeholders'
 
 type DesignerDraft = Record<string, unknown> & {
   name: string
@@ -189,6 +197,7 @@ const { t } = useI18n()
 const editorZoom = ref(2)
 const canvasPanelRef = ref<HTMLElement | null>(null)
 const errorMessage = ref('')
+const { metricCatalog, metricsLoading, refreshMetricCatalog } = useMetricPlaceholderCatalog()
 const draft = ref<DesignerDraft>(createDraft(props.device))
 const selectedPageId = ref(defaultSt7735Layout().activePageId)
 const selectedWidgetId = ref<string | null>(null)
@@ -231,11 +240,15 @@ const widgetTypeOptions: Array<{ value: DisplayWidgetType; label: string; icon: 
 
 watch(
   () => [props.modelValue, props.device?.record.id, props.device?.record.configRevision],
-  () => {
+  async () => {
     if (!props.modelValue || props.device === null) {
       return
     }
-    resetDraft()
+    try {
+      await refreshMetricCatalog()
+    } finally {
+      resetDraft()
+    }
   },
   { immediate: true },
 )
@@ -270,7 +283,9 @@ function createDraft(device: DeviceRecord | null): DesignerDraft {
     enabled: typeof config.enabled === 'boolean' ? config.enabled : true,
     width: typeof config.width === 'number' ? config.width : 128,
     height: typeof config.height === 'number' ? config.height : 160,
-    layout: normalizeSt7735Layout(config.layout),
+    layout: normalizeSt7735Layout(config.layout, {
+      resolveText: widget => resolveMetricPlaceholderText(widget.text, metricCatalog.value),
+    }),
   } as DesignerDraft
 }
 
@@ -289,7 +304,9 @@ function submit(): void {
   }
   emit('save', {
     ...draft.value,
-    layout: normalizeSt7735Layout(draft.value.layout),
+    layout: normalizeSt7735Layout(draft.value.layout, {
+      resolveText: widget => resolveMetricPlaceholderText(widget.text, metricCatalog.value),
+    }),
   })
   emit('update:modelValue', false)
 }
@@ -363,7 +380,9 @@ function updateSelectedWidget(patch: Partial<DisplayWidget>): void {
     }
     const merged = normalizeWidget({ ...(widget as DisplayWidget), ...patch } as DisplayWidget)
     return merged.type === 'text'
-      ? autoSizeSsd1306TextWidget(merged, layoutWidth.value, layoutHeight.value)
+      ? autoSizeSsd1306TextWidget(merged, layoutWidth.value, layoutHeight.value, {
+        text: resolveMetricPlaceholderText(merged.text, metricCatalog.value),
+      })
       : merged
   }))
 }
@@ -490,10 +509,6 @@ function removeWidget(widgetId: string): void {
 .tft-designer__panel {
   display: grid;
   gap: 12px;
-  padding: 14px;
-  border: 1px solid rgb(var(--v-theme-outline-variant));
-  border-radius: 8px;
-  background: rgb(var(--v-theme-surface));
   min-height: 0;
   overflow: hidden;
   min-width: 0;
@@ -501,6 +516,7 @@ function removeWidget(widgetId: string): void {
 
 .tft-designer__panel--layers {
   grid-area: layers;
+  align-content: start;
   overflow-y: auto;
 }
 

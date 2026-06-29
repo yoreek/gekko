@@ -25,6 +25,7 @@
           :display="display"
           :display-scale="zoom"
           :freeze-render="isBitmapResizeActive(item.id, item.type)"
+          :preview-text="widgetPreviewText(item)"
         />
         <span
           class="oled-canvas__resize-handle"
@@ -42,8 +43,10 @@ import { computed, ref } from 'vue'
 import Ssd1306WidgetPreview from '@/components/devices/display/ssd1306/Ssd1306WidgetPreview.vue'
 import { resolveSsd1306InteractionWidgets, type Ssd1306CanvasInteraction } from '@/components/devices/display/ssd1306/ssd1306-editor-interaction'
 import { resolveSsd1306CanvasStyle, resolveSsd1306WidgetFrameStyle } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
+import type { MetricPlaceholderDescriptor } from '@/api/contracts'
 import type { BaseDisplay } from '@/models/devices/display/display'
 import type { Ssd1306Widget } from '@/models/devices/ssd1306/layout'
+import { resolveMetricPlaceholderText } from '@/models/metrics/placeholders'
 
 type CanvasInteraction = Ssd1306CanvasInteraction & {
   pointerId: number
@@ -56,6 +59,7 @@ const props = defineProps<{
   selectedWidgetId: string | null
   zoom: number
   display: BaseDisplay<'mono1'>
+  metricCatalog: readonly MetricPlaceholderDescriptor[]
 }>()
 
 const emit = defineEmits<{
@@ -67,6 +71,10 @@ const emit = defineEmits<{
 const activeInteraction = ref<CanvasInteraction | null>(null)
 
 const canvasStyle = computed(() => resolveSsd1306CanvasStyle(props.deviceWidth, props.deviceHeight, props.zoom))
+
+function widgetPreviewText(widget: Ssd1306Widget): string {
+  return widget.type === 'text' ? resolveMetricPlaceholderText(widget.text, props.metricCatalog) : ''
+}
 
 function widgetFrameStyle(widget: Ssd1306Widget): Record<string, string> {
   return resolveSsd1306WidgetFrameStyle(widget, props.zoom)

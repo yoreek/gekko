@@ -14,11 +14,16 @@ export interface Ssd1306TextLayoutMeasurement {
   wrappedLines: number
 }
 
-export function measureSsd1306TextWidget(widget: Ssd1306Widget): Ssd1306TextLayoutMeasurement {
+export interface Ssd1306TextLayoutMeasureOptions {
+  readonly text?: string
+}
+
+export function measureSsd1306TextWidget(widget: Ssd1306Widget, options: Ssd1306TextLayoutMeasureOptions = {}): Ssd1306TextLayoutMeasurement {
   const scale = classicFontScale(widget.fontSize)
   const boxWidth = Math.max(1, Math.round(widget.width))
   const boxHeight = Math.max(1, Math.round(widget.height))
-  const measured = measureClassicFontText(widget.text, scale, widget.styleFlags.wrap, widget.styleFlags.wrap ? boxWidth : Number.POSITIVE_INFINITY)
+  const text = options.text ?? widget.text
+  const measured = measureClassicFontText(text, scale, widget.styleFlags.wrap, widget.styleFlags.wrap ? boxWidth : Number.POSITIVE_INFINITY)
   return {
     scale,
     measuredWidth: measured.width,
@@ -37,6 +42,7 @@ export function autoSizeSsd1306TextWidget(
   widget: Omit<Ssd1306Widget, 'width' | 'height'> & { width: number; height: number },
   layoutWidth: number,
   layoutHeight: number,
+  options: Ssd1306TextLayoutMeasureOptions = {},
 ): Ssd1306Widget {
   if (widget.type !== 'text' || !widget.autoSize) {
     return widget as Ssd1306Widget
@@ -45,9 +51,10 @@ export function autoSizeSsd1306TextWidget(
   const scale = classicFontScale(widget.fontSize)
   const availableWidth = Math.max(1, layoutWidth - Math.max(0, Math.round(widget.x)))
   const availableHeight = Math.max(1, layoutHeight - Math.max(0, Math.round(widget.y)))
-  const unwrapped = measureClassicFontText(widget.text, scale, false)
+  const text = options.text ?? widget.text
+  const unwrapped = measureClassicFontText(text, scale, false)
   const width = Math.max(1, Math.min(availableWidth, unwrapped.width))
-  const sized = measureClassicFontText(widget.text, scale, widget.styleFlags.wrap, width)
+  const sized = measureClassicFontText(text, scale, widget.styleFlags.wrap, width)
   return {
     ...widget,
     width,

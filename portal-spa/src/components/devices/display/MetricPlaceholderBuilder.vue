@@ -1,5 +1,8 @@
 <template>
-  <v-sheet class="metric-placeholder-builder pa-3" rounded="lg" border>
+  <component
+    :is="surface ? 'v-sheet' : 'div'"
+    v-bind="surface ? { class: 'metric-placeholder-builder pa-3', variant: 'flat' } : {}"
+  >
     <div class="metric-placeholder-builder__header mb-2">
       <div class="text-subtitle-2 text-wrap">
         {{ t('device.dialog.ssd1306Display.metricPicker.title') }}
@@ -59,8 +62,9 @@
       />
     </div>
 
-    <div class="metric-placeholder-builder__row metric-placeholder-builder__row--output mt-2">
+    <div class="d-flex flex-column ga-2 mt-2">
       <v-text-field
+        class="w-100"
         :model-value="placeholderText"
         :label="t('device.dialog.ssd1306Display.metricPicker.placeholder')"
         readonly
@@ -78,7 +82,7 @@
           />
         </template>
       </v-text-field>
-      <div class="metric-placeholder-builder__chips">
+      <div class="d-flex flex-wrap align-center ga-2">
         <v-chip v-if="selectedMetric === null" size="small" variant="tonal" color="info">
           {{ t('device.dialog.ssd1306Display.metricPicker.noneSelected') }}
         </v-chip>
@@ -87,7 +91,7 @@
         </v-chip>
       </div>
     </div>
-  </v-sheet>
+  </component>
 </template>
 
 <script setup lang="ts">
@@ -100,9 +104,11 @@ import { metricPlaceholderForDescriptor } from '@/models/metrics/placeholders'
 const props = defineProps<{
   catalog: readonly MetricPlaceholderDescriptor[]
   loading?: boolean
+  surface?: boolean
 }>()
 
 const { t } = useI18n()
+const surface = computed(() => props.surface !== false)
 
 const namespace = ref<MetricNamespace>('dev')
 const sourceId = ref<number | null>(null)
@@ -257,21 +263,9 @@ function normalizeSelection(): void {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.metric-placeholder-builder__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
 @media (min-width: 960px) {
   .metric-placeholder-builder__row {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .metric-placeholder-builder__row--output {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
   }
 }
 </style>

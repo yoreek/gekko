@@ -17,6 +17,12 @@
 - If a UI change would deviate from a standard Vuetify pattern, state that explicitly before editing and get confirmation first.
 - For icon registry work, follow [app-icon-registry](../openspec/specs/app-icon-registry/spec.md) so Vuetify aliases, local SVG icons, and fallback behavior stay consistent with the shared registry contract.
 
+## Checks
+
+- For SPA browser validation, use MCP Playwright only, against `http://127.0.0.1:5176/?mockMode=1&mockReset=1`.
+- Do not use ad hoc browser probes for SPA validation.
+- Keep the existing local verification flow for unit and smoke tests unless the user asks for a different procedure.
+
 ## Text And Font Layout
 
 - Keep font handling backend-agnostic: define shared font contracts and text layout helpers before display-specific code.
