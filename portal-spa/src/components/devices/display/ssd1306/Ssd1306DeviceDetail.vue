@@ -11,22 +11,34 @@
       </v-row>
     </section>
     <section class="device-type-section">
-      <Ssd1306LayoutPreview :layout="config.layout" :display="ssd1306Display" :device-width="config.width" :device-height="config.height" />
+      <Ssd1306LayoutPreview
+        :layout="config.layout"
+        :display="ssd1306Display"
+        :device-width="config.width"
+        :device-height="config.height"
+        :metric-catalog="metricCatalog"
+      />
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceRecord } from '@/api/contracts'
 import Ssd1306LayoutPreview from '@/components/devices/display/ssd1306/Ssd1306LayoutPreview.vue'
+import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
 import { ssd1306Display } from '@/models/devices/display/display'
 import { Device as Ssd1306Device, formatI2cAddress } from '@/models/devices/ssd1306/device'
 
 const props = defineProps<{ device: DeviceRecord }>()
 const { t } = useI18n()
+const { metricCatalog, refreshMetricCatalog } = useMetricPlaceholderCatalog()
 const config = computed(() => new Ssd1306Device().normalizeConfig(props.device.config))
 const i2cAddressText = computed(() => formatI2cAddress(config.value.i2cAddress))
+
+onMounted(() => {
+  void refreshMetricCatalog()
+})
 </script>

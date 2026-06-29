@@ -26,23 +26,35 @@
     <section class="device-type-section">
       <div class="text-subtitle-2">{{ t('device.fields.display.layout') }}</div>
       <div class="text-body-2">{{ t('device.dialog.st7735.layoutHint') }}</div>
-      <St7735LayoutPreview :layout="config.layout" :display="st7735Display" :device-width="config.width" :device-height="config.height" />
+      <St7735LayoutPreview
+        :layout="config.layout"
+        :display="st7735Display"
+        :device-width="config.width"
+        :device-height="config.height"
+        :metric-catalog="metricCatalog"
+      />
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceRecord } from '@/api/contracts'
 import St7735LayoutPreview from '@/components/devices/display/st7735/St7735LayoutPreview.vue'
+import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
 import { st7735Display } from '@/models/devices/display/display'
 import { Device as St7735Device } from '@/models/devices/st7735/device'
 
 const props = defineProps<{ device: DeviceRecord }>()
 const { t } = useI18n()
+const { metricCatalog, refreshMetricCatalog } = useMetricPlaceholderCatalog()
 const config = computed(() => new St7735Device().normalizeConfig(props.device.config))
+
+onMounted(() => {
+  void refreshMetricCatalog()
+})
 </script>
 
 <style scoped>

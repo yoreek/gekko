@@ -85,7 +85,13 @@
     <section class="device-type-section">
       <div class="text-subtitle-2">{{ t('device.fields.display.layout') }}</div>
       <div class="text-body-2">{{ t('device.dialog.st7735.layoutHint') }}</div>
-      <St7735LayoutPreview :layout="currentValue.layout" :display="st7735Display" :device-width="currentValue.width" :device-height="currentValue.height" />
+      <St7735LayoutPreview
+        :layout="currentValue.layout"
+        :display="st7735Display"
+        :device-width="currentValue.width"
+        :device-height="currentValue.height"
+        :metric-catalog="metricCatalog"
+      />
       <div v-if="mode === 'edit'" class="d-flex justify-end">
         <v-btn variant="text" color="primary" :disabled="busy" @click="emit('design-display')">
           <v-icon class="me-1" icon="design-display" />
@@ -97,10 +103,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import St7735LayoutPreview from '@/components/devices/display/st7735/St7735LayoutPreview.vue'
+import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
 import { SPI_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-types'
 import { st7735Display } from '@/models/devices/display/display'
 import { defaultConfig, type St7735ConfigDraft, type St7735CreateDraft } from '@/models/devices/st7735/device'
@@ -116,6 +123,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
+const { metricCatalog, refreshMetricCatalog } = useMetricPlaceholderCatalog()
 const fallbackValue: St7735CreateDraft = {
   ...defaultConfig(),
   typeName: 'st7735',
@@ -126,6 +134,10 @@ const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ 
 const dependencyRules = computed(() => [
   (value: unknown) => Number(value) > 0 || t('device.dialog.st7735Display.noDependency'),
 ])
+
+onMounted(() => {
+  void refreshMetricCatalog()
+})
 
 function updateNumber(
   key: keyof Pick<St7735CreateDraft, 'spiBusDeviceId' | 'chipSelectPin' | 'dcPin' | 'resetPin' | 'width' | 'height'>,
