@@ -6,6 +6,9 @@ import type {
   DeviceDetailResponse,
   DeviceCreateRequest,
   DeviceMutationResponse,
+  MetricPlaceholderCatalogResponse,
+  MetricPlaceholderDescriptor,
+  MetricValuesResponse,
   DeviceSetupTransferResponse,
   DeviceRegistryResponse,
   OtaStatusResponse,
@@ -204,6 +207,85 @@ export function mockFetchDevices(): DeviceRegistryResponse {
     registryRevision: db.registryRevision,
     devices: db.devices.map(device => decorateDeviceRecord(device, db.registryRevision)),
   }) as unknown as DeviceRegistryResponse
+}
+
+function metricDescriptor(
+  namespaceName: MetricPlaceholderDescriptor['namespace'],
+  sourceId: number,
+  sourceLabel: string | undefined,
+  metricId: number,
+  metricKey: string,
+  label: string,
+  valueType: MetricPlaceholderDescriptor['valueType'],
+  available: boolean,
+  preview = '',
+): MetricPlaceholderDescriptor {
+  return {
+    placeholder: namespaceName === 'dev' ? `{{dev.${sourceId}.${metricKey}}}` : `{{${namespaceName}.${metricKey}}}`,
+    namespace: namespaceName,
+    sourceId,
+    sourceLabel,
+    metricId,
+    metricKey,
+    label,
+    valueType,
+    available,
+    preview,
+  }
+}
+
+export function mockFetchMetricPlaceholders(): MetricPlaceholderCatalogResponse {
+  const db = loadMockDatabase()
+  const placeholders: MetricPlaceholderDescriptor[] = []
+  for (const device of db.devices) {
+    const label = typeof device.config.name === 'string' && device.config.name.length > 0 ? device.config.name : `Device ${device.record.id}`
+    placeholders.push(metricDescriptor('dev', device.record.id, label, 1, 'status', `${label} status`, 'status', true, device.runtime.status))
+    placeholders.push(metricDescriptor('dev', device.record.id, label, 2, 'effective_status', `${label} effective status`, 'status', true, device.runtime.effectiveStatus))
+    if (device.record.typeName === 'ds18b20_temperature_sensor') {
+      const temperature = (device.runtime.output as { temperature?: TemperatureOutputSnapshot } | undefined)?.temperature
+      placeholders.push(metricDescriptor(
+        'dev',
+        device.record.id,
+        label,
+        100,
+        'temperature',
+        `${label} temperature`,
+        'temperature',
+        Boolean(temperature?.valid),
+        temperature?.valid ? `${temperature.value.toFixed(2)} ${temperature.unitSymbol}` : '',
+      ))
+    }
+    if (device.record.typeName === 'gpio_switch') {
+      const state = (device.runtime.output as { state?: string } | undefined)?.state
+      placeholders.push(metricDescriptor('dev', device.record.id, label, 200, 'state', `${label} state`, 'switch_state', Boolean(state), state ?? ''))
+    }
+  }
+  placeholders.push(metricDescriptor('system', 0, undefined, 1, 'time', 'System time', 'time', true, '0:00'))
+  placeholders.push(metricDescriptor('system', 0, undefined, 2, 'uptime', 'System uptime', 'text', true, '0 ms'))
+  placeholders.push(metricDescriptor('wifi', 0, undefined, 1, 'status', 'WiFi status', 'status', true, db.wifi.status))
+  placeholders.push(metricDescriptor('wifi', 0, undefined, 2, 'station_ip', 'WiFi station IP', 'text', db.wifi.stationIp.length > 0, db.wifi.stationIp))
+  placeholders.push(metricDescriptor('wifi', 0, undefined, 3, 'setup_ap_ip', 'WiFi AP IP', 'text', db.wifi.setupApIp.length > 0, db.wifi.setupApIp))
+  return ok({
+    registryRevision: db.registryRevision,
+    placeholders,
+  })
+}
+
+export function mockFetchMetricValues(): MetricValuesResponse {
+  const catalog = mockFetchMetricPlaceholders()
+  return ok({
+    registryRevision: catalog.registryRevision,
+    values: catalog.placeholders.map(metric => ({
+      namespace: metric.namespace,
+      sourceId: metric.sourceId,
+      sourceLabel: metric.sourceLabel,
+      metricId: metric.metricId,
+      metricKey: metric.metricKey,
+      valueType: metric.valueType,
+      available: metric.available,
+      value: metric.preview ?? '',
+    })),
+  })
 }
 
 export function mockFetchDevice(deviceId: number): DeviceDetailResponse {

@@ -75,6 +75,10 @@ public:
         }
     }
 
+    TwoWire* nativeWire() const override {
+        return wire_.get();
+    }
+
 private:
     std::unique_ptr<TwoWire> wire_{};
 };

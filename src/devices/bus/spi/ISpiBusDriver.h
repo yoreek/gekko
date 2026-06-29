@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <memory>
 
+class SPIClass;
+
 namespace ewfm {
 
 class ISpiBusDriver {
@@ -21,6 +23,9 @@ public:
     virtual void endTransaction() = 0;
     virtual uint8_t transfer(uint8_t data) = 0;
     virtual size_t transferBytes(const uint8_t* txData, uint8_t* rxData, size_t length) = 0;
+    virtual SPIClass* nativeSpi() const {
+        return nullptr;
+    }
 };
 
 ISpiBusDriver& defaultArduinoSpiBusDriver();

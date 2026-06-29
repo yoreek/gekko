@@ -5,7 +5,6 @@ export {
   type DisplayWidgetFrameStyle as Ssd1306WidgetFrameStyle,
   resolveDisplayCanvasBitmapSize as resolveSsd1306CanvasBitmapSize,
   resolveDisplayCanvasStyle as resolveSsd1306CanvasStyle,
-  resolveDisplayIconSize as resolveSsd1306IconSize,
   resolveDisplayTextRenderScale as resolveSsd1306TextRenderScale,
   resolveDisplayWidgetBitmapSize as resolveSsd1306WidgetBitmapSize,
   resolveDisplayWidgetDuplicatePosition as resolveSsd1306WidgetDuplicatePosition,

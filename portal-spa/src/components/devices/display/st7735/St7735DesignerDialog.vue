@@ -147,6 +147,7 @@ import {
 import type { DisplayBitmapWidget, DisplayWidget, DisplayWidgetType } from '@/models/devices/display/layout'
 import type { DeviceRecord } from '@/api/contracts'
 import { st7735Display } from '@/models/devices/display/display'
+import { hasInvalidMetricPlaceholders } from '@/models/metrics/placeholders'
 
 type DesignerDraft = Record<string, unknown> & {
   name: string
@@ -262,6 +263,10 @@ function resetDraft(): void {
 
 function submit(): void {
   errorMessage.value = ''
+  if (draft.value.layout.pages.some(page => page.widgets.some(widget => widget.type === 'text' && hasInvalidMetricPlaceholders(widget.text)))) {
+    errorMessage.value = t('device.dialog.ssd1306Display.placeholderInvalid')
+    return
+  }
   emit('save', {
     ...draft.value,
     layout: normalizeSt7735Layout(draft.value.layout),

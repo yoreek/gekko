@@ -302,15 +302,7 @@ const seedDatabase: SeedDatabase = {
                 fontSize: 2,
               },
               {
-                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'icon', 1),
-                id: 'icon-1',
-                x: 4,
-                y: 30,
-                width: 20,
-                height: 20,
-              },
-              {
-                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'bitmap', 2),
+                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'bitmap', 1),
                 id: 'bitmap-2',
                 x: 32,
                 y: 24,
@@ -320,7 +312,7 @@ const seedDatabase: SeedDatabase = {
                 keepAspectRatio: true,
               },
               {
-                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'rect', 3),
+                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'rect', 2),
                 id: 'rect-3',
                 x: 62,
                 y: 26,
@@ -333,7 +325,7 @@ const seedDatabase: SeedDatabase = {
                 },
               },
               {
-                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'line', 4),
+                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'line', 3),
                 id: 'line-4',
                 x: 8,
                 y: 78,
@@ -341,7 +333,7 @@ const seedDatabase: SeedDatabase = {
                 height: 1,
               },
               {
-                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'circle', 5),
+                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'circle', 4),
                 id: 'circle-5',
                 x: 12,
                 y: 92,
@@ -354,7 +346,7 @@ const seedDatabase: SeedDatabase = {
                 },
               },
               {
-                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'ellipse', 6),
+                ...defaultDisplayWidget(ST7735_DISPLAY_LAYOUT_PROFILE, 'ellipse', 5),
                 id: 'ellipse-6',
                 x: 48,
                 y: 88,

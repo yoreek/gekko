@@ -18,6 +18,8 @@ import {
   defaultDisplayLayout,
   defaultDisplayWidget,
   encodeDisplayLayout,
+  DISPLAY_WIDGET_REFRESH_INTERVAL_DEFAULT_MS,
+  DISPLAY_WIDGET_REFRESH_INTERVAL_MIN_MS,
   normalizeDisplayLayout,
 } from '../../../../src/models/devices/display/layout-normalizer.ts'
 import {
@@ -84,9 +86,40 @@ test('normalizes layout pages and clamps widget/page capacities through the shar
   assert.equal(layout.pages[0].widgets.length, DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE)
   assert.equal(layout.pages[0].widgets[0].id, 'widget-0-0')
   assert.equal(layout.pages[0].widgets[0].text, 'T0')
+  assert.equal(layout.pages[0].widgets[0].refreshIntervalMs, 0)
   assert.equal(layout.pages[0].widgets[0].width > 0, true)
   assert.equal(layout.pages[0].widgets[0].height > 0, true)
   assert.equal(layout.activePageId, 'page-1')
+})
+
+test('normalizes and encodes dynamic text refresh intervals', () => {
+  const layout = normalizeDisplayLayout(SSD1306_DISPLAY_LAYOUT_PROFILE, {
+    pages: [
+      {
+        id: 'main',
+        name: 'Main',
+        order: 0,
+        widgets: [
+          {
+            id: 'metric',
+            type: 'text',
+            text: '{{dev.12.temperature}}',
+            bindingKind: 'metric',
+            metricNamespace: 'dev',
+            sourceDeviceId: 12,
+            metricId: 100,
+            refreshIntervalMs: 100,
+          },
+        ],
+      },
+    ],
+  })
+  const encoded = encodeDisplayLayout(SSD1306_DISPLAY_LAYOUT_PROFILE, layout)
+  const encodedWidget = (encoded.pages as Array<{ widgets: Array<{ refreshIntervalMs: number }> }>)[0].widgets[0]
+
+  assert.equal(layout.pages[0].widgets[0].refreshIntervalMs, DISPLAY_WIDGET_REFRESH_INTERVAL_MIN_MS)
+  assert.notEqual(layout.pages[0].widgets[0].refreshIntervalMs, DISPLAY_WIDGET_REFRESH_INTERVAL_DEFAULT_MS)
+  assert.equal(encodedWidget.refreshIntervalMs, DISPLAY_WIDGET_REFRESH_INTERVAL_MIN_MS)
 })
 
 test('validates bitmap payload length and encodes the shared layout shape', () => {

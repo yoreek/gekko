@@ -4,11 +4,17 @@ import type {
   DisplayBindingKind,
   DisplayBitmapWidget,
   DisplayLayoutDraft,
+  DisplayMetricNamespace,
   DisplayWidget,
   DisplayWidgetBase,
   DisplayWidgetType,
 } from './layout.ts'
 import type { DisplayLayoutProfile } from './profile.ts'
+
+export const DISPLAY_WIDGET_REFRESH_INTERVAL_DISABLED = 0
+export const DISPLAY_WIDGET_REFRESH_INTERVAL_DEFAULT_MS = 5000
+export const DISPLAY_WIDGET_REFRESH_INTERVAL_MIN_MS = 250
+export const DISPLAY_WIDGET_REFRESH_INTERVAL_MAX_MS = 60000
 
 export interface DisplayWidgetNormalizerOptions {
   readonly normalizeWidget?: (widget: DisplayWidget) => DisplayWidget
@@ -49,6 +55,25 @@ function normalizeBindingKind(value: unknown): DisplayBindingKind {
     default:
       return 'unbound'
   }
+}
+
+function normalizeMetricNamespace(value: unknown): DisplayMetricNamespace {
+  switch (value) {
+    case 'system':
+    case 'wifi':
+      return value
+    case 'dev':
+    case 'device':
+    default:
+      return 'dev'
+  }
+}
+
+function normalizeRefreshIntervalMs(value: unknown, fallback = DISPLAY_WIDGET_REFRESH_INTERVAL_DISABLED): number {
+  const normalized = clampInteger(value, fallback, DISPLAY_WIDGET_REFRESH_INTERVAL_DISABLED, DISPLAY_WIDGET_REFRESH_INTERVAL_MAX_MS)
+  return normalized === DISPLAY_WIDGET_REFRESH_INTERVAL_DISABLED
+    ? DISPLAY_WIDGET_REFRESH_INTERVAL_DISABLED
+    : Math.max(DISPLAY_WIDGET_REFRESH_INTERVAL_MIN_MS, normalized)
 }
 
 function normalizeBitmapFormat(profile: DisplayLayoutProfile, value: unknown): RasterImageFormat {
@@ -104,8 +129,10 @@ export function defaultDisplayWidget(
     width: type === 'bitmap' ? profile.defaultBitmapWidth : type === 'line' ? 16 : 24,
     height: type === 'bitmap' ? profile.defaultBitmapHeight : type === 'line' ? 1 : type === 'circle' ? 24 : 12,
     bindingKind: 'unbound',
+    metricNamespace: 'dev',
     sourceDeviceId: 0,
     metricId: 0,
+    refreshIntervalMs: DISPLAY_WIDGET_REFRESH_INTERVAL_DISABLED,
     text: type === 'text' ? profile.defaultText : '',
     fontSize: 1,
     strokeWidth: 1,
@@ -170,8 +197,10 @@ export function normalizeDisplayWidget(
     width: dimensions.width,
     height: dimensions.height,
     bindingKind: normalizeBindingKind(value.bindingKind),
+    metricNamespace: normalizeMetricNamespace(value.metricNamespace),
     sourceDeviceId: clampInteger(value.sourceDeviceId, typeDefaults.sourceDeviceId, 0, 0x7fffffff),
     metricId: clampInteger(value.metricId, typeDefaults.metricId, -0x7fffffff, 0x7fffffff),
+    refreshIntervalMs: normalizeRefreshIntervalMs(value.refreshIntervalMs, typeDefaults.refreshIntervalMs),
     text: normalizeText(profile, value.text),
     fontSize: clampInteger(value.fontSize, typeDefaults.fontSize, 1, 8),
     strokeWidth: clampInteger(value.strokeWidth, typeDefaults.strokeWidth, 1, 32),
@@ -181,6 +210,9 @@ export function normalizeDisplayWidget(
       inverted: Boolean((value.styleFlags as Record<string, unknown> | undefined)?.inverted ?? typeDefaults.styleFlags.inverted),
       wrap: Boolean((value.styleFlags as Record<string, unknown> | undefined)?.wrap ?? typeDefaults.styleFlags.wrap),
     },
+  }
+  if (baseWidget.metricNamespace !== 'dev') {
+    baseWidget.sourceDeviceId = 0
   }
   const widget = type === 'bitmap'
     ? {
@@ -273,8 +305,10 @@ export function encodeDisplayLayout(
         width: widget.width,
         height: widget.height,
         bindingKind: widget.bindingKind,
+        metricNamespace: widget.metricNamespace,
         sourceDeviceId: widget.sourceDeviceId,
         metricId: widget.metricId,
+        refreshIntervalMs: widget.refreshIntervalMs,
         text: widget.text,
         fontSize: widget.fontSize,
         strokeWidth: widget.strokeWidth,

@@ -1,9 +1,11 @@
 import type {
   DisplayBindingKind,
+  DisplayMetricNamespace,
   DisplayWidgetBase,
   DisplayWidgetStyleFlags,
   DisplayWidgetType,
 } from '../layout.ts'
+import { DISPLAY_WIDGET_REFRESH_INTERVAL_DISABLED } from '../layout-normalizer.ts'
 
 function createStyleFlags(type: DisplayWidgetType): DisplayWidgetStyleFlags {
   return {
@@ -36,8 +38,10 @@ function createBaseWidget(
     width: Math.max(1, width),
     height: Math.max(1, height),
     bindingKind: (overrides.bindingKind as DisplayBindingKind | undefined) ?? 'unbound',
+    metricNamespace: (overrides.metricNamespace as DisplayMetricNamespace | undefined) ?? 'dev',
     sourceDeviceId: normalizeInteger(overrides.sourceDeviceId, 0),
     metricId: normalizeInteger(overrides.metricId, 0),
+    refreshIntervalMs: normalizeInteger(overrides.refreshIntervalMs, DISPLAY_WIDGET_REFRESH_INTERVAL_DISABLED),
     text: normalizeText(overrides.text),
     fontSize: Math.max(1, normalizeInteger(overrides.fontSize, 1)),
     strokeWidth: Math.max(1, normalizeInteger(overrides.strokeWidth, 1)),

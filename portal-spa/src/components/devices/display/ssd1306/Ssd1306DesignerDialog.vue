@@ -151,6 +151,7 @@ import {
 } from '@/models/devices/ssd1306/layout'
 import type { DeviceRecord } from '@/api/contracts'
 import { ssd1306Display } from '@/models/devices/display/display'
+import { hasInvalidMetricPlaceholders } from '@/models/metrics/placeholders'
 
 type DesignerDraft = Record<string, unknown> & {
   name: string
@@ -266,6 +267,10 @@ function resetDraft(): void {
 
 function submit(): void {
   errorMessage.value = ''
+  if (draft.value.layout.pages.some(page => page.widgets.some(widget => widget.type === 'text' && hasInvalidMetricPlaceholders(widget.text)))) {
+    errorMessage.value = t('device.dialog.ssd1306Display.placeholderInvalid')
+    return
+  }
   if (selectedWidget.value === null) {
     emit('save', {
       ...draft.value,
@@ -342,7 +347,7 @@ function updateBitmapRenderLock(state: { widgetId: string | null; mode: 'drag' |
 
 function updateSelectedWidget(patch: Partial<Ssd1306Widget>): void {
   if (selectedWidget.value === null) {
-    console.log('[display-bitmap] designer update selected ignored: no widget', { patch })
+    console.debug('[display-bitmap] designer update selected ignored: no widget', { patch })
     return
   }
   logDisplayBitmap('designer update selected', {
@@ -406,7 +411,7 @@ function safeBase64Length(value: string): number {
 }
 
 function logDisplayBitmap(message: string, payload: Record<string, unknown>): void {
-  console.log(`[display-bitmap] ${message} ${JSON.stringify(payload)}`)
+  console.debug(`[display-bitmap] ${message} ${JSON.stringify(payload)}`)
 }
 
 function moveWidgetUp(widgetId: string): void {

@@ -25,16 +25,23 @@ export const selectOnFocus: Directive<HTMLElement> = {
       requestAnimationFrame(() => input.select())
     }
 
-    const handleMouseUp = (event: Event) => {
-      event.preventDefault()
-    }
-
     input.addEventListener('focus', handleFocus)
-    input.addEventListener('mouseup', handleMouseUp)
+    const shouldSuppressMouseUp = input.type !== 'number'
+    const handleMouseUp = shouldSuppressMouseUp
+      ? (event: Event) => {
+          event.preventDefault()
+        }
+      : null
+
+    if (handleMouseUp !== null) {
+      input.addEventListener('mouseup', handleMouseUp)
+    }
 
     ;(el as SelectOnFocusElement).__selectOnFocusCleanup__ = () => {
       input.removeEventListener('focus', handleFocus)
-      input.removeEventListener('mouseup', handleMouseUp)
+      if (handleMouseUp !== null) {
+        input.removeEventListener('mouseup', handleMouseUp)
+      }
     }
   },
   unmounted(el) {

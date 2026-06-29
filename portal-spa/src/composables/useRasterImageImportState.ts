@@ -164,5 +164,5 @@ function safeBase64Length(value: string): number {
 }
 
 function logDisplayBitmap(message: string, payload: Record<string, unknown>): void {
-  console.log(`[display-bitmap] ${message} ${JSON.stringify(payload)}`)
+  console.debug(`[display-bitmap] ${message} ${JSON.stringify(payload)}`)
 }

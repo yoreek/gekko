@@ -28,7 +28,6 @@ export interface DisplayLayoutProfile {
 
 export const DISPLAY_LAYOUT_WIDGET_TYPES: readonly DisplayWidgetType[] = [
   'text',
-  'icon',
   'bitmap',
   'rect',
   'line',

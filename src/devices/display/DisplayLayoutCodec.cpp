@@ -266,6 +266,55 @@ const char* bindingKindToString(const DisplayLayoutBindingKind kind) {
     return "unbound";
 }
 
+MetricNamespace normalizeMetricNamespace(const MetricNamespace ns) {
+    switch (ns) {
+    case MetricNamespace::Device:
+    case MetricNamespace::System:
+    case MetricNamespace::Wifi:
+        return ns;
+    }
+    return MetricNamespace::Device;
+}
+
+const char* metricNamespaceToString(const MetricNamespace ns) {
+    return metricNamespaceName(normalizeMetricNamespace(ns));
+}
+
+uint16_t normalizeRefreshIntervalMs(const uint32_t value) {
+    if (value == kDisplayLayoutRefreshIntervalDisabled) {
+        return kDisplayLayoutRefreshIntervalDisabled;
+    }
+    if (value < kDisplayLayoutRefreshIntervalMinMs) {
+        return kDisplayLayoutRefreshIntervalMinMs;
+    }
+    if (value > kDisplayLayoutRefreshIntervalMaxMs) {
+        return kDisplayLayoutRefreshIntervalMaxMs;
+    }
+    return static_cast<uint16_t>(value);
+}
+
+bool parseWidgetMetricNamespace(const JsonObjectConst& input, uint8_t& metricNamespace) {
+    const JsonVariantConst value = input["metricNamespace"];
+    if (value.isNull()) {
+        metricNamespace = static_cast<uint8_t>(MetricNamespace::Device);
+        return true;
+    }
+    if (value.is<uint8_t>() || value.is<int>() || value.is<unsigned int>()) {
+        const int numeric = value.as<int>();
+        if (numeric < static_cast<int>(MetricNamespace::Device) || numeric > static_cast<int>(MetricNamespace::Wifi)) {
+            return false;
+        }
+        metricNamespace = static_cast<uint8_t>(numeric);
+        return true;
+    }
+    MetricNamespace parsed{};
+    if (!parseMetricNamespace(value.as<const char*>(), parsed)) {
+        return false;
+    }
+    metricNamespace = static_cast<uint8_t>(parsed);
+    return true;
+}
+
 bool parseBindingKind(const JsonObjectConst& input, uint8_t& bindingKind) {
     const JsonVariantConst value = input["bindingKind"];
     if (value.isNull()) {
@@ -396,12 +445,17 @@ bool parseWidget(const JsonObjectConst& widgetJson, DisplayLayoutWidgetV1& widge
         error = "display widget binding kind is invalid";
         return false;
     }
+    if (!parseWidgetMetricNamespace(widgetJson, widget.metricNamespace)) {
+        error = "display widget metric namespace is invalid";
+        return false;
+    }
     widget.x = widgetJson["x"] | 0U;
     widget.y = widgetJson["y"] | 0U;
     widget.width = widgetJson["width"] | 1U;
     widget.height = widgetJson["height"] | 1U;
     widget.sourceDeviceId = widgetJson["sourceDeviceId"] | 0UL;
     widget.metricId = widgetJson["metricId"] | 0L;
+    widget.refreshIntervalMs = normalizeRefreshIntervalMs(widgetJson["refreshIntervalMs"] | 0UL);
     widget.fontSize = widgetJson["fontSize"] | 1U;
     widget.strokeWidth = widgetJson["strokeWidth"] | 1U;
     widget.autoSize = readBool(widgetJson["autoSize"], false) ? 1U : 0U;
@@ -440,6 +494,17 @@ bool validateWidget(const DisplayLayoutWidgetV1& widget) {
         widget.bindingKind != static_cast<uint8_t>(DisplayLayoutBindingKind::ConstantText)) {
         return false;
     }
+    const MetricNamespace metricNamespace = normalizeMetricNamespace(static_cast<MetricNamespace>(widget.metricNamespace));
+    if (widget.metricNamespace != static_cast<uint8_t>(metricNamespace)) {
+        return false;
+    }
+    if (metricNamespace != MetricNamespace::Device && widget.sourceDeviceId != 0U) {
+        return false;
+    }
+    if (widget.refreshIntervalMs != kDisplayLayoutRefreshIntervalDisabled &&
+        (widget.refreshIntervalMs < kDisplayLayoutRefreshIntervalMinMs || widget.refreshIntervalMs > kDisplayLayoutRefreshIntervalMaxMs)) {
+        return false;
+    }
     if (widget.width == 0U || widget.height == 0U) {
         return false;
     }
@@ -465,7 +530,8 @@ bool validateWidget(const DisplayLayoutWidgetV1& widget) {
 }
 
 bool validateLayout(const DisplayLayoutRecordV1& layout) {
-    if (layout.recordVersion != 1U || layout.schemaVersion != kDisplayLayoutSchemaVersion) {
+    if ((layout.recordVersion != 1U && layout.recordVersion != 2U && layout.recordVersion != kDisplayLayoutRecordVersion) ||
+        layout.schemaVersion != kDisplayLayoutSchemaVersion) {
         return false;
     }
     if (layout.pages.size() > kDisplayLayoutMaxPages) {
@@ -494,7 +560,7 @@ bool validateLayout(const DisplayLayoutRecordV1& layout) {
 }
 
 size_t estimateWidgetSize(const DisplayLayoutWidgetV1& widget) {
-    return sizeof(DisplayLayoutBinaryWidgetV1) + widget.bitmapData.size();
+    return sizeof(DisplayLayoutBinaryWidgetV3) + widget.bitmapData.size();
 }
 
 void normalizePageOrder(DisplayLayoutRecordV1& layout) {
@@ -528,12 +594,14 @@ void writeDisplayLayoutJson(const DisplayLayoutRecordV1& layout, JsonObject outp
             widgetJson["type"] = widgetTypeToString(static_cast<DisplayLayoutWidgetType>(widget.type));
             widgetJson["id"] = widget.id;
             widgetJson["bindingKind"] = bindingKindToString(static_cast<DisplayLayoutBindingKind>(widget.bindingKind));
+            widgetJson["metricNamespace"] = metricNamespaceToString(static_cast<MetricNamespace>(widget.metricNamespace));
             widgetJson["x"] = widget.x;
             widgetJson["y"] = widget.y;
             widgetJson["width"] = widget.width;
             widgetJson["height"] = widget.height;
             widgetJson["sourceDeviceId"] = widget.sourceDeviceId;
             widgetJson["metricId"] = widget.metricId;
+            widgetJson["refreshIntervalMs"] = widget.refreshIntervalMs;
             widgetJson["fontSize"] = widget.fontSize;
             widgetJson["strokeWidth"] = widget.strokeWidth;
             widgetJson["autoSize"] = widget.autoSize != 0U;
@@ -553,7 +621,7 @@ void writeDisplayLayoutJson(const DisplayLayoutRecordV1& layout, JsonObject outp
 bool parseDisplayLayoutJson(const JsonObjectConst& input, DisplayLayoutRecordV1& layout) {
     layout = {};
     layout.deviceId = 0;
-    layout.recordVersion = 1;
+    layout.recordVersion = kDisplayLayoutRecordVersion;
     layout.schemaVersion = input["schemaVersion"] | kDisplayLayoutSchemaVersion;
     const char* activePageId = input["activePageId"] | nullptr;
     const bool hasActivePageIndex = !input["activePageIndex"].isNull();
@@ -647,7 +715,7 @@ bool encodeDisplayLayoutBinary(const DisplayLayoutRecordV1& layout, std::vector<
     blob.reserve(estimatedSize);
 
     DisplayLayoutBinaryHeaderV1 header{};
-    header.recordVersion = layout.recordVersion;
+    header.recordVersion = kDisplayLayoutRecordVersion;
     header.deviceId = layout.deviceId;
     header.schemaVersion = layout.schemaVersion;
     header.activePageIndex = layout.activePageIndex;
@@ -670,18 +738,20 @@ bool encodeDisplayLayoutBinary(const DisplayLayoutRecordV1& layout, std::vector<
             return false;
         }
         for (const DisplayLayoutWidgetV1& widget : page.widgets) {
-            DisplayLayoutBinaryWidgetV1 binaryWidget{};
+            DisplayLayoutBinaryWidgetV3 binaryWidget{};
             if (!copyText(binaryWidget.id, sizeof(binaryWidget.id), widget.id)) {
                 return false;
             }
             binaryWidget.type = widget.type;
             binaryWidget.bindingKind = widget.bindingKind;
+            binaryWidget.metricNamespace = widget.metricNamespace;
             binaryWidget.x = widget.x;
             binaryWidget.y = widget.y;
             binaryWidget.width = widget.width;
             binaryWidget.height = widget.height;
             binaryWidget.sourceDeviceId = widget.sourceDeviceId;
             binaryWidget.metricId = widget.metricId;
+            binaryWidget.refreshIntervalMs = widget.refreshIntervalMs;
             binaryWidget.fontSize = widget.fontSize;
             binaryWidget.strokeWidth = widget.strokeWidth;
             binaryWidget.autoSize = widget.autoSize;
@@ -714,7 +784,8 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
     if (!readBinary(data, size, offset, header)) {
         return false;
     }
-    if (header.recordVersion != 1U || header.schemaVersion != kDisplayLayoutSchemaVersion) {
+    if ((header.recordVersion != 1U && header.recordVersion != 2U && header.recordVersion != kDisplayLayoutRecordVersion) ||
+        header.schemaVersion != kDisplayLayoutSchemaVersion) {
         return false;
     }
     if (header.pageCount == 0U || header.pageCount > kDisplayLayoutMaxPages) {
@@ -748,9 +819,67 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
         page.order = pageHeader.order;
         page.widgets.reserve(pageHeader.widgetCount);
         for (uint8_t widgetIndex = 0; widgetIndex < pageHeader.widgetCount; ++widgetIndex) {
-            DisplayLayoutBinaryWidgetV1 binaryWidget{};
-            if (!readBinary(data, size, offset, binaryWidget)) {
-                return false;
+            DisplayLayoutBinaryWidgetV3 binaryWidget{};
+            if (header.recordVersion == 1U) {
+                DisplayLayoutBinaryWidgetV1 legacyWidget{};
+                if (!readBinary(data, size, offset, legacyWidget)) {
+                    return false;
+                }
+                if (!copyText(binaryWidget.id, sizeof(binaryWidget.id), legacyWidget.id)) {
+                    return false;
+                }
+                binaryWidget.type = legacyWidget.type;
+                binaryWidget.bindingKind = legacyWidget.bindingKind;
+                binaryWidget.metricNamespace = static_cast<uint8_t>(MetricNamespace::Device);
+                binaryWidget.x = legacyWidget.x;
+                binaryWidget.y = legacyWidget.y;
+                binaryWidget.width = legacyWidget.width;
+                binaryWidget.height = legacyWidget.height;
+                binaryWidget.sourceDeviceId = legacyWidget.sourceDeviceId;
+                binaryWidget.metricId = legacyWidget.metricId;
+                binaryWidget.refreshIntervalMs = kDisplayLayoutRefreshIntervalDisabled;
+                binaryWidget.fontSize = legacyWidget.fontSize;
+                binaryWidget.strokeWidth = legacyWidget.strokeWidth;
+                binaryWidget.autoSize = legacyWidget.autoSize;
+                binaryWidget.styleFlags = legacyWidget.styleFlags;
+                binaryWidget.bitmapFormat = legacyWidget.bitmapFormat;
+                binaryWidget.keepAspectRatio = legacyWidget.keepAspectRatio;
+                binaryWidget.bitmapDataLength = legacyWidget.bitmapDataLength;
+                if (!copyText(binaryWidget.text, sizeof(binaryWidget.text), legacyWidget.text)) {
+                    return false;
+                }
+            } else if (header.recordVersion == 2U) {
+                DisplayLayoutBinaryWidgetV2 legacyWidget{};
+                if (!readBinary(data, size, offset, legacyWidget)) {
+                    return false;
+                }
+                if (!copyText(binaryWidget.id, sizeof(binaryWidget.id), legacyWidget.id)) {
+                    return false;
+                }
+                binaryWidget.type = legacyWidget.type;
+                binaryWidget.bindingKind = legacyWidget.bindingKind;
+                binaryWidget.metricNamespace = legacyWidget.metricNamespace;
+                binaryWidget.x = legacyWidget.x;
+                binaryWidget.y = legacyWidget.y;
+                binaryWidget.width = legacyWidget.width;
+                binaryWidget.height = legacyWidget.height;
+                binaryWidget.sourceDeviceId = legacyWidget.sourceDeviceId;
+                binaryWidget.metricId = legacyWidget.metricId;
+                binaryWidget.refreshIntervalMs = kDisplayLayoutRefreshIntervalDisabled;
+                binaryWidget.fontSize = legacyWidget.fontSize;
+                binaryWidget.strokeWidth = legacyWidget.strokeWidth;
+                binaryWidget.autoSize = legacyWidget.autoSize;
+                binaryWidget.styleFlags = legacyWidget.styleFlags;
+                binaryWidget.bitmapFormat = legacyWidget.bitmapFormat;
+                binaryWidget.keepAspectRatio = legacyWidget.keepAspectRatio;
+                binaryWidget.bitmapDataLength = legacyWidget.bitmapDataLength;
+                if (!copyText(binaryWidget.text, sizeof(binaryWidget.text), legacyWidget.text)) {
+                    return false;
+                }
+            } else {
+                if (!readBinary(data, size, offset, binaryWidget)) {
+                    return false;
+                }
             }
             if (binaryWidget.bitmapDataLength > kDisplayLayoutBitmapDataCapacity) {
                 return false;
@@ -761,12 +890,14 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
             }
             widget.type = binaryWidget.type;
             widget.bindingKind = binaryWidget.bindingKind;
+            widget.metricNamespace = binaryWidget.metricNamespace;
             widget.x = binaryWidget.x;
             widget.y = binaryWidget.y;
             widget.width = binaryWidget.width;
             widget.height = binaryWidget.height;
             widget.sourceDeviceId = binaryWidget.sourceDeviceId;
             widget.metricId = binaryWidget.metricId;
+            widget.refreshIntervalMs = binaryWidget.refreshIntervalMs;
             widget.fontSize = binaryWidget.fontSize;
             widget.strokeWidth = binaryWidget.strokeWidth;
             widget.autoSize = binaryWidget.autoSize;

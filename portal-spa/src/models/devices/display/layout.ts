@@ -1,8 +1,9 @@
 import type { RasterImageFormat } from '../../../raster/raster-image-types.ts'
 
-export type DisplayWidgetType = 'text' | 'icon' | 'bitmap' | 'rect' | 'line' | 'circle' | 'ellipse'
+export type DisplayWidgetType = 'text' | 'bitmap' | 'rect' | 'line' | 'circle' | 'ellipse'
 
 export type DisplayBindingKind = 'unbound' | 'device' | 'metric' | 'constant_text'
+export type DisplayMetricNamespace = 'dev' | 'system' | 'wifi'
 
 export interface DisplayWidgetStyleFlags {
   filled: boolean
@@ -18,8 +19,10 @@ export interface DisplayWidgetBase {
   width: number
   height: number
   bindingKind: DisplayBindingKind
+  metricNamespace: DisplayMetricNamespace
   sourceDeviceId: number
   metricId: number
+  refreshIntervalMs: number
   text: string
   fontSize: number
   strokeWidth: number
@@ -36,10 +39,6 @@ export interface DisplayBitmapWidget extends DisplayWidgetBase {
 
 export interface DisplayTextWidget extends DisplayWidgetBase {
   type: 'text'
-}
-
-export interface DisplayIconWidget extends DisplayWidgetBase {
-  type: 'icon'
 }
 
 export interface DisplayRectWidget extends DisplayWidgetBase {
@@ -60,7 +59,6 @@ export interface DisplayEllipseWidget extends DisplayWidgetBase {
 
 export type DisplayWidget =
   | DisplayTextWidget
-  | DisplayIconWidget
   | DisplayBitmapWidget
   | DisplayRectWidget
   | DisplayLineWidget
@@ -88,11 +86,11 @@ export const DISPLAY_LAYOUT_PAGE_ID_CAPACITY = 16
 
 export type Ssd1306WidgetType = DisplayWidgetType
 export type Ssd1306BindingKind = DisplayBindingKind
+export type Ssd1306MetricNamespace = DisplayMetricNamespace
 export type Ssd1306WidgetStyleFlags = DisplayWidgetStyleFlags
 export type Ssd1306WidgetBase = DisplayWidgetBase
 export type Ssd1306BitmapWidget = DisplayBitmapWidget
 export type Ssd1306TextWidget = DisplayTextWidget
-export type Ssd1306IconWidget = DisplayIconWidget
 export type Ssd1306RectWidget = DisplayRectWidget
 export type Ssd1306LineWidget = DisplayLineWidget
 export type Ssd1306CircleWidget = DisplayCircleWidget

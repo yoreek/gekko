@@ -73,20 +73,24 @@ The designer SHALL support text, icon, rectangle, line, circle, and ellipse widg
 - **WHEN** the user saves the OLED layout
 - **THEN** the generated payload contains only supported widget types and omits unsupported editor-only fields
 
-### Requirement: Text widgets support bounded generic templates
-The designer SHALL let text widgets store literal text and a bounded generic value template while deferring device-specific placeholder catalogs to a later capability.
+### Requirement: Text widgets support structured metric placeholders
+The designer SHALL let text widgets store literal text and structured metric placeholders selected from a catalog of device, system, and wifi metrics.
 
 #### Scenario: Literal text is saved
 - **WHEN** the user enters text that contains no placeholder token
 - **THEN** the designer saves the text as a literal text widget value
 
-#### Scenario: Generic value template is saved
-- **WHEN** the user enters text containing `{value}` and selects a source binding
-- **THEN** the designer saves the template text together with `bindingKind`, `sourceDeviceId`, and `metricId`
+#### Scenario: Placeholder is inserted from catalog
+- **WHEN** the user selects a namespace, source, and metric from the placeholder picker
+- **THEN** the designer inserts the normalized placeholder string into the widget text
 
-#### Scenario: Template remains bounded
-- **WHEN** the user enters text longer than the OLED layout text capacity
-- **THEN** the designer prevents saving the invalid widget and shows a localized validation error
+#### Scenario: Placeholder remains editable when unavailable
+- **WHEN** the user types a placeholder that resolves to a missing device or unavailable metric
+- **THEN** the designer marks it unavailable but keeps the draft editable and saveable
+
+#### Scenario: Dynamic text exposes refresh interval
+- **WHEN** a text widget contains a structured placeholder
+- **THEN** the designer exposes a bounded refresh interval control for that widget
 
 ### Requirement: Designer generates the OLED layout payload
 The designer SHALL generate the OLED device `config.layout` payload used by the existing device command flow.
@@ -117,6 +121,21 @@ The designer SHALL preview OLED layout geometry without claiming full runtime re
 #### Scenario: Missing binding is visible
 - **WHEN** a text widget references a missing source device or metric
 - **THEN** the designer keeps the widget editable and marks the binding as unavailable in the inspector
+
+### Requirement: Designer provides a structured placeholder picker
+The designer SHALL provide a picker for placeholder namespaces, source devices, and metrics so users can build placeholders without memorizing raw identifiers.
+
+#### Scenario: Picker loads catalog entries
+- **WHEN** the designer opens a text widget inspector
+- **THEN** it loads the placeholder catalog and shows the available namespaces and metrics for selection
+
+#### Scenario: Picker builds normalized placeholders
+- **WHEN** the user selects a device and metric in the picker
+- **THEN** the designer generates the normalized placeholder string for insertion into the text field
+
+#### Scenario: Picker keeps missing metrics visible
+- **WHEN** a catalog entry is currently unavailable
+- **THEN** the picker still shows the entry and indicates that it is unavailable instead of removing it
 
 #### Scenario: Numeric editing remains available
 - **WHEN** pointer drag or resize is unavailable or imprecise

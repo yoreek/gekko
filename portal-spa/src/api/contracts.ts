@@ -145,6 +145,46 @@ export interface DeviceDetailResponse<TRecord extends DeviceRecord = DeviceRecor
   success?: boolean
 }
 
+export type MetricNamespace = 'dev' | 'system' | 'wifi'
+
+export type MetricValueType = 'text' | 'status' | 'temperature' | 'switch_state' | 'time'
+
+export interface MetricPlaceholderDescriptor {
+  placeholder: string
+  namespace: MetricNamespace
+  sourceId: number
+  sourceLabel?: string
+  metricId: number
+  metricKey: string
+  label: string
+  valueType: MetricValueType
+  available: boolean
+  preview?: string
+}
+
+export interface MetricPlaceholderCatalogResponse {
+  registryRevision: number
+  placeholders: MetricPlaceholderDescriptor[]
+  success?: boolean
+}
+
+export interface MetricValueDescriptor {
+  namespace: MetricNamespace
+  sourceId: number
+  sourceLabel?: string
+  metricId: number
+  metricKey: string
+  valueType: MetricValueType
+  available: boolean
+  value: string
+}
+
+export interface MetricValuesResponse {
+  registryRevision: number
+  values: MetricValueDescriptor[]
+  success?: boolean
+}
+
 export type DashboardLayoutWidgetRecord = [deviceId: number, x: number, y: number, w: number, h: number]
 
 export interface DashboardLayoutPanelRecord {

@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <memory>
 
+class TwoWire;
+
 namespace ewfm {
 
 class II2cBusDriver {
@@ -27,6 +29,9 @@ public:
     virtual int available() = 0;
     virtual int read() = 0;
     virtual void flush() = 0;
+    virtual TwoWire* nativeWire() const {
+        return nullptr;
+    }
 };
 
 II2cBusDriver& defaultArduinoI2cBusDriver();

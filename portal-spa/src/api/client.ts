@@ -5,6 +5,8 @@ import type {
   DashboardLayoutResponse,
   DeviceCreateRequest,
   DeviceMutationResponse,
+  MetricPlaceholderCatalogResponse,
+  MetricValuesResponse,
   DeviceSetupTransferResponse,
   DeviceRegistryResponse,
   OtaStatusResponse,
@@ -24,6 +26,8 @@ import {
   mockDeleteDevice,
   mockFetchDevice,
   mockFetchDevices,
+  mockFetchMetricPlaceholders,
+  mockFetchMetricValues,
   mockFetchOtaStatus,
   mockFetchWifiScan,
   mockFetchWifiStatus,
@@ -89,6 +93,20 @@ export function fetchDevices(): Promise<DeviceRegistryResponse> {
     return Promise.resolve(mockFetchDevices())
   }
   return requestJson<DeviceRegistryResponse>('/api/devices')
+}
+
+export function fetchMetricPlaceholders(): Promise<MetricPlaceholderCatalogResponse> {
+  if (useMockTransport()) {
+    return Promise.resolve(mockFetchMetricPlaceholders())
+  }
+  return requestJson<MetricPlaceholderCatalogResponse>('/api/metrics/placeholders')
+}
+
+export function fetchMetricValues(): Promise<MetricValuesResponse> {
+  if (useMockTransport()) {
+    return Promise.resolve(mockFetchMetricValues())
+  }
+  return requestJson<MetricValuesResponse>('/api/metrics/values')
 }
 
 export function fetchDevice(deviceId: number): Promise<DeviceDetailResponse> {

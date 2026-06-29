@@ -7,7 +7,6 @@
       :aria-label="previewLabel"
     >
     </canvas>
-    <v-icon v-else-if="widget.type === 'icon'" :icon="iconName" :size="iconSize" />
     <canvas
       v-else-if="widget.type === 'bitmap'"
       ref="bitmapCanvasRef"
@@ -30,7 +29,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { drawClassicFontText } from '@/components/devices/display/ssd1306/classic-font'
-import { resolveSsd1306IconSize, resolveSsd1306TextRenderScale, resolveSsd1306WidgetBitmapSize } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
+import { resolveSsd1306TextRenderScale, resolveSsd1306WidgetBitmapSize } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
 import type { BaseDisplay } from '@/models/devices/display/display'
 import type { DisplayBitmapWidget } from '@/models/devices/display/layout'
 import type { Ssd1306Widget } from '@/models/devices/ssd1306/layout'
@@ -40,6 +39,7 @@ const props = defineProps<{
   display: BaseDisplay<'mono1'>
   displayScale?: number
   freezeRender?: boolean
+  previewText?: string
 }>()
 
 const { t } = useI18n()
@@ -50,12 +50,12 @@ const shapeCanvasRef = ref<HTMLCanvasElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 let drawFrame = 0
 
-const iconName = computed(() => (props.widget.text.trim().length > 0 ? props.widget.text : 'oled-icon'))
-const displayScale = computed(() => Math.max(1, props.displayScale ?? 1))
-const iconSize = computed(() => resolveSsd1306IconSize(displayScale.value))
 const isShapeWidget = computed(() => props.widget.type === 'rect' || props.widget.type === 'line' || props.widget.type === 'circle' || props.widget.type === 'ellipse')
 const isBitmapWidget = computed(() => props.widget.type === 'bitmap')
-const previewLabel = computed(() => props.widget.text.trim().length > 0 ? props.widget.text : t('device.dialog.ssd1306Display.widgetEmpty'))
+const previewLabel = computed(() => {
+  const text = props.previewText ?? props.widget.text
+  return text.trim().length > 0 ? text : t('device.dialog.ssd1306Display.widgetEmpty')
+})
 const renderScale = computed(() => resolveSsd1306TextRenderScale(props.widget.fontSize, 1))
 const isRenderFrozen = computed(() => Boolean(props.freezeRender))
 const oledOnColor = 'rgb(255 255 255)'
@@ -153,7 +153,7 @@ function resolveMono1OnBounds(bitmapData: string, width: number, height: number)
 }
 
 function logDisplayBitmap(message: string, payload: Record<string, unknown>): void {
-  console.log(`[display-bitmap] ${message} ${JSON.stringify(payload)}`)
+  console.debug(`[display-bitmap] ${message} ${JSON.stringify(payload)}`)
 }
 
 function drawShapeCanvas(): void {

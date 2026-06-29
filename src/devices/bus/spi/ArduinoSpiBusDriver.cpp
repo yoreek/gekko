@@ -89,6 +89,10 @@ public:
         return length;
     }
 
+    SPIClass* nativeSpi() const override {
+        return bus_.get();
+    }
+
 private:
     std::unique_ptr<SPIClass> bus_{};
     std::unique_ptr<SPISettings> settings_{};

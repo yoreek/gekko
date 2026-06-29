@@ -19,7 +19,6 @@ import {
 import {
   resolveSsd1306CanvasBitmapSize,
   resolveSsd1306CanvasStyle,
-  resolveSsd1306IconSize,
   resolveSsd1306TextRenderScale,
   resolveSsd1306WidgetBitmapSize,
   resolveSsd1306WidgetDuplicatePosition,
@@ -645,12 +644,6 @@ test('OLED display layout math keeps text widget bitmap in OLED logical pixels',
     bitmapWidth: 24,
     bitmapHeight: 8,
   })
-})
-
-test('OLED display layout math resolves icon scale from a single display scale', () => {
-  assert.equal(resolveSsd1306IconSize(1), 18)
-  assert.equal(resolveSsd1306IconSize(2), 36)
-  assert.equal(resolveSsd1306IconSize(0), 18)
 })
 
 test('OLED display layout math clamps widget spawn position inside the display', () => {

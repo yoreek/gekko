@@ -153,22 +153,30 @@ DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
         if (configIt == loadedConfigBlobs.end()) {
             return {DeviceError::MissingRecord, "missing device config"};
         }
-        const DeviceValidationResult configResult = validateRecord(record, *descriptor, configIt->second);
+        DeviceRegistryEntry runtimeRecord = record;
+        const bool configMigrated = runtimeRecord.header.configVersion < descriptor->currentConfigVersion;
+        if (configMigrated) {
+            runtimeRecord.header.configVersion = descriptor->currentConfigVersion;
+        }
+        const DeviceValidationResult configResult = validateRecord(runtimeRecord, *descriptor, configIt->second);
         if (!configResult.ok()) {
             return configResult;
         }
-        const DeviceValidationResult runtimeResult = reloadRuntimeFor(record, configIt->second);
+        if (configMigrated) {
+            persistence_.markConfigDirty(runtimeRecord.header.deviceId, now);
+        }
+        const DeviceValidationResult runtimeResult = reloadRuntimeFor(runtimeRecord, configIt->second);
         if (!runtimeResult.ok()) {
             return runtimeResult;
         }
-        syncRuntimeDependencyLinks(record.header.deviceId);
-        if (auto* runtime = this->runtime(record.header.deviceId); runtime != nullptr) {
+        syncRuntimeDependencyLinks(runtimeRecord.header.deviceId);
+        if (auto* runtime = this->runtime(runtimeRecord.header.deviceId); runtime != nullptr) {
             if (runtime->enabled()) {
                 runtime->begin(now);
             } else {
                 runtime->requestDisable();
             }
-            eventReporter_.trackRuntimeStatus(record.header.deviceId, runtime->status());
+            eventReporter_.trackRuntimeStatus(runtimeRecord.header.deviceId, runtime->status());
         }
     }
 

@@ -33,6 +33,7 @@ App::App()
       retainedStateStore_(retainedStateStorage_), deviceScopedDataStore_(displayLayoutStorage_), displayLayoutStore_(displayLayoutStorage_),
       deviceRegistry_(deviceRegistryStore_, deviceTypeRegistry_, deviceIdSource_, &retainedStateStore_, &deviceScopedDataStore_,
                       &deviceEventDispatcher_),
+      displayRenderCoordinator_(deviceRegistry_, wifiDriver_),
       dashboardLayoutStore_(dashboardLayoutStorage_, &deviceRegistry_),
       portalServer_(wifiManager_, wifiDriver_, &deviceRegistry_, &deviceEventDispatcher_, &dashboardLayoutStore_) {}
 
@@ -176,6 +177,7 @@ void App::tickDeviceCadence(uint32_t now) {
     }
 
     deviceRegistry_.tick(now);
+    displayRenderCoordinator_.tick(now);
     if (due100ms) {
         deviceEventDispatcher_.tick100ms(now);
     }

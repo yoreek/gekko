@@ -26,10 +26,12 @@ DeviceValidationResult DisplayDeviceBase::loadPersistedState(DeviceScopedDataSto
     if (!result.ok()) {
         if (result.error == DeviceError::MissingRecord) {
             layout_ = {};
+            invalidateDisplayRender();
         }
         return result;
     }
     layout_ = layout;
+    invalidateDisplayRender();
     return {};
 }
 
@@ -45,6 +47,7 @@ DeviceValidationResult DisplayDeviceBase::savePersistedState(DeviceScopedDataSto
 DeviceValidationResult DisplayDeviceBase::clearPersistedState(DeviceScopedDataStore& store) {
     DisplayLayoutStore layoutStore(store);
     layout_ = {};
+    invalidateDisplayRender();
     (void)layoutStore.clearDevice(deviceId());
     return {};
 }
@@ -52,6 +55,7 @@ DeviceValidationResult DisplayDeviceBase::clearPersistedState(DeviceScopedDataSt
 DeviceValidationResult DisplayDeviceBase::applyPersistedStateUpdate(const uint8_t* data, size_t size) {
     if (data == nullptr || size == 0U) {
         layout_ = {};
+        invalidateDisplayRender();
         return {};
     }
 
@@ -64,6 +68,7 @@ DeviceValidationResult DisplayDeviceBase::applyPersistedStateUpdate(const uint8_
     }
     layout.deviceId = deviceId();
     layout_ = layout;
+    invalidateDisplayRender();
     return {};
 }
 
@@ -83,6 +88,62 @@ const DisplayLayoutRecordV1& DisplayDeviceBase::layout() const {
 
 void DisplayDeviceBase::setLayout(const DisplayLayoutRecordV1& layout) {
     layout_ = layout;
+    invalidateDisplayRender();
+}
+
+DisplayDeviceBase* DisplayDeviceBase::displayRuntime() {
+    return this;
+}
+
+const DisplayDeviceBase* DisplayDeviceBase::displayRuntime() const {
+    return this;
+}
+
+bool DisplayDeviceBase::renderDisplay(const MetricValueResolver& resolver, const uint32_t now) {
+    if (status_ != DeviceStatus::Ready) {
+        return false;
+    }
+    IDisplayRenderSurface* surface = renderSurface();
+    if (surface == nullptr) {
+        return false;
+    }
+    if (layout_.pages.empty()) {
+        if (emptyLayoutCleared_) {
+            return false;
+        }
+        surface->clear();
+        emptyLayoutCleared_ = true;
+        onDisplayFrameRendered({});
+        return true;
+    }
+    emptyLayoutCleared_ = false;
+    const DisplayLayoutRenderResult result = renderSession_.render(layout_, resolver, *surface, now);
+    if (result.rendered) {
+        onDisplayFrameRendered(result);
+    }
+    return result.rendered;
+}
+
+bool DisplayDeviceBase::initializeDisplayHardware(uint32_t now) {
+    (void)now;
+    return true;
+}
+
+void DisplayDeviceBase::releaseDisplayHardware(uint32_t now) {
+    (void)now;
+}
+
+IDisplayRenderSurface* DisplayDeviceBase::renderSurface() const {
+    return nullptr;
+}
+
+void DisplayDeviceBase::onDisplayFrameRendered(const DisplayLayoutRenderResult& result) {
+    (void)result;
+}
+
+void DisplayDeviceBase::invalidateDisplayRender() {
+    renderSession_.invalidate();
+    emptyLayoutCleared_ = false;
 }
 
 SM_STATE(DisplayDeviceBase::Idle) {
@@ -109,6 +170,11 @@ SM_STATE(DisplayDeviceBase::Starting) {
     if (reconfigureRequested_) {
         status_ = DeviceStatus::Reconfiguring;
         SM_GOTO(Reconfiguring);
+    }
+    if (!initializeDisplayHardware(uptime())) {
+        status_ = DeviceStatus::Faulted;
+        requestFault();
+        SM_GOTO(Faulted);
     }
     startRequested_ = false;
     status_ = DeviceStatus::Ready;
@@ -148,6 +214,7 @@ SM_STATE(DisplayDeviceBase::Disabled) {
         status_ = DeviceStatus::Reconfiguring;
         SM_GOTO(Reconfiguring);
     }
+    releaseDisplayHardware(uptime());
 }
 
 SM_STATE(DisplayDeviceBase::Faulted) {
@@ -160,10 +227,12 @@ SM_STATE(DisplayDeviceBase::Faulted) {
         status_ = DeviceStatus::Reconfiguring;
         SM_GOTO(Reconfiguring);
     }
+    releaseDisplayHardware(uptime());
 }
 
 SM_STATE(DisplayDeviceBase::Deleting) {
     status_ = DeviceStatus::Deleting;
+    releaseDisplayHardware(uptime());
     setDeleted();
 }
 

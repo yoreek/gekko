@@ -21,6 +21,7 @@ using DeviceRevision = uint32_t;
 struct OneWireRomAddress;
 class DeviceRetainedDataStore;
 class DeviceScopedDataStore;
+class DisplayDeviceBase;
 
 constexpr uint32_t kDeviceRegistrySchemaVersion = 1;
 constexpr uint16_t kDeviceRegistryIndexVersion = 2;
@@ -504,6 +505,12 @@ public:
         return nullptr;
     }
     virtual const ISwitchOutputRuntime* switchOutputRuntime() const {
+        return nullptr;
+    }
+    virtual DisplayDeviceBase* displayRuntime() {
+        return nullptr;
+    }
+    virtual const DisplayDeviceBase* displayRuntime() const {
         return nullptr;
     }
     virtual IDevicePersistedState* persistedStateRuntime() {

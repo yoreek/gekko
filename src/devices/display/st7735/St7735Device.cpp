@@ -1,5 +1,10 @@
 #include "devices/display/st7735/St7735Device.h"
 
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+#include <Adafruit_ST7735.h>
+#include <Arduino.h>
+#endif
+
 #include "devices/bus/spi/SpiBusDevice.h"
 
 #include <cstring>
@@ -9,8 +14,135 @@ namespace ewfm {
 
 namespace {
 constexpr DeviceTypeId kSt7735DeviceTypeId = 9;
-constexpr uint32_t kSt7735DeviceConfigVersion = 1;
+constexpr uint32_t kSt7735DeviceConfigVersion = 2;
 } // namespace
+
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+class St7735CanvasSurface final : public IDisplayRenderSurface {
+public:
+    explicit St7735CanvasSurface(::Adafruit_ST7735& display) : display_(display) {}
+
+    void clear() override {
+        display_.fillScreen(ST7735_BLACK);
+    }
+
+    void drawText(const DisplayLayoutWidgetV1& widget, const DisplayTextEvaluationResult& text) override {
+        if (widget.width == 0U || widget.height == 0U) {
+            return;
+        }
+        GFXcanvas1 canvas(widget.width, widget.height);
+        canvas.fillScreen(0);
+        canvas.setTextSize(widget.fontSize == 0U ? 1U : widget.fontSize);
+        canvas.setTextWrap((widget.styleFlags & 0x04U) != 0U);
+        canvas.setTextColor(1);
+        int16_t x1 = 0;
+        int16_t y1 = 0;
+        uint16_t boundsWidth = 0;
+        uint16_t boundsHeight = 0;
+        canvas.getTextBounds(text.text, 0, 0, &x1, &y1, &boundsWidth, &boundsHeight);
+        canvas.setCursor(static_cast<int16_t>(-x1), static_cast<int16_t>(-y1));
+        canvas.print(text.text);
+        blit(widget, canvas.getBuffer());
+    }
+
+    void drawRect(const DisplayLayoutWidgetV1& widget) override {
+        drawBox(widget, [&](GFXcanvas1& canvas) { canvas.drawRect(0, 0, widget.width, widget.height, 1); });
+    }
+
+    void drawLine(const DisplayLayoutWidgetV1& widget) override {
+        drawBox(widget, [&](GFXcanvas1& canvas) {
+            const int16_t x2 = widget.width > 0U ? static_cast<int16_t>(widget.width - 1U) : 0;
+            const int16_t y2 = widget.height > 0U ? static_cast<int16_t>(widget.height - 1U) : 0;
+            canvas.drawLine(0, 0, x2, y2, 1);
+        });
+    }
+
+    void drawCircle(const DisplayLayoutWidgetV1& widget) override {
+        drawBox(widget, [&](GFXcanvas1& canvas) {
+            const int16_t radius = static_cast<int16_t>((widget.width < widget.height ? widget.width : widget.height) / 2U);
+            canvas.drawCircle(static_cast<int16_t>(widget.width / 2U), static_cast<int16_t>(widget.height / 2U), radius, 1);
+        });
+    }
+
+    void drawEllipse(const DisplayLayoutWidgetV1& widget) override {
+        drawBox(widget, [&](GFXcanvas1& canvas) {
+            const int16_t radiusX = static_cast<int16_t>(widget.width / 2U);
+            const int16_t radiusY = static_cast<int16_t>(widget.height / 2U);
+            canvas.drawEllipse(static_cast<int16_t>(widget.width / 2U), static_cast<int16_t>(widget.height / 2U), radiusX, radiusY, 1);
+        });
+    }
+
+    void drawBitmap(const DisplayLayoutWidgetV1& widget) override {
+        if (widget.width == 0U || widget.height == 0U || widget.bitmapData.empty()) {
+            return;
+        }
+        GFXcanvas1 canvas(widget.width, widget.height);
+        canvas.fillScreen(0);
+        const size_t pixelCount = static_cast<size_t>(widget.width) * static_cast<size_t>(widget.height);
+        switch (static_cast<DisplayLayoutBitmapFormat>(widget.bitmapFormat)) {
+        case DisplayLayoutBitmapFormat::Mono1: {
+            for (size_t index = 0U; index < pixelCount; ++index) {
+                const size_t byteIndex = index / 8U;
+                const uint8_t mask = static_cast<uint8_t>(0x80U >> (index % 8U));
+                if (byteIndex < widget.bitmapData.size() && (widget.bitmapData[byteIndex] & mask) != 0U) {
+                    const int16_t x = static_cast<int16_t>(index % widget.width);
+                    const int16_t y = static_cast<int16_t>(index / widget.width);
+                    canvas.drawPixel(x, y, 1);
+                }
+            }
+            break;
+        }
+        case DisplayLayoutBitmapFormat::Gray8: {
+            for (size_t index = 0U; index < pixelCount && index < widget.bitmapData.size(); ++index) {
+                if (widget.bitmapData[index] >= 128U) {
+                    const int16_t x = static_cast<int16_t>(index % widget.width);
+                    const int16_t y = static_cast<int16_t>(index / widget.width);
+                    canvas.drawPixel(x, y, 1);
+                }
+            }
+            break;
+        }
+        case DisplayLayoutBitmapFormat::Rgb565: {
+            for (size_t index = 0U; index < pixelCount; ++index) {
+                const size_t byteIndex = index * 2U;
+                if (byteIndex + 1U >= widget.bitmapData.size()) {
+                    break;
+                }
+                const uint16_t pixel = static_cast<uint16_t>(widget.bitmapData[byteIndex]) << 8U |
+                                       static_cast<uint16_t>(widget.bitmapData[byteIndex + 1U]);
+                if (pixel != 0U) {
+                    const int16_t x = static_cast<int16_t>(index % widget.width);
+                    const int16_t y = static_cast<int16_t>(index / widget.width);
+                    canvas.drawPixel(x, y, 1);
+                }
+            }
+            break;
+        }
+        }
+        blit(widget, canvas.getBuffer());
+    }
+
+private:
+    template <typename DrawFn> void drawBox(const DisplayLayoutWidgetV1& widget, DrawFn&& drawFn) {
+        if (widget.width == 0U || widget.height == 0U) {
+            return;
+        }
+        GFXcanvas1 canvas(widget.width, widget.height);
+        canvas.fillScreen(0);
+        drawFn(canvas);
+        blit(widget, canvas.getBuffer());
+    }
+
+    void blit(const DisplayLayoutWidgetV1& widget, const uint8_t* buffer) {
+        if (buffer == nullptr) {
+            return;
+        }
+        display_.drawBitmap(widget.x, widget.y, buffer, widget.width, widget.height, ST7735_WHITE);
+    }
+
+    ::Adafruit_ST7735& display_;
+};
+#endif
 
 static_assert(std::is_trivially_copyable<St7735DeviceConfigV1>::value, "St7735DeviceConfigV1 must be POD");
 static_assert(sizeof(St7735DeviceConfigV1::kMagic) - 1U + sizeof(St7735DeviceConfigV1) <= kMaxDeviceConfigBytes,
@@ -21,6 +153,8 @@ St7735Device::St7735Device(const DeviceRegistryEntry& record, const DeviceConfig
     bindDeviceIdentity(record, configBlob);
     (void)decodeSt7735DeviceConfig(configBlob.data(), configBlob.size(), config_);
 }
+
+St7735Device::~St7735Device() = default;
 
 const St7735DeviceConfigV1& St7735Device::config() const {
     return config_;
@@ -61,6 +195,7 @@ DeviceConfigUpdatePlan St7735Device::planConfigUpdate(const DeviceConfigBlob& co
     }
     DeviceConfigUpdatePlan plan{};
     plan.endOldConfig = config.spiBusDeviceId != config_.spiBusDeviceId || config.chipSelectPin != config_.chipSelectPin ||
+                        config.dcPin != config_.dcPin || config.resetPin != config_.resetPin ||
                         config.layoutWidth != config_.layoutWidth || config.layoutHeight != config_.layoutHeight;
     plan.resetStateMachine = plan.endOldConfig;
     return plan;
@@ -78,6 +213,65 @@ bool St7735Device::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now)
 
 void St7735Device::writeDisplayConfigJson(JsonObject output) const {
     config_.writeJson(output);
+}
+
+bool St7735Device::initializeDisplayHardware(uint32_t now) {
+    (void)now;
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    SpiBusDevice* bus = static_cast<SpiBusDevice*>(dependencyRuntime(DeviceDependencyRole::SpiBus));
+    if (bus == nullptr) {
+        return false;
+    }
+    SpiBusDevice::DependencyTransaction transaction = bus->beginDependencyTransaction();
+    if (!transaction) {
+        return false;
+    }
+    ISpiBusDriver* driver = transaction.driver();
+    SPIClass* spi = driver != nullptr ? driver->nativeSpi() : nullptr;
+    if (spi == nullptr) {
+        return false;
+    }
+    std::unique_ptr<::Adafruit_ST7735> display(
+        new ::Adafruit_ST7735(spi, static_cast<int8_t>(config_.chipSelectPin), static_cast<int8_t>(config_.dcPin), config_.resetPin));
+    if (display == nullptr) {
+        return false;
+    }
+    display->initR(INITR_BLACKTAB);
+    display->setRotation(0);
+    display->fillScreen(ST7735_BLACK);
+    surface_ = new St7735CanvasSurface(*display);
+    display_ = display.release();
+    return true;
+#else
+    return true;
+#endif
+}
+
+void St7735Device::releaseDisplayHardware(uint32_t now) {
+    (void)now;
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    if (surface_ != nullptr) {
+        delete surface_;
+        surface_ = nullptr;
+    }
+    if (display_ != nullptr) {
+        display_->fillScreen(ST7735_BLACK);
+        delete display_;
+        display_ = nullptr;
+    }
+#endif
+}
+
+IDisplayRenderSurface* St7735Device::renderSurface() const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return surface_;
+#else
+    return nullptr;
+#endif
+}
+
+void St7735Device::onDisplayFrameRendered(const DisplayLayoutRenderResult& result) {
+    (void)result;
 }
 
 DeviceTypeDescriptor St7735Device::descriptor() {

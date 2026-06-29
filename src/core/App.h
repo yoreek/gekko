@@ -4,6 +4,7 @@
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/core/DeviceTypes.h"
 #include "devices/display/DisplayLayoutStore.h"
+#include "devices/display/DisplayRenderCoordinator.h"
 #include "devices/registry/DeviceRegistry.h"
 #include "devices/registry/DeviceRegistryStore.h"
 #include "devices/registry/DeviceRetainedDataStore.h"
@@ -51,6 +52,7 @@ private:
     SequentialDeviceIdSource deviceIdSource_;
 #endif
     DeviceRegistry deviceRegistry_;
+    DisplayRenderCoordinator displayRenderCoordinator_;
     DashboardLayoutStore dashboardLayoutStore_;
     PortalServer portalServer_;
     uint32_t lastTick100ms_{0};

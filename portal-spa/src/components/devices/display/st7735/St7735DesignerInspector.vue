@@ -5,6 +5,7 @@
       :display="display"
       :display-scale="2"
       :freeze-render="bitmapPreviewFrozen || bitmapRenderFrozen"
+      :preview-text="widgetPreviewText"
       class="tft-inspector__preview"
       :style="previewStyle"
     />
@@ -39,17 +40,32 @@
       <div class="tft-inspector__fit-title">{{ fitInfo.title }}</div>
       <div class="text-caption">{{ fitInfo.details }}</div>
     </v-alert>
-    <v-text-field v-if="isTextWidget" :label="t('device.dialog.ssd1306Display.text')" :model-value="widget.text" @update:model-value="updateField('text', String($event))" />
+    <v-text-field v-if="isTextWidget" :label="t('device.dialog.ssd1306Display.text')" :model-value="widget.text" @update:model-value="updateText(String($event))" />
+    <MetricPlaceholderBuilder
+      v-if="isTextWidget"
+      :catalog="metricCatalog"
+      :loading="metricsLoading"
+      @insert-placeholder="insertMetric"
+    />
+    <v-alert v-if="isTextWidget && placeholderMessage.length > 0" :type="placeholderTone" variant="tonal" density="compact">
+      {{ placeholderMessage }}
+    </v-alert>
+    <v-text-field
+      v-if="isTextWidget && usesMetricPlaceholder"
+      :label="t('device.dialog.ssd1306Display.refreshIntervalMs')"
+      :hint="t('device.dialog.ssd1306Display.refreshIntervalHint')"
+      :model-value="widget.refreshIntervalMs"
+      :min="refreshIntervalMinMs"
+      :max="refreshIntervalMaxMs"
+      type="number"
+      persistent-hint
+      @update:model-value="updateRefreshInterval"
+    />
     <v-file-input v-if="isBitmapWidget" accept="image/*" :label="t('device.dialog.ssd1306Display.bitmapImport')" prepend-icon="upload" density="comfortable" @update:model-value="onBitmapFileSelected" />
     <v-slider v-if="isBitmapWidget" :model-value="bitmapThreshold" :min="0" :max="255" :step="1" hide-details :label="t('device.dialog.ssd1306Display.bitmapThreshold')" @update:model-value="updateBitmapThreshold" />
     <div v-if="isBitmapWidget" class="tft-inspector__bitmap-actions">
       <v-btn variant="text" @click="clearBitmap">{{ t('device.dialog.ssd1306Display.bitmapClear') }}</v-btn>
     </div>
-    <v-select v-if="isTextWidget" :label="t('device.dialog.ssd1306Display.bindingKind')" :items="bindingKindItems" :model-value="widget.bindingKind" @update:model-value="updateBindingKind(String($event))" />
-    <v-row v-if="isTextWidget">
-      <v-col cols="6"><v-text-field :label="t('device.dialog.ssd1306Display.sourceDeviceId')" :model-value="widget.sourceDeviceId" type="number" min="0" @update:model-value="updateNumber('sourceDeviceId', $event)" /></v-col>
-      <v-col cols="6"><v-text-field :label="t('device.dialog.ssd1306Display.metricId')" :model-value="widget.metricId" type="number" @update:model-value="updateNumber('metricId', $event)" /></v-col>
-    </v-row>
     <v-switch v-if="isTextWidget" :label="t('device.dialog.ssd1306Display.autoSize')" :model-value="widget.autoSize" inset @update:model-value="updateField('autoSize', Boolean($event))" />
     <v-switch v-if="supportsFill" :label="t('device.dialog.ssd1306Display.filled')" :model-value="widget.styleFlags.filled" inset @update:model-value="updateFlag('filled', Boolean($event))" />
     <v-switch :label="t('device.dialog.ssd1306Display.inverted')" :model-value="widget.styleFlags.inverted" inset @update:model-value="updateFlag('inverted', Boolean($event))" />
@@ -58,15 +74,30 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import MetricPlaceholderBuilder from '@/components/devices/display/MetricPlaceholderBuilder.vue'
 import St7735WidgetPreview from '@/components/devices/display/st7735/St7735WidgetPreview.vue'
 import { useDisplayBitmapImportState } from '@/composables/display/useDisplayBitmapImportState'
 import { measureSsd1306TextWidget } from '@/components/devices/display/ssd1306/ssd1306-text-layout'
 import type { BaseDisplay } from '@/models/devices/display/display'
 import { resolveDisplayBitmapDimensionUpdate } from '@/models/devices/display/widgets'
 import type { DisplayBitmapWidget, DisplayWidget, DisplayWidgetType } from '@/models/devices/display/layout'
+import { fetchMetricPlaceholders } from '@/api'
+import type { MetricPlaceholderDescriptor } from '@/api/contracts'
+import {
+  metricPlaceholderForDescriptor,
+  resolveMetricPlaceholderText,
+  validateMetricPlaceholders,
+  type MetricPlaceholderValidation,
+} from '@/models/metrics/placeholders'
+import {
+  DISPLAY_WIDGET_REFRESH_INTERVAL_DEFAULT_MS,
+  DISPLAY_WIDGET_REFRESH_INTERVAL_DISABLED,
+  DISPLAY_WIDGET_REFRESH_INTERVAL_MAX_MS,
+  DISPLAY_WIDGET_REFRESH_INTERVAL_MIN_MS,
+} from '@/models/devices/display/layout-normalizer'
 
 const props = defineProps<{ widget: DisplayWidget; deviceWidth: number; deviceHeight: number; bitmapRenderFrozen?: boolean; display: BaseDisplay<'rgb565'> }>()
 const emit = defineEmits<{
@@ -77,7 +108,6 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const widgetTypeItems: Array<{ title: string; value: DisplayWidgetType }> = (['text', 'bitmap', 'rect', 'line', 'circle', 'ellipse'] as DisplayWidgetType[]).map(value => ({ title: t(`device.dialog.ssd1306Display.widgetTypes.${value}`), value }))
-const bindingKindItems = ['unbound', 'device', 'metric', 'constant_text'].map(value => ({ title: t(`device.dialog.ssd1306Display.bindingKinds.${value}`), value }))
 const isTextWidget = computed(() => props.widget.type === 'text')
 const isBitmapWidget = computed(() => props.widget.type === 'bitmap')
 const supportsFill = computed(() => props.widget.type === 'rect' || props.widget.type === 'circle' || props.widget.type === 'ellipse')
@@ -111,6 +141,64 @@ const bitmapError = bitmapWorkflow.bitmapError
 const bitmapThreshold = bitmapWorkflow.bitmapThreshold
 const bitmapPreviewFrozen = bitmapWorkflow.bitmapPreviewFrozen
 const bitmapWidget = computed<DisplayBitmapWidget | null>(() => (isBitmapWidget.value ? props.widget as DisplayBitmapWidget : null))
+const metricCatalog = ref<MetricPlaceholderDescriptor[]>([])
+const metricsLoading = ref(false)
+const placeholderValidation = ref<MetricPlaceholderValidation>({ status: 'static', parsed: null, descriptor: null })
+const refreshIntervalMinMs = DISPLAY_WIDGET_REFRESH_INTERVAL_MIN_MS
+const refreshIntervalMaxMs = DISPLAY_WIDGET_REFRESH_INTERVAL_MAX_MS
+let validationTimer: ReturnType<typeof setTimeout> | null = null
+let refreshTimer: ReturnType<typeof setInterval> | null = null
+
+const placeholderTone = computed<'success' | 'warning' | 'error' | 'info'>(() => {
+  switch (placeholderValidation.value.status) {
+    case 'valid':
+      return 'success'
+    case 'unavailable':
+      return 'warning'
+    case 'invalid':
+    case 'multiple':
+      return 'error'
+    default:
+      return 'info'
+  }
+})
+const placeholderMessage = computed(() => {
+  switch (placeholderValidation.value.status) {
+    case 'valid':
+      return t('device.dialog.ssd1306Display.placeholderValid')
+    case 'unavailable':
+      return t('device.dialog.ssd1306Display.placeholderUnavailable')
+    case 'invalid':
+      return t('device.dialog.ssd1306Display.placeholderInvalid')
+    case 'multiple':
+      return t('device.dialog.ssd1306Display.placeholderMultiple')
+    default:
+      return ''
+  }
+})
+const usesMetricPlaceholder = computed(() => placeholderValidation.value.status === 'valid' || placeholderValidation.value.status === 'unavailable' || props.widget.bindingKind === 'metric')
+const widgetPreviewText = computed(() => props.widget.type === 'text' ? resolveMetricPlaceholderText(props.widget.text, metricCatalog.value) : undefined)
+
+onMounted(() => {
+  void loadMetricCatalog()
+  runPlaceholderValidation(props.widget.text)
+  restartMetricRefresh()
+})
+
+onBeforeUnmount(() => {
+  if (validationTimer !== null) {
+    clearTimeout(validationTimer)
+    validationTimer = null
+  }
+  stopMetricRefresh()
+})
+
+watch(() => props.widget.text, text => {
+  schedulePlaceholderValidation(text)
+  restartMetricRefresh()
+})
+watch(() => props.widget.refreshIntervalMs, () => restartMetricRefresh())
+watch(isTextWidget, () => restartMetricRefresh())
 
 function updateField<K extends keyof DisplayWidget>(key: K, value: DisplayWidget[K]): void { emit('update-widget', { [key]: value } as Partial<DisplayWidget>) }
 function updateKeepAspectRatio(value: boolean): void {
@@ -134,13 +222,102 @@ function updateWidgetType(value: string): void {
   }
   emit('update-widget', { type: value as DisplayWidget['type'] })
 }
-function updateBindingKind(value: string): void { if (['unbound', 'device', 'metric', 'constant_text'].includes(value)) emit('update-widget', { bindingKind: value as DisplayWidget['bindingKind'] }) }
 function updateFlag(key: keyof DisplayWidget['styleFlags'], value: boolean): void { emit('update-widget', { styleFlags: { ...props.widget.styleFlags, [key]: value } }) }
 
-function updateNumber(key: keyof Pick<DisplayWidget, 'x' | 'y' | 'width' | 'height' | 'fontSize' | 'strokeWidth' | 'sourceDeviceId' | 'metricId'>, value: string | number): void {
+function updateNumber(key: keyof Pick<DisplayWidget, 'x' | 'y' | 'width' | 'height' | 'fontSize' | 'strokeWidth'>, value: string | number): void {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return
   emit('update-widget', { [key]: Math.round(numeric) } as Partial<DisplayWidget>)
+}
+
+function normalizeRefreshInterval(value: string | number): number {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) {
+    return DISPLAY_WIDGET_REFRESH_INTERVAL_DEFAULT_MS
+  }
+  return Math.min(DISPLAY_WIDGET_REFRESH_INTERVAL_MAX_MS, Math.max(DISPLAY_WIDGET_REFRESH_INTERVAL_MIN_MS, Math.round(numeric)))
+}
+
+function updateRefreshInterval(value: string | number): void {
+  emit('update-widget', { refreshIntervalMs: normalizeRefreshInterval(value) } as Partial<DisplayWidget>)
+}
+
+async function loadMetricCatalog(): Promise<void> {
+  metricsLoading.value = true
+  try {
+    metricCatalog.value = (await fetchMetricPlaceholders()).placeholders
+    runPlaceholderValidation(props.widget.text)
+  } finally {
+    metricsLoading.value = false
+  }
+}
+
+function schedulePlaceholderValidation(text: string): void {
+  if (validationTimer !== null) {
+    clearTimeout(validationTimer)
+  }
+  validationTimer = setTimeout(() => runPlaceholderValidation(text), 350)
+}
+
+function runPlaceholderValidation(text: string): void {
+  placeholderValidation.value = validateMetricPlaceholders(text, metricCatalog.value)
+}
+
+function updateText(text: string): void {
+  const validation = validateMetricPlaceholders(text, metricCatalog.value)
+  const patch: Partial<DisplayWidget> = { text }
+  if (validation.status === 'static') {
+    patch.bindingKind = 'constant_text'
+    patch.metricNamespace = 'dev'
+    patch.sourceDeviceId = 0
+    patch.metricId = 0
+    patch.refreshIntervalMs = DISPLAY_WIDGET_REFRESH_INTERVAL_DISABLED
+  } else if (validation.descriptor !== null) {
+    patch.bindingKind = 'metric'
+    patch.metricNamespace = validation.descriptor.namespace
+    patch.sourceDeviceId = validation.descriptor.sourceId
+    patch.metricId = validation.descriptor.metricId
+    patch.refreshIntervalMs = props.widget.refreshIntervalMs > 0 ? props.widget.refreshIntervalMs : DISPLAY_WIDGET_REFRESH_INTERVAL_DEFAULT_MS
+  } else if (validation.parsed !== null) {
+    patch.bindingKind = 'metric'
+    patch.metricNamespace = validation.parsed.namespace
+    patch.sourceDeviceId = validation.parsed.sourceId
+    patch.refreshIntervalMs = props.widget.refreshIntervalMs > 0 ? props.widget.refreshIntervalMs : DISPLAY_WIDGET_REFRESH_INTERVAL_DEFAULT_MS
+  }
+  emit('update-widget', patch)
+  placeholderValidation.value = validation
+  restartMetricRefresh()
+}
+
+function insertMetric(metric: MetricPlaceholderDescriptor): void {
+  const text = metricPlaceholderForDescriptor(metric)
+  emit('update-widget', {
+    text,
+    bindingKind: 'metric',
+    metricNamespace: metric.namespace,
+    sourceDeviceId: metric.sourceId,
+    metricId: metric.metricId,
+    refreshIntervalMs: props.widget.refreshIntervalMs > 0 ? props.widget.refreshIntervalMs : DISPLAY_WIDGET_REFRESH_INTERVAL_DEFAULT_MS,
+  } as Partial<DisplayWidget>)
+  placeholderValidation.value = validateMetricPlaceholders(text, metricCatalog.value)
+  restartMetricRefresh()
+}
+
+function stopMetricRefresh(): void {
+  if (refreshTimer !== null) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+}
+
+function restartMetricRefresh(): void {
+  stopMetricRefresh()
+  if (!isTextWidget.value || props.widget.refreshIntervalMs <= 0 || validateMetricPlaceholders(props.widget.text, metricCatalog.value).status === 'static') {
+    return
+  }
+  refreshTimer = setInterval(() => {
+    void loadMetricCatalog()
+  }, props.widget.refreshIntervalMs)
 }
 
 function updateBitmapDimension(key: 'width' | 'height', value: string | number): void {

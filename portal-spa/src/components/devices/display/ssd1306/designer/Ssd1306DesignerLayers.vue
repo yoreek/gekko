@@ -79,8 +79,6 @@ const { t } = useI18n()
 
 function iconForType(type: Ssd1306Widget['type']): string {
   switch (type) {
-    case 'icon':
-      return 'oled-icon'
     case 'bitmap':
       return 'oled-bitmap'
     case 'rect':

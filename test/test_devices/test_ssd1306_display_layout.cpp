@@ -22,7 +22,7 @@ namespace {
 DisplayLayoutRecordV1 makeLayoutRecord() {
     DisplayLayoutRecordV1 layout{};
     layout.deviceId = 42;
-    layout.recordVersion = 1;
+    layout.recordVersion = kDisplayLayoutRecordVersion;
     layout.schemaVersion = kDisplayLayoutSchemaVersion;
     layout.activePageIndex = 0;
 
@@ -37,6 +37,7 @@ DisplayLayoutRecordV1 makeLayoutRecord() {
     first.width = 64;
     first.height = 16;
     first.metricId = 7;
+    first.refreshIntervalMs = 5000;
 
     DisplayLayoutWidgetV1 second{};
     second.bindingKind = static_cast<uint8_t>(DisplayLayoutBindingKind::ConstantText);
@@ -131,6 +132,7 @@ void test_ssd1306_layout_codec_round_trip_json() {
     TEST_ASSERT_EQUAL_UINT8(original.pages.size(), decoded.pages.size());
     TEST_ASSERT_EQUAL_STRING(original.pages[0].id, decoded.pages[0].id);
     TEST_ASSERT_EQUAL_UINT8(original.pages[0].widgets[1].bindingKind, decoded.pages[0].widgets[1].bindingKind);
+    TEST_ASSERT_EQUAL_UINT16(original.pages[0].widgets[0].refreshIntervalMs, decoded.pages[0].widgets[0].refreshIntervalMs);
     TEST_ASSERT_EQUAL_STRING(original.pages[0].widgets[1].text, decoded.pages[0].widgets[1].text);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap), decoded.pages[0].widgets[2].type);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1), decoded.pages[0].widgets[2].bitmapFormat);
@@ -168,6 +170,7 @@ void test_ssd1306_layout_store_round_trip_binary() {
     TEST_ASSERT_EQUAL_UINT8(original.pages.size(), loaded.pages.size());
     TEST_ASSERT_EQUAL_STRING(original.pages[0].id, loaded.pages[0].id);
     TEST_ASSERT_EQUAL_UINT8(original.pages[0].widgets[0].bindingKind, loaded.pages[0].widgets[0].bindingKind);
+    TEST_ASSERT_EQUAL_UINT16(original.pages[0].widgets[0].refreshIntervalMs, loaded.pages[0].widgets[0].refreshIntervalMs);
     TEST_ASSERT_EQUAL_UINT8(original.pages[0].widgets[1].bindingKind, loaded.pages[0].widgets[1].bindingKind);
     TEST_ASSERT_EQUAL_STRING(original.pages[0].widgets[1].text, loaded.pages[0].widgets[1].text);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap), loaded.pages[0].widgets[2].type);
@@ -178,7 +181,7 @@ void test_ssd1306_layout_store_round_trip_binary() {
     TEST_ASSERT_TRUE(encodeDisplayLayoutBinary(original, blob));
     TEST_ASSERT_TRUE(blob.size() > sizeof(DisplayLayoutBinaryHeaderV1));
     const auto* header = reinterpret_cast<const DisplayLayoutBinaryHeaderV1*>(blob.data());
-    TEST_ASSERT_EQUAL_UINT16(1, header->recordVersion);
+    TEST_ASSERT_EQUAL_UINT16(kDisplayLayoutRecordVersion, header->recordVersion);
     TEST_ASSERT_EQUAL_UINT32(original.deviceId, header->deviceId);
     TEST_ASSERT_EQUAL_UINT8(1, header->pageCount);
 }

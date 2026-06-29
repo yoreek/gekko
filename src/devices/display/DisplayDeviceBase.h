@@ -2,6 +2,7 @@
 
 #include "devices/core/DeviceRuntimeBase.h"
 #include "devices/display/DisplayLayoutCodec.h"
+#include "devices/display/DisplayLayoutRenderer.h"
 #include "devices/display/DisplayLayoutStore.h"
 
 #include <ArduinoJson.h>
@@ -23,9 +24,17 @@ public:
 
     const DisplayLayoutRecordV1& layout() const;
     void setLayout(const DisplayLayoutRecordV1& layout);
+    bool renderDisplay(const MetricValueResolver& resolver, uint32_t now);
+    DisplayDeviceBase* displayRuntime() override;
+    const DisplayDeviceBase* displayRuntime() const override;
 
 protected:
     virtual void writeDisplayConfigJson(JsonObject output) const = 0;
+    virtual bool initializeDisplayHardware(uint32_t now);
+    virtual void releaseDisplayHardware(uint32_t now);
+    virtual IDisplayRenderSurface* renderSurface() const;
+    virtual void onDisplayFrameRendered(const DisplayLayoutRenderResult& result);
+    void invalidateDisplayRender();
 
     State Idle();
     State Starting();
@@ -36,6 +45,8 @@ protected:
     State Deleting();
 
     DisplayLayoutRecordV1 layout_{};
+    DisplayLayoutRenderSession renderSession_{};
+    bool emptyLayoutCleared_{false};
 };
 
 } // namespace ewfm
