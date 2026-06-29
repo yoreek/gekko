@@ -36,11 +36,14 @@ public:
     virtual DeviceTypeId typeId() const = 0;
     virtual const char* typeName() const = 0;
     virtual bool parseCreateRequest(const JsonObjectConst& input, DeviceCreateRequest& request, const char*& error) const = 0;
-    virtual bool parseCreatePersistedStateRequest(const JsonObjectConst& input, const DeviceCreateRequest& request,
+    virtual bool parseCreatePersistedStateRequest(const JsonObjectConst& input, DeviceCreateRequest& request,
                                                   DeviceCreatePersistenceRequest& persistedRequest, const char*& error) const;
     virtual bool parseUpdateConfigRequest(const JsonObjectConst& input, IDeviceRuntime& runtime, DeviceConfigUpdateRequest& request,
                                           const char*& error) const;
     virtual DeviceValidationResult validateCreateRequest(const DeviceCreateRequest& request, const DeviceRegistry& registry) const;
+    virtual DeviceValidationResult validateCreateRequest(const DeviceCreateRequest& request,
+                                                         const DeviceCreatePersistenceRequest& persistedRequest,
+                                                         const DeviceRegistry& registry) const;
     virtual DeviceValidationResult validateUpdateConfigRequest(const IDeviceRuntime& runtime, const DeviceConfigUpdateRequest& request,
                                                                const DeviceRegistry& registry) const;
     virtual DeviceValidationResult validateSetDepsRequest(const IDeviceRuntime& runtime,

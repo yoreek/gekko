@@ -515,7 +515,7 @@ DeviceMutationResult DeviceRegistry::rename(DeviceId deviceId, const std::string
     const DeviceDependencyLink* dependencyLinks = currentRuntime->dependencyLinks();
     const uint8_t dependencyCount = currentRuntime->dependencyCount();
     for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
-        dependencyRuntimes[index] = currentRuntime->dependencyRuntime(dependencyLinks[index].role);
+        dependencyRuntimes[index] = currentRuntime->dependencyRuntimeAt(index);
         if (dependencyRuntimes[index] != nullptr) {
             dependencyRuntimes[index]->detachDependentRuntime(currentRuntime);
         }
@@ -529,7 +529,7 @@ DeviceMutationResult DeviceRegistry::rename(DeviceId deviceId, const std::string
             const DeviceDependencyLink* currentLinks = currentRuntime->dependencyLinks();
             const uint8_t currentDepCount = currentRuntime->dependencyCount();
             for (uint8_t index = 0; index < currentDepCount && currentLinks != nullptr; ++index) {
-                if (IDeviceRuntime* dependency = currentRuntime->dependencyRuntime(currentLinks[index].role); dependency != nullptr) {
+                if (IDeviceRuntime* dependency = currentRuntime->dependencyRuntimeAt(index); dependency != nullptr) {
                     dependency->detachDependentRuntime(currentRuntime);
                 }
             }
@@ -537,7 +537,7 @@ DeviceMutationResult DeviceRegistry::rename(DeviceId deviceId, const std::string
             currentRuntime->bindDeviceIdentity(oldRecord, oldConfigBlob);
             for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
                 if (dependencyRuntimes[index] != nullptr) {
-                    currentRuntime->setDependencyRuntime(dependencyLinks[index].role, dependencyRuntimes[index]);
+                    currentRuntime->setDependencyRuntimeAt(index, dependencyRuntimes[index]);
                     dependencyRuntimes[index]->attachDependentRuntime(currentRuntime);
                 }
             }
@@ -652,7 +652,7 @@ DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, cons
     const uint8_t oldDependencyCount = currentRuntime->dependencyCount();
     if (dependenciesChanged) {
         for (uint8_t index = 0; index < oldDependencyCount && oldDependencyLinks != nullptr; ++index) {
-            oldDependencyRuntimes[index] = currentRuntime->dependencyRuntime(oldDependencyLinks[index].role);
+            oldDependencyRuntimes[index] = currentRuntime->dependencyRuntimeAt(index);
         }
     }
     const DeviceConfigUpdatePlan updatePlan = currentRuntime->planConfigUpdate(configBlob);
@@ -786,7 +786,7 @@ DeviceMutationResult DeviceRegistry::setDeps(DeviceId deviceId, const std::array
     std::array<IDeviceRuntime*, kMaxDeviceDependencies> oldDependencyRuntimes{};
     const DeviceDependencyLink* oldDependencyLinks = currentRuntime->dependencyLinks();
     for (uint8_t index = 0; index < oldDepCount && oldDependencyLinks != nullptr; ++index) {
-        oldDependencyRuntimes[index] = currentRuntime->dependencyRuntime(oldDependencyLinks[index].role);
+        oldDependencyRuntimes[index] = currentRuntime->dependencyRuntimeAt(index);
     }
 
     currentRuntime->bindDeviceIdentity(record, configBlob);
@@ -884,7 +884,7 @@ DeviceMutationResult DeviceRegistry::setEnabled(DeviceId deviceId, bool enabled,
     const DeviceDependencyLink* dependencyLinks = currentRuntime->dependencyLinks();
     const uint8_t dependencyCount = currentRuntime->dependencyCount();
     for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
-        dependencyRuntimes[index] = currentRuntime->dependencyRuntime(dependencyLinks[index].role);
+        dependencyRuntimes[index] = currentRuntime->dependencyRuntimeAt(index);
         if (dependencyRuntimes[index] != nullptr) {
             dependencyRuntimes[index]->detachDependentRuntime(currentRuntime);
         }
@@ -898,7 +898,7 @@ DeviceMutationResult DeviceRegistry::setEnabled(DeviceId deviceId, bool enabled,
             const DeviceDependencyLink* currentLinks = currentRuntime->dependencyLinks();
             const uint8_t currentDepCount = currentRuntime->dependencyCount();
             for (uint8_t index = 0; index < currentDepCount && currentLinks != nullptr; ++index) {
-                if (IDeviceRuntime* dependency = currentRuntime->dependencyRuntime(currentLinks[index].role); dependency != nullptr) {
+                if (IDeviceRuntime* dependency = currentRuntime->dependencyRuntimeAt(index); dependency != nullptr) {
                     dependency->detachDependentRuntime(currentRuntime);
                 }
             }
@@ -906,7 +906,7 @@ DeviceMutationResult DeviceRegistry::setEnabled(DeviceId deviceId, bool enabled,
             currentRuntime->bindDeviceIdentity(oldRecord, oldConfigBlob);
             for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
                 if (dependencyRuntimes[index] != nullptr) {
-                    currentRuntime->setDependencyRuntime(dependencyLinks[index].role, dependencyRuntimes[index]);
+                    currentRuntime->setDependencyRuntimeAt(index, dependencyRuntimes[index]);
                     dependencyRuntimes[index]->attachDependentRuntime(currentRuntime);
                 }
             }
@@ -1534,17 +1534,17 @@ void DeviceRegistry::syncRuntimeDependencyLinks(DeviceId deviceId) {
     const DeviceDependencyLink* links = dependentRuntime->dependencyLinks();
     const uint8_t depCount = dependentRuntime->dependencyCount();
     for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
-        if (IDeviceRuntime* dependencyRuntime = dependentRuntime->dependencyRuntime(links[index].role); dependencyRuntime != nullptr) {
+        if (IDeviceRuntime* dependencyRuntime = dependentRuntime->dependencyRuntimeAt(index); dependencyRuntime != nullptr) {
             dependencyRuntime->detachDependentRuntime(dependentRuntime);
         }
-        dependentRuntime->setDependencyRuntime(links[index].role, nullptr);
+        dependentRuntime->setDependencyRuntimeAt(index, nullptr);
     }
     for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
         IDeviceRuntime* dependencyRuntime = runtime(links[index].deviceId);
         if (dependencyRuntime == nullptr) {
             continue;
         }
-        dependentRuntime->setDependencyRuntime(links[index].role, dependencyRuntime);
+        dependentRuntime->setDependencyRuntimeAt(index, dependencyRuntime);
         dependencyRuntime->attachDependentRuntime(dependentRuntime);
     }
 }
@@ -1756,7 +1756,7 @@ void DeviceRegistry::clearRuntime(DeviceId deviceId) {
             const uint8_t dependentDepCount = dependent->dependencyCount();
             for (uint8_t index = 0; index < dependentDepCount && dependentLinks != nullptr; ++index) {
                 if (dependentLinks[index].deviceId == deviceId) {
-                    dependent->setDependencyRuntime(dependentLinks[index].role, nullptr);
+                    dependent->setDependencyRuntimeAt(index, nullptr);
                 }
             }
         }

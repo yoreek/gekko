@@ -77,7 +77,7 @@ bool IDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, I
     return false;
 }
 
-bool IDeviceApiAdapter::parseCreatePersistedStateRequest(const JsonObjectConst& input, const DeviceCreateRequest& request,
+bool IDeviceApiAdapter::parseCreatePersistedStateRequest(const JsonObjectConst& input, DeviceCreateRequest& request,
                                                          DeviceCreatePersistenceRequest& persistedRequest, const char*& error) const {
     (void)input;
     (void)request;
@@ -90,6 +90,13 @@ DeviceValidationResult IDeviceApiAdapter::validateCreateRequest(const DeviceCrea
     (void)request;
     (void)registry;
     return {};
+}
+
+DeviceValidationResult IDeviceApiAdapter::validateCreateRequest(const DeviceCreateRequest& request,
+                                                                const DeviceCreatePersistenceRequest& persistedRequest,
+                                                                const DeviceRegistry& registry) const {
+    (void)persistedRequest;
+    return validateCreateRequest(request, registry);
 }
 
 DeviceValidationResult IDeviceApiAdapter::validateUpdateConfigRequest(const IDeviceRuntime& runtime,

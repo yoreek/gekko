@@ -38,7 +38,7 @@ constexpr size_t kMaxDeviceEventKindBytes = 32;
 constexpr size_t kMaxRegistryIndexBytes = 2048;
 constexpr size_t kMaxDeviceRecordBytes = 1024;
 constexpr size_t kMaxDeviceIdGenerationAttempts = 8;
-constexpr size_t kMaxDeviceDependencies = 4;
+constexpr size_t kMaxDeviceDependencies = 16;
 
 enum class DeviceDependencyRole : uint8_t {
     Unknown = 0,
@@ -48,6 +48,7 @@ enum class DeviceDependencyRole : uint8_t {
     I2CBus = 4,
     Ssd1306 = 5,
     SpiBus = 6,
+    MetricSource = 7,
 };
 
 struct DeviceDependencyLink {
@@ -497,8 +498,16 @@ public:
         (void)role;
         (void)dependencyRuntime;
     }
+    virtual void setDependencyRuntimeAt(uint8_t index, IDeviceRuntime* dependencyRuntime) {
+        (void)index;
+        (void)dependencyRuntime;
+    }
     virtual IDeviceRuntime* dependencyRuntime(DeviceDependencyRole role) const {
         (void)role;
+        return nullptr;
+    }
+    virtual IDeviceRuntime* dependencyRuntimeAt(uint8_t index) const {
+        (void)index;
         return nullptr;
     }
     virtual const ITemperatureReadingRuntime* temperatureReadingRuntime() const {

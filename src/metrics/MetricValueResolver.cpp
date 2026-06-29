@@ -5,18 +5,63 @@
 
 #include <cstdio>
 #include <cstring>
+#include <string>
 
 namespace ewfm {
 
 namespace {
 
-void setText(MetricValue& value, const char* text) {
-    std::snprintf(value.text, sizeof(value.text), "%s", text != nullptr ? text : "");
-}
+void formatDuration(const uint32_t durationMs, char* output, const size_t capacity);
+void setNull(MetricValue& value);
+void setText(MetricValue& value, const char* text);
+void setInt(MetricValue& value, const int32_t intValue, const char* text);
+void setFloat(MetricValue& value, const float floatValue, const char* text);
 
-} // namespace
+class SystemMetricSource final {
+public:
+    SystemMetricSource(const IWifiDriver& wifiDriver, const uint32_t now) : wifiDriver_(wifiDriver), now_(now) {}
 
-void MetricValueResolver::formatDuration(const uint32_t durationMs, char* output, const size_t capacity) {
+    bool resolve(const int32_t metricId, MetricValue& value) const {
+        switch (metricId) {
+        case kSystemMetricTime: {
+            char text[sizeof(value.text)]{};
+            formatDuration(now_, text, sizeof(text));
+            setText(value, text);
+            return true;
+        }
+        case kSystemMetricUptime: {
+            char text[sizeof(value.text)]{};
+            std::snprintf(text, sizeof(text), "%lu ms", static_cast<unsigned long>(now_));
+            setInt(value, static_cast<int32_t>(now_), text);
+            return true;
+        }
+        case kSystemMetricWifiStationIp: {
+            const std::string ip = wifiDriver_.stationIp();
+            if (ip.empty()) {
+                return false;
+            }
+            setText(value, ip.c_str());
+            return true;
+        }
+        case kSystemMetricWifiSetupApIp: {
+            const std::string ip = wifiDriver_.setupApIp();
+            if (ip.empty()) {
+                return false;
+            }
+            setText(value, ip.c_str());
+            return true;
+        }
+        default:
+            return false;
+        }
+    }
+
+private:
+    const IWifiDriver& wifiDriver_;
+    uint32_t now_;
+};
+
+void formatDuration(const uint32_t durationMs, char* output, const size_t capacity) {
     if (output == nullptr || capacity == 0U) {
         return;
     }
@@ -34,63 +79,50 @@ void MetricValueResolver::formatDuration(const uint32_t durationMs, char* output
     std::snprintf(output, capacity, "%lu:%02lu", static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds));
 }
 
-const char* MetricValueResolver::deviceStatusName(const DeviceStatus status) {
-    switch (status) {
-    case DeviceStatus::Creating:
-        return "creating";
-    case DeviceStatus::Starting:
-        return "starting";
-    case DeviceStatus::Ready:
-        return "ready";
-    case DeviceStatus::Disabled:
-        return "disabled";
-    case DeviceStatus::Faulted:
-        return "faulted";
-    case DeviceStatus::DependencyBlocked:
-        return "dependency_blocked";
-    case DeviceStatus::Reconfiguring:
-        return "reconfiguring";
-    case DeviceStatus::Stopping:
-        return "stopping";
-    case DeviceStatus::Deleting:
-        return "deleting";
-    case DeviceStatus::Unknown:
-    default:
-        return "unknown";
-    }
+void setNull(MetricValue& value) {
+    value.valueType = MetricValueType::Null;
+    std::memset(&value.number, 0, sizeof(value.number));
+    value.text[0] = '\0';
 }
 
-const char* MetricValueResolver::wifiStatusName(const WifiDriverStatus status) {
-    switch (status) {
-    case WifiDriverStatus::Connected:
-        return "connected";
-    case WifiDriverStatus::Connecting:
-        return "connecting";
-    case WifiDriverStatus::Failed:
-        return "failed";
-    case WifiDriverStatus::Disconnected:
-        return "disconnected";
-    case WifiDriverStatus::Idle:
-    default:
-        return "idle";
-    }
+void setText(MetricValue& value, const char* text) {
+    value.valueType = MetricValueType::String;
+    std::memset(&value.number, 0, sizeof(value.number));
+    std::snprintf(value.text, sizeof(value.text), "%s", text != nullptr ? text : "");
 }
+
+void setInt(MetricValue& value, const int32_t intValue, const char* text) {
+    value.valueType = MetricValueType::Int;
+    value.number.intValue = intValue;
+    std::snprintf(value.text, sizeof(value.text), "%s", text != nullptr ? text : "");
+}
+
+void setFloat(MetricValue& value, const float floatValue, const char* text) {
+    value.valueType = MetricValueType::Float;
+    value.number.floatValue = floatValue;
+    std::snprintf(value.text, sizeof(value.text), "%s", text != nullptr ? text : "");
+}
+
+} // namespace
 
 bool MetricValueResolver::resolve(const MetricNamespace ns, const DeviceId sourceId, const int32_t metricId, MetricValue& value) const {
-    value = {};
+    setNull(value);
     switch (ns) {
     case MetricNamespace::Device:
+        if (sourceId == 0U) {
+            return false;
+        }
         return resolveDeviceMetric(sourceId, metricId, value);
     case MetricNamespace::System:
         return resolveSystemMetric(metricId, value);
     case MetricNamespace::Wifi:
-        return resolveWifiMetric(metricId, value);
+        return false;
     }
     return false;
 }
 
 bool MetricValueResolver::resolveDeviceMetric(const DeviceId sourceId, const int32_t metricId, MetricValue& value) const {
-    if (registry_ == nullptr || sourceId == 0U) {
+    if (registry_ == nullptr) {
         return false;
     }
     const IDeviceRuntime* runtime = registry_->runtime(sourceId);
@@ -99,42 +131,26 @@ bool MetricValueResolver::resolveDeviceMetric(const DeviceId sourceId, const int
     }
 
     switch (metricId) {
-    case kDeviceMetricStatus:
-        value.known = true;
-        value.available = true;
-        value.valueType = MetricValueType::Status;
-        setText(value, deviceStatusName(runtime->status()));
-        return true;
-    case kDeviceMetricEffectiveStatus:
-        value.known = true;
-        value.available = true;
-        value.valueType = MetricValueType::Status;
-        setText(value, deviceStatusName(registry_->effectiveStatus(sourceId)));
-        return true;
     case kDeviceMetricTemperature: {
-        value.known = true;
-        value.valueType = MetricValueType::Temperature;
         const ITemperatureReadingRuntime* temperature = runtime->temperatureReadingRuntime();
         if (temperature == nullptr) {
-            value.available = false;
             return false;
         }
         TemperatureReading reading{};
-        value.available = temperature->latestTemperatureReading(reading) && reading.valid;
-        if (value.available) {
-            std::snprintf(value.text, sizeof(value.text), "%.2f C", static_cast<double>(reading.milliCelsius) / 1000.0);
+        if (!temperature->latestTemperatureReading(reading) || !reading.valid) {
+            return false;
         }
+        const float celsius = static_cast<float>(reading.milliCelsius) / 1000.0f;
+        char text[sizeof(value.text)]{};
+        std::snprintf(text, sizeof(text), "%.2f C", static_cast<double>(celsius));
+        setFloat(value, celsius, text);
         return true;
     }
     case kDeviceMetricSwitchState: {
-        value.known = true;
-        value.valueType = MetricValueType::SwitchState;
         const ISwitchOutputRuntime* switchOutput = runtime->switchOutputRuntime();
         if (switchOutput == nullptr) {
-            value.available = false;
             return false;
         }
-        value.available = true;
         setText(value, outputStateName(switchOutput->currentOutputState()));
         return true;
     }
@@ -144,51 +160,7 @@ bool MetricValueResolver::resolveDeviceMetric(const DeviceId sourceId, const int
 }
 
 bool MetricValueResolver::resolveSystemMetric(const int32_t metricId, MetricValue& value) const {
-    switch (metricId) {
-    case kSystemMetricTime:
-        value.known = true;
-        value.available = true;
-        value.valueType = MetricValueType::Time;
-        formatDuration(now_, value.text, sizeof(value.text));
-        return true;
-    case kSystemMetricUptime:
-        value.known = true;
-        value.available = true;
-        value.valueType = MetricValueType::Text;
-        std::snprintf(value.text, sizeof(value.text), "%lu ms", static_cast<unsigned long>(now_));
-        return true;
-    default:
-        return false;
-    }
-}
-
-bool MetricValueResolver::resolveWifiMetric(const int32_t metricId, MetricValue& value) const {
-    switch (metricId) {
-    case kWifiMetricStatus:
-        value.known = true;
-        value.available = true;
-        value.valueType = MetricValueType::Status;
-        setText(value, wifiStatusName(wifiDriver_.status()));
-        return true;
-    case kWifiMetricStationIp: {
-        value.known = true;
-        value.valueType = MetricValueType::Text;
-        const std::string ip = wifiDriver_.stationIp();
-        value.available = !ip.empty();
-        setText(value, ip.c_str());
-        return true;
-    }
-    case kWifiMetricSetupApIp: {
-        value.known = true;
-        value.valueType = MetricValueType::Text;
-        const std::string ip = wifiDriver_.setupApIp();
-        value.available = !ip.empty();
-        setText(value, ip.c_str());
-        return true;
-    }
-    default:
-        return false;
-    }
+    return SystemMetricSource(wifiDriver_, now_).resolve(metricId, value);
 }
 
 } // namespace ewfm

@@ -13,11 +13,18 @@ namespace ewfm {
 constexpr size_t kMetricValueTextCapacity = 48;
 
 struct MetricValue {
-    MetricValueType valueType{MetricValueType::Text};
-    bool known{false};
-    bool available{false};
+    MetricValueType valueType{MetricValueType::Null};
+    union {
+        bool boolValue;
+        int32_t intValue;
+        float floatValue;
+    } number{};
     char text[kMetricValueTextCapacity]{};
 };
+
+inline bool metricValueHasValue(const MetricValue& value) {
+    return value.valueType != MetricValueType::Null;
+}
 
 class MetricValueResolver {
 public:
@@ -25,15 +32,13 @@ public:
         : registry_(registry), wifiDriver_(wifiDriver), now_(now) {}
 
     bool resolve(MetricNamespace ns, DeviceId sourceId, int32_t metricId, MetricValue& value) const;
-
-    static const char* deviceStatusName(DeviceStatus status);
-    static const char* wifiStatusName(WifiDriverStatus status);
+    const DeviceRegistry* registry() const {
+        return registry_;
+    }
 
 private:
     bool resolveDeviceMetric(DeviceId sourceId, int32_t metricId, MetricValue& value) const;
     bool resolveSystemMetric(int32_t metricId, MetricValue& value) const;
-    bool resolveWifiMetric(int32_t metricId, MetricValue& value) const;
-    static void formatDuration(uint32_t durationMs, char* output, size_t capacity);
 
     const DeviceRegistry* registry_{nullptr};
     const IWifiDriver& wifiDriver_;

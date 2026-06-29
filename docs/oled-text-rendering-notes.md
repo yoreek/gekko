@@ -60,6 +60,13 @@ Until the firmware renderer is selected, the safest frontend model is:
 - multiply the preview rendering by the current canvas zoom so the designer stays visually aligned with the real display box
 - if we later add font assets, keep them separate from layout geometry and bind them explicitly to the widget or device
 
+Metric placeholders follow a separate value pipeline from glyph layout:
+
+- metric sources should expose typed values, not preformatted strings only
+- text widgets may request a numeric value and then format it for display
+- string filters are a final formatting pass and do not replace typed metric handling
+- if the source is boolean, the UI should still be able to render it through a bounded text formatter instead of hardcoding a display-only enum
+
 For the widget renderer itself, the closest mental model is an isolated `GFXcanvas1` buffer per widget:
 
 - each widget renders inside its own bounded canvas rectangle

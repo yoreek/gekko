@@ -101,7 +101,7 @@ void writeMetricValueJson(AsyncResponseStream& response, bool& first, const Metr
     response.print(metricValueTypeName(value.valueType));
     response.print("\",");
     response.print("\"available\":");
-    response.print(value.available ? "true" : "false");
+    response.print(metricValueHasValue(value) ? "true" : "false");
     response.print(",\"value\":");
     String valueJson;
     writeJsonString(valueJson, value.text);
@@ -123,22 +123,18 @@ void writeDeviceMetricDescriptor(AsyncResponseStream& response, bool& first, con
                                  const MetricValueType valueType) {
     MetricValue value{};
     (void)resolver.resolve(MetricNamespace::Device, runtime.deviceId(), metricId, value);
-    writeDeviceDescriptor(response, first, runtime, metricId, metricKey, metricLabel, valueType, value.available, value.text);
+    writeDeviceDescriptor(response, first, runtime, metricId, metricKey, metricLabel, valueType, metricValueHasValue(value), value.text);
 }
 
 void writeDeviceMetrics(AsyncResponseStream& response, bool& first, const MetricValueResolver& resolver, const IDeviceRuntime& runtime) {
-    writeDeviceMetricDescriptor(response, first, resolver, runtime, kDeviceMetricStatus, "status", "status", MetricValueType::Status);
-    writeDeviceMetricDescriptor(response, first, resolver, runtime, kDeviceMetricEffectiveStatus, "effective_status", "effective status",
-                                MetricValueType::Status);
-
     if (runtime.temperatureReadingRuntime() != nullptr) {
         writeDeviceMetricDescriptor(response, first, resolver, runtime, kDeviceMetricTemperature, "temperature", "temperature",
-                                    MetricValueType::Temperature);
+                                    MetricValueType::Float);
     }
 
     if (runtime.switchOutputRuntime() != nullptr) {
         writeDeviceMetricDescriptor(response, first, resolver, runtime, kDeviceMetricSwitchState, "state", "state",
-                                    MetricValueType::SwitchState);
+                                    MetricValueType::String);
     }
 }
 
@@ -152,8 +148,6 @@ void writeDeviceMetricValue(AsyncResponseStream& response, bool& first, const Me
 
 void writeDeviceMetricValues(AsyncResponseStream& response, bool& first, const MetricValueResolver& resolver,
                              const IDeviceRuntime& runtime) {
-    writeDeviceMetricValue(response, first, resolver, runtime, kDeviceMetricStatus, "status");
-    writeDeviceMetricValue(response, first, resolver, runtime, kDeviceMetricEffectiveStatus, "effective_status");
     if (runtime.temperatureReadingRuntime() != nullptr) {
         writeDeviceMetricValue(response, first, resolver, runtime, kDeviceMetricTemperature, "temperature");
     }
@@ -168,7 +162,7 @@ void writeGlobalMetricDescriptor(AsyncResponseStream& response, bool& first, con
     if (!resolver.resolve(ns, 0, metricId, value)) {
         value.valueType = fallbackType;
     }
-    writeDescriptor(response, first, ns, 0, nullptr, metricId, metricKey, label, value.valueType, value.available, value.text);
+    writeDescriptor(response, first, ns, 0, nullptr, metricId, metricKey, label, value.valueType, metricValueHasValue(value), value.text);
 }
 
 void writeGlobalMetricValue(AsyncResponseStream& response, bool& first, const MetricValueResolver& resolver, const MetricNamespace ns,
@@ -186,15 +180,13 @@ void writeMetricDescriptors(AsyncResponseStream& response, DeviceRegistry* regis
     }
 
     writeGlobalMetricDescriptor(response, first, resolver, MetricNamespace::System, kSystemMetricTime, "time", "System time",
-                                MetricValueType::Time);
+                                MetricValueType::String);
     writeGlobalMetricDescriptor(response, first, resolver, MetricNamespace::System, kSystemMetricUptime, "uptime", "System uptime",
-                                MetricValueType::Text);
-    writeGlobalMetricDescriptor(response, first, resolver, MetricNamespace::Wifi, kWifiMetricStatus, "status", "WiFi status",
-                                MetricValueType::Status);
-    writeGlobalMetricDescriptor(response, first, resolver, MetricNamespace::Wifi, kWifiMetricStationIp, "station_ip", "WiFi station IP",
-                                MetricValueType::Text);
-    writeGlobalMetricDescriptor(response, first, resolver, MetricNamespace::Wifi, kWifiMetricSetupApIp, "setup_ap_ip", "WiFi AP IP",
-                                MetricValueType::Text);
+                                MetricValueType::Int);
+    writeGlobalMetricDescriptor(response, first, resolver, MetricNamespace::System, kSystemMetricWifiStationIp, "wifi.station_ip",
+                                "WiFi station IP", MetricValueType::String);
+    writeGlobalMetricDescriptor(response, first, resolver, MetricNamespace::System, kSystemMetricWifiSetupApIp, "wifi.setup_ap_ip",
+                                "WiFi AP IP", MetricValueType::String);
 }
 
 void writeMetricValues(AsyncResponseStream& response, DeviceRegistry* registry, const MetricValueResolver& resolver) {
@@ -205,9 +197,8 @@ void writeMetricValues(AsyncResponseStream& response, DeviceRegistry* registry, 
 
     writeGlobalMetricValue(response, first, resolver, MetricNamespace::System, kSystemMetricTime, "time");
     writeGlobalMetricValue(response, first, resolver, MetricNamespace::System, kSystemMetricUptime, "uptime");
-    writeGlobalMetricValue(response, first, resolver, MetricNamespace::Wifi, kWifiMetricStatus, "status");
-    writeGlobalMetricValue(response, first, resolver, MetricNamespace::Wifi, kWifiMetricStationIp, "station_ip");
-    writeGlobalMetricValue(response, first, resolver, MetricNamespace::Wifi, kWifiMetricSetupApIp, "setup_ap_ip");
+    writeGlobalMetricValue(response, first, resolver, MetricNamespace::System, kSystemMetricWifiStationIp, "wifi.station_ip");
+    writeGlobalMetricValue(response, first, resolver, MetricNamespace::System, kSystemMetricWifiSetupApIp, "wifi.setup_ap_ip");
 }
 
 } // namespace

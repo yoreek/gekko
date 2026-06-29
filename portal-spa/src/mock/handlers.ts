@@ -239,8 +239,6 @@ export function mockFetchMetricPlaceholders(): MetricPlaceholderCatalogResponse 
   const placeholders: MetricPlaceholderDescriptor[] = []
   for (const device of db.devices) {
     const label = typeof device.config.name === 'string' && device.config.name.length > 0 ? device.config.name : `Device ${device.record.id}`
-    placeholders.push(metricDescriptor('dev', device.record.id, label, 1, 'status', `${label} status`, 'status', true, device.runtime.status))
-    placeholders.push(metricDescriptor('dev', device.record.id, label, 2, 'effective_status', `${label} effective status`, 'status', true, device.runtime.effectiveStatus))
     if (device.record.typeName === 'ds18b20_temperature_sensor') {
       const temperature = (device.runtime.output as { temperature?: TemperatureOutputSnapshot } | undefined)?.temperature
       placeholders.push(metricDescriptor(
@@ -250,21 +248,20 @@ export function mockFetchMetricPlaceholders(): MetricPlaceholderCatalogResponse 
         100,
         'temperature',
         `${label} temperature`,
-        'temperature',
+        'float',
         Boolean(temperature?.valid),
         temperature?.valid ? `${temperature.value.toFixed(2)} ${temperature.unitSymbol}` : '',
       ))
     }
     if (device.record.typeName === 'gpio_switch') {
       const state = (device.runtime.output as { state?: string } | undefined)?.state
-      placeholders.push(metricDescriptor('dev', device.record.id, label, 200, 'state', `${label} state`, 'switch_state', Boolean(state), state ?? ''))
+      placeholders.push(metricDescriptor('dev', device.record.id, label, 200, 'state', `${label} state`, 'string', Boolean(state), state ?? ''))
     }
   }
-  placeholders.push(metricDescriptor('system', 0, undefined, 1, 'time', 'System time', 'time', true, '0:00'))
-  placeholders.push(metricDescriptor('system', 0, undefined, 2, 'uptime', 'System uptime', 'text', true, '0 ms'))
-  placeholders.push(metricDescriptor('wifi', 0, undefined, 1, 'status', 'WiFi status', 'status', true, db.wifi.status))
-  placeholders.push(metricDescriptor('wifi', 0, undefined, 2, 'station_ip', 'WiFi station IP', 'text', db.wifi.stationIp.length > 0, db.wifi.stationIp))
-  placeholders.push(metricDescriptor('wifi', 0, undefined, 3, 'setup_ap_ip', 'WiFi AP IP', 'text', db.wifi.setupApIp.length > 0, db.wifi.setupApIp))
+  placeholders.push(metricDescriptor('system', 0, undefined, 1, 'time', 'System time', 'string', true, '0:00'))
+  placeholders.push(metricDescriptor('system', 0, undefined, 2, 'uptime', 'System uptime', 'int', true, '0 ms'))
+  placeholders.push(metricDescriptor('system', 0, undefined, 3, 'wifi.station_ip', 'WiFi station IP', 'string', db.wifi.stationIp.length > 0, db.wifi.stationIp))
+  placeholders.push(metricDescriptor('system', 0, undefined, 4, 'wifi.setup_ap_ip', 'WiFi AP IP', 'string', db.wifi.setupApIp.length > 0, db.wifi.setupApIp))
   return ok({
     registryRevision: db.registryRevision,
     placeholders,

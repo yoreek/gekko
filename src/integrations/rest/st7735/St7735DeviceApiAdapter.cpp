@@ -3,6 +3,7 @@
 #include "devices/bus/spi/SpiBusDevice.h"
 #include "devices/core/DeviceBaseConfig.h"
 #include "devices/display/DisplayLayoutCodec.h"
+#include "devices/display/DisplayTextPlaceholderAst.h"
 
 #include <ArduinoJson.h>
 
@@ -45,6 +46,65 @@ bool encodeLayoutRequest(const JsonObjectConst& input, DeviceId deviceId, Bounde
         return false;
     }
     error = nullptr;
+    return true;
+}
+
+bool appendMetricSourceDependency(std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t& depCount, DeviceId sourceId,
+                                  const char*& error) {
+    if (sourceId == 0U) {
+        return true;
+    }
+    for (uint8_t index = 0; index < depCount; ++index) {
+        if (deps[index].role == DeviceDependencyRole::MetricSource && deps[index].deviceId == sourceId) {
+            return true;
+        }
+    }
+    if (depCount >= kMaxDeviceDependencies) {
+        error = "st7735 layout exceeds supported dependency count";
+        return false;
+    }
+    deps[depCount++] = DeviceDependencyLink{DeviceDependencyRole::MetricSource, sourceId};
+    return true;
+}
+
+bool collectLayoutMetricSourceDependencies(const DisplayLayoutRecordV1& layout,
+                                           std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t& depCount,
+                                           const char*& error) {
+    for (const DisplayLayoutPageV1& page : layout.pages) {
+        for (const DisplayLayoutWidgetV1& widget : page.widgets) {
+            if (static_cast<DisplayLayoutWidgetType>(widget.type) != DisplayLayoutWidgetType::Text) {
+                continue;
+            }
+            const DisplayTextCompileResult compiled = compileDisplayTextWidget(widget.text);
+            if (!compiled.ok()) {
+                error = "st7735 layout is invalid";
+                return false;
+            }
+            for (const DisplayTextSegment& segment : compiled.compiled.segments) {
+                if (!segment.placeholder || segment.reference.ns != MetricNamespace::Device) {
+                    continue;
+                }
+                if (!appendMetricSourceDependency(deps, depCount, segment.reference.sourceId, error)) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool validateLayoutMetricPlaceholders(const DisplayLayoutRecordV1& layout, const DeviceRegistry& registry) {
+    for (const DisplayLayoutPageV1& page : layout.pages) {
+        for (const DisplayLayoutWidgetV1& widget : page.widgets) {
+            if (static_cast<DisplayLayoutWidgetType>(widget.type) != DisplayLayoutWidgetType::Text) {
+                continue;
+            }
+            const DeviceValidationResult validation = validateDisplayTextWidget(widget, registry);
+            if (!validation.ok()) {
+                return false;
+            }
+        }
+    }
     return true;
 }
 } // namespace
@@ -92,12 +152,22 @@ bool St7735DeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, De
     return true;
 }
 
-bool St7735DeviceApiAdapter::parseCreatePersistedStateRequest(const JsonObjectConst& input, const DeviceCreateRequest& request,
+bool St7735DeviceApiAdapter::parseCreatePersistedStateRequest(const JsonObjectConst& input, DeviceCreateRequest& request,
                                                               DeviceCreatePersistenceRequest& persistedRequest, const char*& error) const {
-    (void)request;
     persistedRequest = {};
     if (!encodeLayoutRequest(input, 0, persistedRequest.persistedStateBlob, error)) {
         return false;
+    }
+    const JsonObjectConst layoutInput = input["config"]["layout"].as<JsonObjectConst>();
+    if (!layoutInput.isNull()) {
+        DisplayLayoutRecordV1 layout{};
+        if (!parseDisplayLayoutJson(layoutInput, layout)) {
+            error = "st7735 layout is invalid";
+            return false;
+        }
+        if (!collectLayoutMetricSourceDependencies(layout, request.deps, request.depCount, error)) {
+            return false;
+        }
     }
     persistedRequest.persistedStateProvided = !persistedRequest.persistedStateBlob.empty();
     return true;
@@ -105,9 +175,15 @@ bool St7735DeviceApiAdapter::parseCreatePersistedStateRequest(const JsonObjectCo
 
 DeviceValidationResult St7735DeviceApiAdapter::validateCreateRequest(const DeviceCreateRequest& request,
                                                                      const DeviceRegistry& registry) const {
-    if (request.dependencyCount() != 1U || request.dependencyLinks() == nullptr || request.dependencyLinks()[0].deviceId == 0U ||
+    if (request.dependencyCount() < 1U || request.dependencyLinks() == nullptr || request.dependencyLinks()[0].deviceId == 0U ||
         request.dependencyLinks()[0].role != DeviceDependencyRole::SpiBus) {
         return {DeviceError::InvalidRelationship, "st7735 requires spi bus dependency"};
+    }
+    for (uint8_t index = 1; index < request.dependencyCount(); ++index) {
+        if (request.dependencyLinks()[index].role != DeviceDependencyRole::MetricSource ||
+            request.dependencyLinks()[index].deviceId == 0U) {
+            return {DeviceError::InvalidRelationship, "st7735 metric source dependency is invalid"};
+        }
     }
 
     St7735DeviceConfigV3 config{};
@@ -115,6 +191,25 @@ DeviceValidationResult St7735DeviceApiAdapter::validateCreateRequest(const Devic
         return {DeviceError::InvalidConfig, "st7735 config is invalid"};
     }
     return validateSpiBusDependency(registry, request.dependencyLinks()[0].deviceId, config.chipSelectPin, nullptr);
+}
+
+DeviceValidationResult St7735DeviceApiAdapter::validateCreateRequest(const DeviceCreateRequest& request,
+                                                                     const DeviceCreatePersistenceRequest& persistedRequest,
+                                                                     const DeviceRegistry& registry) const {
+    const DeviceValidationResult baseResult = validateCreateRequest(request, registry);
+    if (!baseResult.ok()) {
+        return baseResult;
+    }
+    if (persistedRequest.persistedStateProvided) {
+        DisplayLayoutRecordV1 layout{};
+        if (!decodeDisplayLayoutBinary(persistedRequest.persistedStateBlob.data(), persistedRequest.persistedStateBlob.size(), layout)) {
+            return {DeviceError::InvalidConfig, "st7735 layout is invalid"};
+        }
+        if (!validateLayoutMetricPlaceholders(layout, registry)) {
+            return {DeviceError::InvalidRelationship, "st7735 layout placeholder is invalid"};
+        }
+    }
+    return {};
 }
 
 bool St7735DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& input, IDeviceRuntime& runtime,
@@ -139,6 +234,8 @@ bool St7735DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& inp
     }
     request = {};
     request.configVersion = St7735Device::descriptor().currentConfigVersion;
+    request.deps[0] = DeviceDependencyLink{DeviceDependencyRole::SpiBus, runtime.dependencyDeviceId(DeviceDependencyRole::SpiBus)};
+    request.depCount = 1U;
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = st7735DeviceConfigSize(config);
     if (!encodeSt7735DeviceConfig(config, buffer, size) || !request.configBlob.assign(buffer, size)) {
@@ -147,6 +244,18 @@ bool St7735DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& inp
     }
     if (!encodeLayoutRequest(input, runtime.deviceId(), request.persistedStateBlob, error)) {
         return false;
+    }
+    const JsonObjectConst layoutInput = input["config"]["layout"].as<JsonObjectConst>();
+    if (!layoutInput.isNull()) {
+        DisplayLayoutRecordV1 layout{};
+        if (!parseDisplayLayoutJson(layoutInput, layout)) {
+            error = "st7735 layout is invalid";
+            return false;
+        }
+        if (!collectLayoutMetricSourceDependencies(layout, request.deps, request.depCount, error)) {
+            return false;
+        }
+        request.depsProvided = request.depCount > 1U;
     }
     request.persistedStateProvided = !request.persistedStateBlob.empty();
     return true;
@@ -162,20 +271,42 @@ DeviceValidationResult St7735DeviceApiAdapter::validateUpdateConfigRequest(const
 
     DeviceId busDeviceId = runtime.dependencyDeviceId(DeviceDependencyRole::SpiBus);
     if (request.depsProvided) {
-        if (request.depCount != 1U || request.deps[0].role != DeviceDependencyRole::SpiBus || request.deps[0].deviceId == 0U) {
+        if (request.depCount < 1U || request.deps[0].role != DeviceDependencyRole::SpiBus || request.deps[0].deviceId == 0U) {
             return {DeviceError::InvalidRelationship, "st7735 requires spi bus dependency"};
+        }
+        for (uint8_t index = 1; index < request.depCount; ++index) {
+            if (request.deps[index].role != DeviceDependencyRole::MetricSource || request.deps[index].deviceId == 0U) {
+                return {DeviceError::InvalidRelationship, "st7735 metric source dependency is invalid"};
+            }
         }
         busDeviceId = request.deps[0].deviceId;
     }
-
-    return validateSpiBusDependency(registry, busDeviceId, config.chipSelectPin, &runtime);
+    const DeviceValidationResult busResult = validateSpiBusDependency(registry, busDeviceId, config.chipSelectPin, &runtime);
+    if (!busResult.ok()) {
+        return busResult;
+    }
+    if (request.persistedStateProvided) {
+        DisplayLayoutRecordV1 layout{};
+        if (!decodeDisplayLayoutBinary(request.persistedStateBlob.data(), request.persistedStateBlob.size(), layout)) {
+            return {DeviceError::InvalidConfig, "st7735 layout is invalid"};
+        }
+        if (!validateLayoutMetricPlaceholders(layout, registry)) {
+            return {DeviceError::InvalidRelationship, "st7735 layout placeholder is invalid"};
+        }
+    }
+    return {};
 }
 
 DeviceValidationResult St7735DeviceApiAdapter::validateSetDepsRequest(const IDeviceRuntime& runtime,
                                                                       const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps,
                                                                       uint8_t depCount, const DeviceRegistry& registry) const {
-    if (depCount != 1U || deps[0].role != DeviceDependencyRole::SpiBus || deps[0].deviceId == 0U) {
+    if (depCount < 1U || deps[0].role != DeviceDependencyRole::SpiBus || deps[0].deviceId == 0U) {
         return {DeviceError::InvalidRelationship, "st7735 requires spi bus dependency"};
+    }
+    for (uint8_t index = 1; index < depCount; ++index) {
+        if (deps[index].role != DeviceDependencyRole::MetricSource || deps[index].deviceId == 0U) {
+            return {DeviceError::InvalidRelationship, "st7735 metric source dependency is invalid"};
+        }
     }
     const St7735Device& device = static_cast<const St7735Device&>(runtime);
     return validateSpiBusDependency(registry, deps[0].deviceId, device.config().chipSelectPin, &runtime);

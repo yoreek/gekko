@@ -356,7 +356,7 @@ void DeviceRegistryController::create() {
         renderError(400, "BAD_ARGS", error);
         return;
     }
-    const DeviceValidationResult createValidation = adapter->validateCreateRequest(createRequest, registry_);
+    const DeviceValidationResult createValidation = adapter->validateCreateRequest(createRequest, createPersistedRequest, registry_);
     if (!createValidation.ok()) {
         renderError(400, errorCodeForDeviceError(createValidation.error), createValidation.message);
         return;

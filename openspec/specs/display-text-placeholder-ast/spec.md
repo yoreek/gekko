@@ -1,7 +1,11 @@
-## ADDED Requirements
+## Purpose
 
-### Requirement: Text widget placeholders compile into structured segments
-The firmware SHALL compile text widget strings into a reusable parsed model containing ordered literal and placeholder segments while keeping raw widget text as the persisted source of truth.
+Define the runtime compiled AST for display text placeholders, including placeholder tokenization, validation, and transient evaluation behavior.
+
+## Requirements
+
+### Requirement: Text widget placeholders compile into runtime structured segments
+The firmware SHALL compile text widget strings into a reusable runtime parsed model containing ordered literal and placeholder segments while keeping raw widget text as the persisted source of truth.
 
 #### Scenario: Static text compiles as one literal segment
 - **WHEN** a text widget contains no structured placeholder token
@@ -19,6 +23,16 @@ The firmware SHALL compile text widget strings into a reusable parsed model cont
 - **WHEN** a compiled text widget is encoded to JSON or binary layout storage
 - **THEN** only the bounded raw widget `text` value is persisted
 - **AND** compiled segments are omitted from persisted layout payloads
+
+#### Scenario: Runtime AST may hold memory references
+- **WHEN** the renderer builds the runtime AST for a text widget
+- **THEN** the AST may keep pointers or handles to runtime objects in memory
+- **AND** those pointers or handles are discarded instead of persisted
+
+#### Scenario: Optional placeholder filters are compiled
+- **WHEN** a text widget contains `{{dev.123.temperature | upper}}`
+- **THEN** the compiler preserves the placeholder reference and the trailing filter metadata
+- **AND** whitespace around the filter separator is tolerated
 
 ### Requirement: Placeholder compilation reports exact validation failures
 The firmware SHALL return a validation result that identifies why a text widget placeholder cannot be compiled.
@@ -50,9 +64,15 @@ The firmware SHALL return a validation result that identifies why a text widget 
 ### Requirement: Compiled placeholder evaluation is render tolerant
 The firmware SHALL evaluate compiled text segments during rendering without failing the whole widget when a placeholder value is unavailable at runtime.
 
+The firmware SHALL resolve a typed metric value first and SHALL apply placeholder filters as a bounded formatting step before final text layout.
+
 #### Scenario: Resolved placeholders are substituted
 - **WHEN** a compiled text widget contains a placeholder whose current metric value is available
 - **THEN** evaluation substitutes that metric text into the output string
+
+#### Scenario: Filters format the resolved value
+- **WHEN** a compiled text widget contains a placeholder with a supported filter
+- **THEN** evaluation applies the filter after metric resolution and before the value is appended to the output string
 
 #### Scenario: Unresolved placeholders render empty
 - **WHEN** a compiled text widget contains a placeholder whose device or metric is unavailable at render time
@@ -64,18 +84,21 @@ The firmware SHALL evaluate compiled text segments during rendering without fail
 - **THEN** rendering completes without crashing
 - **AND** the stale placeholder segment renders as empty text
 
-### Requirement: Compiled placeholder data is refreshed at layout mutation boundaries
-The display runtime SHALL rebuild transient compiled text data when a layout is loaded or replaced.
+### Requirement: Compiled placeholder data is invalidated at layout mutation boundaries
+The display runtime SHALL invalidate transient compiled text data when a layout is loaded or replaced and MAY rebuild it lazily during rendering.
 
-#### Scenario: Persisted state load compiles text widgets
+#### Scenario: Persisted state load invalidates compiled text widgets
 - **WHEN** a display runtime loads persisted layout state
-- **THEN** it compiles text widgets before rendering the layout
+- **THEN** it invalidates any existing runtime text AST for that layout
 
-#### Scenario: Persisted state update compiles text widgets
+#### Scenario: Persisted state update invalidates compiled text widgets
 - **WHEN** a display runtime applies an updated persisted layout sidecar
-- **THEN** it compiles text widgets before accepting the layout for rendering
+- **THEN** it invalidates any existing runtime text AST for that layout
 
-#### Scenario: Direct layout replacement compiles text widgets
+#### Scenario: Direct layout replacement invalidates compiled text widgets
 - **WHEN** a display runtime receives a layout through `setLayout`
-- **THEN** it compiles text widgets before the next render pass
+- **THEN** it invalidates any existing runtime text AST for that layout
 
+#### Scenario: Render lazily rebuilds compiled text widgets
+- **WHEN** a text widget is rendered after its compiled AST was invalidated
+- **THEN** the display runtime rebuilds the transient AST before evaluating the widget text

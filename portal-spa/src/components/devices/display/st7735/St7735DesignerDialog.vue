@@ -56,13 +56,39 @@
         <section ref="canvasPanelRef" class="tft-designer__panel tft-designer__panel--canvas">
           <div class="tft-designer__panel-heading">
             <div>
-              <div class="text-subtitle-2">{{ t('device.dialog.ssd1306Display.canvasTitle') }}</div>
+              <div class="text-subtitle-2">{{ canvasModeTitle }}</div>
               <div class="text-caption text-medium-emphasis">
                 {{ canvasLabel }}
               </div>
             </div>
+            <div class="tft-designer__canvas-controls">
+              <v-switch
+                v-model="showPreview"
+                density="compact"
+                color="primary"
+                hide-details
+                inset
+                :label="t('device.dialog.st7735Display.previewTitle')"
+              />
+              <div class="tft-designer__zoom-field">
+                <div class="text-caption text-medium-emphasis tft-designer__zoom-label">
+                  {{ t('device.dialog.ssd1306Display.zoom') }} {{ editorZoom }}
+                </div>
+                <v-slider
+                  v-model="editorZoom"
+                  class="tft-designer__zoom"
+                  :min="1"
+                  :max="6"
+                  :step="0.5"
+                  hide-details
+                  density="compact"
+                  label=""
+                />
+              </div>
+            </div>
           </div>
           <St7735DesignerCanvas
+            v-if="!showPreview"
             :widgets="activePage.widgets"
             :device-width="layoutWidth"
             :device-height="layoutHeight"
@@ -73,16 +99,8 @@
             @update-widgets="updateActiveWidgets"
             @interaction-change="updateBitmapRenderLock"
           />
-          <v-slider
-            v-model="editorZoom"
-            :min="1"
-            :max="6"
-            :step="0.5"
-            hide-details
-            density="compact"
-            :label="t('device.dialog.ssd1306Display.zoom')"
-          />
           <St7735LayoutPreview
+            v-else
             :layout="layout"
             :display="st7735Display"
             :device-width="layoutWidth"
@@ -196,7 +214,9 @@ const layoutWidth = computed(() => Math.max(1, Math.round(draft.value.width)))
 const layoutHeight = computed(() => Math.max(1, Math.round(draft.value.height)))
 const canAddPage = computed(() => pages.value.length < 2)
 const canAddWidget = computed(() => activePageWidgets.value.length < 10)
+const showPreview = ref(false)
 const canvasLabel = computed(() => `${layoutWidth.value} × ${layoutHeight.value}`)
+const canvasModeTitle = computed(() => showPreview.value ? t('device.dialog.st7735Display.previewTitle') : t('device.dialog.ssd1306Display.canvasTitle'))
 const busy = computed(() => false)
 const sublineText = computed(() => `${draft.value.name} · ${canvasLabel.value}`)
 
@@ -454,9 +474,13 @@ function removeWidget(widgetId: string): void {
 .tft-designer__body {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr) 320px;
+  grid-template-areas:
+    "layers canvas"
+    "layers inspector";
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  grid-template-rows: max-content max-content;
+  align-content: start;
   gap: 12px;
-  align-items: start;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -471,13 +495,26 @@ function removeWidget(widgetId: string): void {
   border-radius: 8px;
   background: rgb(var(--v-theme-surface));
   min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   min-width: 0;
 }
 
+.tft-designer__panel--layers {
+  grid-area: layers;
+  overflow-y: auto;
+}
+
 .tft-designer__panel--canvas {
-  overflow-x: auto;
+  grid-area: canvas;
+  overflow: auto;
+  align-content: start;
+  min-height: max-content;
+}
+
+.tft-designer__panel--inspector {
+  grid-area: inspector;
+  width: 100%;
+  overflow: visible;
 }
 
 .tft-designer__panel-heading {
@@ -485,15 +522,45 @@ function removeWidget(widgetId: string): void {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tft-designer__canvas-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 420px;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.tft-designer__zoom-field {
+  display: grid;
+  gap: 4px;
+  flex: 0 0 220px;
+  min-width: 220px;
+}
+
+.tft-designer__zoom-label {
+  line-height: 1.2;
+}
+
+.tft-designer__zoom {
+  width: 100%;
 }
 
 .tft-designer__error {
   flex: 1 1 auto;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 960px) {
   .tft-designer__body {
-    grid-template-columns: 1fr;
+    grid-template-areas:
+      "layers"
+      "canvas"
+      "inspector";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
   }
 }
 </style>

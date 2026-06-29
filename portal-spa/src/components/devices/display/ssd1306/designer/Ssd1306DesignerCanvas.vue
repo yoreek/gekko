@@ -143,6 +143,7 @@ function finishInteraction(event: PointerEvent): void {
   position: relative;
   overflow-x: hidden;
   overflow-y: hidden;
+  margin-inline: auto;
   padding: 0;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.16);
   border-radius: 0;

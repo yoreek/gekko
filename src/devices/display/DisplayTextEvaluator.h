@@ -1,9 +1,11 @@
 #pragma once
 
 #include "devices/display/DisplayLayoutStore.h"
+#include "devices/display/DisplayTextPlaceholderAst.h"
 #include "metrics/MetricValueResolver.h"
 
 #include <cstddef>
+#include <cstdint>
 
 namespace ewfm {
 
@@ -24,8 +26,5 @@ struct DisplayTextEvaluationResult {
     bool available{true};
     char text[kDisplayEvaluatedTextCapacity]{};
 };
-
-bool evaluateDisplayTextWidget(const DisplayLayoutWidgetV1& widget, const MetricValueResolver& resolver,
-                               DisplayTextEvaluationResult& result);
 
 } // namespace ewfm

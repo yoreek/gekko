@@ -1,6 +1,7 @@
 #include "devices/display/DisplayLayoutCodec.h"
 
 #include "devices/core/DeviceBaseConfig.h"
+#include "devices/display/DisplayTextPlaceholderAst.h"
 
 #include <algorithm>
 #include <cstring>
@@ -522,7 +523,8 @@ bool validateWidget(const DisplayLayoutWidgetV1& widget) {
 }
 
 bool validateLayout(const DisplayLayoutRecordV1& layout) {
-    if ((layout.recordVersion != 1U && layout.recordVersion != 2U && layout.recordVersion != kDisplayLayoutRecordVersion) ||
+    if ((layout.recordVersion != 1U && layout.recordVersion != 2U && layout.recordVersion != 3U &&
+         layout.recordVersion != kDisplayLayoutRecordVersion) ||
         layout.schemaVersion != kDisplayLayoutSchemaVersion) {
         return false;
     }
@@ -552,7 +554,7 @@ bool validateLayout(const DisplayLayoutRecordV1& layout) {
 }
 
 size_t estimateWidgetSize(const DisplayLayoutWidgetV1& widget) {
-    return sizeof(DisplayLayoutBinaryWidgetV3) + widget.bitmapData.size();
+    return sizeof(DisplayLayoutBinaryWidgetV4) + widget.bitmapData.size();
 }
 
 void normalizePageOrder(DisplayLayoutRecordV1& layout) {
@@ -688,7 +690,10 @@ bool parseDisplayLayoutJson(const JsonObjectConst& input, DisplayLayoutRecordV1&
     if (layout.activePageIndex >= layout.pages.size()) {
         layout.activePageIndex = 0U;
     }
-    return validateLayout(layout);
+    if (!validateLayout(layout)) {
+        return false;
+    }
+    return prepareDisplayLayoutTextAst(layout);
 }
 
 bool encodeDisplayLayoutBinary(const DisplayLayoutRecordV1& layout, std::vector<uint8_t>& blob) {
@@ -730,7 +735,7 @@ bool encodeDisplayLayoutBinary(const DisplayLayoutRecordV1& layout, std::vector<
             return false;
         }
         for (const DisplayLayoutWidgetV1& widget : page.widgets) {
-            DisplayLayoutBinaryWidgetV3 binaryWidget{};
+            DisplayLayoutBinaryWidgetV4 binaryWidget{};
             if (!copyText(binaryWidget.id, sizeof(binaryWidget.id), widget.id)) {
                 return false;
             }
@@ -776,7 +781,8 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
     if (!readBinary(data, size, offset, header)) {
         return false;
     }
-    if ((header.recordVersion != 1U && header.recordVersion != 2U && header.recordVersion != kDisplayLayoutRecordVersion) ||
+    if ((header.recordVersion != 1U && header.recordVersion != 2U && header.recordVersion != 3U &&
+         header.recordVersion != kDisplayLayoutRecordVersion) ||
         header.schemaVersion != kDisplayLayoutSchemaVersion) {
         return false;
     }
@@ -811,7 +817,7 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
         page.order = pageHeader.order;
         page.widgets.reserve(pageHeader.widgetCount);
         for (uint8_t widgetIndex = 0; widgetIndex < pageHeader.widgetCount; ++widgetIndex) {
-            DisplayLayoutBinaryWidgetV3 binaryWidget{};
+            DisplayLayoutBinaryWidgetV4 binaryWidget{};
             if (header.recordVersion == 1U) {
                 DisplayLayoutBinaryWidgetV1 legacyWidget{};
                 if (!readBinary(data, size, offset, legacyWidget)) {
@@ -908,7 +914,10 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
     }
 
     normalizePageOrder(layout);
-    return offset == size && validateLayout(layout);
+    if (offset != size || !validateLayout(layout)) {
+        return false;
+    }
+    return prepareDisplayLayoutTextAst(layout);
 }
 
 } // namespace ewfm

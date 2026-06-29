@@ -108,6 +108,8 @@ function widgetGeometry(widget: Ssd1306Widget): string {
   display: grid;
   gap: 4px;
   min-width: 0;
+  margin-top: 0;
+  align-self: flex-start;
 }
 
 .oled-layers__actions {

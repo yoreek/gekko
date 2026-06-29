@@ -61,6 +61,7 @@ function widgetStyle(widget: Ssd1306Widget): Record<string, string> {
 .tft-layout-preview {
   display: grid;
   gap: 8px;
+  justify-items: center;
 }
 
 .tft-layout-preview__header {
@@ -71,9 +72,10 @@ function widgetStyle(widget: Ssd1306Widget): Record<string, string> {
 }
 
 .tft-layout-preview__surface {
-  justify-self: start;
+  justify-self: center;
   max-width: 100%;
   overflow: auto;
+  padding-top: 12px;
   border: 0;
   border-radius: 0;
   background: transparent;

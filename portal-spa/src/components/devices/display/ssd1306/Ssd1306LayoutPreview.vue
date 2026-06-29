@@ -1,12 +1,5 @@
 <template>
   <section class="oled-layout-preview">
-    <header class="oled-layout-preview__header">
-      <div class="text-subtitle-2">{{ t('device.dialog.ssd1306Display.previewTitle') }}</div>
-      <div class="text-caption text-medium-emphasis">
-        {{ layout.pages.find(page => page.id === layout.activePageId)?.name ?? layout.activePageId }}
-      </div>
-    </header>
-
     <div class="oled-layout-preview__surface">
       <div
         class="oled-layout-preview__canvas"
@@ -32,7 +25,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 
 import Ssd1306WidgetPreview from '@/components/devices/display/ssd1306/Ssd1306WidgetPreview.vue'
 import { resolveSsd1306CanvasStyle, resolveSsd1306WidgetFrameStyle } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
@@ -48,8 +40,6 @@ const props = defineProps<{
   bitmapRenderFrozen?: boolean
 }>()
 
-const { t } = useI18n()
-
 const previewScale = computed(() => props.previewScale ?? 1.75)
 const isBitmapRenderFrozen = computed(() => Boolean(props.bitmapRenderFrozen))
 const activePageWidgets = computed(() => props.layout.pages.find(page => page.id === props.layout.activePageId)?.widgets ?? [])
@@ -64,19 +54,14 @@ function widgetStyle(widget: Ssd1306Widget): Record<string, string> {
 .oled-layout-preview {
   display: grid;
   gap: 8px;
-}
-
-.oled-layout-preview__header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  justify-items: center;
 }
 
 .oled-layout-preview__surface {
-  justify-self: start;
+  justify-self: center;
   max-width: 100%;
   overflow: auto;
+  padding-top: 12px;
   border: 0;
   border-radius: 0;
   background: transparent;

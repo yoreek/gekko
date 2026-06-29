@@ -5,9 +5,11 @@ export interface ParsedMetricPlaceholder {
   readonly namespace: MetricNamespace
   readonly sourceId: number
   readonly metricKey: string
+  readonly filter: MetricPlaceholderFilter | null
 }
 
 export type MetricPlaceholderValidationStatus = 'static' | 'valid' | 'unavailable' | 'invalid'
+export type MetricPlaceholderFilter = 'text' | 'upper' | 'lower' | 'trim'
 
 export interface MetricPlaceholderValidation {
   readonly status: MetricPlaceholderValidationStatus
@@ -22,6 +24,33 @@ export interface MetricPlaceholderValidation {
 
 const placeholderPattern = /{{\s*([^{}]+?)\s*}}/g
 
+function parseMetricPlaceholderFilter(raw: string): MetricPlaceholderFilter | null {
+  const normalized = raw.trim().toLowerCase()
+  switch (normalized) {
+    case 'text':
+    case 'upper':
+    case 'lower':
+    case 'trim':
+      return normalized
+    default:
+      return null
+  }
+}
+
+function applyMetricPlaceholderFilter(value: string, filter: MetricPlaceholderFilter | null): string {
+  switch (filter) {
+    case 'text':
+    case null:
+      return value
+    case 'upper':
+      return value.toUpperCase()
+    case 'lower':
+      return value.toLowerCase()
+    case 'trim':
+      return value.trim()
+  }
+}
+
 export interface MetricPlaceholderValidationEntry {
   readonly raw: string
   readonly parsed: ParsedMetricPlaceholder | null
@@ -30,15 +59,29 @@ export interface MetricPlaceholderValidationEntry {
 }
 
 export function parseMetricPlaceholder(raw: string): ParsedMetricPlaceholder | null {
-  const parts = raw.trim().split('.').map(part => part.trim()).filter(Boolean)
+  const [expression, filterText] = raw.trim().split('|', 2)
+  if (raw.includes('|') && raw.indexOf('|') !== raw.lastIndexOf('|')) {
+    return null
+  }
+  const filter = filterText === undefined || filterText.trim().length === 0
+    ? null
+    : parseMetricPlaceholderFilter(filterText)
+  if (filterText !== undefined && filterText.trim().length > 0 && filter === null) {
+    return null
+  }
+  const parts = expression.trim().split('.').map(part => part.trim()).filter(Boolean)
   if (parts.length === 3 && parts[0] === 'dev') {
     const sourceId = Number(parts[1])
     return Number.isInteger(sourceId) && sourceId > 0 && parts[2].length > 0
-      ? { raw: `{{dev.${sourceId}.${parts[2]}}}`, namespace: 'dev', sourceId, metricKey: parts[2] }
+      ? { raw: `{{dev.${sourceId}.${parts[2]}}}`, namespace: 'dev', sourceId, metricKey: parts[2], filter }
       : null
   }
-  if (parts.length === 2 && (parts[0] === 'system' || parts[0] === 'wifi') && parts[1].length > 0) {
-    return { raw: `{{${parts[0]}.${parts[1]}}}`, namespace: parts[0], sourceId: 0, metricKey: parts[1] }
+  if (parts.length === 2 && parts[0] === 'system' && (parts[1] === 'time' || parts[1] === 'uptime')) {
+    return { raw: `{{system.${parts[1]}}}`, namespace: 'system', sourceId: 0, metricKey: parts[1], filter }
+  }
+  if (parts.length === 3 && parts[0] === 'system' && parts[1] === 'wifi' && (parts[2] === 'station_ip' || parts[2] === 'setup_ap_ip')) {
+    const metricKey = `wifi.${parts[2]}`
+    return { raw: `{{system.${metricKey}}}`, namespace: 'system', sourceId: 0, metricKey, filter }
   }
   return null
 }
@@ -46,7 +89,7 @@ export function parseMetricPlaceholder(raw: string): ParsedMetricPlaceholder | n
 export function metricPlaceholderForDescriptor(descriptor: MetricPlaceholderDescriptor): string {
   return descriptor.namespace === 'dev'
     ? `{{dev.${descriptor.sourceId}.${descriptor.metricKey}}}`
-    : `{{${descriptor.namespace}.${descriptor.metricKey}}}`
+    : `{{system.${descriptor.metricKey}}}`
 }
 
 export function validateMetricPlaceholders(
@@ -108,7 +151,7 @@ export function resolveMetricPlaceholderText(text: string, catalog: readonly Met
       entry.namespace === parsed.namespace &&
       entry.sourceId === parsed.sourceId &&
       entry.metricKey === parsed.metricKey)
-    return descriptor?.available ? (descriptor.preview ?? '') : match
+    return descriptor?.available ? applyMetricPlaceholderFilter(descriptor.preview ?? '', parsed.filter) : match
   })
 }
 

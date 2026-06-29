@@ -73,6 +73,12 @@ struct CountingRuntime final : public IDeviceRuntime {
             }
         }
     }
+    void setDependencyRuntimeAt(uint8_t index, IDeviceRuntime* dependencyRuntime) override {
+        if (index >= dependencyCount_) {
+            return;
+        }
+        dependencyRuntimes_[index] = dependencyRuntime;
+    }
     IDeviceRuntime* dependencyRuntime(DeviceDependencyRole role) const override {
         for (uint8_t index = 0; index < dependencyCount_; ++index) {
             if (dependencyLinks_[index].role == role) {
@@ -80,6 +86,12 @@ struct CountingRuntime final : public IDeviceRuntime {
             }
         }
         return nullptr;
+    }
+    IDeviceRuntime* dependencyRuntimeAt(uint8_t index) const override {
+        if (index >= dependencyCount_) {
+            return nullptr;
+        }
+        return dependencyRuntimes_[index];
     }
     uint8_t dependencyCount() const override {
         return dependencyCount_;

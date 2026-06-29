@@ -145,9 +145,9 @@ export interface DeviceDetailResponse<TRecord extends DeviceRecord = DeviceRecor
   success?: boolean
 }
 
-export type MetricNamespace = 'dev' | 'system' | 'wifi'
+export type MetricNamespace = 'dev' | 'system'
 
-export type MetricValueType = 'text' | 'status' | 'temperature' | 'switch_state' | 'time'
+export type MetricValueType = 'null' | 'bool' | 'int' | 'float' | 'string'
 
 export interface MetricPlaceholderDescriptor {
   placeholder: string

@@ -64,24 +64,6 @@ public:
     }
 };
 
-DeviceId createDummy(DeviceRegistry& registry, const char* name, uint32_t now) {
-    DummyDeviceConfigV1 config{};
-    config.enabled = 1;
-    std::snprintf(config.name, sizeof(config.name), "%s", name);
-    uint8_t buffer[kMaxDeviceConfigBytes]{};
-    TEST_ASSERT_TRUE(encodeDummyDeviceConfig(config, buffer, dummyDeviceConfigSize(config)));
-
-    DeviceCreateRequest request{};
-    request.typeId = DummyDevice::descriptor().typeId;
-    request.name = name;
-    request.configVersion = DummyDevice::descriptor().currentConfigVersion;
-    TEST_ASSERT_TRUE(request.configBlob.assign(buffer, dummyDeviceConfigSize(config)));
-    const DeviceCreateResult result = registry.create(request, now);
-    TEST_ASSERT_TRUE(result.ok());
-    registry.tickFastLoop(now + 1U);
-    return result.deviceId;
-}
-
 class FakeDisplaySurface final : public IDisplayRenderSurface {
 public:
     void clear() override {
@@ -183,9 +165,8 @@ void test_display_layout_renderer_clears_once_and_uses_min_refresh_interval() {
     DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
     DeviceRegistry registry(registryStore, types, idSource);
     TEST_ASSERT_TRUE(registry.begin(1000).ok());
-    const DeviceId dummyId = createDummy(registry, "living-room-sensor", 1000);
     char devicePlaceholder[48]{};
-    std::snprintf(devicePlaceholder, sizeof(devicePlaceholder), "Device {{dev.%lu.status}}", static_cast<unsigned long>(dummyId));
+    std::snprintf(devicePlaceholder, sizeof(devicePlaceholder), "%s", "Device {{system.wifi.station_ip}}");
 
     DisplayLayoutRecordV1 layout{};
     layout.activePageIndex = 0;
@@ -195,7 +176,7 @@ void test_display_layout_renderer_clears_once_and_uses_min_refresh_interval() {
     page.widgets.push_back(makeTextWidget("static", "Hello", kDisplayLayoutRefreshIntervalDisabled));
     page.widgets.push_back(makeMetricWidget("device_status", devicePlaceholder, kDisplayLayoutRefreshIntervalDisabled));
     page.widgets.push_back(makeMetricWidget("system_time", "Time {{system.time}}", kDisplayLayoutRefreshIntervalDisabled));
-    page.widgets.push_back(makeMetricWidget("wifi_status", "WiFi {{wifi.status}}", 1000));
+    page.widgets.push_back(makeMetricWidget("wifi_status", "WiFi {{system.wifi.station_ip}}", 1000));
     page.widgets.push_back(makeShapeWidget("box", DisplayLayoutWidgetType::Rect));
     layout.pages.push_back(page);
 
@@ -213,9 +194,9 @@ void test_display_layout_renderer_clears_once_and_uses_min_refresh_interval() {
     TEST_ASSERT_EQUAL_UINT32(6U, static_cast<uint32_t>(surface.ops.size()));
     TEST_ASSERT_EQUAL_STRING("clear", surface.ops[0].c_str());
     TEST_ASSERT_EQUAL_STRING("text:static:Hello", surface.ops[1].c_str());
-    TEST_ASSERT_EQUAL_STRING("text:device_status:Device ready", surface.ops[2].c_str());
+    TEST_ASSERT_EQUAL_STRING("text:device_status:Device 192.168.1.50", surface.ops[2].c_str());
     TEST_ASSERT_EQUAL_STRING("text:system_time:Time 1:02:03", surface.ops[3].c_str());
-    TEST_ASSERT_EQUAL_STRING("text:wifi_status:WiFi connected", surface.ops[4].c_str());
+    TEST_ASSERT_EQUAL_STRING("text:wifi_status:WiFi 192.168.1.50", surface.ops[4].c_str());
     TEST_ASSERT_EQUAL_STRING("rect:box", surface.ops[5].c_str());
 
     const DisplayLayoutRenderResult notDue = session.render(layout, resolver, surface, 3723100U);

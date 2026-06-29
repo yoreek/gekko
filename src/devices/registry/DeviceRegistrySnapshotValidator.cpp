@@ -22,23 +22,6 @@ bool hasDuplicateEntries(const std::vector<DeviceIndexEntry>& entries) {
     return false;
 }
 
-bool hasDuplicateDependencyRoles(const DeviceRegistryEntry& record) {
-    std::map<DeviceDependencyRole, bool> seen;
-    const DeviceDependencyLink* links = record.dependencyLinks();
-    const uint8_t depCount = record.dependencyCount();
-    for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
-        const auto role = links[index].role;
-        if (role == DeviceDependencyRole::Unknown) {
-            return true;
-        }
-        if (seen.find(role) != seen.end()) {
-            return true;
-        }
-        seen.emplace(role, true);
-    }
-    return false;
-}
-
 bool recordDependsOn(const DeviceRegistryEntry& record, DeviceId deviceId) {
     const DeviceDependencyLink* links = record.dependencyLinks();
     const uint8_t depCount = record.dependencyCount();
@@ -120,8 +103,11 @@ DeviceValidationResult DeviceRegistrySnapshotValidator::validateStructure(const 
         if (record.dependencyCount() > kMaxDeviceDependencies) {
             return {DeviceError::BoundsExceeded, "device record exceeds supported dependency count"};
         }
-        if (hasDuplicateDependencyRoles(record)) {
-            return {DeviceError::InvalidRelationship, "duplicate dependency role or invalid dependency role"};
+        const DeviceDependencyLink* links = record.dependencyLinks();
+        for (uint8_t index = 0; index < record.dependencyCount() && links != nullptr; ++index) {
+            if (links[index].role == DeviceDependencyRole::Unknown) {
+                return {DeviceError::InvalidRelationship, "duplicate dependency role or invalid dependency role"};
+            }
         }
         if (recordById.find(record.header.deviceId) != recordById.end()) {
             return {DeviceError::DuplicateDeviceId, "duplicate record device id"};

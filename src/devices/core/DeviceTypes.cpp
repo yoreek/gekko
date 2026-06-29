@@ -14,7 +14,7 @@ namespace ewfm {
 
 namespace {
 constexpr const char* kDeviceDependencyRoleNames[] = {
-    "unknown", "onewire_bus", "temperature_sensor", "switch", "i2c_bus", "ssd1306", "spi_bus",
+    "unknown", "onewire_bus", "temperature_sensor", "switch", "i2c_bus", "ssd1306", "spi_bus", "metric_source",
 };
 
 constexpr const char* kDeviceEventKindNames[] = {
@@ -63,6 +63,10 @@ bool parseDeviceDependencyRole(std::string_view value, DeviceDependencyRole& rol
     }
     if (value == "spi_bus") {
         role = DeviceDependencyRole::SpiBus;
+        return true;
+    }
+    if (value == "metric_source") {
+        role = DeviceDependencyRole::MetricSource;
         return true;
     }
     role = DeviceDependencyRole::Unknown;

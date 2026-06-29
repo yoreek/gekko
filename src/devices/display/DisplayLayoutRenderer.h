@@ -2,6 +2,7 @@
 
 #include "devices/display/DisplayLayoutStore.h"
 #include "devices/display/DisplayTextEvaluator.h"
+#include "devices/display/DisplayTextPlaceholderAst.h"
 
 #include <cstdint>
 
@@ -43,6 +44,7 @@ private:
     bool initialized_{false};
     uint8_t renderedPageIndex_{0xFFU};
     uint32_t nextRefreshAtMs_{0U};
+    bool textSourcesBound_{false};
 };
 
 } // namespace ewfm

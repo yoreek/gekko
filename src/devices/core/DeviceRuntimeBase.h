@@ -18,7 +18,9 @@ public:
     void end(uint32_t now) override;
     void resetStateMachine(uint32_t now) override;
     void setDependencyRuntime(DeviceDependencyRole role, IDeviceRuntime* dependencyRuntime) override;
+    void setDependencyRuntimeAt(uint8_t index, IDeviceRuntime* dependencyRuntime) override;
     IDeviceRuntime* dependencyRuntime(DeviceDependencyRole role) const override;
+    IDeviceRuntime* dependencyRuntimeAt(uint8_t index) const override;
     uint8_t dependencyCount() const override;
     const DeviceDependencyLink* dependencyLinks() const override;
     void attachDependentRuntime(IDeviceRuntime* dependentRuntime) override;

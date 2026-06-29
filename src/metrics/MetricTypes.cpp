@@ -34,18 +34,18 @@ bool parseMetricNamespace(const char* value, MetricNamespace& ns) {
 
 const char* metricValueTypeName(const MetricValueType type) {
     switch (type) {
-    case MetricValueType::Text:
-        return "text";
-    case MetricValueType::Status:
-        return "status";
-    case MetricValueType::Temperature:
-        return "temperature";
-    case MetricValueType::SwitchState:
-        return "switch_state";
-    case MetricValueType::Time:
-        return "time";
+    case MetricValueType::Null:
+        return "null";
+    case MetricValueType::Bool:
+        return "bool";
+    case MetricValueType::Int:
+        return "int";
+    case MetricValueType::Float:
+        return "float";
+    case MetricValueType::String:
+        return "string";
     }
-    return "text";
+    return "null";
 }
 
 } // namespace ewfm

@@ -20,10 +20,12 @@ Text widgets currently resolve placeholders by reparsing raw text during renderi
 - `display-metric-placeholders`: Text widgets may contain multiple placeholders, and invalid or missing placeholder references are validated and soft-failed per placeholder instead of invalidating the whole render.
 - `oled-display-layout-designer`: The designer validates text-widget placeholders against available devices and metrics and supports multiple placeholders per text widget.
 - `oled-display`: Runtime layout handling compiles placeholder text into a cached representation used by render-time evaluation.
+- `device-relationships`: Device dependencies are treated as a list of links rather than unique role slots, allowing display metric placeholder source devices to share the `metric_source` role while still preventing referenced-device deletion.
 
 ## Impact
 
 - Firmware text-widget parsing, validation, and render paths for SSD1306 and ST7735 displays.
 - Placeholder catalog and text widget inspector behavior in the portal SPA.
+- Device dependency validation and persistence for repeated-role display metric source relationships.
 - Layout/documentation updates for display text widgets and placeholder handling.
 - Tests for placeholder parsing, validation, and render-time fallback behavior.

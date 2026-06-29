@@ -19,6 +19,8 @@ const portalIconAliases: Partial<IconAliases> = {
   system: 'system',
   ws: 'ws',
   journal: 'journal',
+  'design-display': 'design-display',
+  'oled-page': 'oled-page',
   locale: 'locale',
   sun: 'sun',
   moon: 'moon',

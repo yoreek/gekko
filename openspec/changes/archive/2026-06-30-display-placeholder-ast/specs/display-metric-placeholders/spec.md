@@ -7,6 +7,10 @@ The firmware SHALL resolve compiled structured metric placeholders in text widge
 - **WHEN** a text widget contains a supported placeholder and the source metric is available
 - **THEN** the renderer substitutes the current metric value into the drawn text
 
+#### Scenario: Typed values are formatted before render
+- **WHEN** a placeholder resolves to a typed numeric or boolean value
+- **THEN** the placeholder pipeline formats that value into text using the filter and display formatting rules
+
 #### Scenario: Multiple placeholders are rendered in order
 - **WHEN** a text widget contains more than one supported placeholder mixed with literal text
 - **THEN** the renderer substitutes each current metric value while preserving the original literal and placeholder order
@@ -27,6 +31,15 @@ The firmware SHALL resolve compiled structured metric placeholders in text widge
 - **WHEN** the portal saves a layout containing a structured placeholder with an unknown source device or metric key
 - **THEN** the firmware rejects the layout update instead of accepting an unresolved reference
 
+#### Scenario: Save validation rejects unsupported device metrics
+- **WHEN** the portal saves a layout containing a device placeholder whose metric key is not supported by the referenced source device type
+- **THEN** the firmware rejects the layout update instead of accepting a placeholder that cannot be resolved for that device type
+
+#### Scenario: Source device dependencies prevent deletion
+- **WHEN** a saved display layout references a source device through a structured metric placeholder
+- **THEN** the firmware records the source device as a `metric_source` dependency of the display device
+- **AND** deleting the source device is rejected while that display layout dependency exists
+
 ### Requirement: Dynamic text widgets drive a bounded redraw cadence
 The firmware SHALL use compiled text-widget placeholder state and refresh intervals to schedule full display redraws when a layout contains dynamic placeholders.
 
@@ -41,4 +54,3 @@ The firmware SHALL use compiled text-widget placeholder state and refresh interv
 #### Scenario: Redraw repaints the entire layout
 - **WHEN** a scheduled refresh is due
 - **THEN** the display is cleared once and all widgets on the active page are drawn in order
-

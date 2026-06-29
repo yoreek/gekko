@@ -10,6 +10,7 @@ This document fixes the current OLED layout contract in the firmware.
 - Persistence uses the device-scoped `display_layout` binary payload.
 - Text-rendering notes live in [oled-text-rendering-notes.md](./oled-text-rendering-notes.md).
 - Placeholder behavior lives in [display-text-placeholders.md](./display-text-placeholders.md).
+- Compiled placeholder state is transient runtime cache data and is not persisted in the layout payload.
 
 ## Actual Flow
 
@@ -64,10 +65,20 @@ This document fixes the current OLED layout contract in the firmware.
   - owns runtime `layout_` as `OledDisplayLayoutRecordV1`
   - decodes binary into struct
   - encodes struct to binary through `OledDisplayLayoutStore`
+  - binds display placeholder AST state at runtime without persisting it
 
 - `OledDisplayLayoutStore`
   - owns only typed binary persistence under `display_layout`
   - does not parse API JSON
+
+## Placeholder Dependencies
+
+Structured `dev.<deviceId>.<metricKey>` placeholders are content dependencies.
+
+- Each referenced source device is stored as a `metric_source` dependency link on the display device.
+- The runtime AST may cache direct runtime references for render speed, but those references are transient.
+- The persisted dependency link is the durable source of truth for deletion protection and reload behavior.
+- Layout text remains the source of truth for placeholder parsing and AST rebuild.
 
 ## Binary Model
 

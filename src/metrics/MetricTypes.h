@@ -13,22 +13,19 @@ enum class MetricNamespace : uint8_t {
 };
 
 enum class MetricValueType : uint8_t {
-    Text = 0,
-    Status = 1,
-    Temperature = 2,
-    SwitchState = 3,
-    Time = 4,
+    Null = 0,
+    Bool = 1,
+    Int = 2,
+    Float = 3,
+    String = 4,
 };
 
-constexpr int32_t kDeviceMetricStatus = 1;
-constexpr int32_t kDeviceMetricEffectiveStatus = 2;
 constexpr int32_t kDeviceMetricTemperature = 100;
 constexpr int32_t kDeviceMetricSwitchState = 200;
 constexpr int32_t kSystemMetricTime = 1;
 constexpr int32_t kSystemMetricUptime = 2;
-constexpr int32_t kWifiMetricStatus = 1;
-constexpr int32_t kWifiMetricStationIp = 2;
-constexpr int32_t kWifiMetricSetupApIp = 3;
+constexpr int32_t kSystemMetricWifiStationIp = 3;
+constexpr int32_t kSystemMetricWifiSetupApIp = 4;
 
 const char* metricNamespaceName(MetricNamespace ns);
 bool parseMetricNamespace(const char* value, MetricNamespace& ns);

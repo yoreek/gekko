@@ -8,6 +8,17 @@ This document defines how metric placeholders work in display text widgets acros
 - Placeholder strings live directly in `widget.text`.
 - Placeholders are evaluated at render time, not stored as a separate field.
 - The same text may contain plain text and any number of placeholders.
+- The placeholder pipeline keeps the raw widget text as the source of truth and compiles a transient runtime AST close to render time.
+
+## Value Model
+
+Placeholder resolution is typed before it becomes text.
+
+- `MetricValue` is the transport object between metric sources and placeholder formatting.
+- The value model is intentionally small: `Null`, `Bool`, `Int`, `Float`, and `String`.
+- Numeric metrics stay numeric until the value formatter turns them into display text.
+- String filters are a final formatting step; they do not replace typed metric resolution.
+- The renderer should not infer numeric meaning from a preformatted string when a typed source value exists.
 
 ## Placeholder Syntax
 
@@ -15,15 +26,19 @@ Supported forms:
 
 - `{{dev.<deviceId>.<metricKey>}}`
 - `{{system.<metricKey>}}`
-- `{{wifi.<metricKey>}}`
+- `{{system.wifi.<metricKey>}}`
+- Optional filters may follow the placeholder body with `|`, for example `{{system.wifi.station_ip | upper}}`.
 
 Examples:
 
-- `Room {{dev.670845748.status}}`
-- `IP {{wifi.station_ip}}`
+- `Room {{dev.670845748.temperature}}`
+- `State {{dev.670845748.state}}`
+- `IP {{system.wifi.station_ip}}`
 - `Boot {{system.time}} / {{system.uptime}}`
+- `Device {{dev.123.temperature | upper}}`
 
 Whitespace inside the braces is tolerated by the parsers.
+Whitespace around the `|` separator is also tolerated.
 
 ## Frontend Behavior
 
@@ -37,12 +52,14 @@ Rules:
 - A text widget with no placeholder is treated as static text.
 - Invalid placeholder syntax is reported, but it does not block preview rendering.
 - A placeholder that exists syntactically but is not present in the fetched catalog is treated as unavailable.
+- The SPA parser mirrors the firmware grammar, including trailing filters.
 
 Preview behavior:
 
 - Available placeholders are replaced with their `preview` value in the designer preview.
 - Unavailable placeholders remain in the preview text until the runtime resolves them.
 - Multiple placeholders are replaced independently.
+- Filters are applied to the preview value after placeholder resolution.
 
 ## Firmware Behavior
 
@@ -56,6 +73,8 @@ Rules:
 - A bad placeholder does not cancel the full text render.
 - Static text still renders unchanged.
 - Metric-bound widgets without inline placeholders continue to resolve through `bindingKind`, `metricNamespace`, `sourceDeviceId`, and `metricId`.
+- Device placeholder source devices are recorded separately as `metric_source` registry dependencies so delete protection can see them.
+- Value formatting happens before final text layout, so the renderer receives typed metric output plus optional placeholder filters, not a raw device-specific sensor object.
 
 ## Validation Semantics
 
@@ -97,6 +116,8 @@ The catalog carries:
 - `available`
 - `preview`
 
+The catalog describes placeholder candidates for editing only. It is not the runtime value contract.
+
 ## Saving Layouts
 
 Saving a display layout does not serialize placeholders separately.
@@ -112,12 +133,15 @@ The saved widget payload should include:
 
 Layout normalization keeps those fields consistent before persistence.
 
+The runtime AST and any compiled placeholder references are transient and are rebuilt from `text` after layout load.
+
 ## Notes
 
 - Long placeholder text should use a multiline text editor in the UI.
 - Text widget width and height still define the render box.
 - Placeholder evaluation happens after layout loading and before widget drawing.
 - The rendered output may be partially empty if some placeholders are unavailable.
+- String filters are intentionally small and bounded. New filters should be added only when they map cleanly to typed metric values or existing display formatting rules.
 
 ## Related Docs
 

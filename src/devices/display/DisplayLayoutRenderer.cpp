@@ -16,7 +16,12 @@ const DisplayLayoutPageV1* activePage(const DisplayLayoutRecordV1& layout) {
 void renderTextWidget(const DisplayLayoutWidgetV1& widget, const MetricValueResolver& resolver, IDisplayRenderSurface& surface,
                       bool& dynamic) {
     DisplayTextEvaluationResult text{};
-    (void)evaluateDisplayTextWidget(widget, resolver, text);
+    const DisplayTextCompiledWidget* compiled = nullptr;
+    if (ensureDisplayTextWidgetAst(widget, compiled, nullptr) && compiled != nullptr) {
+        (void)evaluateDisplayTextWidget(widget.text, *compiled, resolver, text);
+    } else {
+        (void)evaluateDisplayTextWidget(widget, resolver, text);
+    }
     dynamic = text.dynamic;
     surface.drawText(widget, text);
 }
@@ -27,6 +32,7 @@ void DisplayLayoutRenderSession::invalidate() {
     initialized_ = false;
     renderedPageIndex_ = 0xFFU;
     nextRefreshAtMs_ = 0U;
+    textSourcesBound_ = false;
 }
 
 uint16_t DisplayLayoutRenderSession::widgetRefreshInterval(const DisplayLayoutWidgetV1& widget, const bool dynamic) {
@@ -49,6 +55,13 @@ DisplayLayoutRenderResult DisplayLayoutRenderSession::render(const DisplayLayout
         return result;
     }
 
+    if (!textSourcesBound_) {
+        const DeviceRegistry* registry = resolver.registry();
+        if (registry != nullptr && bindDisplayLayoutTextAst(layout, *registry)) {
+            textSourcesBound_ = true;
+        }
+    }
+
     const bool pageChanged = !initialized_ || renderedPageIndex_ != layout.activePageIndex;
     const bool refreshDue = pageChanged || !initialized_ || (nextRefreshAtMs_ != 0U && EWFM_SM_TIME_REACHED(now, nextRefreshAtMs_));
     result.pageChanged = pageChanged;
@@ -62,7 +75,8 @@ DisplayLayoutRenderResult DisplayLayoutRenderSession::render(const DisplayLayout
     uint16_t minimumRefreshIntervalMs = 0U;
     uint8_t renderedWidgetCount = 0U;
     bool hasDynamicWidgets = false;
-    for (const DisplayLayoutWidgetV1& widget : page->widgets) {
+    for (size_t widgetIndex = 0; widgetIndex < page->widgets.size(); ++widgetIndex) {
+        const DisplayLayoutWidgetV1& widget = page->widgets[widgetIndex];
         const DisplayLayoutWidgetType type = static_cast<DisplayLayoutWidgetType>(widget.type);
         if (type == DisplayLayoutWidgetType::Text) {
             bool dynamic = false;

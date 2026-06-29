@@ -84,7 +84,7 @@ DeviceId createDummy(DeviceRegistry& registry, const char* name, uint32_t now) {
 
 } // namespace
 
-void test_metric_value_resolver_resolves_device_status_and_missing_sources() {
+void test_metric_value_resolver_resolves_device_temperature_and_missing_sources() {
     MemoryConfigStorage registryStorage;
     DeviceRegistryStore registryStore(registryStorage);
     TEST_ASSERT_TRUE(registryStore.begin(false));
@@ -97,42 +97,30 @@ void test_metric_value_resolver_resolves_device_status_and_missing_sources() {
     MetricValueResolver resolver(&registry, wifi);
 
     MetricValue value{};
-    TEST_ASSERT_TRUE(resolver.resolve(MetricNamespace::Device, dummyId, kDeviceMetricStatus, value));
-    TEST_ASSERT_TRUE(value.known);
-    TEST_ASSERT_TRUE(value.available);
-    TEST_ASSERT_EQUAL_STRING("ready", value.text);
-    TEST_ASSERT_EQUAL(MetricValueType::Status, value.valueType);
-
-    TEST_ASSERT_FALSE(resolver.resolve(MetricNamespace::Device, 999, kDeviceMetricStatus, value));
     TEST_ASSERT_FALSE(resolver.resolve(MetricNamespace::Device, dummyId, kDeviceMetricTemperature, value));
+    TEST_ASSERT_FALSE(resolver.resolve(MetricNamespace::Device, 999, kDeviceMetricTemperature, value));
 }
 
-void test_metric_value_resolver_resolves_wifi_and_system_values() {
+void test_metric_value_resolver_resolves_system_values() {
     FakeWifiDriver wifi;
     MetricValueResolver resolver(nullptr, wifi, 3723000U);
 
     MetricValue value{};
-    TEST_ASSERT_TRUE(resolver.resolve(MetricNamespace::Wifi, 0, kWifiMetricStatus, value));
-    TEST_ASSERT_TRUE(value.available);
-    TEST_ASSERT_EQUAL_STRING("connected", value.text);
-    TEST_ASSERT_EQUAL(MetricValueType::Status, value.valueType);
-
-    TEST_ASSERT_TRUE(resolver.resolve(MetricNamespace::Wifi, 0, kWifiMetricStationIp, value));
-    TEST_ASSERT_TRUE(value.available);
+    TEST_ASSERT_TRUE(resolver.resolve(MetricNamespace::System, 0, kSystemMetricWifiStationIp, value));
+    TEST_ASSERT_EQUAL(MetricValueType::String, value.valueType);
     TEST_ASSERT_EQUAL_STRING("192.168.1.50", value.text);
 
-    TEST_ASSERT_TRUE(resolver.resolve(MetricNamespace::Wifi, 0, kWifiMetricSetupApIp, value));
-    TEST_ASSERT_FALSE(value.available);
+    TEST_ASSERT_FALSE(resolver.resolve(MetricNamespace::System, 0, kSystemMetricWifiSetupApIp, value));
+    TEST_ASSERT_EQUAL(MetricValueType::Null, value.valueType);
     TEST_ASSERT_EQUAL_STRING("", value.text);
 
     TEST_ASSERT_TRUE(resolver.resolve(MetricNamespace::System, 0, kSystemMetricTime, value));
-    TEST_ASSERT_TRUE(value.known);
-    TEST_ASSERT_TRUE(value.available);
-    TEST_ASSERT_EQUAL(MetricValueType::Time, value.valueType);
+    TEST_ASSERT_EQUAL(MetricValueType::String, value.valueType);
     TEST_ASSERT_EQUAL_STRING("1:02:03", value.text);
 
     TEST_ASSERT_TRUE(resolver.resolve(MetricNamespace::System, 0, kSystemMetricUptime, value));
-    TEST_ASSERT_TRUE(value.available);
+    TEST_ASSERT_EQUAL(MetricValueType::Int, value.valueType);
+    TEST_ASSERT_EQUAL_INT32(3723000, value.number.intValue);
     TEST_ASSERT_EQUAL_STRING("3723000 ms", value.text);
 }
 
@@ -142,7 +130,7 @@ void test_display_text_evaluator_resolves_static_and_placeholder_text() {
 
     DisplayLayoutWidgetV1 widget{};
     widget.type = static_cast<uint8_t>(DisplayLayoutWidgetType::Text);
-    std::snprintf(widget.text, sizeof(widget.text), "%s", "IP {{wifi.station_ip}}");
+    std::snprintf(widget.text, sizeof(widget.text), "%s", "IP {{system.wifi.station_ip}}");
 
     DisplayTextEvaluationResult result{};
     TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
@@ -158,15 +146,6 @@ void test_display_text_evaluator_resolves_static_and_placeholder_text() {
     DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
     DeviceRegistry registry(registryStore, types, idSource);
     TEST_ASSERT_TRUE(registry.begin(0).ok());
-    const DeviceId sensorId = createDummy(registry, "hallway-sensor", 0);
-    MetricValueResolver deviceResolver(&registry, wifi);
-
-    std::snprintf(widget.text, sizeof(widget.text), "Room {{dev.%lu.status}}", static_cast<unsigned long>(sensorId));
-    TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, deviceResolver, result));
-    TEST_ASSERT_TRUE(result.dynamic);
-    TEST_ASSERT_TRUE(result.available);
-    TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::Resolved, result.status);
-    TEST_ASSERT_EQUAL_STRING("Room ready", result.text);
 
     MetricValueResolver timeResolver(nullptr, wifi, 3723000U);
     std::snprintf(widget.text, sizeof(widget.text), "%s", "Time {{system.time}}");
@@ -192,13 +171,12 @@ void test_display_text_evaluator_handles_missing_and_binding_only_metrics() {
     DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
     DeviceRegistry registry(registryStore, types, idSource);
     TEST_ASSERT_TRUE(registry.begin(0).ok());
-    const DeviceId dummyId = createDummy(registry, "dummy", 10);
     FakeWifiDriver wifi;
     MetricValueResolver resolver(&registry, wifi);
 
     DisplayLayoutWidgetV1 widget{};
     widget.type = static_cast<uint8_t>(DisplayLayoutWidgetType::Text);
-    std::snprintf(widget.text, sizeof(widget.text), "%s", "Sensor {{dev.999.status}}");
+    std::snprintf(widget.text, sizeof(widget.text), "%s", "Sensor {{dev.999.temperature}}");
 
     DisplayTextEvaluationResult result{};
     TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
@@ -207,22 +185,31 @@ void test_display_text_evaluator_handles_missing_and_binding_only_metrics() {
     TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::MissingMetric, result.status);
     TEST_ASSERT_EQUAL_STRING("Sensor ", result.text);
 
-    std::snprintf(widget.text, sizeof(widget.text), "%s", "AP {{wifi.setup_ap_ip}}");
+    std::snprintf(widget.text, sizeof(widget.text), "%s", "AP {{system.wifi.setup_ap_ip}}");
     TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
     TEST_ASSERT_TRUE(result.dynamic);
     TEST_ASSERT_TRUE(result.available);
     TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::MissingMetric, result.status);
     TEST_ASSERT_EQUAL_STRING("AP ", result.text);
 
+    MetricValueResolver timeResolver(&registry, wifi, 3723000U);
     widget.bindingKind = static_cast<uint8_t>(DisplayLayoutBindingKind::Metric);
-    widget.metricNamespace = static_cast<uint8_t>(MetricNamespace::Device);
-    widget.sourceDeviceId = dummyId;
-    widget.metricId = kDeviceMetricStatus;
+    widget.metricNamespace = static_cast<uint8_t>(MetricNamespace::System);
+    widget.sourceDeviceId = 0;
+    widget.metricId = kSystemMetricTime;
     widget.text[0] = '\0';
-    TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
+    TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, timeResolver, result));
     TEST_ASSERT_TRUE(result.dynamic);
     TEST_ASSERT_TRUE(result.available);
-    TEST_ASSERT_EQUAL_STRING("ready", result.text);
+    TEST_ASSERT_EQUAL_STRING("1:02:03", result.text);
+
+    std::snprintf(widget.text, sizeof(widget.text), "%s", "Room {{system.wifi.station_ip | upper}}");
+    const DeviceValidationResult validation = validateDisplayTextWidget(widget, registry);
+    TEST_ASSERT_TRUE(validation.ok());
+
+    std::snprintf(widget.text, sizeof(widget.text), "%s", "Room {{system.wifi.station_ip |   }}");
+    const DeviceValidationResult validationWithEmptyFilter = validateDisplayTextWidget(widget, registry);
+    TEST_ASSERT_TRUE(validationWithEmptyFilter.ok());
 }
 
 void test_display_text_evaluator_reports_invalid_placeholders() {
@@ -231,7 +218,7 @@ void test_display_text_evaluator_reports_invalid_placeholders() {
 
     DisplayLayoutWidgetV1 widget{};
     widget.type = static_cast<uint8_t>(DisplayLayoutWidgetType::Text);
-    std::snprintf(widget.text, sizeof(widget.text), "%s", "{{wifi.unknown}}");
+    std::snprintf(widget.text, sizeof(widget.text), "%s", "{{system.unknown}}");
 
     DisplayTextEvaluationResult result{};
     TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
@@ -239,17 +226,43 @@ void test_display_text_evaluator_reports_invalid_placeholders() {
     TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::InvalidPlaceholder, result.status);
     TEST_ASSERT_EQUAL_STRING("", result.text);
 
-    std::snprintf(widget.text, sizeof(widget.text), "%s", "{{wifi.status}}{{wifi.status}}");
+    std::snprintf(widget.text, sizeof(widget.text), "%s", "{{system.wifi.station_ip}}{{system.wifi.station_ip}}");
     TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
     TEST_ASSERT_TRUE(result.dynamic);
     TEST_ASSERT_TRUE(result.available);
     TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::Resolved, result.status);
-    TEST_ASSERT_EQUAL_STRING("connectedconnected", result.text);
+    TEST_ASSERT_EQUAL_STRING("192.168.1.50192.168.1.50", result.text);
 
-    std::snprintf(widget.text, sizeof(widget.text), "%s", "{{wifi.bad}} {{wifi.status}}");
+    std::snprintf(widget.text, sizeof(widget.text), "%s", "{{system.wifi.station_ip | upper}}");
+    TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
+    TEST_ASSERT_TRUE(result.dynamic);
+    TEST_ASSERT_TRUE(result.available);
+    TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::Resolved, result.status);
+    TEST_ASSERT_EQUAL_STRING("192.168.1.50", result.text);
+
+    std::snprintf(widget.text, sizeof(widget.text), "%s", "{{system.wifi.station_ip | lower}}");
+    TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
+    TEST_ASSERT_TRUE(result.dynamic);
+    TEST_ASSERT_TRUE(result.available);
+    TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::Resolved, result.status);
+    TEST_ASSERT_EQUAL_STRING("192.168.1.50", result.text);
+
+    std::snprintf(widget.text, sizeof(widget.text), "%s", "{{ system.wifi.station_ip | text }}");
+    TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
+    TEST_ASSERT_TRUE(result.dynamic);
+    TEST_ASSERT_TRUE(result.available);
+    TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::Resolved, result.status);
+    TEST_ASSERT_EQUAL_STRING("192.168.1.50", result.text);
+
+    std::snprintf(widget.text, sizeof(widget.text), "%s", "{{system.bad}} {{system.wifi.station_ip}}");
     TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
     TEST_ASSERT_TRUE(result.dynamic);
     TEST_ASSERT_TRUE(result.available);
     TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::InvalidPlaceholder, result.status);
-    TEST_ASSERT_EQUAL_STRING(" connected", result.text);
+    TEST_ASSERT_EQUAL_STRING(" 192.168.1.50", result.text);
+
+    std::snprintf(widget.text, sizeof(widget.text), "%s", "{{system.wifi.station_ip | nope}}");
+    TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
+    TEST_ASSERT_TRUE(result.available);
+    TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::InvalidPlaceholder, result.status);
 }

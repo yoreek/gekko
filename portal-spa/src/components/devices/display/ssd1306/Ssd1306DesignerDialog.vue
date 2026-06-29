@@ -33,7 +33,7 @@
         </v-btn>
       </div>
 
-    <v-tabs v-model="activePageId" color="primary" mandatory class="oled-designer__tabs">
+      <v-tabs v-model="activePageId" color="primary" mandatory class="oled-designer__tabs">
         <v-tab v-for="page in pages" :key="page.id" :value="page.id">
           {{ page.name }}
         </v-tab>
@@ -58,11 +58,37 @@
             <div>
               <div class="text-subtitle-2">{{ t('device.dialog.ssd1306Display.canvasTitle') }}</div>
               <div class="text-caption text-medium-emphasis">
-                {{ canvasLabel }}
+                {{ canvasPageLabel }}
+              </div>
+            </div>
+            <div class="oled-designer__canvas-controls">
+              <v-switch
+                v-model="showPreview"
+                density="compact"
+                color="primary"
+                hide-details
+                inset
+                :label="t('device.dialog.ssd1306Display.previewTitle')"
+              />
+              <div class="oled-designer__zoom-field">
+                <div class="text-caption text-medium-emphasis oled-designer__zoom-label">
+                  {{ t('device.dialog.ssd1306Display.zoom') }} {{ editorZoom }}
+                </div>
+                <v-slider
+                  v-model="editorZoom"
+                  class="oled-designer__zoom"
+                  :min="1"
+                  :max="6"
+                  :step="0.5"
+                  hide-details
+                  density="compact"
+                  label=""
+                />
               </div>
             </div>
           </div>
           <Ssd1306DesignerCanvas
+            v-if="!showPreview"
             :widgets="activePage.widgets"
             :device-width="layoutWidth"
             :device-height="layoutHeight"
@@ -73,16 +99,8 @@
             @update-widgets="updateActiveWidgets"
             @interaction-change="updateBitmapRenderLock"
           />
-          <v-slider
-            v-model="editorZoom"
-            :min="1"
-            :max="6"
-            :step="0.5"
-            hide-details
-            density="compact"
-            :label="t('device.dialog.ssd1306Display.zoom')"
-          />
           <Ssd1306LayoutPreview
+            v-else
             :layout="layout"
             :display="ssd1306Display"
             :device-width="layoutWidth"
@@ -200,7 +218,9 @@ const layoutWidth = computed(() => Math.max(1, Math.round(draft.value.width)))
 const layoutHeight = computed(() => Math.max(1, Math.round(draft.value.height)))
 const canAddPage = computed(() => pages.value.length < OLED_DISPLAY_LAYOUT_MAX_PAGES)
 const canAddWidget = computed(() => activePageWidgets.value.length < OLED_DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE)
+const showPreview = ref(false)
 const canvasLabel = computed(() => `${layoutWidth.value} × ${layoutHeight.value}`)
+const canvasPageLabel = computed(() => `${activePage.value.name} · ${canvasLabel.value}`)
 const busy = computed(() => false)
 const sublineText = computed(() => `${draft.value.name} · ${canvasLabel.value}`)
 
@@ -482,18 +502,30 @@ function removeWidget(widgetId: string): void {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  flex: 0 0 auto;
 }
 
 .oled-designer__tabs {
+  position: relative;
+  flex: 0 0 auto;
+  z-index: 1;
+  margin-bottom: 4px;
   border-bottom: 1px solid rgb(var(--v-theme-outline-variant));
 }
 
 .oled-designer__body {
+  position: relative;
+  z-index: 0;
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr) 320px;
+  grid-template-areas:
+    "layers canvas"
+    "layers inspector";
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  grid-template-rows: max-content max-content;
+  align-content: start;
+  flex: 1 1 auto;
   gap: 12px;
-  align-items: start;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -508,13 +540,30 @@ function removeWidget(widgetId: string): void {
   border-radius: 8px;
   background: rgb(var(--v-theme-surface));
   min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   min-width: 0;
 }
 
+.oled-designer__panel--layers {
+  grid-area: layers;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
 .oled-designer__panel--canvas {
-  overflow-x: auto;
+  grid-area: canvas;
+  overflow: auto;
+  align-content: start;
+  min-height: max-content;
+}
+
+.oled-designer__panel--inspector {
+  grid-area: inspector;
+  width: 100%;
+  overflow: visible;
 }
 
 .oled-designer__panel-heading {
@@ -522,15 +571,45 @@ function removeWidget(widgetId: string): void {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.oled-designer__canvas-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 420px;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.oled-designer__zoom-field {
+  display: grid;
+  gap: 4px;
+  flex: 0 0 220px;
+  min-width: 220px;
+}
+
+.oled-designer__zoom-label {
+  line-height: 1.2;
+}
+
+.oled-designer__zoom {
+  width: 100%;
 }
 
 .oled-designer__error {
   flex: 1 1 auto;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 960px) {
   .oled-designer__body {
-    grid-template-columns: 1fr;
+    grid-template-areas:
+      "layers"
+      "canvas"
+      "inspector";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
   }
 }
 </style>

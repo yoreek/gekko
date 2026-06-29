@@ -33,3 +33,9 @@ If the registry format version is missing or unsupported, or if the registry sna
 Device configs are stored as bounded binary payloads owned by the concrete device type. Public REST create/update requests use JSON, but encoding to the internal binary payload stays inside firmware adapters.
 
 Device runtime snapshots expose current runtime state, such as switch output or DS18B20 temperature, separately from persisted config.
+
+Display layouts are a special case of persisted device-scoped state:
+
+- the raw widget `text` is persisted as part of the layout payload
+- compiled text AST data is runtime-only and is rebuilt from text after load
+- referenced display source devices are persisted separately as `metric_source` dependency links on the display device record

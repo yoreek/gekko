@@ -62,6 +62,13 @@ void DeviceRuntimeBase::setDependencyRuntime(DeviceDependencyRole role, IDeviceR
     }
 }
 
+void DeviceRuntimeBase::setDependencyRuntimeAt(uint8_t index, IDeviceRuntime* dependencyRuntime) {
+    if (index >= dependencyCount_ || index >= kMaxDeviceDependencies) {
+        return;
+    }
+    dependencyRuntimes_[index] = dependencyRuntime;
+}
+
 IDeviceRuntime* DeviceRuntimeBase::dependencyRuntime(DeviceDependencyRole role) const {
     for (uint8_t index = 0; index < dependencyCount_ && index < kMaxDeviceDependencies; ++index) {
         if (dependencyLinks_[index].role == role) {
@@ -69,6 +76,13 @@ IDeviceRuntime* DeviceRuntimeBase::dependencyRuntime(DeviceDependencyRole role) 
         }
     }
     return nullptr;
+}
+
+IDeviceRuntime* DeviceRuntimeBase::dependencyRuntimeAt(uint8_t index) const {
+    if (index >= dependencyCount_ || index >= kMaxDeviceDependencies) {
+        return nullptr;
+    }
+    return dependencyRuntimes_[index];
 }
 
 uint8_t DeviceRuntimeBase::dependencyCount() const {

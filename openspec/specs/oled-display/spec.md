@@ -27,7 +27,22 @@ The portal SHALL exchange OLED layout as JSON, while firmware persistence SHALL 
 
 #### Scenario: API accepts JSON layout
 - **WHEN** the portal sends `config.layout` in an OLED create or update request
-- **THEN** the OLED adapter validates that JSON and converts it into an opaque binary sidecar payload
+- **THEN** the OLED adapter validates that JSON, validates structured text placeholders, extracts metric source dependencies, and converts it into an opaque binary sidecar payload
+
+#### Scenario: Placeholder filters survive layout validation
+- **WHEN** the portal sends `config.layout` containing `{{dev.123.temperature | upper}}`
+- **THEN** the OLED adapter validates the placeholder body and the trailing filter as one structured text expression
+- **AND** it keeps the raw widget `text` unchanged for persistence
+
+#### Scenario: API rejects invalid text placeholders
+- **WHEN** the portal sends `config.layout` containing malformed placeholder syntax, an unknown placeholder namespace, an unknown source device, or an unknown metric key
+- **THEN** the OLED adapter rejects the request with a validation error
+- **AND** it does not update persisted display layout state
+
+#### Scenario: API persists metric source dependencies
+- **WHEN** the portal saves a layout containing `dev` placeholders that reference source devices
+- **THEN** the firmware stores those source devices as `metric_source` dependency links on the display device
+- **AND** it preserves the display hardware bus dependency link
 
 #### Scenario: API returns JSON layout
 - **WHEN** the portal requests OLED device data
@@ -70,7 +85,7 @@ The firmware SHALL persist OLED layout as a versioned binary payload with explic
 - **THEN** it rejects the payload as invalid and does not restore it into the runtime
 
 ### Requirement: Runtime owns layout as a struct
-The OLED runtime SHALL keep the active layout as a typed runtime struct.
+The OLED runtime SHALL keep the active layout as a typed runtime struct plus transient compiled text data derived from that struct.
 
 #### Scenario: Runtime layout is typed
 - **WHEN** the OLED runtime has an active layout
@@ -83,6 +98,18 @@ The OLED runtime SHALL keep the active layout as a typed runtime struct.
 #### Scenario: Runtime normalizes created layout device ID
 - **WHEN** an OLED layout sidecar created before device ID assignment is applied to a runtime
 - **THEN** the runtime rewrites `layout.deviceId` to its own `deviceId()`
+
+#### Scenario: Runtime invalidates text widgets after layout load
+- **WHEN** the OLED runtime loads or replaces a layout
+- **THEN** it invalidates transient compiled text data derived from previous raw text widget values
+
+#### Scenario: Runtime builds text AST lazily
+- **WHEN** the OLED runtime renders a text widget whose compiled AST is missing or invalid
+- **THEN** it builds the transient AST from the raw text widget value before evaluating placeholders
+
+#### Scenario: Runtime formats typed metric values
+- **WHEN** the OLED runtime resolves a metric placeholder whose source returns a typed numeric, boolean, or string value
+- **THEN** the runtime formats that typed value for display after placeholder resolution and before layout draw
 
 ### Requirement: Layout bounds are enforced
 The firmware SHALL keep OLED layout bounded and reject invalid payloads.
@@ -168,7 +195,7 @@ The OLED layout codec SHALL preserve compatibility with schema v1 layouts that d
 - **THEN** it emits the current schema version and includes explicit widget `type` fields
 
 ### Requirement: Generic value template bindings are retained
-The OLED layout contract SHALL retain source bindings for generic text value templates without defining the full placeholder catalog in this change.
+The OLED layout contract SHALL retain source bindings for generic text value templates while routing structured `{{...}}` placeholders through the compiled placeholder parser.
 
 #### Scenario: Template text is stored with binding
 - **WHEN** a text widget stores template text containing `{value}`
@@ -178,6 +205,14 @@ The OLED layout contract SHALL retain source bindings for generic text value tem
 - **WHEN** a bound source device is deleted after the layout is saved
 - **THEN** the OLED layout remains valid and the runtime may treat that widget value as unavailable
 
+#### Scenario: Structured placeholders are validated by the parser
+- **WHEN** the layout codec parses text containing `{{...}}` structured placeholder syntax
+- **THEN** it validates the placeholder through the shared placeholder parser before accepting API layout updates
+
 #### Scenario: Unknown placeholder is not expanded by layout codec
 - **WHEN** the layout codec parses text containing placeholder-like syntax other than `{value}`
 - **THEN** it stores the bounded text literally and does not attempt device-specific placeholder resolution
+
+#### Scenario: Legacy template compatibility remains isolated
+- **WHEN** a text widget uses `{value}` with `bindingKind` equal to metric
+- **THEN** the runtime resolves that legacy template binding without treating `{value}` as a structured `{{...}}` placeholder
