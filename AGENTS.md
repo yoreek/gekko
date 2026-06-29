@@ -9,6 +9,10 @@ See also: [portal-spa/AGENTS.md](portal-spa/AGENTS.md)
 - Prefer one class per domain/responsibility and split growing domains into focused files before they become large dispatchers.
 - Prefer plain C arrays for fixed-size scratch buffers when a wrapper type adds no value.
 
+## Device Config Versioning
+
+- Follow [Device Config Versioning](docs/device-config-versioning.md) before changing persisted `*DeviceConfigV*` structs, binary config markers, REST config fields, or migration code.
+
 ## Non-Blocking Firmware Flow
 
 - Use cooperative `loop()` execution.
