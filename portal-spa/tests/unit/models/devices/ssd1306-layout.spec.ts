@@ -777,8 +777,8 @@ test('mock database normalization preserves typed OLED layouts', () => {
           deps: [],
           i2cBusDeviceId: 3,
           i2cAddress: 60,
-          layoutWidth: 128,
-          layoutHeight: 64,
+          width: 128,
+          height: 64,
           layout: {
             pages: [
               {

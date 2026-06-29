@@ -19,7 +19,6 @@ enum class DisplayLayoutBindingKind : uint8_t {
 
 enum class DisplayLayoutWidgetType : uint8_t {
     Text = 0,
-    Icon = 1,
     Bitmap = 2,
     Rect = 3,
     Line = 4,

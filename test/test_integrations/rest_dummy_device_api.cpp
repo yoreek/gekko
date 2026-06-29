@@ -63,13 +63,13 @@ DeviceRegistryEntry makeSsd1306Record() {
 }
 
 BoundedBlob<kMaxDeviceConfigBytes> encodeSsd1306Config() {
-    Ssd1306DeviceConfigV1 config{};
+    Ssd1306DeviceConfigV2 config{};
     config.enabled = true;
     std::snprintf(config.name, sizeof(config.name), "%s", "ssd1306");
     config.i2cBusDeviceId = 12;
     config.i2cAddress = 0x3C;
-    config.layoutWidth = 128;
-    config.layoutHeight = 64;
+    config.width = 128;
+    config.height = 64;
 
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     BoundedBlob<kMaxDeviceConfigBytes> blob{};
@@ -154,8 +154,8 @@ void test_ssd1306_device_api_adapter_encodes_layout_update_payload() {
     config["enabled"] = true;
     config["i2cBusDeviceId"] = 12;
     config["i2cAddress"] = 0x3C;
-    config["layoutWidth"] = 128;
-    config["layoutHeight"] = 64;
+    config["width"] = 128;
+    config["height"] = 64;
     JsonObject layout = config.createNestedObject("layout");
     layout["schemaVersion"] = 1;
     layout["activePageId"] = "main";
@@ -190,6 +190,8 @@ void test_ssd1306_device_api_adapter_encodes_layout_update_payload() {
     StaticJsonDocument<1024> outputDoc;
     JsonObject output = outputDoc.to<JsonObject>();
     Ssd1306DeviceApiAdapter::instance().writeDeviceJson(runtime, runtime.status(), output);
+    TEST_ASSERT_EQUAL_UINT16(128, output["config"]["width"].as<uint16_t>());
+    TEST_ASSERT_EQUAL_UINT16(64, output["config"]["height"].as<uint16_t>());
     TEST_ASSERT_TRUE(output["config"]["layout"].is<JsonObjectConst>());
     TEST_ASSERT_EQUAL_STRING("main", output["config"]["layout"]["activePageId"].as<const char*>());
 }

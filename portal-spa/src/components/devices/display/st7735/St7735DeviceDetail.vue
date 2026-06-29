@@ -9,6 +9,12 @@
           <v-text-field :label="t('device.fields.chipSelectPin')" :model-value="config.chipSelectPin" readonly />
         </v-col>
         <v-col cols="12" md="6">
+          <v-text-field :label="t('device.fields.dcPin')" :model-value="config.dcPin" readonly />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field :label="t('device.fields.resetPin')" :model-value="config.resetPin" readonly />
+        </v-col>
+        <v-col cols="12" md="6">
           <v-text-field :label="t('device.fields.display.width')" :model-value="config.width" readonly />
         </v-col>
         <v-col cols="12" md="6">

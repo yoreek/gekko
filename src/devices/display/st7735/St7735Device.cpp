@@ -14,7 +14,7 @@ namespace ewfm {
 
 namespace {
 constexpr DeviceTypeId kSt7735DeviceTypeId = 9;
-constexpr uint32_t kSt7735DeviceConfigVersion = 2;
+constexpr uint32_t kSt7735DeviceConfigVersion = 3;
 } // namespace
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
@@ -103,26 +103,31 @@ public:
             break;
         }
         case DisplayLayoutBitmapFormat::Rgb565: {
-            for (size_t index = 0U; index < pixelCount; ++index) {
-                const size_t byteIndex = index * 2U;
-                if (byteIndex + 1U >= widget.bitmapData.size()) {
-                    break;
-                }
-                const uint16_t pixel = static_cast<uint16_t>(widget.bitmapData[byteIndex]) << 8U |
-                                       static_cast<uint16_t>(widget.bitmapData[byteIndex + 1U]);
-                if (pixel != 0U) {
-                    const int16_t x = static_cast<int16_t>(index % widget.width);
-                    const int16_t y = static_cast<int16_t>(index / widget.width);
-                    canvas.drawPixel(x, y, 1);
-                }
-            }
-            break;
+            drawRgb565Bitmap(widget);
+            return;
         }
         }
         blit(widget, canvas.getBuffer());
     }
 
 private:
+    void drawRgb565Bitmap(const DisplayLayoutWidgetV1& widget) {
+        if (widget.width == 0U || widget.height == 0U || widget.bitmapData.empty()) {
+            return;
+        }
+        uint16_t row[255]{};
+        for (uint8_t y = 0U; y < widget.height; ++y) {
+            for (uint8_t x = 0U; x < widget.width; ++x) {
+                const size_t pixelIndex = static_cast<size_t>(y) * static_cast<size_t>(widget.width) + x;
+                const size_t byteIndex = pixelIndex * 2U;
+                row[x] = byteIndex + 1U < widget.bitmapData.size()
+                             ? static_cast<uint16_t>((static_cast<uint16_t>(widget.bitmapData[byteIndex]) << 8U) |
+                                                     static_cast<uint16_t>(widget.bitmapData[byteIndex + 1U]))
+                             : 0U;
+            }
+            display_.drawRGBBitmap(static_cast<int16_t>(widget.x), static_cast<int16_t>(widget.y + y), row, widget.width, 1);
+        }
+    }
     template <typename DrawFn> void drawBox(const DisplayLayoutWidgetV1& widget, DrawFn&& drawFn) {
         if (widget.width == 0U || widget.height == 0U) {
             return;
@@ -144,9 +149,9 @@ private:
 };
 #endif
 
-static_assert(std::is_trivially_copyable<St7735DeviceConfigV1>::value, "St7735DeviceConfigV1 must be POD");
-static_assert(sizeof(St7735DeviceConfigV1::kMagic) - 1U + sizeof(St7735DeviceConfigV1) <= kMaxDeviceConfigBytes,
-              "St7735DeviceConfigV1 exceeds device config bound");
+static_assert(std::is_trivially_copyable<St7735DeviceConfigV3>::value, "St7735DeviceConfigV3 must be POD");
+static_assert(sizeof(St7735DeviceConfigV3::kMagic) - 1U + sizeof(St7735DeviceConfigV3) <= kMaxDeviceConfigBytes,
+              "St7735DeviceConfigV3 exceeds device config bound");
 
 St7735Device::St7735Device(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob)
     : DisplayDeviceBase(DisplayDeviceBase::initialState()) {
@@ -156,7 +161,7 @@ St7735Device::St7735Device(const DeviceRegistryEntry& record, const DeviceConfig
 
 St7735Device::~St7735Device() = default;
 
-const St7735DeviceConfigV1& St7735Device::config() const {
+const St7735DeviceConfigV3& St7735Device::config() const {
     return config_;
 }
 
@@ -180,7 +185,7 @@ bool St7735Device::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
 }
 
 bool St7735Device::replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const {
-    St7735DeviceConfigV1 config = config_;
+    St7735DeviceConfigV3 config = config_;
     config.enabled = baseConfig.enabled;
     std::memcpy(config.name, baseConfig.name, sizeof(config.name));
     uint8_t buffer[kMaxDeviceConfigBytes]{};
@@ -189,21 +194,21 @@ bool St7735Device::replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceB
 }
 
 DeviceConfigUpdatePlan St7735Device::planConfigUpdate(const DeviceConfigBlob& configBlob) const {
-    St7735DeviceConfigV1 config{};
+    St7735DeviceConfigV3 config{};
     if (!decodeSt7735DeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return {};
     }
     DeviceConfigUpdatePlan plan{};
     plan.endOldConfig = config.spiBusDeviceId != config_.spiBusDeviceId || config.chipSelectPin != config_.chipSelectPin ||
-                        config.dcPin != config_.dcPin || config.resetPin != config_.resetPin ||
-                        config.layoutWidth != config_.layoutWidth || config.layoutHeight != config_.layoutHeight;
+                        config.dcPin != config_.dcPin || config.resetPin != config_.resetPin || config.width != config_.width ||
+                        config.height != config_.height;
     plan.resetStateMachine = plan.endOldConfig;
     return plan;
 }
 
 bool St7735Device::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
     (void)now;
-    St7735DeviceConfigV1 config{};
+    St7735DeviceConfigV3 config{};
     if (!decodeSt7735DeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return false;
     }
@@ -301,7 +306,7 @@ DeviceValidationResult St7735Device::validateConfig(const DeviceRegistryEntry& r
     if (configBlob.size() > kMaxDeviceConfigBytes) {
         return {DeviceError::BoundsExceeded, "st7735 config exceeds supported size"};
     }
-    St7735DeviceConfigV1 config{};
+    St7735DeviceConfigV3 config{};
     if (!decodeSt7735DeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "st7735 config is invalid"};
     }

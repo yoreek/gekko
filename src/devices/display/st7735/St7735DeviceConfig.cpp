@@ -7,54 +7,90 @@
 
 namespace ewfm {
 
-#pragma pack(push, 1)
-struct St7735LegacyDeviceConfigV1 : DeviceBaseConfigV1 {
-    static constexpr char kMagic[] = "STV1";
-    uint32_t spiBusDeviceId{0};
-    uint8_t chipSelectPin{5};
-    uint16_t layoutWidth{128};
-    uint16_t layoutHeight{160};
-};
-#pragma pack(pop)
-
 namespace {
-static_assert(std::is_trivially_copyable<St7735LegacyDeviceConfigV1>::value, "St7735LegacyDeviceConfigV1 must be POD");
-static_assert(sizeof(St7735LegacyDeviceConfigV1::kMagic) - 1U + sizeof(St7735LegacyDeviceConfigV1) == st7735LegacyDeviceConfigSize(),
-              "St7735LegacyDeviceConfigV1 size mismatch");
+DeviceValidationResult validateSt7735DeviceConfigV1(const St7735DeviceConfigV1& config) {
+    const DeviceValidationResult baseValidation = config.DeviceBaseConfigV1::validate();
+    if (!baseValidation.ok()) {
+        return baseValidation;
+    }
+    if (config.spiBusDeviceId == 0U) {
+        return {DeviceError::InvalidConfig, "st7735 spi bus device id is required"};
+    }
+    if (config.layoutWidth == 0U || config.layoutHeight == 0U) {
+        return {DeviceError::InvalidConfig, "st7735 layout dimensions must be positive"};
+    }
+    return {};
+}
+
+DeviceValidationResult validateSt7735DeviceConfigV2(const St7735DeviceConfigV2& config) {
+    const DeviceValidationResult baseValidation = config.DeviceBaseConfigV1::validate();
+    if (!baseValidation.ok()) {
+        return baseValidation;
+    }
+    if (config.spiBusDeviceId == 0U) {
+        return {DeviceError::InvalidConfig, "st7735 spi bus device id is required"};
+    }
+    if (config.layoutWidth == 0U || config.layoutHeight == 0U) {
+        return {DeviceError::InvalidConfig, "st7735 layout dimensions must be positive"};
+    }
+    return {};
+}
 } // namespace
 
 static_assert(std::is_trivially_copyable<St7735DeviceConfigV1>::value, "St7735DeviceConfigV1 must be POD");
-static_assert(sizeof(St7735DeviceConfigV1::kMagic) - 1U + sizeof(St7735DeviceConfigV1) <= kMaxDeviceConfigBytes,
-              "St7735DeviceConfigV1 exceeds device config bound");
+static_assert(sizeof(St7735DeviceConfigV1::kMagic) - 1U + sizeof(St7735DeviceConfigV1) == st7735DeviceConfigV1Size(),
+              "St7735DeviceConfigV1 size mismatch");
+static_assert(std::is_trivially_copyable<St7735DeviceConfigV2>::value, "St7735DeviceConfigV2 must be POD");
+static_assert(sizeof(St7735DeviceConfigV2::kMagic) - 1U + sizeof(St7735DeviceConfigV2) == st7735DeviceConfigV2Size(),
+              "St7735DeviceConfigV2 size mismatch");
+static_assert(std::is_trivially_copyable<St7735DeviceConfigV3>::value, "St7735DeviceConfigV3 must be POD");
+static_assert(sizeof(St7735DeviceConfigV3::kMagic) - 1U + sizeof(St7735DeviceConfigV3) <= kMaxDeviceConfigBytes,
+              "St7735DeviceConfigV3 exceeds device config bound");
 
-bool encodeSt7735DeviceConfig(const St7735DeviceConfigV1& config, uint8_t* blob, size_t capacity) {
-    return encodeFixedConfigBlob(St7735DeviceConfigV1::kMagic, config, blob, capacity);
+bool encodeSt7735DeviceConfig(const St7735DeviceConfigV3& config, uint8_t* blob, size_t capacity) {
+    return encodeFixedConfigBlob(St7735DeviceConfigV3::kMagic, config, blob, capacity);
 }
 
-bool decodeSt7735DeviceConfig(const uint8_t* blob, size_t size, St7735DeviceConfigV1& config) {
-    if (decodeFixedConfigBlob(St7735DeviceConfigV1::kMagic, blob, size, config) && config.validate().ok()) {
+bool decodeSt7735DeviceConfig(const uint8_t* blob, size_t size, St7735DeviceConfigV3& config) {
+    if (decodeFixedConfigBlob(St7735DeviceConfigV3::kMagic, blob, size, config) && config.validate().ok()) {
         return true;
     }
-    St7735LegacyDeviceConfigV1 legacy{};
-    if (!decodeFixedConfigBlob(St7735LegacyDeviceConfigV1::kMagic, blob, size, legacy) || !legacy.validate().ok()) {
-        return false;
+    St7735DeviceConfigV2 v2{};
+    if (decodeFixedConfigBlob(St7735DeviceConfigV2::kMagic, blob, size, v2) && validateSt7735DeviceConfigV2(v2).ok()) {
+        config.migrateFrom(v2);
+        return config.validate().ok();
     }
-    config.migrateFrom(legacy);
-    return config.validate().ok();
+    St7735DeviceConfigV1 v1{};
+    if (decodeFixedConfigBlob(St7735DeviceConfigV1::kMagic, blob, size, v1) && validateSt7735DeviceConfigV1(v1).ok()) {
+        config.migrateFrom(v1);
+        return config.validate().ok();
+    }
+    return false;
 }
 
-void St7735DeviceConfigV1::migrateFrom(const St7735LegacyDeviceConfigV1& origState) {
+void St7735DeviceConfigV3::migrateFrom(const St7735DeviceConfigV1& origState) {
     enabled = origState.enabled;
     std::memcpy(name, origState.name, sizeof(name));
     spiBusDeviceId = origState.spiBusDeviceId;
     chipSelectPin = origState.chipSelectPin;
     dcPin = 2U;
     resetPin = -1;
-    layoutWidth = origState.layoutWidth;
-    layoutHeight = origState.layoutHeight;
+    width = origState.layoutWidth;
+    height = origState.layoutHeight;
 }
 
-bool St7735DeviceConfigV1::parseJson(const JsonObjectConst& input, const char*& error) {
+void St7735DeviceConfigV3::migrateFrom(const St7735DeviceConfigV2& origState) {
+    enabled = origState.enabled;
+    std::memcpy(name, origState.name, sizeof(name));
+    spiBusDeviceId = origState.spiBusDeviceId;
+    chipSelectPin = origState.chipSelectPin;
+    dcPin = origState.dcPin;
+    resetPin = origState.resetPin;
+    width = origState.layoutWidth;
+    height = origState.layoutHeight;
+}
+
+bool St7735DeviceConfigV3::parseJson(const JsonObjectConst& input, const char*& error) {
     if (!DeviceBaseConfigV1::parseJson(input, error)) {
         return false;
     }
@@ -115,30 +151,35 @@ bool St7735DeviceConfigV1::parseJson(const JsonObjectConst& input, const char*& 
         resetPin = static_cast<int8_t>(parsed);
     }
 
-    const JsonVariantConst widthVariant = input["layoutWidth"];
+    if (!input["layoutWidth"].isNull() || !input["layoutHeight"].isNull()) {
+        error = "st7735 layout dimensions must use width and height";
+        return false;
+    }
+
+    const JsonVariantConst widthVariant = input["width"];
     if (!widthVariant.isNull()) {
         const long parsed = widthVariant.as<long>();
         if (parsed <= 0 || parsed > 255) {
             error = "st7735 layout width is out of bounds";
             return false;
         }
-        layoutWidth = static_cast<uint16_t>(parsed);
+        width = static_cast<uint16_t>(parsed);
     }
 
-    const JsonVariantConst heightVariant = input["layoutHeight"];
+    const JsonVariantConst heightVariant = input["height"];
     if (!heightVariant.isNull()) {
         const long parsed = heightVariant.as<long>();
         if (parsed <= 0 || parsed > 255) {
             error = "st7735 layout height is out of bounds";
             return false;
         }
-        layoutHeight = static_cast<uint16_t>(parsed);
+        height = static_cast<uint16_t>(parsed);
     }
 
     return true;
 }
 
-DeviceValidationResult St7735DeviceConfigV1::validate() const {
+DeviceValidationResult St7735DeviceConfigV3::validate() const {
     const DeviceValidationResult baseValidation = DeviceBaseConfigV1::validate();
     if (!baseValidation.ok()) {
         return baseValidation;
@@ -146,20 +187,20 @@ DeviceValidationResult St7735DeviceConfigV1::validate() const {
     if (spiBusDeviceId == 0U) {
         return {DeviceError::InvalidConfig, "st7735 spi bus device id is required"};
     }
-    if (layoutWidth == 0U || layoutHeight == 0U) {
+    if (width == 0U || height == 0U) {
         return {DeviceError::InvalidConfig, "st7735 layout dimensions must be positive"};
     }
     return {};
 }
 
-void St7735DeviceConfigV1::writeJson(JsonObject output) const {
+void St7735DeviceConfigV3::writeJson(JsonObject output) const {
     DeviceBaseConfigV1::writeJson(output);
     output["spiBusDeviceId"] = spiBusDeviceId;
     output["chipSelectPin"] = chipSelectPin;
     output["dcPin"] = dcPin;
     output["resetPin"] = resetPin;
-    output["layoutWidth"] = layoutWidth;
-    output["layoutHeight"] = layoutHeight;
+    output["width"] = width;
+    output["height"] = height;
 }
 
 } // namespace ewfm

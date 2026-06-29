@@ -233,10 +233,10 @@ const layoutReviewWarning = computed(() => {
     return ''
   }
   const currentConfig = device.value.config as unknown as Record<string, unknown>
-  const currentWidth = Number(currentConfig.layoutWidth ?? 0)
-  const currentHeight = Number(currentConfig.layoutHeight ?? 0)
-  const draftWidth = Number(draft.value.layoutWidth ?? 0)
-  const draftHeight = Number(draft.value.layoutHeight ?? 0)
+  const currentWidth = Number(currentConfig.width ?? 0)
+  const currentHeight = Number(currentConfig.height ?? 0)
+  const draftWidth = Number(draft.value.width ?? 0)
+  const draftHeight = Number(draft.value.height ?? 0)
   if (currentWidth === draftWidth && currentHeight === draftHeight) {
     return ''
   }

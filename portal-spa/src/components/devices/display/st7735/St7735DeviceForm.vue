@@ -32,6 +32,32 @@
         <v-col cols="12" md="6">
           <v-text-field
             v-select-on-focus
+            :label="t('device.fields.dcPin')"
+            :model-value="currentValue.dcPin"
+            :disabled="busy"
+            inputmode="numeric"
+            type="number"
+            min="0"
+            max="39"
+            @update:model-value="updateNumber('dcPin', $event)"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field
+            v-select-on-focus
+            :label="t('device.fields.resetPin')"
+            :model-value="currentValue.resetPin"
+            :disabled="busy"
+            inputmode="numeric"
+            type="number"
+            min="-1"
+            max="39"
+            @update:model-value="updateNumber('resetPin', $event)"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field
+            v-select-on-focus
             :label="t('device.fields.display.width')"
             :model-value="currentValue.width"
             :disabled="busy"
@@ -101,7 +127,10 @@ const dependencyRules = computed(() => [
   (value: unknown) => Number(value) > 0 || t('device.dialog.st7735Display.noDependency'),
 ])
 
-function updateNumber(key: keyof Pick<St7735CreateDraft, 'spiBusDeviceId' | 'chipSelectPin' | 'width' | 'height'>, value: string | number): void {
+function updateNumber(
+  key: keyof Pick<St7735CreateDraft, 'spiBusDeviceId' | 'chipSelectPin' | 'dcPin' | 'resetPin' | 'width' | 'height'>,
+  value: string | number,
+): void {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) {
     return

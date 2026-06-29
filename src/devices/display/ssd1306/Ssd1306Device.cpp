@@ -14,7 +14,7 @@ namespace ewfm {
 
 namespace {
 constexpr DeviceTypeId kSsd1306DeviceTypeId = 7;
-constexpr uint32_t kSsd1306DeviceConfigVersion = 1;
+constexpr uint32_t kSsd1306DeviceConfigVersion = 2;
 } // namespace
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
@@ -108,8 +108,8 @@ public:
                 if (byteIndex + 1U >= widget.bitmapData.size()) {
                     break;
                 }
-                const uint16_t pixel = static_cast<uint16_t>(widget.bitmapData[byteIndex]) << 8U |
-                                       static_cast<uint16_t>(widget.bitmapData[byteIndex + 1U]);
+                const uint16_t pixel =
+                    static_cast<uint16_t>(widget.bitmapData[byteIndex]) << 8U | static_cast<uint16_t>(widget.bitmapData[byteIndex + 1U]);
                 if (pixel != 0U) {
                     const int16_t x = static_cast<int16_t>(index % widget.width);
                     const int16_t y = static_cast<int16_t>(index / widget.width);
@@ -144,9 +144,9 @@ private:
 };
 #endif
 
-static_assert(std::is_trivially_copyable<Ssd1306DeviceConfigV1>::value, "Ssd1306DeviceConfigV1 must be POD");
-static_assert(sizeof(Ssd1306DeviceConfigV1::kMagic) - 1U + sizeof(Ssd1306DeviceConfigV1) <= kMaxDeviceConfigBytes,
-              "Ssd1306DeviceConfigV1 exceeds device config bound");
+static_assert(std::is_trivially_copyable<Ssd1306DeviceConfigV2>::value, "Ssd1306DeviceConfigV2 must be POD");
+static_assert(sizeof(Ssd1306DeviceConfigV2::kMagic) - 1U + sizeof(Ssd1306DeviceConfigV2) <= kMaxDeviceConfigBytes,
+              "Ssd1306DeviceConfigV2 exceeds device config bound");
 
 Ssd1306Device::Ssd1306Device(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob)
     : DisplayDeviceBase(DisplayDeviceBase::initialState()) {
@@ -156,7 +156,7 @@ Ssd1306Device::Ssd1306Device(const DeviceRegistryEntry& record, const DeviceConf
 
 Ssd1306Device::~Ssd1306Device() = default;
 
-const Ssd1306DeviceConfigV1& Ssd1306Device::config() const {
+const Ssd1306DeviceConfigV2& Ssd1306Device::config() const {
     return config_;
 }
 
@@ -180,7 +180,7 @@ bool Ssd1306Device::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
 }
 
 bool Ssd1306Device::replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const {
-    Ssd1306DeviceConfigV1 config = config_;
+    Ssd1306DeviceConfigV2 config = config_;
     config.enabled = baseConfig.enabled;
     std::memcpy(config.name, baseConfig.name, sizeof(config.name));
     uint8_t buffer[kMaxDeviceConfigBytes]{};
@@ -189,20 +189,20 @@ bool Ssd1306Device::replaceBaseConfig(DeviceConfigBlob& configBlob, const Device
 }
 
 DeviceConfigUpdatePlan Ssd1306Device::planConfigUpdate(const DeviceConfigBlob& configBlob) const {
-    Ssd1306DeviceConfigV1 config{};
+    Ssd1306DeviceConfigV2 config{};
     if (!decodeSsd1306DeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return {};
     }
     DeviceConfigUpdatePlan plan{};
     plan.endOldConfig = config.i2cBusDeviceId != config_.i2cBusDeviceId || config.i2cAddress != config_.i2cAddress ||
-                        config.layoutWidth != config_.layoutWidth || config.layoutHeight != config_.layoutHeight;
+                        config.width != config_.width || config.height != config_.height;
     plan.resetStateMachine = plan.endOldConfig;
     return plan;
 }
 
 bool Ssd1306Device::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
     (void)now;
-    Ssd1306DeviceConfigV1 config{};
+    Ssd1306DeviceConfigV2 config{};
     if (!decodeSsd1306DeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return false;
     }
@@ -231,7 +231,7 @@ bool Ssd1306Device::initializeDisplayHardware(uint32_t now) {
         return false;
     }
     std::unique_ptr<::Adafruit_SSD1306> display(
-        new ::Adafruit_SSD1306(static_cast<uint8_t>(config_.layoutWidth), static_cast<uint8_t>(config_.layoutHeight), wire, -1));
+        new ::Adafruit_SSD1306(static_cast<uint8_t>(config_.width), static_cast<uint8_t>(config_.height), wire, -1));
     if (display == nullptr) {
         return false;
     }
@@ -304,7 +304,7 @@ DeviceValidationResult Ssd1306Device::validateConfig(const DeviceRegistryEntry& 
     if (configBlob.size() > kMaxDeviceConfigBytes) {
         return {DeviceError::BoundsExceeded, "ssd1306 config exceeds supported size"};
     }
-    Ssd1306DeviceConfigV1 config{};
+    Ssd1306DeviceConfigV2 config{};
     if (!decodeSsd1306DeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "ssd1306 config is invalid"};
     }

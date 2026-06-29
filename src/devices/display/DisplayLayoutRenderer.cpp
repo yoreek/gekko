@@ -50,8 +50,7 @@ DisplayLayoutRenderResult DisplayLayoutRenderSession::render(const DisplayLayout
     }
 
     const bool pageChanged = !initialized_ || renderedPageIndex_ != layout.activePageIndex;
-    const bool refreshDue = pageChanged || !initialized_ ||
-                            (nextRefreshAtMs_ != 0U && EWFM_SM_TIME_REACHED(now, nextRefreshAtMs_));
+    const bool refreshDue = pageChanged || !initialized_ || (nextRefreshAtMs_ != 0U && EWFM_SM_TIME_REACHED(now, nextRefreshAtMs_));
     result.pageChanged = pageChanged;
     if (!refreshDue) {
         return result;

@@ -71,7 +71,7 @@ bool Ssd1306DeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, D
         error = "ssd1306 config is required";
         return false;
     }
-    Ssd1306DeviceConfigV1 config{};
+    Ssd1306DeviceConfigV2 config{};
     if (!config.parseJson(configInput, error)) {
         return false;
     }
@@ -110,7 +110,7 @@ DeviceValidationResult Ssd1306DeviceApiAdapter::validateCreateRequest(const Devi
         return {DeviceError::InvalidRelationship, "ssd1306 requires i2c bus dependency"};
     }
 
-    Ssd1306DeviceConfigV1 config{};
+    Ssd1306DeviceConfigV2 config{};
     if (!decodeSsd1306DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "ssd1306 config is invalid"};
     }
@@ -124,7 +124,7 @@ bool Ssd1306DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& in
         error = "ssd1306 config is required";
         return false;
     }
-    Ssd1306DeviceConfigV1 config{};
+    Ssd1306DeviceConfigV2 config{};
     if (!config.parseJson(configInput, error)) {
         return false;
     }
@@ -155,7 +155,7 @@ bool Ssd1306DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& in
 DeviceValidationResult Ssd1306DeviceApiAdapter::validateUpdateConfigRequest(const IDeviceRuntime& runtime,
                                                                             const DeviceConfigUpdateRequest& request,
                                                                             const DeviceRegistry& registry) const {
-    Ssd1306DeviceConfigV1 config{};
+    Ssd1306DeviceConfigV2 config{};
     if (!decodeSsd1306DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "ssd1306 config is invalid"};
     }

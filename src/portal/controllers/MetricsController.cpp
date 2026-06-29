@@ -24,9 +24,9 @@ void writeJsonString(String& output, const char* value) {
     serializeJson(doc, output);
 }
 
-void writeDescriptor(AsyncResponseStream& response, bool& first, const MetricNamespace ns, const DeviceId sourceId,
-                     const char* sourceLabel, const int32_t metricId, const char* metricKey, const char* label,
-                     const MetricValueType valueType, const bool available, const char* preview) {
+void writeDescriptor(AsyncResponseStream& response, bool& first, const MetricNamespace ns, const DeviceId sourceId, const char* sourceLabel,
+                     const int32_t metricId, const char* metricKey, const char* label, const MetricValueType valueType,
+                     const bool available, const char* preview) {
     if (!first) {
         response.print(',');
     }

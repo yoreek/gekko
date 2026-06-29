@@ -33,8 +33,7 @@ App::App()
       retainedStateStore_(retainedStateStorage_), deviceScopedDataStore_(displayLayoutStorage_), displayLayoutStore_(displayLayoutStorage_),
       deviceRegistry_(deviceRegistryStore_, deviceTypeRegistry_, deviceIdSource_, &retainedStateStore_, &deviceScopedDataStore_,
                       &deviceEventDispatcher_),
-      displayRenderCoordinator_(deviceRegistry_, wifiDriver_),
-      dashboardLayoutStore_(dashboardLayoutStorage_, &deviceRegistry_),
+      displayRenderCoordinator_(deviceRegistry_, wifiDriver_), dashboardLayoutStore_(dashboardLayoutStorage_, &deviceRegistry_),
       portalServer_(wifiManager_, wifiDriver_, &deviceRegistry_, &deviceEventDispatcher_, &dashboardLayoutStore_) {}
 
 bool App::begin() {

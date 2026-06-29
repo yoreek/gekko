@@ -1,17 +1,16 @@
 #include "config/MemoryConfigStorage.h"
-#include "devices/display/DisplayLayoutRenderer.h"
 #include "devices/display/DisplayDeviceBase.h"
+#include "devices/display/DisplayLayoutRenderer.h"
 #include "devices/dummy/DummyDevice.h"
 #include "devices/registry/DeviceRegistry.h"
 #include "devices/registry/DeviceRegistryStore.h"
-
 #include "metrics/MetricValueResolver.h"
 #include "wifi/WifiDriver.h"
 
 #include <cstdio>
 #include <string>
-#include <vector>
 #include <unity.h>
+#include <vector>
 
 using namespace ewfm;
 

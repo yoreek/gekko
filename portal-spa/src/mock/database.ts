@@ -281,6 +281,8 @@ const seedDatabase: SeedDatabase = {
       ],
       spiBusDeviceId: 670845757,
       chipSelectPin: 5,
+      dcPin: 2,
+      resetPin: -1,
       width: 128,
       height: 160,
       layout: {

@@ -72,8 +72,8 @@ template <size_t N> void fillSsd1306DeviceDocument(StaticJsonDocument<N>& doc, b
     config["enabled"] = true;
     config["i2cBusDeviceId"] = 12;
     config["i2cAddress"] = 0x3C;
-    config["layoutWidth"] = 128;
-    config["layoutHeight"] = 64;
+    config["width"] = 128;
+    config["height"] = 64;
     if (!includeLayout) {
         return;
     }
@@ -346,7 +346,7 @@ void test_ssd1306_layout_codec_rejects_invalid_bitmap_payload() {
 
 void test_ssd1306_layout_create_request_accepts_large_i2c_bus_device_id() {
     StaticJsonDocument<1024> doc;
-    fillSsd1306DeviceDocument(doc, true);
+    fillSsd1306DeviceDocument(doc, false);
     JsonObject config = doc["config"].as<JsonObject>();
     config["i2cBusDeviceId"] = 4249059392UL;
 
@@ -355,10 +355,22 @@ void test_ssd1306_layout_create_request_accepts_large_i2c_bus_device_id() {
     TEST_ASSERT_TRUE(Ssd1306DeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error));
     TEST_ASSERT_NULL(error);
 
-    Ssd1306DeviceConfigV1 decoded{};
+    Ssd1306DeviceConfigV2 decoded{};
     TEST_ASSERT_TRUE(
         decodeSsd1306DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), decoded));
     TEST_ASSERT_EQUAL_UINT32(4249059392UL, decoded.i2cBusDeviceId);
+}
+
+void test_ssd1306_config_rejects_legacy_layout_dimension_fields() {
+    StaticJsonDocument<1024> doc;
+    fillSsd1306DeviceDocument(doc, false);
+    JsonObject config = doc["config"].as<JsonObject>();
+    config["layoutWidth"] = 128;
+
+    DeviceCreateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_FALSE(Ssd1306DeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error));
+    TEST_ASSERT_NOT_NULL(error);
 }
 
 void test_ssd1306_layout_rejects_duplicate_i2c_address_on_same_bus() {

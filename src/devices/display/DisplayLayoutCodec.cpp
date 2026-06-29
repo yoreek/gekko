@@ -159,7 +159,6 @@ DisplayLayoutPageV1 defaultLayoutPage() {
 DisplayLayoutWidgetType normalizeWidgetType(const DisplayLayoutWidgetType type) {
     switch (type) {
     case DisplayLayoutWidgetType::Text:
-    case DisplayLayoutWidgetType::Icon:
     case DisplayLayoutWidgetType::Bitmap:
     case DisplayLayoutWidgetType::Rect:
     case DisplayLayoutWidgetType::Line:
@@ -175,8 +174,6 @@ const char* widgetTypeToString(DisplayLayoutWidgetType type) {
     switch (normalizeWidgetType(type)) {
     case DisplayLayoutWidgetType::Text:
         return "text";
-    case DisplayLayoutWidgetType::Icon:
-        return "icon";
     case DisplayLayoutWidgetType::Bitmap:
         return "bitmap";
     case DisplayLayoutWidgetType::Rect:
@@ -202,9 +199,6 @@ bool parseWidgetType(const JsonObjectConst& input, DisplayLayoutWidgetType& type
         switch (numeric) {
         case 0:
             type = DisplayLayoutWidgetType::Text;
-            return true;
-        case 1:
-            type = DisplayLayoutWidgetType::Icon;
             return true;
         case 2:
             type = DisplayLayoutWidgetType::Bitmap;
@@ -233,8 +227,6 @@ bool parseWidgetType(const JsonObjectConst& input, DisplayLayoutWidgetType& type
     }
     if (std::strcmp(value, "text") == 0) {
         type = DisplayLayoutWidgetType::Text;
-    } else if (std::strcmp(value, "icon") == 0) {
-        type = DisplayLayoutWidgetType::Icon;
     } else if (std::strcmp(value, "bitmap") == 0) {
         type = DisplayLayoutWidgetType::Bitmap;
     } else if (std::strcmp(value, "rect") == 0) {

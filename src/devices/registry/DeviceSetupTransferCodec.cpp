@@ -211,11 +211,11 @@ bool encodeTransferConfigBlob(const JsonObjectConst& input, const DeviceBaseConf
         break;
     }
     case 7: {
-        if (configVersion != 1U) {
+        if (configVersion != 2U) {
             error = "unsupported ssd1306 config version";
             return false;
         }
-        Ssd1306DeviceConfigV1 config{};
+        Ssd1306DeviceConfigV2 config{};
         const char* parseError = nullptr;
         if (!config.parseJson(input, parseError)) {
             error = parseError != nullptr ? parseError : "ssd1306 config is invalid";
@@ -231,11 +231,11 @@ bool encodeTransferConfigBlob(const JsonObjectConst& input, const DeviceBaseConf
         break;
     }
     case 9: {
-        if (configVersion != 1U) {
+        if (configVersion != 3U) {
             error = "unsupported st7735 config version";
             return false;
         }
-        St7735DeviceConfigV1 config{};
+        St7735DeviceConfigV3 config{};
         const char* parseError = nullptr;
         if (!config.parseJson(input, parseError)) {
             error = parseError != nullptr ? parseError : "st7735 config is invalid";

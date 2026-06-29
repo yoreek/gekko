@@ -21,7 +21,7 @@ The portal SHALL provide a visual layout designer for existing OLED display devi
 
 #### Scenario: Designer uses device dimensions
 - **WHEN** the designer opens
-- **THEN** it renders a canvas using the selected device `layoutWidth` and `layoutHeight` as display pixel dimensions
+- **THEN** it renders a canvas using the selected device `width` and `height` as display pixel dimensions
 
 #### Scenario: Designer works without network access
 - **WHEN** the designer renders toolbar controls, widget controls, and preview chrome
@@ -47,7 +47,7 @@ The designer SHALL let users manage the bounded OLED page list and the ordered w
 - **THEN** the generated layout contains the selected page ID as `activePageId`
 
 ### Requirement: Designer edits supported widget types
-The designer SHALL support text, icon, rectangle, line, circle, and ellipse widgets with bounded inspector controls.
+The designer SHALL support text, bitmap, rectangle, line, circle, and ellipse widgets with bounded inspector controls.
 
 #### Scenario: First designer slice exposes all planned controls
 - **WHEN** the first designer window implementation is available
@@ -55,7 +55,7 @@ The designer SHALL support text, icon, rectangle, line, circle, and ellipse widg
 
 #### Scenario: User adds supported widget
 - **WHEN** the user adds a widget from the designer toolbar
-- **THEN** the designer creates one of `text`, `icon`, `rect`, `line`, `circle`, or `ellipse` with valid default geometry inside the display bounds
+- **THEN** the designer creates one of `text`, `bitmap`, `rect`, `line`, `circle`, or `ellipse` with valid default geometry inside the display bounds
 
 #### Scenario: User selects widget on canvas
 - **WHEN** the user selects a widget on the canvas or in the layer list

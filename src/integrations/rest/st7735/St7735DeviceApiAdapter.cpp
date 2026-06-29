@@ -71,7 +71,7 @@ bool St7735DeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, De
         error = "st7735 config is required";
         return false;
     }
-    St7735DeviceConfigV1 config{};
+    St7735DeviceConfigV3 config{};
     if (!config.parseJson(configInput, error)) {
         return false;
     }
@@ -110,7 +110,7 @@ DeviceValidationResult St7735DeviceApiAdapter::validateCreateRequest(const Devic
         return {DeviceError::InvalidRelationship, "st7735 requires spi bus dependency"};
     }
 
-    St7735DeviceConfigV1 config{};
+    St7735DeviceConfigV3 config{};
     if (!decodeSt7735DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "st7735 config is invalid"};
     }
@@ -124,7 +124,7 @@ bool St7735DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& inp
         error = "st7735 config is required";
         return false;
     }
-    St7735DeviceConfigV1 config{};
+    St7735DeviceConfigV3 config{};
     if (!config.parseJson(configInput, error)) {
         return false;
     }
@@ -155,7 +155,7 @@ bool St7735DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& inp
 DeviceValidationResult St7735DeviceApiAdapter::validateUpdateConfigRequest(const IDeviceRuntime& runtime,
                                                                            const DeviceConfigUpdateRequest& request,
                                                                            const DeviceRegistry& registry) const {
-    St7735DeviceConfigV1 config{};
+    St7735DeviceConfigV3 config{};
     if (!decodeSt7735DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "st7735 config is invalid"};
     }

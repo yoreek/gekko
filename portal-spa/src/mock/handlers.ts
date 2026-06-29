@@ -448,22 +448,25 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
         effectiveStatus: 'ready',
       })
     } else if (typeName === 'st7735') {
-      const dependencyDeviceId = dependencyDeviceIdForRole(baseDeps, 'i2c_bus') || normalizeDependencyDeviceId(configSource.i2cBusDeviceId)
+      const dependencyDeviceId = dependencyDeviceIdForRole(baseDeps, 'spi_bus') || normalizeDependencyDeviceId(configSource.spiBusDeviceId)
       if (dependencyDeviceId <= 0) {
-        throw new ApiClientError('st7735 display i2c dependency is required', 'BAD_ARGS', 400, null)
+        throw new ApiClientError('st7735 display spi dependency is required', 'BAD_ARGS', 400, null)
       }
-      requireI2cDependency(db, dependencyDeviceId)
+      requireSpiDependency(db, dependencyDeviceId)
       const layoutRaw = isRecordPayload(configSource.layout) ? configSource.layout : {}
       const config = {
         enabled,
         name,
         deps: [
           {
-            role: 'i2c_bus',
+            role: 'spi_bus',
             deviceId: dependencyDeviceId,
           },
         ],
-        i2cBusDeviceId: dependencyDeviceId,
+        spiBusDeviceId: dependencyDeviceId,
+        chipSelectPin: normalizeFiniteNumber(configSource.chipSelectPin, 5),
+        dcPin: normalizeFiniteNumber(configSource.dcPin, 2),
+        resetPin: normalizeFiniteNumber(configSource.resetPin, -1),
         width: normalizeFiniteNumber(configSource.width, 128),
         height: normalizeFiniteNumber(configSource.height, 160),
         layout: {
@@ -683,11 +686,11 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           }
         } else if (device.record.typeName === 'st7735') {
           const dependencyLinks = normalizeDependencyLinks(payload.deps ?? device.config.deps)
-          const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'i2c_bus')
+          const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'spi_bus')
           if (dependencyDeviceId <= 0) {
-            throw new ApiClientError('st7735 display i2c dependency is required', 'BAD_ARGS', 400, null)
+            throw new ApiClientError('st7735 display spi dependency is required', 'BAD_ARGS', 400, null)
           }
-          requireI2cDependency(db, dependencyDeviceId)
+          requireSpiDependency(db, dependencyDeviceId)
           const currentConfig = (isRecordPayload(device.config) ? device.config : {}) as Record<string, unknown>
           device.config = {
             ...device.config,
@@ -696,7 +699,10 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
               ? payload.config.name
               : device.config.name,
             deps: dependencyLinks,
-            i2cBusDeviceId: dependencyDeviceId,
+            spiBusDeviceId: dependencyDeviceId,
+            chipSelectPin: normalizeFiniteNumber(payload.config.chipSelectPin, normalizeFiniteNumber(currentConfig['chipSelectPin'], 5)),
+            dcPin: normalizeFiniteNumber(payload.config.dcPin, normalizeFiniteNumber(currentConfig['dcPin'], 2)),
+            resetPin: normalizeFiniteNumber(payload.config.resetPin, normalizeFiniteNumber(currentConfig['resetPin'], -1)),
             width: normalizeFiniteNumber(payload.config.width, normalizeFiniteNumber(currentConfig['width'], 128)),
             height: normalizeFiniteNumber(payload.config.height, normalizeFiniteNumber(currentConfig['height'], 160)),
             layout: isRecordPayload(payload.config.layout)
@@ -749,7 +755,7 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
       case 'setDeps':
       case 'set_deps': {
         const dependencyLinks = normalizeDependencyLinks(payload.deps)
-        if (device.record.typeName === 'ssd1306' || device.record.typeName === 'st7735') {
+        if (device.record.typeName === 'ssd1306') {
           const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'i2c_bus')
           if (dependencyDeviceId <= 0) {
             throw new ApiClientError(`${device.record.typeName} display i2c dependency is required`, 'BAD_ARGS', 400, null)
@@ -761,6 +767,17 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
             ...device.config,
             deps: dependencyLinks,
             i2cBusDeviceId: dependencyDeviceId,
+          }
+        } else if (device.record.typeName === 'st7735') {
+          const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'spi_bus')
+          if (dependencyDeviceId <= 0) {
+            throw new ApiClientError('st7735 display spi dependency is required', 'BAD_ARGS', 400, null)
+          }
+          requireSpiDependency(db, dependencyDeviceId)
+          device.config = {
+            ...device.config,
+            deps: dependencyLinks,
+            spiBusDeviceId: dependencyDeviceId,
           }
         } else if (device.record.typeName === 'ds18b20_temperature_sensor') {
           const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'onewire_bus')
@@ -1179,6 +1196,14 @@ function requireI2cDependency(db: ReturnType<typeof createSeedMockDatabase>, dep
   const dependency = db.devices.find(device => device.record.id === dependencyDeviceId)
   if (!dependency || dependency.record.typeName !== 'i2c_bus') {
     throw new ApiClientError('ssd1306 display i2c dependency is required', 'BAD_ARGS', 400, null)
+  }
+  return dependency
+}
+
+function requireSpiDependency(db: ReturnType<typeof createSeedMockDatabase>, dependencyDeviceId: number): DeviceRecord {
+  const dependency = db.devices.find(device => device.record.id === dependencyDeviceId)
+  if (!dependency || dependency.record.typeName !== 'spi_bus') {
+    throw new ApiClientError('st7735 display spi dependency is required', 'BAD_ARGS', 400, null)
   }
   return dependency
 }

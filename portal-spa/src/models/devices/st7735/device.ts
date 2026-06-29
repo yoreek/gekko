@@ -15,6 +15,8 @@ import {
 export interface St7735ConfigDraft extends BaseDeviceConfig, DisplayBaseConfig {
   spiBusDeviceId: number
   chipSelectPin: number
+  dcPin: number
+  resetPin: number
   layout: St7735LayoutDraft
 }
 
@@ -43,6 +45,8 @@ export function defaultConfig(): St7735ConfigDraft {
     height: 160,
     spiBusDeviceId: 0,
     chipSelectPin: 5,
+    dcPin: 2,
+    resetPin: -1,
     layout: defaultSt7735Layout(),
   }
 }
@@ -67,6 +71,8 @@ export function normalizeConfig(value: unknown, deps?: DeviceDependencyLink[]): 
     height: normalizeNumber(raw.height, defaults.height),
     spiBusDeviceId: normalizeNumber(raw.spiBusDeviceId ?? dependencyDeviceIdFromDeps(deps, 'spi_bus'), defaults.spiBusDeviceId),
     chipSelectPin: normalizeNumber(raw.chipSelectPin, defaults.chipSelectPin),
+    dcPin: normalizeNumber(raw.dcPin, defaults.dcPin),
+    resetPin: normalizeNumber(raw.resetPin, defaults.resetPin),
     layout: normalizeSt7735Layout(raw.layout),
   }
 }
@@ -80,6 +86,8 @@ export function encodeConfig(config: St7735ConfigDraft): Record<string, unknown>
     height: config.height,
     spiBusDeviceId: config.spiBusDeviceId,
     chipSelectPin: config.chipSelectPin,
+    dcPin: config.dcPin,
+    resetPin: config.resetPin,
     layout: encodeSt7735Layout(config.layout),
   }
 }
@@ -140,6 +148,8 @@ export class Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraft, Rec
       nextConfig.height !== currentConfig.height ||
       nextConfig.spiBusDeviceId !== currentConfig.spiBusDeviceId ||
       nextConfig.chipSelectPin !== currentConfig.chipSelectPin ||
+      nextConfig.dcPin !== currentConfig.dcPin ||
+      nextConfig.resetPin !== currentConfig.resetPin ||
       st7735LayoutChanged(nextConfig.layout, currentConfig.layout)
     ) {
       commands.push({

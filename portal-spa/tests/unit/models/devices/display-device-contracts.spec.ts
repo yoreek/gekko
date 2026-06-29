@@ -17,6 +17,8 @@ test('normalizes spi bus defaults and st7735 dependency fields', () => {
   const st7735 = new St7735Device().normalizeConfig({
     spiBusDeviceId: 12,
     chipSelectPin: 5,
+    dcPin: 4,
+    resetPin: -1,
     layout: {
       schemaVersion: 1,
       activePageId: 'main',
@@ -30,5 +32,13 @@ test('normalizes spi bus defaults and st7735 dependency fields', () => {
   assert.equal(spiBus.misoPin, -1)
   assert.equal(st7735.spiBusDeviceId, 12)
   assert.equal(st7735.chipSelectPin, 5)
+  assert.equal(st7735.dcPin, 4)
+  assert.equal(st7735.resetPin, -1)
   assert.equal(st7735.layout.colorMode, 'rgb565')
+
+  const encoded = new St7735Device().encodeConfig(st7735)
+  assert.equal(encoded.dcPin, 4)
+  assert.equal(encoded.resetPin, -1)
+  assert.equal(encoded.width, 128)
+  assert.equal(encoded.height, 160)
 })
