@@ -85,3 +85,7 @@ The frontend now separates the math instead of mixing it inside each component:
 - [Adafruit_SSD1306 README](https://raw.githubusercontent.com/adafruit/Adafruit_SSD1306/master/README.md)
 - [Adafruit_GFX.h](https://raw.githubusercontent.com/adafruit/Adafruit-GFX-Library/master/Adafruit_GFX.h)
 - [Adafruit_GFX.cpp](https://raw.githubusercontent.com/adafruit/Adafruit-GFX-Library/master/Adafruit_GFX.cpp)
+
+## Related Docs
+
+- [Display text placeholders](./display-text-placeholders.md)

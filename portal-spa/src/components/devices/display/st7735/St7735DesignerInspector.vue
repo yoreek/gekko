@@ -40,7 +40,14 @@
       <div class="tft-inspector__fit-title">{{ fitInfo.title }}</div>
       <div class="text-caption">{{ fitInfo.details }}</div>
     </v-alert>
-    <v-text-field v-if="isTextWidget" :label="t('device.dialog.ssd1306Display.text')" :model-value="widget.text" @update:model-value="updateText(String($event))" />
+    <v-textarea
+      v-if="isTextWidget"
+      :label="t('device.dialog.ssd1306Display.text')"
+      :model-value="widget.text"
+      auto-grow
+      rows="2"
+      @update:model-value="updateText(String($event))"
+    />
     <MetricPlaceholderBuilder
       v-if="isTextWidget"
       :catalog="metricCatalog"
@@ -156,7 +163,6 @@ const placeholderTone = computed<'success' | 'warning' | 'error' | 'info'>(() =>
     case 'unavailable':
       return 'warning'
     case 'invalid':
-    case 'multiple':
       return 'error'
     default:
       return 'info'
@@ -170,8 +176,6 @@ const placeholderMessage = computed(() => {
       return t('device.dialog.ssd1306Display.placeholderUnavailable')
     case 'invalid':
       return t('device.dialog.ssd1306Display.placeholderInvalid')
-    case 'multiple':
-      return t('device.dialog.ssd1306Display.placeholderMultiple')
     default:
       return ''
   }

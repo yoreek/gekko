@@ -201,16 +201,16 @@ void test_display_text_evaluator_handles_missing_and_binding_only_metrics() {
     std::snprintf(widget.text, sizeof(widget.text), "%s", "Sensor {{dev.999.status}}");
 
     DisplayTextEvaluationResult result{};
-    TEST_ASSERT_FALSE(evaluateDisplayTextWidget(widget, resolver, result));
+    TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
     TEST_ASSERT_TRUE(result.dynamic);
-    TEST_ASSERT_FALSE(result.available);
+    TEST_ASSERT_TRUE(result.available);
     TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::MissingMetric, result.status);
     TEST_ASSERT_EQUAL_STRING("Sensor ", result.text);
 
     std::snprintf(widget.text, sizeof(widget.text), "%s", "AP {{wifi.setup_ap_ip}}");
-    TEST_ASSERT_FALSE(evaluateDisplayTextWidget(widget, resolver, result));
+    TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
     TEST_ASSERT_TRUE(result.dynamic);
-    TEST_ASSERT_FALSE(result.available);
+    TEST_ASSERT_TRUE(result.available);
     TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::MissingMetric, result.status);
     TEST_ASSERT_EQUAL_STRING("AP ", result.text);
 
@@ -234,13 +234,22 @@ void test_display_text_evaluator_reports_invalid_placeholders() {
     std::snprintf(widget.text, sizeof(widget.text), "%s", "{{wifi.unknown}}");
 
     DisplayTextEvaluationResult result{};
-    TEST_ASSERT_FALSE(evaluateDisplayTextWidget(widget, resolver, result));
-    TEST_ASSERT_FALSE(result.available);
+    TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
+    TEST_ASSERT_TRUE(result.available);
     TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::InvalidPlaceholder, result.status);
-    TEST_ASSERT_EQUAL_STRING("{{wifi.unknown}}", result.text);
+    TEST_ASSERT_EQUAL_STRING("", result.text);
 
     std::snprintf(widget.text, sizeof(widget.text), "%s", "{{wifi.status}}{{wifi.status}}");
-    TEST_ASSERT_FALSE(evaluateDisplayTextWidget(widget, resolver, result));
-    TEST_ASSERT_FALSE(result.available);
-    TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::TooManyPlaceholders, result.status);
+    TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
+    TEST_ASSERT_TRUE(result.dynamic);
+    TEST_ASSERT_TRUE(result.available);
+    TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::Resolved, result.status);
+    TEST_ASSERT_EQUAL_STRING("connectedconnected", result.text);
+
+    std::snprintf(widget.text, sizeof(widget.text), "%s", "{{wifi.bad}} {{wifi.status}}");
+    TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
+    TEST_ASSERT_TRUE(result.dynamic);
+    TEST_ASSERT_TRUE(result.available);
+    TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::InvalidPlaceholder, result.status);
+    TEST_ASSERT_EQUAL_STRING(" connected", result.text);
 }

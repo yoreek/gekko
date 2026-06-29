@@ -15,8 +15,7 @@ enum class DisplayTextEvaluationStatus : uint8_t {
     MissingMetric = 2,
     InvalidWidget = 3,
     InvalidPlaceholder = 4,
-    TooManyPlaceholders = 5,
-    Truncated = 6,
+    Truncated = 5,
 };
 
 struct DisplayTextEvaluationResult {

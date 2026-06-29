@@ -92,7 +92,7 @@ template <size_t N> void fillSsd1306DeviceDocument(StaticJsonDocument<N>& doc, b
     widget["y"] = 0;
     widget["width"] = 64;
     widget["height"] = 16;
-    widget["text"] = "temp";
+    widget["text"] = "{{wifi.status}} {{system.time}}";
     JsonObject bitmapWidget = widgets.createNestedObject();
     bitmapWidget["id"] = "bitmap";
     bitmapWidget["type"] = "bitmap";
@@ -258,7 +258,7 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_EQUAL_UINT32(createResult.deviceId, storedLayout.deviceId);
     TEST_ASSERT_EQUAL_UINT8(1, storedLayout.pages.size());
     TEST_ASSERT_EQUAL_STRING("main", storedLayout.pages[0].id);
-    TEST_ASSERT_EQUAL_STRING("temp", storedLayout.pages[0].widgets[0].text);
+    TEST_ASSERT_EQUAL_STRING("{{wifi.status}} {{system.time}}", storedLayout.pages[0].widgets[0].text);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap), storedLayout.pages[0].widgets[1].type);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1), storedLayout.pages[0].widgets[1].bitmapFormat);
     TEST_ASSERT_EQUAL_UINT8(4, storedLayout.pages[0].widgets[1].bitmapData.size());
@@ -269,7 +269,7 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_NOT_NULL(reloadedRuntime);
     TEST_ASSERT_EQUAL_UINT8(1, reloadedRuntime->layout().pages.size());
     TEST_ASSERT_EQUAL_STRING("main", reloadedRuntime->layout().pages[0].id);
-    TEST_ASSERT_EQUAL_STRING("temp", reloadedRuntime->layout().pages[0].widgets[0].text);
+    TEST_ASSERT_EQUAL_STRING("{{wifi.status}} {{system.time}}", reloadedRuntime->layout().pages[0].widgets[0].text);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap), reloadedRuntime->layout().pages[0].widgets[1].type);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1),
                             reloadedRuntime->layout().pages[0].widgets[1].bitmapFormat);
@@ -300,6 +300,25 @@ void test_ssd1306_layout_create_request_accepts_empty_pages() {
         decodeDisplayLayoutBinary(persistedRequest.persistedStateBlob.data(), persistedRequest.persistedStateBlob.size(), decoded));
     TEST_ASSERT_EQUAL_UINT8(1, decoded.pages.size());
     TEST_ASSERT_EQUAL_STRING("main", decoded.pages[0].id);
+}
+
+void test_ssd1306_layout_create_request_keeps_text_placeholders() {
+    StaticJsonDocument<2048> doc;
+    fillSsd1306DeviceDocument(doc, true);
+    JsonObject widget = doc["config"]["layout"]["pages"][0]["widgets"][0].as<JsonObject>();
+    widget["text"] = "{{wifi.status}} {{system.time}}";
+
+    DeviceCreateRequest request{};
+    DeviceCreatePersistenceRequest persistedRequest{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(
+        Ssd1306DeviceApiAdapter::instance().parseCreatePersistedStateRequest(doc.as<JsonObjectConst>(), request, persistedRequest, error));
+    TEST_ASSERT_NULL(error);
+    TEST_ASSERT_TRUE(persistedRequest.persistedStateProvided);
+    DisplayLayoutRecordV1 decoded{};
+    TEST_ASSERT_TRUE(
+        decodeDisplayLayoutBinary(persistedRequest.persistedStateBlob.data(), persistedRequest.persistedStateBlob.size(), decoded));
+    TEST_ASSERT_EQUAL_STRING("{{wifi.status}} {{system.time}}", decoded.pages[0].widgets[0].text);
 }
 
 void test_ssd1306_layout_codec_accepts_legacy_numeric_binding_kind() {

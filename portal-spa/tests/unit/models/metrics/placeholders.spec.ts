@@ -56,16 +56,18 @@ test('generates normalized placeholders from descriptors', () => {
   assert.equal(metricPlaceholderForDescriptor(catalog[1]), '{{wifi.station_ip}}')
 })
 
-test('validates static, valid, unavailable, invalid, and multiple placeholders', () => {
+test('validates static, valid, unavailable, and invalid placeholders', () => {
   assert.equal(validateMetricPlaceholders('Static label', catalog).status, 'static')
   assert.equal(validateMetricPlaceholders('Temp {{dev.12.temperature}}', catalog).status, 'valid')
   assert.equal(validateMetricPlaceholders('{{wifi.station_ip}}', catalog).status, 'unavailable')
   assert.equal(validateMetricPlaceholders('{{dev.nope.temperature}}', catalog).status, 'invalid')
-  assert.equal(validateMetricPlaceholders('{{dev.12.temperature}} {{wifi.station_ip}}', catalog).status, 'multiple')
+  assert.equal(validateMetricPlaceholders('{{dev.12.temperature}} {{wifi.station_ip}}', catalog).status, 'unavailable')
+  assert.equal(validateMetricPlaceholders('{{dev.12.temperature}} and {{dev.12.temperature}}', catalog).status, 'valid')
 })
 
 test('resolves placeholder previews without changing invalid text', () => {
   assert.equal(resolveMetricPlaceholderText('Temp {{dev.12.temperature}}', catalog), 'Temp 21.5 C')
+  assert.equal(resolveMetricPlaceholderText('Temp {{dev.12.temperature}} / {{dev.12.temperature}}', catalog), 'Temp 21.5 C / 21.5 C')
   assert.equal(resolveMetricPlaceholderText('IP {{wifi.station_ip}}', catalog), 'IP {{wifi.station_ip}}')
   assert.equal(resolveMetricPlaceholderText('{{dev.99.temperature}}', catalog), '{{dev.99.temperature}}')
   assert.equal(resolveMetricPlaceholderText('{{dev.nope.temperature', catalog), '{{dev.nope.temperature')
@@ -73,6 +75,6 @@ test('resolves placeholder previews without changing invalid text', () => {
 
 test('save-time validation rejects malformed or multiple placeholders only', () => {
   assert.equal(hasInvalidMetricPlaceholders('{{dev.nope.temperature}}'), true)
-  assert.equal(hasInvalidMetricPlaceholders('{{dev.12.temperature}} {{wifi.station_ip}}'), true)
+  assert.equal(hasInvalidMetricPlaceholders('{{dev.12.temperature}} {{wifi.station_ip}}'), false)
   assert.equal(hasInvalidMetricPlaceholders('{{dev.12.temperature}}'), false)
 })

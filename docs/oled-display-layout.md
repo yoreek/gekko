@@ -9,6 +9,7 @@ This document fixes the current OLED layout contract in the firmware.
 - The runtime keeps layout as `OledDisplayLayoutRecordV1`.
 - Persistence uses the device-scoped `display_layout` binary payload.
 - Text-rendering notes live in [oled-text-rendering-notes.md](./oled-text-rendering-notes.md).
+- Placeholder behavior lives in [display-text-placeholders.md](./display-text-placeholders.md).
 
 ## Actual Flow
 

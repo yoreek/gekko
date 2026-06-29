@@ -357,7 +357,6 @@ export default {
         placeholderValid: 'Плейсхолдер метрики валиден.',
         placeholderUnavailable: 'Метрика сейчас недоступна, но виджет можно сохранить.',
         placeholderInvalid: 'Синтаксис плейсхолдера метрики неверный.',
-        placeholderMultiple: 'В этой версии поддерживается только один плейсхолдер метрики.',
         refreshIntervalMs: 'Период обновления, мс',
         refreshIntervalHint: 'Как часто дисплей должен обновлять этот плейсхолдер метрики.',
         sourceDeviceId: 'ID устройства-источника',

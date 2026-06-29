@@ -389,7 +389,6 @@ export default {
         placeholderValid: 'Metric placeholder is valid.',
         placeholderUnavailable: 'Metric is unavailable now, but the widget can be saved.',
         placeholderInvalid: 'Metric placeholder syntax is invalid.',
-        placeholderMultiple: 'Only one metric placeholder is supported in this version.',
         refreshIntervalMs: 'Refresh interval, ms',
         refreshIntervalHint: 'How often the display should refresh this metric placeholder.',
         sourceDeviceId: 'Source device ID',

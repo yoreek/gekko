@@ -58,6 +58,7 @@ void test_ssd1306_layout_store_round_trip_binary();
 void test_ssd1306_layout_store_rejects_invalid_device_id();
 void test_ssd1306_layout_update_round_trip_via_registry_binary_store();
 void test_ssd1306_layout_create_request_accepts_empty_pages();
+void test_ssd1306_layout_create_request_keeps_text_placeholders();
 void test_ssd1306_layout_create_request_accepts_large_i2c_bus_device_id();
 void test_ssd1306_config_rejects_legacy_layout_dimension_fields();
 void test_ssd1306_layout_rejects_duplicate_i2c_address_on_same_bus();
@@ -154,6 +155,7 @@ int main(int, char**) {
     RUN_TEST(test_ssd1306_layout_store_rejects_invalid_device_id);
     RUN_TEST(test_ssd1306_layout_update_round_trip_via_registry_binary_store);
     RUN_TEST(test_ssd1306_layout_create_request_accepts_empty_pages);
+    RUN_TEST(test_ssd1306_layout_create_request_keeps_text_placeholders);
     RUN_TEST(test_ssd1306_layout_create_request_accepts_large_i2c_bus_device_id);
     RUN_TEST(test_ssd1306_config_rejects_legacy_layout_dimension_fields);
     RUN_TEST(test_ssd1306_layout_rejects_duplicate_i2c_address_on_same_bus);

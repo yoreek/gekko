@@ -178,6 +178,48 @@ bool resolveFromWidgetBinding(const DisplayLayoutWidgetV1& widget, const MetricV
     return resolver.resolve(static_cast<MetricNamespace>(widget.metricNamespace), widget.sourceDeviceId, widget.metricId, value);
 }
 
+void appendResolvedText(const char* begin, const char* end, const MetricValueResolver& resolver, DisplayTextEvaluationResult& result,
+                        bool& truncated, bool& hadAnyPlaceholder, bool& hadInvalidPlaceholder, bool& hadMissingMetric) {
+    const char* cursor = begin;
+    size_t length = std::strlen(result.text);
+    while (cursor < end) {
+        const char* placeholderStart = findPlaceholderStart(cursor);
+        if (placeholderStart == nullptr || placeholderStart >= end) {
+            appendText(result.text, sizeof(result.text), length, cursor, static_cast<size_t>(end - cursor), truncated);
+            break;
+        }
+
+        appendText(result.text, sizeof(result.text), length, cursor, static_cast<size_t>(placeholderStart - cursor), truncated);
+        hadAnyPlaceholder = true;
+
+        const char* placeholderEnd = findPlaceholderEnd(placeholderStart + 2);
+        if (placeholderEnd == nullptr || placeholderEnd > end) {
+            hadInvalidPlaceholder = true;
+            cursor = placeholderStart + 2;
+            appendText(result.text, sizeof(result.text), length, "", 0U, truncated);
+            continue;
+        }
+
+        ParsedPlaceholder parsed{};
+        if (!parsePlaceholderBody(placeholderStart + 2, placeholderEnd, parsed)) {
+            hadInvalidPlaceholder = true;
+            cursor = placeholderEnd + 2;
+            appendText(result.text, sizeof(result.text), length, "", 0U, truncated);
+            continue;
+        }
+
+        MetricValue value{};
+        const bool resolved = resolver.resolve(parsed.ns, parsed.sourceId, parsed.metricId, value) && value.available;
+        if (resolved) {
+            appendText(result.text, sizeof(result.text), length, value.text, std::strlen(value.text), truncated);
+        } else {
+            hadMissingMetric = true;
+            appendText(result.text, sizeof(result.text), length, "", 0U, truncated);
+        }
+        cursor = placeholderEnd + 2;
+    }
+}
+
 } // namespace
 
 bool evaluateDisplayTextWidget(const DisplayLayoutWidgetV1& widget, const MetricValueResolver& resolver,
@@ -196,10 +238,10 @@ bool evaluateDisplayTextWidget(const DisplayLayoutWidgetV1& widget, const Metric
             MetricValue value{};
             result.dynamic = true;
             if (!resolveFromWidgetBinding(widget, resolver, value) || !value.available) {
-                result.available = false;
+                result.available = true;
                 result.status = DisplayTextEvaluationStatus::MissingMetric;
                 result.text[0] = '\0';
-                return false;
+                return true;
             }
             result.available = true;
             result.status = DisplayTextEvaluationStatus::Resolved;
@@ -212,45 +254,37 @@ bool evaluateDisplayTextWidget(const DisplayLayoutWidgetV1& widget, const Metric
 
     const char* placeholderEnd = findPlaceholderEnd(placeholderStart + 2);
     if (placeholderEnd == nullptr) {
-        result.available = false;
+        result.available = true;
         result.status = DisplayTextEvaluationStatus::InvalidPlaceholder;
-        (void)copyEvaluatedText(result, text);
-        return false;
-    }
-    if (findPlaceholderStart(placeholderEnd + 2) != nullptr) {
-        result.available = false;
-        result.status = DisplayTextEvaluationStatus::TooManyPlaceholders;
-        (void)copyEvaluatedText(result, text);
-        return false;
+        result.text[0] = '\0';
+        return true;
     }
 
-    ParsedPlaceholder parsed{};
-    if (!parsePlaceholderBody(placeholderStart + 2, placeholderEnd, parsed)) {
-        result.available = false;
-        result.status = DisplayTextEvaluationStatus::InvalidPlaceholder;
-        (void)copyEvaluatedText(result, text);
-        return false;
-    }
-
-    MetricValue value{};
     result.dynamic = true;
-    const bool resolved = resolver.resolve(parsed.ns, parsed.sourceId, parsed.metricId, value) && value.available;
-    result.available = resolved;
-
-    result.text[0] = '\0';
     bool truncated = false;
-    size_t length = 0U;
-    appendText(result.text, sizeof(result.text), length, text, static_cast<size_t>(placeholderStart - text), truncated);
-    if (resolved) {
-        appendText(result.text, sizeof(result.text), length, value.text, std::strlen(value.text), truncated);
-    }
-    appendText(result.text, sizeof(result.text), length, placeholderEnd + 2, std::strlen(placeholderEnd + 2), truncated);
+    bool hadAnyPlaceholder = false;
+    bool hadInvalidPlaceholder = false;
+    bool hadMissingMetric = false;
+    result.text[0] = '\0';
+    appendResolvedText(text, text + std::strlen(text), resolver, result, truncated, hadAnyPlaceholder, hadInvalidPlaceholder, hadMissingMetric);
     if (truncated) {
         result.status = DisplayTextEvaluationStatus::Truncated;
-        return false;
+        result.available = false;
+        return true;
     }
-    result.status = resolved ? DisplayTextEvaluationStatus::Resolved : DisplayTextEvaluationStatus::MissingMetric;
-    return resolved;
+    if (hadInvalidPlaceholder) {
+        result.status = DisplayTextEvaluationStatus::InvalidPlaceholder;
+        result.available = true;
+        return true;
+    }
+    if (hadMissingMetric) {
+        result.status = DisplayTextEvaluationStatus::MissingMetric;
+        result.available = true;
+        return true;
+    }
+    result.status = hadAnyPlaceholder ? DisplayTextEvaluationStatus::Resolved : DisplayTextEvaluationStatus::Static;
+    result.available = true;
+    return true;
 }
 
 } // namespace ewfm
