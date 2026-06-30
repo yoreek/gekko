@@ -478,6 +478,12 @@ void DeviceRegistryController::cmd() {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
+    } else if (std::strcmp(commandName, "resetDiagnostics") == 0) {
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::ResetDiagnostics, deviceId_, ""}, 0);
+        if (!mutationResult.ok()) {
+            renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
+            return;
+        }
     } else if (std::strcmp(commandName, "scan") == 0) {
         mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Scan, deviceId_, ""}, 0);
         if (!mutationResult.ok()) {

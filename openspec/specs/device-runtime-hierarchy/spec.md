@@ -7,7 +7,7 @@ Define the shared runtime base behavior used by dynamic firmware devices.
 ## Requirements
 
 ### Requirement: Runtime devices share a base lifecycle
-The firmware SHALL provide a reusable base runtime class for dynamic devices so common lifecycle, status, dependency, and dependent runtime wiring behavior is implemented once.
+The firmware SHALL provide a reusable base runtime class for dynamic devices so common lifecycle, status, dependency, dependent runtime wiring behavior, and shared runtime diagnostics coordination are implemented once.
 
 #### Scenario: Base runtime implements common runtime API
 - **WHEN** a dynamic device runtime inherits from the base runtime class
@@ -20,6 +20,10 @@ The firmware SHALL provide a reusable base runtime class for dynamic devices so 
 #### Scenario: Dependency readiness is reusable
 - **WHEN** a derived runtime has a dependency runtime
 - **THEN** the derived runtime can use shared dependency readiness behavior instead of duplicating dependency status checks
+
+#### Scenario: Shared diagnostics coordination is reusable
+- **WHEN** a bus runtime records or resets transient diagnostics
+- **THEN** the runtime base or shared helper can coordinate the same runtime-only diagnostic counters and publish scheduling without duplicating the bookkeeping in each bus implementation
 
 ### Requirement: Runtime config update hooks
 The runtime boundary SHALL expose generic hooks for ending old runtime ownership, applying accepted config to the same runtime object, and resetting the existing state machine when the device type requires reconfiguration.

@@ -56,17 +56,18 @@
             :busy="busy"
           />
         </section>
-
-        <component
-          v-if="editing && editFormComponent"
-          :is="editFormComponent"
-          v-model="draft"
-          mode="edit"
-          :output-state="outputState"
-          show-output-state
-          :busy="busy"
-          @design-display="designerOpen = true"
-        />
+        <section class="device-dialog__section">
+          <component
+            v-if="editing && editFormComponent"
+            :is="editFormComponent"
+            v-model="draft"
+            mode="edit"
+            :output-state="outputState"
+            show-output-state
+            :busy="busy"
+            @design-display="designerOpen = true"
+          />
+        </section>
 
         <v-alert
           v-if="layoutReviewWarning"

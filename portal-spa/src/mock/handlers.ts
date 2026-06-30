@@ -817,25 +817,50 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           device.runtime.status = 'ready'
         }
         break
+      case 'resetDiagnostics':
+        if (isRecordPayload(device.runtime.diagnostics)) {
+          device.runtime.diagnostics = {
+            status: 'ok',
+            consecutiveErrors: 0,
+            lastErrorCode: 0,
+            lastErrorAtMs: 0,
+            errorOps: 0,
+          }
+        }
+        break
       case 'scan':
-        if (device.record.typeName !== 'onewire_bus') {
-          throw new ApiClientError('unsupported onewire command', 'BAD_ARGS', 400, null)
+        if (device.record.typeName === 'onewire_bus') {
+          if (isRecordPayload(device.runtime.scan) && device.runtime.scan.inProgress === true) {
+            throw new ApiClientError('scan already in progress', 'BAD_ARGS', 400, null)
+          }
+          device.runtime.scan = {
+            inProgress: true,
+            ready: false,
+            deviceCount: 0,
+            truncated: false,
+            invalidCrcSeen: false,
+            devices: [],
+          }
+          return ok({
+            registryRevision: db.registryRevision,
+            device,
+          }) as unknown as DeviceMutationResponse
         }
-        if (isRecordPayload(device.runtime.scan) && device.runtime.scan.inProgress === true) {
-          throw new ApiClientError('scan already in progress', 'BAD_ARGS', 400, null)
+        if (device.record.typeName === 'i2c_bus') {
+          device.runtime.scan = {
+            inProgress: false,
+            ready: true,
+            deviceCount: 2,
+            truncated: false,
+            nextAddress: 0x77,
+            devices: [
+              { address: 0x3C, addressHex: '0x3C' },
+              { address: 0x68, addressHex: '0x68' },
+            ],
+          }
+          break
         }
-        device.runtime.scan = {
-          inProgress: true,
-          ready: false,
-          deviceCount: 0,
-          truncated: false,
-          invalidCrcSeen: false,
-          devices: [],
-        }
-        return ok({
-          registryRevision: db.registryRevision,
-          device,
-        }) as unknown as DeviceMutationResponse
+        throw new ApiClientError('unsupported scan command', 'BAD_ARGS', 400, null)
       case 'setOutput':
       case 'set_output':
         if (typeof payload.state !== 'string') {

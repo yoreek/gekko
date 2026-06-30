@@ -1,4 +1,4 @@
-import type { BaseDeviceConfig, DeviceCommandRequest, DeviceRecord } from '../../api/contracts.ts'
+import type { BaseDeviceConfig, DeviceCommandRequest, DeviceRecord, SpiBusRuntimeSnapshot } from '../../api/contracts.ts'
 import type { DeviceCreateDraftBase } from './base.ts'
 import { BaseDevice } from './base-device.ts'
 import { SPI_BUS_DEVICE_TYPE_ID } from '../device-type-ids.ts'
@@ -58,7 +58,7 @@ export function encodeSpiBusConfig(config: SpiBusConfigDraft): Record<string, un
   }
 }
 
-export class SpiBusDevice extends BaseDevice<SpiBusConfigDraft, SpiBusCreateDraft, Record<string, never>> {
+export class SpiBusDevice extends BaseDevice<SpiBusConfigDraft, SpiBusCreateDraft, SpiBusRuntimeSnapshot> {
   readonly typeName = 'spi_bus'
   readonly typeId = SPI_BUS_DEVICE_TYPE_ID
 
@@ -85,8 +85,8 @@ export class SpiBusDevice extends BaseDevice<SpiBusConfigDraft, SpiBusCreateDraf
     return normalizeSpiBusConfig(value)
   }
 
-  normalizeOutput(): Record<string, never> {
-    return {}
+  normalizeOutput(record: DeviceRecord): SpiBusRuntimeSnapshot {
+    return record.runtime as SpiBusRuntimeSnapshot
   }
 
   override encodeConfig(config: SpiBusConfigDraft): Record<string, unknown> {

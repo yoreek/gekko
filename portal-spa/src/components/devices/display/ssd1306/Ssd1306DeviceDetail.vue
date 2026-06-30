@@ -30,9 +30,10 @@ import { useI18n } from 'vue-i18n'
 import type { DeviceRecord } from '@/api/contracts'
 import Ssd1306LayoutPreview from '@/components/devices/display/ssd1306/Ssd1306LayoutPreview.vue'
 import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
+import { formatI2cAddress } from '@/models/devices/i2c-address'
 import { ssd1306Display } from '@/models/devices/display/display'
 import { resolveDisplayEffectiveSize, resolveDisplayOrientationGroup } from '@/models/devices/display/orientation'
-import { Device as Ssd1306Device, formatI2cAddress } from '@/models/devices/ssd1306/device'
+import { Device as Ssd1306Device } from '@/models/devices/ssd1306/device'
 
 const props = defineProps<{ device: DeviceRecord }>()
 const { t } = useI18n()

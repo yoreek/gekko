@@ -88,6 +88,7 @@ void SpiBusDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, cons
     JsonObject runtimeJson = output["runtime"].as<JsonObject>();
     runtimeJson["generation"] = device.generation();
     runtimeJson["transactionActive"] = device.dependencyTransactionActive();
+    device.diagnostics().writeJson(runtimeJson);
 }
 
 } // namespace ewfm

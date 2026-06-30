@@ -50,6 +50,36 @@ export interface OneWireScanSnapshot {
 export interface I2cBusRuntimeSnapshot {
   generation?: number
   transactionActive?: boolean
+  diagnostics?: BusRuntimeDiagnosticsSnapshot
+  scan?: I2cBusScanSnapshot
+}
+
+export interface SpiBusRuntimeSnapshot {
+  generation?: number
+  transactionActive?: boolean
+  diagnostics?: BusRuntimeDiagnosticsSnapshot
+}
+
+export interface BusRuntimeDiagnosticsSnapshot {
+  status?: string
+  consecutiveErrors?: number
+  lastErrorCode?: number
+  lastErrorAtMs?: number
+  errorOps?: number
+}
+
+export interface I2cBusScanDeviceSnapshot {
+  address: number
+  addressHex: string
+}
+
+export interface I2cBusScanSnapshot {
+  inProgress: boolean
+  ready: boolean
+  deviceCount: number
+  truncated: boolean
+  nextAddress: number
+  devices: I2cBusScanDeviceSnapshot[]
 }
 
 export interface DeviceDependencyLink {
@@ -118,7 +148,17 @@ export interface DeviceRegistryResponse<TRecord extends DeviceRecord = DeviceRec
 
 export interface DeviceCommandRequest {
   deviceId?: number
-  command: 'rename' | 'enable' | 'disable' | 'delete' | 'updateConfig' | 'setStatus' | 'scan' | 'setOutput' | 'setDeps'
+  command:
+    | 'rename'
+    | 'enable'
+    | 'disable'
+    | 'delete'
+    | 'updateConfig'
+    | 'setStatus'
+    | 'scan'
+    | 'setOutput'
+    | 'setDeps'
+    | 'resetDiagnostics'
   name?: string
   status?: string
   state?: DeviceOutputState

@@ -1,5 +1,6 @@
 #include "devices/bus/i2c/I2cBusDevice.h"
 
+#include <cstdio>
 #include <cstring>
 #include <type_traits>
 #include <utility>
@@ -12,6 +13,7 @@ namespace ewfm {
 namespace {
 constexpr DeviceTypeId kI2cBusDeviceTypeId = 6;
 constexpr uint32_t kI2cBusDeviceConfigVersion = 1;
+constexpr uint32_t kI2cDiagnosticsDebounceMs = 1000U;
 } // namespace
 
 static_assert(std::is_trivially_copyable<I2cBusDeviceConfigV1>::value, "I2cBusDeviceConfigV1 must be POD");
@@ -106,6 +108,32 @@ bool I2cBusDevice::dependencyTransactionActive() const {
     return dependencyTransactionActive_;
 }
 
+const I2cScanResult& I2cBusDevice::scan() const {
+    return scan_;
+}
+
+const BusRuntimeDiagnostics& I2cBusDevice::diagnostics() const {
+    return diagnostics_;
+}
+
+void I2cBusDevice::resetDiagnostics(uint32_t now) {
+    (void)now;
+    diagnostics_.reset();
+    markRuntimeStateDirty();
+}
+
+void I2cBusDevice::recordDiagnosticsError(uint32_t errorCode, uint32_t now) {
+    if (diagnostics_.recordError(errorCode, now, kI2cDiagnosticsDebounceMs)) {
+        markRuntimeStateDirty();
+    }
+}
+
+void I2cBusDevice::recordDiagnosticsSuccess() {
+    if (diagnostics_.recordSuccess()) {
+        markRuntimeStateDirty();
+    }
+}
+
 void I2cBusDevice::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
     DeviceRuntimeBase::bindDeviceIdentity(record, config);
 }
@@ -156,6 +184,21 @@ void I2cBusDevice::writeDeviceJson(JsonObject output) const {
     JsonObject runtimeJson = output.createNestedObject("runtime");
     runtimeJson["generation"] = generation_;
     runtimeJson["transactionActive"] = dependencyTransactionActive_;
+    diagnostics_.writeJson(runtimeJson);
+    JsonObject scanJson = runtimeJson.createNestedObject("scan");
+    scanJson["inProgress"] = scan_.inProgress;
+    scanJson["ready"] = scan_.ready;
+    scanJson["deviceCount"] = scan_.deviceCount;
+    scanJson["truncated"] = scan_.truncated;
+    scanJson["nextAddress"] = scan_.nextAddress;
+    JsonArray devices = scanJson.createNestedArray("devices");
+    for (uint8_t index = 0; index < scan_.deviceCount; ++index) {
+        JsonObject item = devices.createNestedObject();
+        char addressHex[8]{};
+        std::snprintf(addressHex, sizeof(addressHex), "0x%02X", scan_.devices[index]);
+        item["address"] = scan_.devices[index];
+        item["addressHex"] = addressHex;
+    }
 }
 
 I2cBusDevice::DependencyTransaction I2cBusDevice::beginDependencyTransaction() {
@@ -194,7 +237,7 @@ DeviceTypeDescriptor I2cBusDevice::descriptor() {
     descriptor.name = "I2cBusDevice";
     descriptor.currentConfigVersion = kI2cBusDeviceConfigVersion;
     descriptor.maxDependents = 16;
-    descriptor.supportsCommands = false;
+    descriptor.supportsCommands = true;
     descriptor.supportsRetainedState = false;
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
     descriptor.ticks100ms = true;
@@ -220,12 +263,34 @@ DeviceValidationResult I2cBusDevice::validateConfig(const DeviceRegistryEntry& r
 }
 
 bool I2cBusDevice::handleCommand(const DeviceCommand& command) {
-    (void)command;
-    return false;
+    if (command.type == DeviceCommandType::ResetDiagnostics) {
+        if (command.payload.empty()) {
+            resetDiagnostics(uptime());
+            return true;
+        }
+        return false;
+    }
+    if (command.type != DeviceCommandType::Scan && command.type != DeviceCommandType::Custom) {
+        return false;
+    }
+    if (command.type == DeviceCommandType::Custom && !command.payload.equals("scan")) {
+        return false;
+    }
+    if (command.type == DeviceCommandType::Scan && !command.payload.empty()) {
+        return false;
+    }
+    if (status_ != DeviceStatus::Ready || isScanning() || disableRequested_ || deleteRequested_ || reconfigureRequested_ ||
+        !config_.enabled) {
+        return false;
+    }
+
+    startScan();
+    return true;
 }
 
 void I2cBusDevice::releaseHardware() {
     dependencyTransactionActive_ = false;
+    scan_.inProgress = false;
     (void)driver_.end();
 }
 
@@ -241,17 +306,62 @@ void I2cBusDevice::releaseDependencyTransaction() {
 DeviceValidationResult I2cBusDevice::initializeHardware(uint32_t now) {
     (void)now;
     if (!driver_.begin(config_.sdaPin, config_.sclPin, config_.frequencyHz, config_.internalPullup != 0U)) {
+        recordDiagnosticsError(1U, uptime());
         return {DeviceError::StorageError, "i2c bus driver initialization failed"};
     }
     if (!driver_.setClock(config_.frequencyHz)) {
         (void)driver_.end();
+        recordDiagnosticsError(2U, uptime());
         return {DeviceError::StorageError, "i2c bus clock configuration failed"};
     }
+    recordDiagnosticsSuccess();
     ++generation_;
     if (generation_ == 0U) {
         ++generation_;
     }
     return {};
+}
+
+void I2cBusDevice::resetScanResult() {
+    scan_ = {};
+}
+
+void I2cBusDevice::startScan() {
+    resetScanResult();
+    scan_.inProgress = true;
+    scan_.ready = false;
+    scan_.truncated = false;
+    scan_.nextAddress = kI2cScanFirstAddress;
+    markRuntimeStateDirty();
+    setState((PState)&I2cBusDevice::Scanning);
+}
+
+void I2cBusDevice::finishScan() {
+    scan_.inProgress = false;
+    scan_.ready = true;
+    markRuntimeStateDirty();
+}
+
+void I2cBusDevice::cancelScan() {
+    scan_.inProgress = false;
+    scan_.ready = false;
+    markRuntimeStateDirty();
+}
+
+void I2cBusDevice::appendScanAddress(uint8_t address) {
+    if (scan_.deviceCount >= kMaxI2cScanDevices) {
+        scan_.truncated = true;
+        markRuntimeStateDirty();
+        return;
+    }
+
+    scan_.devices[scan_.deviceCount] = address;
+    ++scan_.deviceCount;
+    markRuntimeStateDirty();
+}
+
+bool I2cBusDevice::isScanning() const {
+    return scan_.inProgress;
 }
 
 SM_STATE(I2cBusDevice::Idle) {
@@ -332,6 +442,53 @@ SM_STATE(I2cBusDevice::Ready) {
     if (faultRequested_) {
         status_ = DeviceStatus::Faulted;
         SM_GOTO(Faulted);
+    }
+}
+
+SM_STATE(I2cBusDevice::Scanning) {
+    status_ = DeviceStatus::Ready;
+    if (!scan_.inProgress) {
+        SM_GOTO(Ready);
+    }
+    if (!dependenciesReady()) {
+        cancelScan();
+        status_ = DeviceStatus::DependencyBlocked;
+        SM_GOTO(DependencyBlocked);
+    }
+    if (deleteRequested_) {
+        cancelScan();
+        status_ = DeviceStatus::Deleting;
+        setDeleted();
+        releaseHardware();
+        SM_GOTO(Deleting);
+    }
+    if (disableRequested_ || !config_.enabled) {
+        cancelScan();
+        releaseHardware();
+        status_ = DeviceStatus::Disabled;
+        SM_GOTO(Disabled);
+    }
+    if (reconfigureRequested_) {
+        cancelScan();
+        status_ = DeviceStatus::Reconfiguring;
+        SM_GOTO(Reconfiguring);
+    }
+    if (scan_.nextAddress > kI2cScanLastAddress) {
+        finishScan();
+        SM_GOTO(Ready);
+    }
+
+    const uint8_t address = scan_.nextAddress++;
+    driver_.beginTransmission(address);
+    const uint8_t result = driver_.endTransmission();
+    if (result == 0U) {
+        appendScanAddress(address);
+    } else if (result > 2U) {
+        recordDiagnosticsError(result, uptime());
+    }
+    if (scan_.nextAddress > kI2cScanLastAddress) {
+        finishScan();
+        SM_GOTO(Ready);
     }
 }
 

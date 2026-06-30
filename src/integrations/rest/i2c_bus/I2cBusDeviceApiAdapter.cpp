@@ -3,6 +3,8 @@
 #include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/core/DeviceBaseConfig.h"
 
+#include <cstdio>
+
 namespace ewfm {
 
 const I2cBusDeviceApiAdapter& I2cBusDeviceApiAdapter::instance() {
@@ -88,6 +90,21 @@ void I2cBusDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, cons
     JsonObject runtimeJson = output["runtime"].as<JsonObject>();
     runtimeJson["generation"] = device.generation();
     runtimeJson["transactionActive"] = device.dependencyTransactionActive();
+    device.diagnostics().writeJson(runtimeJson);
+    JsonObject scanJson = runtimeJson.createNestedObject("scan");
+    scanJson["inProgress"] = device.scan().inProgress;
+    scanJson["ready"] = device.scan().ready;
+    scanJson["deviceCount"] = device.scan().deviceCount;
+    scanJson["truncated"] = device.scan().truncated;
+    scanJson["nextAddress"] = device.scan().nextAddress;
+    JsonArray devices = scanJson.createNestedArray("devices");
+    for (uint8_t index = 0; index < device.scan().deviceCount; ++index) {
+        JsonObject item = devices.createNestedObject();
+        char addressHex[8]{};
+        std::snprintf(addressHex, sizeof(addressHex), "0x%02X", device.scan().devices[index]);
+        item["address"] = device.scan().devices[index];
+        item["addressHex"] = addressHex;
+    }
 }
 
 } // namespace ewfm

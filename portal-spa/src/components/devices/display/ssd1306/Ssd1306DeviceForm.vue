@@ -1,34 +1,23 @@
 <template>
   <div class="device-type-stack">
     <section class="device-type-section">
-      <v-alert v-if="dependencyItems.length === 0" type="warning" variant="tonal">
-        {{ t('device.dialog.ssd1306Display.noDependency') }}
-      </v-alert>
+      <I2cAddressPicker
+        :model-value="currentValue.i2cAddress"
+        :bus-device-id="currentValue.i2cBusDeviceId"
+        :input-label="t('device.fields.display.i2cAddress')"
+        :select-label="t('device.dialog.scanResults')"
+        :hint="t('device.dialog.i2cAddressHint')"
+        :busy="busy"
+        :no-dependency-text="t('device.dialog.i2cAddressNoDependency')"
+        :scan-action-text="t('device.dialog.i2cScanAction')"
+        :scan-in-progress-text="t('device.dialog.i2cScanInProgress')"
+        :scan-empty-text="t('device.dialog.i2cScanEmpty')"
+        :scan-truncated-text="t('device.dialog.i2cScanTruncated')"
+        :error-fallback-text="t('device.dialog.unknownError')"
+        @update:model-value="updateNumber('i2cAddress', $event)"
+      />
 
       <v-row class="device-type-section__grid">
-        <v-col cols="12" md="6">
-          <v-select
-            :label="t('device.fields.i2cBusDeviceId')"
-            :items="dependencyItems"
-            :model-value="currentValue.i2cBusDeviceId"
-            :disabled="busy || dependencyItems.length === 0"
-            :rules="dependencyRules"
-            @update:model-value="updateNumber('i2cBusDeviceId', $event)"
-          />
-        </v-col>
-        <v-col cols="12" md="6">
-          <v-text-field
-            v-select-on-focus
-            :label="t('device.fields.display.i2cAddress')"
-            :model-value="i2cAddressText"
-            :disabled="busy"
-            inputmode="text"
-            prefix="0x"
-            persistent-hint
-            :hint="t('device.dialog.ssd1306Display.i2cAddressHint')"
-            @update:model-value="updateHex('i2cAddress', $event)"
-          />
-        </v-col>
         <v-col cols="12" md="6">
           <v-select
             :label="t('device.fields.display.orientation')"
@@ -73,13 +62,12 @@
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import I2cAddressPicker from '@/components/devices/common/I2cAddressPicker.vue'
 import Ssd1306LayoutPreview from '@/components/devices/display/ssd1306/Ssd1306LayoutPreview.vue'
 import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
-import { I2C_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-types'
 import { ssd1306Display } from '@/models/devices/display/display'
 import { resolveDisplayEffectiveSize } from '@/models/devices/display/orientation'
-import { defaultConfig, formatI2cAddress, parseI2cAddress, type Ssd1306ConfigDraft, type Ssd1306CreateDraft } from '@/models/devices/ssd1306/device'
-import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
+import { defaultConfig, type Ssd1306ConfigDraft, type Ssd1306CreateDraft } from '@/models/devices/ssd1306/device'
 
 type FormValue = Ssd1306CreateDraft | Ssd1306ConfigDraft
 
@@ -89,7 +77,6 @@ const emit = defineEmits<{
   'design-display': []
 }>()
 const { t } = useI18n()
-const deviceStore = useDeviceRegistryStore()
 const { metricCatalog, refreshMetricCatalog } = useMetricPlaceholderCatalog()
 const fallbackValue: Ssd1306CreateDraft = {
   ...defaultConfig(),
@@ -97,9 +84,6 @@ const fallbackValue: Ssd1306CreateDraft = {
 }
 const currentValue = computed<FormValue>(() => props.modelValue ?? fallbackValue)
 const effectiveSize = computed(() => resolveDisplayEffectiveSize(currentValue.value.width, currentValue.value.height, currentValue.value.rotation))
-const i2cAddressText = computed(() => formatI2cAddress(currentValue.value.i2cAddress))
-const dependencyDevices = computed(() => deviceStore.devices.filter(device => deviceTypeIdFromName(device.record.typeName) === I2C_BUS_DEVICE_TYPE_ID))
-const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ title: `${device.config.name} #${device.record.id}`, value: device.record.id })))
 const orientationItems = computed(() => {
   const isWidePanel = currentValue.value.width >= currentValue.value.height
   const naturalLabel = isWidePanel ? t('device.fields.display.orientationLandscape') : t('device.fields.display.orientationPortrait')
@@ -109,19 +93,10 @@ const orientationItems = computed(() => {
     { title: rotatedLabel, value: 1 },
   ]
 })
-const dependencyRules = computed(() => [
-  (value: unknown) => Number(value) > 0 || t('device.dialog.ssd1306Display.noDependency'),
-])
 
 onMounted(() => {
   void refreshMetricCatalog()
 })
-
-function updateHex(key: 'i2cAddress', value: string | number): void {
-  const numeric = parseI2cAddress(value)
-  if (!Number.isFinite(numeric) || numeric < 0 || numeric > 0x7F) return
-  emit('update:modelValue', { ...fallbackValue, ...(currentValue.value as Partial<Ssd1306CreateDraft>), [key]: numeric } as FormValue)
-}
 
 function updateNumber(key: keyof Pick<Ssd1306CreateDraft, 'i2cBusDeviceId' | 'i2cAddress' | 'rotation' | 'width' | 'height'>, value: string | number): void {
   const numeric = Number(value)

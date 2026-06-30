@@ -12,6 +12,7 @@ namespace ewfm {
 namespace {
 constexpr DeviceTypeId kSpiBusDeviceTypeId = 8;
 constexpr uint32_t kSpiBusDeviceConfigVersion = 1;
+constexpr uint32_t kSpiDiagnosticsDebounceMs = 1000U;
 
 bool samePin(const uint8_t left, const uint8_t right) {
     return left == right;
@@ -110,6 +111,28 @@ bool SpiBusDevice::dependencyTransactionActive() const {
     return dependencyTransactionActive_;
 }
 
+const BusRuntimeDiagnostics& SpiBusDevice::diagnostics() const {
+    return diagnostics_;
+}
+
+void SpiBusDevice::resetDiagnostics(uint32_t now) {
+    (void)now;
+    diagnostics_.reset();
+    markRuntimeStateDirty();
+}
+
+void SpiBusDevice::recordDiagnosticsError(uint32_t errorCode, uint32_t now) {
+    if (diagnostics_.recordError(errorCode, now, kSpiDiagnosticsDebounceMs)) {
+        markRuntimeStateDirty();
+    }
+}
+
+void SpiBusDevice::recordDiagnosticsSuccess() {
+    if (diagnostics_.recordSuccess()) {
+        markRuntimeStateDirty();
+    }
+}
+
 void SpiBusDevice::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
     DeviceRuntimeBase::bindDeviceIdentity(record, config);
 }
@@ -160,6 +183,7 @@ void SpiBusDevice::writeDeviceJson(JsonObject output) const {
     JsonObject runtimeJson = output.createNestedObject("runtime");
     runtimeJson["generation"] = generation_;
     runtimeJson["transactionActive"] = dependencyTransactionActive_;
+    diagnostics_.writeJson(runtimeJson);
 }
 
 SpiBusDevice::DependencyTransaction SpiBusDevice::beginDependencyTransaction() {
@@ -195,7 +219,7 @@ DeviceTypeDescriptor SpiBusDevice::descriptor() {
     descriptor.name = "SpiBusDevice";
     descriptor.currentConfigVersion = kSpiBusDeviceConfigVersion;
     descriptor.maxDependents = 16;
-    descriptor.supportsCommands = false;
+    descriptor.supportsCommands = true;
     descriptor.supportsRetainedState = false;
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
     descriptor.ticks100ms = true;
@@ -221,7 +245,13 @@ DeviceValidationResult SpiBusDevice::validateConfig(const DeviceRegistryEntry& r
 }
 
 bool SpiBusDevice::handleCommand(const DeviceCommand& command) {
-    (void)command;
+    if (command.type == DeviceCommandType::ResetDiagnostics) {
+        if (command.payload.empty()) {
+            resetDiagnostics(uptime());
+            return true;
+        }
+        return false;
+    }
     return false;
 }
 
@@ -242,8 +272,10 @@ void SpiBusDevice::releaseDependencyTransaction() {
 DeviceValidationResult SpiBusDevice::initializeHardware(uint32_t now) {
     (void)now;
     if (!driver_.begin(config_.host, config_.sckPin, config_.mosiPin, config_.misoPin)) {
+        recordDiagnosticsError(1U, uptime());
         return {DeviceError::StorageError, "spi bus driver initialization failed"};
     }
+    recordDiagnosticsSuccess();
     ++generation_;
     if (generation_ == 0U) {
         ++generation_;

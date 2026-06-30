@@ -18,15 +18,53 @@
     </section>
 
     <section class="device-type-section">
-      <div class="device-type-section__heading text-overline">{{ t('device.dialog.i2cRuntimeTitle') }}</div>
+      <div class="device-type-section__heading text-overline">{{ t('device.dialog.busDiagnosticsTitle') }}</div>
       <div class="device-type-section__actions">
+        <v-chip :color="diagnostics.status === 'degraded' ? 'warning' : 'success'" variant="tonal">
+          {{ t('device.dialog.busDiagnosticsStatus', { value: diagnostics.status ?? 'ok' }) }}
+        </v-chip>
         <v-chip color="primary" variant="tonal">
+          {{ t('device.dialog.busDiagnosticsConsecutiveErrors', { value: diagnostics.consecutiveErrors ?? 0 }) }}
+        </v-chip>
+        <v-chip color="primary" variant="tonal">
+          {{ t('device.dialog.busDiagnosticsLastErrorCode', { value: diagnostics.lastErrorCode ?? 0 }) }}
+        </v-chip>
+        <v-chip color="primary" variant="tonal">
+          {{ t('device.dialog.busDiagnosticsLastErrorAtMs', { value: diagnostics.lastErrorAtMs ?? 0 }) }}
+        </v-chip>
+        <v-chip color="primary" variant="tonal">
+          {{ t('device.dialog.busDiagnosticsErrorOps', { value: diagnostics.errorOps ?? 0 }) }}
+        </v-chip>
+      </div>
+      <div class="device-type-section__actions">
+        <v-btn color="primary" variant="tonal" :loading="busy || scan.inProgress" :disabled="busy || scan.inProgress" @click="emitScan">
+          <v-icon class="me-1" icon="refresh" />
+          {{ t('device.dialog.i2cScanAction') }}
+        </v-btn>
+        <v-btn color="secondary" variant="tonal" :disabled="busy" @click="emitResetDiagnostics">
+          {{ t('device.dialog.busDiagnosticsReset') }}
+        </v-btn>
+        <v-chip color="secondary" variant="tonal">
           {{ t('device.dialog.i2cGeneration', { value: runtime.generation ?? 0 }) }}
         </v-chip>
         <v-chip :color="runtime.transactionActive ? 'warning' : 'secondary'" variant="tonal">
           {{ runtime.transactionActive ? t('device.dialog.i2cTransactionActive') : t('device.dialog.i2cTransactionIdle') }}
         </v-chip>
       </div>
+      <v-alert v-if="scan.inProgress" type="info" variant="tonal">
+        {{ t('device.dialog.i2cScanInProgress') }}
+      </v-alert>
+      <v-alert v-else-if="scan.ready && scan.deviceCount === 0" type="info" variant="tonal">
+        {{ t('device.dialog.i2cScanEmpty') }}
+      </v-alert>
+      <v-alert v-if="scan.truncated" type="warning" variant="tonal">
+        {{ t('device.dialog.i2cScanTruncated') }}
+      </v-alert>
+      <v-list v-if="scan.deviceCount > 0" density="compact" class="device-type-section__list">
+        <v-list-item v-for="entry in scan.devices" :key="entry.addressHex">
+          <v-list-item-title class="text-body-1 font-weight-medium">{{ entry.addressHex }}</v-list-item-title>
+        </v-list-item>
+      </v-list>
     </section>
   </div>
 </template>
@@ -35,7 +73,13 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import type { DeviceRecord, I2cBusRuntimeSnapshot } from '@/api/contracts'
+import type {
+  BusRuntimeDiagnosticsSnapshot,
+  DeviceCommandRequest,
+  DeviceRecord,
+  I2cBusRuntimeSnapshot,
+  I2cBusScanSnapshot,
+} from '@/api/contracts'
 import { I2cBus } from '@/models/devices/i2c-bus'
 
 const deviceModel = new I2cBus.Device()
@@ -45,9 +89,30 @@ const props = defineProps<{
   busy?: boolean
 }>()
 
+const emit = defineEmits<{
+  command: [payload: DeviceCommandRequest]
+}>()
+
 const { t } = useI18n()
 const config = computed(() => deviceModel.normalizeConfig(props.device.config))
 const runtime = computed<I2cBusRuntimeSnapshot>(() => (props.device.runtime as I2cBusRuntimeSnapshot) ?? {})
+const diagnostics = computed<BusRuntimeDiagnosticsSnapshot>(() => runtime.value.diagnostics ?? {})
+const scan = computed<I2cBusScanSnapshot>(() => runtime.value.scan ?? {
+  inProgress: false,
+  ready: false,
+  deviceCount: 0,
+  truncated: false,
+  nextAddress: 0x08,
+  devices: [],
+})
+
+function emitScan(): void {
+  emit('command', { command: 'scan' })
+}
+
+function emitResetDiagnostics(): void {
+  emit('command', { command: 'resetDiagnostics' })
+}
 </script>
 
 <style scoped>
@@ -75,5 +140,9 @@ const runtime = computed<I2cBusRuntimeSnapshot>(() => (props.device.runtime as I
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+.device-type-section__list {
+  background: transparent;
 }
 </style>

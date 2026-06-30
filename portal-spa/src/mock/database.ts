@@ -5,6 +5,7 @@ import type {
   DashboardLayoutWidgetRecord,
   DeviceRecord,
   DeviceOutputSnapshot,
+  I2cBusScanSnapshot,
   OneWireScanSnapshot,
   OtaStatusResponse,
   WifiScanNetwork,
@@ -32,7 +33,7 @@ type MockDeviceConfig = BaseDeviceConfig & Record<string, unknown>
 type MockDeviceRuntime = BaseDeviceRuntime & {
   dependencyStatus?: string
   output?: DeviceOutputSnapshot
-  scan?: OneWireScanSnapshot
+  scan?: OneWireScanSnapshot | I2cBusScanSnapshot
   [key: string]: unknown
 }
 
@@ -181,9 +182,24 @@ const seedDatabase: SeedDatabase = {
       status: 'ready',
       lifecycleStatus: 'ready',
       effectiveStatus: 'ready',
-        generation: 1,
-        transactionActive: false,
-      }),
+      generation: 1,
+      transactionActive: false,
+      diagnostics: {
+        status: 'ok',
+        consecutiveErrors: 0,
+        lastErrorCode: 0,
+        lastErrorAtMs: 0,
+        errorOps: 0,
+      },
+      scan: {
+        inProgress: false,
+        ready: false,
+        deviceCount: 0,
+        truncated: false,
+        nextAddress: 0x08,
+        devices: [],
+      },
+    }),
     createDeviceRecord(670845757, 'spi_bus', 1, {
       enabled: true,
       name: 'SPI Bus',
@@ -196,6 +212,15 @@ const seedDatabase: SeedDatabase = {
       status: 'ready',
       lifecycleStatus: 'ready',
       effectiveStatus: 'ready',
+      generation: 1,
+      transactionActive: false,
+      diagnostics: {
+        status: 'ok',
+        consecutiveErrors: 0,
+        lastErrorCode: 0,
+        lastErrorAtMs: 0,
+        errorOps: 0,
+      },
     }),
     createDeviceRecord(670845755, 'ssd1306', 1, {
       enabled: true,

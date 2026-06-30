@@ -105,6 +105,7 @@ DevicePersistencePolicy policyForCommand(const DeviceCommandType type) {
     case DeviceCommandType::Scan:
     case DeviceCommandType::SetOutput:
     case DeviceCommandType::Custom:
+    case DeviceCommandType::ResetDiagnostics:
     case DeviceCommandType::Create:
     case DeviceCommandType::None:
         return DevicePersistencePolicy::Delayed;
@@ -1079,6 +1080,7 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
     case DeviceCommandType::SetStatus:
     case DeviceCommandType::Scan:
     case DeviceCommandType::SetOutput:
+    case DeviceCommandType::ResetDiagnostics:
     case DeviceCommandType::Custom: {
         DeviceMutationResult result{};
         auto runtime = this->runtime(command.deviceId);

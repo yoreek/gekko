@@ -45,7 +45,7 @@ public:
     }
 
     uint8_t endTransmission(bool) override {
-        return 0U;
+        return lastAddress == 0x3CU ? 0U : 2U;
     }
 
     size_t requestFrom(uint8_t, size_t size, bool) override {
@@ -246,6 +246,36 @@ void test_i2c_bus_runtime_reconfigures_and_advances_generation() {
     TEST_ASSERT_EQUAL_UINT8(21U, driver.lastSdaPin);
     TEST_ASSERT_EQUAL_UINT8(22U, driver.lastSclPin);
     TEST_ASSERT_FALSE(driver.lastInternalPullup);
+}
+
+void test_i2c_bus_scan_and_diagnostics_runtime_snapshot() {
+    FakeI2cBusDriver driver;
+    I2cBusDevice bus(makeConfig(), driver);
+    driveBusToReady(bus);
+
+    TEST_ASSERT_TRUE(bus.handleCommand(DeviceCommand{DeviceCommandType::Scan, 1001U, ""}));
+    for (uint32_t now = 12U; now < 140U && bus.scan().inProgress; ++now) {
+        bus.tick100ms(now);
+    }
+
+    TEST_ASSERT_TRUE(bus.scan().ready);
+    TEST_ASSERT_FALSE(bus.scan().inProgress);
+    TEST_ASSERT_EQUAL_UINT8(1U, bus.scan().deviceCount);
+    TEST_ASSERT_EQUAL_UINT8(0x3CU, bus.scan().devices[0]);
+
+    bus.recordDiagnosticsError(4U, 200U);
+    TEST_ASSERT_EQUAL_UINT32(1U, bus.diagnostics().consecutiveErrors);
+    TEST_ASSERT_EQUAL_UINT32(4U, bus.diagnostics().lastErrorCode);
+    TEST_ASSERT_EQUAL_UINT32(1U, bus.diagnostics().errorOps);
+    TEST_ASSERT_TRUE(bus.handleCommand(DeviceCommand{DeviceCommandType::ResetDiagnostics, 1001U, ""}));
+    TEST_ASSERT_EQUAL_UINT32(0U, bus.diagnostics().consecutiveErrors);
+    TEST_ASSERT_EQUAL_UINT32(0U, bus.diagnostics().errorOps);
+
+    StaticJsonDocument<1024> outputDoc;
+    JsonObject output = outputDoc.to<JsonObject>();
+    I2cBusDeviceApiAdapter::instance().writeDeviceJson(bus, bus.status(), output);
+    TEST_ASSERT_TRUE(output["runtime"]["diagnostics"]["status"].is<const char*>());
+    TEST_ASSERT_EQUAL_UINT8(0x3CU, output["runtime"]["scan"]["devices"][0]["address"].as<uint8_t>());
 }
 
 void test_i2c_bus_api_adapter_parses_and_serializes_runtime() {

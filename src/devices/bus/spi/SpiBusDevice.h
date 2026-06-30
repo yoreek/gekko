@@ -2,6 +2,7 @@
 
 #include "devices/bus/spi/ISpiBusDriver.h"
 #include "devices/bus/spi/SpiBusConfig.h"
+#include "devices/bus/BusRuntimeDiagnostics.h"
 #include "devices/core/DeviceRuntimeBase.h"
 
 #include <ArduinoJson.h>
@@ -39,7 +40,11 @@ public:
     const char* name() const override;
     uint32_t generation() const;
     bool dependencyTransactionActive() const;
+    const BusRuntimeDiagnostics& diagnostics() const;
     DependencyTransaction beginDependencyTransaction();
+    void resetDiagnostics(uint32_t now);
+    void recordDiagnosticsError(uint32_t errorCode, uint32_t now);
+    void recordDiagnosticsSuccess();
     void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override;
@@ -74,6 +79,7 @@ private:
     SpiBusDeviceConfigV1 config_{};
     std::unique_ptr<ISpiBusDriver> ownedDriver_{};
     ISpiBusDriver& driver_;
+    BusRuntimeDiagnostics diagnostics_{};
     uint32_t generation_{0};
     bool dependencyTransactionActive_{false};
 };

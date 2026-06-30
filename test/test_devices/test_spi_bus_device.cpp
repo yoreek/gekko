@@ -276,6 +276,24 @@ void test_spi_runtime_reconfigures_and_advances_generation() {
     TEST_ASSERT_NULL(stale.driver());
 }
 
+void test_spi_bus_diagnostics_runtime_snapshot_and_reset() {
+    FakeSpiBusDriver driver;
+    SpiBusDevice bus(makeConfig(), driver);
+    driveBusToReady(bus);
+
+    bus.recordDiagnosticsError(7U, 123U);
+    TEST_ASSERT_EQUAL_UINT32(1U, bus.diagnostics().consecutiveErrors);
+    TEST_ASSERT_EQUAL_UINT32(7U, bus.diagnostics().lastErrorCode);
+    TEST_ASSERT_TRUE(bus.handleCommand(DeviceCommand{DeviceCommandType::ResetDiagnostics, 1001U, ""}));
+    TEST_ASSERT_EQUAL_UINT32(0U, bus.diagnostics().consecutiveErrors);
+    TEST_ASSERT_EQUAL_UINT32(0U, bus.diagnostics().errorOps);
+
+    StaticJsonDocument<512> outputDoc;
+    JsonObject output = outputDoc.to<JsonObject>();
+    SpiBusDeviceApiAdapter::instance().writeDeviceJson(bus, bus.status(), output);
+    TEST_ASSERT_TRUE(output["runtime"]["diagnostics"]["status"].is<const char*>());
+}
+
 void test_spi_setup_transfer_round_trip_and_api_serialization() {
     MemoryConfigStorage storage;
     DeviceRegistryStore registryStore(storage);

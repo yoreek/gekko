@@ -1,5 +1,6 @@
 import type { BaseDeviceConfig, DeviceCommandRequest, DeviceRecord } from '../../../api/contracts.ts'
 import type { DeviceCreateDraftBase } from '../base.ts'
+import { formatI2cAddress, parseI2cAddress } from '../i2c-address'
 import { BaseDevice } from '../base-device.ts'
 import { ssd1306Display } from '../display/display.ts'
 import type { DisplayBaseConfig, DisplayCapabilities } from '../display/base.ts'
@@ -61,18 +62,6 @@ export function encodeConfig(config: Ssd1306ConfigDraft): Record<string, unknown
     ...config,
     layout: encodeSsd1306Layout(config.layout),
   }
-}
-
-export function formatI2cAddress(value: number): string {
-  return value.toString(16).toUpperCase().padStart(2, '0')
-}
-
-export function parseI2cAddress(value: string | number): number {
-  const text = String(value).trim().replace(/^0x/i, '')
-  if (!/^[0-9a-fA-F]{1,2}$/.test(text)) {
-    return Number.NaN
-  }
-  return Number.parseInt(text, 16)
 }
 
 export class Device extends BaseDevice<Ssd1306ConfigDraft, Ssd1306CreateDraft, Record<string, never>> {
