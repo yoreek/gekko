@@ -206,6 +206,9 @@ export default {
       spiMosiPin: 'SPI MOSI pin',
       spiMisoPin: 'SPI MISO pin',
       display: {
+        orientation: 'Orientation',
+        orientationPortrait: 'Portrait',
+        orientationLandscape: 'Landscape',
         width: 'Width',
         height: 'Height',
         i2cAddress: 'I2C address',

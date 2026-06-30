@@ -17,7 +17,7 @@ public:
     St7735Device(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
     ~St7735Device() override;
 
-    const St7735DeviceConfigV3& config() const;
+    const St7735DeviceConfigV4& config() const;
     bool enabled() const override;
     const char* name() const override;
     bool spiChipSelectPin(uint8_t& pin) const override;
@@ -36,7 +36,7 @@ public:
     static DeviceValidationResult validateConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
 
 private:
-    St7735DeviceConfigV3 config_{};
+    St7735DeviceConfigV4 config_{};
     Adafruit_ST7735* display_{nullptr};
     St7735CanvasSurface* surface_{nullptr};
 };

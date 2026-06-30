@@ -23,11 +23,21 @@ struct Ssd1306DeviceConfigV2 : DeviceBaseConfigV1 {
     uint8_t i2cAddress{0x3C};
     uint16_t width{128};
     uint16_t height{64};
+};
+
+struct Ssd1306DeviceConfigV3 : DeviceBaseConfigV1 {
+    static constexpr char kMagic[] = "OLV3";
+    uint32_t i2cBusDeviceId{0};
+    uint8_t i2cAddress{0x3C};
+    uint8_t rotation{0};
+    uint16_t width{128};
+    uint16_t height{64};
 
     bool parseJson(const JsonObjectConst& input, const char*& error);
     DeviceValidationResult validate() const;
     void writeJson(JsonObject output) const;
     void migrateFrom(const Ssd1306DeviceConfigV1& origState);
+    void migrateFrom(const Ssd1306DeviceConfigV2& origState);
 };
 #pragma pack(pop)
 
@@ -39,7 +49,11 @@ constexpr size_t ssd1306DeviceConfigSize(const Ssd1306DeviceConfigV2&) {
     return sizeof(Ssd1306DeviceConfigV2::kMagic) - 1U + sizeof(Ssd1306DeviceConfigV2);
 }
 
-bool encodeSsd1306DeviceConfig(const Ssd1306DeviceConfigV2& config, uint8_t* blob, size_t capacity);
-bool decodeSsd1306DeviceConfig(const uint8_t* blob, size_t size, Ssd1306DeviceConfigV2& config);
+constexpr size_t ssd1306DeviceConfigSize(const Ssd1306DeviceConfigV3&) {
+    return sizeof(Ssd1306DeviceConfigV3::kMagic) - 1U + sizeof(Ssd1306DeviceConfigV3);
+}
+
+bool encodeSsd1306DeviceConfig(const Ssd1306DeviceConfigV3& config, uint8_t* blob, size_t capacity);
+bool decodeSsd1306DeviceConfig(const uint8_t* blob, size_t size, Ssd1306DeviceConfigV3& config);
 
 } // namespace ewfm

@@ -131,7 +131,7 @@ bool Ssd1306DeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, D
         error = "ssd1306 config is required";
         return false;
     }
-    Ssd1306DeviceConfigV2 config{};
+    Ssd1306DeviceConfigV3 config{};
     if (!config.parseJson(configInput, error)) {
         return false;
     }
@@ -186,7 +186,7 @@ DeviceValidationResult Ssd1306DeviceApiAdapter::validateCreateRequest(const Devi
         }
     }
 
-    Ssd1306DeviceConfigV2 config{};
+    Ssd1306DeviceConfigV3 config{};
     if (!decodeSsd1306DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "ssd1306 config is invalid"};
     }
@@ -219,7 +219,7 @@ bool Ssd1306DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& in
         error = "ssd1306 config is required";
         return false;
     }
-    Ssd1306DeviceConfigV2 config{};
+    Ssd1306DeviceConfigV3 config{};
     if (!config.parseJson(configInput, error)) {
         return false;
     }
@@ -264,7 +264,7 @@ bool Ssd1306DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& in
 DeviceValidationResult Ssd1306DeviceApiAdapter::validateUpdateConfigRequest(const IDeviceRuntime& runtime,
                                                                             const DeviceConfigUpdateRequest& request,
                                                                             const DeviceRegistry& registry) const {
-    Ssd1306DeviceConfigV2 config{};
+    Ssd1306DeviceConfigV3 config{};
     if (!decodeSsd1306DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "ssd1306 config is invalid"};
     }

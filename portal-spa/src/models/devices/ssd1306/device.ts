@@ -3,6 +3,7 @@ import type { DeviceCreateDraftBase } from '../base.ts'
 import { BaseDevice } from '../base-device.ts'
 import { ssd1306Display } from '../display/display.ts'
 import type { DisplayBaseConfig, DisplayCapabilities } from '../display/base.ts'
+import { normalizeDisplayRotation } from '../display/orientation.ts'
 import {
   defaultSsd1306Layout,
   encodeSsd1306Layout,
@@ -14,6 +15,7 @@ import {
 export interface Ssd1306ConfigDraft extends BaseDeviceConfig, DisplayBaseConfig {
   i2cBusDeviceId: number
   i2cAddress: number
+  rotation: number
   layout: Ssd1306LayoutDraft
 }
 
@@ -28,6 +30,7 @@ export function defaultConfig(): Ssd1306ConfigDraft {
     deps: [],
     i2cBusDeviceId: 0,
     i2cAddress: 60,
+    rotation: 0,
     width: 128,
     height: 64,
     layout: defaultSsd1306Layout(),
@@ -46,6 +49,7 @@ export function normalizeConfig(value: unknown): Ssd1306ConfigDraft {
     deps: Array.isArray(raw.deps) ? (raw.deps as Ssd1306ConfigDraft['deps']) : defaults.deps,
     i2cBusDeviceId: typeof raw.i2cBusDeviceId === 'number' ? raw.i2cBusDeviceId : defaults.i2cBusDeviceId,
     i2cAddress: typeof raw.i2cAddress === 'number' ? raw.i2cAddress : defaults.i2cAddress,
+    rotation: normalizeDisplayRotation(raw.rotation, defaults.rotation) % 2,
     width: typeof raw.width === 'number' ? raw.width : defaults.width,
     height: typeof raw.height === 'number' ? raw.height : defaults.height,
     layout: normalizeSsd1306Layout(layoutObject ?? defaults.layout),
@@ -102,6 +106,7 @@ export class Device extends BaseDevice<Ssd1306ConfigDraft, Ssd1306CreateDraft, R
     if (
       nextConfig.i2cBusDeviceId !== currentConfig.i2cBusDeviceId ||
       nextConfig.i2cAddress !== currentConfig.i2cAddress ||
+      nextConfig.rotation !== currentConfig.rotation ||
       nextConfig.width !== currentConfig.width ||
       nextConfig.height !== currentConfig.height ||
       ssd1306LayoutChanged(nextConfig.layout, currentConfig.layout)

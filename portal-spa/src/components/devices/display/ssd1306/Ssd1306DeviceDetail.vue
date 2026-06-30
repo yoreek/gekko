@@ -8,14 +8,15 @@
         </v-col>
         <v-col cols="12" md="6"><v-text-field :label="t('device.fields.display.width')" :model-value="config.width" readonly /></v-col>
         <v-col cols="12" md="6"><v-text-field :label="t('device.fields.display.height')" :model-value="config.height" readonly /></v-col>
+        <v-col cols="12" md="6"><v-text-field :label="t('device.fields.display.orientation')" :model-value="orientationLabel" readonly /></v-col>
       </v-row>
     </section>
     <section class="device-type-section">
       <Ssd1306LayoutPreview
         :layout="config.layout"
         :display="ssd1306Display"
-        :device-width="config.width"
-        :device-height="config.height"
+        :device-width="effectiveSize.effectiveWidth"
+        :device-height="effectiveSize.effectiveHeight"
         :metric-catalog="metricCatalog"
       />
     </section>
@@ -30,13 +31,19 @@ import type { DeviceRecord } from '@/api/contracts'
 import Ssd1306LayoutPreview from '@/components/devices/display/ssd1306/Ssd1306LayoutPreview.vue'
 import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
 import { ssd1306Display } from '@/models/devices/display/display'
+import { resolveDisplayEffectiveSize, resolveDisplayOrientationGroup } from '@/models/devices/display/orientation'
 import { Device as Ssd1306Device, formatI2cAddress } from '@/models/devices/ssd1306/device'
 
 const props = defineProps<{ device: DeviceRecord }>()
 const { t } = useI18n()
 const { metricCatalog, refreshMetricCatalog } = useMetricPlaceholderCatalog()
 const config = computed(() => new Ssd1306Device().normalizeConfig(props.device.config))
+const effectiveSize = computed(() => resolveDisplayEffectiveSize(config.value.width, config.value.height, config.value.rotation))
 const i2cAddressText = computed(() => formatI2cAddress(config.value.i2cAddress))
+const orientationLabel = computed(() => {
+  const group = resolveDisplayOrientationGroup(config.value.width, config.value.height, config.value.rotation)
+  return t(`device.fields.display.orientation${group === 'landscape' ? 'Landscape' : 'Portrait'}`)
+})
 
 onMounted(() => {
   void refreshMetricCatalog()

@@ -17,7 +17,7 @@ public:
     Ssd1306Device(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
     ~Ssd1306Device() override;
 
-    const Ssd1306DeviceConfigV2& config() const;
+    const Ssd1306DeviceConfigV3& config() const;
     bool enabled() const override;
     const char* name() const override;
     bool i2cAddress(uint8_t& address) const override;
@@ -36,7 +36,7 @@ public:
     static DeviceValidationResult validateConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
 
 private:
-    Ssd1306DeviceConfigV2 config_{};
+    Ssd1306DeviceConfigV3 config_{};
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     std::unique_ptr<::Adafruit_SSD1306> display_{};
     std::unique_ptr<Ssd1306CanvasSurface> surface_{};

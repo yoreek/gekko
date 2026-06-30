@@ -27,6 +27,16 @@
           {{ type.label }}
         </v-btn>
         <v-spacer />
+        <v-select
+          v-model="draft.rotation"
+          class="me-2"
+          :items="orientationItems"
+          :label="t('device.fields.display.orientation')"
+          density="compact"
+          hide-details
+          variant="outlined"
+          style="max-width: 220px"
+        />
         <v-btn variant="text" :disabled="!canAddPage" @click="addPage">
           <v-icon class="me-1" icon="oled-page" />
           {{ t('device.dialog.ssd1306Display.addPage') }}
@@ -163,6 +173,7 @@ import { useDisplayBitmapResizeTransaction } from '@/composables/display/useDisp
 import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
 import { resolveSsd1306WidgetDuplicatePosition, resolveSsd1306WidgetSpawnPosition } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
 import { autoSizeSsd1306TextWidget } from '@/components/devices/display/ssd1306/ssd1306-text-layout'
+import { resolveDisplayEffectiveSize, normalizeDisplayRotation } from '@/models/devices/display/orientation'
 import {
   defaultSsd1306Layout,
   normalizeSsd1306Layout,
@@ -180,6 +191,7 @@ import { hasInvalidMetricPlaceholders, resolveMetricPlaceholderText } from '@/mo
 type DesignerDraft = Record<string, unknown> & {
   name: string
   enabled: boolean
+  rotation: number
   width: number
   height: number
   layout: Ssd1306LayoutDraft
@@ -221,8 +233,9 @@ const activePageId = computed<string>({
 const activePage = computed(() => pages.value.find(page => page.id === selectedPageId.value) ?? pages.value[0] ?? defaultSsd1306Layout().pages[0])
 const activePageWidgets = computed(() => activePage.value.widgets)
 const selectedWidget = computed(() => activePageWidgets.value.find(widget => widget.id === selectedWidgetId.value) ?? null)
-const layoutWidth = computed(() => Math.max(1, Math.round(draft.value.width)))
-const layoutHeight = computed(() => Math.max(1, Math.round(draft.value.height)))
+const effectiveSize = computed(() => resolveDisplayEffectiveSize(draft.value.width, draft.value.height, draft.value.rotation))
+const layoutWidth = computed(() => effectiveSize.value.effectiveWidth)
+const layoutHeight = computed(() => effectiveSize.value.effectiveHeight)
 const canAddPage = computed(() => pages.value.length < OLED_DISPLAY_LAYOUT_MAX_PAGES)
 const canAddWidget = computed(() => activePageWidgets.value.length < OLED_DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE)
 const showPreview = ref(false)
@@ -230,6 +243,15 @@ const canvasLabel = computed(() => `${layoutWidth.value} × ${layoutHeight.value
 const canvasPageLabel = computed(() => `${activePage.value.name} · ${canvasLabel.value}`)
 const busy = computed(() => false)
 const sublineText = computed(() => `${draft.value.name} · ${canvasLabel.value}`)
+const orientationItems = computed(() => {
+  const isWidePanel = draft.value.width >= draft.value.height
+  const naturalLabel = isWidePanel ? t('device.fields.display.orientationLandscape') : t('device.fields.display.orientationPortrait')
+  const rotatedLabel = isWidePanel ? t('device.fields.display.orientationPortrait') : t('device.fields.display.orientationLandscape')
+  return [
+    { title: naturalLabel, value: 0 },
+    { title: rotatedLabel, value: 1 },
+  ]
+})
 
 const widgetTypeOptions: Array<{ value: Ssd1306WidgetType; label: string; icon: string }> = [
   { value: 'text', label: t('device.dialog.ssd1306Display.widgetTypes.text'), icon: 'oled-text' },
@@ -273,6 +295,7 @@ function createDraft(device: DeviceRecord | null): DesignerDraft {
     return {
       name: 'OLED Layout',
       enabled: true,
+      rotation: 0,
       width: 128,
       height: 64,
       layout: defaultSsd1306Layout(),
@@ -283,6 +306,7 @@ function createDraft(device: DeviceRecord | null): DesignerDraft {
     ...config,
     name: typeof config.name === 'string' ? config.name : 'OLED Layout',
     enabled: typeof config.enabled === 'boolean' ? config.enabled : true,
+    rotation: normalizeDisplayRotation(config.rotation, 0),
     width: typeof config.width === 'number' ? config.width : 128,
     height: typeof config.height === 'number' ? config.height : 64,
     layout: normalizeSsd1306Layout(config.layout, {

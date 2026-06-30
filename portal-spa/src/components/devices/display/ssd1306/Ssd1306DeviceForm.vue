@@ -30,6 +30,18 @@
           />
         </v-col>
         <v-col cols="12" md="6">
+          <v-select
+            :label="t('device.fields.display.orientation')"
+            :items="orientationItems"
+            :model-value="currentValue.rotation"
+            :disabled="busy"
+            density="compact"
+            variant="outlined"
+            hide-details
+            @update:model-value="updateNumber('rotation', $event)"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
           <v-text-field v-select-on-focus :label="t('device.fields.display.width')" :model-value="currentValue.width" :disabled="busy" inputmode="numeric" type="number" min="1" @update:model-value="updateNumber('width', $event)" />
         </v-col>
         <v-col cols="12" md="6">
@@ -43,8 +55,8 @@
       <Ssd1306LayoutPreview
         :layout="currentValue.layout"
         :display="ssd1306Display"
-        :device-width="currentValue.width"
-        :device-height="currentValue.height"
+        :device-width="effectiveSize.effectiveWidth"
+        :device-height="effectiveSize.effectiveHeight"
         :metric-catalog="metricCatalog"
       />
       <div v-if="mode === 'edit'" class="d-flex justify-end">
@@ -65,6 +77,7 @@ import Ssd1306LayoutPreview from '@/components/devices/display/ssd1306/Ssd1306La
 import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
 import { I2C_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-types'
 import { ssd1306Display } from '@/models/devices/display/display'
+import { resolveDisplayEffectiveSize } from '@/models/devices/display/orientation'
 import { defaultConfig, formatI2cAddress, parseI2cAddress, type Ssd1306ConfigDraft, type Ssd1306CreateDraft } from '@/models/devices/ssd1306/device'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
@@ -83,9 +96,19 @@ const fallbackValue: Ssd1306CreateDraft = {
   typeName: 'ssd1306',
 }
 const currentValue = computed<FormValue>(() => props.modelValue ?? fallbackValue)
+const effectiveSize = computed(() => resolveDisplayEffectiveSize(currentValue.value.width, currentValue.value.height, currentValue.value.rotation))
 const i2cAddressText = computed(() => formatI2cAddress(currentValue.value.i2cAddress))
 const dependencyDevices = computed(() => deviceStore.devices.filter(device => deviceTypeIdFromName(device.record.typeName) === I2C_BUS_DEVICE_TYPE_ID))
 const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ title: `${device.config.name} #${device.record.id}`, value: device.record.id })))
+const orientationItems = computed(() => {
+  const isWidePanel = currentValue.value.width >= currentValue.value.height
+  const naturalLabel = isWidePanel ? t('device.fields.display.orientationLandscape') : t('device.fields.display.orientationPortrait')
+  const rotatedLabel = isWidePanel ? t('device.fields.display.orientationPortrait') : t('device.fields.display.orientationLandscape')
+  return [
+    { title: naturalLabel, value: 0 },
+    { title: rotatedLabel, value: 1 },
+  ]
+})
 const dependencyRules = computed(() => [
   (value: unknown) => Number(value) > 0 || t('device.dialog.ssd1306Display.noDependency'),
 ])
@@ -100,7 +123,7 @@ function updateHex(key: 'i2cAddress', value: string | number): void {
   emit('update:modelValue', { ...fallbackValue, ...(currentValue.value as Partial<Ssd1306CreateDraft>), [key]: numeric } as FormValue)
 }
 
-function updateNumber(key: keyof Pick<Ssd1306CreateDraft, 'i2cBusDeviceId' | 'i2cAddress' | 'width' | 'height'>, value: string | number): void {
+function updateNumber(key: keyof Pick<Ssd1306CreateDraft, 'i2cBusDeviceId' | 'i2cAddress' | 'rotation' | 'width' | 'height'>, value: string | number): void {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return
   emit('update:modelValue', { ...fallbackValue, ...(currentValue.value as Partial<Ssd1306CreateDraft>), [key]: numeric } as FormValue)

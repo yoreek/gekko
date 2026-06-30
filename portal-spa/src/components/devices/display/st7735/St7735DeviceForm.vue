@@ -56,6 +56,18 @@
           />
         </v-col>
         <v-col cols="12" md="6">
+          <v-select
+            :label="t('device.fields.display.orientation')"
+            :items="orientationItems"
+            :model-value="currentValue.rotation"
+            :disabled="busy"
+            density="compact"
+            variant="outlined"
+            hide-details
+            @update:model-value="updateNumber('rotation', $event)"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
           <v-text-field
             v-select-on-focus
             :label="t('device.fields.display.width')"
@@ -88,8 +100,8 @@
       <St7735LayoutPreview
         :layout="currentValue.layout"
         :display="st7735Display"
-        :device-width="currentValue.width"
-        :device-height="currentValue.height"
+        :device-width="effectiveSize.effectiveWidth"
+        :device-height="effectiveSize.effectiveHeight"
         :metric-catalog="metricCatalog"
       />
       <div v-if="mode === 'edit'" class="d-flex justify-end">
@@ -110,6 +122,7 @@ import St7735LayoutPreview from '@/components/devices/display/st7735/St7735Layou
 import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
 import { SPI_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-types'
 import { st7735Display } from '@/models/devices/display/display'
+import { resolveDisplayEffectiveSize } from '@/models/devices/display/orientation'
 import { defaultConfig, type St7735ConfigDraft, type St7735CreateDraft } from '@/models/devices/st7735/device'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
@@ -129,8 +142,18 @@ const fallbackValue: St7735CreateDraft = {
   typeName: 'st7735',
 }
 const currentValue = computed<FormValue>(() => props.modelValue ?? fallbackValue)
+const effectiveSize = computed(() => resolveDisplayEffectiveSize(currentValue.value.width, currentValue.value.height, currentValue.value.rotation))
 const dependencyDevices = computed(() => deviceStore.devices.filter(device => deviceTypeIdFromName(device.record.typeName) === SPI_BUS_DEVICE_TYPE_ID))
 const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ title: `${device.config.name} #${device.record.id}`, value: device.record.id })))
+const orientationItems = computed(() => {
+  const isWidePanel = currentValue.value.width >= currentValue.value.height
+  const naturalLabel = isWidePanel ? t('device.fields.display.orientationLandscape') : t('device.fields.display.orientationPortrait')
+  const rotatedLabel = isWidePanel ? t('device.fields.display.orientationPortrait') : t('device.fields.display.orientationLandscape')
+  return [
+    { title: naturalLabel, value: 0 },
+    { title: rotatedLabel, value: 1 },
+  ]
+})
 const dependencyRules = computed(() => [
   (value: unknown) => Number(value) > 0 || t('device.dialog.st7735Display.noDependency'),
 ])
@@ -140,7 +163,7 @@ onMounted(() => {
 })
 
 function updateNumber(
-  key: keyof Pick<St7735CreateDraft, 'spiBusDeviceId' | 'chipSelectPin' | 'dcPin' | 'resetPin' | 'width' | 'height'>,
+  key: keyof Pick<St7735CreateDraft, 'spiBusDeviceId' | 'chipSelectPin' | 'dcPin' | 'resetPin' | 'rotation' | 'width' | 'height'>,
   value: string | number,
 ): void {
   const numeric = Number(value)

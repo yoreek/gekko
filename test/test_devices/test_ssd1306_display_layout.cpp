@@ -374,10 +374,11 @@ void test_ssd1306_layout_create_request_accepts_large_i2c_bus_device_id() {
     TEST_ASSERT_TRUE(Ssd1306DeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error));
     TEST_ASSERT_NULL(error);
 
-    Ssd1306DeviceConfigV2 decoded{};
+    Ssd1306DeviceConfigV3 decoded{};
     TEST_ASSERT_TRUE(
         decodeSsd1306DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), decoded));
     TEST_ASSERT_EQUAL_UINT32(4249059392UL, decoded.i2cBusDeviceId);
+    TEST_ASSERT_EQUAL_UINT8(0U, decoded.rotation);
 }
 
 void test_ssd1306_config_rejects_legacy_layout_dimension_fields() {

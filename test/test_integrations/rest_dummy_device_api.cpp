@@ -63,11 +63,12 @@ DeviceRegistryEntry makeSsd1306Record() {
 }
 
 BoundedBlob<kMaxDeviceConfigBytes> encodeSsd1306Config() {
-    Ssd1306DeviceConfigV2 config{};
+    Ssd1306DeviceConfigV3 config{};
     config.enabled = true;
     std::snprintf(config.name, sizeof(config.name), "%s", "ssd1306");
     config.i2cBusDeviceId = 12;
     config.i2cAddress = 0x3C;
+    config.rotation = 1;
     config.width = 128;
     config.height = 64;
 

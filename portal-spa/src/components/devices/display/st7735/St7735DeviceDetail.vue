@@ -20,6 +20,9 @@
         <v-col cols="12" md="6">
           <v-text-field :label="t('device.fields.display.height')" :model-value="config.height" readonly />
         </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field :label="t('device.fields.display.orientation')" :model-value="orientationLabel" readonly />
+        </v-col>
       </v-row>
     </section>
 
@@ -29,8 +32,8 @@
       <St7735LayoutPreview
         :layout="config.layout"
         :display="st7735Display"
-        :device-width="config.width"
-        :device-height="config.height"
+        :device-width="effectiveSize.effectiveWidth"
+        :device-height="effectiveSize.effectiveHeight"
         :metric-catalog="metricCatalog"
       />
     </section>
@@ -45,12 +48,18 @@ import type { DeviceRecord } from '@/api/contracts'
 import St7735LayoutPreview from '@/components/devices/display/st7735/St7735LayoutPreview.vue'
 import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
 import { st7735Display } from '@/models/devices/display/display'
+import { resolveDisplayEffectiveSize, resolveDisplayOrientationGroup } from '@/models/devices/display/orientation'
 import { Device as St7735Device } from '@/models/devices/st7735/device'
 
 const props = defineProps<{ device: DeviceRecord }>()
 const { t } = useI18n()
 const { metricCatalog, refreshMetricCatalog } = useMetricPlaceholderCatalog()
 const config = computed(() => new St7735Device().normalizeConfig(props.device.config))
+const effectiveSize = computed(() => resolveDisplayEffectiveSize(config.value.width, config.value.height, config.value.rotation))
+const orientationLabel = computed(() => {
+  const group = resolveDisplayOrientationGroup(config.value.width, config.value.height, config.value.rotation)
+  return t(`device.fields.display.orientation${group === 'landscape' ? 'Landscape' : 'Portrait'}`)
+})
 
 onMounted(() => {
   void refreshMetricCatalog()

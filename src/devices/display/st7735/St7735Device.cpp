@@ -14,7 +14,7 @@ namespace ewfm {
 
 namespace {
 constexpr DeviceTypeId kSt7735DeviceTypeId = 9;
-constexpr uint32_t kSt7735DeviceConfigVersion = 3;
+constexpr uint32_t kSt7735DeviceConfigVersion = 4;
 } // namespace
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
@@ -149,9 +149,9 @@ private:
 };
 #endif
 
-static_assert(std::is_trivially_copyable<St7735DeviceConfigV3>::value, "St7735DeviceConfigV3 must be POD");
-static_assert(sizeof(St7735DeviceConfigV3::kMagic) - 1U + sizeof(St7735DeviceConfigV3) <= kMaxDeviceConfigBytes,
-              "St7735DeviceConfigV3 exceeds device config bound");
+static_assert(std::is_trivially_copyable<St7735DeviceConfigV4>::value, "St7735DeviceConfigV4 must be POD");
+static_assert(sizeof(St7735DeviceConfigV4::kMagic) - 1U + sizeof(St7735DeviceConfigV4) <= kMaxDeviceConfigBytes,
+              "St7735DeviceConfigV4 exceeds device config bound");
 
 St7735Device::St7735Device(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob)
     : DisplayDeviceBase(DisplayDeviceBase::initialState()) {
@@ -161,7 +161,7 @@ St7735Device::St7735Device(const DeviceRegistryEntry& record, const DeviceConfig
 
 St7735Device::~St7735Device() = default;
 
-const St7735DeviceConfigV3& St7735Device::config() const {
+const St7735DeviceConfigV4& St7735Device::config() const {
     return config_;
 }
 
@@ -185,7 +185,7 @@ bool St7735Device::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
 }
 
 bool St7735Device::replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const {
-    St7735DeviceConfigV3 config = config_;
+    St7735DeviceConfigV4 config = config_;
     config.enabled = baseConfig.enabled;
     std::memcpy(config.name, baseConfig.name, sizeof(config.name));
     uint8_t buffer[kMaxDeviceConfigBytes]{};
@@ -194,21 +194,21 @@ bool St7735Device::replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceB
 }
 
 DeviceConfigUpdatePlan St7735Device::planConfigUpdate(const DeviceConfigBlob& configBlob) const {
-    St7735DeviceConfigV3 config{};
+    St7735DeviceConfigV4 config{};
     if (!decodeSt7735DeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return {};
     }
     DeviceConfigUpdatePlan plan{};
     plan.endOldConfig = config.spiBusDeviceId != config_.spiBusDeviceId || config.chipSelectPin != config_.chipSelectPin ||
-                        config.dcPin != config_.dcPin || config.resetPin != config_.resetPin || config.width != config_.width ||
-                        config.height != config_.height;
+                        config.dcPin != config_.dcPin || config.resetPin != config_.resetPin || config.rotation != config_.rotation ||
+                        config.width != config_.width || config.height != config_.height;
     plan.resetStateMachine = plan.endOldConfig;
     return plan;
 }
 
 bool St7735Device::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
     (void)now;
-    St7735DeviceConfigV3 config{};
+    St7735DeviceConfigV4 config{};
     if (!decodeSt7735DeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return false;
     }
@@ -242,7 +242,7 @@ bool St7735Device::initializeDisplayHardware(uint32_t now) {
         return false;
     }
     display->initR(INITR_BLACKTAB);
-    display->setRotation(0);
+    display->setRotation(config_.rotation);
     display->fillScreen(ST7735_BLACK);
     surface_ = new St7735CanvasSurface(*display);
     display_ = display.release();
@@ -306,7 +306,7 @@ DeviceValidationResult St7735Device::validateConfig(const DeviceRegistryEntry& r
     if (configBlob.size() > kMaxDeviceConfigBytes) {
         return {DeviceError::BoundsExceeded, "st7735 config exceeds supported size"};
     }
-    St7735DeviceConfigV3 config{};
+    St7735DeviceConfigV4 config{};
     if (!decodeSt7735DeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "st7735 config is invalid"};
     }

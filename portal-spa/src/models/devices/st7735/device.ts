@@ -4,6 +4,7 @@ import { BaseDevice } from '../base-device.ts'
 import { ST7735_DEVICE_TYPE_ID } from '../../device-type-ids.ts'
 import { st7735Display } from '../display/display.ts'
 import type { DisplayBaseConfig, DisplayCapabilities } from '../display/base.ts'
+import { normalizeDisplayRotation } from '../display/orientation.ts'
 import { st7735LayoutChanged } from './layout.ts'
 import {
   defaultSt7735Layout,
@@ -17,6 +18,7 @@ export interface St7735ConfigDraft extends BaseDeviceConfig, DisplayBaseConfig {
   chipSelectPin: number
   dcPin: number
   resetPin: number
+  rotation: number
   layout: St7735LayoutDraft
 }
 
@@ -47,6 +49,7 @@ export function defaultConfig(): St7735ConfigDraft {
     chipSelectPin: 5,
     dcPin: 2,
     resetPin: -1,
+    rotation: 0,
     layout: defaultSt7735Layout(),
   }
 }
@@ -73,6 +76,7 @@ export function normalizeConfig(value: unknown, deps?: DeviceDependencyLink[]): 
     chipSelectPin: normalizeNumber(raw.chipSelectPin, defaults.chipSelectPin),
     dcPin: normalizeNumber(raw.dcPin, defaults.dcPin),
     resetPin: normalizeNumber(raw.resetPin, defaults.resetPin),
+    rotation: normalizeDisplayRotation(raw.rotation, defaults.rotation) % 2,
     layout: normalizeSt7735Layout(raw.layout),
   }
 }
@@ -88,6 +92,7 @@ export function encodeConfig(config: St7735ConfigDraft): Record<string, unknown>
     chipSelectPin: config.chipSelectPin,
     dcPin: config.dcPin,
     resetPin: config.resetPin,
+    rotation: config.rotation,
     layout: encodeSt7735Layout(config.layout),
   }
 }
@@ -150,6 +155,7 @@ export class Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraft, Rec
       nextConfig.chipSelectPin !== currentConfig.chipSelectPin ||
       nextConfig.dcPin !== currentConfig.dcPin ||
       nextConfig.resetPin !== currentConfig.resetPin ||
+      nextConfig.rotation !== currentConfig.rotation ||
       st7735LayoutChanged(nextConfig.layout, currentConfig.layout)
     ) {
       commands.push({
