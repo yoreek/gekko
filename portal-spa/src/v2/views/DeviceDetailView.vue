@@ -25,8 +25,9 @@
 
           <component
             :is="typeUi.fieldsComponent"
-            v-if="typeUi"
+            v-if="typeUi && device"
             :model-value="draft"
+            :device="device"
             mode="edit"
             :busy="loading"
             @update:model-value="draft = $event"
@@ -59,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount } from 'vue'
+import { computed, onBeforeMount, toRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -79,9 +80,8 @@ const { t } = useI18n()
 const router = useRouter()
 const deviceStore = useDeviceRegistryStore()
 
-const deviceIdRef = computed(() => props.deviceId)
 const { device, deviceName, loading, isSaving, errorMessage, draft, canSave, refresh, save, resetDraft } =
-  useDeviceDetail(deviceIdRef)
+  useDeviceDetail(toRef(props, 'deviceId'))
 
 onBeforeMount(async () => {
   await deviceStore.initialize()
