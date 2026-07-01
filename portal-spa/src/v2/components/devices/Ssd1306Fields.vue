@@ -43,14 +43,23 @@
         @update:model-value="update('i2cBusDeviceId', Number($event))"
       />
     </v-col>
-    <v-col cols="12" sm="6">
-      <v-text-field
+
+    <!-- I2C address with scan option -->
+    <v-col cols="12">
+      <I2cAddressPicker
         :model-value="modelValue.i2cAddress"
-        type="number"
-        :label="t('device.fields.i2cAddress')"
-        density="compact"
-        hide-details="auto"
-        @update:model-value="update('i2cAddress', Number($event))"
+        :bus-device-id="modelValue.i2cBusDeviceId"
+        :input-label="t('device.fields.i2cAddress')"
+        :select-label="t('device.dialog.i2cBusDeviceEditor.candidatesList')"
+        :hint="t('device.fields.i2cAddressHint')"
+        :rules="i2cAddressRules"
+        :no-dependency-text="t('device.fields.i2cAddressNoDependency')"
+        :scan-action-text="t('device.dialog.i2cBusDeviceEditor.scanAction')"
+        :scan-in-progress-text="t('device.dialog.i2cBusDeviceEditor.scanInProgress')"
+        :scan-empty-text="t('device.dialog.i2cBusDeviceEditor.scanEmpty')"
+        :scan-truncated-text="t('device.dialog.i2cBusDeviceEditor.scanTruncated')"
+        :error-fallback-text="t('device.dialog.i2cBusDeviceEditor.scanError')"
+        @update:model-value="update('i2cAddress', $event)"
       />
     </v-col>
 
@@ -73,6 +82,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DeviceRecord } from '@/api/contracts'
 import type { Ssd1306ConfigDraft } from '@/models/devices/ssd1306/device'
+import I2cAddressPicker from '@/components/devices/common/I2cAddressPicker.vue'
 
 const props = defineProps<{
   modelValue: T
@@ -89,6 +99,13 @@ const rotationItems = computed(() => [
   { title: t('device.fields.display.orientationPortrait'), value: 0 },
   { title: t('device.fields.display.orientationLandscape'), value: 1 },
 ])
+
+const i2cAddressRules = [
+  (value: unknown) => {
+    const num = Number(value)
+    return (num >= 0 && num <= 0x7F) || t('device.fields.i2cAddressHint')
+  },
+]
 
 function update<K extends keyof T>(key: K, value: T[K]): void {
   emit('update:modelValue', { ...props.modelValue, [key]: value } as T)
