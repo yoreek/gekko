@@ -88,17 +88,8 @@
         </v-card-actions>
       </v-card>
 
-        <!-- Designer nested route overlay -->
-        <router-view v-slot="{ Component, route }">
-          <v-dialog
-            v-if="route.name === 'device-design'"
-            model-value
-            fullscreen
-            :transition="false"
-          >
-            <component :is="Component" />
-          </v-dialog>
-        </router-view>
+        <!-- Designer nested route overlay (designer components render their own fullscreen dialog) -->
+        <router-view />
       </div>
     </template>
 

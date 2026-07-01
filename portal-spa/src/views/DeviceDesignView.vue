@@ -1,19 +1,12 @@
 <template>
-  <div v-if="designerComponent" class="device-designer-page">
-    <component
-      :is="designerComponent"
-      :model-value="draft"
-      :device="device"
-      mode="edit"
-      :busy="loading"
-      @update:model-value="(v: any) => { draft.value = v }"
-      @command="(submitCommand as any)"
-      @close="navigateBack"
-    />
-  </div>
-  <div v-else class="d-flex align-center justify-center min-h-screen">
-    <v-progress-circular indeterminate />
-  </div>
+  <component
+    :is="designerComponent"
+    v-if="designerComponent"
+    model-value
+    :device="(device as any)"
+    @update:model-value="(v: boolean) => { if (!v) navigateBack() }"
+    @save="onSave"
+  />
 </template>
 
 <script setup lang="ts">
@@ -33,7 +26,7 @@ if (!detail) {
   throw new Error('DeviceDesignView requires deviceDetail to be provided')
 }
 
-const { device, loading, draft, submitCommand } = detail
+const { device, save } = detail
 
 const designerComponent = computed(() => {
   const dev = device.value as any
@@ -47,15 +40,9 @@ const designerComponent = computed(() => {
 function navigateBack(): void {
   router.push({ name: 'device-detail', params: { id: props.id } })
 }
+
+async function onSave(payload: Record<string, unknown>): Promise<void> {
+  await save(payload as any)
+  navigateBack()
+}
 </script>
-
-<style scoped>
-.device-designer-page {
-  width: 100%;
-  height: 100%;
-}
-
-.min-h-screen {
-  min-height: 100vh;
-}
-</style>
