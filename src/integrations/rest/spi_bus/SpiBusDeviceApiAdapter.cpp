@@ -83,12 +83,7 @@ bool SpiBusDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& inp
 void SpiBusDeviceApiAdapter::writeDeviceJson(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus, JsonObject output) const {
     writeCommonDeviceJson(runtime, effectiveStatus, typeName(), output);
     const SpiBusDevice& device = static_cast<const SpiBusDevice&>(runtime);
-    JsonObject config = output["config"].as<JsonObject>();
-    device.config().writeJson(config);
-    JsonObject runtimeJson = output["runtime"].as<JsonObject>();
-    runtimeJson["generation"] = device.generation();
-    runtimeJson["transactionActive"] = device.dependencyTransactionActive();
-    device.diagnostics().writeJson(runtimeJson);
+    device.writeDeviceJson(output);
 }
 
 } // namespace ewfm

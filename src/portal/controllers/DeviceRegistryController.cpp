@@ -490,6 +490,19 @@ void DeviceRegistryController::cmd() {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
+    } else if (std::strcmp(commandName, "checkDevice") == 0) {
+        const int csPinRaw = input["csPin"] | -1;
+        if (csPinRaw < 0 || csPinRaw > 39) {
+            renderError(400, "BAD_ARGS", "csPin is required and must be in range [0, 39]");
+            return;
+        }
+        char csPinText[8]{};
+        std::snprintf(csPinText, sizeof(csPinText), "%d", csPinRaw);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::CheckDevice, deviceId_, csPinText}, 0);
+        if (!mutationResult.ok()) {
+            renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
+            return;
+        }
     } else if (std::strcmp(commandName, "setOutput") == 0) {
         const char* state = input["state"] | "";
         if (*state == '\0') {

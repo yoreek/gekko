@@ -1,5 +1,6 @@
 #include "devices/bus/spi/SpiBusDevice.h"
 
+#include <cstdio>
 #include <cstring>
 #include <type_traits>
 #include <utility>
@@ -85,11 +86,14 @@ SpiBusDevice::SpiBusDevice(const DeviceRegistryEntry& record, const DeviceConfig
 }
 
 SpiBusDevice::SpiBusDevice(const SpiBusDeviceConfigV1& config, ISpiBusDriver& driver)
-    : DeviceRuntimeBase((PState)&SpiBusDevice::Idle), config_(config), driver_(driver) {}
+    : DeviceRuntimeBase((PState)&SpiBusDevice::Idle), config_(config), driver_(driver), csProbeDriver_(defaultArduinoSpiCsProbeDriver()) {}
+
+SpiBusDevice::SpiBusDevice(const SpiBusDeviceConfigV1& config, ISpiBusDriver& driver, ISpiCsProbeDriver& csProbeDriver)
+    : DeviceRuntimeBase((PState)&SpiBusDevice::Idle), config_(config), driver_(driver), csProbeDriver_(csProbeDriver) {}
 
 SpiBusDevice::SpiBusDevice(const SpiBusDeviceConfigV1& config, std::unique_ptr<ISpiBusDriver> ownedDriver)
     : DeviceRuntimeBase((PState)&SpiBusDevice::Idle), config_(config), ownedDriver_(std::move(ownedDriver)),
-      driver_(ownedDriver_ != nullptr ? *ownedDriver_ : defaultArduinoSpiBusDriver()) {}
+      driver_(ownedDriver_ != nullptr ? *ownedDriver_ : defaultArduinoSpiBusDriver()), csProbeDriver_(defaultArduinoSpiCsProbeDriver()) {}
 
 const SpiBusDeviceConfigV1& SpiBusDevice::config() const {
     return config_;
@@ -184,6 +188,47 @@ void SpiBusDevice::writeDeviceJson(JsonObject output) const {
     runtimeJson["generation"] = generation_;
     runtimeJson["transactionActive"] = dependencyTransactionActive_;
     diagnostics_.writeJson(runtimeJson);
+
+    // Probe result
+    if (probe_.ready) {
+        JsonObject probeJson = runtimeJson.createNestedObject("probe");
+        probeJson["csPin"] = probe_.csPin;
+        probeJson["ready"] = probe_.ready;
+        probeJson["checkedAtMs"] = probe_.checkedAtMs;
+
+        const char* outcomeStr = "unknown";
+        switch (probe_.outcome) {
+        case SpiProbeOutcome::Detected:
+            outcomeStr = "detected";
+            break;
+        case SpiProbeOutcome::NotDetected:
+            outcomeStr = "not_detected";
+            break;
+        case SpiProbeOutcome::Inconclusive:
+            outcomeStr = "inconclusive";
+            break;
+        case SpiProbeOutcome::Unknown:
+        default:
+            outcomeStr = "unknown";
+            break;
+        }
+        probeJson["outcome"] = outcomeStr;
+
+        const char* methodStr = "none";
+        switch (probe_.method) {
+        case SpiProbeMethod::MisoActivity:
+            methodStr = "miso_activity";
+            break;
+        case SpiProbeMethod::CsPullHeuristic:
+            methodStr = "cs_pull_heuristic";
+            break;
+        case SpiProbeMethod::None:
+        default:
+            methodStr = "none";
+            break;
+        }
+        probeJson["method"] = methodStr;
+    }
 }
 
 SpiBusDevice::DependencyTransaction SpiBusDevice::beginDependencyTransaction() {
@@ -252,7 +297,111 @@ bool SpiBusDevice::handleCommand(const DeviceCommand& command) {
         }
         return false;
     }
+    if (command.type == DeviceCommandType::CheckDevice) {
+        if (command.payload.empty()) {
+            return false;
+        }
+        int parsedPin = -1;
+        if (std::sscanf(command.payload.c_str(), "%d", &parsedPin) != 1 || parsedPin < 0 || parsedPin > 39) {
+            return false;
+        }
+        // Check collision: is this pin already in use by another dependent?
+        const auto& dependents = dependentRuntimes();
+        uint8_t probePin = static_cast<uint8_t>(parsedPin);
+        for (auto dependent : dependents) {
+            if (dependent != nullptr && dependent->spiChipSelectPin(probePin)) {
+                return false; // Pin in use by another device
+            }
+        }
+        return probeChipSelect(static_cast<uint8_t>(parsedPin));
+    }
     return false;
+}
+
+bool SpiBusDevice::probeChipSelect(uint8_t csPin) {
+    if (status_ != DeviceStatus::Ready || dependencyTransactionActive_) {
+        return false;
+    }
+
+    auto txn = beginDependencyTransaction();
+    if (!txn) {
+        return false;
+    }
+
+    // Save current CS state
+    GpioMode savedMode{GpioMode::Input};
+    bool savedLevel{false};
+    if (!csProbeDriver_.readCurrentState(csPin, savedMode, savedLevel)) {
+        return false;
+    }
+
+    SpiProbeOutcome outcome = SpiProbeOutcome::Unknown;
+    SpiProbeMethod method = SpiProbeMethod::None;
+
+    // Try MISO-activity first
+    if (config_.misoPin >= 0) {
+        outcome = probeViaMisoActivity(csPin);
+        method = SpiProbeMethod::MisoActivity;
+    } else {
+        // Fallback to CS pull-resistor heuristic
+        outcome = probeViaCsPullHeuristic(csPin);
+        method = SpiProbeMethod::CsPullHeuristic;
+    }
+
+    // Restore CS state
+    csProbeDriver_.restoreState(csPin, savedMode, savedLevel);
+
+    txn.release();
+
+    // Update probe result
+    probe_ = {csPin, outcome, method, uptime(), true};
+    markRuntimeStateDirty();
+    return true;
+}
+
+SpiProbeOutcome SpiBusDevice::probeViaMisoActivity(uint8_t csPin) {
+    // Transfer idle bytes with CS=HIGH (unselected)
+    csProbeDriver_.configureOutput(csPin, true); // CS high
+#ifdef ARDUINO
+    delayMicroseconds(10);
+#endif
+    uint8_t idleByteHigh[4]{0xFF, 0xFF, 0xFF, 0xFF};
+    uint8_t responseHigh[4]{};
+    driver_.transferBytes(idleByteHigh, responseHigh, sizeof(responseHigh));
+
+    // Transfer idle bytes with CS=LOW (selected)
+    csProbeDriver_.writeLevel(csPin, false); // CS low
+#ifdef ARDUINO
+    delayMicroseconds(10);
+#endif
+    uint8_t idleByteLow[4]{0xFF, 0xFF, 0xFF, 0xFF};
+    uint8_t responseLow[4]{};
+    driver_.transferBytes(idleByteLow, responseLow, sizeof(responseLow));
+
+    // Compare responses
+    bool different = false;
+    for (size_t i = 0; i < sizeof(responseHigh); ++i) {
+        if (responseHigh[i] != responseLow[i]) {
+            different = true;
+            break;
+        }
+    }
+
+    return different ? SpiProbeOutcome::Detected : SpiProbeOutcome::Inconclusive;
+}
+
+SpiProbeOutcome SpiBusDevice::probeViaCsPullHeuristic(uint8_t csPin) {
+    // Test pull-up behavior
+    bool levelWithPullup{false};
+    csProbeDriver_.configureInputPullup(csPin, levelWithPullup);
+
+    // Test pull-down behavior
+    bool levelWithPulldown{false};
+    csProbeDriver_.configureInputPulldown(csPin, levelWithPulldown);
+
+    // If readings differ significantly, weak evidence of device pull
+    // Always return Inconclusive since this is heuristic-only
+    return SpiProbeOutcome::Inconclusive;
 }
 
 void SpiBusDevice::releaseHardware() {

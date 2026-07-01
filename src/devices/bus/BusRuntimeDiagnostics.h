@@ -1,9 +1,9 @@
 #pragma once
 
+#include "core/StateMachine.h"
+
 #include <ArduinoJson.h>
 #include <cstdint>
-
-#include "core/StateMachine.h"
 
 namespace ewfm {
 

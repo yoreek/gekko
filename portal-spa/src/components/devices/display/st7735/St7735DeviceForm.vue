@@ -29,6 +29,15 @@
             @update:model-value="updateNumber('chipSelectPin', $event)"
           />
         </v-col>
+      </v-row>
+
+      <SpiChipSelectProbe
+        :bus-device-id="currentValue.spiBusDeviceId"
+        :cs-pin="currentValue.chipSelectPin"
+        :disabled="busy"
+      />
+
+      <v-row class="device-type-section__grid">
         <v-col cols="12" md="6">
           <v-text-field
             v-select-on-focus
@@ -118,6 +127,7 @@
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import SpiChipSelectProbe from '@/components/devices/common/SpiChipSelectProbe.vue'
 import St7735LayoutPreview from '@/components/devices/display/st7735/St7735LayoutPreview.vue'
 import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
 import { SPI_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-type-ids'

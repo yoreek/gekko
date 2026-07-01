@@ -1,8 +1,8 @@
 #pragma once
 
+#include "devices/bus/BusRuntimeDiagnostics.h"
 #include "devices/bus/i2c/I2cBusConfig.h"
 #include "devices/bus/i2c/II2cBusDriver.h"
-#include "devices/bus/BusRuntimeDiagnostics.h"
 #include "devices/core/DeviceRuntimeBase.h"
 
 #include <ArduinoJson.h>

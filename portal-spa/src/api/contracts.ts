@@ -54,10 +54,19 @@ export interface I2cBusRuntimeSnapshot {
   scan?: I2cBusScanSnapshot
 }
 
+export interface SpiBusProbeSnapshot {
+  ready: boolean
+  csPin: number
+  outcome: 'unknown' | 'detected' | 'not_detected' | 'inconclusive'
+  method: 'none' | 'miso_activity' | 'cs_pull_heuristic'
+  checkedAtMs: number
+}
+
 export interface SpiBusRuntimeSnapshot {
   generation?: number
   transactionActive?: boolean
   diagnostics?: BusRuntimeDiagnosticsSnapshot
+  probe?: SpiBusProbeSnapshot
 }
 
 export interface BusRuntimeDiagnosticsSnapshot {
@@ -159,11 +168,13 @@ export interface DeviceCommandRequest {
     | 'setOutput'
     | 'setDeps'
     | 'resetDiagnostics'
+    | 'checkDevice'
   name?: string
   status?: string
   state?: DeviceOutputState
   config?: Record<string, unknown>
   deps?: DeviceDependencyLink[]
+  csPin?: number
 }
 
 export interface DeviceMutationResponse<TRecord extends DeviceRecord = DeviceRecord> {

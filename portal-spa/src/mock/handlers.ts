@@ -861,6 +861,23 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           break
         }
         throw new ApiClientError('unsupported scan command', 'BAD_ARGS', 400, null)
+      case 'checkDevice':
+        if (device.record.typeName === 'spi_bus') {
+          const csPin = typeof payload.csPin === 'number' ? payload.csPin : 0
+          const outcomes: Array<'detected' | 'not_detected' | 'inconclusive'> = ['detected', 'not_detected', 'inconclusive']
+          const methods: Array<'miso_activity' | 'cs_pull_heuristic'> = ['miso_activity', 'cs_pull_heuristic']
+          const randomOutcome = outcomes[Math.floor(Math.random() * outcomes.length)]
+          const randomMethod = methods[Math.floor(Math.random() * methods.length)]
+          device.runtime.probe = {
+            ready: true,
+            csPin,
+            outcome: randomOutcome,
+            method: randomMethod,
+            checkedAtMs: Date.now(),
+          }
+          break
+        }
+        throw new ApiClientError('checkDevice only supported on spi_bus', 'BAD_ARGS', 400, null)
       case 'setOutput':
       case 'set_output':
         if (typeof payload.state !== 'string') {

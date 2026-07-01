@@ -279,6 +279,7 @@ enum class DeviceCommandType : uint8_t {
     Custom = 10,
     SetDeps = 11,
     ResetDiagnostics = 12,
+    CheckDevice = 13,
 };
 
 enum class DevicePersistencePolicy : uint8_t {

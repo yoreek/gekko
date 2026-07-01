@@ -1,13 +1,35 @@
 #pragma once
 
-#include "devices/bus/spi/ISpiBusDriver.h"
-#include "devices/bus/spi/SpiBusConfig.h"
 #include "devices/bus/BusRuntimeDiagnostics.h"
+#include "devices/bus/spi/ISpiBusDriver.h"
+#include "devices/bus/spi/ISpiCsProbeDriver.h"
+#include "devices/bus/spi/SpiBusConfig.h"
 #include "devices/core/DeviceRuntimeBase.h"
 
 #include <ArduinoJson.h>
 
 namespace ewfm {
+
+enum class SpiProbeOutcome : uint8_t {
+    Unknown = 0,
+    Detected = 1,
+    NotDetected = 2,
+    Inconclusive = 3,
+};
+
+enum class SpiProbeMethod : uint8_t {
+    None = 0,
+    MisoActivity = 1,
+    CsPullHeuristic = 2,
+};
+
+struct SpiProbeResult {
+    uint8_t csPin{0};
+    SpiProbeOutcome outcome{SpiProbeOutcome::Unknown};
+    SpiProbeMethod method{SpiProbeMethod::None};
+    uint32_t checkedAtMs{0};
+    bool ready{false};
+};
 
 class SpiBusDevice final : public DeviceRuntimeBase {
 public:
@@ -34,6 +56,7 @@ public:
 
     SpiBusDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
     SpiBusDevice(const SpiBusDeviceConfigV1& config, ISpiBusDriver& driver);
+    SpiBusDevice(const SpiBusDeviceConfigV1& config, ISpiBusDriver& driver, ISpiCsProbeDriver& csProbeDriver);
 
     const SpiBusDeviceConfigV1& config() const;
     bool enabled() const override;
@@ -60,6 +83,10 @@ public:
     bool handleCommand(const DeviceCommand& command) override;
     bool hasDuplicateDependentSpiChipSelect(uint8_t pin, const IDeviceRuntime* ignoreDependent = nullptr) const override;
 
+    bool probeChipSelect(uint8_t csPin);
+    SpiProbeOutcome probeViaMisoActivity(uint8_t csPin);
+    SpiProbeOutcome probeViaCsPullHeuristic(uint8_t csPin);
+
 private:
     SpiBusDevice(const SpiBusDeviceConfigV1& config, std::unique_ptr<ISpiBusDriver> ownedDriver);
 
@@ -79,7 +106,9 @@ private:
     SpiBusDeviceConfigV1 config_{};
     std::unique_ptr<ISpiBusDriver> ownedDriver_{};
     ISpiBusDriver& driver_;
+    ISpiCsProbeDriver& csProbeDriver_;
     BusRuntimeDiagnostics diagnostics_{};
+    SpiProbeResult probe_{}; // Transient probe result; never persisted
     uint32_t generation_{0};
     bool dependencyTransactionActive_{false};
 };
