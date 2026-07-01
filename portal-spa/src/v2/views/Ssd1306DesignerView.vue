@@ -55,7 +55,7 @@
         </v-tabs>
 
         <v-row class="mt-4" dense no-gutters>
-          <v-col cols="12" sm="3" md="3" class="pa-2">
+          <v-col cols="12" lg="3" class="pa-2">
             <v-sheet border rounded class="pa-3 h-100">
               <div class="text-subtitle-2 mb-3">{{ t('device.dialog.ssd1306Display.layersTitle') }}</div>
               <DisplayDesignerLayers
@@ -70,7 +70,7 @@
             </v-sheet>
           </v-col>
 
-          <v-col cols="12" sm="6" md="6" class="pa-2">
+          <v-col cols="12" lg="6" class="pa-2">
             <v-sheet border rounded class="pa-3 h-100">
               <div class="text-subtitle-2 mb-2">{{ t('device.dialog.ssd1306Display.canvasTitle') }}</div>
               <div class="text-caption text-medium-emphasis mb-3">{{ canvasPageLabel }}</div>
@@ -123,7 +123,7 @@
             </v-sheet>
           </v-col>
 
-          <v-col cols="12" sm="3" md="3" class="pa-2" style="min-width: 0; overflow: auto;">
+          <v-col cols="12" lg="3" class="pa-2" style="min-width: 0; overflow: auto;">
             <v-sheet border rounded class="pa-3 h-100">
               <div class="text-subtitle-2 mb-3">{{ t('device.dialog.ssd1306Display.inspectorTitle') }}</div>
               <Ssd1306DesignerInspector
