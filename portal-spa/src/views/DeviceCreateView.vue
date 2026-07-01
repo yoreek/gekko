@@ -10,7 +10,7 @@
           <v-btn
             icon="arrow-left"
             variant="text"
-            aria-label="Back"
+            :aria-label="t('device.actions.close')"
             @click="navigateBack"
           />
         </div>
