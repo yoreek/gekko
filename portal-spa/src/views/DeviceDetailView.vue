@@ -28,7 +28,7 @@
               <v-btn
                 icon="arrow-left"
                 variant="text"
-                :aria-label="t('device.actions.back')"
+                aria-label="Back"
                 @click="navigateBack"
               />
               <v-btn
@@ -49,7 +49,7 @@
               <DeviceCommonFields
                 :model-value="(detail.draft as any)"
                 mode="edit"
-                :busy="(isLoading as any) ?? false"
+                :busy="isLoading"
                 @update:model-value="(v: any) => { (detail.draft as any) = v }"
               />
             </section>
@@ -80,13 +80,13 @@
         <!-- Sticky footer with actions -->
         <div class="device-detail-footer">
           <v-spacer />
-          <v-btn variant="text" :disabled="(isLoading as any) ?? false" @click="(detail.resetDraft as any)">
-            {{ t('device.actions.cancel') }}
+          <v-btn variant="text" :disabled="isLoading" @click="(detail.resetDraft as any)">
+            {{ t('actions.cancel') }}
           </v-btn>
           <v-btn
             color="primary"
-            :loading="(detail.busyAction as any) === 'save'"
-            :disabled="(!(detail.canSave as any) || (isLoading as any)) ?? false"
+            :loading="isSaving"
+            :disabled="!canSaveNow || isLoading"
             @click="(detail.save as any)()"
           >
             {{ t('device.dialog.save') }}
@@ -147,7 +147,9 @@ const device = computed(() => detail.device as any)
 const deviceName = computed(() => (device.value as any)?.config?.name ?? '')
 const deviceId = computed(() => (device.value as any)?.record?.id ?? 0)
 const deviceTypeName = computed(() => (device.value as any)?.record?.typeName ?? '')
-const isLoading = computed(() => detail.loading as any)
+const isLoading = computed(() => (detail.loading as any) ?? false)
+const isSaving = computed(() => (detail.busyAction as any) === 'save')
+const canSaveNow = computed(() => (detail.canSave as any) ?? false)
 
 const editorUi = computed(() => {
   const typeName = (device.value as any)?.record?.typeName

@@ -10,7 +10,7 @@
           <v-btn
             icon="arrow-left"
             variant="text"
-            :aria-label="t('device.actions.back')"
+            aria-label="Back"
             @click="navigateBack"
           />
         </div>
@@ -23,7 +23,7 @@
           <DeviceCommonFields
             :model-value="(draft as any)"
             mode="create"
-            :busy="isCreating ?? false"
+            :busy="isCreating"
             @update:model-value="(draft as any) = $event"
           />
         </section>
@@ -34,7 +34,7 @@
             v-if="(editorUi as any)?.editorComponent"
             :model-value="(draft as any)"
             mode="create"
-            :busy="isCreating ?? false"
+            :busy="isCreating"
             @update:model-value="(draft as any) = $event"
           />
         </section>
@@ -49,13 +49,13 @@
     <!-- Sticky footer with actions -->
     <div class="device-detail-footer">
       <v-spacer />
-      <v-btn variant="text" :disabled="(isCreating ?? false)" @click="navigateBack">
-        {{ t('device.actions.cancel') }}
+      <v-btn variant="text" :disabled="isCreating" @click="navigateBack">
+        {{ t('actions.cancel') }}
       </v-btn>
       <v-btn
         color="primary"
-        :loading="isCreating ?? false"
-        :disabled="(!canCreate || (isCreating ?? false)) ?? false"
+        :loading="isCreating"
+        :disabled="!canCreate || isCreating"
         @click="submitCreate"
       >
         {{ t('device.dashboard.create') }}

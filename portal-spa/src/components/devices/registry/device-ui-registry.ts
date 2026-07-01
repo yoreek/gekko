@@ -11,10 +11,12 @@ import { ds18b20Ui } from '@/components/devices/ds18b20/ds18b20.ui'
 import { thermostatUi } from '@/components/devices/thermostat/thermostat.ui'
 
 const unknownUi: DeviceUi = {
-  ...dummyUi,
   typeId: 0,
   typeName: '',
   labelKey: 'device.type.unknown',
+  icon: 'help-circle',
+  editorComponent: dummyUi.editorComponent,
+  widgetComponent: dummyUi.widgetComponent,
 }
 
 const deviceUiByTypeId: Record<number, DeviceUi> = {
