@@ -74,7 +74,7 @@
 
         <!-- Actions -->
         <v-card-actions class="d-flex justify-end ga-3">
-          <v-btn variant="text" :disabled="loading" @click="(resetDraft as any)()">
+          <v-btn variant="text" :disabled="loading" @click="navigateBack">
             {{ t('actions.cancel') }}
           </v-btn>
           <v-btn
