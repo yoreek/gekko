@@ -9,7 +9,7 @@
         :disabled="disabled || probeBusy || !hasDependency"
         @click="probeChipSelect"
       >
-        <v-icon class="me-1" icon="refresh" />
+        <v-icon class="me-1" icon="eye" />
         {{ buttonLabel }}
       </v-btn>
     </v-col>
@@ -89,11 +89,11 @@ const probeIcon = computed(() => {
   if (!probeReady.value) return 'info'
   switch (probe.value?.outcome) {
   case 'detected':
-    return 'success'
+    return 'checkboxOn'
   case 'inconclusive':
-    return 'warning'
+    return 'info'
   case 'not_detected':
-    return 'error'
+    return 'close'
   default:
     return 'info'
   }
