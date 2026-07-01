@@ -160,7 +160,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const { smAndDown } = useDisplay()
-const draft = ref<any>(createDeviceEditDraft(props.device ?? null))
+const draft = ref<DeviceEditDraft>(createDeviceEditDraft(props.device ?? null))
 const busy = computed(() => props.busyAction !== null)
 const fullscreen = computed(() => smAndDown.value)
 const designerOpen = ref(false)

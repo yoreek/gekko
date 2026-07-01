@@ -4,7 +4,7 @@ import type { IconAliases, IconSet, ThemeDefinition } from 'vuetify'
 import VuetifyIconSet from '@/components/VuetifyIconSet.vue'
 
 const portalIconSet: IconSet = {
-  component: props => h(VuetifyIconSet as any, props as any),
+  component: (props) => h(VuetifyIconSet as any, props as any),
 }
 
 const portalIconAliases: Partial<IconAliases> = {

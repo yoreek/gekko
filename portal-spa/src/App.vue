@@ -3,8 +3,8 @@
     <v-navigation-drawer v-model="drawerOpen" class="portal-drawer" temporary width="296">
       <div class="portal-drawer__brand">
         <div class="portal-drawer__brand-copy">
-          <div class="portal-drawer__title">{{ t('app.title') }}</div>
-          <div class="portal-drawer__subtitle">{{ t('app.subtitle') }}</div>
+          <div class="text-body-1 font-weight-bold">{{ t('app.title') }}</div>
+          <div class="text-caption">{{ t('app.subtitle') }}</div>
         </div>
         <v-btn class="portal-drawer__close" icon="close" variant="text" @click="drawerOpen = false" />
       </div>
@@ -38,8 +38,8 @@
       />
 
       <div class="app-bar__brand">
-        <div class="app-bar__title">{{ t('app.title') }}</div>
-        <div class="app-bar__subtitle">{{ t('app.subtitle') }}</div>
+        <div class="text-body-1 font-weight-bold">{{ t('app.title') }}</div>
+        <div class="text-caption">{{ t('app.subtitle') }}</div>
       </div>
 
       <v-spacer />
@@ -161,17 +161,6 @@ watch(
   min-width: 0;
 }
 
-.app-bar__title {
-  font-size: 0.96rem;
-  font-weight: 700;
-  line-height: 1.12;
-}
-
-.app-bar__subtitle {
-  font-size: 0.76rem;
-  line-height: 1.2;
-}
-
 .app-main {
   min-height: calc(100dvh - 64px);
   min-width: 0;
@@ -190,17 +179,6 @@ watch(
   display: grid;
   gap: 2px;
   min-width: 0;
-}
-
-.portal-drawer__title {
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.15;
-}
-
-.portal-drawer__subtitle {
-  font-size: 0.8rem;
-  line-height: 1.2;
 }
 
 .portal-drawer__divider {
@@ -246,7 +224,7 @@ watch(
 }
 
 @media (max-width: 640px) {
-  .app-bar__subtitle {
+  .app-bar__brand {
     display: none;
   }
 }
