@@ -11,76 +11,70 @@
     <!-- Device detail page -->
     <template v-else-if="device">
       <div class="pb-20">
-        <v-sheet class="rounded-lg border-t border-b border-l border-r">
-          <!-- Header card -->
-          <v-card class="rounded-b-0 border-b-0">
-            <v-card-title class="page-title">
-              <div>
-                <h1 class="text-h5 sm:text-h4 font-weight-bold text-wrap">{{ (device as any)?.config?.name ?? '' }}</h1>
-                <div class="text-body-2 text-medium-emphasis mt-1">
-                  {{ t(editorUi?.labelKey || 'device.type.unknown') }} · #{{ (device as any)?.record?.id ?? 0 }}
-                </div>
-              </div>
-              <div class="d-flex ga-2 flex-wrap">
-                <v-chip variant="tonal" :color="statusColor">
-                  {{ statusText }}
-                </v-chip>
-                <v-btn
-                  icon="chevron-left"
-                  variant="text"
-                  :aria-label="t('device.actions.close')"
-                  @click="navigateBack"
-                />
-                <v-btn
-                  v-if="editorUi?.designerComponent"
-                  icon="design-display"
-                  variant="text"
-                  :aria-label="t(editorUi?.designDisplayLabelKey || 'device.dialog.openDesigner')"
-                  @click="openDesigner"
-                />
-              </div>
-            </v-card-title>
-          </v-card>
+        <v-card class="mb-4">
+        <!-- Header -->
+        <v-card-title class="d-flex align-start justify-space-between ga-4">
+          <div>
+            <h1 class="text-h5 sm:text-h4 font-weight-bold text-wrap">{{ (device as any)?.config?.name ?? '' }}</h1>
+            <div class="text-body-2 text-medium-emphasis mt-1">
+              {{ t(editorUi?.labelKey || 'device.type.unknown') }} · #{{ (device as any)?.record?.id ?? 0 }}
+            </div>
+          </div>
+          <div class="d-flex ga-2 flex-wrap">
+            <v-chip variant="tonal" :color="statusColor">
+              {{ statusText }}
+            </v-chip>
+            <v-btn
+              icon="chevron-left"
+              variant="text"
+              :aria-label="t('device.actions.close')"
+              @click="navigateBack"
+            />
+            <v-btn
+              v-if="editorUi?.designerComponent"
+              icon="design-display"
+              variant="text"
+              :aria-label="t(editorUi?.designDisplayLabelKey || 'device.dialog.openDesigner')"
+              @click="openDesigner"
+            />
+          </div>
+        </v-card-title>
 
-          <!-- Content card -->
-          <v-card class="rounded-t-0 border-t-0">
-            <v-card-text class="pa-6 d-flex flex-column ga-3">
-            <section class="pa-3 border rounded">
-              <DeviceCommonFields
-                :model-value="(draft as any)"
-                mode="edit"
-                :busy="loading"
-                @update:model-value="(v: any) => { draft.value = v }"
-              />
-            </section>
+        <!-- Content -->
+        <v-card-text class="pa-6 d-flex flex-column ga-3">
+          <section class="pa-3 border rounded">
+            <DeviceCommonFields
+              :model-value="(draft as any)"
+              mode="edit"
+              :busy="loading"
+              @update:model-value="(v: any) => { draft.value = v }"
+            />
+          </section>
 
-            <section class="pa-3 border rounded">
-              <component
-                :is="(editorUi as any)?.editorComponent"
-                v-if="(editorUi as any)?.editorComponent"
-                :model-value="(draft as any)"
-                :device="(device as any)"
-                mode="edit"
-                :busy="loading"
-                @update:model-value="(v: any) => { draft.value = v }"
-                @command="(submitCommand as any)"
-              />
-            </section>
+          <section class="pa-3 border rounded">
+            <component
+              :is="(editorUi as any)?.editorComponent"
+              v-if="(editorUi as any)?.editorComponent"
+              :model-value="(draft as any)"
+              :device="(device as any)"
+              mode="edit"
+              :busy="loading"
+              @update:model-value="(v: any) => { draft.value = v }"
+              @command="(submitCommand as any)"
+            />
+          </section>
 
-            <!-- Recent events -->
-            <RecentDeviceEvents v-if="device" :device-id="(device as any)?.record?.id ?? 0" />
+          <!-- Recent events -->
+          <RecentDeviceEvents v-if="device" :device-id="(device as any)?.record?.id ?? 0" />
 
-              <!-- Error message -->
-              <v-alert v-if="errorMessage" type="error" variant="tonal" class="mt-4">
-                {{ errorMessage }}
-              </v-alert>
-            </v-card-text>
-          </v-card>
-        </v-sheet>
+          <!-- Error message -->
+          <v-alert v-if="errorMessage" type="error" variant="tonal" class="mt-4">
+            {{ errorMessage }}
+          </v-alert>
+        </v-card-text>
 
-        <!-- Sticky footer with actions -->
-        <div class="fixed bottom-0 left-0 right-0 d-flex align-center justify-space-between pa-4 border-t bg-surface">
-          <v-spacer />
+        <!-- Actions -->
+        <v-card-actions class="d-flex justify-end ga-3">
           <v-btn variant="text" :disabled="loading" @click="(resetDraft as any)()">
             {{ t('actions.cancel') }}
           </v-btn>
@@ -92,7 +86,8 @@
           >
             {{ t('device.dialog.save') }}
           </v-btn>
-        </div>
+        </v-card-actions>
+      </v-card>
 
         <!-- Designer nested route overlay -->
         <router-view v-slot="{ Component, route }">
@@ -109,7 +104,7 @@
     </template>
 
     <!-- Loading state -->
-    <div v-else class="d-flex align-center justify-center min-h-screen">
+    <div v-else class="d-flex align-center justify-center" style="min-height: 50vh;">
       <v-progress-circular indeterminate />
     </div>
   </v-container>
