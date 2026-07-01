@@ -61,7 +61,7 @@ export interface RequestOptions {
 
 async function requestWithTextResponse(
   path: string,
-  options: RequestOptions & { body?: BodyInit | FormData } = {},
+  options: Omit<RequestOptions, 'body'> & { body?: BodyInit | FormData | null } = {},
 ): Promise<{ response: Response; text: string }> {
   const controller = new AbortController()
   const timeoutMs = options.timeoutMs ?? 10000

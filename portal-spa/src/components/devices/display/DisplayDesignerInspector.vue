@@ -103,7 +103,6 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import MetricPlaceholderBuilder from '@/components/devices/display/MetricPlaceholderBuilder.vue'
-import { useDisplayBitmapImportState } from '@/composables/display/useDisplayBitmapImportState'
 import { measureSsd1306TextWidget } from '@/components/devices/display/ssd1306/ssd1306-text-layout'
 import type { BaseDisplay } from '@/models/devices/display/display'
 import { resolveDisplayBitmapDimensionUpdate } from '@/models/devices/display/widgets'
@@ -157,17 +156,22 @@ const fitInfo = computed<{ type: 'info' | 'success' | 'warning'; title: string; 
   }
 })
 
-const bitmapWorkflow = useDisplayBitmapImportState(
-  () => props.widget,
-  patch => emit('update-widget', patch),
-  key => t(key),
-  (file, width, height, threshold) => props.display.importBitmapFromFile(file, width, height, threshold),
-  (width, height) => props.display.createBitmapPlaceholder(width, height).bitmapData,
-  () => props.widget.type === 'bitmap',
-)
+const bitmapError = ref('')
+const bitmapThreshold = ref(128)
 
-const bitmapError = bitmapWorkflow.bitmapError
-const bitmapThreshold = bitmapWorkflow.bitmapThreshold
+async function onBitmapFileSelectedImpl(file: File): Promise<void> {
+  try {
+    const result = await props.display.importBitmapFromFile(file, props.widget.width, props.widget.height, bitmapThreshold.value)
+    emit('update-widget', { bitmapData: result.imageData })
+  } catch (error) {
+    bitmapError.value = error instanceof Error ? error.message : 'Failed to import bitmap'
+  }
+}
+
+function clearBitmapImpl(): void {
+  const placeholder = props.display.createBitmapPlaceholder(props.widget.width, props.widget.height)
+  emit('update-widget', { bitmapData: placeholder.bitmapData })
+}
 const bitmapWidget = computed<DisplayBitmapWidget | null>(() => (isBitmapWidget.value ? props.widget as DisplayBitmapWidget : null))
 const metricsLoading = ref(false)
 const isMetricsLoading = computed(() => props.metricsLoading === true || metricsLoading.value)
@@ -357,10 +361,17 @@ function onBitmapFileSelected(value: File | File[] | null): void {
     clearBitmap()
     return
   }
-  void bitmapWorkflow.queueBitmapImport(value)
+  const file = Array.isArray(value) ? value[0] : value
+  if (file) {
+    void onBitmapFileSelectedImpl(file)
+  }
 }
-function updateBitmapThreshold(value: string | number): void { bitmapWorkflow.setBitmapThreshold(value) }
-function clearBitmap(): void { bitmapWorkflow.clearBitmap() }
+function updateBitmapThreshold(value: string | number): void {
+  bitmapThreshold.value = Number(value)
+}
+function clearBitmap(): void {
+  clearBitmapImpl()
+}
 
 </script>
 

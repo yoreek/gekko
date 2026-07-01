@@ -32,6 +32,23 @@ import {
   saveMockDatabase,
   type MockDeviceRecord,
 } from './database'
+import {
+  createGpioSwitchDevice,
+  createOneWireBusDevice,
+  createI2cBusDevice,
+  createSsd1306Device,
+  createSt7735Device,
+  createDs18b20Device,
+  createThermostatDevice,
+  createDummyDevice,
+  normalizeDependencyLinks,
+  dependencyDeviceIdForRole,
+  normalizeFiniteNumber,
+} from './device-factories'
+
+function isRecordPayload(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
 
 type DeviceRecord = MockDeviceRecord
 
@@ -350,188 +367,26 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
     const enabled = typeof configSource.enabled === 'boolean' ? configSource.enabled : true
     const name = typeof configSource.name === 'string' && configSource.name.length > 0 ? configSource.name : 'New Device'
 
-    let device: DeviceRecord
-
-    if (typeName === 'gpio_switch') {
-      const config = {
-        enabled,
-        name,
-        deps: baseDeps,
-        restorePreviousState: typeof configSource.restorePreviousState === 'boolean' ? configSource.restorePreviousState : false,
-        startupState: configSource.startupState === 'on'
-          ? 'on'
-          : configSource.startupState === 'disabled'
-            ? 'disabled'
-            : 'off',
-        safeState: configSource.safeState === 'on'
-          ? 'on'
-          : configSource.safeState === 'disabled'
-            ? 'disabled'
-            : 'off',
-        inverted: typeof configSource.inverted === 'boolean' ? configSource.inverted : false,
-        gpioPin: normalizeFiniteNumber(configSource.gpioPin, 2),
+    let device: DeviceRecord = (() => {
+      switch (typeName) {
+        case 'gpio_switch':
+          return createGpioSwitchDevice(nextId, configSource, baseDeps, enabled, name)
+        case 'onewire_bus':
+          return createOneWireBusDevice(nextId, configSource, baseDeps, enabled, name)
+        case 'i2c_bus':
+          return createI2cBusDevice(nextId, configSource, baseDeps, enabled, name)
+        case 'ssd1306':
+          return createSsd1306Device(nextId, configSource, baseDeps, enabled, name, db)
+        case 'st7735':
+          return createSt7735Device(nextId, configSource, baseDeps, enabled, name, db)
+        case 'ds18b20_temperature_sensor':
+          return createDs18b20Device(nextId, configSource, baseDeps, enabled, name, db)
+        case 'thermostat':
+          return createThermostatDevice(nextId, configSource, baseDeps, enabled, name, db)
+        default:
+          return createDummyDevice(nextId, configSource, baseDeps, enabled, name)
       }
-      device = createDeviceRecord(nextId, typeName, 1, config, {
-        status: 'ready',
-        lifecycleStatus: 'ready',
-        effectiveStatus: 'ready',
-        output: {
-          state: 'off',
-        },
-      })
-    } else if (typeName === 'onewire_bus') {
-      const config = {
-        enabled,
-        name,
-        deps: baseDeps,
-        gpioPin: normalizeFiniteNumber(configSource.gpioPin, 4),
-        internalPullup: typeof configSource.internalPullup === 'boolean' ? configSource.internalPullup : false,
-      }
-      device = createDeviceRecord(nextId, typeName, 1, config, {
-        status: 'ready',
-        lifecycleStatus: 'ready',
-        effectiveStatus: 'ready',
-        scan: {
-          inProgress: false,
-          ready: false,
-          deviceCount: 0,
-          truncated: false,
-          invalidCrcSeen: false,
-          devices: [],
-        },
-      })
-    } else if (typeName === 'i2c_bus') {
-      const config = normalizeI2cBusConfigPayload(configSource, enabled)
-      device = createDeviceRecord(nextId, typeName, 1, {
-        ...config,
-        name,
-        deps: baseDeps,
-      }, {
-        status: 'ready',
-        lifecycleStatus: 'ready',
-        effectiveStatus: 'ready',
-        generation: 1,
-        transactionActive: false,
-      })
-    } else if (typeName === 'ssd1306') {
-      const dependencyDeviceId = dependencyDeviceIdForRole(baseDeps, 'i2c_bus') || normalizeDependencyDeviceId(configSource.i2cBusDeviceId)
-      if (dependencyDeviceId <= 0) {
-        throw new ApiClientError('ssd1306 display i2c dependency is required', 'BAD_ARGS', 400, null)
-      }
-      requireI2cDependency(db, dependencyDeviceId)
-      const i2cAddress = normalizeFiniteNumber(configSource.i2cAddress, 60)
-      ensureUniqueI2cAddress(db, dependencyDeviceId, i2cAddress, nextId)
-      const layout = isRecordPayload(configSource.layout)
-        ? normalizeSsd1306Layout(configSource.layout)
-        : defaultSsd1306Layout()
-      const config = {
-        enabled,
-        name,
-        deps: [
-          {
-            role: 'i2c_bus',
-            deviceId: dependencyDeviceId,
-          },
-        ],
-        i2cBusDeviceId: dependencyDeviceId,
-        i2cAddress,
-        width: normalizeFiniteNumber(configSource.width, 128),
-        height: normalizeFiniteNumber(configSource.height, 64),
-        layout,
-      }
-      device = createDeviceRecord(nextId, typeName, 1, config, {
-        status: 'ready',
-        lifecycleStatus: 'ready',
-        effectiveStatus: 'ready',
-      })
-    } else if (typeName === 'st7735') {
-      const dependencyDeviceId = dependencyDeviceIdForRole(baseDeps, 'spi_bus') || normalizeDependencyDeviceId(configSource.spiBusDeviceId)
-      if (dependencyDeviceId <= 0) {
-        throw new ApiClientError('st7735 display spi dependency is required', 'BAD_ARGS', 400, null)
-      }
-      requireSpiDependency(db, dependencyDeviceId)
-      const layoutRaw = isRecordPayload(configSource.layout) ? configSource.layout : {}
-      const config = {
-        enabled,
-        name,
-        deps: [
-          {
-            role: 'spi_bus',
-            deviceId: dependencyDeviceId,
-          },
-        ],
-        spiBusDeviceId: dependencyDeviceId,
-        chipSelectPin: normalizeFiniteNumber(configSource.chipSelectPin, 5),
-        dcPin: normalizeFiniteNumber(configSource.dcPin, 2),
-        resetPin: normalizeFiniteNumber(configSource.resetPin, -1),
-        width: normalizeFiniteNumber(configSource.width, 128),
-        height: normalizeFiniteNumber(configSource.height, 160),
-        layout: {
-          schemaVersion: 1,
-          activePageId: typeof layoutRaw.activePageId === 'string' ? layoutRaw.activePageId : 'main',
-          pages: Array.isArray(layoutRaw.pages) ? layoutRaw.pages : [],
-          colorMode: 'rgb565',
-        },
-      }
-      device = createDeviceRecord(nextId, typeName, 1, config, {
-        status: 'ready',
-        lifecycleStatus: 'ready',
-        effectiveStatus: 'ready',
-      })
-    } else if (typeName === 'ds18b20_temperature_sensor') {
-      const deps = normalizeDependencyLinks(configSource.deps)
-      const dependencyDeviceId = dependencyDeviceIdForRole(deps, 'onewire_bus')
-      if (dependencyDeviceId <= 0) {
-        throw new ApiClientError('ds18b20 dependency is required', 'BAD_ARGS', 400, null)
-      }
-      requireOneWireDependency(db, dependencyDeviceId)
-      const config = normalizeDs18b20ConfigPayload(configSource, enabled)
-      ensureUniqueDs18b20Address(db, dependencyDeviceId, String(config.address), nextId)
-      device = createDeviceRecord(nextId, typeName, 1, {
-        ...config,
-        deps,
-        name,
-      }, {
-        status: 'ready',
-        lifecycleStatus: 'ready',
-        effectiveStatus: 'ready',
-        output: {
-          temperature: {
-            value: 0,
-            unit: config.unit === 'fahrenheit' ? 'fahrenheit' : 'celsius',
-            unitSymbol: config.unit === 'fahrenheit' ? 'F' : 'C',
-            measuredAtMs: 0,
-            valid: false,
-            status: 'not_ready',
-          },
-        },
-      })
-    } else if (typeName === 'thermostat') {
-      const deps = normalizeThermostatDependencyLinks(configSource.deps, configSource)
-      const config = normalizeThermostatConfigPayload(configSource, enabled)
-      requireThermostatDependencies(db, deps)
-      device = createDeviceRecord(nextId, typeName, 1, {
-        ...config,
-        deps,
-        name,
-      }, {
-        status: 'ready',
-        lifecycleStatus: 'ready',
-        effectiveStatus: 'ready',
-        output: buildThermostatOutput(db, config, nextId),
-      })
-    } else {
-      const config = {
-        enabled,
-        name,
-        deps: baseDeps,
-      }
-      device = createDeviceRecord(nextId, typeName, 1, config, {
-        status: 'ready',
-        lifecycleStatus: 'ready',
-        effectiveStatus: 'ready',
-      })
-    }
+    })()
 
     db.devices.push(device)
     refreshChildEffectiveStatuses(db)
@@ -970,31 +825,9 @@ export function mockRestartSystem(): Promise<SystemRestartResponse> {
   return Promise.resolve(response)
 }
 
-function isRecordPayload(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
 function normalizeDependencyDeviceId(value: unknown): number {
   const numeric = Number(value)
   return Number.isInteger(numeric) && numeric > 0 ? numeric : 0
-}
-
-function normalizeDependencyLinks(value: unknown): Array<{ role: string; deviceId: number }> {
-  if (Array.isArray(value)) {
-    return value
-      .filter(isRecordPayload)
-      .map(item => ({
-        role: typeof item.role === 'string' ? item.role.trim() : '',
-        deviceId: normalizeDependencyDeviceId(item.deviceId),
-      }))
-      .filter(item => item.role.length > 0 && item.deviceId > 0)
-  }
-  return []
-}
-
-function dependencyDeviceIdForRole(deps: Array<{ role: string; deviceId: number }>, role: string): number {
-  const dependency = deps.find(link => link.role === role)
-  return dependency?.deviceId ?? 0
 }
 
 function normalizeThermostatDependencyLinks(value: unknown, fallbackConfig: unknown = null): Array<{ role: string; deviceId: number }> {
@@ -1169,11 +1002,6 @@ function normalizeDs18b20Resolution(value: unknown): number {
 
 function normalizeDs18b20Unit(value: unknown): 'celsius' | 'fahrenheit' {
   return value === 'fahrenheit' ? 'fahrenheit' : 'celsius'
-}
-
-function normalizeFiniteNumber(value: unknown, fallback: number): number {
-  const numeric = Number(value)
-  return Number.isFinite(numeric) ? numeric : fallback
 }
 
 function normalizeI2cFrequency(value: unknown): number {
