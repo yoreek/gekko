@@ -1,5 +1,6 @@
 <template>
   <v-row dense>
+    <!-- Display geometry -->
     <v-col cols="12" sm="6">
       <v-text-field
         :model-value="modelValue.width"
@@ -30,6 +31,52 @@
         @update:model-value="update('rotation', $event)"
       />
     </v-col>
+
+    <!-- SPI connection -->
+    <v-col cols="12">
+      <v-text-field
+        :model-value="modelValue.spiBusDeviceId"
+        type="number"
+        :label="t('device.fields.spiBusDeviceId')"
+        density="compact"
+        hide-details="auto"
+        @update:model-value="update('spiBusDeviceId', Number($event))"
+      />
+    </v-col>
+
+    <!-- Control pins -->
+    <v-col cols="12" sm="6">
+      <v-text-field
+        :model-value="modelValue.chipSelectPin"
+        type="number"
+        :label="t('device.fields.chipSelectPin')"
+        density="compact"
+        hide-details="auto"
+        @update:model-value="update('chipSelectPin', Number($event))"
+      />
+    </v-col>
+    <v-col cols="12" sm="6">
+      <v-text-field
+        :model-value="modelValue.dcPin"
+        type="number"
+        :label="t('device.fields.dcPin')"
+        density="compact"
+        hide-details="auto"
+        @update:model-value="update('dcPin', Number($event))"
+      />
+    </v-col>
+    <v-col cols="12" sm="6">
+      <v-text-field
+        :model-value="modelValue.resetPin"
+        type="number"
+        :label="t('device.fields.resetPin')"
+        density="compact"
+        hide-details="auto"
+        @update:model-value="update('resetPin', Number($event))"
+      />
+    </v-col>
+
+    <!-- Designer button -->
     <v-col cols="12">
       <v-btn
         color="primary"

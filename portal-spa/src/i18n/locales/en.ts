@@ -199,6 +199,7 @@ export default {
       i2cSclPin: 'I2C SCL pin',
       i2cFrequency: 'I2C frequency (Hz)',
       i2cBusDeviceId: 'I2C bus device ID',
+      i2cAddress: 'I2C address',
       spiBusDeviceId: 'SPI bus device ID',
       chipSelectPin: 'Chip select pin',
       dcPin: 'DC pin',
