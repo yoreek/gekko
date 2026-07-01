@@ -124,6 +124,7 @@ import RecentDeviceEvents from '@/components/device/RecentDeviceEvents.vue'
 import { resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
 import { deviceStatusLabelKey } from '@/models/devices/device-status'
 import { useDeviceDetail } from '@/composables/useDeviceDetail'
+import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
 const props = defineProps<{
   deviceId: number
@@ -131,12 +132,14 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const router = useRouter()
+const deviceStore = useDeviceRegistryStore()
 
 const deviceIdRef = ref(props.deviceId)
 
 const detail = useDeviceDetail(deviceIdRef)
 
 onBeforeMount(async () => {
+  await deviceStore.initialize()
   await detail.refresh()
 })
 
