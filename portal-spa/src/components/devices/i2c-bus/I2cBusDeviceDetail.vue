@@ -80,9 +80,9 @@ import type {
   I2cBusRuntimeSnapshot,
   I2cBusScanSnapshot,
 } from '@/api/contracts'
-import { I2cBus } from '@/models/devices/i2c-bus'
+import { I2cBusDevice } from '@/models/devices/i2c-bus'
 
-const deviceModel = new I2cBus.Device()
+const deviceModel = new I2cBusDevice()
 
 const props = defineProps<{
   device: DeviceRecord

@@ -14,7 +14,7 @@ import { useI18n } from 'vue-i18n'
 
 import type { DeviceRecord } from '@/api/contracts'
 import DeviceWidgetBase from '@/components/devices/base/DeviceWidgetBase.vue'
-import { Device as St7735Device } from '@/models/devices/st7735/device'
+import { St7735Device } from '@/models/devices/st7735/device'
 
 const props = defineProps<{
   device: DeviceRecord

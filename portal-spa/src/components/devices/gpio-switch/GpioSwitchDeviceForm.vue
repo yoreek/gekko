@@ -84,11 +84,10 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { outputStateLabelKey, type OutputState } from '@/models/devices/switch'
-import { GpioSwitch } from '@/models/devices/gpio-switch'
+import { GpioSwitchDevice, type GpioSwitchConfigDraft, type GpioSwitchCreateDraft } from '@/models/devices/gpio-switch'
 import SwitchStateSelect from '@/components/devices/switch/SwitchStateSelect.vue'
-import { GPIO_SWITCH_DEVICE_TYPE_ID } from '@/models/device-types'
 
-type GpioSwitchFormValue = GpioSwitch.CreateDraft | GpioSwitch.ConfigDraft
+type GpioSwitchFormValue = GpioSwitchCreateDraft | GpioSwitchConfigDraft
 
 const props = defineProps<{
   modelValue: GpioSwitchFormValue | undefined
@@ -105,7 +104,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const isCreateMode = computed(() => props.mode !== 'edit')
 const fallbackValue: GpioSwitchFormValue = {
-  ...GpioSwitch.defaultConfig(),
+  ...GpioSwitchDevice.defaultConfig(),
 }
 const currentValue = computed<GpioSwitchFormValue>(() => props.modelValue ?? fallbackValue)
 const outputState = computed(() => props.outputState)
@@ -115,19 +114,19 @@ function updatePin(value: string | number): void {
   emit('update:modelValue', buildNextValue({ gpioPin: Number.isFinite(gpioPin) ? gpioPin : currentValue.value.gpioPin }))
 }
 
-function update<K extends keyof GpioSwitch.CreateDraft>(key: K, value: GpioSwitch.CreateDraft[K]): void {
-  emit('update:modelValue', buildNextValue({ [key]: value } as Partial<GpioSwitch.CreateDraft>))
+function update<K extends keyof GpioSwitchCreateDraft>(key: K, value: GpioSwitchCreateDraft[K]): void {
+  emit('update:modelValue', buildNextValue({ [key]: value } as Partial<GpioSwitchCreateDraft>))
 }
 
-function buildNextValue(patch: Partial<GpioSwitch.CreateDraft>): GpioSwitchFormValue {
+function buildNextValue(patch: Partial<GpioSwitchCreateDraft>): GpioSwitchFormValue {
   if (!isCreateMode.value) {
     return {
-      ...(currentValue.value as GpioSwitch.CreateDraft),
+      ...(currentValue.value as GpioSwitchCreateDraft),
       ...patch,
     }
   }
   return {
-    ...(currentValue.value as GpioSwitch.CreateDraft),
+    ...(currentValue.value as GpioSwitchCreateDraft),
     ...patch,
   }
 }

@@ -1,19 +1,29 @@
 import type { DeviceCommandRequest, DeviceRecord, GpioSwitchOutputSnapshot } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
-import { GPIO_SWITCH_DEVICE_TYPE_ID } from '@/models/device-types'
-import { BaseDevice } from '@/models/devices/base-device'
-import type { OutputState } from '@/models/devices/switch'
+import { BaseDevice } from './base-device.ts'
+import { outputStateOptions, type OutputState } from './switch.ts'
 import type { SwitchConfigDraft } from '@/models/devices/switch-config'
 import type { BaseDeviceConfig } from '@/api/contracts'
 
-export namespace GpioSwitch {
-  export interface ConfigDraft extends BaseDeviceConfig, SwitchConfigDraft {
-    gpioPin: number
-  }
+export interface GpioSwitchConfigDraft extends BaseDeviceConfig, SwitchConfigDraft {
+  gpioPin: number
+}
 
-  export interface CreateDraft extends DeviceCreateDraftBase, ConfigDraft {}
+export interface GpioSwitchCreateDraft extends DeviceCreateDraftBase, GpioSwitchConfigDraft {}
 
-  export function defaultConfig(): ConfigDraft {
+function readOutputState(value: unknown, fallback: OutputState): OutputState {
+  return value as OutputState ?? fallback
+}
+
+export class GpioSwitchDevice extends BaseDevice<GpioSwitchConfigDraft, GpioSwitchCreateDraft, GpioSwitchOutputSnapshot> {
+  static readonly TYPE_ID = 2 as const
+  static readonly TYPE_NAME = 'gpio_switch' as const
+
+  readonly typeName = GpioSwitchDevice.TYPE_NAME
+  readonly typeId = GpioSwitchDevice.TYPE_ID
+  readonly supportedOutputStates = outputStateOptions
+
+  static defaultConfig(): GpioSwitchConfigDraft {
     return {
       name: 'New Device',
       enabled: true,
@@ -26,17 +36,13 @@ export namespace GpioSwitch {
     }
   }
 
-  function readOutputState(value: unknown, fallback: OutputState): OutputState {
-    return value as OutputState ?? fallback
-  }
-
-  export function normalizeConfig(value: unknown): ConfigDraft {
-    const defaults = defaultConfig()
+  static normalizeConfig(value: unknown): GpioSwitchConfigDraft {
+    const defaults = GpioSwitchDevice.defaultConfig()
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
       return defaults
     }
     const raw = value as Record<string, unknown>
-    const deps = Array.isArray(raw.deps) ? raw.deps.filter(dep => typeof dep === 'object' && dep !== null) as ConfigDraft['deps'] : defaults.deps
+    const deps = Array.isArray(raw.deps) ? raw.deps.filter(dep => typeof dep === 'object' && dep !== null) as GpioSwitchConfigDraft['deps'] : defaults.deps
     return {
       name: typeof raw.name === 'string' ? raw.name : defaults.name,
       enabled: typeof raw.enabled === 'boolean' ? raw.enabled : defaults.enabled,
@@ -50,7 +56,7 @@ export namespace GpioSwitch {
     }
   }
 
-  export function encodeConfig(config: ConfigDraft): Record<string, unknown> {
+  static encodeConfig(config: GpioSwitchConfigDraft): Record<string, unknown> {
     return {
       name: config.name,
       enabled: config.enabled,
@@ -63,72 +69,67 @@ export namespace GpioSwitch {
     }
   }
 
-  export class Device extends BaseDevice<ConfigDraft, CreateDraft, GpioSwitchOutputSnapshot> {
-    readonly typeName = 'gpio_switch'
-    readonly typeId = GPIO_SWITCH_DEVICE_TYPE_ID
+  createDefaultConfig(): GpioSwitchConfigDraft {
+    return GpioSwitchDevice.defaultConfig()
+  }
 
-    createDefaultConfig(): ConfigDraft {
-      return GpioSwitch.defaultConfig()
+  createDefaultCreateDraft(common: Partial<DeviceCreateDraftBase> = {}): GpioSwitchCreateDraft {
+    return {
+      ...this.createDefaultConfig(),
+      ...common,
+      typeName: common.typeName ?? this.typeName,
     }
+  }
 
-    createDefaultCreateDraft(common: Partial<DeviceCreateDraftBase> = {}): CreateDraft {
-      return {
-        ...this.createDefaultConfig(),
-        ...common,
-        typeName: common.typeName ?? this.typeName,
+  createEditDraft(current: DeviceRecord): GpioSwitchCreateDraft {
+    return {
+      ...this.normalizeConfig(current.config),
+      typeName: this.typeName,
+    }
+  }
+
+  normalizeConfig(value: unknown): GpioSwitchConfigDraft {
+    return GpioSwitchDevice.normalizeConfig(value)
+  }
+
+  normalizeOutput(record: DeviceRecord): GpioSwitchOutputSnapshot {
+    return record.runtime as GpioSwitchOutputSnapshot
+  }
+
+  override encodeConfig(config: GpioSwitchConfigDraft): Record<string, unknown> {
+    return GpioSwitchDevice.encodeConfig(config)
+  }
+
+  buildEditCommands(current: DeviceRecord, draft: GpioSwitchCreateDraft): DeviceCommandRequest[] {
+    const currentConfig = this.normalizeConfig(current.config)
+    const commands: DeviceCommandRequest[] = []
+    if (draft.name.trim() !== currentConfig.name) {
+      commands.push({ command: 'rename', name: draft.name.trim() })
+    }
+    if (draft.enabled !== currentConfig.enabled) {
+      commands.push({ command: draft.enabled ? 'enable' : 'disable' })
+    }
+    const nextConfig = this.normalizeConfig(draft)
+    if (
+      nextConfig.restorePreviousState !== currentConfig.restorePreviousState ||
+      nextConfig.startupState !== currentConfig.startupState ||
+      nextConfig.safeState !== currentConfig.safeState ||
+      nextConfig.inverted !== currentConfig.inverted ||
+      nextConfig.gpioPin !== currentConfig.gpioPin
+    ) {
+      const encodedConfig = {
+        ...nextConfig,
+        enabled: draft.enabled,
       }
+      commands.push({
+        command: 'updateConfig',
+        config: this.encodeConfig(encodedConfig),
+      })
     }
+    return commands
+  }
 
-    createEditDraft(current: DeviceRecord): CreateDraft {
-      return {
-        ...this.normalizeConfig(current.config),
-        typeName: this.typeName,
-      }
-    }
-
-    normalizeConfig(value: unknown): ConfigDraft {
-      return GpioSwitch.normalizeConfig(value)
-    }
-
-    normalizeOutput(record: DeviceRecord): GpioSwitchOutputSnapshot {
-      return record.runtime as GpioSwitchOutputSnapshot
-    }
-
-    override encodeConfig(config: ConfigDraft): Record<string, unknown> {
-      return GpioSwitch.encodeConfig(config)
-    }
-
-    buildEditCommands(current: DeviceRecord, draft: CreateDraft): DeviceCommandRequest[] {
-      const currentConfig = this.normalizeConfig(current.config)
-      const commands: DeviceCommandRequest[] = []
-      if (draft.name.trim() !== currentConfig.name) {
-        commands.push({ command: 'rename', name: draft.name.trim() })
-      }
-      if (draft.enabled !== currentConfig.enabled) {
-        commands.push({ command: draft.enabled ? 'enable' : 'disable' })
-      }
-      const nextConfig = this.normalizeConfig(draft)
-      if (
-        nextConfig.restorePreviousState !== currentConfig.restorePreviousState ||
-        nextConfig.startupState !== currentConfig.startupState ||
-        nextConfig.safeState !== currentConfig.safeState ||
-        nextConfig.inverted !== currentConfig.inverted ||
-        nextConfig.gpioPin !== currentConfig.gpioPin
-      ) {
-        const encodedConfig = {
-          ...nextConfig,
-          enabled: draft.enabled,
-        }
-        commands.push({
-          command: 'updateConfig',
-          config: this.encodeConfig(encodedConfig),
-        })
-      }
-      return commands
-    }
-
-    protected extractCreateConfig(draft: CreateDraft): ConfigDraft {
-      return { ...draft }
-    }
+  protected extractCreateConfig(draft: GpioSwitchCreateDraft): GpioSwitchConfigDraft {
+    return { ...draft }
   }
 }

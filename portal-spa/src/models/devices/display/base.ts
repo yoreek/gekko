@@ -15,10 +15,6 @@ export interface DisplayBaseConfig {
   enabled: boolean
 }
 
-export interface DisplayBaseDevice {
-  readonly displayCapabilities: DisplayCapabilities
-}
-
 export function isSupportedRasterFormat(capabilities: DisplayCapabilities, format: RasterImageFormat): boolean {
   return capabilities.supportedRasterFormats.includes(format)
 }

@@ -49,7 +49,7 @@ import St7735LayoutPreview from '@/components/devices/display/st7735/St7735Layou
 import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
 import { st7735Display } from '@/models/devices/display/display'
 import { resolveDisplayEffectiveSize, resolveDisplayOrientationGroup } from '@/models/devices/display/orientation'
-import { Device as St7735Device } from '@/models/devices/st7735/device'
+import { St7735Device } from '@/models/devices/st7735/device'
 
 const props = defineProps<{ device: DeviceRecord }>()
 const { t } = useI18n()

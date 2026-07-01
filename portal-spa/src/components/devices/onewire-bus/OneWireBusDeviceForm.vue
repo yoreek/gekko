@@ -33,10 +33,9 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { ONEWIRE_BUS_DEVICE_TYPE_ID } from '@/models/device-types'
-import { OneWireBus } from '@/models/devices/onewire-bus'
+import type { OneWireBusConfigDraft, OneWireBusCreateDraft } from '@/models/devices/onewire-bus'
 
-type OneWireBusFormValue = OneWireBus.CreateDraft | OneWireBus.ConfigDraft
+type OneWireBusFormValue = OneWireBusCreateDraft | OneWireBusConfigDraft
 
 const props = defineProps<{
   modelValue: OneWireBusFormValue | undefined
@@ -64,19 +63,19 @@ function updatePin(value: string | number): void {
   emit('update:modelValue', buildNextValue({ gpioPin: Number.isFinite(gpioPin) ? gpioPin : currentValue.value.gpioPin }))
 }
 
-function update<K extends keyof OneWireBus.CreateDraft>(key: K, value: OneWireBus.CreateDraft[K]): void {
-  emit('update:modelValue', buildNextValue({ [key]: value } as Partial<OneWireBus.CreateDraft>))
+function update<K extends keyof OneWireBusCreateDraft>(key: K, value: OneWireBusCreateDraft[K]): void {
+  emit('update:modelValue', buildNextValue({ [key]: value } as Partial<OneWireBusCreateDraft>))
 }
 
-function buildNextValue(patch: Partial<OneWireBus.CreateDraft>): OneWireBusFormValue {
+function buildNextValue(patch: Partial<OneWireBusCreateDraft>): OneWireBusFormValue {
   if (!isCreateMode.value) {
     return {
-      ...(currentValue.value as OneWireBus.CreateDraft),
+      ...(currentValue.value as OneWireBusCreateDraft),
       ...patch,
     }
   }
   return {
-    ...(currentValue.value as OneWireBus.CreateDraft),
+    ...(currentValue.value as OneWireBusCreateDraft),
     ...patch,
   }
 }

@@ -53,7 +53,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { defaultSpiBusConfig, type SpiBusConfigDraft, type SpiBusCreateDraft } from '@/models/devices/spi-bus'
+import { SpiBusDevice, type SpiBusConfigDraft, type SpiBusCreateDraft } from '@/models/devices/spi-bus'
 
 type SpiBusFormValue = SpiBusCreateDraft | SpiBusConfigDraft
 
@@ -69,7 +69,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const fallbackValue: SpiBusFormValue = {
-  ...defaultSpiBusConfig(),
+  ...SpiBusDevice.defaultConfig(),
 }
 const currentValue = computed<SpiBusFormValue>(() => props.modelValue ?? fallbackValue)
 const hostItems = [

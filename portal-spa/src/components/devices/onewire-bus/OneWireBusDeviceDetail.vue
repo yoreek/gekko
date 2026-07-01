@@ -61,9 +61,9 @@ import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommandRequest } from '@/api'
 import type { DeviceRecord, OneWireScanSnapshot } from '@/api/contracts'
-import { OneWireBus } from '@/models/devices/onewire-bus'
+import { OneWireBusDevice } from '@/models/devices/onewire-bus'
 
-const deviceModel = new OneWireBus.Device()
+const deviceModel = new OneWireBusDevice()
 
 const props = defineProps<{
   device: DeviceRecord

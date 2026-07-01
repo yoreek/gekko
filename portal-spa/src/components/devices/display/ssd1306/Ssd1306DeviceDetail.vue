@@ -33,7 +33,7 @@ import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlac
 import { formatI2cAddress } from '@/models/devices/i2c-address'
 import { ssd1306Display } from '@/models/devices/display/display'
 import { resolveDisplayEffectiveSize, resolveDisplayOrientationGroup } from '@/models/devices/display/orientation'
-import { Device as Ssd1306Device } from '@/models/devices/ssd1306/device'
+import { Ssd1306Device } from '@/models/devices/ssd1306/device'
 
 const props = defineProps<{ device: DeviceRecord }>()
 const { t } = useI18n()

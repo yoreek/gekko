@@ -120,10 +120,10 @@ import { useI18n } from 'vue-i18n'
 
 import St7735LayoutPreview from '@/components/devices/display/st7735/St7735LayoutPreview.vue'
 import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
-import { SPI_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-types'
+import { SPI_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-type-ids'
 import { st7735Display } from '@/models/devices/display/display'
 import { resolveDisplayEffectiveSize } from '@/models/devices/display/orientation'
-import { defaultConfig, type St7735ConfigDraft, type St7735CreateDraft } from '@/models/devices/st7735/device'
+import { St7735Device, type St7735ConfigDraft, type St7735CreateDraft } from '@/models/devices/st7735/device'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
 type FormValue = St7735CreateDraft | St7735ConfigDraft
@@ -138,7 +138,7 @@ const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
 const { metricCatalog, refreshMetricCatalog } = useMetricPlaceholderCatalog()
 const fallbackValue: St7735CreateDraft = {
-  ...defaultConfig(),
+  ...St7735Device.defaultConfig(),
   typeName: 'st7735',
 }
 const currentValue = computed<FormValue>(() => props.modelValue ?? fallbackValue)

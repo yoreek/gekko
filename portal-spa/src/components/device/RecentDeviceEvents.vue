@@ -64,7 +64,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { deviceTypeLabelKeyByName } from '@/models/device-types'
+import { resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
 import {
   journalEventKindTranslationKey,
   useDeviceEventLogStore,
@@ -91,7 +91,7 @@ function formatTime(receivedAt: number): string {
 }
 
 function typeLabel(typeName: string): string {
-  return t(deviceTypeLabelKeyByName(typeName))
+  return t(resolveDeviceUi(typeName).labelKey)
 }
 
 function eventKindLabel(eventKind: string): string {

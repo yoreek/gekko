@@ -100,10 +100,10 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceRecord, ThermostatOutputSnapshot } from '@/api/contracts'
-import { Thermostat } from '@/models/devices/thermostat'
+import { ThermostatDevice } from '@/models/devices/thermostat'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
-const deviceModel = new Thermostat.Device()
+const deviceModel = new ThermostatDevice()
 
 const props = defineProps<{
   device: DeviceRecord
@@ -117,13 +117,13 @@ const output = computed(() => (props.device.runtime as { output?: ThermostatOutp
 const sensorDevice = computed(() => deviceStore.devices.find(device => device.record.id === config.value.temperatureSensorDeviceId))
 const switchDevice = computed(() => deviceStore.devices.find(device => device.record.id === config.value.switchDeviceId))
 const temperature = computed(() => output.value?.temperature)
-const temperatureText = computed(() => Thermostat.formatOutput(temperature.value) || t('device.dialog.temperatureUnavailableShort'))
-const targetTemperatureText = computed(() => Thermostat.formatTemperature(config.value.targetCelsius))
-const minSafeTemperatureText = computed(() => Thermostat.formatTemperature(config.value.minSafeCelsius))
-const maxSafeTemperatureText = computed(() => Thermostat.formatTemperature(config.value.maxSafeCelsius))
-const modeText = computed(() => t(Thermostat.modeLabelKey(config.value.mode)))
-const algorithmText = computed(() => t(Thermostat.algorithmLabelKey(config.value.algorithm)))
-const statusText = computed(() => t(Thermostat.statusLabelKey(output.value?.controlStatus ?? props.device.runtime.effectiveStatus ?? props.device.runtime.lifecycleStatus ?? props.device.runtime.status ?? 'unknown')))
+const temperatureText = computed(() => ThermostatDevice.formatOutput(temperature.value) || t('device.dialog.temperatureUnavailableShort'))
+const targetTemperatureText = computed(() => ThermostatDevice.formatTemperature(config.value.targetCelsius))
+const minSafeTemperatureText = computed(() => ThermostatDevice.formatTemperature(config.value.minSafeCelsius))
+const maxSafeTemperatureText = computed(() => ThermostatDevice.formatTemperature(config.value.maxSafeCelsius))
+const modeText = computed(() => t(ThermostatDevice.modeLabelKey(config.value.mode)))
+const algorithmText = computed(() => t(ThermostatDevice.algorithmLabelKey(config.value.algorithm)))
+const statusText = computed(() => t(ThermostatDevice.statusLabelKey(output.value?.controlStatus ?? props.device.runtime.effectiveStatus ?? props.device.runtime.lifecycleStatus ?? props.device.runtime.status ?? 'unknown')))
 const controlText = computed(() => `${t('device.fields.controlStatus')}: ${statusText.value}`)
 const desiredSwitchText = computed(() => t(`labels.output.${output.value?.desiredSwitchState ?? 'off'}`))
 const actualSwitchText = computed(() => t(`labels.output.${output.value?.actualSwitchState ?? 'off'}`))
@@ -133,7 +133,7 @@ const sensorLabel = computed(() =>
 const switchLabel = computed(() =>
   switchDevice.value ? `${switchDevice.value.config.name} #${switchDevice.value.record.id}` : `#${config.value.switchDeviceId || '—'}`,
 )
-const statusTone = computed(() => Thermostat.outputTone(props.device.runtime.effectiveStatus ?? props.device.runtime.lifecycleStatus ?? props.device.runtime.status ?? 'unknown'))
+const statusTone = computed(() => ThermostatDevice.outputTone(props.device.runtime.effectiveStatus ?? props.device.runtime.lifecycleStatus ?? props.device.runtime.status ?? 'unknown'))
 const temperatureColor = computed(() => (temperature.value?.valid ? 'primary' : 'secondary'))
 const alertType = computed(() => {
   if (statusTone.value === 'warning') {

@@ -1,7 +1,4 @@
-import {
-  ST7735_BITMAP_DEFAULT_HEIGHT,
-  ST7735_BITMAP_DEFAULT_WIDTH,
-} from '../../../../models/devices/st7735/device.ts'
+import { St7735Device } from '../../../../models/devices/st7735/device.ts'
 import type { DisplayBitmapWidget } from '../../../../models/devices/display/layout.ts'
 import { Rgb565RasterImageCodec } from '../../../../raster/rgb565/Rgb565RasterImageCodec.ts'
 import { st7735Display } from '../../../../models/devices/display/display.ts'
@@ -17,8 +14,8 @@ export function decodeSt7735BitmapBytes(bitmapData: string, width: number, heigh
 }
 
 export function createSt7735BitmapPlaceholder(
-  width = ST7735_BITMAP_DEFAULT_WIDTH,
-  height = ST7735_BITMAP_DEFAULT_HEIGHT,
+  width = St7735Device.BITMAP_DEFAULT_WIDTH,
+  height = St7735Device.BITMAP_DEFAULT_HEIGHT,
 ): DisplayBitmapWidget {
   return {
     id: 'bitmap-0',

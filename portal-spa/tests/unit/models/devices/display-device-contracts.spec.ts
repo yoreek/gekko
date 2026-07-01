@@ -2,9 +2,9 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { SPI_BUS_DEVICE_TYPE_ID, ST7735_DEVICE_TYPE_ID, deviceTypeIdFromName, deviceTypeName } from '../../../../src/models/device-type-ids.ts'
-import { SpiBusDevice, defaultSpiBusConfig } from '../../../../src/models/devices/spi-bus.ts'
-import { Device as Ssd1306Device } from '../../../../src/models/devices/ssd1306/device.ts'
-import { Device as St7735Device } from '../../../../src/models/devices/st7735/device.ts'
+import { SpiBusDevice } from '../../../../src/models/devices/spi-bus.ts'
+import { Ssd1306Device } from '../../../../src/models/devices/ssd1306/device.ts'
+import { St7735Device } from '../../../../src/models/devices/st7735/device.ts'
 import { resolveDisplayEffectiveSize } from '../../../../src/models/devices/display/orientation.ts'
 
 test('resolves spi bus and st7735 device type ids', () => {
@@ -29,7 +29,7 @@ test('normalizes spi bus defaults and st7735 dependency fields', () => {
     },
   })
 
-  assert.deepEqual(spiBus, defaultSpiBusConfig())
+  assert.deepEqual(spiBus, SpiBusDevice.defaultConfig())
   assert.equal(spiBus.sckPin, 18)
   assert.equal(spiBus.mosiPin, 23)
   assert.equal(spiBus.misoPin, -1)

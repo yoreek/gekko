@@ -1,38 +1,57 @@
-export const DUMMY_DEVICE_TYPE_ID = 1 as const
-export const GPIO_SWITCH_DEVICE_TYPE_ID = 2 as const
-export const ONEWIRE_BUS_DEVICE_TYPE_ID = 3 as const
-export const DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID = 4 as const
-export const THERMOSTAT_DEVICE_TYPE_ID = 5 as const
-export const I2C_BUS_DEVICE_TYPE_ID = 6 as const
-export const SSD1306_DEVICE_TYPE_ID = 7 as const
-export const SPI_BUS_DEVICE_TYPE_ID = 8 as const
-export const ST7735_DEVICE_TYPE_ID = 9 as const
+import { DummyDevice } from './devices/dummy.ts'
+import { GpioSwitchDevice } from './devices/gpio-switch.ts'
+import { OneWireBusDevice } from './devices/onewire-bus.ts'
+import { I2cBusDevice } from './devices/i2c-bus.ts'
+import { Ds18b20Device } from './devices/ds18b20.ts'
+import { ThermostatDevice } from './devices/thermostat.ts'
+import { SpiBusDevice } from './devices/spi-bus.ts'
+import { Ssd1306Device } from './devices/ssd1306/device.ts'
+import { St7735Device } from './devices/st7735/device.ts'
 
-export type DeviceTypeName = 'dummy' | 'gpio_switch' | 'onewire_bus' | 'ds18b20_temperature_sensor' | 'thermostat' | 'i2c_bus' | 'spi_bus' | 'ssd1306' | 'st7735'
+export const DUMMY_DEVICE_TYPE_ID = DummyDevice.TYPE_ID
+export const GPIO_SWITCH_DEVICE_TYPE_ID = GpioSwitchDevice.TYPE_ID
+export const ONEWIRE_BUS_DEVICE_TYPE_ID = OneWireBusDevice.TYPE_ID
+export const I2C_BUS_DEVICE_TYPE_ID = I2cBusDevice.TYPE_ID
+export const DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID = Ds18b20Device.TYPE_ID
+export const THERMOSTAT_DEVICE_TYPE_ID = ThermostatDevice.TYPE_ID
+export const SPI_BUS_DEVICE_TYPE_ID = SpiBusDevice.TYPE_ID
+export const SSD1306_DEVICE_TYPE_ID = Ssd1306Device.TYPE_ID
+export const ST7735_DEVICE_TYPE_ID = St7735Device.TYPE_ID
+
+export type DeviceTypeName =
+  | typeof DummyDevice.TYPE_NAME
+  | typeof GpioSwitchDevice.TYPE_NAME
+  | typeof OneWireBusDevice.TYPE_NAME
+  | typeof I2cBusDevice.TYPE_NAME
+  | typeof Ds18b20Device.TYPE_NAME
+  | typeof ThermostatDevice.TYPE_NAME
+  | typeof SpiBusDevice.TYPE_NAME
+  | typeof Ssd1306Device.TYPE_NAME
+  | typeof St7735Device.TYPE_NAME
 export type DeviceTypeId = number
 
 const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
-  dummy: DUMMY_DEVICE_TYPE_ID,
-  gpio_switch: GPIO_SWITCH_DEVICE_TYPE_ID,
-  onewire_bus: ONEWIRE_BUS_DEVICE_TYPE_ID,
-  ds18b20_temperature_sensor: DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
-  thermostat: THERMOSTAT_DEVICE_TYPE_ID,
-  i2c_bus: I2C_BUS_DEVICE_TYPE_ID,
-  spi_bus: SPI_BUS_DEVICE_TYPE_ID,
-  ssd1306: SSD1306_DEVICE_TYPE_ID,
-  st7735: ST7735_DEVICE_TYPE_ID,
+  [DummyDevice.TYPE_NAME]: DummyDevice.TYPE_ID,
+  [GpioSwitchDevice.TYPE_NAME]: GpioSwitchDevice.TYPE_ID,
+  [OneWireBusDevice.TYPE_NAME]: OneWireBusDevice.TYPE_ID,
+  [I2cBusDevice.TYPE_NAME]: I2cBusDevice.TYPE_ID,
+  [Ds18b20Device.TYPE_NAME]: Ds18b20Device.TYPE_ID,
+  [ThermostatDevice.TYPE_NAME]: ThermostatDevice.TYPE_ID,
+  [SpiBusDevice.TYPE_NAME]: SpiBusDevice.TYPE_ID,
+  [Ssd1306Device.TYPE_NAME]: Ssd1306Device.TYPE_ID,
+  [St7735Device.TYPE_NAME]: St7735Device.TYPE_ID,
 }
 
 const deviceTypeNames: Record<DeviceTypeId, DeviceTypeName> = {
-  [DUMMY_DEVICE_TYPE_ID]: 'dummy',
-  [GPIO_SWITCH_DEVICE_TYPE_ID]: 'gpio_switch',
-  [ONEWIRE_BUS_DEVICE_TYPE_ID]: 'onewire_bus',
-  [DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID]: 'ds18b20_temperature_sensor',
-  [THERMOSTAT_DEVICE_TYPE_ID]: 'thermostat',
-  [I2C_BUS_DEVICE_TYPE_ID]: 'i2c_bus',
-  [SPI_BUS_DEVICE_TYPE_ID]: 'spi_bus',
-  [SSD1306_DEVICE_TYPE_ID]: 'ssd1306',
-  [ST7735_DEVICE_TYPE_ID]: 'st7735',
+  [DummyDevice.TYPE_ID]: DummyDevice.TYPE_NAME,
+  [GpioSwitchDevice.TYPE_ID]: GpioSwitchDevice.TYPE_NAME,
+  [OneWireBusDevice.TYPE_ID]: OneWireBusDevice.TYPE_NAME,
+  [I2cBusDevice.TYPE_ID]: I2cBusDevice.TYPE_NAME,
+  [Ds18b20Device.TYPE_ID]: Ds18b20Device.TYPE_NAME,
+  [ThermostatDevice.TYPE_ID]: ThermostatDevice.TYPE_NAME,
+  [SpiBusDevice.TYPE_ID]: SpiBusDevice.TYPE_NAME,
+  [Ssd1306Device.TYPE_ID]: Ssd1306Device.TYPE_NAME,
+  [St7735Device.TYPE_ID]: St7735Device.TYPE_NAME,
 }
 
 export function deviceTypeIdFromName(typeName: string | undefined | null): DeviceTypeId {
@@ -40,5 +59,5 @@ export function deviceTypeIdFromName(typeName: string | undefined | null): Devic
 }
 
 export function deviceTypeName(typeId: number): DeviceTypeName {
-  return deviceTypeNames[typeId] ?? 'dummy'
+  return deviceTypeNames[typeId] ?? DummyDevice.TYPE_NAME
 }

@@ -51,7 +51,7 @@ import {
   createDefaultDeviceDraft,
   type DeviceCreateDraft,
 } from '@/components/device/device-form'
-import { resolveDeviceFormComponent } from '@/components/devices/registry/device-component-registry'
+import { resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
 import { resolveDeviceModelByTypeName } from '@/models/devices/device-model-factory'
 import type { DeviceCreatePayload } from '@/models/devices/base-device'
 
@@ -69,7 +69,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const draft = ref<DeviceCreateDraft>(createDefaultDeviceDraft())
-const createFormComponent = computed(() => resolveDeviceFormComponent(draft.value.typeName))
+const createFormComponent = computed(() => resolveDeviceUi(draft.value.typeName).formComponent)
 const formValid = ref(false)
 
 watch(

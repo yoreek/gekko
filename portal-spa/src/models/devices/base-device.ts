@@ -1,4 +1,4 @@
-import type { BaseDeviceConfig, DeviceDependencyLink, DeviceRecord, DeviceCreateRequest } from '@/api/contracts'
+import type { BaseDeviceConfig, DeviceDependencyLink, DeviceOutputState, DeviceRecord, DeviceCreateRequest } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import type { DeviceCommandRequest } from '@/api/contracts'
 
@@ -11,6 +11,7 @@ export abstract class BaseDevice<
 > {
   abstract readonly typeName: string
   abstract readonly typeId: number
+  readonly supportedOutputStates?: DeviceOutputState[] = undefined
 
   abstract createDefaultConfig(): TConfig
 

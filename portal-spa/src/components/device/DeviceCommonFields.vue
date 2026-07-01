@@ -42,7 +42,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommonDraft } from '@/components/device/device-form'
-import { deviceTypeOptions } from '@/models/device-types'
+import { allDeviceUis } from '@/components/devices/registry/device-ui-registry'
 
 const props = defineProps<{
   modelValue: DeviceCommonDraft
@@ -56,7 +56,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const typeItems = computed(() => deviceTypeOptions.map(option => ({ title: t(option.labelKey), value: option.typeName })))
+const typeItems = computed(() => allDeviceUis.map(ui => ({ title: t(ui.labelKey), value: ui.typeName })))
 const nameRules = [
   (value: unknown) => String(value ?? '').trim().length > 0 || t('validation.required'),
 ]

@@ -36,11 +36,11 @@
         <v-icon icon="edit" />
       </v-btn>
       <v-btn
-        v-if="device && (device.record.typeName === 'ssd1306' || device.record.typeName === 'st7735') && !editing"
+        v-if="device && designerComponent && !editing"
         class="device-dialog__icon-button"
         variant="text"
         :disabled="busy"
-        :aria-label="device.record.typeName === 'st7735' ? t('device.dialog.st7735Display.designDisplay') : t('device.dialog.ssd1306Display.designDisplay')"
+        :aria-label="t(designDisplayLabelKey)"
         @click="designerOpen = true"
       >
         <v-icon icon="design-display" />
@@ -114,15 +114,9 @@
     </template>
   </DeviceDialogShell>
 
-  <Ssd1306DesignerDialog
-    v-if="device && device.record.typeName === 'ssd1306'"
-    v-model="designerOpen"
-    :device="device"
-    @save="handleDesignerSave"
-  />
-
-  <St7735DesignerDialog
-    v-else-if="device && device.record.typeName === 'st7735'"
+  <component
+    :is="designerComponent"
+    v-if="designerComponent"
     v-model="designerOpen"
     :device="device"
     @save="handleDesignerSave"
@@ -137,16 +131,15 @@ import { useI18n } from 'vue-i18n'
 import DeviceCommonFields from '@/components/device/DeviceCommonFields.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import RecentDeviceEvents from '@/components/device/RecentDeviceEvents.vue'
-import Ssd1306DesignerDialog from '@/components/devices/display/ssd1306/Ssd1306DesignerDialog.vue'
-import St7735DesignerDialog from '@/components/devices/display/st7735/St7735DesignerDialog.vue'
 import {
   buildDeviceEditCommands,
   createDeviceEditDraft,
   type DeviceEditDraft,
 } from '@/components/device/device-form'
-import { resolveDeviceDetailComponent, resolveDeviceFormComponent } from '@/components/devices/registry/device-component-registry'
+import { resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
 import type { DeviceRecord } from '@/api/contracts'
-import { deviceStatusLabelKey, deviceTypeLabelKeyByName } from '@/models/device-types'
+import { deviceStatusLabelKey } from '@/models/devices/device-status'
+import { resolveDeviceModelByTypeName } from '@/models/devices/device-model-factory'
 import type { DeviceCommandRequest } from '@/api'
 
 const props = defineProps<{
@@ -176,25 +169,23 @@ const hasTypeDetails = computed(() => device.value !== null)
 const deviceId = computed(() => (device.value === null ? 0 : device.value.record.id))
 const deviceName = computed(() => (device.value === null ? undefined : device.value.config.name))
 
-const editFormComponent = computed(() => {
-  if (device.value === null) {
-    return null
-  }
-  return resolveDeviceFormComponent(device.value.record.typeName)
-})
+const deviceUi = computed(() => (device.value === null ? null : resolveDeviceUi(device.value.record.typeName)))
 
-const detailComponent = computed(() => {
-  if (device.value === null) {
-    return null
-  }
-  return resolveDeviceDetailComponent(device.value.record.typeName)
-})
+const editFormComponent = computed(() => deviceUi.value?.formComponent ?? null)
+
+const detailComponent = computed(() => deviceUi.value?.detailComponent ?? null)
+
+const deviceModel = computed(() => (device.value === null ? null : resolveDeviceModelByTypeName(device.value.record.typeName)))
+
+const designerComponent = computed(() => deviceUi.value?.designerComponent ?? null)
+
+const designDisplayLabelKey = computed(() => deviceUi.value?.designDisplayLabelKey ?? '')
 
 const typeLabelText = computed(() => {
-  if (device.value === null) {
+  if (deviceUi.value === null) {
     return ''
   }
-  return t(deviceTypeLabelKeyByName(device.value.record.typeName))
+  return t(deviceUi.value.labelKey)
 })
 
 const statusText = computed(() => {
@@ -224,13 +215,14 @@ const statusColor = computed(() => {
 })
 
 const outputState = computed(() => {
-  if (device.value === null || device.value.record.typeName !== 'gpio_switch') {
+  if (device.value === null || deviceModel.value?.supportedOutputStates === undefined) {
     return undefined
   }
   return (device.value.runtime as { state?: string }).state
 })
 const layoutReviewWarning = computed(() => {
-  if (device.value === null || !props.editing || device.value.record.typeName !== 'ssd1306') {
+  const labelKey = deviceUi.value?.layoutResizeWarningLabelKey
+  if (device.value === null || !props.editing || !labelKey) {
     return ''
   }
   const currentConfig = device.value.config as unknown as Record<string, unknown>
@@ -241,7 +233,7 @@ const layoutReviewWarning = computed(() => {
   if (currentWidth === draftWidth && currentHeight === draftHeight) {
     return ''
   }
-  return t('device.dialog.ssd1306Display.layoutResizeWarning')
+  return t(labelKey)
 })
 const canSave = computed(() => {
   if (device.value === null) {

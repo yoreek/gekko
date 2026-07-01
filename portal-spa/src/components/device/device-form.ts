@@ -1,7 +1,7 @@
 import type { DeviceDependencyLink } from '@/api/contracts'
 import type { DeviceCommandRequest } from '@/api'
 import type { DeviceRecord } from '@/api/contracts'
-import type { DeviceTypeName } from '@/models/device-types'
+import type { DeviceTypeName } from '@/models/device-type-ids'
 import { resolveDeviceModel, resolveDeviceModelByTypeName } from '@/models/devices/device-model-factory'
 
 export interface DeviceCommonDraft {

@@ -129,7 +129,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { deviceTypeLabelKeyByName, deviceTypeOptions } from '@/models/device-types'
+import { allDeviceUis, resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
 import {
   type DeviceJournalEventKindFilter,
   type DeviceJournalTypeFilter,
@@ -157,7 +157,7 @@ const filteredEntries = computed(() =>
 
 const typeFilterOptions = computed(() => [
   { title: t('journal.filters.allTypes'), value: 'all' },
-  ...deviceTypeOptions.map(option => ({ title: t(option.labelKey), value: option.id })),
+  ...allDeviceUis.map(ui => ({ title: t(ui.labelKey), value: ui.typeId })),
 ])
 
 const eventKindFilterOptions = computed(() => [
@@ -199,7 +199,7 @@ function formatTime(receivedAt: number): string {
 }
 
 function typeLabel(typeName: string): string {
-  const labelKey = deviceTypeLabelKeyByName(typeName)
+  const labelKey = resolveDeviceUi(typeName).labelKey
   return labelKey === 'device.type.unknown' && typeName.length > 0 ? typeName : t(labelKey)
 }
 

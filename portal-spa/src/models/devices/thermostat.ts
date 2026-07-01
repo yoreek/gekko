@@ -4,63 +4,67 @@ import type {
   TemperatureOutputSnapshot,
   ThermostatOutputSnapshot,
 } from '@/api/contracts'
-import { Ds18b20 } from '@/models/devices/ds18b20'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import type { DeviceCommandRequest, DeviceRecord } from '@/api/contracts'
-import { THERMOSTAT_DEVICE_TYPE_ID } from '@/models/device-types'
-import { BaseDevice } from '@/models/devices/base-device'
+import { BaseDevice } from './base-device.ts'
 
-export namespace Thermostat {
-  export type Mode = 'off' | 'heat' | 'cool'
-  export type Algorithm = 'hysteresis'
+export type ThermostatMode = 'off' | 'heat' | 'cool'
+export type ThermostatAlgorithm = 'hysteresis'
 
-  export interface ConfigDraft extends BaseDeviceConfig {
-    mode: Mode
-    algorithm: Algorithm
-    targetCelsius: number
-    minSafeCelsius: number
-    maxSafeCelsius: number
-    hysteresisCelsius: number
-    checkIntervalMs: number
-    sensorTimeoutMs: number
-    retryAfterErrorMs: number
-    minSwitchIntervalMs: number
-    temperatureSensorDeviceId: number
-    switchDeviceId: number
-  }
+export interface ThermostatConfigDraft extends BaseDeviceConfig {
+  mode: ThermostatMode
+  algorithm: ThermostatAlgorithm
+  targetCelsius: number
+  minSafeCelsius: number
+  maxSafeCelsius: number
+  hysteresisCelsius: number
+  checkIntervalMs: number
+  sensorTimeoutMs: number
+  retryAfterErrorMs: number
+  minSwitchIntervalMs: number
+  temperatureSensorDeviceId: number
+  switchDeviceId: number
+}
 
-  export interface CreateDraft extends DeviceCreateDraftBase, ConfigDraft {}
+export interface ThermostatCreateDraft extends DeviceCreateDraftBase, ThermostatConfigDraft {}
 
-  const modeOptions: Mode[] = ['off', 'heat', 'cool']
-  const algorithmOptions: Algorithm[] = ['hysteresis']
+const modeOptions: ThermostatMode[] = ['off', 'heat', 'cool']
+const algorithmOptions: ThermostatAlgorithm[] = ['hysteresis']
 
-  function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value)
-  }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
 
-  function normalizeNumber(value: unknown, fallback: number): number {
-    const numeric = Number(value)
-    return Number.isFinite(numeric) ? numeric : fallback
-  }
+function normalizeNumber(value: unknown, fallback: number): number {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : fallback
+}
 
-  function normalizeDeviceId(value: unknown): number {
-    const numeric = Number(value)
-    return Number.isFinite(numeric) && numeric > 0 ? numeric : 0
-  }
+function normalizeDeviceId(value: unknown): number {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : 0
+}
 
-  function normalizeMode(value: unknown): Mode {
-    return modeOptions.includes(value as Mode) ? (value as Mode) : 'off'
-  }
+function normalizeMode(value: unknown): ThermostatMode {
+  return modeOptions.includes(value as ThermostatMode) ? (value as ThermostatMode) : 'off'
+}
 
-  function normalizeAlgorithm(value: unknown): Algorithm {
-    return algorithmOptions.includes(value as Algorithm) ? (value as Algorithm) : 'hysteresis'
-  }
+function normalizeAlgorithm(value: unknown): ThermostatAlgorithm {
+  return algorithmOptions.includes(value as ThermostatAlgorithm) ? (value as ThermostatAlgorithm) : 'hysteresis'
+}
 
-  function deviceIdFromDeps(deps: DeviceDependencyLink[] | undefined, role: string): number {
-    return deps?.find(dep => dep.role === role)?.deviceId ?? 0
-  }
+function deviceIdFromDeps(deps: DeviceDependencyLink[] | undefined, role: string): number {
+  return deps?.find(dep => dep.role === role)?.deviceId ?? 0
+}
 
-  export function defaultConfig(): ConfigDraft {
+export class ThermostatDevice extends BaseDevice<ThermostatConfigDraft, ThermostatCreateDraft, ThermostatOutputSnapshot> {
+  static readonly TYPE_ID = 5 as const
+  static readonly TYPE_NAME = 'thermostat' as const
+
+  readonly typeName = ThermostatDevice.TYPE_NAME
+  readonly typeId = ThermostatDevice.TYPE_ID
+
+  static defaultConfig(): ThermostatConfigDraft {
     return {
       enabled: true,
       name: 'New Device',
@@ -80,8 +84,8 @@ export namespace Thermostat {
     }
   }
 
-  export function normalizeConfig(value: unknown, deps?: DeviceDependencyLink[]): ConfigDraft {
-    const defaults = defaultConfig()
+  static normalizeConfig(value: unknown, deps?: DeviceDependencyLink[]): ThermostatConfigDraft {
+    const defaults = ThermostatDevice.defaultConfig()
     if (!isRecord(value)) {
       return {
         ...defaults,
@@ -110,7 +114,7 @@ export namespace Thermostat {
     }
   }
 
-  export function configChanged(current: ConfigDraft, original: ConfigDraft): boolean {
+  static configChanged(current: ThermostatConfigDraft, original: ThermostatConfigDraft): boolean {
     return (
       current.enabled !== original.enabled ||
       current.mode !== original.mode ||
@@ -128,7 +132,7 @@ export namespace Thermostat {
     )
   }
 
-  export function encodeConfig(config: ConfigDraft): Record<string, unknown> {
+  static encodeConfig(config: ThermostatConfigDraft): Record<string, unknown> {
     return {
       name: config.name,
       enabled: config.enabled,
@@ -146,7 +150,7 @@ export namespace Thermostat {
     }
   }
 
-  export function dependencyLinks(config: ConfigDraft): DeviceDependencyLink[] {
+  static dependencyLinks(config: ThermostatConfigDraft): DeviceDependencyLink[] {
     return [
       {
         role: 'temperature_sensor',
@@ -159,30 +163,30 @@ export namespace Thermostat {
     ]
   }
 
-  export function modeLabelKey(mode: Mode): string {
+  static modeLabelKey(mode: ThermostatMode): string {
     return `device.dialog.thermostat.mode.${mode}`
   }
 
-  export function algorithmLabelKey(algorithm: Algorithm): string {
+  static algorithmLabelKey(algorithm: ThermostatAlgorithm): string {
     return `device.dialog.thermostat.algorithm.${algorithm}`
   }
 
-  export function statusLabelKey(status: string | undefined | null): string {
+  static statusLabelKey(status: string | undefined | null): string {
     return `device.dialog.thermostat.status.${status ?? 'unknown'}`
   }
 
-  export function formatTemperature(value: number): string {
+  static formatTemperature(value: number): string {
     return `${value.toFixed(1)}°C`
   }
 
-  export function formatOutput(output: TemperatureOutputSnapshot | undefined): string {
+  static formatOutput(output: TemperatureOutputSnapshot | undefined): string {
     if (!output?.valid) {
       return ''
     }
-    return formatTemperature(output.value)
+    return ThermostatDevice.formatTemperature(output.value)
   }
 
-  export function outputTone(status: string | undefined | null): 'primary' | 'secondary' | 'warning' | 'error' {
+  static outputTone(status: string | undefined | null): 'primary' | 'secondary' | 'warning' | 'error' {
     switch (status) {
       case 'ready':
       case 'ok':
@@ -202,86 +206,81 @@ export namespace Thermostat {
     }
   }
 
-  export function summaryText(mode: Mode, targetCelsius: number, status: string | undefined | null): string {
+  static summaryText(mode: ThermostatMode, targetCelsius: number, status: string | undefined | null): string {
     const modeText = mode === 'off' ? 'Off' : mode === 'heat' ? 'Heat' : 'Cool'
-    const targetText = formatTemperature(targetCelsius)
+    const targetText = ThermostatDevice.formatTemperature(targetCelsius)
     const statusText = status && status !== 'ready' && status !== 'ok' ? ` · ${status}` : ''
     return `${modeText} · ${targetText}${statusText}`
   }
 
-  export class Device extends BaseDevice<ConfigDraft, CreateDraft, ThermostatOutputSnapshot> {
-    readonly typeName = 'thermostat'
-    readonly typeId = THERMOSTAT_DEVICE_TYPE_ID
+  createDefaultConfig(): ThermostatConfigDraft {
+    return ThermostatDevice.defaultConfig()
+  }
 
-    createDefaultConfig(): ConfigDraft {
-      return Thermostat.defaultConfig()
+  createDefaultCreateDraft(common: Partial<DeviceCreateDraftBase> = {}): ThermostatCreateDraft {
+    return {
+      ...this.createDefaultConfig(),
+      ...common,
+      typeName: common.typeName ?? this.typeName,
     }
+  }
 
-    createDefaultCreateDraft(common: Partial<DeviceCreateDraftBase> = {}): CreateDraft {
-      return {
-        ...this.createDefaultConfig(),
-        ...common,
-        typeName: common.typeName ?? this.typeName,
-      }
+  createEditDraft(current: DeviceRecord): ThermostatCreateDraft {
+    return {
+      ...this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined),
+      typeName: this.typeName,
     }
+  }
 
-    createEditDraft(current: DeviceRecord): CreateDraft {
-      return {
-        ...this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined),
-        typeName: this.typeName,
-      }
+  normalizeConfig(value: unknown, deps?: DeviceDependencyLink[]): ThermostatConfigDraft {
+    return ThermostatDevice.normalizeConfig(value, deps)
+  }
+
+  normalizeOutput(record: DeviceRecord): ThermostatOutputSnapshot {
+    return record.runtime as ThermostatOutputSnapshot
+  }
+
+  override encodeConfig(config: ThermostatConfigDraft): Record<string, unknown> {
+    return ThermostatDevice.encodeConfig(config)
+  }
+
+  buildEditCommands(current: DeviceRecord, draft: ThermostatCreateDraft): DeviceCommandRequest[] {
+    const currentConfig = this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined)
+    const commands: DeviceCommandRequest[] = []
+    if (draft.name.trim() !== currentConfig.name) {
+      commands.push({ command: 'rename', name: draft.name.trim() })
     }
-
-    normalizeConfig(value: unknown, deps?: DeviceDependencyLink[]): ConfigDraft {
-      return Thermostat.normalizeConfig(value, deps)
+    if (draft.enabled !== currentConfig.enabled) {
+      commands.push({ command: draft.enabled ? 'enable' : 'disable' })
     }
-
-    normalizeOutput(record: DeviceRecord): ThermostatOutputSnapshot {
-      return record.runtime as ThermostatOutputSnapshot
-    }
-
-    override encodeConfig(config: ConfigDraft): Record<string, unknown> {
-      return Thermostat.encodeConfig(config)
-    }
-
-    buildEditCommands(current: DeviceRecord, draft: CreateDraft): DeviceCommandRequest[] {
-      const currentConfig = this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined)
-      const commands: DeviceCommandRequest[] = []
-      if (draft.name.trim() !== currentConfig.name) {
-        commands.push({ command: 'rename', name: draft.name.trim() })
-      }
-      if (draft.enabled !== currentConfig.enabled) {
-        commands.push({ command: draft.enabled ? 'enable' : 'disable' })
-      }
-      const nextConfig = this.normalizeConfig(draft, [
-        {
-          role: 'temperature_sensor',
-          deviceId: draft.temperatureSensorDeviceId,
+    const nextConfig = this.normalizeConfig(draft, [
+      {
+        role: 'temperature_sensor',
+        deviceId: draft.temperatureSensorDeviceId,
+      },
+      {
+        role: 'switch',
+        deviceId: draft.switchDeviceId,
+      },
+    ])
+    if (ThermostatDevice.configChanged(nextConfig, currentConfig)) {
+      commands.push({
+        command: 'updateConfig',
+        config: {
+          ...this.encodeConfig(nextConfig),
+          enabled: draft.enabled,
         },
-        {
-          role: 'switch',
-          deviceId: draft.switchDeviceId,
-        },
-      ])
-      if (Thermostat.configChanged(nextConfig, currentConfig)) {
-        commands.push({
-          command: 'updateConfig',
-          config: {
-            ...this.encodeConfig(nextConfig),
-            enabled: draft.enabled,
-          },
-          deps: Thermostat.dependencyLinks(nextConfig),
-        })
-      }
-      return commands
+        deps: ThermostatDevice.dependencyLinks(nextConfig),
+      })
     }
+    return commands
+  }
 
-    protected extractCreateConfig(draft: CreateDraft): ConfigDraft {
-      return { ...draft }
-    }
+  protected extractCreateConfig(draft: ThermostatCreateDraft): ThermostatConfigDraft {
+    return { ...draft }
+  }
 
-    protected override createCreateDeps(config: ConfigDraft) {
-      return Thermostat.dependencyLinks(config)
-    }
+  protected override createCreateDeps(config: ThermostatConfigDraft) {
+    return ThermostatDevice.dependencyLinks(config)
   }
 }

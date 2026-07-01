@@ -40,7 +40,7 @@
             :items="modeItems"
             :model-value="currentValue.mode"
             :disabled="busy"
-            @update:model-value="update('mode', $event as Thermostat.Mode)"
+            @update:model-value="update('mode', $event as ThermostatMode)"
           />
         </v-col>
         <v-col cols="12" md="4">
@@ -155,7 +155,7 @@
             :items="algorithmItems"
             :model-value="currentValue.algorithm"
             :disabled="busy"
-            @update:model-value="update('algorithm', $event as Thermostat.Algorithm)"
+            @update:model-value="update('algorithm', $event as ThermostatAlgorithm)"
           />
         </v-col>
       </v-row>
@@ -167,17 +167,22 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { Thermostat } from '@/models/devices/thermostat'
+import {
+  ThermostatDevice,
+  type ThermostatAlgorithm,
+  type ThermostatConfigDraft,
+  type ThermostatCreateDraft,
+  type ThermostatMode,
+} from '@/models/devices/thermostat'
 import {
   DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
   GPIO_SWITCH_DEVICE_TYPE_ID,
   deviceTypeIdFromName,
-  THERMOSTAT_DEVICE_TYPE_ID,
-  resolveDeviceTypeOption,
-} from '@/models/device-types'
+} from '@/models/device-type-ids'
+import { resolveDeviceModelByTypeId } from '@/models/devices/device-model-factory'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
-type ThermostatFormValue = Thermostat.CreateDraft | Thermostat.ConfigDraft
+type ThermostatFormValue = ThermostatCreateDraft | ThermostatConfigDraft
 
 const props = defineProps<{
   modelValue: ThermostatFormValue | undefined
@@ -222,17 +227,17 @@ const switchItems = computed(() =>
   deviceStore.devices
     .filter(device => {
       const typeId = deviceTypeIdFromName(device.record.typeName)
-      const option = resolveDeviceTypeOption(typeId)
-      return typeId === GPIO_SWITCH_DEVICE_TYPE_ID || (option?.supportedOutputStates?.includes('off') && option?.supportedOutputStates?.includes('on'))
+      const model = resolveDeviceModelByTypeId(typeId)
+      return typeId === GPIO_SWITCH_DEVICE_TYPE_ID || (model.supportedOutputStates?.includes('off') && model.supportedOutputStates?.includes('on'))
     })
     .map(device => ({
       title: `${device.config.name} #${device.record.id}`,
       value: device.record.id,
     })),
 )
-const modeItems = computed(() => ['off', 'heat', 'cool'].map(value => ({ title: t(Thermostat.modeLabelKey(value as Thermostat.Mode)), value })))
+const modeItems = computed(() => ['off', 'heat', 'cool'].map(value => ({ title: t(ThermostatDevice.modeLabelKey(value as ThermostatMode)), value })))
 const algorithmItems = computed(() =>
-  ['hysteresis'].map(value => ({ title: t(Thermostat.algorithmLabelKey(value as Thermostat.Algorithm)), value })),
+  ['hysteresis'].map(value => ({ title: t(ThermostatDevice.algorithmLabelKey(value as ThermostatAlgorithm)), value })),
 )
 const sensorRules = computed(() => [
   (value: unknown) => Number(value) > 0 || t('device.dialog.thermostat.noTemperatureSensor'),
@@ -245,8 +250,8 @@ function emitUpdate(next: ThermostatFormValue): void {
   emit('update:modelValue', next)
 }
 
-function update<K extends keyof Thermostat.CreateDraft>(key: K, value: Thermostat.CreateDraft[K]): void {
-  emitUpdate(buildNextValue({ [key]: value } as Partial<Thermostat.CreateDraft>))
+function update<K extends keyof ThermostatCreateDraft>(key: K, value: ThermostatCreateDraft[K]): void {
+  emitUpdate(buildNextValue({ [key]: value } as Partial<ThermostatCreateDraft>))
 }
 
 type ThermostatNumericKey =
@@ -269,15 +274,15 @@ function updateNumber(key: ThermostatNumericKey, value: unknown): void {
   update(key as never, numeric as never)
 }
 
-function buildNextValue(patch: Partial<Thermostat.CreateDraft>): ThermostatFormValue {
+function buildNextValue(patch: Partial<ThermostatCreateDraft>): ThermostatFormValue {
   if (!isCreateMode.value) {
     return {
-      ...(currentValue.value as Thermostat.CreateDraft),
+      ...(currentValue.value as ThermostatCreateDraft),
       ...patch,
     }
   }
   return {
-    ...(currentValue.value as Thermostat.CreateDraft),
+    ...(currentValue.value as ThermostatCreateDraft),
     ...patch,
   }
 }

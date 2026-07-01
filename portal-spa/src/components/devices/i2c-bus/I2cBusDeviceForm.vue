@@ -68,9 +68,9 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { I2cBus } from '@/models/devices/i2c-bus'
+import type { I2cBusConfigDraft, I2cBusCreateDraft } from '@/models/devices/i2c-bus'
 
-type I2cBusFormValue = I2cBus.CreateDraft | I2cBus.ConfigDraft
+type I2cBusFormValue = I2cBusCreateDraft | I2cBusConfigDraft
 
 const props = defineProps<{
   modelValue: I2cBusFormValue | undefined
@@ -106,8 +106,8 @@ const frequencyRules = computed(() => [
   },
 ])
 
-function update<K extends keyof I2cBus.CreateDraft>(key: K, value: I2cBus.CreateDraft[K]): void {
-  emit('update:modelValue', buildNextValue({ [key]: value } as Partial<I2cBus.CreateDraft>))
+function update<K extends keyof I2cBusCreateDraft>(key: K, value: I2cBusCreateDraft[K]): void {
+  emit('update:modelValue', buildNextValue({ [key]: value } as Partial<I2cBusCreateDraft>))
 }
 
 function updateNumber(key: 'sdaPin' | 'sclPin' | 'frequencyHz', value: string | number): void {
@@ -121,9 +121,9 @@ function updateNumber(key: 'sdaPin' | 'sclPin' | 'frequencyHz', value: string | 
   update(key, numeric as never)
 }
 
-function buildNextValue(patch: Partial<I2cBus.CreateDraft>): I2cBusFormValue {
+function buildNextValue(patch: Partial<I2cBusCreateDraft>): I2cBusFormValue {
   return {
-    ...(currentValue.value as I2cBus.CreateDraft),
+    ...(currentValue.value as I2cBusCreateDraft),
     ...patch,
   }
 }
@@ -141,7 +141,7 @@ function buildPinRules(field: 'sdaPin' | 'sclPin') {
     },
     (value: unknown) => {
       const numeric = Number(value)
-      const otherValue = Number((currentValue.value as I2cBus.CreateDraft)[otherField])
+      const otherValue = Number((currentValue.value as I2cBusCreateDraft)[otherField])
       return !Number.isFinite(numeric) || !Number.isFinite(otherValue) || numeric !== otherValue || t('device.dialog.i2cPinsMustDiffer')
     },
   ]

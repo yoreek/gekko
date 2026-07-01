@@ -124,12 +124,11 @@ import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommandRequest } from '@/api'
 import { commandDevice } from '@/api'
-import { ONEWIRE_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-types'
-import { Ds18b20 } from '@/models/devices/ds18b20'
+import { ONEWIRE_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-type-ids'
+import { Ds18b20Device, type Ds18b20ConfigDraft, type Ds18b20CreateDraft } from '@/models/devices/ds18b20'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
-import { DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID } from '@/models/device-types'
 
-type Ds18b20FormValue = Ds18b20.CreateDraft | Ds18b20.ConfigDraft
+type Ds18b20FormValue = Ds18b20CreateDraft | Ds18b20ConfigDraft
 
 const props = defineProps<{
   modelValue: Ds18b20FormValue | undefined
@@ -166,28 +165,28 @@ const selectedDependencyScanInProgress = computed(() => {
   const scan = selectedDependency.value ? (selectedDependency.value.runtime as { scan?: { inProgress?: boolean } }).scan : undefined
   return scan?.inProgress === true
 })
-const resolutionItems = computed(() => Ds18b20.resolutionOptions.map(value => ({ title: t('device.dialog.ds18b20.resolution', { value }), value })))
-const unitItems = computed(() => Ds18b20.temperatureUnitOptions.map(value => ({ title: t(`device.dialog.temperatureUnit.${value}`), value })))
+const resolutionItems = computed(() => Ds18b20Device.resolutionOptions.map(value => ({ title: t('device.dialog.ds18b20.resolution', { value }), value })))
+const unitItems = computed(() => Ds18b20Device.temperatureUnitOptions.map(value => ({ title: t(`device.dialog.temperatureUnit.${value}`), value })))
 const dependencyRules = computed(() => [
   (value: unknown) => Number(value) > 0 || t('device.dialog.ds18b20.noDependency'),
 ])
 const scanCandidateItems = computed(() => {
   const devices = (selectedDependency.value ? (selectedDependency.value.runtime as { scan?: { devices?: Array<{ address: string; familyCode: string }> } }).scan?.devices : undefined) ?? []
-  return devices.filter(Ds18b20.isScanCandidate).map(candidate => ({
+  return devices.filter(Ds18b20Device.isScanCandidate).map(candidate => ({
       title: `${candidate.address} · ${t('device.dialog.onewireFamilyCode', { family: candidate.familyCode })}`,
     value: candidate.address,
   }))
 })
 const addressRules = computed(() => [
-  (value: string) => Ds18b20.addressValid(value) || t('device.dialog.ds18b20.addressInvalid'),
+  (value: string) => Ds18b20Device.addressValid(value) || t('device.dialog.ds18b20.addressInvalid'),
 ])
 
 function emitUpdate(next: Ds18b20FormValue): void {
   emit('update:modelValue', next)
 }
 
-function update<K extends keyof Ds18b20.CreateDraft>(key: K, value: Ds18b20.CreateDraft[K]): void {
-  emitUpdate(buildNextValue({ [key]: value } as Partial<Ds18b20.CreateDraft>))
+function update<K extends keyof Ds18b20CreateDraft>(key: K, value: Ds18b20CreateDraft[K]): void {
+  emitUpdate(buildNextValue({ [key]: value } as Partial<Ds18b20CreateDraft>))
 }
 
 function updateNumber(key: 'dependencyDeviceId' | 'resolution' | 'pollMs' | 'reportDeltaCelsius', value: unknown): void {
@@ -202,15 +201,15 @@ function updateAddress(value: unknown): void {
   update('address', String(value ?? '').trim().toUpperCase())
 }
 
-function buildNextValue(patch: Partial<Ds18b20.CreateDraft>): Ds18b20FormValue {
+function buildNextValue(patch: Partial<Ds18b20CreateDraft>): Ds18b20FormValue {
   if (!isCreateMode.value) {
     return {
-      ...(currentValue.value as Ds18b20.CreateDraft),
+      ...(currentValue.value as Ds18b20CreateDraft),
       ...patch,
     }
   }
   return {
-    ...(currentValue.value as Ds18b20.CreateDraft),
+    ...(currentValue.value as Ds18b20CreateDraft),
     ...patch,
   }
 }

@@ -1,7 +1,6 @@
 import type { BaseDeviceConfig, DeviceCommandRequest, DeviceRecord, SpiBusRuntimeSnapshot } from '../../api/contracts.ts'
 import type { DeviceCreateDraftBase } from './base.ts'
 import { BaseDevice } from './base-device.ts'
-import { SPI_BUS_DEVICE_TYPE_ID } from '../device-type-ids.ts'
 
 export interface SpiBusConfigDraft extends BaseDeviceConfig {
   host: number
@@ -17,53 +16,56 @@ function normalizeNumber(value: unknown, fallback: number): number {
   return Number.isFinite(numeric) ? numeric : fallback
 }
 
-export function defaultSpiBusConfig(): SpiBusConfigDraft {
-  return {
-    enabled: true,
-    name: 'New Device',
-    deps: [],
-    host: 2,
-    sckPin: 18,
-    mosiPin: 23,
-    misoPin: -1,
-  }
-}
-
-export function normalizeSpiBusConfig(value: unknown): SpiBusConfigDraft {
-  const defaults = defaultSpiBusConfig()
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return defaults
-  }
-  const raw = value as Record<string, unknown>
-  return {
-    name: typeof raw.name === 'string' ? raw.name : defaults.name,
-    enabled: typeof raw.enabled === 'boolean' ? raw.enabled : defaults.enabled,
-    deps: Array.isArray(raw.deps) ? (raw.deps as SpiBusConfigDraft['deps']) : defaults.deps,
-    host: normalizeNumber(raw.host, defaults.host),
-    sckPin: normalizeNumber(raw.sckPin, defaults.sckPin),
-    mosiPin: normalizeNumber(raw.mosiPin, defaults.mosiPin),
-    misoPin: normalizeNumber(raw.misoPin, defaults.misoPin),
-  }
-}
-
-export function encodeSpiBusConfig(config: SpiBusConfigDraft): Record<string, unknown> {
-  return {
-    name: config.name,
-    enabled: config.enabled,
-    deps: config.deps,
-    host: config.host,
-    sckPin: config.sckPin,
-    mosiPin: config.mosiPin,
-    misoPin: config.misoPin,
-  }
-}
-
 export class SpiBusDevice extends BaseDevice<SpiBusConfigDraft, SpiBusCreateDraft, SpiBusRuntimeSnapshot> {
-  readonly typeName = 'spi_bus'
-  readonly typeId = SPI_BUS_DEVICE_TYPE_ID
+  static readonly TYPE_ID = 8 as const
+  static readonly TYPE_NAME = 'spi_bus' as const
+
+  readonly typeName = SpiBusDevice.TYPE_NAME
+  readonly typeId = SpiBusDevice.TYPE_ID
+
+  static defaultConfig(): SpiBusConfigDraft {
+    return {
+      enabled: true,
+      name: 'New Device',
+      deps: [],
+      host: 2,
+      sckPin: 18,
+      mosiPin: 23,
+      misoPin: -1,
+    }
+  }
+
+  static normalizeConfig(value: unknown): SpiBusConfigDraft {
+    const defaults = SpiBusDevice.defaultConfig()
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      return defaults
+    }
+    const raw = value as Record<string, unknown>
+    return {
+      name: typeof raw.name === 'string' ? raw.name : defaults.name,
+      enabled: typeof raw.enabled === 'boolean' ? raw.enabled : defaults.enabled,
+      deps: Array.isArray(raw.deps) ? (raw.deps as SpiBusConfigDraft['deps']) : defaults.deps,
+      host: normalizeNumber(raw.host, defaults.host),
+      sckPin: normalizeNumber(raw.sckPin, defaults.sckPin),
+      mosiPin: normalizeNumber(raw.mosiPin, defaults.mosiPin),
+      misoPin: normalizeNumber(raw.misoPin, defaults.misoPin),
+    }
+  }
+
+  static encodeConfig(config: SpiBusConfigDraft): Record<string, unknown> {
+    return {
+      name: config.name,
+      enabled: config.enabled,
+      deps: config.deps,
+      host: config.host,
+      sckPin: config.sckPin,
+      mosiPin: config.mosiPin,
+      misoPin: config.misoPin,
+    }
+  }
 
   createDefaultConfig(): SpiBusConfigDraft {
-    return defaultSpiBusConfig()
+    return SpiBusDevice.defaultConfig()
   }
 
   createDefaultCreateDraft(common: Partial<DeviceCreateDraftBase> = {}): SpiBusCreateDraft {
@@ -82,7 +84,7 @@ export class SpiBusDevice extends BaseDevice<SpiBusConfigDraft, SpiBusCreateDraf
   }
 
   normalizeConfig(value: unknown): SpiBusConfigDraft {
-    return normalizeSpiBusConfig(value)
+    return SpiBusDevice.normalizeConfig(value)
   }
 
   normalizeOutput(record: DeviceRecord): SpiBusRuntimeSnapshot {
@@ -90,7 +92,7 @@ export class SpiBusDevice extends BaseDevice<SpiBusConfigDraft, SpiBusCreateDraf
   }
 
   override encodeConfig(config: SpiBusConfigDraft): Record<string, unknown> {
-    return encodeSpiBusConfig(config)
+    return SpiBusDevice.encodeConfig(config)
   }
 
   buildEditCommands(current: DeviceRecord, draft: SpiBusCreateDraft): DeviceCommandRequest[] {

@@ -67,7 +67,7 @@ import Ssd1306LayoutPreview from '@/components/devices/display/ssd1306/Ssd1306La
 import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
 import { ssd1306Display } from '@/models/devices/display/display'
 import { resolveDisplayEffectiveSize } from '@/models/devices/display/orientation'
-import { defaultConfig, type Ssd1306ConfigDraft, type Ssd1306CreateDraft } from '@/models/devices/ssd1306/device'
+import { Ssd1306Device, type Ssd1306ConfigDraft, type Ssd1306CreateDraft } from '@/models/devices/ssd1306/device'
 
 type FormValue = Ssd1306CreateDraft | Ssd1306ConfigDraft
 
@@ -79,7 +79,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const { metricCatalog, refreshMetricCatalog } = useMetricPlaceholderCatalog()
 const fallbackValue: Ssd1306CreateDraft = {
-  ...defaultConfig(),
+  ...Ssd1306Device.defaultConfig(),
   typeName: 'ssd1306',
 }
 const currentValue = computed<FormValue>(() => props.modelValue ?? fallbackValue)

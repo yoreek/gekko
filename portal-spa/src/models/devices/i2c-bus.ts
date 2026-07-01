@@ -1,20 +1,25 @@
 import type { DeviceCommandRequest, DeviceRecord, I2cBusRuntimeSnapshot } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
-import { I2C_BUS_DEVICE_TYPE_ID } from '@/models/device-types'
-import { BaseDevice } from '@/models/devices/base-device'
+import { BaseDevice } from './base-device.ts'
 import type { BaseDeviceConfig } from '@/api/contracts'
 
-export namespace I2cBus {
-  export interface ConfigDraft extends BaseDeviceConfig {
-    sdaPin: number
-    sclPin: number
-    internalPullup: boolean
-    frequencyHz: number
-  }
+export interface I2cBusConfigDraft extends BaseDeviceConfig {
+  sdaPin: number
+  sclPin: number
+  internalPullup: boolean
+  frequencyHz: number
+}
 
-  export interface CreateDraft extends DeviceCreateDraftBase, ConfigDraft {}
+export interface I2cBusCreateDraft extends DeviceCreateDraftBase, I2cBusConfigDraft {}
 
-  export function defaultConfig(): ConfigDraft {
+export class I2cBusDevice extends BaseDevice<I2cBusConfigDraft, I2cBusCreateDraft, I2cBusRuntimeSnapshot> {
+  static readonly TYPE_ID = 6 as const
+  static readonly TYPE_NAME = 'i2c_bus' as const
+
+  readonly typeName = I2cBusDevice.TYPE_NAME
+  readonly typeId = I2cBusDevice.TYPE_ID
+
+  static defaultConfig(): I2cBusConfigDraft {
     return {
       enabled: true,
       name: 'New Device',
@@ -26,8 +31,8 @@ export namespace I2cBus {
     }
   }
 
-  export function normalizeConfig(value: unknown): ConfigDraft {
-    const defaults = defaultConfig()
+  static normalizeConfig(value: unknown): I2cBusConfigDraft {
+    const defaults = I2cBusDevice.defaultConfig()
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
       return defaults
     }
@@ -35,7 +40,7 @@ export namespace I2cBus {
     return {
       name: typeof raw.name === 'string' ? raw.name : defaults.name,
       enabled: typeof raw.enabled === 'boolean' ? raw.enabled : defaults.enabled,
-      deps: Array.isArray(raw.deps) ? (raw.deps as ConfigDraft['deps']) : defaults.deps,
+      deps: Array.isArray(raw.deps) ? (raw.deps as I2cBusConfigDraft['deps']) : defaults.deps,
       sdaPin: typeof raw.sdaPin === 'number' && Number.isFinite(raw.sdaPin) ? raw.sdaPin : defaults.sdaPin,
       sclPin: typeof raw.sclPin === 'number' && Number.isFinite(raw.sclPin) ? raw.sclPin : defaults.sclPin,
       internalPullup: typeof raw.internalPullup === 'boolean' ? raw.internalPullup : defaults.internalPullup,
@@ -46,7 +51,7 @@ export namespace I2cBus {
     }
   }
 
-  export function encodeConfig(config: ConfigDraft): Record<string, unknown> {
+  static encodeConfig(config: I2cBusConfigDraft): Record<string, unknown> {
     return {
       name: config.name,
       enabled: config.enabled,
@@ -58,71 +63,66 @@ export namespace I2cBus {
     }
   }
 
-  export class Device extends BaseDevice<ConfigDraft, CreateDraft, I2cBusRuntimeSnapshot> {
-    readonly typeName = 'i2c_bus'
-    readonly typeId = I2C_BUS_DEVICE_TYPE_ID
+  createDefaultConfig(): I2cBusConfigDraft {
+    return I2cBusDevice.defaultConfig()
+  }
 
-    createDefaultConfig(): ConfigDraft {
-      return I2cBus.defaultConfig()
+  createDefaultCreateDraft(common: Partial<DeviceCreateDraftBase> = {}): I2cBusCreateDraft {
+    return {
+      ...this.createDefaultConfig(),
+      ...common,
+      typeName: common.typeName ?? this.typeName,
     }
+  }
 
-    createDefaultCreateDraft(common: Partial<DeviceCreateDraftBase> = {}): CreateDraft {
-      return {
-        ...this.createDefaultConfig(),
-        ...common,
-        typeName: common.typeName ?? this.typeName,
+  createEditDraft(current: DeviceRecord): I2cBusCreateDraft {
+    return {
+      ...this.normalizeConfig(current.config),
+      typeName: this.typeName,
+    }
+  }
+
+  normalizeConfig(value: unknown): I2cBusConfigDraft {
+    return I2cBusDevice.normalizeConfig(value)
+  }
+
+  normalizeOutput(record: DeviceRecord): I2cBusRuntimeSnapshot {
+    return record.runtime as I2cBusRuntimeSnapshot
+  }
+
+  override encodeConfig(config: I2cBusConfigDraft): Record<string, unknown> {
+    return I2cBusDevice.encodeConfig(config)
+  }
+
+  buildEditCommands(current: DeviceRecord, draft: I2cBusCreateDraft): DeviceCommandRequest[] {
+    const currentConfig = this.normalizeConfig(current.config)
+    const commands: DeviceCommandRequest[] = []
+    if (draft.name.trim() !== currentConfig.name) {
+      commands.push({ command: 'rename', name: draft.name.trim() })
+    }
+    if (draft.enabled !== currentConfig.enabled) {
+      commands.push({ command: draft.enabled ? 'enable' : 'disable' })
+    }
+    const nextConfig = this.normalizeConfig(draft)
+    if (
+      nextConfig.sdaPin !== currentConfig.sdaPin ||
+      nextConfig.sclPin !== currentConfig.sclPin ||
+      nextConfig.internalPullup !== currentConfig.internalPullup ||
+      nextConfig.frequencyHz !== currentConfig.frequencyHz
+    ) {
+      const encodedConfig = {
+        ...nextConfig,
+        enabled: draft.enabled,
       }
+      commands.push({
+        command: 'updateConfig',
+        config: this.encodeConfig(encodedConfig),
+      })
     }
+    return commands
+  }
 
-    createEditDraft(current: DeviceRecord): CreateDraft {
-      return {
-        ...this.normalizeConfig(current.config),
-        typeName: this.typeName,
-      }
-    }
-
-    normalizeConfig(value: unknown): ConfigDraft {
-      return I2cBus.normalizeConfig(value)
-    }
-
-    normalizeOutput(record: DeviceRecord): I2cBusRuntimeSnapshot {
-      return record.runtime as I2cBusRuntimeSnapshot
-    }
-
-    override encodeConfig(config: ConfigDraft): Record<string, unknown> {
-      return I2cBus.encodeConfig(config)
-    }
-
-    buildEditCommands(current: DeviceRecord, draft: CreateDraft): DeviceCommandRequest[] {
-      const currentConfig = this.normalizeConfig(current.config)
-      const commands: DeviceCommandRequest[] = []
-      if (draft.name.trim() !== currentConfig.name) {
-        commands.push({ command: 'rename', name: draft.name.trim() })
-      }
-      if (draft.enabled !== currentConfig.enabled) {
-        commands.push({ command: draft.enabled ? 'enable' : 'disable' })
-      }
-      const nextConfig = this.normalizeConfig(draft)
-      if (
-        nextConfig.sdaPin !== currentConfig.sdaPin ||
-        nextConfig.sclPin !== currentConfig.sclPin ||
-        nextConfig.internalPullup !== currentConfig.internalPullup ||
-        nextConfig.frequencyHz !== currentConfig.frequencyHz
-      ) {
-        const encodedConfig = {
-          ...nextConfig,
-          enabled: draft.enabled,
-        }
-        commands.push({
-          command: 'updateConfig',
-          config: this.encodeConfig(encodedConfig),
-        })
-      }
-      return commands
-    }
-
-    protected extractCreateConfig(draft: CreateDraft): ConfigDraft {
-      return { ...draft }
-    }
+  protected extractCreateConfig(draft: I2cBusCreateDraft): I2cBusConfigDraft {
+    return { ...draft }
   }
 }

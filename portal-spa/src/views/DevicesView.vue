@@ -85,7 +85,7 @@
               <td>
                 <strong class="text-body-1">{{ device.config.name }}</strong>
               </td>
-              <td>{{ t(deviceTypeLabelKeyByName(device.record.typeName)) }}</td>
+              <td>{{ t(resolveDeviceUi(device.record.typeName).labelKey) }}</td>
               <td>
                 <v-chip variant="tonal" :color="statusColor(device.runtime.effectiveStatus ?? device.runtime.lifecycleStatus ?? device.runtime.status ?? 'unknown')">
                   {{ t(deviceStatusLabelKey(device.runtime.effectiveStatus ?? device.runtime.lifecycleStatus ?? device.runtime.status ?? 'unknown')) }}
@@ -208,7 +208,9 @@ import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import { buildDeviceEditCommands } from '@/components/device/device-form'
 import type { DeviceEditDraft } from '@/components/device/device-form'
-import { deviceStatusLabelKey, deviceTypeLabelKeyByName, deviceTypeOptions, resolveDeviceTypeOptionByName } from '@/models/device-types'
+import { deviceStatusLabelKey } from '@/models/devices/device-status'
+import { deviceTypeIdFromName } from '@/models/device-type-ids'
+import { allDeviceUis, resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore } from '@/stores/panels'
 
@@ -241,7 +243,7 @@ const typeFilter = ref<'all' | number>('all')
 
 const typeFilterOptions = computed(() => [
   { title: t('devices.filterAllTypes'), value: 'all' },
-  ...deviceTypeOptions.map(option => ({ title: t(option.labelKey), value: option.id })),
+  ...allDeviceUis.map(ui => ({ title: t(ui.labelKey), value: ui.typeId })),
 ])
 
 const selectedDevice = computed<DeviceRecord | null>(() => {
@@ -260,7 +262,7 @@ const filteredDevices = computed(() => {
   return deviceStore.devices.filter(device => {
     const matchesId = idMatch === null ? true : Number.isInteger(idMatch) && device.record.id === idMatch
     const matchesName = query.length === 0 || device.config.name.toLowerCase().includes(query)
-    const matchesType = typeValue === 'all' || resolveDeviceTypeOptionByName(device.record.typeName)?.id === typeValue
+    const matchesType = typeValue === 'all' || deviceTypeIdFromName(device.record.typeName) === typeValue
     return matchesId && matchesName && matchesType
   })
 })
