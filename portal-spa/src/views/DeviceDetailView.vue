@@ -49,7 +49,7 @@
               <DeviceCommonFields
                 :model-value="(detail.draft as any)"
                 mode="edit"
-                :busy="isLoading"
+                :busy="unref(detail.loading) as boolean"
                 @update:model-value="(v: any) => { (detail.draft as any) = v }"
               />
             </section>
@@ -61,7 +61,7 @@
                 :model-value="(detail.draft as any)"
                 :device="(device as any)"
                 mode="edit"
-                :busy="isLoading as any"
+                :busy="isLoading"
                 @update:model-value="(v: any) => { (detail.draft as any) = v }"
                 @command="(detail.submitCommand as any)"
               />
@@ -80,13 +80,13 @@
         <!-- Sticky footer with actions -->
         <div class="device-detail-footer">
           <v-spacer />
-          <v-btn variant="text" :disabled="isLoading" @click="(detail.resetDraft as any)">
+          <v-btn variant="text" :disabled="unref(detail.loading) as boolean" @click="(detail.resetDraft as any)">
             {{ t('actions.cancel') }}
           </v-btn>
           <v-btn
             color="primary"
-            :loading="isSaving"
-            :disabled="!canSaveNow || isLoading"
+            :loading="(unref(detail.busyAction) as any) === 'save'"
+            :disabled="!(unref(detail.canSave) as boolean) || (unref(detail.loading) as boolean)"
             @click="(detail.save as any)()"
           >
             {{ t('device.dialog.save') }}
@@ -115,7 +115,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, provide, ref } from 'vue'
+import { computed, onBeforeMount, provide, ref, unref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
