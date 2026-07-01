@@ -13,32 +13,33 @@
       <div class="pb-20">
         <v-card class="mb-4">
           <!-- Header -->
-          <div class="d-flex align-center justify-space-between pa-4">
-            <div>
-              <v-card-title class="text-base pa-0">{{ (device as any)?.config?.name ?? '' }} · #{{ (device as any)?.record?.id ?? 0 }}</v-card-title>
-              <v-card-subtitle class="pa-0 mt-1">{{ t(editorUi?.labelKey || 'device.type.unknown') }}</v-card-subtitle>
-            </div>
-            <div class="d-flex ga-2 align-center flex-shrink-0">
-              <v-chip variant="tonal" :color="statusColor" size="small">
-                {{ statusText }}
-              </v-chip>
-              <v-btn
-                icon="chevron-left"
-                variant="text"
-                size="small"
-                :aria-label="t('device.actions.close')"
-                @click="navigateBack"
-              />
-              <v-btn
-                v-if="editorUi?.designerComponent"
-                icon="design-display"
-                variant="text"
-                size="small"
-                :aria-label="t(editorUi?.designDisplayLabelKey || 'device.dialog.openDesigner')"
-                @click="openDesigner"
-              />
-            </div>
-          </div>
+          <v-card-item
+            :title="`${(device as any)?.config?.name ?? ''} · #${(device as any)?.record?.id ?? 0}`"
+            :subtitle="t(editorUi?.labelKey || 'device.type.unknown')"
+          >
+            <template #append>
+              <div class="d-flex ga-2 align-center">
+                <v-chip variant="tonal" :color="statusColor" size="small">
+                  {{ statusText }}
+                </v-chip>
+                <v-btn
+                  icon="chevron-left"
+                  variant="text"
+                  size="small"
+                  :aria-label="t('device.actions.close')"
+                  @click="navigateBack"
+                />
+                <v-btn
+                  v-if="editorUi?.designerComponent"
+                  icon="design-display"
+                  variant="text"
+                  size="small"
+                  :aria-label="t(editorUi?.designDisplayLabelKey || 'device.dialog.openDesigner')"
+                  @click="openDesigner"
+                />
+              </div>
+            </template>
+          </v-card-item>
 
         <!-- Content -->
         <v-card-text class="pa-6 d-flex flex-column ga-3">
