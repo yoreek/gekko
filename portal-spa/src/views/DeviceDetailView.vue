@@ -28,7 +28,7 @@
               <v-btn
                 icon="arrow-left"
                 variant="text"
-                :aria-label="t('actions.back')"
+                :aria-label="t('device.actions.back')"
                 @click="navigateBack"
               />
               <v-btn
@@ -49,7 +49,7 @@
               <DeviceCommonFields
                 :model-value="(detail.draft as any)"
                 mode="edit"
-                :busy="isLoading as any"
+                :busy="(isLoading as any) ?? false"
                 @update:model-value="(v: any) => { (detail.draft as any) = v }"
               />
             </section>
@@ -80,13 +80,13 @@
         <!-- Sticky footer with actions -->
         <div class="device-detail-footer">
           <v-spacer />
-          <v-btn variant="text" :disabled="isLoading as any" @click="(detail.resetDraft as any)">
-            {{ t('actions.cancel') }}
+          <v-btn variant="text" :disabled="(isLoading as any) ?? false" @click="(detail.resetDraft as any)">
+            {{ t('device.actions.cancel') }}
           </v-btn>
           <v-btn
             color="primary"
             :loading="(detail.busyAction as any) === 'save'"
-            :disabled="!(detail.canSave as any) || isLoading as any"
+            :disabled="(!(detail.canSave as any) || (isLoading as any)) ?? false"
             @click="(detail.save as any)()"
           >
             {{ t('device.dialog.save') }}
