@@ -59,7 +59,10 @@ export interface RequestOptions {
   timeoutMs?: number
 }
 
-async function requestWithTextResponse(path: string, options: RequestOptions = {}): Promise<{ response: Response; text: string }> {
+async function requestWithTextResponse(
+  path: string,
+  options: RequestOptions & { body?: BodyInit | FormData } = {},
+): Promise<{ response: Response; text: string }> {
   const controller = new AbortController()
   const timeoutMs = options.timeoutMs ?? 10000
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
@@ -82,8 +85,7 @@ async function requestWithTextResponse(path: string, options: RequestOptions = {
   }
 }
 
-export async function requestJson<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { response, text } = await requestWithTextResponse(path, options)
+function parseJsonResponse<T>(response: Response, text: string): T {
   const payload = text.length > 0 ? JSON.parse(text) : undefined
 
   if (!response.ok) {
@@ -101,6 +103,11 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
   return payload as T
 }
 
+export async function requestJson<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const { response, text } = await requestWithTextResponse(path, options)
+  return parseJsonResponse<T>(response, text)
+}
+
 export async function requestEmpty(path: string, options: RequestOptions = {}): Promise<void> {
   await requestJson<undefined>(path, options)
 }
@@ -114,38 +121,10 @@ export async function requestText(path: string, options: RequestOptions = {}): P
 }
 
 export async function requestFormData<T>(path: string, formData: FormData, options: RequestOptions = {}): Promise<T> {
-  const controller = new AbortController()
-  const timeoutMs = options.timeoutMs ?? 10000
-  const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
-
-  try {
-    const response = await fetch(withBase(path), {
-      method: options.method ?? 'POST',
-      body: formData,
-      headers: {
-        Accept: 'application/json',
-        ...(options.headers ?? {}),
-      },
-      signal: controller.signal,
-    })
-
-    const text = await response.text()
-    const payload = text.length > 0 ? JSON.parse(text) : undefined
-
-    if (!response.ok) {
-      const code = typeof payload === 'object' && payload !== null && 'code' in payload ? String((payload as { code: unknown }).code) : 'HTTP_ERROR'
-      const message = typeof payload === 'object' && payload !== null && 'error' in payload ? String((payload as { error: unknown }).error) : response.statusText
-      throw new ApiClientError(message, code, response.status, payload)
-    }
-
-    if (payload && typeof payload === 'object' && 'success' in payload && (payload as { success?: boolean }).success === false) {
-      const code = 'code' in payload ? String((payload as { code: unknown }).code) : 'API_ERROR'
-      const message = 'error' in payload ? String((payload as { error: unknown }).error) : 'request failed'
-      throw new ApiClientError(message, code, response.status, payload)
-    }
-
-    return payload as T
-  } finally {
-    window.clearTimeout(timeout)
-  }
+  const { response, text } = await requestWithTextResponse(path, {
+    ...options,
+    body: formData,
+    method: options.method ?? 'POST',
+  })
+  return parseJsonResponse<T>(response, text)
 }
