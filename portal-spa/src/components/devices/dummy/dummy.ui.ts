@@ -1,4 +1,3 @@
-import DummyDeviceDetail from './DummyDeviceDetail.vue'
 import DummyDeviceEditor from './DummyDeviceEditor.vue'
 import DummyDeviceWidget from './DummyDeviceWidget.vue'
 import { DummyDevice } from '@/models/devices/dummy'
@@ -9,7 +8,6 @@ export const dummyUi: DeviceUi = {
   typeName: DummyDevice.TYPE_NAME,
   labelKey: 'device.type.dummy',
   icon: 'device',
-  detailComponent: DummyDeviceDetail,
   editorComponent: DummyDeviceEditor,
   widgetComponent: DummyDeviceWidget,
 }

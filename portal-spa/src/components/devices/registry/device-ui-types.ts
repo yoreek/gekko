@@ -8,9 +8,7 @@ export interface DeviceUi {
   readonly typeName: string
   readonly labelKey: string
   readonly icon: PortalIconName
-  readonly detailComponent: Component
-  readonly formComponent?: Component
-  readonly editorComponent?: Component
+  readonly editorComponent: Component
   readonly widgetComponent: Component
   readonly designerComponent?: Component
   readonly designDisplayLabelKey?: string

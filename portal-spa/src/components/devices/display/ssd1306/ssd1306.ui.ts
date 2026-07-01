@@ -1,5 +1,3 @@
-import Ssd1306DeviceDetail from './Ssd1306DeviceDetail.vue'
-import Ssd1306DeviceForm from './Ssd1306DeviceForm.vue'
 import Ssd1306DeviceEditor from './Ssd1306DeviceEditor.vue'
 import Ssd1306DesignerDialog from './Ssd1306DesignerDialog.vue'
 import DisplayDeviceWidget from '@/components/devices/display/DisplayDeviceWidget.vue'
@@ -11,8 +9,6 @@ export const ssd1306Ui: DeviceUi = {
   typeName: Ssd1306Device.TYPE_NAME,
   labelKey: 'device.type.ssd1306Display',
   icon: 'device',
-  detailComponent: Ssd1306DeviceDetail,
-  formComponent: Ssd1306DeviceForm,
   editorComponent: Ssd1306DeviceEditor,
   widgetComponent: DisplayDeviceWidget,
   designerComponent: Ssd1306DesignerDialog,

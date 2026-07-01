@@ -1,5 +1,3 @@
-import OneWireBusDeviceDetail from './OneWireBusDeviceDetail.vue'
-import OneWireBusDeviceForm from './OneWireBusDeviceForm.vue'
 import OneWireBusDeviceEditor from './OneWireBusDeviceEditor.vue'
 import OneWireBusDeviceWidget from './OneWireBusDeviceWidget.vue'
 import { OneWireBusDevice } from '@/models/devices/onewire-bus'
@@ -10,8 +8,6 @@ export const oneWireBusUi: DeviceUi = {
   typeName: OneWireBusDevice.TYPE_NAME,
   labelKey: 'device.type.onewireBus',
   icon: 'bus',
-  detailComponent: OneWireBusDeviceDetail,
-  formComponent: OneWireBusDeviceForm,
   editorComponent: OneWireBusDeviceEditor,
   widgetComponent: OneWireBusDeviceWidget,
 }
