@@ -70,7 +70,7 @@
             </v-sheet>
           </v-col>
 
-          <v-col cols="12" xl="6" class="pa-2">
+          <v-col cols="12" lg="6" class="pa-2">
             <v-sheet border rounded class="pa-3 h-100">
               <div class="text-subtitle-2 mb-2">{{ canvasModeTitle }}</div>
               <div class="text-caption text-medium-emphasis mb-3">{{ canvasLabel }}</div>

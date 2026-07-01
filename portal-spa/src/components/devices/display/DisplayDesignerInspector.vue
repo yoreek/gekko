@@ -1,63 +1,179 @@
 <template>
-  <div class="display-inspector">
-    <v-alert v-if="bitmapError.length > 0" type="error" variant="tonal" density="compact">
+  <v-container fluid class="pa-0">
+    <v-alert v-if="bitmapError.length > 0" type="error" variant="tonal" density="compact" class="mb-3">
       {{ bitmapError }}
     </v-alert>
 
-    <div class="display-inspector__section display-inspector__section--geometry">
-      <div class="display-inspector__geometry">
-        <v-select class="display-inspector__type-field" density="compact" variant="outlined" hide-details :label="t('device.dialog.ssd1306Display.widgetType')" :items="widgetTypeItems" :model-value="widget.type" @update:model-value="updateWidgetType(String($event))" />
-        <v-text-field class="display-inspector__number-field" density="compact" variant="outlined" hide-details :label="t('device.dialog.ssd1306Display.x')" :model-value="widget.x" type="number" min="0" :max="deviceWidth" @update:model-value="updateNumber('x', $event)" />
-        <v-text-field class="display-inspector__number-field" density="compact" variant="outlined" hide-details :label="t('device.dialog.ssd1306Display.y')" :model-value="widget.y" type="number" min="0" :max="deviceHeight" @update:model-value="updateNumber('y', $event)" />
-        <v-text-field v-if="!isBitmapWidget" class="display-inspector__number-field" density="compact" variant="outlined" hide-details v-select-on-focus :label="t('device.dialog.ssd1306Display.width')" :model-value="widget.width" type="number" min="1" :max="deviceWidth" @update:model-value="updateNumber('width', $event)" />
-        <v-text-field v-else class="display-inspector__number-field" density="compact" variant="outlined" hide-details v-select-on-focus :label="t('device.dialog.ssd1306Display.width')" :model-value="widget.width" type="number" min="1" :max="deviceWidth" @focus="beginBitmapResize" @blur="endBitmapResize" @update:model-value="updateBitmapDimension('width', $event)" />
-        <v-text-field v-if="!isBitmapWidget" class="display-inspector__number-field" density="compact" variant="outlined" hide-details v-select-on-focus :label="t('device.dialog.ssd1306Display.height')" :model-value="widget.height" type="number" min="1" :max="deviceHeight" @update:model-value="updateNumber('height', $event)" />
-        <v-text-field v-else class="display-inspector__number-field" density="compact" variant="outlined" hide-details v-select-on-focus :label="t('device.dialog.ssd1306Display.height')" :model-value="widget.height" type="number" min="1" :max="deviceHeight" @focus="beginBitmapResize" @blur="endBitmapResize" @update:model-value="updateBitmapDimension('height', $event)" />
-        <v-text-field v-if="isTextWidget" class="display-inspector__number-field" density="compact" variant="outlined" hide-details :label="t('device.dialog.ssd1306Display.fontSize')" :model-value="widget.fontSize" type="number" min="1" :max="8" @update:model-value="updateNumber('fontSize', $event)" />
-        <v-text-field v-if="supportsStroke" class="display-inspector__number-field" density="compact" variant="outlined" hide-details :label="t('device.dialog.ssd1306Display.strokeWidth')" :model-value="widget.strokeWidth" type="number" min="1" :max="32" @update:model-value="updateNumber('strokeWidth', $event)" />
-      </div>
+    <!-- Geometry section -->
+    <div class="mb-4">
+      <v-row dense>
+        <v-col cols="12">
+          <v-select
+            density="compact"
+            variant="outlined"
+            hide-details
+            :label="t('device.dialog.ssd1306Display.widgetType')"
+            :items="widgetTypeItems"
+            :model-value="widget.type"
+            @update:model-value="updateWidgetType(String($event))"
+          />
+        </v-col>
+        <v-col cols="6">
+          <v-text-field
+            density="compact"
+            variant="outlined"
+            hide-details
+            :label="t('device.dialog.ssd1306Display.x')"
+            :model-value="widget.x"
+            type="number"
+            min="0"
+            :max="deviceWidth"
+            @update:model-value="updateNumber('x', $event)"
+          />
+        </v-col>
+        <v-col cols="6">
+          <v-text-field
+            density="compact"
+            variant="outlined"
+            hide-details
+            :label="t('device.dialog.ssd1306Display.y')"
+            :model-value="widget.y"
+            type="number"
+            min="0"
+            :max="deviceHeight"
+            @update:model-value="updateNumber('y', $event)"
+          />
+        </v-col>
+        <v-col cols="6">
+          <v-text-field
+            v-if="!isBitmapWidget"
+            density="compact"
+            variant="outlined"
+            hide-details
+            v-select-on-focus
+            :label="t('device.dialog.ssd1306Display.width')"
+            :model-value="widget.width"
+            type="number"
+            min="1"
+            :max="deviceWidth"
+            @update:model-value="updateNumber('width', $event)"
+          />
+          <v-text-field
+            v-else
+            density="compact"
+            variant="outlined"
+            hide-details
+            v-select-on-focus
+            :label="t('device.dialog.ssd1306Display.width')"
+            :model-value="widget.width"
+            type="number"
+            min="1"
+            :max="deviceWidth"
+            @focus="beginBitmapResize"
+            @blur="endBitmapResize"
+            @update:model-value="updateBitmapDimension('width', $event)"
+          />
+        </v-col>
+        <v-col cols="6">
+          <v-text-field
+            v-if="!isBitmapWidget"
+            density="compact"
+            variant="outlined"
+            hide-details
+            v-select-on-focus
+            :label="t('device.dialog.ssd1306Display.height')"
+            :model-value="widget.height"
+            type="number"
+            min="1"
+            :max="deviceHeight"
+            @update:model-value="updateNumber('height', $event)"
+          />
+          <v-text-field
+            v-else
+            density="compact"
+            variant="outlined"
+            hide-details
+            v-select-on-focus
+            :label="t('device.dialog.ssd1306Display.height')"
+            :model-value="widget.height"
+            type="number"
+            min="1"
+            :max="deviceHeight"
+            @focus="beginBitmapResize"
+            @blur="endBitmapResize"
+            @update:model-value="updateBitmapDimension('height', $event)"
+          />
+        </v-col>
+        <v-col v-if="isTextWidget" cols="6">
+          <v-text-field
+            density="compact"
+            variant="outlined"
+            hide-details
+            :label="t('device.dialog.ssd1306Display.fontSize')"
+            :model-value="widget.fontSize"
+            type="number"
+            min="1"
+            :max="8"
+            @update:model-value="updateNumber('fontSize', $event)"
+          />
+        </v-col>
+        <v-col v-if="supportsStroke" cols="6">
+          <v-text-field
+            density="compact"
+            variant="outlined"
+            hide-details
+            :label="t('device.dialog.ssd1306Display.strokeWidth')"
+            :model-value="widget.strokeWidth"
+            type="number"
+            min="1"
+            :max="32"
+            @update:model-value="updateNumber('strokeWidth', $event)"
+          />
+        </v-col>
+      </v-row>
     </div>
 
-    <div v-if="isTextWidget" class="display-inspector__section display-inspector__section--text">
-      <div class="display-inspector__text-row">
-        <v-textarea
-          class="display-inspector__text"
-          :label="t('device.dialog.ssd1306Display.text')"
-          :model-value="widget.text"
-          density="compact"
-          variant="outlined"
-          auto-grow
-          rows="2"
-          hide-details
-          @update:model-value="updateText(String($event))"
-        />
-        <div class="display-inspector__fit">
-          <v-chip size="small" variant="tonal" :color="fitInfo.type">
+    <!-- Text section -->
+    <div v-if="isTextWidget" class="mb-4">
+      <v-row dense>
+        <v-col cols="12">
+          <v-textarea
+            :label="t('device.dialog.ssd1306Display.text')"
+            :model-value="widget.text"
+            density="compact"
+            variant="outlined"
+            auto-grow
+            rows="2"
+            hide-details
+            @update:model-value="updateText(String($event))"
+          />
+        </v-col>
+        <v-col cols="12">
+          <v-chip size="small" variant="tonal" :color="fitInfo.type" class="me-2">
             {{ fitInfo.title }}
           </v-chip>
           <div class="text-caption text-medium-emphasis">{{ fitInfo.details }}</div>
-        </div>
-      </div>
+        </v-col>
 
-      <div v-if="placeholderMessage.length > 0" class="display-inspector__inline-row">
-        <v-chip size="small" variant="tonal" :color="placeholderTone">
-          {{ placeholderMessage }}
-        </v-chip>
-        <v-text-field
-          v-if="usesMetricPlaceholder"
-          class="display-inspector__refresh-field"
-          :label="t('device.dialog.ssd1306Display.refreshIntervalMs')"
-          :hint="t('device.dialog.ssd1306Display.refreshIntervalHint')"
-          :model-value="widget.refreshIntervalMs"
-          :min="refreshIntervalMinMs"
-          :max="refreshIntervalMaxMs"
-          density="compact"
-          variant="outlined"
-          type="number"
-          persistent-hint
-          @update:model-value="updateRefreshInterval"
-        />
-      </div>
+        <v-col v-if="placeholderMessage.length > 0" cols="12">
+          <v-chip size="small" variant="tonal" :color="placeholderTone" class="me-2">
+            {{ placeholderMessage }}
+          </v-chip>
+          <v-text-field
+            v-if="usesMetricPlaceholder"
+            :label="t('device.dialog.ssd1306Display.refreshIntervalMs')"
+            :hint="t('device.dialog.ssd1306Display.refreshIntervalHint')"
+            :model-value="widget.refreshIntervalMs"
+            :min="refreshIntervalMinMs"
+            :max="refreshIntervalMaxMs"
+            density="compact"
+            variant="outlined"
+            type="number"
+            persistent-hint
+            @update:model-value="updateRefreshInterval"
+          />
+        </v-col>
+      </v-row>
     </div>
 
     <MetricPlaceholderBuilder
@@ -67,35 +183,101 @@
       :surface="false"
     />
 
-    <div v-if="isBitmapWidget" class="display-inspector__bitmap-row">
-      <v-chip size="small" variant="tonal" color="info">
-        {{ t('device.dialog.ssd1306Display.bitmapSize', { size: `${widget.width} × ${widget.height}` }) }}
-      </v-chip>
-      <v-switch
-        :label="t('device.dialog.ssd1306Display.keepAspectRatio')"
-        :model-value="bitmapWidget?.keepAspectRatio ?? false"
-        density="compact"
-        hide-details
-        inset
-        @update:model-value="updateKeepAspectRatio(Boolean($event))"
-      />
+    <!-- Bitmap section -->
+    <div v-if="isBitmapWidget" class="mb-4">
+      <v-row dense>
+        <v-col cols="12">
+          <v-chip size="small" variant="tonal" color="info">
+            {{ t('device.dialog.ssd1306Display.bitmapSize', { size: `${widget.width} × ${widget.height}` }) }}
+          </v-chip>
+        </v-col>
+        <v-col cols="12">
+          <v-switch
+            :label="t('device.dialog.ssd1306Display.keepAspectRatio')"
+            :model-value="bitmapWidget?.keepAspectRatio ?? false"
+            density="compact"
+            hide-details
+            inset
+            @update:model-value="updateKeepAspectRatio(Boolean($event))"
+          />
+        </v-col>
+        <v-col cols="12">
+          <v-file-input
+            accept="image/*"
+            :label="t('device.dialog.ssd1306Display.bitmapImport')"
+            prepend-icon="upload"
+            density="compact"
+            variant="outlined"
+            hide-details
+            @update:model-value="onBitmapFileSelected"
+          />
+        </v-col>
+        <v-col cols="12">
+          <v-slider
+            :model-value="bitmapThreshold"
+            :min="0"
+            :max="255"
+            :step="1"
+            hide-details
+            :label="t('device.dialog.ssd1306Display.bitmapThreshold')"
+            @update:model-value="updateBitmapThreshold"
+          />
+        </v-col>
+        <v-col cols="12">
+          <v-btn variant="text" size="small" @click="clearBitmap">
+            {{ t('device.dialog.ssd1306Display.bitmapClear') }}
+          </v-btn>
+        </v-col>
+      </v-row>
     </div>
 
-    <div v-if="isBitmapWidget" class="display-inspector__bitmap-controls">
-      <v-file-input accept="image/*" :label="t('device.dialog.ssd1306Display.bitmapImport')" prepend-icon="upload" density="compact" variant="outlined" hide-details @update:model-value="onBitmapFileSelected" />
-      <v-slider :model-value="bitmapThreshold" :min="0" :max="255" :step="1" hide-details :label="t('device.dialog.ssd1306Display.bitmapThreshold')" @update:model-value="updateBitmapThreshold" />
-    </div>
-    <div v-if="isBitmapWidget" class="display-inspector__bitmap-actions">
-      <v-btn variant="text" @click="clearBitmap">{{ t('device.dialog.ssd1306Display.bitmapClear') }}</v-btn>
-    </div>
-
-    <div class="display-inspector__switches">
-      <v-switch v-if="isTextWidget" :label="t('device.dialog.ssd1306Display.autoSize')" :model-value="widget.autoSize" density="compact" hide-details inset @update:model-value="updateField('autoSize', Boolean($event))" />
-      <v-switch v-if="supportsFill" :label="t('device.dialog.ssd1306Display.filled')" :model-value="widget.styleFlags.filled" density="compact" hide-details inset @update:model-value="updateFlag('filled', Boolean($event))" />
-      <v-switch :label="t('device.dialog.ssd1306Display.inverted')" :model-value="widget.styleFlags.inverted" density="compact" hide-details inset @update:model-value="updateFlag('inverted', Boolean($event))" />
-      <v-switch v-if="isTextWidget" :label="t('device.dialog.ssd1306Display.wrap')" :model-value="widget.styleFlags.wrap" density="compact" hide-details inset @update:model-value="updateFlag('wrap', Boolean($event))" />
-    </div>
-  </div>
+    <!-- Toggles section -->
+    <v-row dense>
+      <v-col cols="12">
+        <v-switch
+          v-if="isTextWidget"
+          :label="t('device.dialog.ssd1306Display.autoSize')"
+          :model-value="widget.autoSize"
+          density="compact"
+          hide-details
+          inset
+          @update:model-value="updateField('autoSize', Boolean($event))"
+        />
+      </v-col>
+      <v-col cols="12">
+        <v-switch
+          v-if="supportsFill"
+          :label="t('device.dialog.ssd1306Display.filled')"
+          :model-value="widget.styleFlags.filled"
+          density="compact"
+          hide-details
+          inset
+          @update:model-value="updateFlag('filled', Boolean($event))"
+        />
+      </v-col>
+      <v-col cols="12">
+        <v-switch
+          :label="t('device.dialog.ssd1306Display.inverted')"
+          :model-value="widget.styleFlags.inverted"
+          density="compact"
+          hide-details
+          inset
+          @update:model-value="updateFlag('inverted', Boolean($event))"
+        />
+      </v-col>
+      <v-col cols="12">
+        <v-switch
+          v-if="isTextWidget"
+          :label="t('device.dialog.ssd1306Display.wrap')"
+          :model-value="widget.styleFlags.wrap"
+          density="compact"
+          hide-details
+          inset
+          @update:model-value="updateFlag('wrap', Boolean($event))"
+        />
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <script setup lang="ts">
@@ -372,77 +554,4 @@ function updateBitmapThreshold(value: string | number): void {
 function clearBitmap(): void {
   clearBitmapImpl()
 }
-
 </script>
-
-<style scoped>
-.display-inspector {
-  display: grid;
-  gap: 12px;
-}
-
-.display-inspector__geometry {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(160px, 1.6fr) repeat(auto-fit, minmax(86px, 0.7fr));
-  align-items: start;
-}
-
-.display-inspector__section {
-  display: grid;
-  gap: 12px;
-}
-
-.display-inspector__type-field,
-.display-inspector__number-field {
-  min-width: 0;
-}
-
-.display-inspector__text-row {
-  display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(220px, 320px);
-  gap: 12px;
-  align-items: start;
-}
-
-.display-inspector__text {
-  min-width: 0;
-}
-
-.display-inspector__fit {
-  display: grid;
-  gap: 6px;
-  align-content: start;
-}
-
-.display-inspector__inline-row,
-.display-inspector__bitmap-row,
-.display-inspector__switches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-}
-
-.display-inspector__refresh-field {
-  flex: 0 1 240px;
-}
-
-.display-inspector__bitmap-controls {
-  display: grid;
-  grid-template-columns: minmax(240px, 360px) minmax(220px, 1fr);
-  gap: 12px;
-  align-items: center;
-}
-
-.display-inspector__bitmap-actions {
-  justify-self: start;
-}
-
-@media (max-width: 960px) {
-  .display-inspector__text-row,
-  .display-inspector__bitmap-controls {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-</style>
