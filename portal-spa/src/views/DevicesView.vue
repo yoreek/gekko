@@ -4,7 +4,7 @@
       <v-card-title class="page-title">
         <div>
           <div class="text-overline">{{ t('devices.title') }}</div>
-          <h1 class="text-h4 font-weight-bold">{{ t('devices.subtitle') }}</h1>
+          <h1 class="text-h5 sm:text-h4 font-weight-bold text-wrap">{{ t('devices.subtitle') }}</h1>
         </div>
         <div class="d-flex ga-2">
           <v-btn color="primary" variant="tonal" @click="createOpen = true">
@@ -63,7 +63,7 @@
     </v-card>
 
     <v-card class="page-card mt-4">
-      <v-card-text>
+      <v-card-text class="d-none d-sm-block">
         <v-table class="devices-table">
           <thead>
             <tr>
@@ -108,6 +108,49 @@
             </tr>
           </tbody>
         </v-table>
+      </v-card-text>
+
+      <v-card-text class="d-sm-none">
+        <div v-if="filteredDevices.length > 0" class="stack">
+          <div
+            v-for="device in filteredDevices"
+            :key="device.record.id"
+            class="devices-mobile-card"
+            @click="openDevice(device.record.id)"
+          >
+            <div class="devices-mobile-card__header">
+              <div>
+                <div class="text-body-2 text-medium-emphasis">{{ t('device.fields.deviceId') }}</div>
+                <div class="text-body-1 font-weight-bold">#{{ device.record.id }}</div>
+              </div>
+              <div class="devices-mobile-card__status">
+                <v-chip variant="tonal" size="small" :color="statusColor(device.runtime.effectiveStatus ?? device.runtime.lifecycleStatus ?? device.runtime.status ?? 'unknown')">
+                  {{ t(deviceStatusLabelKey(device.runtime.effectiveStatus ?? device.runtime.lifecycleStatus ?? device.runtime.status ?? 'unknown')) }}
+                </v-chip>
+              </div>
+            </div>
+            <div class="devices-mobile-card__body">
+              <div>
+                <div class="text-body-2 text-medium-emphasis">{{ t('device.actions.name') }}</div>
+                <div class="text-body-1">{{ device.config.name }}</div>
+              </div>
+              <div>
+                <div class="text-body-2 text-medium-emphasis">{{ t('device.fields.type') }}</div>
+                <div class="text-body-1">{{ t(resolveDeviceUi(device.record.typeName).labelKey) }}</div>
+              </div>
+            </div>
+            <div class="devices-mobile-card__actions">
+              <v-btn
+                icon="trash"
+                variant="text"
+                color="error"
+                size="small"
+                :aria-label="t('device.actions.delete')"
+                @click.stop="openDeleteConfirm(device.record.id)"
+              />
+            </div>
+          </div>
+        </div>
 
         <div v-if="filteredDevices.length === 0" class="empty-state mt-4">
           {{ t('devices.empty') }}
@@ -532,5 +575,50 @@ watch(importDialogOpen, value => {
 .devices-table__control {
   width: 120px;
   text-align: right;
+}
+
+.devices-mobile-card {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--portal-border);
+  border-radius: 4px;
+  background: var(--portal-surface);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.devices-mobile-card:hover {
+  background: rgb(var(--v-theme-surface-variant));
+}
+
+.devices-mobile-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.devices-mobile-card__status {
+  flex-shrink: 0;
+}
+
+.devices-mobile-card__body {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.devices-mobile-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 1px solid var(--portal-border);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 </style>

@@ -6,7 +6,7 @@
           <v-card-title class="page-title">
             <div>
               <div class="text-overline">{{ t('system.title') }}</div>
-              <h1 class="text-h4 font-weight-bold">{{ t('system.subtitle') }}</h1>
+              <h1 class="text-h5 sm:text-h4 font-weight-bold text-wrap">{{ t('system.subtitle') }}</h1>
             </div>
             <v-chip variant="tonal" color="primary">
               {{ restartStateLabel }}

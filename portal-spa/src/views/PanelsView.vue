@@ -4,7 +4,7 @@
       <v-card-title class="page-title">
         <div>
           <div class="text-overline">{{ t('panels.title') }}</div>
-          <h1 class="text-h4 font-weight-bold">{{ t('panels.subtitle') }}</h1>
+          <h1 class="text-h5 sm:text-h4 font-weight-bold text-wrap">{{ t('panels.subtitle') }}</h1>
         </div>
       </v-card-title>
       <v-card-text>

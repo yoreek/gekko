@@ -4,7 +4,7 @@
       <v-card-title class="page-title">
         <div>
           <div class="text-overline">{{ t('journal.title') }}</div>
-          <h1 class="text-h4 font-weight-bold">{{ t('journal.subtitle') }}</h1>
+          <h1 class="text-h5 sm:text-h4 font-weight-bold text-wrap">{{ t('journal.subtitle') }}</h1>
         </div>
         <v-chip color="primary" variant="tonal">
           {{ t('journal.metrics.retained', { count: journalStore.entries.length }) }}

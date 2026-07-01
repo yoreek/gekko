@@ -69,13 +69,16 @@ const { t } = useI18n()
   justify-content: space-between;
   gap: 16px;
   padding: 18px 20px 14px;
+  flex-wrap: wrap;
 }
 
 .device-dialog__title-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .device-dialog__icon-button {

@@ -6,7 +6,7 @@
           <v-card-title class="page-title">
             <div>
               <div class="text-overline">{{ t('ota.title') }}</div>
-              <h1 class="text-h4 font-weight-bold">{{ t('ota.subtitle') }}</h1>
+              <h1 class="text-h5 sm:text-h4 font-weight-bold text-wrap">{{ t('ota.subtitle') }}</h1>
             </div>
             <v-chip variant="tonal" color="primary">
               {{ otaStore.enabled ? t('status.enabled') : t('status.disabled') }}
