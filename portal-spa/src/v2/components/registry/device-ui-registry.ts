@@ -102,7 +102,7 @@ const ssd1306Ui: DeviceUiV2 = {
   typeId: Ssd1306Device.TYPE_ID,
   typeName: Ssd1306Device.TYPE_NAME,
   labelKey: 'device.type.ssd1306OledDisplay',
-  icon: 'display',
+  icon: 'device',
   fieldsComponent: Ssd1306Fields,
   widgetComponent: DummyWidget,
 }
@@ -111,7 +111,7 @@ const st7735Ui: DeviceUiV2 = {
   typeId: St7735Device.TYPE_ID,
   typeName: St7735Device.TYPE_NAME,
   labelKey: 'device.type.st7735TftDisplay',
-  icon: 'display',
+  icon: 'device',
   fieldsComponent: St7735Fields,
   widgetComponent: DummyWidget,
 }

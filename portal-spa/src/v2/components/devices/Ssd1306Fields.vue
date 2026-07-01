@@ -47,7 +47,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DeviceRecord } from '@/api/contracts'
-import type { Ssd1306ConfigDraft } from '@/api/contracts'
+import type { Ssd1306ConfigDraft } from '@/models/devices/ssd1306/device'
 
 const props = defineProps<{
   modelValue: T

@@ -174,7 +174,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, toRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -192,18 +192,20 @@ import {
   defaultSt7735Layout,
   normalizeSt7735Layout,
   type St7735LayoutDraft,
-  type St7735BitmapWidget,
-  type St7735Widget,
-  type St7735WidgetType,
-  ST7735_DISPLAY_LAYOUT_MAX_PAGES,
-  ST7735_DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE,
 } from '@/models/devices/st7735/layout'
+import {
+  OLED_DISPLAY_LAYOUT_MAX_PAGES,
+  OLED_DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE,
+  type Ssd1306BitmapWidget,
+  type Ssd1306Widget,
+  type Ssd1306WidgetType,
+} from '@/models/devices/ssd1306/layout'
 import type { DeviceRecord } from '@/api/contracts'
 import { st7735Display } from '@/models/devices/display/display'
 import { hasInvalidMetricPlaceholders, resolveMetricPlaceholderText } from '@/models/metrics/placeholders'
 import { useDeviceDetail } from '@/composables/useDeviceDetail'
 
-type DesignerDraft = Record<string, unknown> & {
+interface DesignerDraft extends Record<string, unknown> {
   name: string
   enabled: boolean
   rotation: number
@@ -218,7 +220,7 @@ const props = defineProps<{
 
 const router = useRouter()
 const { t } = useI18n()
-const { device } = useDeviceDetail(props.deviceId)
+const { device } = useDeviceDetail(toRef(props, 'deviceId'))
 
 const editorZoom = ref(2)
 const errorMessage = ref('')
@@ -227,8 +229,8 @@ const draft = ref<DesignerDraft>(createDraft(null))
 const selectedPageId = ref(defaultSt7735Layout().activePageId)
 const selectedWidgetId = ref<string | null>(null)
 const { bitmapRenderFrozen, setBitmapRenderLock } = useDisplayBitmapRenderLock()
-const bitmapResize = useDisplayBitmapResizeTransaction<St7735BitmapWidget>(
-  () => activePageWidgets.value.filter((widget): widget is St7735BitmapWidget => widget.type === 'bitmap'),
+const bitmapResize = useDisplayBitmapResizeTransaction(
+  () => activePageWidgets.value.filter((widget): widget is Ssd1306BitmapWidget => widget.type === 'bitmap'),
 )
 const { beginBitmapResizeTransaction, endBitmapResizeTransaction } = bitmapResize
 
@@ -247,8 +249,8 @@ const selectedWidget = computed(() => activePageWidgets.value.find(widget => wid
 const effectiveSize = computed(() => resolveDisplayEffectiveSize(draft.value.width, draft.value.height, draft.value.rotation))
 const layoutWidth = computed(() => effectiveSize.value.effectiveWidth)
 const layoutHeight = computed(() => effectiveSize.value.effectiveHeight)
-const canAddPage = computed(() => pages.value.length < ST7735_DISPLAY_LAYOUT_MAX_PAGES)
-const canAddWidget = computed(() => activePageWidgets.value.length < ST7735_DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE)
+const canAddPage = computed(() => pages.value.length < OLED_DISPLAY_LAYOUT_MAX_PAGES)
+const canAddWidget = computed(() => activePageWidgets.value.length < OLED_DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE)
 const showPreview = ref(false)
 const canvasLabel = computed(() => `${layoutWidth.value} × ${layoutHeight.value}`)
 const canvasModeTitle = computed(() => showPreview.value ? t('device.dialog.st7735Display.previewTitle') : t('device.dialog.st7735Display.canvasTitle'))
@@ -263,7 +265,7 @@ const orientationItems = computed(() => {
   ]
 })
 
-const widgetTypeOptions: Array<{ value: St7735WidgetType; label: string; icon: string }> = [
+const widgetTypeOptions: Array<{ value: Ssd1306WidgetType; label: string; icon: string }> = [
   { value: 'text', label: t('device.dialog.ssd1306Display.widgetTypes.text'), icon: 'oled-text' },
   { value: 'bitmap', label: t('device.dialog.ssd1306Display.widgetTypes.bitmap'), icon: 'oled-bitmap' },
   { value: 'rect', label: t('device.dialog.ssd1306Display.widgetTypes.rect'), icon: 'oled-rect' },
@@ -374,11 +376,11 @@ function addPage(): void {
   selectedWidgetId.value = null
 }
 
-function addWidget(type: St7735WidgetType): void {
+function addWidget(type: Ssd1306WidgetType): void {
   if (!canAddWidget.value) {
     return
   }
-  const nextWidget = st7735Display.createWidget(type, activePageWidgets.value.length) as St7735Widget
+  const nextWidget = st7735Display.createWidget(type, activePageWidgets.value.length) as Ssd1306Widget
   updateActiveWidgets([...activePageWidgets.value, nextWidget])
   selectedWidgetId.value = nextWidget.id
 }
@@ -387,7 +389,7 @@ function selectWidget(widgetId: string | null): void {
   selectedWidgetId.value = widgetId
 }
 
-function updateActiveWidgets(widgets: St7735Widget[]): void {
+function updateActiveWidgets(widgets: Ssd1306Widget[]): void {
   const previousWidgets = new Map(activePageWidgets.value.map(widget => [widget.id, widget]))
   const normalizedWidgets = widgets.map(widget => {
     const normalized = normalizeWidget(widget)
@@ -395,7 +397,7 @@ function updateActiveWidgets(widgets: St7735Widget[]): void {
       return normalized
     }
     const previousBitmapWidget = previousWidgets.get(widget.id)?.type === 'bitmap'
-      ? previousWidgets.get(widget.id) as St7735BitmapWidget
+      ? previousWidgets.get(widget.id) as Ssd1306BitmapWidget
       : null
     return bitmapResize.syncBitmapWidget(previousBitmapWidget, normalized, (source, size) => st7735Display.resizeWidget(source, size))
   })
@@ -415,7 +417,7 @@ function updateBitmapRenderLock(state: { widgetId: string | null; mode: 'drag' |
   bitmapResize.endBitmapResizeTransaction()
 }
 
-function updateSelectedWidget(patch: Partial<St7735Widget>): void {
+function updateSelectedWidget(patch: Partial<Ssd1306Widget>): void {
   if (selectedWidget.value === null) {
     return
   }
@@ -423,11 +425,11 @@ function updateSelectedWidget(patch: Partial<St7735Widget>): void {
     if (widget.id !== selectedWidget.value?.id) {
       return widget
     }
-    return normalizeWidget({ ...(widget as St7735Widget), ...patch } as St7735Widget)
+    return normalizeWidget({ ...(widget as Ssd1306Widget), ...patch } as Ssd1306Widget)
   }))
 }
 
-function normalizeWidget(widget: St7735Widget): St7735Widget {
+function normalizeWidget(widget: Ssd1306Widget): Ssd1306Widget {
   const maxWidgetWidth = widget.type === 'circle' ? Math.min(layoutWidth.value, layoutHeight.value) : layoutWidth.value
   const width = Math.max(1, Math.min(maxWidgetWidth, Math.round(widget.width)))
   const height = widget.type === 'circle'
@@ -453,7 +455,7 @@ function normalizeWidget(widget: St7735Widget): St7735Widget {
           bitmapFormat: st7735Display.bitmapFormat,
         }
       : {}),
-  } as St7735Widget
+  } as Ssd1306Widget
 }
 
 function moveWidgetUp(widgetId: string): void {

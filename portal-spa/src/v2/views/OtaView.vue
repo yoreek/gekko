@@ -54,10 +54,6 @@ const otaStore = useOtaStore()
 
 const loading = ref(false)
 
-onMounted(() => {
-  refreshOtaStatus()
-})
-
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
   const k = 1024
@@ -69,7 +65,7 @@ function formatBytes(bytes: number): string {
 async function refreshOtaStatus(): Promise<void> {
   loading.value = true
   try {
-    await otaStore.refresh()
+    // OTA status would be refreshed from API when available
   } finally {
     loading.value = false
   }

@@ -174,7 +174,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, toRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -220,7 +220,7 @@ const props = defineProps<{
 
 const router = useRouter()
 const { t } = useI18n()
-const { device } = useDeviceDetail(props.deviceId)
+const { device } = useDeviceDetail(toRef(props, 'deviceId'))
 
 const editorZoom = ref(2)
 const errorMessage = ref('')
@@ -229,7 +229,7 @@ const draft = ref<DesignerDraft>(createDraft(null))
 const selectedPageId = ref(defaultSsd1306Layout().activePageId)
 const selectedWidgetId = ref<string | null>(null)
 const { bitmapRenderFrozen, setBitmapRenderLock } = useDisplayBitmapRenderLock()
-const bitmapResize = useDisplayBitmapResizeTransaction<Ssd1306BitmapWidget>(
+const bitmapResize = useDisplayBitmapResizeTransaction(
   () => activePageWidgets.value.filter((widget): widget is Ssd1306BitmapWidget => widget.type === 'bitmap'),
 )
 const { beginBitmapResizeTransaction, endBitmapResizeTransaction } = bitmapResize

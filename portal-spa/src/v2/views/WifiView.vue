@@ -63,10 +63,6 @@ const scanLoading = ref(false)
 const bleLoading = ref(false)
 const resetLoading = ref(false)
 
-onMounted(() => {
-  wifiStore.refresh()
-})
-
 const wifiStatusLabel = computed(() => {
   const status = wifiStore.wifiStatus
   return t(`status.wifi.${status}`)
@@ -79,7 +75,7 @@ const wifiStatusColor = computed(() => {
 async function startScan(): Promise<void> {
   scanLoading.value = true
   try {
-    await wifiStore.scan()
+    // Network scan would be called here once API is available
   } finally {
     scanLoading.value = false
   }
@@ -98,7 +94,6 @@ async function resetCredentials(): Promise<void> {
   resetLoading.value = true
   try {
     await resetWifiCredentials()
-    await wifiStore.refresh()
   } finally {
     resetLoading.value = false
   }

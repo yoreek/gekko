@@ -47,19 +47,15 @@ import { useI18n } from 'vue-i18n'
 
 import { restartSystem as restartSystemApi } from '@/api'
 import { useSystemStore } from '@/stores/system'
-import { useWebsocketStore } from '@/stores/websocket'
+import { useWebSocketStore } from '@/stores/websocket'
 import PageContainer from '@/v2/components/layout/PageContainer.vue'
 import PageToolbar from '@/v2/components/layout/PageToolbar.vue'
 
 const { t } = useI18n()
 const systemStore = useSystemStore()
-const wsStore = useWebsocketStore()
+const wsStore = useWebSocketStore()
 
 const restartLoading = ref(false)
-
-onMounted(() => {
-  systemStore.refresh()
-})
 
 async function restartSystem(): Promise<void> {
   restartLoading.value = true

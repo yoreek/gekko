@@ -47,7 +47,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DeviceRecord } from '@/api/contracts'
-import type { St7735ConfigDraft } from '@/api/contracts'
+import type { St7735ConfigDraft } from '@/models/devices/st7735/device'
 
 const props = defineProps<{
   modelValue: T
