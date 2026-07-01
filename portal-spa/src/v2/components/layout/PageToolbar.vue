@@ -4,7 +4,7 @@
       <v-btn icon="chevron-left" variant="text" :aria-label="t('actions.cancel')" @click="$emit('back')" />
     </v-col>
     <v-col>
-      <div class="text-h6 font-weight-bold text-truncate">{{ title }}</div>
+      <div role="heading" aria-level="2" class="text-h6 font-weight-bold text-truncate">{{ title }}</div>
       <div v-if="subtitle" class="text-body-2 text-medium-emphasis text-truncate">{{ subtitle }}</div>
     </v-col>
     <v-col v-if="$slots.actions" cols="auto">
