@@ -9,12 +9,18 @@
       <template #prepend>
         <v-icon :icon="iconForType(widget.type)" />
       </template>
-      <v-list-item-title class="text-truncate">
-        {{ widgetLabel(widget) }}
-      </v-list-item-title>
-      <v-list-item-subtitle>
-        {{ widgetGeometry(widget) }}
-      </v-list-item-subtitle>
+      <v-tooltip :text="`${widgetLabel(widget)} • ${widgetGeometry(widget)}`" location="right">
+        <template #activator="{ props: tooltipProps }">
+          <div v-bind="tooltipProps" class="oled-layers__info">
+            <v-list-item-title class="text-truncate">
+              {{ widgetLabel(widget) }}
+            </v-list-item-title>
+            <v-list-item-subtitle class="text-truncate">
+              {{ widgetGeometry(widget) }}
+            </v-list-item-subtitle>
+          </div>
+        </template>
+      </v-tooltip>
       <template #append>
         <div class="oled-layers__actions">
           <v-btn

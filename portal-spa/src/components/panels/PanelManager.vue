@@ -1,13 +1,6 @@
 <template>
   <div class="panel-manager">
     <v-card class="page-card">
-      <v-card-title class="page-title">
-        <div>
-          <div class="text-overline">{{ t('panels.title') }}</div>
-          <h2 class="text-h5 font-weight-bold">{{ t('panels.subtitle') }}</h2>
-        </div>
-      </v-card-title>
-
       <v-card-text>
         <div class="panel-manager__hint text-body-2 mt-2">
           {{ t('panels.uniqueHint') }}

@@ -13,7 +13,11 @@
   >
     <div class="device-card__row d-flex align-center justify-space-between ga-2 flex-wrap">
       <div class="device-card__copy d-flex flex-column ga-1 flex-grow-1 min-w-0">
-        <strong class="device-card__name text-body-2 text-high-emphasis text-truncate">{{ title }}</strong>
+        <v-tooltip :text="title" location="top">
+          <template #activator="{ props: tooltipProps }">
+            <strong v-bind="tooltipProps" class="device-card__name text-body-2 text-high-emphasis text-truncate">{{ title }}</strong>
+          </template>
+        </v-tooltip>
         <slot />
       </div>
       <span v-if="statusMarkerClass" class="device-card__status-dot" :class="statusMarkerClass" :title="statusTone" />

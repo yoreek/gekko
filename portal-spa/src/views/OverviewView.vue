@@ -43,7 +43,7 @@
       </v-col>
     </v-row>
 
-    <v-row class="mt-2">
+    <v-row class="mt-2" align="start">
       <v-col cols="12" md="6" xl="3">
         <v-card class="page-card">
           <v-card-title>{{ t('overview.registry') }}</v-card-title>
