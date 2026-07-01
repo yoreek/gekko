@@ -43,7 +43,7 @@
 
         <!-- Content -->
         <v-card-text class="pa-6 d-flex flex-column ga-3">
-          <section class="pa-3 border rounded">
+          <section class="pa-4 rounded elevation-1 bg-surface">
             <DeviceCommonFields
               :model-value="(draft as any)"
               mode="edit"
