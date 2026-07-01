@@ -65,11 +65,10 @@ const { t } = useI18n()
 
 .device-dialog__title {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 18px 20px 14px;
-  flex-wrap: wrap;
 }
 
 .device-dialog__title-actions {
