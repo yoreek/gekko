@@ -52,18 +52,16 @@
             />
           </section>
 
-          <section class="pa-3 border rounded">
-            <component
-              :is="(editorUi as any)?.editorComponent"
-              v-if="(editorUi as any)?.editorComponent"
-              :model-value="(draft as any)"
-              :device="(device as any)"
-              mode="edit"
-              :busy="loading"
-              @update:model-value="(v: any) => { draft.value = v }"
-              @command="(submitCommand as any)"
-            />
-          </section>
+          <component
+            :is="(editorUi as any)?.editorComponent"
+            v-if="(editorUi as any)?.editorComponent"
+            :model-value="(draft as any)"
+            :device="(device as any)"
+            mode="edit"
+            :busy="loading"
+            @update:model-value="(v: any) => { draft.value = v }"
+            @command="(submitCommand as any)"
+          />
 
           <!-- Recent events -->
           <RecentDeviceEvents v-if="device" :device-id="(device as any)?.record?.id ?? 0" />
