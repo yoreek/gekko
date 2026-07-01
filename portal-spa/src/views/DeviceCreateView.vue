@@ -24,7 +24,7 @@
             :model-value="(draft as any)"
             mode="create"
             :busy="isCreating"
-            @update:model-value="(draft as any) = $event"
+            @update:model-value="(v: any) => { draft.value = v }"
           />
         </section>
 
@@ -35,7 +35,7 @@
             :model-value="(draft as any)"
             mode="create"
             :busy="isCreating"
-            @update:model-value="(draft as any) = $event"
+            @update:model-value="(v: any) => { draft.value = v }"
           />
         </section>
 

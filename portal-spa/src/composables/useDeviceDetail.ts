@@ -9,8 +9,10 @@ import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
 export interface UseDeviceDetailReturn {
   device: ComputedRef<DeviceRecord | null>
-  loading: Ref<boolean>
+  deviceName: ComputedRef<string>
+  loading: ComputedRef<boolean>
   busyAction: Ref<'refresh' | 'save' | 'command' | null>
+  isSaving: ComputedRef<boolean>
   errorMessage: Ref<string>
   draft: Ref<DeviceEditDraft>
   canSave: ComputedRef<boolean>
@@ -33,7 +35,11 @@ export function useDeviceDetail(deviceId: Ref<number>): UseDeviceDetailReturn {
     return deviceStore.devices.find(d => d.record.id === id) ?? null
   })
 
+  const deviceName = computed(() => (device.value as any)?.config?.name ?? '')
+
   const loading = computed(() => busyAction.value !== null)
+
+  const isSaving = computed(() => busyAction.value === 'save')
 
   const canSave = computed(() => {
     if (device.value === null) return false
@@ -116,8 +122,10 @@ export function useDeviceDetail(deviceId: Ref<number>): UseDeviceDetailReturn {
 
   return {
     device,
+    deviceName,
     loading,
     busyAction,
+    isSaving,
     errorMessage,
     draft,
     canSave,

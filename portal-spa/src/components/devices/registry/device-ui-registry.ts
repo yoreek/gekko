@@ -14,7 +14,7 @@ const unknownUi: DeviceUi = {
   typeId: 0,
   typeName: '',
   labelKey: 'device.type.unknown',
-  icon: 'help-circle',
+  icon: 'device',
   editorComponent: dummyUi.editorComponent,
   widgetComponent: dummyUi.widgetComponent,
 }
