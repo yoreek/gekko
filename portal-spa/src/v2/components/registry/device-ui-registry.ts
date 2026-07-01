@@ -2,10 +2,25 @@ import type { DeviceUiV2 } from './device-ui-types'
 import { deviceTypeIdFromName } from '@/models/device-type-ids'
 import { DummyDevice } from '@/models/devices/dummy'
 import { GpioSwitchDevice } from '@/models/devices/gpio-switch'
+import { OneWireBusDevice } from '@/models/devices/onewire-bus'
+import { I2cBusDevice } from '@/models/devices/i2c-bus'
+import { SpiBusDevice } from '@/models/devices/spi-bus'
+import { Ds18b20Device } from '@/models/devices/ds18b20'
+import { ThermostatDevice } from '@/models/devices/thermostat'
 import DummyFields from '@/v2/components/devices/dummy/DummyFields.vue'
 import DummyWidget from '@/v2/components/devices/dummy/DummyWidget.vue'
 import GpioSwitchFields from '@/v2/components/devices/gpio-switch/GpioSwitchFields.vue'
 import GpioSwitchWidget from '@/v2/components/devices/gpio-switch/GpioSwitchWidget.vue'
+import OneWireBusFields from '@/v2/components/devices/onewire-bus/OneWireBusFields.vue'
+import OneWireBusWidget from '@/v2/components/devices/onewire-bus/OneWireBusWidget.vue'
+import I2cBusFields from '@/v2/components/devices/i2c-bus/I2cBusFields.vue'
+import I2cBusWidget from '@/v2/components/devices/i2c-bus/I2cBusWidget.vue'
+import SpiBusFields from '@/v2/components/devices/spi-bus/SpiBusFields.vue'
+import SpiBusWidget from '@/v2/components/devices/spi-bus/SpiBusWidget.vue'
+import Ds18b20Fields from '@/v2/components/devices/ds18b20/Ds18b20Fields.vue'
+import Ds18b20Widget from '@/v2/components/devices/ds18b20/Ds18b20Widget.vue'
+import ThermostatFields from '@/v2/components/devices/thermostat/ThermostatFields.vue'
+import ThermostatWidget from '@/v2/components/devices/thermostat/ThermostatWidget.vue'
 
 const unknownUi: DeviceUiV2 = {
   typeId: 0,
@@ -34,9 +49,59 @@ const gpioSwitchUi: DeviceUiV2 = {
   widgetComponent: GpioSwitchWidget,
 }
 
+const oneWireBusUi: DeviceUiV2 = {
+  typeId: OneWireBusDevice.TYPE_ID,
+  typeName: OneWireBusDevice.TYPE_NAME,
+  labelKey: 'device.type.onewireBus',
+  icon: 'bus',
+  fieldsComponent: OneWireBusFields,
+  widgetComponent: OneWireBusWidget,
+}
+
+const i2cBusUi: DeviceUiV2 = {
+  typeId: I2cBusDevice.TYPE_ID,
+  typeName: I2cBusDevice.TYPE_NAME,
+  labelKey: 'device.type.i2cBus',
+  icon: 'bus',
+  fieldsComponent: I2cBusFields,
+  widgetComponent: I2cBusWidget,
+}
+
+const spiBusUi: DeviceUiV2 = {
+  typeId: SpiBusDevice.TYPE_ID,
+  typeName: SpiBusDevice.TYPE_NAME,
+  labelKey: 'device.type.spiBus',
+  icon: 'bus',
+  fieldsComponent: SpiBusFields,
+  widgetComponent: SpiBusWidget,
+}
+
+const ds18b20Ui: DeviceUiV2 = {
+  typeId: Ds18b20Device.TYPE_ID,
+  typeName: Ds18b20Device.TYPE_NAME,
+  labelKey: 'device.type.ds18b20TemperatureSensor',
+  icon: 'temperature',
+  fieldsComponent: Ds18b20Fields,
+  widgetComponent: Ds18b20Widget,
+}
+
+const thermostatUi: DeviceUiV2 = {
+  typeId: ThermostatDevice.TYPE_ID,
+  typeName: ThermostatDevice.TYPE_NAME,
+  labelKey: 'device.type.thermostat',
+  icon: 'temperature',
+  fieldsComponent: ThermostatFields,
+  widgetComponent: ThermostatWidget,
+}
+
 const deviceUiV2ByTypeId: Record<number, DeviceUiV2> = {
   [dummyUi.typeId]: dummyUi,
   [gpioSwitchUi.typeId]: gpioSwitchUi,
+  [oneWireBusUi.typeId]: oneWireBusUi,
+  [i2cBusUi.typeId]: i2cBusUi,
+  [spiBusUi.typeId]: spiBusUi,
+  [ds18b20Ui.typeId]: ds18b20Ui,
+  [thermostatUi.typeId]: thermostatUi,
 }
 
 export const allDeviceUisV2: DeviceUiV2[] = Object.values(deviceUiV2ByTypeId)
