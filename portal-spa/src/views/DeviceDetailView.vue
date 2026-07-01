@@ -43,14 +43,16 @@
 
         <!-- Content -->
         <v-card-text class="pa-6 d-flex flex-column ga-3">
-          <section class="pa-3 border rounded">
-            <DeviceCommonFields
-              :model-value="(draft as any)"
-              mode="edit"
-              :busy="loading"
-              @update:model-value="(v: any) => { draft.value = v }"
-            />
-          </section>
+          <v-card variant="outlined">
+            <v-card-text class="pa-4">
+              <DeviceCommonFields
+                :model-value="(draft as any)"
+                mode="edit"
+                :busy="loading"
+                @update:model-value="(v: any) => { draft.value = v }"
+              />
+            </v-card-text>
+          </v-card>
 
           <component
             :is="(editorUi as any)?.editorComponent"
