@@ -5,7 +5,6 @@ import type { RouteRecordRaw } from 'vue-router'
 // until a future cutover. Entries are added incrementally as views are built.
 const v2Routes: RouteRecordRaw[] = [
   {
-    // TODO: point at v2 DashboardView once it exists (see task: остальные страницы v2)
     path: '/v2',
     redirect: { name: 'v2-devices' },
   },
@@ -24,6 +23,41 @@ const v2Routes: RouteRecordRaw[] = [
     name: 'v2-device-detail',
     component: () => import('@/v2/views/DeviceDetailView.vue'),
     props: route => ({ deviceId: Number(route.params.id) }),
+  },
+  {
+    path: '/v2/wifi',
+    name: 'v2-wifi',
+    component: () => import('@/v2/views/WifiView.vue'),
+  },
+  {
+    path: '/v2/ota',
+    name: 'v2-ota',
+    component: () => import('@/v2/views/OtaView.vue'),
+  },
+  {
+    path: '/v2/system',
+    name: 'v2-system',
+    component: () => import('@/v2/views/SystemView.vue'),
+  },
+  {
+    path: '/v2/overview',
+    name: 'v2-overview',
+    component: () => import('@/v2/views/OverviewView.vue'),
+  },
+  {
+    path: '/v2/panels',
+    name: 'v2-panels',
+    component: () => import('@/v2/views/PanelsView.vue'),
+  },
+  {
+    path: '/v2/device-events',
+    name: 'v2-device-events',
+    component: () => import('@/v2/views/DeviceEventJournalView.vue'),
+  },
+  {
+    path: '/v2/dashboard',
+    name: 'v2-dashboard',
+    component: () => import('@/v2/views/DashboardView.vue'),
   },
 ]
 
