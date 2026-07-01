@@ -59,6 +59,18 @@ const v2Routes: RouteRecordRaw[] = [
     name: 'v2-dashboard',
     component: () => import('@/v2/views/DashboardView.vue'),
   },
+  {
+    path: '/v2/devices/:id/design',
+    name: 'v2-device-design',
+    component: () => import('@/v2/views/Ssd1306DesignerView.vue'),
+    props: route => ({ deviceId: Number(route.params.id) }),
+  },
+  {
+    path: '/v2/devices/:id/design-tft',
+    name: 'v2-device-design-tft',
+    component: () => import('@/v2/views/St7735DesignerView.vue'),
+    props: route => ({ deviceId: Number(route.params.id) }),
+  },
 ]
 
 export default v2Routes

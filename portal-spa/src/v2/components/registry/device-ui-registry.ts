@@ -7,6 +7,8 @@ import { I2cBusDevice } from '@/models/devices/i2c-bus'
 import { SpiBusDevice } from '@/models/devices/spi-bus'
 import { Ds18b20Device } from '@/models/devices/ds18b20'
 import { ThermostatDevice } from '@/models/devices/thermostat'
+import { Ssd1306Device } from '@/models/devices/ssd1306/device'
+import { St7735Device } from '@/models/devices/st7735/device'
 import DummyFields from '@/v2/components/devices/dummy/DummyFields.vue'
 import DummyWidget from '@/v2/components/devices/dummy/DummyWidget.vue'
 import GpioSwitchFields from '@/v2/components/devices/gpio-switch/GpioSwitchFields.vue'
@@ -21,6 +23,8 @@ import Ds18b20Fields from '@/v2/components/devices/ds18b20/Ds18b20Fields.vue'
 import Ds18b20Widget from '@/v2/components/devices/ds18b20/Ds18b20Widget.vue'
 import ThermostatFields from '@/v2/components/devices/thermostat/ThermostatFields.vue'
 import ThermostatWidget from '@/v2/components/devices/thermostat/ThermostatWidget.vue'
+import Ssd1306Fields from '@/v2/components/devices/Ssd1306Fields.vue'
+import St7735Fields from '@/v2/components/devices/St7735Fields.vue'
 
 const unknownUi: DeviceUiV2 = {
   typeId: 0,
@@ -94,6 +98,24 @@ const thermostatUi: DeviceUiV2 = {
   widgetComponent: ThermostatWidget,
 }
 
+const ssd1306Ui: DeviceUiV2 = {
+  typeId: Ssd1306Device.TYPE_ID,
+  typeName: Ssd1306Device.TYPE_NAME,
+  labelKey: 'device.type.ssd1306OledDisplay',
+  icon: 'display',
+  fieldsComponent: Ssd1306Fields,
+  widgetComponent: DummyWidget,
+}
+
+const st7735Ui: DeviceUiV2 = {
+  typeId: St7735Device.TYPE_ID,
+  typeName: St7735Device.TYPE_NAME,
+  labelKey: 'device.type.st7735TftDisplay',
+  icon: 'display',
+  fieldsComponent: St7735Fields,
+  widgetComponent: DummyWidget,
+}
+
 const deviceUiV2ByTypeId: Record<number, DeviceUiV2> = {
   [dummyUi.typeId]: dummyUi,
   [gpioSwitchUi.typeId]: gpioSwitchUi,
@@ -102,6 +124,8 @@ const deviceUiV2ByTypeId: Record<number, DeviceUiV2> = {
   [spiBusUi.typeId]: spiBusUi,
   [ds18b20Ui.typeId]: ds18b20Ui,
   [thermostatUi.typeId]: thermostatUi,
+  [ssd1306Ui.typeId]: ssd1306Ui,
+  [st7735Ui.typeId]: st7735Ui,
 }
 
 export const allDeviceUisV2: DeviceUiV2[] = Object.values(deviceUiV2ByTypeId)
