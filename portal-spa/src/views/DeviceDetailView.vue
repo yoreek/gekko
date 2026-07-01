@@ -23,7 +23,7 @@
                   {{ statusText }}
                 </v-chip>
                 <v-btn
-                  icon="chevron-left"
+                  icon="$chevron-left"
                   variant="text"
                   size="small"
                   :aria-label="t('device.actions.close')"
@@ -31,7 +31,7 @@
                 />
                 <v-btn
                   v-if="editorUi?.designerComponent"
-                  icon="design-display"
+                  icon="$design-display"
                   variant="text"
                   size="small"
                   :aria-label="t(editorUi?.designDisplayLabelKey || 'device.dialog.openDesigner')"
