@@ -41,7 +41,7 @@ const router = createRouter({
           path: 'design',
           name: 'device-design',
           component: DeviceDesignView,
-          props: true,
+          props: route => ({ id: Number(route.params.id) }),
         },
       ],
     },
