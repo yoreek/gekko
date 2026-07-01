@@ -7,7 +7,7 @@
           <h1 class="text-h5 sm:text-h4 font-weight-bold text-wrap">{{ t('devices.subtitle') }}</h1>
         </div>
         <div class="d-flex ga-2">
-          <v-btn color="primary" variant="tonal" @click="createOpen = true">
+          <v-btn color="primary" variant="tonal" @click="$router.push({ name: 'device-create' })">
             <v-icon class="me-1" icon="plus" />
             {{ t('device.dashboard.create') }}
           </v-btn>
@@ -79,7 +79,7 @@
               v-for="device in filteredDevices"
               :key="device.record.id"
               class="devices-table__row"
-              @click="openDevice(device.record.id)"
+              @click="$router.push({ name: 'device-detail', params: { id: device.record.id } })"
             >
               <td>#{{ device.record.id }}</td>
               <td>
@@ -116,7 +116,7 @@
             v-for="device in filteredDevices"
             :key="device.record.id"
             class="devices-mobile-card"
-            @click="openDevice(device.record.id)"
+            @click="$router.push({ name: 'device-detail', params: { id: device.record.id } })"
           >
             <div class="devices-mobile-card__header">
               <div>
@@ -157,24 +157,6 @@
         </div>
       </v-card-text>
     </v-card>
-
-    <DeviceCreateDialog
-      v-model="createOpen"
-      :loading="createLoading"
-      :error-message="createError"
-      @submit="submitCreateDevice"
-    />
-
-    <DeviceDetailDialog
-      v-model="detailOpen"
-      v-model:editing="detailEditing"
-      :device="selectedDevice"
-      :busy-action="detailBusyAction"
-      :error-message="detailError"
-      @refresh="refreshSelectedDevice"
-      @save="saveDevice"
-      @command="submitDeviceCommand"
-    />
 
     <DeviceDialogShell
       v-model="deleteDialogOpen"
@@ -236,21 +218,12 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import {
-  commandDevice,
-  createDevice,
   deleteDevice,
-  fetchDevice,
   fetchDeviceSetupBundle,
   importDeviceSetupBundle,
   type DeviceRecord,
-  type DeviceCommandRequest,
-  type DeviceCreateRequest,
 } from '@/api'
-import DeviceCreateDialog from '@/components/device/DeviceCreateDialog.vue'
-import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
-import { buildDeviceEditCommands } from '@/components/device/device-form'
-import type { DeviceEditDraft } from '@/components/device/device-form'
 import { deviceStatusLabelKey } from '@/models/devices/device-status'
 import { deviceTypeIdFromName } from '@/models/device-type-ids'
 import { allDeviceUis, resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
@@ -262,17 +235,9 @@ const deviceStore = useDeviceRegistryStore()
 const panelStore = usePanelStore()
 
 const devicesLoading = ref(false)
-const createOpen = ref(false)
-const createLoading = ref(false)
-const createError = ref('')
-const detailOpen = ref(false)
-const detailEditing = ref(false)
-const detailBusyAction = ref<'refresh' | 'save' | 'command' | null>(null)
-const detailError = ref('')
 const deleteDialogOpen = ref(false)
 const deleteTargetId = ref<number | null>(null)
 const deleteBusy = ref(false)
-const selectedDeviceId = ref<number | null>(null)
 const transferLoading = ref(false)
 const transferMessage = ref('')
 const transferError = ref('')
@@ -288,13 +253,6 @@ const typeFilterOptions = computed(() => [
   { title: t('devices.filterAllTypes'), value: 'all' },
   ...allDeviceUis.map(ui => ({ title: t(ui.labelKey), value: ui.typeId })),
 ])
-
-const selectedDevice = computed<DeviceRecord | null>(() => {
-  if (selectedDeviceId.value === null) {
-    return null
-  }
-  return deviceStore.devices.find(device => device.record.id === selectedDeviceId.value) ?? null
-})
 
 const filteredDevices = computed(() => {
   const query = nameFilter.value.trim().toLowerCase()
@@ -409,66 +367,6 @@ function statusColor(status: string): 'success' | 'secondary' | 'error' | 'warni
   }
 }
 
-async function submitCreateDevice(payload: DeviceCreateRequest): Promise<void> {
-  createLoading.value = true
-  createError.value = ''
-  try {
-    const response = await createDevice(payload)
-    applyMutationResponse(response)
-    createOpen.value = false
-  } catch (error) {
-    createError.value = formatError(error)
-  } finally {
-    createLoading.value = false
-  }
-}
-
-async function openDevice(deviceId: number): Promise<void> {
-  selectedDeviceId.value = deviceId
-  detailOpen.value = true
-  detailEditing.value = false
-  await refreshSelectedDevice()
-}
-
-async function refreshSelectedDevice(): Promise<void> {
-  if (selectedDeviceId.value === null) {
-    return
-  }
-  detailBusyAction.value = 'refresh'
-  detailError.value = ''
-  try {
-    const response = await fetchDevice(selectedDeviceId.value)
-    deviceStore.upsertDevice(response.device, response.registryRevision)
-  } catch (error) {
-    detailError.value = formatError(error)
-  } finally {
-    detailBusyAction.value = null
-  }
-}
-
-async function saveDevice(payload: DeviceEditDraft): Promise<void> {
-  if (selectedDeviceId.value === null || selectedDevice.value === null) {
-    return
-  }
-  detailBusyAction.value = 'save'
-  detailError.value = ''
-  try {
-    const commands = buildDeviceEditCommands(selectedDevice.value, payload)
-    for (const command of commands) {
-      const response = await commandDevice(selectedDeviceId.value, {
-        ...command,
-        deviceId: selectedDeviceId.value,
-      })
-      applyMutationResponse(response)
-    }
-    detailEditing.value = false
-  } catch (error) {
-    detailError.value = formatError(error)
-  } finally {
-    detailBusyAction.value = null
-  }
-}
-
 function openDeleteConfirm(deviceId: number): void {
   deleteTargetId.value = deviceId
   deleteDialogOpen.value = true
@@ -483,36 +381,12 @@ async function submitDeleteDevice(): Promise<void> {
     const response = await deleteDevice(deleteTargetId.value)
     deviceStore.removeDevice(deleteTargetId.value, response.registryRevision)
     panelStore.removeDevice(deleteTargetId.value)
-    if (selectedDeviceId.value === deleteTargetId.value) {
-      detailOpen.value = false
-      selectedDeviceId.value = null
-      detailEditing.value = false
-    }
     deleteDialogOpen.value = false
     deleteTargetId.value = null
   } catch (error) {
-    detailError.value = formatError(error)
+    transferError.value = formatError(error)
   } finally {
     deleteBusy.value = false
-  }
-}
-
-async function submitDeviceCommand(payload: DeviceCommandRequest): Promise<void> {
-  if (selectedDeviceId.value === null) {
-    return
-  }
-  detailBusyAction.value = 'command'
-  detailError.value = ''
-  try {
-    const response = await commandDevice(selectedDeviceId.value, {
-      ...payload,
-      deviceId: selectedDeviceId.value,
-    })
-    applyMutationResponse(response)
-  } catch (error) {
-    detailError.value = formatError(error)
-  } finally {
-    detailBusyAction.value = null
   }
 }
 
@@ -534,17 +408,17 @@ watch(
   },
 )
 
-watch(detailOpen, value => {
-  if (!value) {
-    detailEditing.value = false
-  }
-})
-
 watch(importDialogOpen, value => {
   if (!value) {
     importFile.value = null
     importConfirmed.value = false
     importError.value = ''
+  }
+})
+
+watch(deleteDialogOpen, value => {
+  if (!value) {
+    deleteTargetId.value = null
   }
 })
 </script>

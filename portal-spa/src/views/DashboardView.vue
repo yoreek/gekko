@@ -125,7 +125,7 @@
                   :widgets="activePanelWidgets"
                   :columns="gridColumns"
                   :editable="editing"
-                  @open="openDevice"
+                  @open="deviceId => $router.push({ name: 'device-detail', params: { id: deviceId } })"
                   @remove="removeWidget"
                   @command="submitDashboardCommand"
                   @layout-change="saveWidgetLayout"
@@ -141,17 +141,6 @@
         </v-tabs-window-item>
       </v-tabs-window>
     </v-sheet>
-
-    <DeviceDetailDialog
-      v-model="detailOpen"
-      v-model:editing="detailEditing"
-      :device="selectedDevice"
-      :busy-action="detailBusyAction"
-      :error-message="detailError"
-      @refresh="refreshSelectedDevice"
-      @save="saveDevice"
-      @command="submitDeviceCommand"
-    />
 
     <DeviceDialogShell
       v-model="panelDialogOpen"
@@ -206,12 +195,9 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { commandDevice, fetchDevice, type DeviceCommandRequest, type DeviceRecord } from '@/api'
+import { commandDevice, type DeviceCommandRequest, type DeviceRecord } from '@/api'
 import DashboardGrid from '@/components/dashboard/DashboardGrid.vue'
-import DeviceDetailDialog from '@/components/device/DeviceDetailDialog.vue'
 import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
-import { buildDeviceEditCommands } from '@/components/device/device-form'
-import type { DeviceEditDraft } from '@/components/device/device-form'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore, type DashboardPanelWidget } from '@/stores/panels'
 import { useWebSocketStore } from '@/stores/websocket'
@@ -222,11 +208,6 @@ const panelStore = usePanelStore()
 const wsStore = useWebSocketStore()
 
 const devicesLoading = ref(false)
-const detailOpen = ref(false)
-const detailEditing = ref(false)
-const detailBusyAction = ref<'refresh' | 'save' | 'command' | null>(null)
-const detailError = ref('')
-const selectedDeviceId = ref<number | null>(null)
 const editing = ref(false)
 const gridColumns = ref(3)
 const gridReady = ref(false)
@@ -240,13 +221,6 @@ let gridReadyFrame = 0
 const dashboardCardWidth = 200
 const dashboardGridGap = 10
 const dashboardMaxColumns = 12
-
-const selectedDevice = computed<DeviceRecord | null>(() => {
-  if (selectedDeviceId.value === null) {
-    return null
-  }
-  return deviceStore.devices.find(device => device.record.id === selectedDeviceId.value) ?? null
-})
 
 const activePanelId = computed<string | null>({
   get: () => panelStore.activePanelId,
@@ -423,13 +397,6 @@ function applyMutationResponse(response: { registryRevision: number; device?: De
   }
 }
 
-async function openDevice(deviceId: number): Promise<void> {
-  selectedDeviceId.value = deviceId
-  detailOpen.value = true
-  detailEditing.value = false
-  await refreshSelectedDevice()
-}
-
 function removeWidget(deviceId: number): void {
   if (!activePanel.value) {
     return
@@ -451,23 +418,6 @@ function resetLayout(): void {
   panelStore.resetPanelLayout(activePanel.value.id, gridColumns.value)
 }
 
-async function refreshSelectedDevice(): Promise<void> {
-  if (selectedDeviceId.value === null) {
-    return
-  }
-
-  detailBusyAction.value = 'refresh'
-  detailError.value = ''
-  try {
-    const response = await fetchDevice(selectedDeviceId.value)
-    deviceStore.upsertDevice(response.device, response.registryRevision)
-  } catch (error) {
-    detailError.value = formatError(error)
-  } finally {
-    detailBusyAction.value = null
-  }
-}
-
 function submitCreatePanel(): void {
   const panel = panelStore.addPanel(panelNameDraft.value)
   if (panel) {
@@ -481,48 +431,6 @@ function submitAddDevice(): void {
   }
   panelStore.assignDeviceToActivePanel(selectedAddDeviceId.value)
   addDeviceDialogOpen.value = false
-}
-
-async function saveDevice(payload: DeviceEditDraft): Promise<void> {
-  if (selectedDeviceId.value === null || selectedDevice.value === null) {
-    return
-  }
-  detailBusyAction.value = 'save'
-  detailError.value = ''
-  try {
-    const commands = buildDeviceEditCommands(selectedDevice.value, payload)
-    for (const command of commands) {
-      const response = await commandDevice(selectedDeviceId.value, {
-        ...command,
-        deviceId: selectedDeviceId.value,
-      })
-      applyMutationResponse(response)
-    }
-    detailEditing.value = false
-  } catch (error) {
-    detailError.value = formatError(error)
-  } finally {
-    detailBusyAction.value = null
-  }
-}
-
-async function submitDeviceCommand(payload: DeviceCommandRequest): Promise<void> {
-  if (selectedDeviceId.value === null) {
-    return
-  }
-  detailBusyAction.value = 'command'
-  detailError.value = ''
-  try {
-    const response = await commandDevice(selectedDeviceId.value, {
-      ...payload,
-      deviceId: selectedDeviceId.value,
-    })
-    applyMutationResponse(response)
-  } catch (error) {
-    detailError.value = formatError(error)
-  } finally {
-    detailBusyAction.value = null
-  }
 }
 
 async function submitDashboardCommand(deviceId: number, payload: DeviceCommandRequest): Promise<void> {
@@ -591,12 +499,6 @@ watch(
     }
   },
 )
-
-watch(detailOpen, value => {
-  if (!value) {
-    detailEditing.value = false
-  }
-})
 </script>
 
 <style scoped>
