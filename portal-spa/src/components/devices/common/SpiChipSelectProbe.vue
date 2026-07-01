@@ -9,7 +9,7 @@
         :disabled="disabled || probeBusy || !hasDependency"
         @click="probeChipSelect"
       >
-        <v-icon class="me-1" icon="check-circle" />
+        <v-icon class="me-1" icon="svg:refresh" />
         {{ buttonLabel }}
       </v-btn>
     </v-col>
@@ -86,16 +86,16 @@ const probeColor = computed(() => {
 })
 
 const probeIcon = computed(() => {
-  if (!probeReady.value) return 'help-circle'
+  if (!probeReady.value) return 'svg:info'
   switch (probe.value?.outcome) {
   case 'detected':
-    return 'check-circle'
+    return 'svg:portal'
   case 'inconclusive':
-    return 'alert-circle'
+    return 'svg:system'
   case 'not_detected':
-    return 'close-circle'
+    return 'svg:close'
   default:
-    return 'help-circle'
+    return 'svg:info'
   }
 })
 
