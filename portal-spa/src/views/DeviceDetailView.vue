@@ -1,8 +1,8 @@
 <template>
   <v-container class="page-shell" fluid>
     <!-- Not found state -->
-    <div v-if="!loading && !device" class="not-found">
-      <v-card class="not-found-card">
+    <div v-if="!loading && !device" class="pa-6">
+      <v-card class="pa-6">
         <v-card-title>{{ t('notFound.title') }}</v-card-title>
         <v-card-text>{{ t('notFound.body') }}</v-card-text>
       </v-card>
@@ -10,42 +10,42 @@
 
     <!-- Device detail page -->
     <template v-else-if="device">
-      <div class="device-detail-page">
-        <!-- Header -->
-        <v-card class="page-card page-hero mb-4">
-          <v-card-title class="page-title">
-            <div>
-              <div class="text-overline">{{ t('devices.title') }}</div>
-              <h1 class="text-h5 sm:text-h4 font-weight-bold text-wrap">{{ (device as any)?.config?.name ?? '' }}</h1>
-              <div class="text-body-2 text-medium-emphasis mt-1">
-                {{ t(editorUi?.labelKey || 'device.type.unknown') }} · #{{ (device as any)?.record?.id ?? 0 }}
+      <div class="pb-20">
+        <v-sheet class="rounded-lg border-t border-b border-l border-r">
+          <!-- Header card -->
+          <v-card class="rounded-b-0 border-b-0">
+            <v-card-title class="page-title">
+              <div>
+                <h1 class="text-h5 sm:text-h4 font-weight-bold text-wrap">{{ (device as any)?.config?.name ?? '' }}</h1>
+                <div class="text-body-2 text-medium-emphasis mt-1">
+                  {{ t(editorUi?.labelKey || 'device.type.unknown') }} · #{{ (device as any)?.record?.id ?? 0 }}
+                </div>
               </div>
-            </div>
-            <div class="d-flex ga-2 flex-wrap">
-              <v-chip variant="tonal" :color="statusColor">
-                {{ statusText }}
-              </v-chip>
-              <v-btn
-                icon="arrow-left"
-                variant="text"
-                :aria-label="t('device.actions.close')"
-                @click="navigateBack"
-              />
-              <v-btn
-                v-if="editorUi?.designerComponent"
-                icon="design-display"
-                variant="text"
-                :aria-label="t(editorUi?.designDisplayLabelKey || 'device.dialog.openDesigner')"
-                @click="openDesigner"
-              />
-            </div>
-          </v-card-title>
-        </v-card>
+              <div class="d-flex ga-2 flex-wrap">
+                <v-chip variant="tonal" :color="statusColor">
+                  {{ statusText }}
+                </v-chip>
+                <v-btn
+                  icon="chevron-left"
+                  variant="text"
+                  :aria-label="t('device.actions.close')"
+                  @click="navigateBack"
+                />
+                <v-btn
+                  v-if="editorUi?.designerComponent"
+                  icon="design-display"
+                  variant="text"
+                  :aria-label="t(editorUi?.designDisplayLabelKey || 'device.dialog.openDesigner')"
+                  @click="openDesigner"
+                />
+              </div>
+            </v-card-title>
+          </v-card>
 
-        <!-- Device settings -->
-        <v-card class="page-card">
-          <v-card-text class="device-detail-content">
-            <section class="device-detail-section">
+          <!-- Content card -->
+          <v-card class="rounded-t-0 border-t-0">
+            <v-card-text class="pa-6 d-flex flex-column ga-3">
+            <section class="pa-3 border rounded">
               <DeviceCommonFields
                 :model-value="(draft as any)"
                 mode="edit"
@@ -54,7 +54,7 @@
               />
             </section>
 
-            <section class="device-detail-section">
+            <section class="pa-3 border rounded">
               <component
                 :is="(editorUi as any)?.editorComponent"
                 v-if="(editorUi as any)?.editorComponent"
@@ -70,15 +70,16 @@
             <!-- Recent events -->
             <RecentDeviceEvents v-if="device" :device-id="(device as any)?.record?.id ?? 0" />
 
-            <!-- Error message -->
-            <v-alert v-if="errorMessage" type="error" variant="tonal" class="mt-4">
-              {{ errorMessage }}
-            </v-alert>
-          </v-card-text>
-        </v-card>
+              <!-- Error message -->
+              <v-alert v-if="errorMessage" type="error" variant="tonal" class="mt-4">
+                {{ errorMessage }}
+              </v-alert>
+            </v-card-text>
+          </v-card>
+        </v-sheet>
 
         <!-- Sticky footer with actions -->
-        <div class="device-detail-footer">
+        <div class="fixed bottom-0 left-0 right-0 d-flex align-center justify-space-between pa-4 border-t bg-surface">
           <v-spacer />
           <v-btn variant="text" :disabled="loading" @click="(resetDraft as any)()">
             {{ t('actions.cancel') }}
@@ -193,51 +194,3 @@ function openDesigner(): void {
 }
 </script>
 
-<style scoped>
-.not-found {
-  padding: 48px 24px;
-}
-
-.not-found-card {
-  padding: 24px;
-}
-
-.device-detail-page {
-  position: relative;
-  padding-bottom: 80px;
-}
-
-.device-detail-content {
-  display: grid;
-  gap: 12px;
-}
-
-.device-detail-section {
-  display: grid;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid rgb(var(--v-theme-outline-variant));
-  border-radius: 10px;
-  background: var(--portal-surface);
-  box-shadow: var(--portal-shadow-sm);
-}
-
-.device-detail-footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 24px;
-  background: var(--portal-surface);
-  border-top: 1px solid var(--portal-border);
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.min-h-screen {
-  min-height: 100vh;
-}
-</style>
