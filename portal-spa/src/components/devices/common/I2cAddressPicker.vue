@@ -1,5 +1,5 @@
 <template>
-  <v-row class="device-type-section__grid" dense align="start">
+  <v-row class="device-type-section__grid" align="start">
     <v-col cols="12" sm="4">
       <v-text-field
         v-select-on-focus
@@ -44,7 +44,7 @@
     </v-col>
   </v-row>
 
-  <v-row class="device-type-section__grid" dense>
+  <v-row class="device-type-section__grid">
     <v-col cols="12">
       <v-alert v-if="!hasDependency" type="warning" variant="tonal">
         {{ noDependencyText }}
