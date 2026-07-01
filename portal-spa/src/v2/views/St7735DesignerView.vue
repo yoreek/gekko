@@ -1,5 +1,5 @@
 <template>
-  <PageContainer>
+  <PageContainer dense>
     <PageToolbar
       :title="t('device.dialog.st7735Display.designerTitle')"
       :subtitle="device?.config?.name || ''"
