@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+import v2Routes from '@/v2/router'
 import DashboardView from '@/views/DashboardView.vue'
 import DevicesView from '@/views/DevicesView.vue'
 import DeviceEventJournalView from '@/views/DeviceEventJournalView.vue'
@@ -75,6 +76,7 @@ const router = createRouter({
       name: 'overview',
       component: OverviewView,
     },
+    ...v2Routes,
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',

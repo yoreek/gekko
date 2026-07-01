@@ -609,4 +609,15 @@ export default {
     title: '404',
     body: 'This route is not available in the SPA.',
   },
+  v2: {
+    navigation: {
+      badge: 'New UI (preview)',
+    },
+    device: {
+      dummy: {
+        label: 'Dummy device',
+        noFields: 'No additional type-specific settings.',
+      },
+    },
+  },
 } as const

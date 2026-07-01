@@ -96,7 +96,7 @@ const drawerOpen = ref(false)
 const locales = supportedLocales
 
 interface MenuItem {
-  name: 'dashboard' | 'panels' | 'devices' | 'device-events' | 'wifi' | 'ota' | 'system' | 'overview'
+  name: 'dashboard' | 'panels' | 'devices' | 'device-events' | 'wifi' | 'ota' | 'system' | 'overview' | 'v2-devices'
   to: RouteLocationRaw
   label: string
   icon: PortalIconName
@@ -112,6 +112,8 @@ const menuItems = computed<MenuItem[]>(() => [
   { name: 'ota', to: { name: 'ota' }, label: t('navigation.ota'), icon: 'ota', exact: true },
   { name: 'system', to: { name: 'system' }, label: t('navigation.system'), icon: 'system', exact: true },
   { name: 'overview', to: { name: 'overview' }, label: t('navigation.overview'), icon: 'portal', exact: true },
+  // Preview of the new page-based UI under /v2 — additive nav entry, v1 items above are untouched.
+  { name: 'v2-devices', to: { name: 'v2-devices' }, label: t('v2.navigation.badge'), icon: 'devices', exact: false },
 ])
 
 const activePanelName = computed(() => (route.name === 'dashboard' ? panelStore.activePanel?.name ?? '' : ''))
