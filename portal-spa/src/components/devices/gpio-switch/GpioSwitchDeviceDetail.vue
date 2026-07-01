@@ -91,7 +91,10 @@ import type { DeviceCommandRequest } from '@/api'
 import type { GpioSwitchOutputSnapshot, DeviceRecord } from '@/api/contracts'
 import SwitchOutputControls from '@/components/devices/switch/SwitchOutputControls.vue'
 import SwitchStateSelect from '@/components/devices/switch/SwitchStateSelect.vue'
+import { GpioSwitchDevice } from '@/models/devices/gpio-switch'
 import { outputStateLabelKey, switchCommandPayload, type OutputState } from '@/models/devices/switch'
+
+const deviceModel = new GpioSwitchDevice()
 
 const props = defineProps<{
   device: DeviceRecord
@@ -103,13 +106,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const config = computed(() => props.device.config as unknown as {
-  gpioPin: number
-  startupState: OutputState
-  safeState: OutputState
-  restorePreviousState: boolean
-  inverted: boolean
-})
+const config = computed(() => deviceModel.normalizeConfig(props.device.config))
 const output = computed(() => (props.device.runtime as { output?: GpioSwitchOutputSnapshot }).output)
 const outputState = computed(() => output.value?.state)
 const isReady = computed(() => props.device.runtime.effectiveStatus === 'ready')

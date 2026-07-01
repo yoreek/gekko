@@ -76,7 +76,10 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceRecord, Ds18b20TemperatureSensorOutputSnapshot, TemperatureOutputSnapshot } from '@/api/contracts'
+import { Ds18b20Device } from '@/models/devices/ds18b20'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
+
+const deviceModel = new Ds18b20Device()
 
 const props = defineProps<{
   device: DeviceRecord
@@ -86,14 +89,7 @@ const props = defineProps<{
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
 const dependencyDeviceId = computed(() => props.device.config.deps.find(dep => dep.role === 'onewire_bus')?.deviceId ?? 0)
-const config = computed(() => props.device.config as unknown as {
-  address: string
-  resolution: number
-  unit: 'celsius' | 'fahrenheit'
-  pollMs: number
-  reportDeltaCelsius: number
-  reportAlways: boolean
-})
+const config = computed(() => deviceModel.normalizeConfig(props.device.config, props.device.config.deps))
 const output = computed(() => (props.device.runtime as { output?: Ds18b20TemperatureSensorOutputSnapshot }).output)
 const temperature = computed(() => output.value?.temperature as TemperatureOutputSnapshot | undefined)
 const temperatureText = computed(() => temperature.value?.valid ? `${temperature.value.value.toFixed(2)} ${temperature.value.unitSymbol}` : t('device.dialog.temperatureUnavailableShort'))
