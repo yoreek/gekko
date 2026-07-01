@@ -1,5 +1,6 @@
 import I2cBusDeviceDetail from './I2cBusDeviceDetail.vue'
 import I2cBusDeviceForm from './I2cBusDeviceForm.vue'
+import I2cBusDeviceEditor from './I2cBusDeviceEditor.vue'
 import I2cBusDeviceWidget from './I2cBusDeviceWidget.vue'
 import { I2cBusDevice } from '@/models/devices/i2c-bus'
 import type { DeviceUi } from '@/components/devices/registry/device-ui-types'
@@ -11,5 +12,6 @@ export const i2cBusUi: DeviceUi = {
   icon: 'bus',
   detailComponent: I2cBusDeviceDetail,
   formComponent: I2cBusDeviceForm,
+  editorComponent: I2cBusDeviceEditor,
   widgetComponent: I2cBusDeviceWidget,
 }

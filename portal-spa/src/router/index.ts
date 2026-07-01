@@ -9,6 +9,9 @@ import OtaView from '@/views/OtaView.vue'
 import NotFoundView from '@/views/NotFoundView.vue'
 import SystemView from '@/views/SystemView.vue'
 import WifiView from '@/views/WifiView.vue'
+import DeviceDetailView from '@/views/DeviceDetailView.vue'
+import DeviceCreateView from '@/views/DeviceCreateView.vue'
+import DeviceDesignView from '@/views/DeviceDesignView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -22,6 +25,25 @@ const router = createRouter({
       path: '/devices',
       name: 'devices',
       component: DevicesView,
+    },
+    {
+      path: '/devices/new',
+      name: 'device-create',
+      component: DeviceCreateView,
+    },
+    {
+      path: '/devices/:id',
+      name: 'device-detail',
+      component: DeviceDetailView,
+      props: route => ({ deviceId: Number(route.params.id) }),
+      children: [
+        {
+          path: 'design',
+          name: 'device-design',
+          component: DeviceDesignView,
+          props: true,
+        },
+      ],
     },
     {
       path: '/device-events',
