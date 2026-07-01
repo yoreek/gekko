@@ -14,7 +14,7 @@
 
     <v-card>
       <v-card-text>
-        <div class="designer-toolbar">
+        <v-row align="center" class="ga-2 mb-4">
           <v-btn
             v-for="type in widgetTypeOptions"
             :key="type.value"
@@ -35,7 +35,6 @@
             :label="t('device.fields.display.orientation')"
             hide-details
             variant="outlined"
-            style="max-width: 220px"
           />
           <v-btn
             variant="text"
@@ -46,7 +45,7 @@
             <v-icon class="me-1" icon="oled-page" />
             {{ t('device.dialog.ssd1306Display.addPage') }}
           </v-btn>
-        </div>
+        </v-row>
 
         <v-tabs v-model="activePageId" color="primary" mandatory class="mt-4">
           <v-tab v-for="page in pages" :key="page.id" :value="page.id">
@@ -74,29 +73,32 @@
             <v-sheet border rounded class="pa-3 h-100">
               <div class="text-subtitle-2 mb-2">{{ canvasModeTitle }}</div>
               <div class="text-caption text-medium-emphasis mb-3">{{ canvasLabel }}</div>
-              <div class="canvas-controls mb-3">
-                <v-switch
-                  v-model="showPreview"
-                  density="compact"
-                  color="primary"
-                  hide-details
-                  inset
-                  :label="t('device.dialog.st7735Display.previewTitle')"
-                />
-                <div class="flex-grow-1" />
-                <div class="text-caption text-medium-emphasis me-2">
+              <v-row align="center" class="ga-2 mb-3">
+                <v-col cols="auto">
+                  <v-switch
+                    v-model="showPreview"
+                    density="compact"
+                    color="primary"
+                    hide-details
+                    inset
+                    :label="t('device.dialog.st7735Display.previewTitle')"
+                  />
+                </v-col>
+                <v-spacer />
+                <v-col cols="auto" class="text-caption text-medium-emphasis">
                   {{ t('device.dialog.ssd1306Display.zoom') }} {{ editorZoom }}
-                </div>
-                <v-slider
-                  v-model="editorZoom"
-                  class="zoom-slider"
-                  :min="1"
-                  :max="6"
-                  :step="0.5"
-                  hide-details
-                  density="compact"
-                />
-              </div>
+                </v-col>
+                <v-col cols="12" sm="3">
+                  <v-slider
+                    v-model="editorZoom"
+                    :min="1"
+                    :max="6"
+                    :step="0.5"
+                    hide-details
+                    density="compact"
+                  />
+                </v-col>
+              </v-row>
               <St7735DesignerCanvas
                 v-if="!showPreview"
                 :widgets="activePage.widgets"
@@ -501,22 +503,3 @@ function removeWidget(widgetId: string): void {
   }
 }
 </script>
-
-<style scoped>
-.designer-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.canvas-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.zoom-slider {
-  width: 100px;
-}
-</style>
