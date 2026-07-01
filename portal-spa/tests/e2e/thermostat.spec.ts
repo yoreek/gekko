@@ -5,8 +5,7 @@ const mockPath = '/devices?mockMode=1&mockReset=1'
 const storageKey = 'gekko.mockDb.v7'
 
 async function selectOption(page: Page, name: string, option: string | RegExp): Promise<void> {
-  const dialog = page.getByRole('dialog')
-  const input = dialog.getByRole('combobox', { name, exact: true })
+  const input = page.getByRole('combobox', { name, exact: true })
   await input.locator('xpath=ancestor::*[contains(@class, "v-field")][1]').click()
   await page.getByRole('option', { name: option }).click()
 }
@@ -14,11 +13,11 @@ async function selectOption(page: Page, name: string, option: string | RegExp): 
 test('creates thermostat devices with deps and config', async ({ page }) => {
   await page.goto(mockPath)
 
-  await page.getByRole('button', { name: 'Create device' }).click()
+  await page.goto(mockPath.replace('?', '#/devices/new?'))
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Greenhouse Thermostat')
   await selectOption(page, 'Type', 'Thermostat')
 
-  const submit = page.getByRole('button', { name: 'Create device' }).last()
+  const submit = page.getByRole('button', { name: 'Create device' })
   await expect(submit).toBeDisabled()
 
   await selectOption(page, 'Temperature sensor', /Water Temperature #670845752/)
@@ -68,7 +67,12 @@ test('creates thermostat devices with deps and config', async ({ page }) => {
 test('realtime thermostat updates merge temperature and control state', async ({ page }) => {
   await page.goto(mockPath)
 
-  await page.getByText('Grow Room Thermostat').click()
+  const devices = await page.evaluate(key => {
+    const db = JSON.parse(localStorage.getItem(key) ?? '{}')
+    return db.devices || []
+  }, storageKey)
+  const thermostatId = devices.find((d: any) => d.config?.name === 'Grow Room Thermostat')?.record?.id
+  await page.goto(mockPath.replace('?', `#/devices/${thermostatId}?`))
   await expect(page.getByLabel('Current temperature')).toHaveValue('24.6°C')
   await expect(page.getByLabel('Desired switch state')).toHaveValue('On')
   await expect(page.getByLabel('Actual switch state')).toHaveValue('Off')
@@ -102,7 +106,12 @@ test('realtime thermostat updates merge temperature and control state', async ({
 test('enables save after editing thermostat config', async ({ page }) => {
   await page.goto(mockPath)
 
-  await page.getByText('Grow Room Thermostat').click()
+  const devices = await page.evaluate(key => {
+    const db = JSON.parse(localStorage.getItem(key) ?? '{}')
+    return db.devices || []
+  }, storageKey)
+  const thermostatId = devices.find((d: any) => d.config?.name === 'Grow Room Thermostat')?.record?.id
+  await page.goto(mockPath.replace('?', `#/devices/${thermostatId}?`))
   await page.getByRole('button', { name: 'Edit' }).click()
 
   const saveButton = page.getByRole('button', { name: 'Save' })

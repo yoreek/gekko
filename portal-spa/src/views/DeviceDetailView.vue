@@ -150,20 +150,21 @@ const deviceTypeName = computed(() => (device.value as any)?.record?.typeName ??
 const isLoading = computed(() => detail.loading as any)
 
 const editorUi = computed(() => {
-  if (!device.value) return null
-  return resolveDeviceUi(device.value.record.typeName)
+  const typeName = (device.value as any)?.record?.typeName
+  if (!typeName) return null
+  return resolveDeviceUi(typeName)
 })
 
 const statusText = computed(() => {
   const dev = device.value
-  if (!dev) return ''
+  if (!dev?.runtime) return ''
   const status = (dev.runtime as any).effectiveStatus ?? (dev.runtime as any).lifecycleStatus ?? (dev.runtime as any).status ?? 'unknown'
   return t(deviceStatusLabelKey(status))
 })
 
 const statusColor = computed(() => {
   const dev = device.value
-  if (!dev) return 'primary'
+  if (!dev?.runtime) return 'primary'
   const status = (dev.runtime as any).effectiveStatus ?? (dev.runtime as any).lifecycleStatus ?? (dev.runtime as any).status ?? 'unknown'
   switch (status) {
     case 'ready':
