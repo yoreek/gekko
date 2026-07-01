@@ -43,7 +43,7 @@
 
         <!-- Content -->
         <v-card-text class="pa-6 d-flex flex-column ga-3">
-          <section class="pa-4 rounded elevation-1 bg-surface">
+          <section class="device-type-section">
             <DeviceCommonFields
               :model-value="(draft as any)"
               mode="edit"
@@ -187,4 +187,16 @@ function openDesigner(): void {
   if (id) router.push({ name: 'device-design', params: { id } })
 }
 </script>
+
+<style scoped>
+.device-type-section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgb(var(--v-theme-outline-variant));
+  border-radius: 10px;
+  background: var(--portal-surface);
+  box-shadow: var(--portal-shadow-sm);
+}
+</style>
 
