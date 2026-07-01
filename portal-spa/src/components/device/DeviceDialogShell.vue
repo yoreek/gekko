@@ -7,7 +7,7 @@
   >
     <v-card class="device-dialog">
       <v-card-title class="device-dialog__title">
-        <div>
+        <div class="text-wrap">
           <div v-if="eyebrow" class="text-overline">{{ eyebrow }}</div>
           <div v-if="headline" class="text-h6 font-weight-bold">{{ headline }}</div>
           <div v-if="subline" class="text-body-2 text-medium-emphasis">{{ subline }}</div>
