@@ -1,5 +1,5 @@
 <template>
-  <v-row density="compact">
+  <v-row density="comfortable">
     <!-- Display geometry -->
     <v-col cols="12" sm="6">
       <v-text-field

@@ -40,7 +40,7 @@
 
   <v-row v-if="showHeuristicWarning" class="device-type-section__grid">
     <v-col cols="12">
-      <v-alert type="warning" variant="tonal" dense>
+      <v-alert type="warning" variant="tonal" density="comfortable">
         <strong>Heuristic method:</strong> CS pull-resistor detection is not fully reliable. Verify device manually.
       </v-alert>
     </v-col>

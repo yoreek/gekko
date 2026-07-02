@@ -57,7 +57,7 @@
           </v-tab>
         </v-tabs>
 
-        <v-row class="mt-4" density="compact" no-gutters>
+        <v-row class="mt-4" density="comfortable" no-gutters>
           <v-col cols="12" lg="3" class="pa-2">
             <v-sheet border rounded class="pa-3 h-100">
               <div class="text-subtitle-2 mb-3">{{ t('device.dialog.ssd1306Display.layersTitle') }}</div>

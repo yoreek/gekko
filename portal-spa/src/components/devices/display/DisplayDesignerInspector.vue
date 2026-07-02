@@ -6,7 +6,7 @@
 
     <!-- Geometry section -->
     <div class="mb-4">
-      <v-row dense>
+      <v-row density="comfortable">
         <v-col cols="12">
           <v-select
             density="compact"
@@ -135,7 +135,7 @@
 
     <!-- Text section -->
     <div v-if="isTextWidget" class="mb-4">
-      <v-row dense>
+      <v-row density="comfortable">
         <v-col cols="12">
           <v-textarea
             :label="t('device.dialog.ssd1306Display.text')"
@@ -185,7 +185,7 @@
 
     <!-- Bitmap section -->
     <div v-if="isBitmapWidget" class="mb-4">
-      <v-row dense>
+      <v-row density="comfortable">
         <v-col cols="12">
           <v-chip size="small" variant="tonal" color="info">
             {{ t('device.dialog.ssd1306Display.bitmapSize', { size: `${widget.width} × ${widget.height}` }) }}
