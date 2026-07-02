@@ -1,9 +1,11 @@
 <template>
   <PageContainer>
-    <PageToolbar :title="t('device.dialog.createTitle')" :subtitle="t('device.dialog.createHint')" show-back @back="navigateBack" />
+    <PageCard>
+      <template #header>
+        <PageToolbar :title="t('device.dialog.createTitle')" :subtitle="t('device.dialog.createHint')" show-back @back="navigateBack" />
+      </template>
 
-    <v-card>
-      <v-card-text class="d-flex flex-column ga-4">
+      <div class="d-flex flex-column ga-4">
         <DeviceBaseFields :model-value="draft" mode="create" :busy="isCreating" @update:model-value="onBaseUpdate" />
 
         <v-divider v-if="typeUi" />
@@ -20,17 +22,17 @@
         <v-alert v-if="errorMessage" type="error" variant="tonal">
           {{ errorMessage }}
         </v-alert>
-      </v-card-text>
+      </div>
 
-      <v-card-actions class="d-flex justify-end ga-3 flex-wrap">
+      <template #actions>
         <v-btn variant="text" :disabled="isCreating" @click="navigateBack">
           {{ t('actions.cancel') }}
         </v-btn>
         <v-btn color="primary" :loading="isCreating" :disabled="!canCreate" @click="submitCreate">
           {{ t('device.dialog.save') }}
         </v-btn>
-      </v-card-actions>
-    </v-card>
+      </template>
+    </PageCard>
   </PageContainer>
 </template>
 
@@ -46,6 +48,7 @@ import { resolveDeviceUiV2 } from '@/v2/components/registry/device-ui-registry'
 import DeviceBaseFields from '@/v2/components/device/DeviceBaseFields.vue'
 import PageContainer from '@/v2/components/layout/PageContainer.vue'
 import PageToolbar from '@/v2/components/layout/PageToolbar.vue'
+import PageCard from '@/v2/components/layout/PageCard.vue'
 
 const { t } = useI18n()
 const router = useRouter()

@@ -1,37 +1,39 @@
 <template>
   <PageContainer>
-    <PageToolbar :title="t('navigation.devices')" :subtitle="countLabel">
-      <template #actions>
-        <v-btn color="primary" prepend-icon="plus" :to="{ name: 'v2-device-create' }">
-          {{ t('device.dashboard.create') }}
-        </v-btn>
+    <PageCard>
+      <template #header>
+        <PageToolbar :title="t('navigation.devices')" :subtitle="countLabel">
+          <template #actions>
+            <v-btn color="primary" prepend-icon="plus" :to="{ name: 'v2-device-create' }">
+              {{ t('device.dashboard.create') }}
+            </v-btn>
+          </template>
+        </PageToolbar>
       </template>
-    </PageToolbar>
 
-    <v-card v-if="deviceStore.devices.length === 0">
-      <v-card-text class="text-medium-emphasis">
+      <div v-if="deviceStore.devices.length === 0" class="text-medium-emphasis">
         {{ t('device.dashboard.empty') }}
-      </v-card-text>
-    </v-card>
+      </div>
 
-    <v-list v-else lines="two" class="py-0" density="comfortable">
-      <v-list-item
-        v-for="device in deviceStore.devices"
-        :key="device.record.id"
-        :title="device.config.name"
-        :subtitle="t(resolveDeviceUiV2(device.record.typeName).labelKey)"
-        :to="{ name: 'v2-device-detail', params: { id: device.record.id } }"
-      >
-        <template #prepend>
-          <v-icon :icon="resolveDeviceUiV2(device.record.typeName).icon" />
-        </template>
-        <template #append>
-          <v-chip :color="statusColor(device)" size="small" variant="tonal">
-            {{ t(deviceStatusLabelKey(device.runtime.effectiveStatus ?? device.runtime.status)) }}
-          </v-chip>
-        </template>
-      </v-list-item>
-    </v-list>
+      <v-list v-else lines="two" class="py-0" density="comfortable">
+        <v-list-item
+          v-for="device in deviceStore.devices"
+          :key="device.record.id"
+          :title="device.config.name"
+          :subtitle="t(resolveDeviceUiV2(device.record.typeName).labelKey)"
+          :to="{ name: 'v2-device-detail', params: { id: device.record.id } }"
+        >
+          <template #prepend>
+            <v-icon :icon="resolveDeviceUiV2(device.record.typeName).icon" />
+          </template>
+          <template #append>
+            <v-chip :color="statusColor(device)" size="small" variant="tonal">
+              {{ t(deviceStatusLabelKey(device.runtime.effectiveStatus ?? device.runtime.status)) }}
+            </v-chip>
+          </template>
+        </v-list-item>
+      </v-list>
+    </PageCard>
   </PageContainer>
 </template>
 
@@ -45,6 +47,7 @@ import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { resolveDeviceUiV2 } from '@/v2/components/registry/device-ui-registry'
 import PageContainer from '@/v2/components/layout/PageContainer.vue'
 import PageToolbar from '@/v2/components/layout/PageToolbar.vue'
+import PageCard from '@/v2/components/layout/PageCard.vue'
 
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
