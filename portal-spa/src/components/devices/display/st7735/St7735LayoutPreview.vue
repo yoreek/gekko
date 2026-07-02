@@ -33,7 +33,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import St7735WidgetPreview from '@/components/devices/display/st7735/St7735WidgetPreview.vue'
-import { resolveSsd1306CanvasStyle, resolveSsd1306WidgetFrameStyle } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
+import { resolveSsd1306CanvasStyle, resolveSsd1306WidgetFrameStyle } from '@/models/devices/display/canvas/ssd1306-layout-math'
 import type { MetricPlaceholderDescriptor } from '@/api/contracts'
 import type { BaseDisplay } from '@/models/devices/display/display'
 import type { Ssd1306LayoutDraft, Ssd1306Widget } from '@/models/devices/ssd1306/layout'

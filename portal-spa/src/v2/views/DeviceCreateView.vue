@@ -42,9 +42,10 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import { createDevice, type DeviceCreateRequest } from '@/api'
-import { createDefaultDeviceDraft, type DeviceCreateDraft } from '@/components/device/device-form'
+import { createDefaultDeviceDraft, type DeviceCreateDraft } from '@/models/devices/device-draft'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { resolveDeviceUiV2 } from '@/v2/components/registry/device-ui-registry'
+import { useNotificationsStore } from '@/v2/stores/notifications'
 import DeviceBaseFields from '@/v2/components/device/DeviceBaseFields.vue'
 import PageContainer from '@/v2/components/layout/PageContainer.vue'
 import PageToolbar from '@/v2/components/layout/PageToolbar.vue'
@@ -53,6 +54,7 @@ import PageCard from '@/v2/components/layout/PageCard.vue'
 const { t } = useI18n()
 const router = useRouter()
 const deviceStore = useDeviceRegistryStore()
+const notifications = useNotificationsStore()
 
 const isCreating = ref(false)
 const errorMessage = ref('')
@@ -97,6 +99,7 @@ async function submitCreate(): Promise<void> {
     deviceStore.setRevision(response.registryRevision)
     if (response.device) {
       deviceStore.upsertDevice(response.device, response.registryRevision)
+      notifications.notify(t('notifications.deviceCreated', { name: response.device.config.name }), 'success')
       await router.push({ name: 'v2-device-detail', params: { id: response.device.record.id } })
     }
   } catch (error) {

@@ -28,7 +28,7 @@
 import { computed } from 'vue'
 
 import Ssd1306WidgetPreview from '@/components/devices/display/ssd1306/Ssd1306WidgetPreview.vue'
-import { resolveSsd1306CanvasStyle, resolveSsd1306WidgetFrameStyle } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
+import { resolveSsd1306CanvasStyle, resolveSsd1306WidgetFrameStyle } from '@/models/devices/display/canvas/ssd1306-layout-math'
 import type { MetricPlaceholderDescriptor } from '@/api/contracts'
 import type { BaseDisplay } from '@/models/devices/display/display'
 import type { Ssd1306LayoutDraft, Ssd1306Widget } from '@/models/devices/ssd1306/layout'

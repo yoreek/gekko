@@ -72,12 +72,15 @@
     <v-main class="app-main">
       <router-view />
     </v-main>
+
+    <NotificationSnackbar />
   </v-app>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import NotificationSnackbar from '@/v2/components/layout/NotificationSnackbar.vue'
 import { useRoute, type RouteLocationRaw } from 'vue-router'
 import { useTheme } from 'vuetify'
 

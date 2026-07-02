@@ -1,6 +1,6 @@
 import type { Ssd1306Widget } from '@/models/devices/ssd1306/layout'
 
-export interface Ssd1306CanvasInteraction {
+export interface DisplayCanvasInteraction {
   mode: 'drag' | 'resize'
   widgetId: string
   keepAspectRatio: boolean
@@ -13,9 +13,9 @@ export interface Ssd1306CanvasInteraction {
   startAspectRatio: number
 }
 
-export function resolveSsd1306InteractionWidgets(
+export function resolveDisplayInteractionWidgets(
   widgets: Ssd1306Widget[],
-  interaction: Ssd1306CanvasInteraction,
+  interaction: DisplayCanvasInteraction,
   currentClientX: number,
   currentClientY: number,
   zoom: number,

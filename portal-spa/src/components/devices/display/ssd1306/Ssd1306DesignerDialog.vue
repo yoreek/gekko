@@ -171,8 +171,8 @@ import Ssd1306LayoutPreview from '@/components/devices/display/ssd1306/Ssd1306La
 import { useDisplayBitmapRenderLock } from '@/composables/display/useDisplayBitmapRenderLock'
 import { useDisplayBitmapResizeTransaction } from '@/composables/display/useDisplayBitmapResizeTransaction'
 import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
-import { resolveSsd1306WidgetDuplicatePosition, resolveSsd1306WidgetSpawnPosition } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
-import { autoSizeSsd1306TextWidget } from '@/components/devices/display/ssd1306/ssd1306-text-layout'
+import { resolveSsd1306WidgetDuplicatePosition, resolveSsd1306WidgetSpawnPosition } from '@/models/devices/display/canvas/ssd1306-layout-math'
+import { autoSizeSsd1306TextWidget } from '@/models/devices/display/text/ssd1306-text-layout'
 import { resolveDisplayEffectiveSize, normalizeDisplayRotation } from '@/models/devices/display/orientation'
 import {
   defaultSsd1306Layout,

@@ -101,7 +101,7 @@ const thermostatUi: DeviceUiV2 = {
 const ssd1306Ui: DeviceUiV2 = {
   typeId: Ssd1306Device.TYPE_ID,
   typeName: Ssd1306Device.TYPE_NAME,
-  labelKey: 'device.type.ssd1306OledDisplay',
+  labelKey: 'device.type.ssd1306Display',
   icon: 'device',
   fieldsComponent: Ssd1306Fields,
   widgetComponent: DummyWidget,
@@ -110,7 +110,7 @@ const ssd1306Ui: DeviceUiV2 = {
 const st7735Ui: DeviceUiV2 = {
   typeId: St7735Device.TYPE_ID,
   typeName: St7735Device.TYPE_NAME,
-  labelKey: 'device.type.st7735TftDisplay',
+  labelKey: 'device.type.st7735',
   icon: 'device',
   fieldsComponent: St7735Fields,
   widgetComponent: DummyWidget,

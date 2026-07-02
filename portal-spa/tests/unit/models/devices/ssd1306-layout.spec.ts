@@ -15,7 +15,7 @@ import {
   normalizeClassicFontDrawBound,
   normalizeClassicFontDrawScale,
   resolveClassicFontColumnsPerLine,
-} from '../../../../src/components/devices/display/ssd1306/classic-font.ts'
+} from '../../../../src/models/devices/display/text/classic-font.ts'
 import {
   resolveSsd1306CanvasBitmapSize,
   resolveSsd1306CanvasStyle,
@@ -24,14 +24,14 @@ import {
   resolveSsd1306WidgetDuplicatePosition,
   resolveSsd1306WidgetFrameStyle,
   resolveSsd1306WidgetSpawnPosition,
-} from '../../../../src/components/devices/display/ssd1306/ssd1306-layout-math.ts'
+} from '../../../../src/models/devices/display/canvas/ssd1306-layout-math.ts'
 import {
-  resolveSsd1306InteractionWidgets,
-} from '../../../../src/components/devices/display/ssd1306/ssd1306-editor-interaction.ts'
+  resolveDisplayInteractionWidgets,
+} from '../../../../src/models/devices/display/canvas/interaction.ts'
 import {
   autoSizeSsd1306TextWidget,
   measureSsd1306TextWidget,
-} from '../../../../src/components/devices/display/ssd1306/ssd1306-text-layout.ts'
+} from '../../../../src/models/devices/display/text/ssd1306-text-layout.ts'
 import {
   defaultSsd1306Layout,
   defaultSsd1306Widget,
@@ -713,7 +713,7 @@ test('OLED editor drag updates only the active widget and allows overlap', () =>
   line.width = 36
   line.height = 1
 
-  const next = resolveSsd1306InteractionWidgets([text, circle, line], {
+  const next = resolveDisplayInteractionWidgets([text, circle, line], {
     mode: 'drag',
     widgetId: 'circle',
     startClientX: 100,
@@ -737,7 +737,7 @@ test('OLED editor drag clamps the active widget inside the display', () => {
   widget.width = 32
   widget.height = 20
 
-  const next = resolveSsd1306InteractionWidgets([widget], {
+  const next = resolveDisplayInteractionWidgets([widget], {
     mode: 'drag',
     widgetId: 'rect',
     startClientX: 10,
@@ -761,7 +761,7 @@ test('OLED editor resize updates only the active widget and clamps to display bo
   const text = defaultSsd1306Widget('text', 1)
   text.id = 'text'
 
-  const next = resolveSsd1306InteractionWidgets([rect, text], {
+  const next = resolveDisplayInteractionWidgets([rect, text], {
     mode: 'resize',
     widgetId: 'rect',
     startClientX: 0,

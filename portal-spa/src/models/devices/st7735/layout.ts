@@ -6,7 +6,7 @@ import {
   normalizeDisplayLayout,
 } from '../display/layout-normalizer.ts'
 import { ST7735_DISPLAY_LAYOUT_PROFILE } from '../display/profile.ts'
-import { autoSizeSsd1306TextWidget } from '../../../components/devices/display/ssd1306/ssd1306-text-layout.ts'
+import { autoSizeSsd1306TextWidget } from '../display/text/ssd1306-text-layout.ts'
 import type { Ssd1306Widget } from '../ssd1306/layout.ts'
 
 export interface St7735LayoutDraft extends DisplayLayoutDraft {

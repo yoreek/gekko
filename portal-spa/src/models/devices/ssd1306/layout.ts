@@ -1,4 +1,4 @@
-import { autoSizeSsd1306TextWidget } from '../../../components/devices/display/ssd1306/ssd1306-text-layout.ts'
+import { autoSizeSsd1306TextWidget } from '../display/text/ssd1306-text-layout.ts'
 import type {
   DisplayLayoutDraft,
   DisplayWidgetBase,

@@ -10,7 +10,7 @@ test('v2 devices list renders and links to detail', async ({ page }) => {
   await page.goto('/v2/devices?mockMode=1&mockReset=1')
   await expect(page.getByRole('heading', { name: 'Devices', level: 6 }).or(page.locator('.text-h6'))).toBeVisible()
 
-  const items = page.locator('.v-list-item')
+  const items = page.locator('main .v-list-item')
   await expect(items.first()).toBeVisible()
 
   await items.first().click()
@@ -31,10 +31,13 @@ test('v2 device create flow: create a dummy device', async ({ page }) => {
 test('v2 gpio_switch detail shows type-specific fields', async ({ page }) => {
   await page.goto('/v2/devices?mockMode=1&mockReset=1')
 
-  const gpioItem = page.locator('.v-list-item', { hasText: 'GPIO switch' }).first()
+  const gpioItem = page.locator('main .v-list-item', { hasText: 'GPIO switch' }).first()
   await gpioItem.click()
 
   await expect(page).toHaveURL(/\/v2\/devices\/\d+$/)
   await expect(page.getByLabel('GPIO pin')).toBeVisible()
+
+  // Inverted lives inside the collapsible "Config details" panel
+  await page.getByText('Config details').click()
   await expect(page.getByLabel('Inverted')).toBeVisible()
 })

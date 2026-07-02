@@ -162,7 +162,7 @@ const localIconRegistry: Record<
   'oled-layer-up': createIconShape(['M12 4l6 6H6z', 'M6 18h12']),
   'oled-layer-down': createIconShape(['M6 6h12l-6 6z', 'M6 18h12']),
   'oled-duplicate': createIconShape(['M8 8h10v10H8z', 'M6 6h10']),
-  'design-display': createIconShape(['M4 5h16v14H4z', 'M8 9h3v3H8z', 'M13 9h3v3h-3z', 'M8 14h8']),
+  'design-display': createFilledIconShape(editPath),
   checkboxOn: createFilledIconShape(checkboxMarkedPath),
   checkboxOff: createIconShape(checkboxBlankOutlinePath),
   checkboxIndeterminate: createFilledIconShape(checkboxIndeterminatePath),

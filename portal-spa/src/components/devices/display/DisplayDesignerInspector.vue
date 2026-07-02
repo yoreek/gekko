@@ -285,7 +285,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import MetricPlaceholderBuilder from '@/components/devices/display/MetricPlaceholderBuilder.vue'
-import { measureSsd1306TextWidget } from '@/components/devices/display/ssd1306/ssd1306-text-layout'
+import { measureSsd1306TextWidget } from '@/models/devices/display/text/ssd1306-text-layout'
 import type { BaseDisplay } from '@/models/devices/display/display'
 import { resolveDisplayBitmapDimensionUpdate } from '@/models/devices/display/widgets'
 import type { DisplayBitmapWidget, DisplayWidget, DisplayWidgetType } from '@/models/devices/display/layout'

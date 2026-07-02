@@ -33,6 +33,7 @@
             mode="edit"
             :busy="loading"
             @update:model-value="draft = $event"
+            @command="onCommand"
           />
 
           <v-alert v-if="errorMessage" type="error" variant="tonal">
@@ -41,10 +42,10 @@
         </div>
 
         <template #actions>
-          <v-btn variant="text" :disabled="loading" @click="resetDraft">
+          <v-btn variant="text" :disabled="loading" @click="navigateBack">
             {{ t('actions.cancel') }}
           </v-btn>
-          <v-btn color="primary" :loading="isSaving" :disabled="!canSave || loading" @click="save()">
+          <v-btn color="primary" :loading="isSaving" :disabled="!canSave || loading" @click="onSave">
             {{ t('device.dialog.save') }}
           </v-btn>
         </template>
@@ -66,10 +67,12 @@ import { computed, onBeforeMount, toRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
+import type { DeviceCommandRequest } from '@/api/contracts'
 import { deviceStatusLabelKey } from '@/models/devices/device-status'
 import { useDeviceDetail } from '@/composables/useDeviceDetail'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { resolveDeviceUiV2 } from '@/v2/components/registry/device-ui-registry'
+import { useNotificationsStore } from '@/v2/stores/notifications'
 import DeviceBaseFields from '@/v2/components/device/DeviceBaseFields.vue'
 import PageContainer from '@/v2/components/layout/PageContainer.vue'
 import PageToolbar from '@/v2/components/layout/PageToolbar.vue'
@@ -82,9 +85,24 @@ const props = defineProps<{
 const { t } = useI18n()
 const router = useRouter()
 const deviceStore = useDeviceRegistryStore()
+const notifications = useNotificationsStore()
 
-const { device, deviceName, loading, isSaving, errorMessage, draft, canSave, refresh, save, resetDraft } =
+const { device, deviceName, loading, isSaving, errorMessage, draft, canSave, refresh, save, submitCommand } =
   useDeviceDetail(toRef(props, 'deviceId'))
+
+async function onSave(): Promise<void> {
+  await save()
+  if (!errorMessage.value) {
+    notifications.notify(t('notifications.deviceSaved'), 'success')
+  }
+}
+
+async function onCommand(payload: DeviceCommandRequest): Promise<void> {
+  await submitCommand(payload)
+  if (!errorMessage.value) {
+    notifications.notify(t('notifications.commandSent'), 'success')
+  }
+}
 
 onBeforeMount(async () => {
   await deviceStore.initialize()

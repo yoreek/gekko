@@ -62,13 +62,7 @@ const v2Routes: RouteRecordRaw[] = [
   {
     path: '/v2/devices/:id/design',
     name: 'v2-device-design',
-    component: () => import('@/v2/views/Ssd1306DesignerView.vue'),
-    props: route => ({ deviceId: Number(route.params.id) }),
-  },
-  {
-    path: '/v2/devices/:id/design-tft',
-    name: 'v2-device-design-tft',
-    component: () => import('@/v2/views/St7735DesignerView.vue'),
+    component: () => import('@/v2/views/DisplayDesignerView.vue'),
     props: route => ({ deviceId: Number(route.params.id) }),
   },
 ]

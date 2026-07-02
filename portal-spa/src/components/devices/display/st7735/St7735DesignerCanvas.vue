@@ -37,14 +37,14 @@
 import { computed, ref } from 'vue'
 
 import St7735WidgetPreview from '@/components/devices/display/st7735/St7735WidgetPreview.vue'
-import { resolveSsd1306InteractionWidgets, type Ssd1306CanvasInteraction } from '@/components/devices/display/ssd1306/ssd1306-editor-interaction'
-import { resolveSsd1306CanvasStyle, resolveSsd1306WidgetFrameStyle } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
+import { resolveDisplayInteractionWidgets, type DisplayCanvasInteraction } from '@/models/devices/display/canvas/interaction'
+import { resolveSsd1306CanvasStyle, resolveSsd1306WidgetFrameStyle } from '@/models/devices/display/canvas/ssd1306-layout-math'
 import type { MetricPlaceholderDescriptor } from '@/api/contracts'
 import type { BaseDisplay } from '@/models/devices/display/display'
 import type { Ssd1306Widget } from '@/models/devices/ssd1306/layout'
 import { resolveMetricPlaceholderText } from '@/models/metrics/placeholders'
 
-type CanvasInteraction = Ssd1306CanvasInteraction & {
+type CanvasInteraction = DisplayCanvasInteraction & {
   pointerId: number
 }
 
@@ -125,7 +125,7 @@ function updateInteraction(event: PointerEvent): void {
   if (interaction === null || interaction.pointerId !== event.pointerId) {
     return
   }
-  emit('update-widgets', resolveSsd1306InteractionWidgets(props.widgets, interaction, event.clientX, event.clientY, props.zoom, props.deviceWidth, props.deviceHeight))
+  emit('update-widgets', resolveDisplayInteractionWidgets(props.widgets, interaction, event.clientX, event.clientY, props.zoom, props.deviceWidth, props.deviceHeight))
 }
 
 function finishInteraction(event: PointerEvent): void {

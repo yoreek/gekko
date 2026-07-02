@@ -5,7 +5,7 @@ import type { DeviceTypeId } from '@/models/device-type-ids'
 
 /**
  * Page-based device UI contract (v2). All components consume the same
- * DeviceEditDraft shape as v1 (@/components/device/device-form) so the
+ * DeviceEditDraft shape as v1 (@/models/devices/device-draft) so the
  * existing model layer (BaseDevice subclasses, useDeviceDetail) is reused
  * unchanged. fieldsComponent renders ONLY the type-specific fields; the
  * base fields (name/enabled/deps) are rendered once by DeviceBaseFields.
@@ -15,7 +15,11 @@ export interface DeviceUiV2 {
   readonly typeName: string
   readonly labelKey: string
   readonly icon: PortalIconName
-  /** Props: { modelValue: DeviceEditDraft; mode: 'view'|'edit'|'create'; busy?: boolean }, emits: update:modelValue */
+  /**
+   * Props: { modelValue: DeviceEditDraft; device?: DeviceRecord; mode: 'view'|'edit'|'create'; busy?: boolean }
+   * Emits: update:modelValue, and optionally command(payload: DeviceCommandRequest) for types that expose
+   * quick actions (e.g. gpio_switch output control, i2c/spi/onewire bus scan/diagnostics reset).
+   */
   readonly fieldsComponent: Component
   /** Compact card for dashboard grid. Props: { device: DeviceRecord } */
   readonly widgetComponent: Component

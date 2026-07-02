@@ -9,6 +9,6 @@ export {
   resolveDisplayWidgetBitmapSize as resolveSsd1306WidgetBitmapSize,
   resolveDisplayWidgetDuplicatePosition as resolveSsd1306WidgetDuplicatePosition,
   resolveDisplayWidgetSpawnPosition as resolveSsd1306WidgetSpawnPosition,
-} from '../core/display-layout-math.ts'
+} from './geometry.ts'
 
-export { resolveDisplayWidgetFrameStyle as resolveSsd1306WidgetFrameStyle } from '../core/display-layout-math.ts'
+export { resolveDisplayWidgetFrameStyle as resolveSsd1306WidgetFrameStyle } from './geometry.ts'

@@ -1,6 +1,35 @@
 <template>
   <v-row density="comfortable">
+    <!-- I2C connection (bus id, address + scan) -->
+    <v-col cols="12" sm="4">
+      <v-text-field
+        :model-value="modelValue.i2cBusDeviceId"
+        type="number"
+        :label="t('device.fields.i2cBusDeviceId')"
+        density="compact"
+        hide-details="auto"
+        @update:model-value="update('i2cBusDeviceId', Number($event))"
+      />
+    </v-col>
+    <v-col cols="12">
+      <I2cAddressPicker
+        :model-value="modelValue.i2cAddress"
+        :bus-device-id="modelValue.i2cBusDeviceId"
+        @update:model-value="update('i2cAddress', $event)"
+      />
+    </v-col>
+
     <!-- Display geometry -->
+    <v-col cols="12">
+      <v-select
+        :model-value="modelValue.rotation"
+        :items="rotationItems"
+        :label="t('device.fields.display.orientation')"
+        density="compact"
+        hide-details="auto"
+        @update:model-value="update('rotation', $event)"
+      />
+    </v-col>
     <v-col cols="12" sm="6">
       <v-text-field
         :model-value="modelValue.width"
@@ -21,39 +50,6 @@
         @update:model-value="update('height', Number($event))"
       />
     </v-col>
-    <v-col cols="12">
-      <v-select
-        :model-value="modelValue.rotation"
-        :items="rotationItems"
-        :label="t('device.fields.display.orientation')"
-        density="compact"
-        hide-details="auto"
-        @update:model-value="update('rotation', $event)"
-      />
-    </v-col>
-
-    <!-- I2C connection -->
-    <v-col cols="12" sm="6">
-      <v-text-field
-        :model-value="modelValue.i2cBusDeviceId"
-        type="number"
-        :label="t('device.fields.i2cBusDeviceId')"
-        density="compact"
-        hide-details="auto"
-        @update:model-value="update('i2cBusDeviceId', Number($event))"
-      />
-    </v-col>
-    <v-col cols="12" sm="6">
-      <v-text-field
-        :model-value="modelValue.i2cAddress"
-        type="number"
-        :label="t('device.fields.i2cAddress')"
-        :hint="t('device.fields.i2cAddressHint')"
-        density="compact"
-        hide-details="auto"
-        @update:model-value="update('i2cAddress', Number($event))"
-      />
-    </v-col>
 
     <!-- Designer button -->
     <v-col cols="12">
@@ -62,7 +58,7 @@
         variant="tonal"
         :to="{ name: 'v2-device-design', params: { id: device.record.id } }"
       >
-        <v-icon class="me-2" icon="mdi-pencil" />
+        <v-icon class="me-2" icon="design-display" />
         {{ t('device.dialog.ssd1306Display.designerTitle') }}
       </v-btn>
     </v-col>
@@ -74,6 +70,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DeviceRecord } from '@/api/contracts'
 import type { Ssd1306ConfigDraft } from '@/models/devices/ssd1306/device'
+import I2cAddressPicker from '@/v2/components/devices/common/I2cAddressPicker.vue'
 
 const props = defineProps<{
   modelValue: T

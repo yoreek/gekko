@@ -28,8 +28,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { drawClassicFontText } from '@/components/devices/display/ssd1306/classic-font'
-import { resolveSsd1306TextRenderScale, resolveSsd1306WidgetBitmapSize } from '@/components/devices/display/ssd1306/ssd1306-layout-math'
+import { drawClassicFontText } from '@/models/devices/display/text/classic-font'
+import { resolveSsd1306TextRenderScale, resolveSsd1306WidgetBitmapSize } from '@/models/devices/display/canvas/ssd1306-layout-math'
 import type { BaseDisplay } from '@/models/devices/display/display'
 import type { DisplayBitmapWidget } from '@/models/devices/display/layout'
 import type { Ssd1306Widget } from '@/models/devices/ssd1306/layout'

@@ -38,7 +38,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import type { DeviceCommonDraft } from '@/components/device/device-form'
+import type { DeviceCommonDraft } from '@/models/devices/device-draft'
 import { allDeviceUisV2 } from '@/v2/components/registry/device-ui-registry'
 
 const props = defineProps<{
