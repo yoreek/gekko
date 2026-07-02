@@ -1,18 +1,22 @@
 <template>
   <PageContainer dense>
-    <PageToolbar
-      :title="t('device.dialog.ssd1306Display.designerTitle')"
-      :subtitle="device?.config?.name || ''"
-      @back="$router.back()"
-    >
-      <template #actions>
-        <v-chip variant="tonal" color="primary">
-          {{ t('device.dialog.ssd1306Display.schema', { value: layout.schemaVersion }) }}
-        </v-chip>
-      </template>
-    </PageToolbar>
-
     <v-card>
+      <v-card-item>
+        <PageToolbar
+          :title="t('device.dialog.ssd1306Display.designerTitle')"
+          :subtitle="device?.config?.name || ''"
+          @back="$router.back()"
+        >
+          <template #actions>
+            <v-chip variant="tonal" color="primary">
+              {{ t('device.dialog.ssd1306Display.schema', { value: layout.schemaVersion }) }}
+            </v-chip>
+          </template>
+        </PageToolbar>
+      </v-card-item>
+
+      <v-divider />
+
       <v-card-text>
         <v-row align="center" class="ga-2 mb-4">
           <v-btn
