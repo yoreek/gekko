@@ -1,7 +1,7 @@
 <template>
   <PageContainer>
-    <v-card>
-      <v-card-item>
+    <PageCard>
+      <template #header>
         <PageToolbar :title="t('navigation.ota')" :subtitle="t('ota.subtitle')">
           <template #actions>
             <v-chip variant="tonal" :color="otaStore.enabled ? 'success' : 'secondary'" size="small">
@@ -9,12 +9,9 @@
             </v-chip>
           </template>
         </PageToolbar>
-      </v-card-item>
+      </template>
 
-      <v-divider />
-
-      <v-card-text>
-        <v-row class="ga-4">
+      <v-row class="ga-4">
           <v-col cols="12" sm="4">
             <div>
               <div class="text-overline text-medium-emphasis">{{ t('ota.enabled') }}</div>
@@ -34,14 +31,13 @@
             </div>
           </v-col>
         </v-row>
-      </v-card-text>
 
-      <v-card-actions>
+      <template #actions>
         <v-btn :loading="loading" color="primary" size="small" @click="refreshOtaStatus">
           {{ t('actions.refresh') }}
         </v-btn>
-      </v-card-actions>
-    </v-card>
+      </template>
+    </PageCard>
   </PageContainer>
 </template>
 
@@ -52,6 +48,7 @@ import { useI18n } from 'vue-i18n'
 import { useOtaStore } from '@/stores/ota'
 import PageContainer from '@/v2/components/layout/PageContainer.vue'
 import PageToolbar from '@/v2/components/layout/PageToolbar.vue'
+import PageCard from '@/v2/components/layout/PageCard.vue'
 
 const { t } = useI18n()
 const otaStore = useOtaStore()

@@ -1,10 +1,8 @@
 <template>
   <PageContainer dense>
-    <v-card>
-      <v-card-text class="text-medium-emphasis">
-        Dashboard placeholder
-      </v-card-text>
-    </v-card>
+    <div class="text-medium-emphasis">
+      Dashboard placeholder
+    </div>
   </PageContainer>
 </template>
 

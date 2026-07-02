@@ -1,16 +1,17 @@
 <template>
   <PageContainer>
-    <PageToolbar :title="t('navigation.system')" :subtitle="t('system.subtitle')">
-      <template #actions>
-        <v-chip variant="tonal" :color="systemStore.rebooting ? 'warning' : 'success'" size="small">
-          {{ systemStore.rebooting ? t('restart.pending') : t('labels.ready') }}
-        </v-chip>
+    <PageCard>
+      <template #header>
+        <PageToolbar :title="t('navigation.system')" :subtitle="t('system.subtitle')">
+          <template #actions>
+            <v-chip variant="tonal" :color="systemStore.rebooting ? 'warning' : 'success'" size="small">
+              {{ systemStore.rebooting ? t('restart.pending') : t('labels.ready') }}
+            </v-chip>
+          </template>
+        </PageToolbar>
       </template>
-    </PageToolbar>
 
-    <v-card class="mb-4">
-      <v-card-text>
-        <v-row class="ga-4">
+      <v-row class="ga-4">
           <v-col cols="12" sm="4">
             <div>
               <div class="text-overline text-medium-emphasis">{{ t('system.status') }}</div>
@@ -30,14 +31,13 @@
             </div>
           </v-col>
         </v-row>
-      </v-card-text>
 
-      <v-card-actions>
+      <template #actions>
         <v-btn :loading="restartLoading" color="primary" size="small" @click="restartSystem">
           {{ t('system.restart') }}
         </v-btn>
-      </v-card-actions>
-    </v-card>
+      </template>
+    </PageCard>
   </PageContainer>
 </template>
 
@@ -50,6 +50,7 @@ import { useSystemStore } from '@/stores/system'
 import { useWebSocketStore } from '@/stores/websocket'
 import PageContainer from '@/v2/components/layout/PageContainer.vue'
 import PageToolbar from '@/v2/components/layout/PageToolbar.vue'
+import PageCard from '@/v2/components/layout/PageCard.vue'
 
 const { t } = useI18n()
 const systemStore = useSystemStore()
