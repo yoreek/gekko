@@ -1,18 +1,11 @@
 <template>
-  <v-snackbar
-    :model-value="current !== null"
-    :color="current?.color"
+  <v-snackbar-queue
+    v-model="messages"
     location="top"
-    :timeout="current?.timeout ?? 4000"
-    @update:model-value="onModelChange"
-  >
-    {{ current?.message }}
-    <template #actions>
-      <v-btn variant="text" @click="dismiss">
-        {{ t('actions.close') }}
-      </v-btn>
-    </template>
-  </v-snackbar>
+    :total-visible="5"
+    closable
+    :close-text="t('actions.close')"
+  />
 </template>
 
 <script setup lang="ts">
@@ -24,13 +17,10 @@ import { useNotificationsStore } from '@/v2/stores/notifications'
 const store = useNotificationsStore()
 const { t } = useI18n()
 
-const current = computed(() => store.queue[0] ?? null)
-
-function dismiss(): void {
-  if (current.value) store.dismiss(current.value.id)
-}
-
-function onModelChange(value: boolean): void {
-  if (!value) dismiss()
-}
+const messages = computed({
+  get: () => store.queue,
+  set: value => {
+    store.queue = value
+  },
+})
 </script>
