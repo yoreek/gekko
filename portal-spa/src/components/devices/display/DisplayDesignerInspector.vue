@@ -232,7 +232,7 @@
     </div>
 
     <!-- Toggles section -->
-    <v-row dense>
+    <v-row density="comfortable">
       <v-col cols="12">
         <v-switch
           v-if="isTextWidget"
