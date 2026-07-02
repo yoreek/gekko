@@ -74,6 +74,8 @@ Vue 3 + Vuetify 4 SPA. Uses `pnpm`. State is managed with Pinia. Real-time updat
 
 **UI rules:** Use Vuetify components, props, slots, and layout classes (`v-container`/`v-row`/`v-col`, `ma-*`, `pa-*`, `ga-*`, `d-flex`). Do not write `<style>` blocks or inline `style=` attributes. Do not override colors, opacity, or typography locally — use theme tokens. If a change would deviate from a standard Vuetify pattern, state that before editing and confirm first.
 
+**Vuetify 4 props:** Use `density="comfortable"` instead of deprecated `dense` prop on `v-row`, `v-alert`, and other Vuetify components. Never use bare `dense` attribute — it triggers upgrade warnings and is not supported.
+
 ### Data folder
 
 `data/` contains the gzipped LittleFS assets served by the firmware. It is updated by `pnpm deploy:data` in `portal-spa/`. The LittleFS partition is 500 KiB; `portal-spa/scripts/check-data-budget.mjs` enforces this limit. Run `pio run -t uploadfs` to push a refreshed `data/` to the device.
