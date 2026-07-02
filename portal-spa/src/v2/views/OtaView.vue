@@ -1,14 +1,18 @@
 <template>
   <PageContainer>
-    <PageToolbar :title="t('navigation.ota')" :subtitle="t('ota.subtitle')">
-      <template #actions>
-        <v-chip variant="tonal" :color="otaStore.enabled ? 'success' : 'secondary'" size="small">
-          {{ otaStore.enabled ? t('status.enabled') : t('status.disabled') }}
-        </v-chip>
-      </template>
-    </PageToolbar>
+    <v-card>
+      <v-card-item>
+        <PageToolbar :title="t('navigation.ota')" :subtitle="t('ota.subtitle')">
+          <template #actions>
+            <v-chip variant="tonal" :color="otaStore.enabled ? 'success' : 'secondary'" size="small">
+              {{ otaStore.enabled ? t('status.enabled') : t('status.disabled') }}
+            </v-chip>
+          </template>
+        </PageToolbar>
+      </v-card-item>
 
-    <v-card class="mb-4">
+      <v-divider />
+
       <v-card-text>
         <v-row class="ga-4">
           <v-col cols="12" sm="4">

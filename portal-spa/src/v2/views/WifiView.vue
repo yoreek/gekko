@@ -1,16 +1,17 @@
 <template>
   <PageContainer>
-    <PageToolbar :title="t('navigation.wifi')" :subtitle="t('wifi.subtitle')">
-      <template #actions>
-        <v-chip variant="tonal" :color="wifiStatusColor" size="small">
-          {{ wifiStatusLabel }}
-        </v-chip>
+    <PageCard>
+      <template #header>
+        <PageToolbar :title="t('navigation.wifi')" :subtitle="t('wifi.subtitle')">
+          <template #actions>
+            <v-chip variant="tonal" :color="wifiStatusColor" size="small">
+              {{ wifiStatusLabel }}
+            </v-chip>
+          </template>
+        </PageToolbar>
       </template>
-    </PageToolbar>
 
-    <v-card class="mb-4">
-      <v-card-text>
-        <v-row class="ga-4">
+      <v-row class="ga-4">
           <v-col cols="12" sm="4">
             <div>
               <div class="text-overline text-medium-emphasis">{{ t('wifi.status') }}</div>
@@ -30,9 +31,8 @@
             </div>
           </v-col>
         </v-row>
-      </v-card-text>
 
-      <v-card-actions class="d-flex flex-wrap gap-2">
+      <template #actions>
         <v-btn :loading="scanLoading" color="primary" size="small" @click="startScan">
           {{ t('wifi.scan') }}
         </v-btn>
@@ -42,8 +42,8 @@
         <v-btn :loading="resetLoading" color="error" size="small" variant="outlined" @click="resetCredentials">
           {{ t('wifi.resetCredentialsAction') }}
         </v-btn>
-      </v-card-actions>
-    </v-card>
+      </template>
+    </PageCard>
   </PageContainer>
 </template>
 
@@ -55,6 +55,7 @@ import { startBleWifiConfig, resetWifiCredentials } from '@/api'
 import { useWifiStore } from '@/stores/wifi'
 import PageContainer from '@/v2/components/layout/PageContainer.vue'
 import PageToolbar from '@/v2/components/layout/PageToolbar.vue'
+import PageCard from '@/v2/components/layout/PageCard.vue'
 
 const { t } = useI18n()
 const wifiStore = useWifiStore()
