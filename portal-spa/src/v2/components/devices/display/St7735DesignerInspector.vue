@@ -70,19 +70,19 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import type { BaseDisplayWidget } from '@/models/devices/display/layout'
+import type { DisplayWidget } from '@/models/devices/display/layout'
 
 const props = defineProps<{
-  widget: BaseDisplayWidget | null
+  widget: DisplayWidget | null
 }>()
 
 const emit = defineEmits<{
-  'update-widget': [widget: BaseDisplayWidget]
+  'update-widget': [widget: DisplayWidget]
 }>()
 
 const { t } = useI18n()
 
-function updateWidget<K extends keyof BaseDisplayWidget>(key: K, value: BaseDisplayWidget[K]): void {
+function updateWidget<K extends keyof DisplayWidget>(key: K, value: DisplayWidget[K]): void {
   if (!props.widget) return
   emit('update-widget', { ...props.widget, [key]: value })
 }

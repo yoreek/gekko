@@ -28,10 +28,10 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import type { BaseDisplayWidget } from '@/models/devices/display/layout'
+import type { DisplayWidget } from '@/models/devices/display/layout'
 
 defineProps<{
-  widgets: BaseDisplayWidget[]
+  widgets: DisplayWidget[]
   selectedWidgetId: string | null
 }>()
 
