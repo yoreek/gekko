@@ -11,6 +11,22 @@
       </template>
 
       <v-row density="comfortable" class="ga-4">
+        <!-- Canvas Panel -->
+        <v-col cols="12" md="4">
+          <v-sheet border rounded class="pa-3" style="background: #000; aspect-ratio: 1/1.5">
+            <svg width="100%" height="100%" viewBox="0 0 160 128" style="background: #1a1a1a; border: 1px solid #333">
+              <!-- Widget boxes -->
+              <rect v-for="widget in widgets" :key="widget.id"
+                :x="widget.x" :y="widget.y" :width="widget.width" :height="widget.height"
+                :fill="selectedWidgetId === widget.id ? '#0066ff' : '#666'"
+                :opacity="selectedWidgetId === widget.id ? 0.7 : 0.5"
+                stroke="#fff" stroke-width="0.5"
+                style="cursor: pointer" @click="selectWidget(widget.id)"
+              />
+            </svg>
+          </v-sheet>
+        </v-col>
+
         <!-- Layers Panel -->
         <v-col cols="12" md="4">
           <v-sheet border rounded class="pa-3">
