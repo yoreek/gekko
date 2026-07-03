@@ -26,7 +26,10 @@ interface PanelSnapshot {
 const storageKey = 'gekko.panels.v2'
 const defaultColumns = 6
 const defaultWidgetWidth = 1
-const defaultWidgetHeight = 1
+// Seed height (in grid rows) for a brand-new widget. GridStack's `sizeToContent`
+// measures the real card height on render and overwrites this, so it only needs
+// to be a sane starting box that avoids wild initial overlap before measuring.
+const defaultWidgetHeight = 4
 const maxPanels = 8
 const maxPanelNameLength = 32
 const saveDebounceMs = 300
@@ -37,44 +40,6 @@ function isUnsupportedSchemaError(error: unknown): boolean {
   return error instanceof ApiClientError && error.code === 'UNSUPPORTED_SCHEMA'
 }
 
-function widgetCells(widget: DashboardPanelWidget): string[] {
-  const cells: string[] = []
-  for (let y = widget.y; y < widget.y + widget.h; y += 1) {
-    for (let x = widget.x; x < widget.x + widget.w; x += 1) {
-      cells.push(`${x}:${y}`)
-    }
-  }
-  return cells
-}
-
-function cellsAreFree(widget: DashboardPanelWidget, occupied: Set<string>): boolean {
-  return widgetCells(widget).every(cell => !occupied.has(cell))
-}
-
-function occupyWidget(widget: DashboardPanelWidget, occupied: Set<string>): void {
-  for (const cell of widgetCells(widget)) {
-    occupied.add(cell)
-  }
-}
-
-function nearestFreeWidget(widget: DashboardPanelWidget, occupied: Set<string>, columns: number): DashboardPanelWidget {
-  const normalizedColumns = Math.max(1, columns)
-  const width = Math.min(Math.max(1, widget.w || defaultWidgetWidth), normalizedColumns)
-  const height = defaultWidgetHeight
-  const startY = Math.max(0, widget.y || 0)
-
-  for (let y = startY; y < startY + 1000; y += 1) {
-    for (let x = 0; x <= normalizedColumns - width; x += 1) {
-      const candidate = { ...widget, x, y, w: width, h: height }
-      if (cellsAreFree(candidate, occupied)) {
-        return candidate
-      }
-    }
-  }
-
-  return { ...widget, x: 0, y: startY, w: width, h: height }
-}
-
 function clonePanels(panels: DashboardPanel[]): DashboardPanel[] {
   return panels.map(panel => ({
     id: panel.id,
@@ -83,48 +48,54 @@ function clonePanels(panels: DashboardPanel[]): DashboardPanel[] {
   }))
 }
 
-function compactWidgets(widgets: DashboardPanelWidget[], columns: number): DashboardPanelWidget[] {
+// Clamp a widget to valid grid bounds while PRESERVING its real x/y/w/h. Free
+// placement means the store trusts the position the user dropped a card at and
+// the height GridStack measured — it must not repack or reset the height.
+// Overlap resolution is GridStack's job at render time, not the store's.
+function clampWidgetGeometry(widget: DashboardPanelWidget, columns: number): DashboardPanelWidget {
   const normalizedColumns = Math.max(1, columns)
-  return widgets.map((widget, index) => ({
-    deviceId: widget.deviceId,
+  const w = Math.min(Math.max(1, Math.round(widget.w) || defaultWidgetWidth), normalizedColumns)
+  const h = Math.max(1, Math.round(widget.h) || defaultWidgetHeight)
+  const x = Math.min(Math.max(0, Math.round(widget.x) || 0), normalizedColumns - w)
+  const y = Math.max(0, Math.round(widget.y) || 0)
+  return { deviceId: widget.deviceId, x, y, w, h }
+}
+
+function sanitizeWidgets(widgets: DashboardPanelWidget[], columns: number): DashboardPanelWidget[] {
+  const seen = new Set<number>()
+  const result: DashboardPanelWidget[] = []
+  for (const widget of widgets) {
+    if (!Number.isFinite(widget.deviceId) || widget.deviceId <= 0 || seen.has(widget.deviceId)) {
+      continue
+    }
+    seen.add(widget.deviceId)
+    result.push(clampWidgetGeometry(widget, columns))
+  }
+  return result
+}
+
+// Lowest free row below every existing widget — used to append new cards
+// underneath the current layout instead of on top of it.
+function bottomOf(widgets: DashboardPanelWidget[]): number {
+  return widgets.reduce((max, widget) => Math.max(max, widget.y + widget.h), 0)
+}
+
+// Seed starting positions for brand-new devices: a simple left-to-right,
+// top-to-bottom fill starting at `startY`. GridStack refines the real heights
+// (sizeToContent) and resolves any overlap on render.
+function seedWidgets(deviceIds: number[], columns: number, startY: number): DashboardPanelWidget[] {
+  const normalizedColumns = Math.max(1, columns)
+  return deviceIds.map((deviceId, index) => ({
+    deviceId,
     x: index % normalizedColumns,
-    y: Math.floor(index / normalizedColumns),
-    w: Math.min(Math.max(1, widget.w || defaultWidgetWidth), normalizedColumns),
+    y: startY + Math.floor(index / normalizedColumns) * defaultWidgetHeight,
+    w: defaultWidgetWidth,
     h: defaultWidgetHeight,
   }))
 }
 
-function normalizeWidgets(widgets: DashboardPanelWidget[], columns: number): DashboardPanelWidget[] {
-  const normalizedColumns = Math.max(1, columns)
-  const occupied = new Set<string>()
-  return widgets
-    .filter(widget => Number.isFinite(widget.deviceId) && widget.deviceId > 0)
-    .map(widget => {
-    const width = Math.min(Math.max(1, widget.w || defaultWidgetWidth), normalizedColumns)
-    const candidate: DashboardPanelWidget = {
-      deviceId: widget.deviceId,
-      x: Math.min(Math.max(0, widget.x || 0), normalizedColumns - width),
-      y: Math.max(0, widget.y || 0),
-      w: width,
-      h: defaultWidgetHeight,
-    }
-    const normalized = cellsAreFree(candidate, occupied) ? candidate : nearestFreeWidget(candidate, occupied, normalizedColumns)
-    occupyWidget(normalized, occupied)
-    return normalized
-    })
-}
-
 function layoutWidgets(deviceIds: number[], columns = defaultColumns): DashboardPanelWidget[] {
-  return compactWidgets(
-    deviceIds.map(deviceId => ({
-      deviceId,
-      x: 0,
-      y: 0,
-      w: defaultWidgetWidth,
-      h: defaultWidgetHeight,
-    })),
-    columns,
-  )
+  return seedWidgets(deviceIds, columns, 0)
 }
 
 function createDefaultPanel(deviceIds: number[]): DashboardPanel {
@@ -159,7 +130,7 @@ function makeUniquePanelName(name: string, panels: DashboardPanel[], excludeId?:
 
 function normalizePanel(panel: DashboardPanel, deviceIds: number[]): DashboardPanel {
   const allowedIds = new Set(deviceIds)
-  const widgets = normalizeWidgets(panel.widgets.filter(widget => allowedIds.has(widget.deviceId)), defaultColumns)
+  const widgets = sanitizeWidgets(panel.widgets.filter(widget => allowedIds.has(widget.deviceId)), defaultColumns)
   return {
     id: panel.id,
     name: sanitizePanelName(panel.name),
@@ -200,7 +171,7 @@ function nextPanelId(panels: DashboardPanel[]): string {
 function removeDeviceFromPanels(panels: DashboardPanel[], deviceId: number): DashboardPanel[] {
   return panels.map(panel => ({
     ...panel,
-    widgets: normalizeWidgets(panel.widgets.filter(widget => widget.deviceId !== deviceId), defaultColumns),
+    widgets: sanitizeWidgets(panel.widgets.filter(widget => widget.deviceId !== deviceId), defaultColumns),
   }))
 }
 
@@ -403,13 +374,13 @@ export const usePanelStore = defineStore('panels', {
 
       this.panels = this.panels.map(panel => ({
         ...panel,
-        widgets: normalizeWidgets(panel.widgets.filter(widget => allowedIds.has(widget.deviceId)), defaultColumns),
+        widgets: sanitizeWidgets(panel.widgets.filter(widget => allowedIds.has(widget.deviceId)), defaultColumns),
       }))
 
       if (missingDeviceIds.length > 0) {
         const target = this.panels.find(panel => panel.id === this.activePanelId) ?? this.panels[0]
         if (target) {
-          target.widgets = normalizeWidgets([...target.widgets, ...layoutWidgets(missingDeviceIds)], defaultColumns)
+          target.widgets = [...target.widgets, ...seedWidgets(missingDeviceIds, defaultColumns, bottomOf(target.widgets))]
         }
       }
 
@@ -490,7 +461,7 @@ export const usePanelStore = defineStore('panels', {
         return
       }
 
-      target.widgets = normalizeWidgets([...target.widgets, ...layoutWidgets([deviceId])], defaultColumns)
+      target.widgets = [...target.widgets, ...seedWidgets([deviceId], defaultColumns, bottomOf(target.widgets))]
       void this.persistNow()
     },
     assignDeviceToActivePanel(deviceId: number): void {
@@ -506,7 +477,7 @@ export const usePanelStore = defineStore('panels', {
         return
       }
 
-      panel.widgets = normalizeWidgets(panel.widgets.filter(widget => widget.deviceId !== deviceId), defaultColumns)
+      panel.widgets = sanitizeWidgets(panel.widgets.filter(widget => widget.deviceId !== deviceId), defaultColumns)
       void this.persistNow()
     },
     resetPanelLayout(panelId: string, columns = defaultColumns): void {
@@ -525,16 +496,8 @@ export const usePanelStore = defineStore('panels', {
       }
 
       const knownIds = new Set(panel.widgets.map(widget => widget.deviceId))
-      panel.widgets = normalizeWidgets(widgets.filter(widget => knownIds.has(widget.deviceId)), columns)
+      panel.widgets = sanitizeWidgets(widgets.filter(widget => knownIds.has(widget.deviceId)), columns)
       this.schedulePersist()
-    },
-    reflowPanel(panelId: string, columns: number): void {
-      const panel = this.panels.find(entry => entry.id === panelId)
-      if (!panel) {
-        return
-      }
-
-      panel.widgets = normalizeWidgets(panel.widgets, columns)
     },
   },
 })

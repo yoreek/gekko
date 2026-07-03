@@ -15,7 +15,9 @@
   },
   "dependencies": {
     "@mdi/js": "^7.4.47",
+    "gridstack": "^12.6.0",
     "pinia": "^3.0.4",
+    "uplot": "^1.6.32",
     "vue": "^3.5.28",
     "vue-grid-layout-v3": "^3.1.2",
     "vue-i18n": "^11.1.10",

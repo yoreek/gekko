@@ -14,3 +14,18 @@ export function deviceStatusLabelKey(status: string): string {
       return 'device.status.unknown'
   }
 }
+
+export function deviceStatusColor(status: string): string {
+  switch (status.trim().toLowerCase()) {
+    case 'ready':
+      return 'success'
+    case 'disabled':
+      return 'secondary'
+    case 'faulted':
+      return 'error'
+    case 'dependency_blocked':
+      return 'warning'
+    default:
+      return 'primary'
+  }
+}

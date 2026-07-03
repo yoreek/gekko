@@ -26,7 +26,7 @@
     </v-row>
 
     <div v-if="device">
-      <div class="text-overline text-medium-emphasis mb-2">{{ t('device.dialog.onewireScanTitle') }}</div>
+      <div class="text-label-small text-medium-emphasis mb-2">{{ t('device.dialog.onewireScanTitle') }}</div>
 
       <div class="d-flex flex-wrap align-center ga-2 mb-3">
         <v-btn

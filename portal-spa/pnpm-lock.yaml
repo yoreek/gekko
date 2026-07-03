@@ -11,9 +11,15 @@ importers:
       '@mdi/js':
         specifier: ^7.4.47
         version: 7.4.47
+      gridstack:
+        specifier: ^12.6.0
+        version: 12.6.0
       pinia:
         specifier: ^3.0.4
         version: 3.0.4(typescript@5.9.3)(vue@3.5.38(typescript@5.9.3))
+      uplot:
+        specifier: ^1.6.32
+        version: 1.6.32
       vue:
         specifier: ^3.5.28
         version: 3.5.38(typescript@5.9.3)
@@ -648,6 +654,9 @@ packages:
     resolution: {integrity: sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==}
     engines: {node: 6.* || 8.* || >= 10.*}
 
+  gridstack@12.6.0:
+    resolution: {integrity: sha512-dUrqsormSybFn/2P4Dz8AgprftKD5e/IiV7UmC0XLQU+G+/WtkAeFiCSNLoAGhPDXoJ/O61Xtj3gljY/Ds83yQ==}
+
   he@1.2.0:
     resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
     hasBin: true
@@ -812,6 +821,9 @@ packages:
   upath@2.0.1:
     resolution: {integrity: sha512-1uEe95xksV1O0CYKXo8vQvN1JEbtJp7lb7C5U9HMsIp6IVwntkH/oNUzyVNQSd4S1sYk2FpSSW44FqMc8qee5w==}
     engines: {node: '>=4'}
+
+  uplot@1.6.32:
+    resolution: {integrity: sha512-KIMVnG68zvu5XXUbC4LQEPnhwOxBuLyW1AHtpm6IKTXImkbLgkMy+jabjLgSLMasNuGGzQm/ep3tOkyTxpiQIw==}
 
   vite-plugin-compression2@1.4.0:
     resolution: {integrity: sha512-UEk0Bq1IkkwqbDLoLOHZ8WTmN1QbvR28fvNl2liB88/6SG1oLrTVkxfjqW3pdla/rKQ6QXn+pJpv3GBbl+k56g==}
@@ -1426,6 +1438,8 @@ snapshots:
 
   get-caller-file@2.0.5: {}
 
+  gridstack@12.6.0: {}
+
   he@1.2.0: {}
 
   hookable@5.5.3: {}
@@ -1581,6 +1595,8 @@ snapshots:
   undici-types@6.21.0: {}
 
   upath@2.0.1: {}
+
+  uplot@1.6.32: {}
 
   vite-plugin-compression2@1.4.0(rollup@4.62.0)(vite@6.4.3(@types/node@20.19.43)(terser@5.48.0)):
     dependencies:

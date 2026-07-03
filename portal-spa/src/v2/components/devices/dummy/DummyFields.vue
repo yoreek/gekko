@@ -1,5 +1,5 @@
 <template>
-  <p class="text-body-2 text-medium-emphasis">
+  <p class="text-body-medium text-medium-emphasis">
     {{ t('v2.device.dummy.noFields') }}
   </p>
 </template>

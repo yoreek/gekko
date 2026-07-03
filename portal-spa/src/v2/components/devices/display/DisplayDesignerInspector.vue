@@ -145,7 +145,7 @@
         <v-chip size="small" variant="tonal" :color="fitInfo.type" class="me-2">
           {{ fitInfo.title }}
         </v-chip>
-        <span class="text-caption text-medium-emphasis">{{ fitInfo.details }}</span>
+        <span class="text-body-small text-medium-emphasis">{{ fitInfo.details }}</span>
       </v-col>
       <v-col v-if="placeholderMessage.length > 0" cols="12">
         <v-chip size="small" variant="tonal" :color="placeholderTone" class="me-2 mb-2">

@@ -5,6 +5,7 @@ import type { RealtimeMessage } from './messages'
 import { publishMockSnapshot } from '@/mock/snapshot'
 import { canonicalizeDeviceRecord, loadMockDatabase, saveMockDatabase, type MockDeviceRecord } from '@/mock/database'
 import { decorateDeviceRecord, publishThermostatDependents, refreshMockDerivedDeviceState } from '@/mock/handlers'
+import { startMockSensorSimulation } from '@/mock/simulation'
 import { useAppStore } from '@/stores/app'
 import { useWebSocketStore } from '@/stores/websocket'
 
@@ -66,8 +67,11 @@ export function connectMockRealtimeSocket(pinia: Pinia): MockRealtimeSocketHandl
     appStore.setWebSocketStatus('disconnected')
   }
 
+  const stopSensorSimulation = startMockSensorSimulation()
+
   const handle: MockRealtimeSocketHandle = {
     dispose(): void {
+      stopSensorSimulation()
       if (typeof window !== 'undefined' && window.__gekkoMockRealtime === handle) {
         window.__gekkoMockRealtime = undefined
       }

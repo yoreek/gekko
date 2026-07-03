@@ -30,7 +30,7 @@
           <v-row density="comfortable">
             <v-col cols="12" lg="3">
               <v-sheet border rounded class="pa-3 h-100">
-                <div class="text-subtitle-2 mb-3">{{ t('device.dialog.display.layersTitle') }}</div>
+                <div class="text-title-small mb-3">{{ t('device.dialog.display.layersTitle') }}</div>
                 <DisplayDesignerLayers
                   :widgets="widgets"
                   :selected-widget-id="selectedWidgetId"
@@ -46,10 +46,10 @@
             <v-col cols="12" lg="5">
               <v-sheet border rounded class="pa-3 d-flex flex-column ga-3 h-100">
                 <div>
-                  <div class="text-subtitle-2 mb-2">{{ t('device.dialog.display.canvasTitle') }}</div>
+                  <div class="text-title-small mb-2">{{ t('device.dialog.display.canvasTitle') }}</div>
                   <v-row density="compact" align="center" no-gutters>
                     <v-col cols="3" sm="2">
-                      <span class="text-body-2">{{ t('device.dialog.display.zoom') }} {{ zoom }}</span>
+                      <span class="text-body-medium">{{ t('device.dialog.display.zoom') }} {{ zoom }}</span>
                     </v-col>
                     <v-col cols="9" sm="10">
                       <v-slider
@@ -81,7 +81,7 @@
 
             <v-col cols="12" lg="4">
               <v-sheet border rounded class="pa-3 h-100">
-                <div class="text-subtitle-2 mb-3">{{ t('device.dialog.display.inspectorTitle') }}</div>
+                <div class="text-title-small mb-3">{{ t('device.dialog.display.inspectorTitle') }}</div>
                 <DisplayDesignerInspector
                   v-if="selectedWidget !== null"
                   :widget="selectedWidget"

@@ -301,9 +301,6 @@ function updateColumns(): void {
   const next = columnsForWidth(host.getBoundingClientRect().width)
   if (next !== gridColumns.value) {
     gridColumns.value = next
-    if (activePanel.value) {
-      panelStore.reflowPanel(activePanel.value.id, next)
-    }
   }
 }
 

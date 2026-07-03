@@ -1,7 +1,7 @@
 <template>
   <v-sheet :border="surface" :class="surface ? 'pa-3' : ''" rounded>
     <div class="d-flex align-center justify-space-between ga-2 mb-2">
-      <div class="text-subtitle-2">
+      <div class="text-title-small">
         {{ t('device.dialog.display.metricPicker.title') }}
       </div>
       <v-chip v-if="selectedMetric !== null" size="small" variant="tonal" :color="selectedMetric.available ? 'success' : 'warning'">

@@ -129,6 +129,6 @@ const statusColor = computed(() => {
 })
 
 function navigateBack(): void {
-  router.push({ name: 'v2-devices' })
+  router.back()
 }
 </script>

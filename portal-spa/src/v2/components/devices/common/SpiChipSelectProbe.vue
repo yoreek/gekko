@@ -19,7 +19,7 @@
         <v-icon start :icon="probeIcon" />
         {{ probeStatusText }}
       </v-chip>
-      <span v-else class="text-caption text-medium-emphasis">
+      <span v-else class="text-body-small text-medium-emphasis">
         {{ hasDependency ? t('device.dialog.spiProbe.clickToCheck') : t('device.dialog.spiProbe.selectBusFirst') }}
       </span>
     </v-col>

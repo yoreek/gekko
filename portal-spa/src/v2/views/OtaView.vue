@@ -14,20 +14,20 @@
       <v-row class="ga-4">
           <v-col cols="12" sm="4">
             <div>
-              <div class="text-overline text-medium-emphasis">{{ t('ota.enabled') }}</div>
-              <div class="text-h6">{{ otaStore.enabled ? t('status.enabled') : t('status.disabled') }}</div>
+              <div class="text-label-small text-medium-emphasis">{{ t('ota.enabled') }}</div>
+              <div class="text-title-large">{{ otaStore.enabled ? t('status.enabled') : t('status.disabled') }}</div>
             </div>
           </v-col>
           <v-col cols="12" sm="4">
             <div>
-              <div class="text-overline text-medium-emphasis">{{ t('ota.freeSketchSpace') }}</div>
-              <div class="text-h6">{{ formatBytes(otaStore.freeSketchSpace) }}</div>
+              <div class="text-label-small text-medium-emphasis">{{ t('ota.freeSketchSpace') }}</div>
+              <div class="text-title-large">{{ formatBytes(otaStore.freeSketchSpace) }}</div>
             </div>
           </v-col>
           <v-col cols="12" sm="4">
             <div>
-              <div class="text-overline text-medium-emphasis">{{ t('ota.hasError') }}</div>
-              <div class="text-h6">{{ otaStore.hasError ? t('status.failed') : t('labels.no') }}</div>
+              <div class="text-label-small text-medium-emphasis">{{ t('ota.hasError') }}</div>
+              <div class="text-title-large">{{ otaStore.hasError ? t('status.failed') : t('labels.no') }}</div>
             </div>
           </v-col>
         </v-row>
@@ -45,6 +45,7 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import { fetchOtaStatus } from '@/api'
 import { useOtaStore } from '@/stores/ota'
 import PageContainer from '@/v2/components/layout/PageContainer.vue'
 import PageToolbar from '@/v2/components/layout/PageToolbar.vue'
@@ -66,9 +67,14 @@ function formatBytes(bytes: number): string {
 async function refreshOtaStatus(): Promise<void> {
   loading.value = true
   try {
-    // OTA status would be refreshed from API when available
+    const response = await fetchOtaStatus()
+    otaStore.replaceFromResponse(response)
   } finally {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  void refreshOtaStatus()
+})
 </script>

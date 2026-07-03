@@ -74,7 +74,7 @@
     </v-expansion-panels>
 
     <div v-if="device">
-      <div class="text-overline text-medium-emphasis mb-2">{{ t('device.dialog.quickCommands') }}</div>
+      <div class="text-label-small text-medium-emphasis mb-2">{{ t('device.dialog.quickCommands') }}</div>
       <SwitchOutputControls
         :state="outputState"
         :loading="busy"

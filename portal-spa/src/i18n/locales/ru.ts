@@ -21,7 +21,7 @@ export default {
   },
   navigation: {
     menu: 'Открыть меню',
-    dashboard: 'Панель',
+    dashboard: 'Дашборд',
     panels: 'Панели',
     devices: 'Устройства',
     deviceEvents: 'События устройств',
@@ -596,6 +596,12 @@ export default {
       outputOff: 'Выход выключить',
       power: 'Питание',
       powerDisabled: 'Управление недоступно',
+      actualTemperature: 'Текущая температура',
+      history: {
+        empty: 'Пока недостаточно данных',
+        temperature: 'Температура',
+        switchState: 'Состояние переключателя',
+      },
     },
   },
   status: {
@@ -686,6 +692,7 @@ export default {
     view: 'Просмотр',
     yes: 'Да',
     no: 'Нет',
+    ready: 'Готово',
     lightTheme: 'Светлая',
     darkTheme: 'Тёмная',
     output: {
@@ -706,6 +713,7 @@ export default {
   v2: {
     navigation: {
       badge: 'Новый интерфейс (превью)',
+      itemLabel: '{page} (новый UI)',
     },
     device: {
       dummy: {

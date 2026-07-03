@@ -21,7 +21,16 @@ export interface DeviceUiV2 {
    * quick actions (e.g. gpio_switch output control, i2c/spi/onewire bus scan/diagnostics reset).
    */
   readonly fieldsComponent: Component
-  /** Compact card for dashboard grid. Props: { device: DeviceRecord } */
+  /**
+   * Renders the device's own status/controls at two densities from ONE component:
+   * Props: { device: DeviceRecord; editable?: boolean; dense?: boolean } (dense defaults true).
+   * dense=true  -> compact card body, used inside DeviceWidgetBase on the dashboard grid.
+   * dense=false -> expanded body, used inside DeviceMoreInfoDialog's more-info modal
+   *                (no card chrome — the dialog supplies its own DeviceIdentityHeader).
+   * Emits: open() (dense mode only, bubbles to DeviceWidgetBase's click-to-open), and
+   * optionally command(payload: DeviceCommandRequest) for types with quick/live actions
+   * (e.g. gpio_switch power toggle, thermostat mode switch via updateConfig).
+   */
   readonly widgetComponent: Component
   /**
    * Full page designer (e.g. display layout editor). Props: { device: DeviceRecord | null },

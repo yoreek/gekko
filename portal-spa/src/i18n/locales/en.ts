@@ -286,6 +286,12 @@ export default {
       outputOff: 'Output off',
       power: 'Power',
       powerDisabled: 'Power unavailable',
+      actualTemperature: 'Actual temperature',
+      history: {
+        empty: 'Not enough data yet',
+        temperature: 'Temperature',
+        switchState: 'Switch state',
+      },
     },
     dialog: {
       display: {
@@ -687,6 +693,7 @@ export default {
     view: 'View',
     yes: 'Yes',
     no: 'No',
+    ready: 'Ready',
     lightTheme: 'Light',
     darkTheme: 'Dark',
     output: {
@@ -707,6 +714,7 @@ export default {
   v2: {
     navigation: {
       badge: 'New UI (preview)',
+      itemLabel: '{page} (New UI)',
     },
     device: {
       dummy: {

@@ -45,7 +45,7 @@
     </v-row>
 
     <div v-if="device">
-      <div class="text-overline text-medium-emphasis mb-2">{{ t('device.dialog.busDiagnosticsTitle') }}</div>
+      <div class="text-label-small text-medium-emphasis mb-2">{{ t('device.dialog.busDiagnosticsTitle') }}</div>
 
       <div class="d-flex flex-wrap ga-2 mb-3">
         <v-chip :color="diagnostics.status === 'degraded' ? 'warning' : 'success'" variant="tonal">

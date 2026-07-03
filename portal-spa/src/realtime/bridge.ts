@@ -3,6 +3,7 @@ import type { useAppStore } from '@/stores/app'
 import type { DeviceRecord } from '@/api'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { useDeviceEventLogStore } from '@/stores/deviceEventLog'
+import { useDeviceHistoryStore } from '@/stores/deviceHistory'
 import { useOtaStore } from '@/stores/ota'
 import { useSystemStore } from '@/stores/system'
 import { useWebSocketStore } from '@/stores/websocket'
@@ -18,6 +19,7 @@ export function bindRealtimeBridge(
 ): () => void {
   const deviceStore = useDeviceRegistryStore(pinia)
   const journalStore = useDeviceEventLogStore(pinia)
+  const historyStore = useDeviceHistoryStore(pinia)
   const wifiStore = useWifiStore(pinia)
   const otaStore = useOtaStore(pinia)
   const systemStore = useSystemStore(pinia)
@@ -62,6 +64,7 @@ export function bindRealtimeBridge(
       }
       case 'device.upsert': {
         journalStore.append(message)
+        historyStore.recordSample(message.payload as DeviceRecord)
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
         deviceStore.upsertDevice(message.payload as DeviceRecord, message.revision)
@@ -76,6 +79,7 @@ export function bindRealtimeBridge(
       }
       case 'device.command_result': {
         journalStore.append(message)
+        historyStore.recordSample(message.payload as DeviceRecord)
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
         deviceStore.upsertDevice(message.payload as DeviceRecord, message.revision)
