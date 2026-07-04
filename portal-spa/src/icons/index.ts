@@ -1,5 +1,6 @@
 import {
   mdiChevronDown as chevronDownPath,
+  mdiChevronUp as chevronUpPath,
   mdiChevronLeft as chevronLeftPath,
   mdiChevronRight as chevronRightPath,
   mdiCheckboxBlankOutline as checkboxBlankOutlinePath,
@@ -85,6 +86,7 @@ export type PortalIconName =
   | 'chevron-left'
   | 'chevron-right'
   | 'chevron-down'
+  | 'chevron-up'
 
 type IconShape = {
   viewBox: string
@@ -206,7 +208,8 @@ const mdiIconRegistry: Record<
   | 'upload'
   | 'chevron-left'
   | 'chevron-right'
-  | 'chevron-down',
+  | 'chevron-down'
+  | 'chevron-up',
   IconShape
 > = {
   refresh: createFilledIconShape(refreshPath),
@@ -231,6 +234,7 @@ const mdiIconRegistry: Record<
   'chevron-left': createFilledIconShape(chevronLeftPath),
   'chevron-right': createFilledIconShape(chevronRightPath),
   'chevron-down': createFilledIconShape(chevronDownPath),
+  'chevron-up': createFilledIconShape(chevronUpPath),
 }
 
 export const iconRegistry: Record<PortalIconName, IconShape> = {

@@ -128,10 +128,28 @@ const typeFilterOptions = computed(() => [
 ])
 
 const tableHeaders = [
-  { title: t('device.fields.deviceId'), key: 'id' },
-  { title: t('device.actions.name'), key: 'name' },
-  { title: t('device.fields.type'), key: 'type' },
-  { title: t('device.fields.effectiveStatus'), key: 'status' },
+  {
+    title: t('device.fields.deviceId'),
+    key: 'id',
+    sortRaw: (a: DeviceRecord, b: DeviceRecord) => a.record.id - b.record.id,
+  },
+  {
+    title: t('device.actions.name'),
+    key: 'name',
+    sortRaw: (a: DeviceRecord, b: DeviceRecord) => a.config.name.localeCompare(b.config.name),
+  },
+  {
+    title: t('device.fields.type'),
+    key: 'type',
+    sortRaw: (a: DeviceRecord, b: DeviceRecord) =>
+      t(resolveDeviceUiV2(a.record.typeName).labelKey).localeCompare(t(resolveDeviceUiV2(b.record.typeName).labelKey)),
+  },
+  {
+    title: t('device.fields.effectiveStatus'),
+    key: 'status',
+    sortRaw: (a: DeviceRecord, b: DeviceRecord) =>
+      (a.runtime.effectiveStatus ?? a.runtime.status ?? '').localeCompare(b.runtime.effectiveStatus ?? b.runtime.status ?? ''),
+  },
   { title: t('devices.actions'), key: 'actions', sortable: false },
 ]
 
