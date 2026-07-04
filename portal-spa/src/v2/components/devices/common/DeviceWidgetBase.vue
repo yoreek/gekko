@@ -16,12 +16,6 @@
     <v-card-text
       v-if="$slots.default"
       class="pt-0 d-flex align-center ga-2"
-      @click="stopWhenInteractive"
-      @pointerdown="stopWhenInteractive"
-      @mousedown="stopWhenInteractive"
-      @touchstart="stopWhenInteractive"
-      @keydown.enter="stopWhenInteractive"
-      @keydown.space="stopWhenInteractive"
     >
       <slot />
     </v-card-text>
@@ -48,14 +42,5 @@ function handleOpen(): void {
     return
   }
   emit('open')
-}
-
-// In view mode the body holds interactive controls (switch/toggle) that must not
-// bubble up and open the more-info dialog. In edit mode we let events through so
-// GridStack can start a drag from anywhere on the card, not just the header.
-function stopWhenInteractive(event: Event): void {
-  if (!props.editable) {
-    event.stopPropagation()
-  }
 }
 </script>

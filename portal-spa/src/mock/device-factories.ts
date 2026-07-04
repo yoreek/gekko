@@ -62,14 +62,22 @@ function normalizeThermostatConfigPayload(
   enabledFallback: boolean,
 ): Record<string, unknown> & { enabled: boolean } {
   const current = isRecordPayload(value) ? value : {}
+  const targetCelsius = normalizeFiniteNumber(current.targetCelsius, normalizeFiniteNumber(current.targetMilliCelsius, 25000) / 1000)
+  const minSafeCelsius = normalizeFiniteNumber(current.minSafeCelsius, normalizeFiniteNumber(current.minSafeMilliCelsius, 0) / 1000)
+  const maxSafeCelsius = normalizeFiniteNumber(current.maxSafeCelsius, normalizeFiniteNumber(current.maxSafeMilliCelsius, 50000) / 1000)
+  const hysteresisCelsius = Math.max(0, normalizeFiniteNumber(current.hysteresisCelsius, normalizeFiniteNumber(current.hysteresisCentiCelsius, 50) / 100))
   return {
     enabled: typeof current.enabled === 'boolean' ? current.enabled : enabledFallback,
     mode: normalizeThermostatMode(current.mode),
     algorithm: 'hysteresis',
-    targetMilliCelsius: Math.round(normalizeFiniteNumber(current.targetMilliCelsius, 25000)),
-    minSafeMilliCelsius: Math.round(normalizeFiniteNumber(current.minSafeMilliCelsius, 0)),
-    maxSafeMilliCelsius: Math.round(normalizeFiniteNumber(current.maxSafeMilliCelsius, 50000)),
-    hysteresisCentiCelsius: Math.max(0, Math.round(normalizeFiniteNumber(current.hysteresisCentiCelsius, 50))),
+    targetCelsius,
+    targetMilliCelsius: Math.round(targetCelsius * 1000),
+    minSafeCelsius,
+    minSafeMilliCelsius: Math.round(minSafeCelsius * 1000),
+    maxSafeCelsius,
+    maxSafeMilliCelsius: Math.round(maxSafeCelsius * 1000),
+    hysteresisCelsius,
+    hysteresisCentiCelsius: Math.round(hysteresisCelsius * 100),
     checkIntervalMs: Math.max(250, Math.round(normalizeFiniteNumber(current.checkIntervalMs, 1000))),
     sensorTimeoutMs: Math.max(250, Math.round(normalizeFiniteNumber(current.sensorTimeoutMs, 6000))),
     retryAfterErrorMs: Math.max(250, Math.round(normalizeFiniteNumber(current.retryAfterErrorMs, 30000))),

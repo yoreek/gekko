@@ -10,7 +10,7 @@
     <template #append>
       <v-tooltip :text="t(statusLabelKey)" location="top">
         <template #activator="{ props: tooltipProps }">
-          <v-avatar v-bind="tooltipProps" :size="dense ? 10 : 14" :color="statusColor" />
+          <v-avatar v-bind="tooltipProps" :size="10" :color="statusColor" />
         </template>
       </v-tooltip>
       <v-icon-btn

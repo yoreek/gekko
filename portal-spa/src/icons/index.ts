@@ -13,12 +13,18 @@ import {
   mdiEyeOff as eyeOffPath,
   mdiInformationOutline as infoPath,
   mdiMenu as menuPath,
+  mdiMinus as minusPath,
   mdiPencil as editPath,
   mdiImageOutline as imageOutlinePath,
   mdiPlus as plusPath,
   mdiRadioboxBlank as radioBlankPath,
   mdiRadioboxMarked as radioMarkedPath,
   mdiPower as powerPath,
+  mdiPowerOff as powerOffPath,
+  mdiFire as firePath,
+  mdiSnowflake as snowflakePath,
+  mdiCheckCircleOutline as checkCircleOutlinePath,
+  mdiAlertOutline as alertOutlinePath,
   mdiRefresh as refreshPath,
   mdiUpload as uploadPath,
   mdiTrashCan as trashPath,
@@ -66,7 +72,13 @@ export type PortalIconName =
   | 'trash'
   | 'menu'
   | 'plus'
+  | 'minus'
   | 'power'
+  | 'power-off'
+  | 'flame'
+  | 'snowflake'
+  | 'check-circle'
+  | 'alert'
   | 'download'
   | 'copy'
   | 'upload'
@@ -182,7 +194,13 @@ const mdiIconRegistry: Record<
   | 'trash'
   | 'menu'
   | 'plus'
+  | 'minus'
   | 'power'
+  | 'power-off'
+  | 'flame'
+  | 'snowflake'
+  | 'check-circle'
+  | 'alert'
   | 'download'
   | 'copy'
   | 'upload'
@@ -200,7 +218,13 @@ const mdiIconRegistry: Record<
   trash: createFilledIconShape(trashPath),
   menu: createFilledIconShape(menuPath),
   plus: createFilledIconShape(plusPath),
+  minus: createFilledIconShape(minusPath),
   power: createFilledIconShape(powerPath),
+  'power-off': createFilledIconShape(powerOffPath),
+  flame: createFilledIconShape(firePath),
+  snowflake: createFilledIconShape(snowflakePath),
+  'check-circle': createFilledIconShape(checkCircleOutlinePath),
+  alert: createFilledIconShape(alertOutlinePath),
   download: createFilledIconShape(downloadPath),
   copy: createFilledIconShape(contentCopyPath),
   upload: createFilledIconShape(uploadPath),

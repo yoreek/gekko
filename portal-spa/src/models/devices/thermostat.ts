@@ -6,6 +6,7 @@ import type {
 } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import type { DeviceCommandRequest, DeviceRecord } from '@/api/contracts'
+import type { PortalIconName } from '@/icons'
 import { BaseDevice } from './base-device.ts'
 
 export type ThermostatMode = 'off' | 'heat' | 'cool'
@@ -200,6 +201,58 @@ export class ThermostatDevice extends BaseDevice<ThermostatConfigDraft, Thermost
         return 'warning'
       case 'faulted':
       case 'switch_error':
+        return 'error'
+      default:
+        return 'secondary'
+    }
+  }
+
+  static controlStatusIcon(status: string | undefined | null): PortalIconName {
+    switch (status) {
+      case 'heating':
+        return 'flame'
+      case 'cooling':
+        return 'snowflake'
+      case 'idle':
+      case 'ok':
+      case 'ready':
+        return 'check-circle'
+      case 'disabled':
+        return 'power-off'
+      case 'dependency_blocked':
+      case 'sensor_timeout':
+      case 'out_of_range':
+        return 'alert'
+      case 'switch_error':
+      case 'faulted':
+      case 'safe_off':
+        return 'alert'
+      case 'retry_backoff':
+        return 'refresh'
+      default:
+        return 'info'
+    }
+  }
+
+  static controlStatusColor(status: string | undefined | null): 'success' | 'warning' | 'error' | 'secondary' | 'info' {
+    switch (status) {
+      case 'heating':
+        return 'warning'
+      case 'cooling':
+        return 'info'
+      case 'idle':
+      case 'ok':
+      case 'ready':
+        return 'success'
+      case 'disabled':
+        return 'secondary'
+      case 'dependency_blocked':
+      case 'sensor_timeout':
+      case 'out_of_range':
+        return 'warning'
+      case 'switch_error':
+      case 'faulted':
+      case 'safe_off':
         return 'error'
       default:
         return 'secondary'

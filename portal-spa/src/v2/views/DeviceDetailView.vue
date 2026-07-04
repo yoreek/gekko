@@ -5,9 +5,11 @@
         <template #header>
           <PageToolbar :title="deviceName" :subtitle="t(typeUi?.labelKey ?? 'device.type.unknown')" show-back @back="navigateBack">
             <template #actions>
-              <v-chip :color="statusColor" size="small" variant="tonal">
-                {{ t(deviceStatusLabelKey(effectiveStatus)) }}
-              </v-chip>
+              <v-tooltip :text="t(deviceStatusLabelKey(effectiveStatus))" location="top">
+                <template #activator="{ props: tooltipProps }">
+                  <v-avatar v-bind="tooltipProps" :size="10" :color="statusColor" />
+                </template>
+              </v-tooltip>
               <v-btn
                 v-if="typeUi?.designerComponent"
                 icon="$design-display"
@@ -68,7 +70,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import type { DeviceCommandRequest } from '@/api/contracts'
-import { deviceStatusLabelKey } from '@/models/devices/device-status'
+import { deviceStatusColor, deviceStatusLabelKey } from '@/models/devices/device-status'
 import { useDeviceDetail } from '@/composables/useDeviceDetail'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { resolveDeviceUiV2 } from '@/v2/components/registry/device-ui-registry'
@@ -113,20 +115,7 @@ const typeUi = computed(() => (device.value ? resolveDeviceUiV2(device.value.rec
 
 const effectiveStatus = computed(() => device.value?.runtime.effectiveStatus ?? device.value?.runtime.status ?? 'unknown')
 
-const statusColor = computed(() => {
-  switch (effectiveStatus.value) {
-    case 'ready':
-      return 'success'
-    case 'disabled':
-      return 'secondary'
-    case 'faulted':
-      return 'error'
-    case 'dependency_blocked':
-      return 'warning'
-    default:
-      return 'primary'
-  }
-})
+const statusColor = computed(() => deviceStatusColor(effectiveStatus.value))
 
 function navigateBack(): void {
   router.back()

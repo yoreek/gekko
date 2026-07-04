@@ -6,6 +6,7 @@
     <SwitchPowerButton
       :state="state"
       :disabled="editable || !isReady"
+      @click.stop
       @toggle="onToggle"
     />
   </DeviceWidgetBase>

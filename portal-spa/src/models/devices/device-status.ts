@@ -1,3 +1,5 @@
+import type { PortalIconName } from '@/icons'
+
 export function deviceStatusLabelKey(status: string): string {
   switch (status.trim().toLowerCase()) {
     case 'ready':
@@ -27,5 +29,20 @@ export function deviceStatusColor(status: string): string {
       return 'warning'
     default:
       return 'primary'
+  }
+}
+
+export function deviceStatusIcon(status: string): PortalIconName {
+  switch (status.trim().toLowerCase()) {
+    case 'ready':
+      return 'check-circle'
+    case 'disabled':
+      return 'power-off'
+    case 'dependency_blocked':
+      return 'alert'
+    case 'faulted':
+      return 'alert'
+    default:
+      return 'info'
   }
 }
