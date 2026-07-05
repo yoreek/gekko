@@ -6,7 +6,13 @@ import vuetify from 'vite-plugin-vuetify'
 import { compression } from 'vite-plugin-compression2'
 
 export default defineConfig({
-  base: './',
+  // Must be absolute, not relative: the firmware always serves /assets/* from the
+  // site root regardless of the requested path (PortalAssetController registers a
+  // fixed "/assets/" prefix route), while vue-router's createWebHistory means deep
+  // links like /devices/123 are real URLs. A relative base resolves asset URLs
+  // against the current path depth, so anything but the root page 404s into the
+  // SPA fallback and gets index.html back for a <script type="module"> request.
+  base: '/',
   plugins: [
     vue(),
     vuetify({ autoImport: false }),
