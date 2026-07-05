@@ -219,7 +219,7 @@ bool St7735DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& inp
         error = "st7735 config is required";
         return false;
     }
-    St7735DeviceConfigV4 config{};
+    St7735DeviceConfigV4 config = static_cast<const St7735Device&>(runtime).config();
     if (!config.parseJson(configInput, error)) {
         return false;
     }

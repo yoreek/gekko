@@ -128,7 +128,7 @@ bool ThermostatDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst&
         return false;
     }
 
-    ThermostatDeviceConfigV1 config{};
+    ThermostatDeviceConfigV1 config = static_cast<const ThermostatDevice&>(runtime).config();
     if (!config.parseJson(configInput, error)) {
         return false;
     }

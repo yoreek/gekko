@@ -70,7 +70,7 @@ bool OneWireBusDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst&
         return false;
     }
 
-    OneWireBusDeviceConfigV1 config{};
+    OneWireBusDeviceConfigV1 config = static_cast<const OneWireBusDevice&>(runtime).config();
     if (!config.parseJson(configInput, error)) {
         return false;
     }

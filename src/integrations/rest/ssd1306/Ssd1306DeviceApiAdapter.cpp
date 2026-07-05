@@ -219,7 +219,7 @@ bool Ssd1306DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& in
         error = "ssd1306 config is required";
         return false;
     }
-    Ssd1306DeviceConfigV3 config{};
+    Ssd1306DeviceConfigV3 config = static_cast<const Ssd1306Device&>(runtime).config();
     if (!config.parseJson(configInput, error)) {
         return false;
     }

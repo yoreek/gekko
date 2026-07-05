@@ -59,7 +59,7 @@ bool GpioSwitchDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst&
         return false;
     }
 
-    GpioSwitchDevicePersistedConfigV1 config{};
+    GpioSwitchDevicePersistedConfigV1 config = static_cast<const GpioSwitchDevice&>(runtime).config();
     if (!parseGpioSwitchDeviceConfigJson(configInput, config, error)) {
         return false;
     }

@@ -56,7 +56,7 @@ bool SpiBusDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& inp
         return false;
     }
 
-    SpiBusDeviceConfigV1 config{};
+    SpiBusDeviceConfigV1 config = static_cast<const SpiBusDevice&>(runtime).config();
     if (!config.parseJson(configInput, error)) {
         return false;
     }

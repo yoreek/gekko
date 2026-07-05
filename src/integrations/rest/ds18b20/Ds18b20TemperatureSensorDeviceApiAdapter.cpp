@@ -115,7 +115,7 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const Js
         return false;
     }
 
-    Ds18b20TemperatureSensorConfigV1 config{};
+    Ds18b20TemperatureSensorConfigV1 config = static_cast<const Ds18b20TemperatureSensorDevice&>(runtime).config();
     if (!config.parseJson(configInput, error)) {
         return false;
     }

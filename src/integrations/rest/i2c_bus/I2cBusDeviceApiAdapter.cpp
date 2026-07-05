@@ -58,7 +58,7 @@ bool I2cBusDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& inp
         return false;
     }
 
-    I2cBusDeviceConfigV1 config{};
+    I2cBusDeviceConfigV1 config = static_cast<const I2cBusDevice&>(runtime).config();
     if (!config.parseJson(configInput, error)) {
         return false;
     }
