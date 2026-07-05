@@ -22,6 +22,7 @@ void test_registry_backfills_dependency_links_after_begin();
 void test_registry_set_deps_command_normalization();
 void test_registry_dependency_config_update_reconfigures_dependents();
 void test_registry_update_config_ignores_reordered_unchanged_dependencies();
+void test_registry_update_config_and_deps_auto_escalates_real_reassignment_to_immediate();
 void test_registry_emits_required_event_kinds();
 void test_registry_invokes_only_declared_cadences();
 void test_registry_immediate_persistence_failure_rolls_back_create();
@@ -92,6 +93,7 @@ int main(int, char**) {
     RUN_TEST(test_registry_set_deps_command_normalization);
     RUN_TEST(test_registry_dependency_config_update_reconfigures_dependents);
     RUN_TEST(test_registry_update_config_ignores_reordered_unchanged_dependencies);
+    RUN_TEST(test_registry_update_config_and_deps_auto_escalates_real_reassignment_to_immediate);
     RUN_TEST(test_registry_emits_required_event_kinds);
     RUN_TEST(test_registry_invokes_only_declared_cadences);
     RUN_TEST(test_registry_immediate_persistence_failure_rolls_back_create);

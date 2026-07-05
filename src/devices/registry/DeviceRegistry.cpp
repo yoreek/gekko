@@ -595,16 +595,18 @@ DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, cons
         return result;
     }
 
-    if (depsProvided && policy != DevicePersistencePolicy::Immediate) {
-        result.validation = {DeviceError::InvalidConfig, "dependency reassignment requires immediate persistence"};
-        return result;
-    }
-
     IDeviceRuntime* currentRuntime = runtime(deviceId);
     if (currentRuntime == nullptr) {
         result.validation = {DeviceError::MissingRecord, "device not found"};
         return result;
     }
+
+    const bool dependenciesChanged =
+        depsProvided && !sameDependencyLinks(currentRuntime->dependencyLinks(), currentRuntime->dependencyCount(), deps.data(), depCount);
+    // An actual dependency reassignment must never be left as pending/delayed persistence: a
+    // power loss between "runtime rewired" and "flushed to NVS" would restore stale deps. Callers
+    // don't need to know or coordinate this — the registry enforces it unconditionally.
+    const DevicePersistencePolicy effectivePolicy = dependenciesChanged ? DevicePersistencePolicy::Immediate : policy;
 
     const DeviceTypeDescriptor* descriptor = typeRegistry_.find(currentRuntime->typeId());
     if (descriptor == nullptr) {
@@ -647,8 +649,6 @@ DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, cons
         return result;
     }
 
-    const bool dependenciesChanged = depsProvided && !sameDependencyLinks(currentRuntime->dependencyLinks(),
-                                                                          currentRuntime->dependencyCount(), record.deps.data(), depCount);
     std::array<IDeviceRuntime*, kMaxDeviceDependencies> oldDependencyRuntimes{};
     const DeviceDependencyLink* oldDependencyLinks = currentRuntime->dependencyLinks();
     const uint8_t oldDependencyCount = currentRuntime->dependencyCount();
@@ -685,9 +685,9 @@ DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, cons
         }
     }
 
-    if (policy == DevicePersistencePolicy::Immediate) {
+    if (effectivePolicy == DevicePersistencePolicy::Immediate) {
         persistence_.markConfigDirty(deviceId, now);
-        const DeviceValidationResult persistResult = persistIfNeeded(policy);
+        const DeviceValidationResult persistResult = persistIfNeeded(effectivePolicy);
         if (!persistResult.ok()) {
             result.pendingPersistence = persistence_.hasPendingPersistence();
             result.validation = persistResult;

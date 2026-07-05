@@ -998,6 +998,65 @@ void test_registry_update_config_ignores_reordered_unchanged_dependencies() {
                           registry.runtime(target.deviceId)->dependencyRuntime(DeviceDependencyRole::TemperatureSensor));
 }
 
+void test_registry_update_config_and_deps_auto_escalates_real_reassignment_to_immediate() {
+    // Portal clients (e.g. the SPA device-edit "save" flow) always attach the full deps
+    // snapshot to every updateConfig command, even when only an unrelated field changed.
+    // The registry must therefore decide for itself -- based on whether the deps actually
+    // differ from what is persisted, not merely on whether the caller requested Immediate --
+    // whether this specific mutation needs to bypass delayed/batched persistence.
+    MemoryConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    FixedDeviceIdSource idSource({281, 282, 283});
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceTypeDescriptor dependentDescriptor = makeDependentDescriptor(61, 1);
+    dependentDescriptor.createRuntime = &createCountingRuntime;
+    TEST_ASSERT_TRUE(types.registerDescriptor(dependentDescriptor));
+    DeviceRegistry registry(store, types, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+
+    DeviceCreateResult dependencyA = registry.create(makeDummyCreateRequest("dependency-a"), 10);
+    DeviceCreateResult dependencyB = registry.create(makeDummyCreateRequest("dependency-b"), 20);
+    TEST_ASSERT_TRUE(dependencyA.ok());
+    TEST_ASSERT_TRUE(dependencyB.ok());
+
+    DeviceCreateRequest targetRequest = makeDummyCreateRequest("target");
+    targetRequest.typeId = 61;
+    targetRequest.configVersion = 1;
+    targetRequest.depCount = 1;
+    targetRequest.deps[0] = {DeviceDependencyRole::OneWireBus, dependencyA.deviceId};
+    DeviceCreateResult target = registry.create(targetRequest, 30);
+    TEST_ASSERT_TRUE(target.ok());
+
+    std::array<DeviceDependencyLink, kMaxDeviceDependencies> reassignedDeps{};
+    reassignedDeps[0] = {DeviceDependencyRole::OneWireBus, dependencyB.deviceId};
+
+    DummyDeviceConfigV1 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "target");
+
+    // Caller passes Delayed (the generic save-flow default) even though the dependency is
+    // actually changing -- the registry must accept this (not reject it as it used to) and
+    // must flush immediately on its own rather than leaving the reassignment pending.
+    DeviceMutationResult updated = registry.updateConfigAndDeps(target.deviceId, encodeDummyConfig(config), 1, true, reassignedDeps, 1, 40,
+                                                                DevicePersistencePolicy::Delayed);
+    TEST_ASSERT_TRUE_MESSAGE(updated.ok(), updated.validation.message);
+    TEST_ASSERT_FALSE_MESSAGE(updated.pendingPersistence, "dependency reassignment must be persisted immediately, not left pending");
+    TEST_ASSERT_EQUAL_UINT32(dependencyB.deviceId, registry.runtime(target.deviceId)->dependencyDeviceId(DeviceDependencyRole::OneWireBus));
+    TEST_ASSERT_EQUAL_PTR(registry.runtime(dependencyB.deviceId),
+                          registry.runtime(target.deviceId)->dependencyRuntime(DeviceDependencyRole::OneWireBus));
+
+    DeviceRegistrySnapshot loaded;
+    DeviceConfigBlobMap loadedConfigBlobs;
+    TEST_ASSERT_TRUE(store.load(loaded, loadedConfigBlobs, &types).ok());
+    const auto loadedTarget =
+        std::find_if(loaded.records.begin(), loaded.records.end(),
+                     [targetId = target.deviceId](const DeviceRegistryEntry& record) { return record.header.deviceId == targetId; });
+    TEST_ASSERT_TRUE(loadedTarget != loaded.records.end());
+    TEST_ASSERT_EQUAL_UINT32(dependencyB.deviceId, loadedTarget->dependencyDeviceId(DeviceDependencyRole::OneWireBus));
+}
+
 void test_registry_propagates_dependency_status_and_recovers() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
