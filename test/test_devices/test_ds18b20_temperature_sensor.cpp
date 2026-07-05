@@ -455,9 +455,11 @@ void test_ds18b20_api_adapter_partial_update_preserves_address_unit_and_report_a
 
     DeviceConfigUpdateRequest updateRequest{};
     const char* error = nullptr;
-    TEST_ASSERT_TRUE_MESSAGE(Ds18b20TemperatureSensorDeviceApiAdapter::instance().parseUpdateConfigRequest(
-                                 updateDoc.as<JsonObjectConst>(), runtime, updateRequest, error),
+    TEST_ASSERT_TRUE_MESSAGE(Ds18b20TemperatureSensorDeviceApiAdapter::instance().parseUpdateConfigRequest(updateDoc.as<JsonObjectConst>(),
+                                                                                                           runtime, updateRequest, error),
                              error);
+    TEST_ASSERT_FALSE_MESSAGE(updateRequest.depsProvided,
+                              "deps must not be marked as provided when the request omits the top-level deps field");
 
     Ds18b20TemperatureSensorConfigV1 parsed{};
     TEST_ASSERT_TRUE(decodeDs18b20TemperatureSensorConfig(reinterpret_cast<const uint8_t*>(updateRequest.configBlob.data()),

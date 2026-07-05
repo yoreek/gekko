@@ -49,6 +49,7 @@ void test_onewire_runtime_truncates_results_and_clears_on_disable_and_reconfigur
 void test_onewire_registry_create_scan_reconfigure_disable_and_delete();
 void test_onewire_registry_update_config_restarts_bus_and_advances_generation();
 void test_spi_bus_config_codec_json_and_validation();
+void test_spi_bus_api_adapter_partial_update_preserves_pins();
 void test_spi_default_registries_include_bus();
 void test_spi_runtime_lifecycle_transactions_and_duplicate_cs_detection();
 void test_spi_runtime_reconfigures_and_advances_generation();
@@ -60,6 +61,7 @@ void test_ssd1306_layout_codec_rejects_invalid_bitmap_payload();
 void test_ssd1306_layout_store_round_trip_binary();
 void test_ssd1306_layout_store_rejects_invalid_device_id();
 void test_ssd1306_layout_update_round_trip_via_registry_binary_store();
+void test_ssd1306_api_adapter_partial_update_preserves_bus_and_dimensions();
 void test_ssd1306_layout_create_request_accepts_empty_pages();
 void test_ssd1306_layout_create_request_keeps_text_placeholders();
 void test_ssd1306_layout_create_request_accepts_large_i2c_bus_device_id();
@@ -71,6 +73,7 @@ void test_st7735_config_codec_migrates_v2_blob();
 void test_st7735_config_rejects_legacy_layout_dimension_fields();
 void test_st7735_registry_migrates_legacy_blob_on_begin();
 void test_st7735_default_registries_include_display();
+void test_st7735_api_adapter_partial_update_preserves_bus_and_pins();
 void test_st7735_requires_spi_bus_and_rejects_duplicate_chip_select();
 void test_st7735_update_round_trip_includes_layout();
 void test_switch_config_round_trip_validates_output_states();
@@ -150,6 +153,7 @@ int main(int, char**) {
     RUN_TEST(test_onewire_registry_create_scan_reconfigure_disable_and_delete);
     RUN_TEST(test_onewire_registry_update_config_restarts_bus_and_advances_generation);
     RUN_TEST(test_spi_bus_config_codec_json_and_validation);
+    RUN_TEST(test_spi_bus_api_adapter_partial_update_preserves_pins);
     RUN_TEST(test_spi_default_registries_include_bus);
     RUN_TEST(test_spi_runtime_lifecycle_transactions_and_duplicate_cs_detection);
     RUN_TEST(test_spi_runtime_reconfigures_and_advances_generation);
@@ -161,6 +165,7 @@ int main(int, char**) {
     RUN_TEST(test_ssd1306_layout_store_round_trip_binary);
     RUN_TEST(test_ssd1306_layout_store_rejects_invalid_device_id);
     RUN_TEST(test_ssd1306_layout_update_round_trip_via_registry_binary_store);
+    RUN_TEST(test_ssd1306_api_adapter_partial_update_preserves_bus_and_dimensions);
     RUN_TEST(test_ssd1306_layout_create_request_accepts_empty_pages);
     RUN_TEST(test_ssd1306_layout_create_request_keeps_text_placeholders);
     RUN_TEST(test_ssd1306_layout_create_request_accepts_large_i2c_bus_device_id);
@@ -172,6 +177,7 @@ int main(int, char**) {
     RUN_TEST(test_st7735_config_rejects_legacy_layout_dimension_fields);
     RUN_TEST(test_st7735_registry_migrates_legacy_blob_on_begin);
     RUN_TEST(test_st7735_default_registries_include_display);
+    RUN_TEST(test_st7735_api_adapter_partial_update_preserves_bus_and_pins);
     RUN_TEST(test_st7735_requires_spi_bus_and_rejects_duplicate_chip_select);
     RUN_TEST(test_st7735_update_round_trip_includes_layout);
     RUN_TEST(test_switch_config_round_trip_validates_output_states);

@@ -201,6 +201,31 @@ void test_spi_bus_config_codec_json_and_validation() {
     TEST_ASSERT_FALSE(invalidPins.validate().ok());
 }
 
+void test_spi_bus_api_adapter_partial_update_preserves_pins() {
+    StaticJsonDocument<128> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["misoPin"] = 27;
+
+    // sckPin/mosiPin are deliberately non-default (compiled defaults are 18/23) so these
+    // assertions cannot pass by accident if the merge fix regresses and the fields are silently
+    // reset to their struct defaults instead of the runtime's current pins.
+    FakeSpiBusDriver driver;
+    SpiBusDevice runtime(makeConfig(kSpiBusHostHspi, 14U, 13U, -1), driver);
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        SpiBusDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error), error);
+
+    SpiBusDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeSpiBusDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_INT16(27, parsed.misoPin);
+    TEST_ASSERT_EQUAL_UINT8(kSpiBusHostHspi, parsed.host);
+    TEST_ASSERT_EQUAL_UINT8(14U, parsed.sckPin);
+    TEST_ASSERT_EQUAL_UINT8(13U, parsed.mosiPin);
+}
+
 void test_spi_default_registries_include_bus() {
     DeviceTypeRegistry typeRegistry = DeviceTypeRegistry::withDefaults();
     TEST_ASSERT_NOT_NULL(typeRegistry.find(SpiBusDevice::descriptor().typeId));

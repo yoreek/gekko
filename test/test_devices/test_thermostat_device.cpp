@@ -289,7 +289,11 @@ void test_thermostat_parser_accepts_spa_milli_celsius_fields() {
 }
 
 void test_thermostat_api_adapter_partial_update_preserves_mode_and_thresholds() {
-    ThermostatDevice thermostat(makeThermostatConfig(ThermostatMode::Heat, 25000));
+    ThermostatDeviceConfigV1 currentConfig = makeThermostatConfig(ThermostatMode::Heat, 25000);
+    // Deliberately non-default (compiled default is 50) so the assertions below cannot pass by
+    // accident if the merge fix regresses and the field is silently reset to its struct default.
+    currentConfig.hysteresisCentiCelsius = 75;
+    ThermostatDevice thermostat(currentConfig);
 
     StaticJsonDocument<256> doc;
     JsonObject config = doc.createNestedObject("config");
@@ -299,14 +303,15 @@ void test_thermostat_api_adapter_partial_update_preserves_mode_and_thresholds() 
     const char* error = nullptr;
     TEST_ASSERT_TRUE_MESSAGE(
         ThermostatDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), thermostat, request, error), error);
+    TEST_ASSERT_FALSE_MESSAGE(request.depsProvided, "deps must not be marked as provided when the request omits the top-level deps field");
 
     ThermostatDeviceConfigV1 parsed{};
-    TEST_ASSERT_TRUE(decodeThermostatDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(),
-                                                   parsed));
+    TEST_ASSERT_TRUE(
+        decodeThermostatDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
     TEST_ASSERT_EQUAL_INT32(24000, parsed.targetMilliCelsius);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ThermostatMode::Heat), parsed.mode);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ThermostatAlgorithm::Hysteresis), parsed.algorithm);
-    TEST_ASSERT_EQUAL_UINT16(50, parsed.hysteresisCentiCelsius);
+    TEST_ASSERT_EQUAL_UINT16(75, parsed.hysteresisCentiCelsius);
     TEST_ASSERT_EQUAL_UINT32(100, parsed.checkIntervalMs);
     TEST_ASSERT_EQUAL_UINT32(200, parsed.sensorTimeoutMs);
     TEST_ASSERT_EQUAL_UINT32(300, parsed.retryAfterErrorMs);

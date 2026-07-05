@@ -276,6 +276,61 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_EQUAL_UINT8(4, reloadedRuntime->layout().pages[0].widgets[1].bitmapData.size());
 }
 
+void test_ssd1306_api_adapter_partial_update_preserves_bus_and_dimensions() {
+    Ssd1306DeviceConfigV3 config{};
+    config.enabled = 1U;
+    std::snprintf(config.name, sizeof(config.name), "%s", "ssd1306");
+    config.i2cBusDeviceId = 12;
+    // i2cAddress/width/height are deliberately non-default (compiled defaults are 0x3C/128/64) so
+    // these assertions cannot pass by accident if the merge fix regresses and the fields are
+    // silently reset to their struct defaults instead of the runtime's current values.
+    config.i2cAddress = 0x50;
+    config.width = 64;
+    config.height = 32;
+    config.rotation = 0;
+
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = ssd1306DeviceConfigSize(config);
+    TEST_ASSERT_TRUE(encodeSsd1306DeviceConfig(config, buffer, size));
+    DeviceConfigBlob configBlob{};
+    TEST_ASSERT_TRUE(configBlob.assign(buffer, size));
+
+    DeviceRegistryEntry record{};
+    record.header.deviceId = 200;
+    record.header.typeId = Ssd1306Device::descriptor().typeId;
+    record.header.configVersion = Ssd1306Device::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(configBlob.size());
+    record.depCount = 1U;
+    record.deps[0] = {DeviceDependencyRole::I2CBus, 12};
+    record.status = DeviceStatus::Ready;
+
+    Ssd1306Device device(record, configBlob);
+
+    StaticJsonDocument<128> doc;
+    JsonObject updateConfig = doc.createNestedObject("config");
+    updateConfig["rotation"] = 2;
+    // Decoy value: the i2c bus link is authoritatively taken from the runtime's current
+    // dependency (12), never from this config-body field, even though it is present in the JSON.
+    updateConfig["i2cBusDeviceId"] = 99;
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        Ssd1306DeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), device, request, error), error);
+    TEST_ASSERT_FALSE_MESSAGE(request.depsProvided, "depsProvided must stay false when the update carries no multi-source layout");
+    TEST_ASSERT_EQUAL_UINT8(1U, request.depCount);
+    TEST_ASSERT_EQUAL_UINT32(12U, request.deps[0].deviceId);
+
+    Ssd1306DeviceConfigV3 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeSsd1306DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT8(2, parsed.rotation);
+    TEST_ASSERT_EQUAL_UINT8(0x50, parsed.i2cAddress);
+    TEST_ASSERT_EQUAL_UINT16(64, parsed.width);
+    TEST_ASSERT_EQUAL_UINT16(32, parsed.height);
+}
+
 void test_ssd1306_layout_create_request_accepts_empty_pages() {
     StaticJsonDocument<2048> doc;
     fillSsd1306DeviceDocument(doc, false);

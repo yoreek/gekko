@@ -276,6 +276,65 @@ void test_st7735_registry_migrates_legacy_blob_on_begin() {
     TEST_ASSERT_TRUE(registry.hasPendingPersistence());
 }
 
+void test_st7735_api_adapter_partial_update_preserves_bus_and_pins() {
+    St7735DeviceConfigV4 config{};
+    config.enabled = 1U;
+    std::snprintf(config.name, sizeof(config.name), "%s", "st7735");
+    config.spiBusDeviceId = 12;
+    // chipSelectPin/dcPin/width/height are deliberately non-default (compiled defaults are
+    // 5/2/128/160) so these assertions cannot pass by accident if the merge fix regresses and the
+    // fields are silently reset to their struct defaults instead of the runtime's current values.
+    config.chipSelectPin = 15;
+    config.dcPin = 16;
+    config.resetPin = 4;
+    config.rotation = 0;
+    config.width = 100;
+    config.height = 120;
+
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = st7735DeviceConfigSize(config);
+    TEST_ASSERT_TRUE(encodeSt7735DeviceConfig(config, buffer, size));
+    DeviceConfigBlob configBlob{};
+    TEST_ASSERT_TRUE(configBlob.assign(buffer, size));
+
+    DeviceRegistryEntry record{};
+    record.header.deviceId = 200;
+    record.header.typeId = St7735Device::descriptor().typeId;
+    record.header.configVersion = St7735Device::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(configBlob.size());
+    record.depCount = 1U;
+    record.deps[0] = {DeviceDependencyRole::SpiBus, 12};
+    record.status = DeviceStatus::Ready;
+
+    St7735Device device(record, configBlob);
+
+    StaticJsonDocument<128> doc;
+    JsonObject updateConfig = doc.createNestedObject("config");
+    updateConfig["rotation"] = 1;
+    // Decoy value: the spi bus link is authoritatively taken from the runtime's current
+    // dependency (12), never from this config-body field, even though it is present in the JSON.
+    updateConfig["spiBusDeviceId"] = 99;
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(St7735DeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), device, request, error),
+                             error);
+    TEST_ASSERT_FALSE_MESSAGE(request.depsProvided, "depsProvided must stay false when the update carries no multi-source layout");
+    TEST_ASSERT_EQUAL_UINT8(1U, request.depCount);
+    TEST_ASSERT_EQUAL_UINT32(12U, request.deps[0].deviceId);
+
+    St7735DeviceConfigV4 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeSt7735DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT8(1, parsed.rotation);
+    TEST_ASSERT_EQUAL_UINT8(15, parsed.chipSelectPin);
+    TEST_ASSERT_EQUAL_UINT8(16, parsed.dcPin);
+    TEST_ASSERT_EQUAL_INT8(4, parsed.resetPin);
+    TEST_ASSERT_EQUAL_UINT16(100, parsed.width);
+    TEST_ASSERT_EQUAL_UINT16(120, parsed.height);
+}
+
 void test_st7735_default_registries_include_display() {
     DeviceTypeRegistry typeRegistry = DeviceTypeRegistry::withDefaults();
     TEST_ASSERT_NOT_NULL(typeRegistry.find(St7735Device::descriptor().typeId));
