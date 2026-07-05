@@ -162,6 +162,10 @@ export default {
       count: '{count} devices',
       create: 'Create device',
     },
+    dummy: {
+      label: 'Dummy device',
+      noFields: 'No additional type-specific settings.',
+    },
     type: {
       dummy: 'Dummy device',
       gpioSwitch: 'GPIO switch',
@@ -381,6 +385,7 @@ export default {
       title: 'Device details',
       noneSelected: 'Select a device to inspect it.',
       edit: 'Edit',
+      openDesigner: 'Design display',
       save: 'Save',
       configDetails: 'Config details',
       fieldHint: 'More information',
@@ -716,17 +721,5 @@ export default {
   notFound: {
     title: '404',
     body: 'This route is not available in the SPA.',
-  },
-  v2: {
-    navigation: {
-      badge: 'New UI (preview)',
-      itemLabel: '{page} (New UI)',
-    },
-    device: {
-      dummy: {
-        label: 'Dummy device',
-        noFields: 'No additional type-specific settings.',
-      },
-    },
   },
 } as const

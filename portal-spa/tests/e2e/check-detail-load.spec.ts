@@ -18,11 +18,11 @@ test('device 670845755 detail page loads with data', async ({ page }) => {
   })
   
   // First load list
-  await page.goto('http://127.0.0.1:5176/v2/devices?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
+  await page.goto('http://127.0.0.1:5176/devices?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
   console.log('✓ Devices list loaded')
   
   // Then go to detail
-  await page.goto('http://127.0.0.1:5176/v2/devices/670845755?mockMode=1', { waitUntil: 'networkidle' })
+  await page.goto('http://127.0.0.1:5176/devices/670845755?mockMode=1', { waitUntil: 'networkidle' })
   console.log('✓ Detail page URL loaded')
   
   await page.waitForTimeout(2000)

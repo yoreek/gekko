@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test('designer inspector panel - no content overflow', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5176/v2/devices/670845755/design?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
+  await page.goto('http://127.0.0.1:5176/devices/670845755/design?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
   await page.waitForTimeout(2000)
 
   // Get inspector panel

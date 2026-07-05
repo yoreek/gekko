@@ -1,258 +1,157 @@
 <template>
-  <v-container class="page-shell" fluid>
-      <v-card class="page-card page-hero">
-      <v-card-title class="page-title">
-        <div>
-          <div class="text-overline">{{ t('devices.title') }}</div>
-          <h1 class="text-h5 sm:text-h4 font-weight-bold text-wrap">{{ t('devices.subtitle') }}</h1>
-        </div>
-        <div class="d-flex ga-2">
-          <v-btn color="primary" variant="tonal" @click="$router.push({ name: 'device-create' })">
-            <v-icon class="me-1" icon="plus" />
-            {{ t('device.dashboard.create') }}
-          </v-btn>
-          <v-btn :loading="transferLoading" color="primary" variant="tonal" @click="exportDeviceSetup">
-            <v-icon class="me-1" icon="download" />
-            {{ t('devices.export') }}
-          </v-btn>
-          <v-btn color="primary" variant="tonal" @click="importDialogOpen = true">
-            <v-icon class="me-1" icon="upload" />
-            {{ t('devices.import') }}
-          </v-btn>
-          <v-btn :loading="devicesLoading" color="primary" variant="tonal" @click="refreshDevices">
-            <v-icon class="me-1" icon="refresh" />
-            {{ t('actions.refresh') }}
-          </v-btn>
-        </div>
-      </v-card-title>
-      <v-card-text>
-        <p class="text-body-1">
-          {{ t('devices.copy') }}
-        </p>
-        <v-alert v-if="transferMessage" class="mb-4" type="success" variant="tonal">
-          {{ transferMessage }}
-        </v-alert>
-        <v-alert v-if="transferError" class="mb-4" type="error" variant="tonal">
-          {{ transferError }}
-        </v-alert>
-        <v-row class="devices-toolbar">
-          <v-col cols="12" md="4">
-            <v-text-field
-              v-select-on-focus
-              v-model="idFilter"
-              :label="t('device.fields.deviceId')"
-              inputmode="numeric"
-            />
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-text-field
-              v-select-on-focus
-              v-model="nameFilter"
-              :label="t('devices.search')"
-            />
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-select
-              v-model="typeFilter"
-              :items="typeFilterOptions"
-              :label="t('devices.filterByType')"
-            />
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
-
-    <v-card class="page-card mt-4">
-      <v-card-text class="d-none d-sm-block">
-        <v-table class="devices-table">
-          <thead>
-            <tr>
-              <th>{{ t('device.fields.deviceId') }}</th>
-              <th>{{ t('device.actions.name') }}</th>
-              <th>{{ t('device.fields.type') }}</th>
-              <th>{{ t('device.fields.effectiveStatus') }}</th>
-              <th class="devices-table__actions">{{ t('devices.actions') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="device in filteredDevices"
-              :key="device.record.id"
-              class="devices-table__row"
-              @click="$router.push({ name: 'device-detail', params: { id: device.record.id } })"
-            >
-              <td>#{{ device.record.id }}</td>
-              <td>
-                <strong class="text-body-1">{{ device.config.name }}</strong>
-              </td>
-              <td>{{ t(resolveDeviceUi(device.record.typeName).labelKey) }}</td>
-              <td>
-                <v-chip variant="tonal" :color="statusColor(device.runtime.effectiveStatus ?? device.runtime.lifecycleStatus ?? device.runtime.status ?? 'unknown')">
-                  {{ t(deviceStatusLabelKey(device.runtime.effectiveStatus ?? device.runtime.lifecycleStatus ?? device.runtime.status ?? 'unknown')) }}
-                </v-chip>
-              </td>
-              <td class="devices-table__actions">
-                <v-tooltip :text="t('device.actions.delete')" location="top">
-                  <template #activator="{ props }">
-                    <v-btn
-                      v-bind="props"
-                      icon="trash"
-                      variant="text"
-                      color="error"
-                      :aria-label="t('device.actions.delete')"
-                      @click.stop="openDeleteConfirm(device.record.id)"
-                    />
-                  </template>
-                </v-tooltip>
-              </td>
-            </tr>
-          </tbody>
-        </v-table>
-      </v-card-text>
-
-      <v-card-text class="d-sm-none">
-        <div v-if="filteredDevices.length > 0" class="stack">
-          <div
-            v-for="device in filteredDevices"
-            :key="device.record.id"
-            class="devices-mobile-card"
-            @click="$router.push({ name: 'device-detail', params: { id: device.record.id } })"
-          >
-            <div class="devices-mobile-card__header">
-              <div>
-                <div class="text-body-2 text-medium-emphasis">{{ t('device.fields.deviceId') }}</div>
-                <div class="text-body-1 font-weight-bold">#{{ device.record.id }}</div>
-              </div>
-              <div class="devices-mobile-card__status">
-                <v-chip variant="tonal" size="small" :color="statusColor(device.runtime.effectiveStatus ?? device.runtime.lifecycleStatus ?? device.runtime.status ?? 'unknown')">
-                  {{ t(deviceStatusLabelKey(device.runtime.effectiveStatus ?? device.runtime.lifecycleStatus ?? device.runtime.status ?? 'unknown')) }}
-                </v-chip>
-              </div>
-            </div>
-            <div class="devices-mobile-card__body">
-              <div>
-                <div class="text-body-2 text-medium-emphasis">{{ t('device.actions.name') }}</div>
-                <div class="text-body-1">{{ device.config.name }}</div>
-              </div>
-              <div>
-                <div class="text-body-2 text-medium-emphasis">{{ t('device.fields.type') }}</div>
-                <div class="text-body-1">{{ t(resolveDeviceUi(device.record.typeName).labelKey) }}</div>
-              </div>
-            </div>
-            <div class="devices-mobile-card__actions">
-              <v-btn
-                icon="trash"
-                variant="text"
-                color="error"
-                size="small"
-                :aria-label="t('device.actions.delete')"
-                @click.stop="openDeleteConfirm(device.record.id)"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div v-if="filteredDevices.length === 0" class="empty-state mt-4">
-          {{ t('devices.empty') }}
-        </div>
-      </v-card-text>
-    </v-card>
-
-    <DeviceDialogShell
-      v-model="deleteDialogOpen"
-      :headline="t('device.dialog.deleteConfirmTitle')"
-      :subline="t('device.dialog.deleteConfirmBody')"
-      :max-width="420"
-    >
-      <template #footer>
-        <v-spacer />
-        <v-btn variant="text" @click="deleteDialogOpen = false">
-          {{ t('actions.cancel') }}
-        </v-btn>
-        <v-btn color="error" :loading="deleteBusy" @click="submitDeleteDevice">
-          {{ t('device.actions.delete') }}
-        </v-btn>
+  <PageContainer>
+    <PageCard>
+      <template #header>
+        <PageToolbar :title="t('navigation.devices')" :subtitle="countLabel">
+          <template #actions>
+            <v-btn color="primary" prepend-icon="plus" :to="{ name: 'device-create' }">
+              {{ t('device.dashboard.create') }}
+            </v-btn>
+          </template>
+        </PageToolbar>
       </template>
-    </DeviceDialogShell>
 
-    <DeviceDialogShell
-      v-model="importDialogOpen"
-      :headline="t('devices.importTitle')"
-      :subline="t('devices.importCopy')"
-      :max-width="560"
-    >
-      <v-alert v-if="importError" class="mb-4" type="error" variant="tonal">
-        {{ importError }}
-      </v-alert>
-      <v-file-input
-        v-model="importFile"
-        accept=".ndjson,.jsonl,.txt,application/x-ndjson,text/plain"
-        :label="t('devices.importFile')"
-        prepend-icon="upload"
-      />
-      <v-checkbox
-        v-model="importConfirmed"
-        class="mt-2"
-        :label="t('devices.importConfirm')"
-      />
-      <template #footer>
-        <v-spacer />
-        <v-btn variant="text" @click="closeImportDialog">
-          {{ t('actions.cancel') }}
-        </v-btn>
-        <v-btn
-          color="primary"
-          :loading="transferLoading"
-          :disabled="selectedImportFile === null || !importConfirmed"
-          @click="submitImportDeviceSetup"
-        >
-          {{ t('devices.importAction') }}
-        </v-btn>
-      </template>
-    </DeviceDialogShell>
-  </v-container>
+      <v-row>
+        <v-col cols="12" md="4">
+          <v-text-field v-select-on-focus v-model="nameFilter" :label="t('devices.search')" density="compact" hide-details />
+        </v-col>
+        <v-col cols="12" md="4">
+          <v-select v-model="typeFilter" :items="typeFilterOptions" :label="t('devices.filterByType')" density="compact" hide-details />
+        </v-col>
+        <v-col cols="12" md="4">
+          <v-text-field v-select-on-focus v-model="idFilter" :label="t('device.fields.deviceId')" density="compact" hide-details inputmode="numeric" />
+        </v-col>
+      </v-row>
+    </PageCard>
+
+    <PageCard class="mt-4">
+      <div v-if="deviceStore.devices.length === 0" class="text-medium-emphasis pa-4">
+        {{ t('device.dashboard.empty') }}
+      </div>
+
+      <div v-else-if="filteredDevices.length === 0" class="text-medium-emphasis pa-4">
+        {{ t('devices.empty') }}
+      </div>
+
+      <v-data-table
+        v-else
+        :headers="tableHeaders"
+        :items="filteredDevices"
+        :item-value="item => item.record.id"
+        density="comfortable"
+        @click:row="onRowClick"
+      >
+        <template #item.id="{ item }">
+          #{{ item.record.id }}
+        </template>
+        <template #item.name="{ item }">
+          <strong class="text-body-medium">{{ item.config.name }}</strong>
+        </template>
+        <template #item.type="{ item }">
+          {{ t(resolveDeviceUi(item.record.typeName).labelKey) }}
+        </template>
+        <template #item.status="{ item }">
+          <v-chip :color="statusColor(item)" size="small" variant="tonal">
+            {{ t(deviceStatusLabelKey(item.runtime.effectiveStatus ?? item.runtime.status)) }}
+          </v-chip>
+        </template>
+        <template #item.actions="{ item }">
+          <v-btn
+            icon="trash"
+            variant="text"
+            color="error"
+            size="small"
+            :aria-label="t('device.actions.delete')"
+            @click.stop="openDeleteConfirm(item)"
+          />
+        </template>
+      </v-data-table>
+    </PageCard>
+
+    <v-dialog v-model="deleteDialogOpen" max-width="420">
+      <v-card>
+        <v-card-item>
+          <v-card-title>{{ t('device.dialog.deleteConfirmTitle') }}</v-card-title>
+        </v-card-item>
+        <v-card-text>
+          {{ t('device.dialog.deleteConfirmBody') }}
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" :disabled="deleteBusy" @click="deleteDialogOpen = false">
+            {{ t('actions.cancel') }}
+          </v-btn>
+          <v-btn color="error" :loading="deleteBusy" @click="submitDeleteDevice">
+            {{ t('device.actions.delete') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </PageContainer>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeMount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 
-import {
-  deleteDevice,
-  fetchDeviceSetupBundle,
-  importDeviceSetupBundle,
-  type DeviceRecord,
-} from '@/api'
-import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
-import { deviceStatusLabelKey } from '@/models/devices/device-status'
-import { deviceTypeIdFromName } from '@/models/device-type-ids'
-import { allDeviceUis, resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
+import { deleteDevice } from '@/api'
+import type { DeviceRecord } from '@/api/contracts'
+import { deviceStatusColor, deviceStatusLabelKey } from '@/models/devices/device-status'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore } from '@/stores/panels'
+import { allDeviceUis, resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
+import { useNotificationsStore } from '@/stores/notifications'
+import PageContainer from '@/components/layout/PageContainer.vue'
+import PageToolbar from '@/components/layout/PageToolbar.vue'
+import PageCard from '@/components/layout/PageCard.vue'
 
 const { t } = useI18n()
+const router = useRouter()
 const deviceStore = useDeviceRegistryStore()
 const panelStore = usePanelStore()
+const notifications = useNotificationsStore()
 
-const devicesLoading = ref(false)
-const deleteDialogOpen = ref(false)
-const deleteTargetId = ref<number | null>(null)
-const deleteBusy = ref(false)
-const transferLoading = ref(false)
-const transferMessage = ref('')
-const transferError = ref('')
-const importDialogOpen = ref(false)
-const importFile = ref<File | File[] | null>(null)
-const importConfirmed = ref(false)
-const importError = ref('')
-const idFilter = ref('')
+onBeforeMount(async () => {
+  await deviceStore.initialize()
+})
+
+const countLabel = computed(() => t('device.dashboard.count', { count: deviceStore.devices.length }))
+
 const nameFilter = ref('')
+const idFilter = ref('')
 const typeFilter = ref<'all' | number>('all')
 
 const typeFilterOptions = computed(() => [
   { title: t('devices.filterAllTypes'), value: 'all' },
   ...allDeviceUis.map(ui => ({ title: t(ui.labelKey), value: ui.typeId })),
 ])
+
+const tableHeaders = [
+  {
+    title: t('device.fields.deviceId'),
+    key: 'id',
+    sortRaw: (a: DeviceRecord, b: DeviceRecord) => a.record.id - b.record.id,
+  },
+  {
+    title: t('device.actions.name'),
+    key: 'name',
+    sortRaw: (a: DeviceRecord, b: DeviceRecord) => a.config.name.localeCompare(b.config.name),
+  },
+  {
+    title: t('device.fields.type'),
+    key: 'type',
+    sortRaw: (a: DeviceRecord, b: DeviceRecord) =>
+      t(resolveDeviceUi(a.record.typeName).labelKey).localeCompare(t(resolveDeviceUi(b.record.typeName).labelKey)),
+  },
+  {
+    title: t('device.fields.effectiveStatus'),
+    key: 'status',
+    sortRaw: (a: DeviceRecord, b: DeviceRecord) =>
+      (a.runtime.effectiveStatus ?? a.runtime.status ?? '').localeCompare(b.runtime.effectiveStatus ?? b.runtime.status ?? ''),
+  },
+  { title: t('devices.actions'), key: 'actions', sortable: false },
+]
 
 const filteredDevices = computed(() => {
   const query = nameFilter.value.trim().toLowerCase()
@@ -263,236 +162,43 @@ const filteredDevices = computed(() => {
   return deviceStore.devices.filter(device => {
     const matchesId = idMatch === null ? true : Number.isInteger(idMatch) && device.record.id === idMatch
     const matchesName = query.length === 0 || device.config.name.toLowerCase().includes(query)
-    const matchesType = typeValue === 'all' || deviceTypeIdFromName(device.record.typeName) === typeValue
+    const matchesType = typeValue === 'all' || resolveDeviceUi(device.record.typeName).typeId === typeValue
     return matchesId && matchesName && matchesType
   })
 })
 
-const selectedImportFile = computed<File | null>(() => {
-  if (Array.isArray(importFile.value)) {
-    return importFile.value[0] ?? null
-  }
-  return importFile.value
-})
-
-async function refreshDevices(silent = false): Promise<void> {
-  if (!silent) {
-    devicesLoading.value = true
-  }
-  try {
-    await deviceStore.reload()
-    await panelStore.syncDeviceIds(deviceStore.devices.map(device => device.record.id))
-  } finally {
-    if (!silent) {
-      devicesLoading.value = false
-    }
-  }
+function statusColor(device: DeviceRecord): string {
+  return deviceStatusColor(device.runtime.effectiveStatus ?? device.runtime.status)
 }
 
-function downloadBundle(text: string, filename: string): void {
-  const blob = new Blob([text], { type: 'application/x-ndjson' })
-  const url = window.URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = filename
-  anchor.style.display = 'none'
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-  window.setTimeout(() => window.URL.revokeObjectURL(url), 0)
+function onRowClick(event: Event, { item }: { item: DeviceRecord }): void {
+  void router.push({ name: 'device-detail', params: { id: item.record.id } })
 }
 
-async function exportDeviceSetup(): Promise<void> {
-  transferLoading.value = true
-  transferError.value = ''
-  transferMessage.value = ''
-  try {
-    const bundle = await fetchDeviceSetupBundle()
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-    downloadBundle(bundle, `device-setup-${stamp}.ndjson`)
-    transferMessage.value = t('devices.exportSuccess')
-  } catch (error) {
-    transferError.value = formatError(error)
-  } finally {
-    transferLoading.value = false
-  }
-}
+const deleteDialogOpen = ref(false)
+const deleteBusy = ref(false)
+const deleteTarget = ref<DeviceRecord | null>(null)
 
-function closeImportDialog(): void {
-  importDialogOpen.value = false
-  importFile.value = null
-  importConfirmed.value = false
-  importError.value = ''
-}
-
-async function submitImportDeviceSetup(): Promise<void> {
-  if (selectedImportFile.value === null || !importConfirmed.value) {
-    return
-  }
-  transferLoading.value = true
-  importError.value = ''
-  transferMessage.value = ''
-  try {
-    const response = await importDeviceSetupBundle(selectedImportFile.value)
-    await refreshDevices(true)
-    transferMessage.value = t('devices.importSuccess', { count: response.deviceCount })
-    closeImportDialog()
-  } catch (error) {
-    importError.value = formatError(error)
-  } finally {
-    transferLoading.value = false
-  }
-}
-
-function applyMutationResponse(response: { registryRevision: number; device?: DeviceRecord }): void {
-  deviceStore.setRevision(response.registryRevision)
-  if (response.device !== undefined) {
-    deviceStore.upsertDevice(response.device, response.registryRevision)
-    void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.record.id))
-  }
-}
-
-function statusColor(status: string): 'success' | 'secondary' | 'error' | 'warning' | 'primary' {
-  switch (status.trim().toLowerCase()) {
-    case 'ready':
-      return 'success'
-    case 'disabled':
-      return 'secondary'
-    case 'faulted':
-      return 'error'
-    case 'dependency_blocked':
-      return 'warning'
-    default:
-      return 'primary'
-  }
-}
-
-function openDeleteConfirm(deviceId: number): void {
-  deleteTargetId.value = deviceId
+function openDeleteConfirm(device: DeviceRecord): void {
+  deleteTarget.value = device
   deleteDialogOpen.value = true
 }
 
 async function submitDeleteDevice(): Promise<void> {
-  if (deleteTargetId.value === null) {
-    return
-  }
+  if (deleteTarget.value === null) return
+  const target = deleteTarget.value
   deleteBusy.value = true
   try {
-    const response = await deleteDevice(deleteTargetId.value)
-    deviceStore.removeDevice(deleteTargetId.value, response.registryRevision)
-    panelStore.removeDevice(deleteTargetId.value)
+    const response = await deleteDevice(target.record.id)
+    deviceStore.removeDevice(target.record.id, response.registryRevision)
+    panelStore.removeDevice(target.record.id)
+    notifications.notify(t('notifications.deviceDeleted', { name: target.config.name }), 'success')
     deleteDialogOpen.value = false
-    deleteTargetId.value = null
+    deleteTarget.value = null
   } catch (error) {
-    transferError.value = formatError(error)
+    notifications.notify(error instanceof Error ? error.message : t('notifications.error'), 'error')
   } finally {
     deleteBusy.value = false
   }
 }
-
-function formatError(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message
-  }
-  return t('device.dialog.unknownError')
-}
-
-onMounted(() => {
-  void deviceStore.initialize()
-})
-
-watch(
-  () => deviceStore.devices.map(device => device.record.id).join(','),
-  () => {
-    void panelStore.syncDeviceIds(deviceStore.devices.map(device => device.record.id))
-  },
-)
-
-watch(importDialogOpen, value => {
-  if (!value) {
-    importFile.value = null
-    importConfirmed.value = false
-    importError.value = ''
-  }
-})
-
-watch(deleteDialogOpen, value => {
-  if (!value) {
-    deleteTargetId.value = null
-  }
-})
 </script>
-
-<style scoped>
-.devices-toolbar {
-  width: 100%;
-  max-width: 1120px;
-  margin-top: 8px;
-  margin-bottom: 8px;
-}
-
-.devices-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--portal-surface);
-}
-
-.devices-table tbody tr {
-  cursor: pointer;
-}
-
-.devices-table tbody td {
-  border-bottom: 1px solid var(--portal-border);
-}
-
-.devices-table__actions,
-.devices-table__control {
-  width: 120px;
-  text-align: right;
-}
-
-.devices-mobile-card {
-  display: grid;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid var(--portal-border);
-  border-radius: 4px;
-  background: var(--portal-surface);
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.devices-mobile-card:hover {
-  background: rgb(var(--v-theme-surface-variant));
-}
-
-.devices-mobile-card__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.devices-mobile-card__status {
-  flex-shrink: 0;
-}
-
-.devices-mobile-card__body {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: 1fr 1fr;
-}
-
-.devices-mobile-card__actions {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 8px;
-  border-top: 1px solid var(--portal-border);
-}
-
-.stack {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-</style>

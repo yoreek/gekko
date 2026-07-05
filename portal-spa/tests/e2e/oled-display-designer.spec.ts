@@ -7,53 +7,47 @@ test('OLED designer persists typed layout widgets in mock mode', async ({ page }
   await page.goto(mockPath)
 
   await page.getByRole('row').filter({ hasText: 'OLED Display' }).click()
-  await page.getByRole('button', { name: 'Design display' }).click()
+  await page.getByRole('link', { name: 'OLED display designer' }).click()
 
-  const designer = page.getByRole('dialog').last()
-  await designer.getByRole('button', { name: 'Text', exact: true }).click()
-  await designer.getByRole('textbox', { name: 'Text', exact: true }).fill('Hello OLED')
-  await designer.getByRole('button', { name: 'Save', exact: true }).click()
+  await page.getByRole('button', { name: 'Text', exact: true }).click()
+  await page.getByRole('textbox', { name: 'Text', exact: true }).fill('Hello OLED')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
 
-  await expect(page.getByRole('dialog').filter({ hasText: 'OLED display designer' })).toHaveCount(0)
-
-  await page.getByRole('button', { name: 'Close', exact: true }).last().click()
-  await page.getByRole('row').filter({ hasText: 'OLED Display' }).click()
-  await page.getByRole('button', { name: 'Design display' }).click()
+  await page.reload()
   await page.getByText('Hello OLED').click()
-  await expect(page.getByRole('dialog').last().getByRole('textbox', { name: 'Text', exact: true })).toHaveValue('Hello OLED')
+  await expect(page.getByRole('textbox', { name: 'Text', exact: true })).toHaveValue('Hello OLED')
 })
 
 test('OLED designer preview resolves placeholder samples and filters', async ({ page }) => {
   await page.goto(mockPath)
 
   await page.getByRole('row').filter({ hasText: 'OLED Display' }).click()
-  await page.getByRole('button', { name: 'Design display' }).click()
+  await page.getByRole('link', { name: 'OLED display designer' }).click()
 
-  const designer = page.getByRole('dialog').last()
-  await designer.getByRole('textbox', { name: 'Text', exact: true }).fill('{{dev.670845750.state | upper}}')
+  await page.getByRole('button', { name: 'Text', exact: true }).click()
+  await page.getByRole('textbox', { name: 'Text', exact: true }).fill('{{dev.670845750.state | upper}}')
 
-  await expect(designer.locator('canvas[aria-label="OFF"]')).toHaveCount(1)
-  await expect(designer.locator('canvas[aria-label*="{{dev.670845750.state | upper}}"]')).toHaveCount(0)
+  await expect(page.getByText('Fits', { exact: true })).toBeVisible()
+  await expect(page.getByText('Metric is unavailable now, but the widget can be saved.')).toHaveCount(0)
+  await expect(page.getByText('Metric placeholder syntax is invalid.')).toHaveCount(0)
 })
 
 test('OLED designer imports, resizes, saves, and reloads bitmap widgets', async ({ page }) => {
   await page.goto(mockPath)
   await page.getByRole('row').filter({ hasText: 'OLED Display' }).click()
-  await page.getByRole('button', { name: 'Design display' }).click()
+  await page.getByRole('link', { name: 'OLED display designer' }).click()
 
-  const designer = page.getByRole('dialog').last()
-  await designer.getByRole('button', { name: 'Bitmap', exact: true }).click()
+  await page.getByRole('button', { name: 'Bitmap', exact: true }).click()
 
   const bitmapFile = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="white"/><rect x="1" y="1" width="2" height="2" fill="black"/></svg>')
-  await designer.locator('input[type="file"]').setInputFiles({
+  await page.locator('input[type="file"]').setInputFiles({
     name: 'bitmap.svg',
     mimeType: 'image/svg+xml',
     buffer: bitmapFile,
   })
 
-  const numberFields = designer.locator('input[type="number"]')
-  const widthField = numberFields.nth(2)
-  const heightField = numberFields.nth(3)
+  const widthField = page.getByLabel('Width', { exact: true })
+  const heightField = page.getByLabel('Height', { exact: true })
   await widthField.fill('8')
   await widthField.press('Tab')
   await heightField.fill('8')
@@ -62,13 +56,10 @@ test('OLED designer imports, resizes, saves, and reloads bitmap widgets', async 
   await expect(widthField).toHaveValue('8')
   await expect(heightField).toHaveValue('8')
 
-  await designer.getByRole('button', { name: 'Save', exact: true }).click()
-  await page.getByRole('button', { name: 'Close', exact: true }).last().click()
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
 
-  await page.getByRole('row').filter({ hasText: 'OLED Display' }).click()
-  await page.getByRole('button', { name: 'Design display' }).click()
-  const reopened = page.getByRole('dialog').last()
-  await reopened.getByRole('button', { name: 'Bitmap', exact: true }).click()
-  await expect(reopened.locator('input[type="number"]').nth(2)).toHaveValue('16')
-  await expect(reopened.locator('input[type="number"]').nth(3)).toHaveValue('16')
+  await page.reload()
+  await page.locator('.v-list-item-title', { hasText: 'Bitmap' }).first().click()
+  await expect(page.getByLabel('Width', { exact: true })).toHaveValue('16')
+  await expect(page.getByLabel('Height', { exact: true })).toHaveValue('16')
 })

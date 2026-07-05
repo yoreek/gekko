@@ -1,30 +1,14 @@
-import { test } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 test('check device detail page', async ({ page }) => {
-  page.on('console', msg => {
-    console.log(`[${msg.type().toUpperCase()}] ${msg.text()}`)
-  })
+  const pageErrors: string[] = []
+  page.on('pageerror', err => pageErrors.push(err.message))
 
-  page.on('pageerror', err => {
-    console.log('[PAGE_ERROR]', err.message, err.stack)
-  })
+  await page.goto('http://127.0.0.1:5176/devices/670845748?mockMode=1&mockReset=1')
 
-  console.log('Opening device detail page...')
-  await page.goto('http://127.0.0.1:5176/devices/670845748')
-
-  await page.waitForTimeout(2000)
-
-  console.log('Page URL:', page.url())
-
-  const h1 = await page.locator('h1').first().textContent().catch(() => 'NOT FOUND')
-  console.log('H1:', h1)
-
-  const inputs = await page.locator('input').count()
-  console.log('Input fields:', inputs)
-
-  const buttons = await page.locator('button').count()
-  console.log('Buttons:', buttons)
-
-  const errorMsg = await page.locator('[role="alert"]').textContent().catch(() => null)
-  if (errorMsg) console.log('Error message:', errorMsg)
+  await expect(page.getByRole('heading', { name: 'Aquarium Lamp' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue('Aquarium Lamp')
+  await expect(page.getByRole('button', { name: 'Save' })).toBeVisible()
+  await expect(page.locator('[role="alert"]')).toHaveCount(0)
+  expect(pageErrors).toEqual([])
 })

@@ -1,60 +1,68 @@
 <template>
-  <v-container class="page-shell" fluid>
-    <v-row>
-      <v-col cols="12">
-        <v-card class="page-card page-hero">
-          <v-card-title class="page-title">
-            <div>
-              <div class="text-overline">{{ t('ota.title') }}</div>
-              <h1 class="text-h5 sm:text-h4 font-weight-bold text-wrap">{{ t('ota.subtitle') }}</h1>
-            </div>
-            <v-chip variant="tonal" color="primary">
+  <PageContainer>
+    <PageCard>
+      <template #header>
+        <PageToolbar :title="t('navigation.ota')" :subtitle="t('ota.subtitle')">
+          <template #actions>
+            <v-chip variant="tonal" :color="otaStore.enabled ? 'success' : 'secondary'" size="small">
               {{ otaStore.enabled ? t('status.enabled') : t('status.disabled') }}
             </v-chip>
-          </v-card-title>
-          <v-card-text>
-            <p class="text-body-1">
-              {{ t('ota.copy') }}
-            </p>
-            <div class="page-grid page-grid--three">
-              <section class="metric">
-                <v-icon class="metric-icon" icon="ota" />
-                <span class="text-body-2 font-weight-medium">{{ t('ota.enabled') }}</span>
-                <strong class="text-body-1">{{ otaStore.enabled ? t('status.enabled') : t('status.disabled') }}</strong>
-              </section>
-              <section class="metric">
-                <v-icon class="metric-icon" icon="refresh" />
-                <span class="text-body-2 font-weight-medium">{{ t('ota.freeSketchSpace') }}</span>
-                <strong class="text-body-1">{{ otaStore.freeSketchSpace }} B</strong>
-              </section>
-              <section class="metric">
-                <v-icon class="metric-icon" icon="system" />
-                <span class="text-body-2 font-weight-medium">{{ t('ota.hasError') }}</span>
-                <strong class="text-body-1">{{ otaStore.hasError ? t('status.failed') : t('labels.no') }}</strong>
-              </section>
+          </template>
+        </PageToolbar>
+      </template>
+
+      <v-row class="ga-4">
+          <v-col cols="12" sm="4">
+            <div>
+              <div class="text-label-small text-medium-emphasis">{{ t('ota.enabled') }}</div>
+              <div class="text-title-large">{{ otaStore.enabled ? t('status.enabled') : t('status.disabled') }}</div>
             </div>
-            <div class="page-actions page-actions--spaced">
-              <v-btn :loading="loading" color="primary" variant="tonal" @click="refreshOtaStatus">
-                {{ t('actions.refresh') }}
-              </v-btn>
+          </v-col>
+          <v-col cols="12" sm="4">
+            <div>
+              <div class="text-label-small text-medium-emphasis">{{ t('ota.freeSketchSpace') }}</div>
+              <div class="text-title-large">{{ formatBytes(otaStore.freeSketchSpace) }}</div>
             </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
+          </v-col>
+          <v-col cols="12" sm="4">
+            <div>
+              <div class="text-label-small text-medium-emphasis">{{ t('ota.hasError') }}</div>
+              <div class="text-title-large">{{ otaStore.hasError ? t('status.failed') : t('labels.no') }}</div>
+            </div>
+          </v-col>
+        </v-row>
+
+      <template #actions>
+        <v-btn :loading="loading" color="primary" size="small" @click="refreshOtaStatus">
+          {{ t('actions.refresh') }}
+        </v-btn>
+      </template>
+    </PageCard>
+  </PageContainer>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { fetchOtaStatus } from '@/api'
 import { useOtaStore } from '@/stores/ota'
+import PageContainer from '@/components/layout/PageContainer.vue'
+import PageToolbar from '@/components/layout/PageToolbar.vue'
+import PageCard from '@/components/layout/PageCard.vue'
 
 const { t } = useI18n()
 const otaStore = useOtaStore()
+
 const loading = ref(false)
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
+}
 
 async function refreshOtaStatus(): Promise<void> {
   loading.value = true

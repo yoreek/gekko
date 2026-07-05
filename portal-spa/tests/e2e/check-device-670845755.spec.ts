@@ -10,7 +10,7 @@ test('check device 670845755', async ({ page }) => {
     }
   })
   
-  await page.goto('http://127.0.0.1:5176/v2/devices/670845755?mockMode=1', { waitUntil: 'networkidle' })
+  await page.goto('http://127.0.0.1:5176/devices/670845755?mockMode=1', { waitUntil: 'networkidle' })
   
   console.log('✓ Page loaded')
   console.log('  URL:', page.url())

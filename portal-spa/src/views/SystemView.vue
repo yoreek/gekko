@@ -1,57 +1,56 @@
 <template>
-  <v-container class="page-shell" fluid>
-    <v-row>
-      <v-col cols="12">
-        <v-card class="page-card page-hero">
-          <v-card-title class="page-title">
-            <div>
-              <div class="text-overline">{{ t('system.title') }}</div>
-              <h1 class="text-h5 sm:text-h4 font-weight-bold text-wrap">{{ t('system.subtitle') }}</h1>
-            </div>
-            <v-chip variant="tonal" color="primary">
-              {{ restartStateLabel }}
+  <PageContainer>
+    <PageCard>
+      <template #header>
+        <PageToolbar :title="t('navigation.system')" :subtitle="t('system.subtitle')">
+          <template #actions>
+            <v-chip variant="tonal" :color="restartChipColor" size="small">
+              {{ restartChipLabel }}
             </v-chip>
-          </v-card-title>
-          <v-card-text>
-            <p class="text-body-1">
-              {{ t('system.copy') }}
-            </p>
-            <div class="page-grid page-grid--three">
-              <section class="metric">
-                <v-icon class="metric-icon" icon="system" />
-                <span class="text-body-2 font-weight-medium">{{ t('system.status') }}</span>
-                <strong class="text-body-1">{{ systemStore.status }}</strong>
-              </section>
-              <section class="metric">
-                <v-icon class="metric-icon" icon="ws" />
-                <span class="text-body-2 font-weight-medium">{{ t('system.websocket') }}</span>
-                <strong class="text-body-1">{{ t(`status.ws.${wsStore.connected ? 'connected' : 'disconnected'}`) }}</strong>
-              </section>
-              <section class="metric">
-                <v-icon class="metric-icon" icon="refresh" />
-                <span class="text-body-2 font-weight-medium">{{ t('system.rebooting') }}</span>
-                <strong class="text-body-1">{{ systemStore.rebooting ? t('labels.yes') : t('labels.no') }}</strong>
-              </section>
+          </template>
+        </PageToolbar>
+      </template>
+
+      <v-row class="ga-4">
+          <v-col cols="12" sm="4">
+            <div>
+              <div class="text-label-small text-medium-emphasis">{{ t('system.status') }}</div>
+              <div class="text-title-large">{{ systemStore.status }}</div>
             </div>
-            <div class="page-actions page-actions--spaced">
-              <v-btn :loading="restartLoading" color="primary" variant="tonal" @click="restartSystem">
-                {{ t('system.restart') }}
-              </v-btn>
+          </v-col>
+          <v-col cols="12" sm="4">
+            <div>
+              <div class="text-label-small text-medium-emphasis">{{ t('system.websocket') }}</div>
+              <div class="text-title-large">{{ wsStore.connected ? t('status.ws.connected') : t('status.ws.disconnected') }}</div>
             </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
+          </v-col>
+          <v-col cols="12" sm="4">
+            <div>
+              <div class="text-label-small text-medium-emphasis">{{ t('system.rebooting') }}</div>
+              <div class="text-title-large">{{ systemStore.rebooting ? t('labels.yes') : t('labels.no') }}</div>
+            </div>
+          </v-col>
+        </v-row>
+
+      <template #actions>
+        <v-btn :loading="restartLoading" color="primary" size="small" @click="restartSystem">
+          {{ t('system.restart') }}
+        </v-btn>
+      </template>
+    </PageCard>
+  </PageContainer>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { restartSystem as requestRestartSystem } from '@/api'
+import { restartSystem as restartSystemApi } from '@/api'
 import { useSystemStore } from '@/stores/system'
 import { useWebSocketStore } from '@/stores/websocket'
+import PageContainer from '@/components/layout/PageContainer.vue'
+import PageToolbar from '@/components/layout/PageToolbar.vue'
+import PageCard from '@/components/layout/PageCard.vue'
 
 const { t } = useI18n()
 const systemStore = useSystemStore()
@@ -60,7 +59,7 @@ const wsStore = useWebSocketStore()
 const restartLoading = ref(false)
 const restartState = ref<'idle' | 'pending' | 'success' | 'error'>('idle')
 
-const restartStateLabel = computed(() => {
+const restartChipLabel = computed(() => {
   if (restartState.value === 'pending') {
     return t('restart.pending')
   }
@@ -70,14 +69,24 @@ const restartStateLabel = computed(() => {
   if (restartState.value === 'error') {
     return t('restart.error')
   }
-  return t('system.restart')
+  return systemStore.rebooting ? t('restart.pending') : t('labels.ready')
+})
+
+const restartChipColor = computed(() => {
+  if (restartState.value === 'pending' || systemStore.rebooting) {
+    return 'warning'
+  }
+  if (restartState.value === 'error') {
+    return 'error'
+  }
+  return 'success'
 })
 
 async function restartSystem(): Promise<void> {
   restartLoading.value = true
   restartState.value = 'pending'
   try {
-    const response = await requestRestartSystem()
+    const response = await restartSystemApi()
     systemStore.replaceFromResponse(response)
     restartState.value = 'success'
   } catch {

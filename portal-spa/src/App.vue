@@ -80,7 +80,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import NotificationSnackbar from '@/v2/components/layout/NotificationSnackbar.vue'
+import NotificationSnackbar from '@/components/layout/NotificationSnackbar.vue'
 import { useRoute, type RouteLocationRaw } from 'vue-router'
 import { useTheme } from 'vuetify'
 
@@ -99,9 +99,7 @@ const drawerOpen = ref(false)
 const locales = supportedLocales
 
 interface MenuItem {
-  name:
-    | 'dashboard' | 'panels' | 'devices' | 'device-events' | 'wifi' | 'ota' | 'system' | 'overview'
-    | 'v2-dashboard' | 'v2-panels' | 'v2-devices' | 'v2-device-events' | 'v2-wifi' | 'v2-ota' | 'v2-system' | 'v2-overview'
+  name: 'dashboard' | 'panels' | 'devices' | 'device-events' | 'wifi' | 'ota' | 'system' | 'overview'
   to: RouteLocationRaw
   label: string
   icon: PortalIconName
@@ -117,15 +115,6 @@ const menuItems = computed<MenuItem[]>(() => [
   { name: 'ota', to: { name: 'ota' }, label: t('navigation.ota'), icon: 'ota', exact: true },
   { name: 'system', to: { name: 'system' }, label: t('navigation.system'), icon: 'system', exact: true },
   { name: 'overview', to: { name: 'overview' }, label: t('navigation.overview'), icon: 'portal', exact: true },
-  // Preview of the new page-based UI under /v2 — additive nav entries, v1 items above are untouched.
-  { name: 'v2-dashboard', to: { name: 'v2-dashboard' }, label: t('v2.navigation.itemLabel', { page: t('navigation.dashboard') }), icon: 'portal', exact: true },
-  { name: 'v2-panels', to: { name: 'v2-panels' }, label: t('v2.navigation.itemLabel', { page: t('navigation.panels') }), icon: 'panels', exact: true },
-  { name: 'v2-devices', to: { name: 'v2-devices' }, label: t('v2.navigation.itemLabel', { page: t('navigation.devices') }), icon: 'devices', exact: false },
-  { name: 'v2-device-events', to: { name: 'v2-device-events' }, label: t('v2.navigation.itemLabel', { page: t('navigation.deviceEvents') }), icon: 'journal', exact: true },
-  { name: 'v2-wifi', to: { name: 'v2-wifi' }, label: t('v2.navigation.itemLabel', { page: t('navigation.wifi') }), icon: 'wifi', exact: true },
-  { name: 'v2-ota', to: { name: 'v2-ota' }, label: t('v2.navigation.itemLabel', { page: t('navigation.ota') }), icon: 'ota', exact: true },
-  { name: 'v2-system', to: { name: 'v2-system' }, label: t('v2.navigation.itemLabel', { page: t('navigation.system') }), icon: 'system', exact: true },
-  { name: 'v2-overview', to: { name: 'v2-overview' }, label: t('v2.navigation.itemLabel', { page: t('navigation.overview') }), icon: 'portal', exact: true },
 ])
 
 const activePanelName = computed(() => (route.name === 'dashboard' ? panelStore.activePanel?.name ?? '' : ''))

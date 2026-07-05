@@ -1,5 +1,5 @@
 <template>
-  <v-list density="compact" class="oled-layers">
+  <v-list density="compact" class="py-0">
     <v-list-item
       v-for="(widget, index) in widgets"
       :key="widget.id"
@@ -9,26 +9,20 @@
       <template #prepend>
         <v-icon :icon="iconForType(widget.type)" />
       </template>
-      <v-tooltip :text="`${widgetLabel(widget)} • ${widgetGeometry(widget)}`" location="right">
-        <template #activator="{ props: tooltipProps }">
-          <div v-bind="tooltipProps" class="oled-layers__info">
-            <v-list-item-title class="text-truncate">
-              {{ widgetLabel(widget) }}
-            </v-list-item-title>
-            <v-list-item-subtitle class="text-truncate">
-              {{ widgetGeometry(widget) }}
-            </v-list-item-subtitle>
-          </div>
-        </template>
-      </v-tooltip>
+      <v-list-item-title class="text-truncate">
+        {{ widgetLabel(widget) }}
+      </v-list-item-title>
+      <v-list-item-subtitle class="text-truncate">
+        {{ widgetGeometry(widget) }}
+      </v-list-item-subtitle>
       <template #append>
-        <div class="oled-layers__actions">
+        <div class="d-flex align-center ga-1 flex-wrap justify-end">
           <v-btn
             icon="oled-layer-up"
             variant="text"
             size="small"
             :disabled="index === 0"
-            :aria-label="t('device.dialog.ssd1306Display.moveUp')"
+            :aria-label="t('device.dialog.display.moveUp')"
             @click.stop="$emit('move-up', widget.id)"
           />
           <v-btn
@@ -36,14 +30,14 @@
             variant="text"
             size="small"
             :disabled="index === widgets.length - 1"
-            :aria-label="t('device.dialog.ssd1306Display.moveDown')"
+            :aria-label="t('device.dialog.display.moveDown')"
             @click.stop="$emit('move-down', widget.id)"
           />
           <v-btn
             icon="oled-duplicate"
             variant="text"
             size="small"
-            :aria-label="t('device.dialog.ssd1306Display.duplicateWidget')"
+            :aria-label="t('device.dialog.display.duplicateWidget')"
             @click.stop="$emit('duplicate', widget.id)"
           />
           <v-btn
@@ -58,7 +52,9 @@
       </template>
     </v-list-item>
     <v-list-item v-if="widgets.length === 0">
-      <v-list-item-title>{{ t('device.dialog.ssd1306Display.emptyLayers') }}</v-list-item-title>
+      <v-list-item-title class="text-medium-emphasis">
+        {{ t('device.dialog.display.emptyLayers') }}
+      </v-list-item-title>
     </v-list-item>
   </v-list>
 </template>
@@ -66,10 +62,10 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 
-import type { Ssd1306Widget } from '@/models/devices/ssd1306/layout'
+import type { DisplayWidget } from '@/models/devices/display/layout'
 
 defineProps<{
-  widgets: Ssd1306Widget[]
+  widgets: DisplayWidget[]
   selectedWidgetId: string | null
 }>()
 
@@ -83,7 +79,7 @@ defineEmits<{
 
 const { t } = useI18n()
 
-function iconForType(type: Ssd1306Widget['type']): string {
+function iconForType(type: DisplayWidget['type']): string {
   switch (type) {
     case 'bitmap':
       return 'oled-bitmap'
@@ -100,30 +96,11 @@ function iconForType(type: Ssd1306Widget['type']): string {
   }
 }
 
-function widgetLabel(widget: Ssd1306Widget): string {
-  return widget.text.trim().length > 0 ? widget.text : t(`device.dialog.ssd1306Display.widgetTypes.${widget.type}`)
+function widgetLabel(widget: DisplayWidget): string {
+  return widget.text.trim().length > 0 ? widget.text : t(`device.dialog.display.widgetTypes.${widget.type}`)
 }
 
-function widgetGeometry(widget: Ssd1306Widget): string {
+function widgetGeometry(widget: DisplayWidget): string {
   return `${widget.x}, ${widget.y} · ${widget.width} × ${widget.height}`
 }
 </script>
-
-<style scoped>
-.oled-layers {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  margin-top: 0;
-  align-self: flex-start;
-}
-
-.oled-layers__actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  min-width: 0;
-}
-</style>

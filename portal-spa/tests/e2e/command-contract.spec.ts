@@ -65,7 +65,6 @@ test('onewire edit flows persist JSON config objects', async ({ page }) => {
   await page.goto(mockPath)
 
   await page.getByText('Sensor Bus').click()
-  await page.getByRole('button', { name: 'Edit' }).last().click()
 
   const pinInput = page.getByLabel('GPIO pin')
   await pinInput.fill('19')
@@ -92,11 +91,11 @@ test('dummy device has no command UI and creates only base config', async ({ pag
   await expect(page.getByText('Quick commands')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'On' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Off' })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Close', exact: true }).last().click()
 
-  await page.getByRole('button', { name: 'Create device' }).click()
-  await page.getByRole('dialog').getByRole('textbox', { name: 'Name', exact: true }).fill('Dummy Basic')
-  await page.getByRole('button', { name: 'Create device' }).last().click()
+  await page.goto(mockPath)
+  await page.getByRole('link', { name: 'Create device' }).click()
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Dummy Basic')
+  await page.getByRole('button', { name: 'Save' }).click()
 
   const created = await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) || '{}')

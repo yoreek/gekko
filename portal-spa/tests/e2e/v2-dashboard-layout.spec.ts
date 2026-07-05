@@ -24,7 +24,7 @@ function overlaps(a: Box, b: Box): boolean {
 }
 
 test('dashboard cards of varying height do not overlap', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5176/v2/dashboard?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
+  await page.goto('http://127.0.0.1:5176/?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
   await page.waitForSelector('.grid-stack-item', { timeout: 10000 })
   // Let sizeToContent + nextTick re-measure settle.
   await page.waitForTimeout(1500)
@@ -52,7 +52,7 @@ test('dashboard cards of varying height do not overlap', async ({ page }) => {
 })
 
 test('dragging a card in edit mode keeps free placement without overlap', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5176/v2/dashboard?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
+  await page.goto('http://127.0.0.1:5176/?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
   await page.waitForSelector('.grid-stack-item', { timeout: 10000 })
   await page.waitForTimeout(1500)
 
@@ -105,7 +105,7 @@ test('dragging a card in edit mode keeps free placement without overlap', async 
   // Give the debounced save time to flush, then reload WITHOUT mockReset and
   // confirm the dragged position (and its content-driven height) survived.
   await page.waitForTimeout(600)
-  await page.goto('http://127.0.0.1:5176/v2/dashboard?mockMode=1', { waitUntil: 'networkidle' })
+  await page.goto('http://127.0.0.1:5176/?mockMode=1', { waitUntil: 'networkidle' })
   await page.waitForSelector('.grid-stack-item', { timeout: 10000 })
   await page.waitForTimeout(1500)
 
@@ -127,7 +127,7 @@ test('dragging a card in edit mode keeps free placement without overlap', async 
 })
 
 test('reset layout re-packs cards to the top', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5176/v2/dashboard?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
+  await page.goto('http://127.0.0.1:5176/?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
   await page.waitForSelector('.grid-stack-item', { timeout: 10000 })
   await page.waitForTimeout(1500)
 

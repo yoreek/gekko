@@ -1,15 +1,11 @@
 <template>
-  <v-row class="device-type-section__grid" align="start">
+  <v-row density="comfortable">
     <v-col cols="12" sm="4">
       <v-text-field
-        v-select-on-focus
-        :label="inputLabel"
         :model-value="addressText"
-        :hint="hint"
-        :disabled="busy"
-        :rules="rules"
-        inputmode="text"
-        :prefix="prefix ?? '0x'"
+        :label="t('device.fields.display.i2cAddress')"
+        :hint="t('device.dialog.i2cAddressHint')"
+        prefix="0x"
         density="compact"
         persistent-hint
         hide-details="auto"
@@ -17,49 +13,45 @@
       />
     </v-col>
 
-    <v-col cols="12" sm="2" class="d-flex align-start">
+    <v-col cols="12" sm="3" class="d-flex align-start">
       <v-btn
         color="primary"
         variant="tonal"
-        height="40"
-        :loading="scanBusy || selectedDependencyScanInProgress"
-        :disabled="busy || scanBusy || !hasDependency"
-        @click="scanSelectedDependency"
+        :loading="scanBusy || scanInProgress"
+        :disabled="!hasDependency || scanBusy"
+        @click="scanBus"
       >
         <v-icon class="me-1" icon="refresh" />
-        {{ scanActionText }}
+        {{ t('device.dialog.i2cScanAction') }}
       </v-btn>
     </v-col>
 
-    <v-col cols="12" sm="6">
+    <v-col cols="12" sm="5">
       <v-select
-        :label="selectLabel"
+        :label="t('device.dialog.scanResults')"
         :items="scanCandidateItems"
-        :disabled="busy || scanCandidateItems.length === 0"
+        :disabled="scanCandidateItems.length === 0"
         :model-value="modelValue"
-        :rules="rules"
         hide-details="auto"
         @update:model-value="updateSelectedAddress"
       />
     </v-col>
-  </v-row>
 
-  <v-row class="device-type-section__grid">
     <v-col cols="12">
-      <v-alert v-if="!hasDependency" type="warning" variant="tonal">
-        {{ noDependencyText }}
+      <v-alert v-if="!hasDependency" type="warning" variant="tonal" density="comfortable">
+        {{ t('device.dialog.i2cAddressNoDependency') }}
       </v-alert>
-      <v-alert v-if="scanError" type="error" variant="tonal">
+      <v-alert v-if="scanError.length > 0" type="error" variant="tonal" density="comfortable">
         {{ scanError }}
       </v-alert>
-      <v-alert v-else-if="selectedDependencyScanInProgress" type="info" variant="tonal">
-        {{ scanInProgressText }}
+      <v-alert v-else-if="scanInProgress" type="info" variant="tonal" density="comfortable">
+        {{ t('device.dialog.i2cScanInProgress') }}
       </v-alert>
-      <v-alert v-else-if="selectedDependencyScanReady && scanCandidateItems.length === 0" type="info" variant="tonal">
-        {{ scanEmptyText }}
+      <v-alert v-else-if="scanReady && scanCandidateItems.length === 0" type="info" variant="tonal" density="comfortable">
+        {{ t('device.dialog.i2cScanEmpty') }}
       </v-alert>
-      <v-alert v-if="selectedDependencyScanTruncated" type="warning" variant="tonal">
-        {{ scanTruncatedText }}
+      <v-alert v-if="scanTruncated" type="warning" variant="tonal" density="comfortable">
+        {{ t('device.dialog.i2cScanTruncated') }}
       </v-alert>
     </v-col>
   </v-row>
@@ -67,35 +59,23 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { commandDevice } from '@/api'
 import type { DeviceCommandRequest, I2cBusRuntimeSnapshot } from '@/api/contracts'
 import { formatI2cAddress, parseI2cAddress } from '@/models/devices/i2c-address'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
-type ValidationRule = (value: unknown) => true | string
-
 const props = defineProps<{
-  modelValue?: number
+  modelValue: number
   busDeviceId: number
-  inputLabel: string
-  selectLabel: string
-  hint?: string
-  busy?: boolean
-  prefix?: string
-  rules?: ValidationRule[]
-  noDependencyText: string
-  scanActionText: string
-  scanInProgressText: string
-  scanEmptyText: string
-  scanTruncatedText: string
-  errorFallbackText: string
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: number]
 }>()
 
+const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
 const scanBusy = ref(false)
 const scanError = ref('')
@@ -103,50 +83,36 @@ const scanError = ref('')
 const addressText = computed(() => formatI2cAddress(props.modelValue ?? 0))
 const selectedDependency = computed(() => deviceStore.devices.find(device => device.record.id === props.busDeviceId))
 const hasDependency = computed(() => props.busDeviceId !== 0 && selectedDependency.value !== undefined)
-const selectedDependencyScan = computed(() => (selectedDependency.value?.runtime as I2cBusRuntimeSnapshot | undefined)?.scan)
-const selectedDependencyScanInProgress = computed(() => selectedDependencyScan.value?.inProgress === true)
-const selectedDependencyScanReady = computed(() => selectedDependencyScan.value?.ready === true)
-const selectedDependencyScanTruncated = computed(() => selectedDependencyScan.value?.truncated === true)
-const scanCandidateItems = computed(() => {
-  const devices = selectedDependencyScan.value?.devices ?? []
-  return devices.map(candidate => ({
-    title: candidate.addressHex,
-    value: candidate.address,
-  }))
-})
-
-function emitAddress(value: number): void {
-  emit('update:modelValue', value)
-}
+const scan = computed(() => (selectedDependency.value?.runtime as I2cBusRuntimeSnapshot | undefined)?.scan)
+const scanInProgress = computed(() => scan.value?.inProgress === true)
+const scanReady = computed(() => scan.value?.ready === true)
+const scanTruncated = computed(() => scan.value?.truncated === true)
+const scanCandidateItems = computed(() => (scan.value?.devices ?? []).map(candidate => ({
+  title: `0x${candidate.addressHex}`,
+  value: candidate.address,
+})))
 
 function updateAddress(value: string | number): void {
   const numeric = parseI2cAddress(value)
-  if (!Number.isFinite(numeric) || numeric < 0 || numeric > 0x7F) {
-    return
-  }
-  emitAddress(numeric)
+  if (!Number.isFinite(numeric) || numeric < 0 || numeric > 0x7f) return
+  emit('update:modelValue', numeric)
 }
 
 function updateSelectedAddress(value: unknown): void {
   const numeric = Number(value)
-  if (!Number.isFinite(numeric)) {
-    return
-  }
-  emitAddress(numeric)
+  if (!Number.isFinite(numeric)) return
+  emit('update:modelValue', numeric)
 }
 
-async function scanSelectedDependency(): Promise<void> {
-  if (!hasDependency.value) {
-    return
-  }
-
+async function scanBus(): Promise<void> {
+  if (!hasDependency.value) return
   scanBusy.value = true
   scanError.value = ''
   try {
     const payload: DeviceCommandRequest = { command: 'scan' }
     await commandDevice(props.busDeviceId, payload)
   } catch (error) {
-    scanError.value = error instanceof Error ? error.message : props.errorFallbackText
+    scanError.value = error instanceof Error ? error.message : t('device.dialog.unknownError')
   } finally {
     scanBusy.value = false
   }

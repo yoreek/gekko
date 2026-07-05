@@ -162,6 +162,10 @@ export default {
       count: '{count} устройств',
       create: 'Создать устройство',
     },
+    dummy: {
+      label: 'Заглушка устройства',
+      noFields: 'Дополнительных настроек для этого типа нет.',
+    },
     type: {
       dummy: 'Dummy устройство',
       gpioSwitch: 'GPIO выключатель',
@@ -340,6 +344,7 @@ export default {
       title: 'Детали устройства',
       noneSelected: 'Выберите устройство для просмотра.',
       edit: 'Редактировать',
+      openDesigner: 'Дизайн дисплея',
       save: 'Сохранить',
       configDetails: 'Параметры конфигурации',
       fieldHint: 'Дополнительная информация',
@@ -715,17 +720,5 @@ export default {
   notFound: {
     title: '404',
     body: 'Этот маршрут недоступен в SPA.',
-  },
-  v2: {
-    navigation: {
-      badge: 'Новый интерфейс (превью)',
-      itemLabel: '{page} (новый UI)',
-    },
-    device: {
-      dummy: {
-        label: 'Заглушка устройства',
-        noFields: 'Дополнительных настроек для этого типа нет.',
-      },
-    },
   },
 } as const

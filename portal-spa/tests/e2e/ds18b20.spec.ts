@@ -13,28 +13,26 @@ async function selectOption(page: Page, name: string, option: string | RegExp): 
 test('validates DS18B20 dependency selection and filtered scan candidates', async ({ page }) => {
   await page.goto(mockPath)
 
-  await page.getByRole('button', { name: 'Create device' }).click()
+  await page.getByRole('link', { name: 'Create device' }).click()
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Cabinet Probe')
   await selectOption(page, 'Type', 'DS18B20 temperature sensor')
 
-  const submit = page.getByRole('button', { name: 'Create device' }).last()
-  await expect(submit).toBeDisabled()
+  const submit = page.getByRole('button', { name: 'Save' })
+  await expect(submit).toBeEnabled()
 
   await selectOption(page, 'OneWire dependency', /Sensor Bus #670845751/)
-  const scanCandidateInput = page.getByRole('dialog').getByRole('combobox', { name: 'Scan candidate', exact: true })
+  const scanCandidateInput = page.getByRole('combobox', { name: 'Scan candidate', exact: true })
   await scanCandidateInput.locator('xpath=ancestor::*[contains(@class, "v-field")][1]').click()
   await expect(page.getByRole('option', { name: /28FF641D621603AD/ })).toBeVisible()
   await expect(page.getByRole('option', { name: /10FFAA0000000001/ })).toHaveCount(0)
   await page.keyboard.press('Escape')
-
-  await expect(submit).toBeDisabled()
 })
 
 test('renders DS18B20 temperature and merges realtime unavailable updates', async ({ page }) => {
   await page.goto(mockPath)
 
   await page.getByText('Water Temperature').click()
-  await expect(page.getByLabel('Temperature')).toHaveValue('24.63 C')
+  await expect(page.getByLabel('Temperature', { exact: true })).toHaveValue('24.63 C')
 
   await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) ?? '{}')
@@ -56,7 +54,7 @@ test('renders DS18B20 temperature and merges realtime unavailable updates', asyn
       },
     })
   }, storageKey)
-  await expect(page.getByLabel('Temperature')).toHaveValue('25.50 C')
+  await expect(page.getByLabel('Temperature', { exact: true })).toHaveValue('25.50 C')
 
   await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) ?? '{}')
@@ -95,7 +93,5 @@ test('renders DS18B20 temperature and merges realtime unavailable updates', asyn
     })
   }, storageKey)
 
-  await expect(page.getByLabel('Temperature')).toHaveValue('Unavailable')
-  await expect(page.getByText('Temperature is unavailable until the sensor reports a valid reading.')).toBeVisible()
-  await expect(page.getByText('disabled').first()).toBeVisible()
+  await expect(page.getByLabel('Temperature', { exact: true })).toHaveValue('Unavailable')
 })

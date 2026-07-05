@@ -1,97 +1,95 @@
 <template>
-  <component
-    :is="surface ? 'v-sheet' : 'div'"
-    v-bind="surface ? { class: 'metric-placeholder-builder pa-3', variant: 'flat' } : {}"
-  >
-    <div class="metric-placeholder-builder__header mb-2">
-      <div class="text-subtitle-2 text-wrap">
-        {{ t('device.dialog.ssd1306Display.metricPicker.title') }}
+  <v-sheet :border="surface" :class="surface ? 'pa-3' : ''" rounded>
+    <div class="d-flex align-center justify-space-between ga-2 mb-2">
+      <div class="text-title-small">
+        {{ t('device.dialog.display.metricPicker.title') }}
       </div>
       <v-chip v-if="selectedMetric !== null" size="small" variant="tonal" :color="selectedMetric.available ? 'success' : 'warning'">
-        {{ selectedMetric.available ? t('device.dialog.ssd1306Display.metricPicker.available') : t('device.dialog.ssd1306Display.metricPicker.unavailable') }}
+        {{ selectedMetric.available ? t('device.dialog.display.metricPicker.available') : t('device.dialog.display.metricPicker.unavailable') }}
       </v-chip>
     </div>
 
-    <div class="metric-placeholder-builder__row">
-      <v-select
-        v-model="namespace"
-        :label="t('device.dialog.ssd1306Display.metricPicker.namespace')"
-        :items="namespaceItems"
-        density="compact"
-        variant="outlined"
-        hide-details
-      />
-      <v-autocomplete
-        v-if="namespace === 'dev'"
-        v-model="sourceId"
-        :label="t('device.dialog.ssd1306Display.metricPicker.device')"
-        :items="deviceItems"
-        :loading="loading"
-        item-title="title"
-        item-value="value"
-        density="compact"
-        variant="outlined"
-        hide-details
-      >
-        <template #item="{ props: itemProps, item }">
-          <v-list-item v-bind="itemProps" :subtitle="item.subtitle" />
-        </template>
-      </v-autocomplete>
-      <v-autocomplete
-        v-model="metricId"
-        :label="t('device.dialog.ssd1306Display.metricPicker.metric')"
-        :items="metricItems"
-        :loading="loading"
-        item-title="title"
-        item-value="value"
-        density="compact"
-        variant="outlined"
-        hide-details
-      >
-        <template #item="{ props: itemProps, item }">
-          <v-list-item v-bind="itemProps" :subtitle="item.subtitle" />
-        </template>
-      </v-autocomplete>
-      <v-select
-        v-model="filter"
-        :label="t('device.dialog.ssd1306Display.metricPicker.filter')"
-        :items="filterItems"
-        density="compact"
-        variant="outlined"
-        hide-details
-      />
-    </div>
+    <v-row density="comfortable">
+      <v-col cols="6">
+        <v-select
+          v-model="namespace"
+          :label="t('device.dialog.display.metricPicker.namespace')"
+          :items="namespaceItems"
+          density="compact"
+          variant="outlined"
+          hide-details
+        />
+      </v-col>
+      <v-col v-if="namespace === 'dev'" cols="6">
+        <v-autocomplete
+          v-model="sourceId"
+          :label="t('device.dialog.display.metricPicker.device')"
+          :items="deviceItems"
+          :loading="loading"
+          item-title="title"
+          item-value="value"
+          density="compact"
+          variant="outlined"
+          hide-details
+        />
+      </v-col>
+      <v-col cols="6">
+        <v-autocomplete
+          v-model="metricId"
+          :label="t('device.dialog.display.metricPicker.metric')"
+          :items="metricItems"
+          :loading="loading"
+          item-title="title"
+          item-value="value"
+          density="compact"
+          variant="outlined"
+          hide-details
+        />
+      </v-col>
+      <v-col cols="6">
+        <v-select
+          v-model="filter"
+          :label="t('device.dialog.display.metricPicker.filter')"
+          :items="filterItems"
+          density="compact"
+          variant="outlined"
+          hide-details
+        />
+      </v-col>
+    </v-row>
 
-    <div class="d-flex flex-column ga-2 mt-2">
-      <v-text-field
-        class="w-100"
-        :model-value="placeholderText"
-        :label="t('device.dialog.ssd1306Display.metricPicker.placeholder')"
-        readonly
-        density="compact"
-        variant="outlined"
-        hide-details
-      >
-        <template #append-inner>
-          <v-btn
-            icon="copy"
-            variant="text"
-            :disabled="selectedMetric === null || placeholderText.length === 0"
-            :title="t('device.dialog.ssd1306Display.metricPicker.copy')"
-            @click="copyPlaceholder"
-          />
-        </template>
-      </v-text-field>
-      <div class="d-flex flex-wrap align-center ga-2">
+    <v-row density="comfortable" class="mt-1">
+      <v-col cols="12">
+        <v-text-field
+          :model-value="placeholderText"
+          :label="t('device.dialog.display.metricPicker.placeholder')"
+          readonly
+          density="compact"
+          variant="outlined"
+          hide-details
+        >
+          <template #append-inner>
+            <v-btn
+              icon="copy"
+              variant="text"
+              size="small"
+              :disabled="selectedMetric === null || placeholderText.length === 0"
+              :title="t('device.dialog.display.metricPicker.copy')"
+              @click="copyPlaceholder"
+            />
+          </template>
+        </v-text-field>
+      </v-col>
+      <v-col cols="12" class="d-flex flex-wrap align-center ga-2">
         <v-chip v-if="selectedMetric === null" size="small" variant="tonal" color="info">
-          {{ t('device.dialog.ssd1306Display.metricPicker.noneSelected') }}
+          {{ t('device.dialog.display.metricPicker.noneSelected') }}
         </v-chip>
         <v-chip v-if="copied" size="small" variant="tonal" color="success">
-          {{ t('device.dialog.ssd1306Display.metricPicker.copied') }}
+          {{ t('device.dialog.display.metricPicker.copied') }}
         </v-chip>
-      </div>
-    </div>
-  </component>
+      </v-col>
+    </v-row>
+  </v-sheet>
 </template>
 
 <script setup lang="ts">
@@ -121,28 +119,24 @@ const namespaceItems = computed(() => {
   for (const metric of props.catalog) {
     namespaces.add(metric.namespace)
   }
-  return ([['dev', t('device.dialog.ssd1306Display.metricPicker.namespaces.device')], ['system', t('device.dialog.ssd1306Display.metricPicker.namespaces.system')]] as const)
+  return ([['dev', t('device.dialog.display.metricPicker.namespaces.device')], ['system', t('device.dialog.display.metricPicker.namespaces.system')]] as const)
     .filter(([value]) => namespaces.has(value))
     .map(([value, title]) => ({ title, value }))
 })
 
 const filterItems = computed(() => ([
-  { title: t('device.dialog.ssd1306Display.metricPicker.filters.none'), value: null },
-  { title: t('device.dialog.ssd1306Display.metricPicker.filters.text'), value: 'text' },
-  { title: t('device.dialog.ssd1306Display.metricPicker.filters.upper'), value: 'upper' },
-  { title: t('device.dialog.ssd1306Display.metricPicker.filters.lower'), value: 'lower' },
-  { title: t('device.dialog.ssd1306Display.metricPicker.filters.trim'), value: 'trim' },
+  { title: t('device.dialog.display.metricPicker.filters.none'), value: null },
+  { title: t('device.dialog.display.metricPicker.filters.text'), value: 'text' },
+  { title: t('device.dialog.display.metricPicker.filters.upper'), value: 'upper' },
+  { title: t('device.dialog.display.metricPicker.filters.lower'), value: 'lower' },
+  { title: t('device.dialog.display.metricPicker.filters.trim'), value: 'trim' },
 ] as const))
 
 const deviceItems = computed(() => {
   const devices = new Map<number, MetricPlaceholderDescriptor>()
   for (const metric of props.catalog) {
-    if (metric.namespace !== 'dev') {
-      continue
-    }
-    if (!devices.has(metric.sourceId)) {
-      devices.set(metric.sourceId, metric)
-    }
+    if (metric.namespace !== 'dev') continue
+    if (!devices.has(metric.sourceId)) devices.set(metric.sourceId, metric)
   }
   return [...devices.values()]
     .sort((left, right) => (left.sourceLabel ?? `Device ${left.sourceId}`).localeCompare(right.sourceLabel ?? `Device ${right.sourceId}`))
@@ -155,9 +149,7 @@ const deviceItems = computed(() => {
 
 const metricItems = computed(() => {
   const metrics = props.catalog.filter(metric => {
-    if (metric.namespace !== namespace.value) {
-      return false
-    }
+    if (metric.namespace !== namespace.value) return false
     return namespace.value !== 'dev' || sourceId.value === metric.sourceId
   })
   return metrics
@@ -177,31 +169,20 @@ const selectedMetric = computed(() => {
 })
 
 const placeholderText = computed(() => {
-  if (selectedMetric.value === null) {
-    return ''
-  }
+  if (selectedMetric.value === null) return ''
   const base = metricPlaceholderForDescriptor(selectedMetric.value)
   return filter.value === null ? base : base.replace(/}}$/, ` | ${filter.value}}}`)
 })
 
-watch(
-  [() => props.catalog, namespace, sourceId],
-  () => normalizeSelection(),
-  { immediate: true },
-)
+watch([() => props.catalog, namespace, sourceId], () => normalizeSelection(), { immediate: true })
 
-watch(
-  () => [namespace.value, sourceId.value],
-  () => {
-    filter.value = null
-    copied.value = false
-  },
-)
+watch(() => [namespace.value, sourceId.value], () => {
+  filter.value = null
+  copied.value = false
+})
 
 async function copyPlaceholder(): Promise<void> {
-  if (placeholderText.value.length === 0) {
-    return
-  }
+  if (placeholderText.value.length === 0) return
   try {
     await navigator.clipboard.writeText(placeholderText.value)
     copied.value = true
@@ -237,8 +218,7 @@ function normalizeSelection(): void {
 
   const metrics = props.catalog.filter(metric =>
     metric.namespace === namespace.value &&
-    (namespace.value !== 'dev' || metric.sourceId === sourceId.value),
-  )
+    (namespace.value !== 'dev' || metric.sourceId === sourceId.value))
   if (metrics.length === 0) {
     metricId.value = null
     return
@@ -248,24 +228,3 @@ function normalizeSelection(): void {
   }
 }
 </script>
-
-<style scoped>
-.metric-placeholder-builder__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.metric-placeholder-builder__row {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-@media (min-width: 960px) {
-  .metric-placeholder-builder__row {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-</style>

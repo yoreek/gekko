@@ -1,7 +1,7 @@
 import { test } from '@playwright/test'
 
 test('list available devices', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5176/v2/devices?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
+  await page.goto('http://127.0.0.1:5176/devices?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
   await page.waitForTimeout(1500)
   
   // Get all list item texts
@@ -10,7 +10,7 @@ test('list available devices', async ({ page }) => {
   console.log(`Found ${count} items`)
   
   // Get all device links
-  const links = await page.locator('a[href*="/v2/devices/"]').evaluateAll(els => 
+  const links = await page.locator('a[href*="/devices/"]').evaluateAll(els => 
     els.map(el => ({
       href: el.getAttribute('href'),
       text: el.textContent,

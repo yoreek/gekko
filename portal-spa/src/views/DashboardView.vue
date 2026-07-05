@@ -1,104 +1,68 @@
 <template>
-  <v-container class="page-shell dashboard-page fill-height pa-0" fluid>
-    <v-sheet class="dashboard-surface d-flex flex-column">
-      <v-toolbar>
-        <div class="dashboard-panel-tabs d-flex align-center flex-grow-1 min-w-0">
+  <PageContainer dense>
+    <div class="d-flex flex-column h-100">
+      <v-row no-gutters align="center" class="ga-2 pa-3">
+        <v-col v-if="canMoveActivePanel(-1) || panelStore.panels.length > 1">
           <v-btn
-            class="dashboard-panel-tabs__move"
             icon="chevron-left"
             variant="text"
+            size="small"
             :disabled="!canMoveActivePanel(-1)"
             :aria-label="t('panels.moveLeft')"
             @click="moveActivePanel(-1)"
           />
-          <v-tabs
-            v-model="activePanelId"
-            class="flex-grow-1"
-            color="primary"
-            mandatory
-          >
+        </v-col>
+        <v-col>
+          <v-tabs v-model="activePanelId" color="primary" density="comfortable">
             <v-tab v-for="panel in panelStore.panels" :key="panel.id" :value="panel.id">
               {{ panel.name }}
             </v-tab>
           </v-tabs>
+        </v-col>
+        <v-col cols="auto">
           <v-btn
-            class="dashboard-panel-tabs__move"
             icon="chevron-right"
             variant="text"
+            size="small"
             :disabled="!canMoveActivePanel(1)"
             :aria-label="t('panels.moveRight')"
             @click="moveActivePanel(1)"
           />
-        </div>
-
-        <div class="d-flex align-center flex-shrink-0">
-        <v-tooltip :text="t('dashboard.addDevice')" location="bottom">
-          <template #activator="{ props }">
+        </v-col>
+        <v-col cols="auto">
+          <div class="d-flex ga-1 flex-wrap">
             <v-btn
-              v-bind="props"
               variant="text"
               color="primary"
+              size="small"
               :disabled="deviceStore.devices.length === 0 || !activePanel"
               :aria-label="t('dashboard.addDevice')"
+              prepend-icon="plus"
               @click="openAddDeviceDialog"
             >
-              <v-icon class="me-1" icon="plus" />
               {{ t('dashboard.addDevice') }}
             </v-btn>
-          </template>
-        </v-tooltip>
-        <v-tooltip :text="t('dashboard.addPanel')" location="bottom">
-          <template #activator="{ props }">
-            <v-btn v-bind="props" variant="text" color="primary" :aria-label="t('dashboard.addPanel')" @click="openCreatePanelDialog">
-              <v-icon class="me-1" icon="plus" />
+            <v-btn variant="text" color="primary" size="small" prepend-icon="plus" @click="openCreatePanelDialog">
               {{ t('dashboard.addPanel') }}
             </v-btn>
-          </template>
-        </v-tooltip>
-        <v-tooltip :text="t('actions.refresh')" location="bottom">
-          <template #activator="{ props }">
-            <v-btn
-              v-bind="props"
-              :loading="devicesLoading"
-              variant="text"
-              color="primary"
-              :aria-label="t('actions.refresh')"
-              @click="refreshDevices"
-            >
-              <v-icon class="me-1" icon="refresh" />
+            <v-btn variant="text" color="primary" size="small" :loading="devicesLoading" prepend-icon="refresh" @click="refreshDevices()">
               {{ t('actions.refresh') }}
             </v-btn>
-          </template>
-        </v-tooltip>
-        <v-tooltip :text="t('dashboard.resetLayout')" location="bottom">
-          <template #activator="{ props }">
-            <v-btn
-              v-bind="props"
-              variant="text"
-              :aria-label="t('dashboard.resetLayout')"
-              @click="resetLayout"
-            >
-              <v-icon class="me-1" icon="refresh" />
+            <v-btn variant="text" size="small" prepend-icon="refresh" @click="resetLayout">
               {{ t('dashboard.resetLayout') }}
             </v-btn>
-          </template>
-        </v-tooltip>
-        <v-tooltip :text="editing ? t('dashboard.doneMode') : t('dashboard.editMode')" location="bottom">
-          <template #activator="{ props }">
             <v-btn
-              v-bind="props"
               :variant="editing ? 'flat' : 'text'"
               :color="editing ? 'primary' : 'default'"
-              :aria-label="editing ? t('dashboard.doneMode') : t('dashboard.editMode')"
+              size="small"
+              :prepend-icon="editing ? 'close' : 'edit'"
               @click="editing = !editing"
             >
-              <v-icon class="me-1" :icon="editing ? 'close' : 'edit'" />
               {{ editing ? t('dashboard.doneMode') : t('dashboard.editMode') }}
             </v-btn>
-          </template>
-        </v-tooltip>
-        </div>
-      </v-toolbar>
+          </div>
+        </v-col>
+      </v-row>
 
       <v-divider />
 
@@ -106,89 +70,75 @@
         {{ panelStore.errorMessage }}
       </v-alert>
 
-      <v-tabs-window v-model="activePanelId" class="flex-grow-1" :transition-duration="0">
-        <v-tabs-window-item
-          v-if="activePanel"
-          :key="activePanel.id"
-          :reverse-transition="false"
-          :transition="false"
-          :value="activePanel.id"
-        >
-          <v-sheet class="fill-height pa-4">
-            <div
-              ref="gridHost"
-              class="dashboard-panel-body"
-              :class="{ 'dashboard-panel-body--pending': !gridReady && activePanelWidgets.length > 0 }"
-            >
-              <template v-if="activePanelWidgets.length > 0">
-                <DashboardGrid
-                  :widgets="activePanelWidgets"
-                  :columns="gridColumns"
-                  :editable="editing"
-                  @open="deviceId => $router.push({ name: 'device-detail', params: { id: deviceId } })"
-                  @remove="removeWidget"
-                  @command="submitDashboardCommand"
-                  @layout-change="saveWidgetLayout"
-                />
-              </template>
+      <div ref="gridHost" class="flex-grow-1 pa-4">
+        <template v-if="activePanelWidgets.length > 0 && columnsReady">
+          <DashboardGrid
+            :widgets="activePanelWidgets"
+            :columns="gridColumns"
+            :editable="editing"
+            :reset-token="layoutRevision"
+            @open="openMoreInfo"
+            @remove="removeWidget"
+            @command="submitDashboardCommand"
+            @layout-change="saveWidgetLayout"
+          />
+        </template>
 
-              <div v-else class="dashboard-empty">
-                <div class="text-h6 font-weight-bold">{{ t('dashboard.panelEmpty') }}</div>
-                <div class="text-body-2 text-medium-emphasis">{{ t('devices.copy') }}</div>
-              </div>
-            </div>
-          </v-sheet>
-        </v-tabs-window-item>
-      </v-tabs-window>
-    </v-sheet>
+        <div v-else class="text-medium-emphasis">
+          <div class="text-title-large font-weight-bold">{{ t('dashboard.panelEmpty') }}</div>
+          <div class="text-body-medium">{{ t('devices.copy') }}</div>
+        </div>
+      </div>
+    </div>
 
-    <DeviceDialogShell
-      v-model="panelDialogOpen"
-      :headline="t('dashboard.addPanel')"
-      :subline="t('dashboard.addPanelHint')"
-      :max-width="420"
-    >
-      <v-text-field
-        v-select-on-focus
-        v-model="panelNameDraft"
-        :label="t('dashboard.panelName')"
-        autofocus
-      />
+    <v-dialog v-model="panelDialogOpen" max-width="420">
+      <v-card>
+        <v-card-item>
+          <v-card-title>{{ t('dashboard.addPanel') }}</v-card-title>
+          <v-card-subtitle>{{ t('dashboard.addPanelHint') }}</v-card-subtitle>
+        </v-card-item>
+        <v-card-text>
+          <v-text-field v-select-on-focus v-model="panelNameDraft" :label="t('dashboard.panelName')" autofocus />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="panelDialogOpen = false">
+            {{ t('actions.cancel') }}
+          </v-btn>
+          <v-btn color="primary" :disabled="panelNameDraft.trim().length === 0" @click="submitCreatePanel">
+            {{ t('dashboard.addPanel') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
-      <template #footer>
-        <v-spacer />
-        <v-btn variant="text" @click="panelDialogOpen = false">
-          {{ t('actions.cancel') }}
-        </v-btn>
-        <v-btn color="primary" :disabled="panelNameDraft.trim().length === 0" @click="submitCreatePanel">
-          {{ t('dashboard.addPanel') }}
-        </v-btn>
-      </template>
-    </DeviceDialogShell>
+    <v-dialog v-model="addDeviceDialogOpen" max-width="520">
+      <v-card>
+        <v-card-item>
+          <v-card-title>{{ t('dashboard.addDevice') }}</v-card-title>
+          <v-card-subtitle>{{ t('dashboard.addDeviceHint') }}</v-card-subtitle>
+        </v-card-item>
+        <v-card-text>
+          <v-select v-model="selectedAddDeviceId" :items="deviceOptions" :label="t('dashboard.deviceToAdd')" />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="addDeviceDialogOpen = false">
+            {{ t('actions.cancel') }}
+          </v-btn>
+          <v-btn color="primary" :disabled="selectedAddDeviceId === null" @click="submitAddDevice">
+            {{ t('dashboard.addDevice') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
-    <DeviceDialogShell
-      v-model="addDeviceDialogOpen"
-      :headline="t('dashboard.addDevice')"
-      :subline="t('dashboard.addDeviceHint')"
-      :max-width="520"
-    >
-      <v-select
-        v-model="selectedAddDeviceId"
-        :items="deviceOptions"
-        :label="t('dashboard.deviceToAdd')"
-      />
-
-      <template #footer>
-        <v-spacer />
-        <v-btn variant="text" @click="addDeviceDialogOpen = false">
-          {{ t('actions.cancel') }}
-        </v-btn>
-        <v-btn color="primary" :disabled="selectedAddDeviceId === null" @click="submitAddDevice">
-          {{ t('dashboard.addDevice') }}
-        </v-btn>
-      </template>
-    </DeviceDialogShell>
-  </v-container>
+    <DeviceMoreInfoDialog
+      v-model="moreInfoOpen"
+      :device="moreInfoDevice"
+      @command="payload => moreInfoDevice && submitDashboardCommand(moreInfoDevice.record.id, payload)"
+    />
+  </PageContainer>
 </template>
 
 <script setup lang="ts">
@@ -196,28 +146,36 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { commandDevice, type DeviceCommandRequest, type DeviceRecord } from '@/api'
-import DashboardGrid from '@/components/dashboard/DashboardGrid.vue'
-import DeviceDialogShell from '@/components/device/DeviceDialogShell.vue'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore, type DashboardPanelWidget } from '@/stores/panels'
-import { useWebSocketStore } from '@/stores/websocket'
+import DashboardGrid from '@/components/dashboard/DashboardGrid.vue'
+import DeviceMoreInfoDialog from '@/components/devices/common/DeviceMoreInfoDialog.vue'
+import PageContainer from '@/components/layout/PageContainer.vue'
 
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
 const panelStore = usePanelStore()
-const wsStore = useWebSocketStore()
 
 const devicesLoading = ref(false)
 const editing = ref(false)
 const gridColumns = ref(3)
-const gridReady = ref(false)
+// Gates DashboardGrid's first mount until updateColumns() has measured the
+// real host width. Without this, a stale default column count can mount the
+// grid, then get corrected via grid.column(), whose default 'moveScale' mode
+// rescales every stored x position to the new column count — corrupting
+// free-placement positions on every navigation back to this view (the
+// panels/device Pinia stores stay populated across route changes, so
+// activePanelWidgets can be non-empty on the very first render).
+const columnsReady = ref(false)
+const layoutRevision = ref(0)
 const gridHost = ref<HTMLElement | null>(null)
 const panelDialogOpen = ref(false)
 const panelNameDraft = ref('Panel 2')
 const addDeviceDialogOpen = ref(false)
 const selectedAddDeviceId = ref<number | null>(null)
+const moreInfoOpen = ref(false)
+const moreInfoDeviceId = ref<number | null>(null)
 let resizeObserver: ResizeObserver | null = null
-let gridReadyFrame = 0
 const dashboardCardWidth = 200
 const dashboardGridGap = 10
 const dashboardMaxColumns = 12
@@ -226,7 +184,7 @@ const activePanelId = computed<string | null>({
   get: () => panelStore.activePanelId,
   set: value => {
     if (value !== null) {
-      selectPanel(value)
+      panelStore.setActivePanel(value)
     }
   },
 })
@@ -260,6 +218,13 @@ const deviceOptions = computed(() =>
     value: device.record.id,
   })),
 )
+
+const moreInfoDevice = computed(() => deviceStore.devices.find(device => device.record.id === moreInfoDeviceId.value) ?? null)
+
+function openMoreInfo(deviceId: number): void {
+  moreInfoDeviceId.value = deviceId
+  moreInfoOpen.value = true
+}
 
 function columnsForWidth(width: number): number {
   const columns = Math.floor((width - dashboardGridGap) / (dashboardCardWidth + dashboardGridGap))
@@ -300,8 +265,11 @@ function updateColumns(): void {
   }
   const next = columnsForWidth(host.getBoundingClientRect().width)
   if (next !== gridColumns.value) {
+    // Only adjust GridStack's column count. Do NOT repack existing widgets —
+    // free placement means their stored positions are preserved across resizes.
     gridColumns.value = next
   }
+  columnsReady.value = true
 }
 
 function observeGridHost(): void {
@@ -317,41 +285,10 @@ function observeGridHost(): void {
   resizeObserver.observe(host)
 }
 
-function hideGridUntilStable(): void {
-  gridReady.value = false
-  if (typeof window !== 'undefined' && gridReadyFrame !== 0) {
-    window.cancelAnimationFrame(gridReadyFrame)
-    gridReadyFrame = 0
-  }
-}
-
-function showGridAfterLayout(): void {
-  if (typeof window === 'undefined') {
-    gridReady.value = true
-    return
-  }
-
-  if (gridReadyFrame !== 0) {
-    window.cancelAnimationFrame(gridReadyFrame)
-  }
-  gridReadyFrame = window.requestAnimationFrame(() => {
-    gridReadyFrame = window.requestAnimationFrame(() => {
-      gridReady.value = true
-      gridReadyFrame = 0
-    })
-  })
-}
-
 async function prepareVisibleGrid(): Promise<void> {
-  hideGridUntilStable()
   await nextTick()
   observeGridHost()
   updateColumns()
-  showGridAfterLayout()
-}
-
-function selectPanel(panelId: string): void {
-  panelStore.setActivePanel(panelId)
 }
 
 function openCreatePanelDialog(): void {
@@ -373,7 +310,6 @@ async function refreshDevices(silent = false): Promise<void> {
     await panelStore.reload(deviceStore.devices.map(device => device.record.id))
     await nextTick()
     updateColumns()
-    showGridAfterLayout()
   } finally {
     if (!silent) {
       devicesLoading.value = false
@@ -413,6 +349,8 @@ function resetLayout(): void {
     return
   }
   panelStore.resetPanelLayout(activePanel.value.id, gridColumns.value)
+  // Force the grid to re-apply the reseeded positions.
+  layoutRevision.value += 1
 }
 
 function submitCreatePanel(): void {
@@ -445,13 +383,6 @@ async function submitDashboardCommand(deviceId: number, payload: DeviceCommandRe
   }
 }
 
-function formatError(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message
-  }
-  return t('device.dialog.unknownError')
-}
-
 function onResize(): void {
   updateColumns()
 }
@@ -467,9 +398,6 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
-  if (typeof window !== 'undefined' && gridReadyFrame !== 0) {
-    window.cancelAnimationFrame(gridReadyFrame)
-  }
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', onResize)
   }
@@ -497,45 +425,3 @@ watch(
   },
 )
 </script>
-
-<style scoped>
-.dashboard-page {
-  max-width: none;
-}
-
-.dashboard-surface {
-  min-height: calc(100dvh - 64px);
-  background: var(--portal-page-bg);
-}
-
-.dashboard-surface > .v-toolbar {
-  background: var(--portal-surface);
-}
-
-.dashboard-panel-tabs {
-  gap: 6px;
-}
-
-.dashboard-panel-tabs__move {
-  flex: 0 0 auto;
-}
-
-.dashboard-panel-body {
-  min-width: 0;
-}
-
-.dashboard-panel-body--pending .dashboard-grid {
-  visibility: hidden;
-}
-
-.dashboard-empty {
-  display: grid;
-  place-items: center;
-  min-height: 220px;
-  text-align: center;
-  gap: 6px;
-  max-width: 520px;
-  margin: 0 auto;
-  padding: 24px 16px;
-}
-</style>

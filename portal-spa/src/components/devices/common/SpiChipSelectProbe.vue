@@ -1,5 +1,5 @@
 <template>
-  <v-row class="device-type-section__grid">
+  <v-row density="comfortable">
     <v-col cols="12" sm="4">
       <v-btn
         color="primary"
@@ -10,38 +10,29 @@
         @click="probeChipSelect"
       >
         <v-icon class="me-1" icon="eye" />
-        {{ buttonLabel }}
+        {{ t('device.dialog.spiProbe.action') }}
       </v-btn>
     </v-col>
 
-    <v-col cols="12" sm="8">
-      <v-chip
-        v-if="probeReady"
-        :color="probeColor"
-        variant="tonal"
-        class="me-2"
-      >
+    <v-col cols="12" sm="8" class="d-flex align-center">
+      <v-chip v-if="probeReady" :color="probeColor" variant="tonal">
         <v-icon start :icon="probeIcon" />
         {{ probeStatusText }}
       </v-chip>
-      <span v-else class="text-caption text-medium-emphasis">
-        {{ !hasDependency ? 'Select SPI bus first' : 'Click button to check device' }}
+      <span v-else class="text-body-small text-medium-emphasis">
+        {{ hasDependency ? t('device.dialog.spiProbe.clickToCheck') : t('device.dialog.spiProbe.selectBusFirst') }}
       </span>
     </v-col>
-  </v-row>
 
-  <v-row v-if="probeError" class="device-type-section__grid">
-    <v-col cols="12">
+    <v-col v-if="probeError.length > 0" cols="12">
       <v-alert type="error" variant="tonal">
         {{ probeError }}
       </v-alert>
     </v-col>
-  </v-row>
 
-  <v-row v-if="showHeuristicWarning" class="device-type-section__grid">
-    <v-col cols="12">
+    <v-col v-if="showHeuristicWarning" cols="12">
       <v-alert type="warning" variant="tonal" density="comfortable">
-        <strong>Heuristic method:</strong> CS pull-resistor detection is not fully reliable. Verify device manually.
+        {{ t('device.dialog.spiProbe.heuristicWarning') }}
       </v-alert>
     </v-col>
   </v-row>
@@ -49,6 +40,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { commandDevice } from '@/api'
 import type { DeviceCommandRequest, SpiBusRuntimeSnapshot } from '@/api/contracts'
@@ -58,9 +50,9 @@ const props = defineProps<{
   busDeviceId: number
   csPin: number
   disabled?: boolean
-  buttonLabel?: string
 }>()
 
+const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
 const probeBusy = ref(false)
 const probeError = ref('')
@@ -68,52 +60,49 @@ const probeError = ref('')
 const selectedBusDevice = computed(() => deviceStore.devices.find(device => device.record.id === props.busDeviceId))
 const hasDependency = computed(() => props.busDeviceId !== 0 && selectedBusDevice.value !== undefined)
 
-const busRuntime = computed(() => (selectedBusDevice.value?.runtime as SpiBusRuntimeSnapshot | undefined))
+const busRuntime = computed(() => selectedBusDevice.value?.runtime as SpiBusRuntimeSnapshot | undefined)
 const probe = computed(() => busRuntime.value?.probe)
 const probeReady = computed(() => probe.value?.ready === true)
 
 const probeColor = computed(() => {
   if (!probeReady.value) return 'default'
   switch (probe.value?.outcome) {
-  case 'detected':
-    return 'success'
-  case 'inconclusive':
-    return 'warning'
-  case 'not_detected':
-  default:
-    return 'default'
+    case 'detected':
+      return 'success'
+    case 'inconclusive':
+      return 'warning'
+    default:
+      return 'default'
   }
 })
 
 const probeIcon = computed(() => {
   if (!probeReady.value) return 'info'
   switch (probe.value?.outcome) {
-  case 'detected':
-    return 'checkboxOn'
-  case 'inconclusive':
-    return 'info'
-  case 'not_detected':
-    return 'close'
-  default:
-    return 'info'
+    case 'detected':
+      return 'checkboxOn'
+    case 'not_detected':
+      return 'close'
+    default:
+      return 'info'
   }
 })
 
 const probeStatusText = computed(() => {
   if (!probeReady.value || !probe.value) return ''
   const outcomeMap: Record<string, string> = {
-    detected: 'Detected',
-    not_detected: 'Not Detected',
-    inconclusive: 'Inconclusive',
-    unknown: 'Unknown',
+    detected: t('device.dialog.spiProbe.outcomeDetected'),
+    not_detected: t('device.dialog.spiProbe.outcomeNotDetected'),
+    inconclusive: t('device.dialog.spiProbe.outcomeInconclusive'),
+    unknown: t('device.dialog.spiProbe.outcomeUnknown'),
   }
   const methodMap: Record<string, string> = {
-    miso_activity: '(MISO activity)',
-    cs_pull_heuristic: '(CS pull heuristic)',
+    miso_activity: t('device.dialog.spiProbe.methodMisoActivity'),
+    cs_pull_heuristic: t('device.dialog.spiProbe.methodCsPullHeuristic'),
     none: '',
   }
-  const outcome = outcomeMap[probe.value.outcome] || 'Unknown'
-  const method = methodMap[probe.value.method] || ''
+  const outcome = outcomeMap[probe.value.outcome] ?? t('device.dialog.spiProbe.outcomeUnknown')
+  const method = methodMap[probe.value.method] ?? ''
   return `${outcome} ${method}`.trim()
 })
 
@@ -132,15 +121,9 @@ async function probeChipSelect(): Promise<void> {
     }
     await commandDevice(props.busDeviceId, payload)
   } catch (error) {
-    probeError.value = error instanceof Error ? error.message : 'Unknown error during probe'
+    probeError.value = error instanceof Error ? error.message : t('device.dialog.unknownError')
   } finally {
     probeBusy.value = false
   }
 }
 </script>
-
-<style scoped>
-.device-type-section__grid {
-  margin: 0;
-}
-</style>

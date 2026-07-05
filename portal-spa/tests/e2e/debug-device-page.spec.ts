@@ -1,7 +1,7 @@
 import { test } from '@playwright/test'
 
 test('debug device page content', async ({ page }) => {
-  await page.goto('http://127.0.0.1:5176/v2/devices/670845755?mockMode=1', { waitUntil: 'domcontentloaded' })
+  await page.goto('http://127.0.0.1:5176/devices/670845755?mockMode=1', { waitUntil: 'domcontentloaded' })
   
   // Get all text content
   const text = await page.textContent('body')

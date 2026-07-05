@@ -1,67 +1,39 @@
 <template>
-  <v-container class="page-shell" fluid>
-    <v-card class="page-card page-hero mb-4">
-      <v-card-title class="page-title">
-        <div>
-          <div class="text-overline">{{ t('devices.title') }}</div>
-          <h1 class="text-h5 sm:text-h4 font-weight-bold text-wrap">{{ t('device.dashboard.create') }}</h1>
-        </div>
-        <div class="d-flex ga-2">
-          <v-btn
-            icon="arrow-left"
-            variant="text"
-            :aria-label="t('device.actions.close')"
-            @click="navigateBack"
-          />
-        </div>
-      </v-card-title>
-    </v-card>
+  <PageContainer>
+    <PageCard>
+      <template #header>
+        <PageToolbar :title="t('device.dialog.createTitle')" :subtitle="t('device.dialog.createHint')" show-back @back="navigateBack" />
+      </template>
 
-    <v-card class="page-card">
-      <v-card-text class="device-detail-content">
-        <section class="device-detail-section">
-          <DeviceCommonFields
-            :model-value="(draft as any)"
-            mode="create"
-            :busy="isCreating"
-            @update:model-value="(v: any) => { draft.value = v }"
-          />
-        </section>
+      <div class="d-flex flex-column ga-4">
+        <DeviceBaseFields :model-value="draft" mode="create" :busy="isCreating" @update:model-value="onBaseUpdate" />
 
-        <section class="device-detail-section">
-          <component
-            :is="(editorUi as any)?.editorComponent"
-            v-if="(editorUi as any)?.editorComponent"
-            :model-value="(draft as any)"
-            mode="create"
-            :busy="isCreating"
-            @update:model-value="(v: any) => { draft.value = v }"
-          />
-        </section>
+        <v-divider v-if="typeUi" />
 
-        <!-- Error message -->
-        <v-alert v-if="errorMessage" type="error" variant="tonal" class="mt-4">
+        <component
+          :is="typeUi.fieldsComponent"
+          v-if="typeUi"
+          :model-value="draft"
+          mode="create"
+          :busy="isCreating"
+          @update:model-value="onTypeUpdate"
+        />
+
+        <v-alert v-if="errorMessage" type="error" variant="tonal">
           {{ errorMessage }}
         </v-alert>
-      </v-card-text>
-    </v-card>
+      </div>
 
-    <!-- Sticky footer with actions -->
-    <div class="device-detail-footer">
-      <v-spacer />
-      <v-btn variant="text" :disabled="isCreating" @click="navigateBack">
-        {{ t('actions.cancel') }}
-      </v-btn>
-      <v-btn
-        color="primary"
-        :loading="isCreating"
-        :disabled="!canCreate || isCreating"
-        @click="submitCreate"
-      >
-        {{ t('device.dashboard.create') }}
-      </v-btn>
-    </div>
-  </v-container>
+      <template #actions>
+        <v-btn variant="text" :disabled="isCreating" @click="navigateBack">
+          {{ t('actions.cancel') }}
+        </v-btn>
+        <v-btn color="primary" :loading="isCreating" :disabled="!canCreate" @click="submitCreate">
+          {{ t('device.dialog.save') }}
+        </v-btn>
+      </template>
+    </PageCard>
+  </PageContainer>
 </template>
 
 <script setup lang="ts">
@@ -70,28 +42,41 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import { createDevice, type DeviceCreateRequest } from '@/api'
-import DeviceCommonFields from '@/components/device/DeviceCommonFields.vue'
-import { resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
-import { createDefaultDeviceDraft } from '@/components/device/device-form'
+import { createDefaultDeviceDraft, type DeviceCreateDraft } from '@/models/devices/device-draft'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
+import { resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
+import { useNotificationsStore } from '@/stores/notifications'
+import DeviceBaseFields from '@/components/device/DeviceBaseFields.vue'
+import PageContainer from '@/components/layout/PageContainer.vue'
+import PageToolbar from '@/components/layout/PageToolbar.vue'
+import PageCard from '@/components/layout/PageCard.vue'
 
 const { t } = useI18n()
 const router = useRouter()
 const deviceStore = useDeviceRegistryStore()
+const notifications = useNotificationsStore()
 
 const isCreating = ref(false)
 const errorMessage = ref('')
-const draft = ref(createDefaultDeviceDraft() as any)
+const draft = ref<DeviceCreateDraft>(createDefaultDeviceDraft())
 
-const editorUi = computed(() => {
-  if (!(draft.value as any).typeName) return null
-  return resolveDeviceUi((draft.value as any).typeName)
-})
+const typeUi = computed(() => (draft.value.typeName ? resolveDeviceUi(draft.value.typeName) : null))
 
-const canCreate = computed(() => {
-  const requiredFields = (draft.value as any).name && (draft.value as any).typeName
-  return !!requiredFields
-})
+const canCreate = computed(() => draft.value.name.trim().length > 0 && draft.value.typeName.length > 0)
+
+function onBaseUpdate(value: DeviceCreateDraft): void {
+  if (value.typeName !== draft.value.typeName) {
+    draft.value = createDefaultDeviceDraft(value.typeName)
+    draft.value.name = value.name
+    draft.value.enabled = value.enabled
+    return
+  }
+  draft.value = value
+}
+
+function onTypeUpdate(value: DeviceCreateDraft): void {
+  draft.value = value
+}
 
 function navigateBack(): void {
   router.back()
@@ -114,10 +99,8 @@ async function submitCreate(): Promise<void> {
     deviceStore.setRevision(response.registryRevision)
     if (response.device) {
       deviceStore.upsertDevice(response.device, response.registryRevision)
-      await router.push({
-        name: 'device-detail',
-        params: { id: response.device.record.id },
-      })
+      notifications.notify(t('notifications.deviceCreated', { name: response.device.config.name }), 'success')
+      await router.push({ name: 'device-detail', params: { id: response.device.record.id } })
     }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : t('device.dialog.unknownError')
@@ -126,35 +109,3 @@ async function submitCreate(): Promise<void> {
   }
 }
 </script>
-
-<style scoped>
-.device-detail-content {
-  display: grid;
-  gap: 12px;
-}
-
-.device-detail-section {
-  display: grid;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid rgb(var(--v-theme-outline-variant));
-  border-radius: 10px;
-  background: var(--portal-surface);
-  box-shadow: var(--portal-shadow-sm);
-}
-
-.device-detail-footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 24px;
-  background: var(--portal-surface);
-  border-top: 1px solid var(--portal-border);
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-}
-</style>

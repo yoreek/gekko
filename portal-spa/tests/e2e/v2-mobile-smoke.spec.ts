@@ -9,7 +9,7 @@ test.describe('v2 mobile viewport (375×812)', () => {
   })
 
   test('v2 devices list responsive layout', async ({ page }) => {
-    await page.goto('/v2/devices?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
+    await page.goto('/devices?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
     await page.waitForLoadState('domcontentloaded')
 
     // Check that page toolbar exists
@@ -18,7 +18,7 @@ test.describe('v2 mobile viewport (375×812)', () => {
   })
 
   test('v2 device create page form loads on mobile', async ({ page }) => {
-    await page.goto('/v2/devices/new?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
+    await page.goto('/devices/new?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
     await page.waitForLoadState('domcontentloaded')
 
     // Form should be visible on mobile
@@ -33,7 +33,7 @@ test.describe('v2 mobile viewport (375×812)', () => {
 
   test('v2 pages are not fullscreen dialogs', async ({ page }) => {
     // Verify that /v2 routes render as pages, not dialogs
-    await page.goto('/v2/devices?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
+    await page.goto('/devices?mockMode=1&mockReset=1', { waitUntil: 'networkidle' })
 
     // Check that there are no fullscreen dialogs
     const dialogs = page.locator('[role="dialog"][class*="fullscreen"], .v-dialog--fullscreen')
@@ -50,14 +50,14 @@ test.describe('v2 desktop viewport (1280×720)', () => {
   })
 
   test('v2 devices list loads on desktop', async ({ page }) => {
-    await page.goto('/v2/devices?mockMode=1&mockReset=1')
+    await page.goto('/devices?mockMode=1&mockReset=1')
 
     const heading = page.getByRole('heading', { name: /Devices/i })
     await expect(heading).toBeVisible({ timeout: 5000 })
   })
 
   test('v2 device create flow works on desktop', async ({ page }) => {
-    await page.goto('/v2/devices/new?mockMode=1&mockReset=1')
+    await page.goto('/devices/new?mockMode=1&mockReset=1')
 
     const input = page.locator('input').first()
     await expect(input).toBeVisible({ timeout: 5000 })

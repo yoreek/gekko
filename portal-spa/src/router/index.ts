@@ -1,18 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import v2Routes from '@/v2/router'
 import DashboardView from '@/views/DashboardView.vue'
 import DevicesView from '@/views/DevicesView.vue'
+import DeviceCreateView from '@/views/DeviceCreateView.vue'
+import DeviceDetailView from '@/views/DeviceDetailView.vue'
+import DisplayDesignerView from '@/views/DisplayDesignerView.vue'
 import DeviceEventJournalView from '@/views/DeviceEventJournalView.vue'
 import PanelsView from '@/views/PanelsView.vue'
-import OverviewView from '@/views/OverviewView.vue'
-import OtaView from '@/views/OtaView.vue'
-import NotFoundView from '@/views/NotFoundView.vue'
-import SystemView from '@/views/SystemView.vue'
 import WifiView from '@/views/WifiView.vue'
-import DeviceDetailView from '@/views/DeviceDetailView.vue'
-import DeviceCreateView from '@/views/DeviceCreateView.vue'
-import DeviceDesignView from '@/views/DeviceDesignView.vue'
+import OtaView from '@/views/OtaView.vue'
+import SystemView from '@/views/SystemView.vue'
+import OverviewView from '@/views/OverviewView.vue'
+import NotFoundView from '@/views/NotFoundView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -37,14 +36,12 @@ const router = createRouter({
       name: 'device-detail',
       component: DeviceDetailView,
       props: route => ({ deviceId: Number(route.params.id) }),
-      children: [
-        {
-          path: 'design',
-          name: 'device-design',
-          component: DeviceDesignView,
-          props: route => ({ id: Number(route.params.id) }),
-        },
-      ],
+    },
+    {
+      path: '/devices/:id/design',
+      name: 'device-design',
+      component: DisplayDesignerView,
+      props: route => ({ deviceId: Number(route.params.id) }),
     },
     {
       path: '/device-events',
@@ -76,7 +73,6 @@ const router = createRouter({
       name: 'overview',
       component: OverviewView,
     },
-    ...v2Routes,
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
