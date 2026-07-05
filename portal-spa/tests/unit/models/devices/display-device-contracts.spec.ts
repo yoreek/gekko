@@ -40,7 +40,7 @@ test('normalizes spi bus defaults and st7735 dependency fields', () => {
   assert.equal(st7735.rotation, 1)
   assert.equal(st7735.layout.colorMode, 'rgb565')
 
-  const encoded = new St7735Device().encodeConfig(st7735)
+  const encoded = St7735Device.encodeConfig(st7735)
   assert.equal(encoded.dcPin, 4)
   assert.equal(encoded.resetPin, -1)
   assert.equal(encoded.rotation, 1)
@@ -65,5 +65,5 @@ test('ssd1306 defaults keep the mounted orientation stable', () => {
   })
 
   assert.equal(ssd1306.rotation, 0)
-  assert.equal(new Ssd1306Device().encodeConfig(ssd1306).rotation, 0)
+  assert.equal(Ssd1306Device.encodeConfig(ssd1306).rotation, 0)
 })

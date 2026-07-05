@@ -1,6 +1,6 @@
-import type { DeviceCommandRequest, DeviceRecord, GpioSwitchOutputSnapshot } from '@/api/contracts'
+import type { DeviceRecord, GpioSwitchOutputSnapshot } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
-import { BaseDevice } from './base-device.ts'
+import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig } from './base-device.ts'
 import { outputStateOptions, type OutputState } from './switch.ts'
 import type { SwitchConfigDraft } from '@/models/devices/switch-config'
 import type { BaseDeviceConfig } from '@/api/contracts'
@@ -25,9 +25,7 @@ export class GpioSwitchDevice extends BaseDevice<GpioSwitchConfigDraft, GpioSwit
 
   static defaultConfig(): GpioSwitchConfigDraft {
     return {
-      name: 'New Device',
-      enabled: true,
-      deps: [],
+      ...defaultBaseDeviceConfig(),
       restorePreviousState: false,
       startupState: 'off',
       safeState: 'disabled',
@@ -44,8 +42,7 @@ export class GpioSwitchDevice extends BaseDevice<GpioSwitchConfigDraft, GpioSwit
     const raw = value as Record<string, unknown>
     const deps = Array.isArray(raw.deps) ? raw.deps.filter(dep => typeof dep === 'object' && dep !== null) as GpioSwitchConfigDraft['deps'] : defaults.deps
     return {
-      name: typeof raw.name === 'string' ? raw.name : defaults.name,
-      enabled: typeof raw.enabled === 'boolean' ? raw.enabled : defaults.enabled,
+      ...normalizeBaseDeviceConfig(raw, defaults),
       deps,
       restorePreviousState:
         typeof raw.restorePreviousState === 'boolean' ? raw.restorePreviousState : defaults.restorePreviousState,
@@ -53,19 +50,6 @@ export class GpioSwitchDevice extends BaseDevice<GpioSwitchConfigDraft, GpioSwit
       safeState: readOutputState(raw.safeState, defaults.safeState),
       inverted: typeof raw.inverted === 'boolean' ? raw.inverted : defaults.inverted,
       gpioPin: typeof raw.gpioPin === 'number' && Number.isFinite(raw.gpioPin) ? raw.gpioPin : defaults.gpioPin,
-    }
-  }
-
-  static encodeConfig(config: GpioSwitchConfigDraft): Record<string, unknown> {
-    return {
-      name: config.name,
-      enabled: config.enabled,
-      deps: config.deps,
-      restorePreviousState: config.restorePreviousState,
-      startupState: config.startupState,
-      safeState: config.safeState,
-      inverted: config.inverted,
-      gpioPin: config.gpioPin,
     }
   }
 
@@ -94,27 +78,5 @@ export class GpioSwitchDevice extends BaseDevice<GpioSwitchConfigDraft, GpioSwit
 
   normalizeOutput(record: DeviceRecord): GpioSwitchOutputSnapshot {
     return record.runtime as GpioSwitchOutputSnapshot
-  }
-
-  override encodeConfig(config: GpioSwitchConfigDraft): Record<string, unknown> {
-    return GpioSwitchDevice.encodeConfig(config)
-  }
-
-  buildEditCommands(current: DeviceRecord, draft: GpioSwitchCreateDraft): DeviceCommandRequest[] {
-    const currentConfig = this.normalizeConfig(current.config)
-    const commands: DeviceCommandRequest[] = []
-    const nextConfig = this.normalizeConfig({ ...draft, name: draft.name.trim() })
-    const configDiff = this.buildConfigDiff(this.encodeConfig(nextConfig), this.encodeConfig(currentConfig))
-    if (Object.keys(configDiff).length > 0) {
-      commands.push({
-        command: 'updateConfig',
-        config: configDiff,
-      })
-    }
-    return commands
-  }
-
-  protected extractCreateConfig(draft: GpioSwitchCreateDraft): GpioSwitchConfigDraft {
-    return { ...draft }
   }
 }

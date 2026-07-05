@@ -1,6 +1,6 @@
-import type { BaseDeviceConfig, DeviceCommandRequest, DeviceDependencyLink, DeviceRecord } from '../../../api/contracts.ts'
+import type { BaseDeviceConfig, DeviceDependencyLink, DeviceRecord } from '../../../api/contracts.ts'
 import type { DeviceCreateDraftBase } from '../base.ts'
-import { BaseDevice } from '../base-device.ts'
+import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from '../base-device.ts'
 import { st7735Display } from '../display/display.ts'
 import type { DisplayBaseConfig, DisplayCapabilities } from '../display/base.ts'
 import { normalizeDisplayRotation } from '../display/orientation.ts'
@@ -44,9 +44,8 @@ export class St7735Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraf
 
   static defaultConfig(): St7735ConfigDraft {
     return {
-      enabled: true,
+      ...defaultBaseDeviceConfig(),
       name: 'New Display',
-      deps: [],
       width: 128,
       height: 160,
       spiBusDeviceId: 0,
@@ -68,12 +67,8 @@ export class St7735Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraf
       }
     }
     const raw = value as Record<string, unknown>
-    const nextDeps = Array.isArray(raw.deps) ? (raw.deps as DeviceDependencyLink[]) : defaults.deps
     return {
-      ...defaults,
-      name: typeof raw.name === 'string' ? raw.name : defaults.name,
-      enabled: typeof raw.enabled === 'boolean' ? raw.enabled : defaults.enabled,
-      deps: nextDeps,
+      ...normalizeBaseDeviceConfig(raw, defaults),
       width: normalizeNumber(raw.width, defaults.width),
       height: normalizeNumber(raw.height, defaults.height),
       spiBusDeviceId: normalizeNumber(raw.spiBusDeviceId ?? dependencyDeviceIdFromDeps(deps, 'spi_bus'), defaults.spiBusDeviceId),
@@ -85,14 +80,13 @@ export class St7735Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraf
     }
   }
 
+  // spiBusDeviceId is intentionally excluded: it is carried via `deps`, not `config`, matching
+  // how ds18b20/thermostat already exclude their own dependency-id fields from encodeConfig.
   static encodeConfig(config: St7735ConfigDraft): Record<string, unknown> {
     return {
-      name: config.name,
-      enabled: config.enabled,
-      deps: config.deps,
+      ...encodeBaseDeviceConfig(config),
       width: config.width,
       height: config.height,
-      spiBusDeviceId: config.spiBusDeviceId,
       chipSelectPin: config.chipSelectPin,
       dcPin: config.dcPin,
       resetPin: config.resetPin,
@@ -132,39 +126,8 @@ export class St7735Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraf
     return {}
   }
 
-  override encodeConfig(config: St7735ConfigDraft): Record<string, unknown> {
+  protected override encodeConfig(config: St7735ConfigDraft): Record<string, unknown> {
     return St7735Device.encodeConfig(config)
-  }
-
-  buildEditCommands(current: DeviceRecord, draft: St7735CreateDraft): DeviceCommandRequest[] {
-    const currentConfig = this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined)
-    const commands: DeviceCommandRequest[] = []
-    const nextConfig = this.normalizeConfig({ ...draft, name: draft.name.trim() }, [
-      {
-        role: 'spi_bus',
-        deviceId: draft.spiBusDeviceId,
-      },
-    ])
-    const spiBusDeviceIdChanged = nextConfig.spiBusDeviceId !== currentConfig.spiBusDeviceId
-    const configDiff = this.buildConfigDiff(this.encodeConfig(nextConfig), this.encodeConfig(currentConfig))
-    delete configDiff.spiBusDeviceId
-    if (Object.keys(configDiff).length > 0 || spiBusDeviceIdChanged) {
-      commands.push({
-        command: 'updateConfig',
-        config: configDiff,
-        deps: [
-          {
-            role: 'spi_bus',
-            deviceId: nextConfig.spiBusDeviceId,
-          },
-        ],
-      })
-    }
-    return commands
-  }
-
-  protected extractCreateConfig(draft: St7735CreateDraft): St7735ConfigDraft {
-    return { ...draft }
   }
 
   protected override createCreateDeps(config: St7735ConfigDraft) {

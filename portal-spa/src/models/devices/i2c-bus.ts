@@ -1,6 +1,6 @@
-import type { DeviceCommandRequest, DeviceRecord, I2cBusRuntimeSnapshot } from '@/api/contracts'
+import type { DeviceRecord, I2cBusRuntimeSnapshot } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
-import { BaseDevice } from './base-device.ts'
+import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig } from './base-device.ts'
 import type { BaseDeviceConfig } from '@/api/contracts'
 
 export interface I2cBusConfigDraft extends BaseDeviceConfig {
@@ -21,9 +21,7 @@ export class I2cBusDevice extends BaseDevice<I2cBusConfigDraft, I2cBusCreateDraf
 
   static defaultConfig(): I2cBusConfigDraft {
     return {
-      enabled: true,
-      name: 'New Device',
-      deps: [],
+      ...defaultBaseDeviceConfig(),
       sdaPin: 21,
       sclPin: 22,
       internalPullup: true,
@@ -38,9 +36,7 @@ export class I2cBusDevice extends BaseDevice<I2cBusConfigDraft, I2cBusCreateDraf
     }
     const raw = value as Record<string, unknown>
     return {
-      name: typeof raw.name === 'string' ? raw.name : defaults.name,
-      enabled: typeof raw.enabled === 'boolean' ? raw.enabled : defaults.enabled,
-      deps: Array.isArray(raw.deps) ? (raw.deps as I2cBusConfigDraft['deps']) : defaults.deps,
+      ...normalizeBaseDeviceConfig(raw, defaults),
       sdaPin: typeof raw.sdaPin === 'number' && Number.isFinite(raw.sdaPin) ? raw.sdaPin : defaults.sdaPin,
       sclPin: typeof raw.sclPin === 'number' && Number.isFinite(raw.sclPin) ? raw.sclPin : defaults.sclPin,
       internalPullup: typeof raw.internalPullup === 'boolean' ? raw.internalPullup : defaults.internalPullup,
@@ -48,18 +44,6 @@ export class I2cBusDevice extends BaseDevice<I2cBusConfigDraft, I2cBusCreateDraf
         typeof raw.frequencyHz === 'number' && Number.isFinite(raw.frequencyHz)
           ? raw.frequencyHz
           : defaults.frequencyHz,
-    }
-  }
-
-  static encodeConfig(config: I2cBusConfigDraft): Record<string, unknown> {
-    return {
-      name: config.name,
-      enabled: config.enabled,
-      deps: config.deps,
-      sdaPin: config.sdaPin,
-      sclPin: config.sclPin,
-      internalPullup: config.internalPullup,
-      frequencyHz: config.frequencyHz,
     }
   }
 
@@ -88,27 +72,5 @@ export class I2cBusDevice extends BaseDevice<I2cBusConfigDraft, I2cBusCreateDraf
 
   normalizeOutput(record: DeviceRecord): I2cBusRuntimeSnapshot {
     return record.runtime as I2cBusRuntimeSnapshot
-  }
-
-  override encodeConfig(config: I2cBusConfigDraft): Record<string, unknown> {
-    return I2cBusDevice.encodeConfig(config)
-  }
-
-  buildEditCommands(current: DeviceRecord, draft: I2cBusCreateDraft): DeviceCommandRequest[] {
-    const currentConfig = this.normalizeConfig(current.config)
-    const commands: DeviceCommandRequest[] = []
-    const nextConfig = this.normalizeConfig({ ...draft, name: draft.name.trim() })
-    const configDiff = this.buildConfigDiff(this.encodeConfig(nextConfig), this.encodeConfig(currentConfig))
-    if (Object.keys(configDiff).length > 0) {
-      commands.push({
-        command: 'updateConfig',
-        config: configDiff,
-      })
-    }
-    return commands
-  }
-
-  protected extractCreateConfig(draft: I2cBusCreateDraft): I2cBusConfigDraft {
-    return { ...draft }
   }
 }

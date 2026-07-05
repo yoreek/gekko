@@ -172,3 +172,23 @@ test('ds18b20: dependency-id-only change leaves the config diff empty but update
   assert.deepEqual(updateConfig!.config, {})
   assert.ok(updateConfig!.deps?.some((dep: { role: string; deviceId: number }) => dep.role === 'onewire_bus' && dep.deviceId === 42))
 })
+
+test('gpio-switch: create payload never leaks the create-draft typeName into config', () => {
+  const device = new GpioSwitchDevice()
+  const draft = device.createDefaultCreateDraft()
+
+  const payload = device.buildCreatePayload(draft)
+
+  assert.equal(payload.typeName, device.typeName)
+  assert.equal('typeName' in payload.config, false)
+})
+
+test('thermostat: create payload never leaks the create-draft typeName into config', () => {
+  const device = new ThermostatDevice()
+  const draft = device.createDefaultCreateDraft()
+
+  const payload = device.buildCreatePayload(draft)
+
+  assert.equal(payload.typeName, device.typeName)
+  assert.equal('typeName' in payload.config, false)
+})

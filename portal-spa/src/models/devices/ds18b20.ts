@@ -1,8 +1,7 @@
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
-import { BaseDevice } from './base-device.ts'
+import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
 import type {
   BaseDeviceConfig,
-  DeviceCommandRequest,
   DeviceDependencyLink,
   DeviceRecord,
   Ds18b20TemperatureSensorOutputSnapshot,
@@ -49,9 +48,7 @@ export class Ds18b20Device extends BaseDevice<
 
   static defaultConfig(): Ds18b20ConfigDraft {
     return {
-      enabled: true,
-      name: 'New Device',
-      deps: [],
+      ...defaultBaseDeviceConfig(),
       dependencyDeviceId: 0,
       address: '',
       resolution: 12,
@@ -80,14 +77,11 @@ export class Ds18b20Device extends BaseDevice<
       }
     }
     const reportDeltaCenti = typeof value.reportDeltaCentiCelsius === 'number' ? value.reportDeltaCentiCelsius / 100 : undefined
-    const deps = Array.isArray(value.deps) ? (value.deps as DeviceDependencyLink[]) : defaults.deps
     const normalizedDependencyDeviceId = normalizeDependencyDeviceId(
       dependencyDeviceId ?? value.dependencyDeviceId,
     )
     return {
-      name: typeof value.name === 'string' ? value.name : defaults.name,
-      enabled: typeof value.enabled === 'boolean' ? value.enabled : defaults.enabled,
-      deps,
+      ...normalizeBaseDeviceConfig(value, defaults),
       dependencyDeviceId: normalizedDependencyDeviceId,
       address: typeof value.address === 'string' ? value.address.toUpperCase() : defaults.address,
       resolution: Ds18b20Device.resolutionOptions.includes(value.resolution as Ds18b20Resolution) ? (value.resolution as Ds18b20Resolution) : 12,
@@ -102,9 +96,7 @@ export class Ds18b20Device extends BaseDevice<
 
   static encodeConfig(config: Ds18b20ConfigDraft): Record<string, unknown> {
     return {
-      name: config.name,
-      enabled: config.enabled,
-      deps: config.deps,
+      ...encodeBaseDeviceConfig(config),
       address: config.address.trim().toUpperCase(),
       resolution: config.resolution,
       unit: config.unit,
@@ -156,38 +148,8 @@ export class Ds18b20Device extends BaseDevice<
     return record.runtime as Ds18b20TemperatureSensorOutputSnapshot
   }
 
-  override encodeConfig(config: Ds18b20ConfigDraft): Record<string, unknown> {
+  protected override encodeConfig(config: Ds18b20ConfigDraft): Record<string, unknown> {
     return Ds18b20Device.encodeConfig(config)
-  }
-
-  buildEditCommands(current: DeviceRecord, draft: Ds18b20CreateDraft): DeviceCommandRequest[] {
-    const commands: DeviceCommandRequest[] = []
-    const currentConfig = this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined)
-    const nextConfig = this.normalizeConfig({ ...draft, name: draft.name.trim() }, [
-      {
-        role: 'onewire_bus',
-        deviceId: draft.dependencyDeviceId,
-      },
-    ])
-    const dependencyIdChanged = nextConfig.dependencyDeviceId !== currentConfig.dependencyDeviceId
-    const configDiff = this.buildConfigDiff(this.encodeConfig(nextConfig), this.encodeConfig(currentConfig))
-    if (Object.keys(configDiff).length > 0 || dependencyIdChanged) {
-      commands.push({
-        command: 'updateConfig',
-        config: configDiff,
-        deps: [
-          {
-            role: 'onewire_bus',
-            deviceId: nextConfig.dependencyDeviceId,
-          },
-        ],
-      })
-    }
-    return commands
-  }
-
-  protected extractCreateConfig(draft: Ds18b20CreateDraft): Ds18b20ConfigDraft {
-    return { ...draft }
   }
 
   protected override createCreateDeps(config: Ds18b20ConfigDraft) {

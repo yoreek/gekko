@@ -1,6 +1,6 @@
-import type { DeviceCommandRequest, DeviceRecord } from '@/api/contracts'
+import type { DeviceRecord } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
-import { BaseDevice } from './base-device.ts'
+import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig } from './base-device.ts'
 import type { BaseDeviceConfig } from '@/api/contracts'
 
 export interface OneWireBusConfigDraft extends BaseDeviceConfig {
@@ -19,9 +19,7 @@ export class OneWireBusDevice extends BaseDevice<OneWireBusConfigDraft, OneWireB
 
   static defaultConfig(): OneWireBusConfigDraft {
     return {
-      enabled: true,
-      name: 'New Device',
-      deps: [],
+      ...defaultBaseDeviceConfig(),
       gpioPin: 4,
       internalPullup: false,
     }
@@ -34,21 +32,9 @@ export class OneWireBusDevice extends BaseDevice<OneWireBusConfigDraft, OneWireB
     }
     const raw = value as Record<string, unknown>
     return {
-      name: typeof raw.name === 'string' ? raw.name : defaults.name,
-      enabled: typeof raw.enabled === 'boolean' ? raw.enabled : defaults.enabled,
-      deps: Array.isArray(raw.deps) ? (raw.deps as OneWireBusConfigDraft['deps']) : defaults.deps,
+      ...normalizeBaseDeviceConfig(raw, defaults),
       gpioPin: typeof raw.gpioPin === 'number' && Number.isFinite(raw.gpioPin) ? raw.gpioPin : defaults.gpioPin,
       internalPullup: typeof raw.internalPullup === 'boolean' ? raw.internalPullup : defaults.internalPullup,
-    }
-  }
-
-  static encodeConfig(config: OneWireBusConfigDraft): Record<string, unknown> {
-    return {
-      name: config.name,
-      enabled: config.enabled,
-      deps: config.deps,
-      gpioPin: config.gpioPin,
-      internalPullup: config.internalPullup,
     }
   }
 
@@ -77,27 +63,5 @@ export class OneWireBusDevice extends BaseDevice<OneWireBusConfigDraft, OneWireB
 
   normalizeOutput(_record: DeviceRecord): Record<string, never> {
     return {}
-  }
-
-  override encodeConfig(config: OneWireBusConfigDraft): Record<string, unknown> {
-    return OneWireBusDevice.encodeConfig(config)
-  }
-
-  buildEditCommands(current: DeviceRecord, draft: OneWireBusCreateDraft): DeviceCommandRequest[] {
-    const currentConfig = this.normalizeConfig(current.config)
-    const commands: DeviceCommandRequest[] = []
-    const nextConfig = this.normalizeConfig({ ...draft, name: draft.name.trim() })
-    const configDiff = this.buildConfigDiff(this.encodeConfig(nextConfig), this.encodeConfig(currentConfig))
-    if (Object.keys(configDiff).length > 0) {
-      commands.push({
-        command: 'updateConfig',
-        config: configDiff,
-      })
-    }
-    return commands
-  }
-
-  protected extractCreateConfig(draft: OneWireBusCreateDraft): OneWireBusConfigDraft {
-    return { ...draft }
   }
 }

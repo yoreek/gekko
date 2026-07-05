@@ -5,9 +5,9 @@ import type {
   ThermostatOutputSnapshot,
 } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
-import type { DeviceCommandRequest, DeviceRecord } from '@/api/contracts'
+import type { DeviceRecord } from '@/api/contracts'
 import type { PortalIconName } from '@/icons'
-import { BaseDevice } from './base-device.ts'
+import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
 
 export type ThermostatMode = 'off' | 'heat' | 'cool'
 export type ThermostatAlgorithm = 'hysteresis'
@@ -67,9 +67,7 @@ export class ThermostatDevice extends BaseDevice<ThermostatConfigDraft, Thermost
 
   static defaultConfig(): ThermostatConfigDraft {
     return {
-      enabled: true,
-      name: 'New Device',
-      deps: [],
+      ...defaultBaseDeviceConfig(),
       mode: 'heat',
       algorithm: 'hysteresis',
       targetCelsius: 25,
@@ -97,9 +95,7 @@ export class ThermostatDevice extends BaseDevice<ThermostatConfigDraft, Thermost
     }
 
     return {
-      name: typeof value.name === 'string' ? value.name : defaults.name,
-      enabled: typeof value.enabled === 'boolean' ? value.enabled : defaults.enabled,
-      deps: Array.isArray(value.deps) ? (value.deps as DeviceDependencyLink[]) : defaults.deps,
+      ...normalizeBaseDeviceConfig(value, defaults),
       mode: normalizeMode(value.mode),
       algorithm: normalizeAlgorithm(value.algorithm),
       targetCelsius: normalizeNumber(value.targetCelsius, defaults.targetCelsius),
@@ -117,9 +113,7 @@ export class ThermostatDevice extends BaseDevice<ThermostatConfigDraft, Thermost
 
   static encodeConfig(config: ThermostatConfigDraft): Record<string, unknown> {
     return {
-      name: config.name,
-      enabled: config.enabled,
-      deps: config.deps,
+      ...encodeBaseDeviceConfig(config),
       mode: config.mode,
       algorithm: config.algorithm,
       targetCelsius: config.targetCelsius,
@@ -275,39 +269,8 @@ export class ThermostatDevice extends BaseDevice<ThermostatConfigDraft, Thermost
     return record.runtime as ThermostatOutputSnapshot
   }
 
-  override encodeConfig(config: ThermostatConfigDraft): Record<string, unknown> {
+  protected override encodeConfig(config: ThermostatConfigDraft): Record<string, unknown> {
     return ThermostatDevice.encodeConfig(config)
-  }
-
-  buildEditCommands(current: DeviceRecord, draft: ThermostatCreateDraft): DeviceCommandRequest[] {
-    const currentConfig = this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined)
-    const commands: DeviceCommandRequest[] = []
-    const nextConfig = this.normalizeConfig({ ...draft, name: draft.name.trim() }, [
-      {
-        role: 'temperature_sensor',
-        deviceId: draft.temperatureSensorDeviceId,
-      },
-      {
-        role: 'switch',
-        deviceId: draft.switchDeviceId,
-      },
-    ])
-    const dependencyIdsChanged =
-      nextConfig.temperatureSensorDeviceId !== currentConfig.temperatureSensorDeviceId ||
-      nextConfig.switchDeviceId !== currentConfig.switchDeviceId
-    const configDiff = this.buildConfigDiff(this.encodeConfig(nextConfig), this.encodeConfig(currentConfig))
-    if (Object.keys(configDiff).length > 0 || dependencyIdsChanged) {
-      commands.push({
-        command: 'updateConfig',
-        config: configDiff,
-        deps: ThermostatDevice.dependencyLinks(nextConfig),
-      })
-    }
-    return commands
-  }
-
-  protected extractCreateConfig(draft: ThermostatCreateDraft): ThermostatConfigDraft {
-    return { ...draft }
   }
 
   protected override createCreateDeps(config: ThermostatConfigDraft) {

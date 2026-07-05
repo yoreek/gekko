@@ -1,6 +1,6 @@
 import type { DeviceCommandRequest, DeviceRecord } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
-import { BaseDevice } from './base-device.ts'
+import { BaseDevice, defaultBaseDeviceConfig } from './base-device.ts'
 import type { BaseDeviceConfig } from '@/api/contracts'
 
 export type DummyConfigDraft = BaseDeviceConfig
@@ -15,11 +15,7 @@ export class DummyDevice extends BaseDevice<DummyConfigDraft, DummyCreateDraft, 
   readonly typeId = DummyDevice.TYPE_ID
 
   static defaultConfig(): DummyConfigDraft {
-    return {
-      name: 'New Device',
-      enabled: true,
-      deps: [],
-    }
+    return defaultBaseDeviceConfig()
   }
 
   createDefaultConfig(): DummyConfigDraft {

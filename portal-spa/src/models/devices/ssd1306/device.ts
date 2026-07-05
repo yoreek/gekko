@@ -1,6 +1,6 @@
 import type { BaseDeviceConfig, DeviceCommandRequest, DeviceRecord } from '../../../api/contracts.ts'
 import type { DeviceCreateDraftBase } from '../base.ts'
-import { BaseDevice } from '../base-device.ts'
+import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from '../base-device.ts'
 import { ssd1306Display } from '../display/display.ts'
 import type { DisplayBaseConfig, DisplayCapabilities } from '../display/base.ts'
 import { normalizeDisplayRotation } from '../display/orientation.ts'
@@ -31,9 +31,7 @@ export class Ssd1306Device extends BaseDevice<Ssd1306ConfigDraft, Ssd1306CreateD
 
   static defaultConfig(): Ssd1306ConfigDraft {
     return {
-      enabled: true,
-      name: 'New Device',
-      deps: [],
+      ...defaultBaseDeviceConfig(),
       i2cBusDeviceId: 0,
       i2cAddress: 60,
       rotation: 0,
@@ -50,9 +48,7 @@ export class Ssd1306Device extends BaseDevice<Ssd1306ConfigDraft, Ssd1306CreateD
     const layoutRaw = raw.layout
     const layoutObject = typeof layoutRaw === 'object' && layoutRaw !== null && !Array.isArray(layoutRaw) ? (layoutRaw as Record<string, unknown>) : null
     return {
-      name: typeof raw.name === 'string' ? raw.name : defaults.name,
-      enabled: typeof raw.enabled === 'boolean' ? raw.enabled : defaults.enabled,
-      deps: Array.isArray(raw.deps) ? (raw.deps as Ssd1306ConfigDraft['deps']) : defaults.deps,
+      ...normalizeBaseDeviceConfig(raw, defaults),
       i2cBusDeviceId: typeof raw.i2cBusDeviceId === 'number' ? raw.i2cBusDeviceId : defaults.i2cBusDeviceId,
       i2cAddress: typeof raw.i2cAddress === 'number' ? raw.i2cAddress : defaults.i2cAddress,
       rotation: normalizeDisplayRotation(raw.rotation, defaults.rotation) % 2,
@@ -64,7 +60,12 @@ export class Ssd1306Device extends BaseDevice<Ssd1306ConfigDraft, Ssd1306CreateD
 
   static encodeConfig(config: Ssd1306ConfigDraft): Record<string, unknown> {
     return {
-      ...config,
+      ...encodeBaseDeviceConfig(config),
+      i2cBusDeviceId: config.i2cBusDeviceId,
+      i2cAddress: config.i2cAddress,
+      rotation: config.rotation,
+      width: config.width,
+      height: config.height,
       layout: encodeSsd1306Layout(config.layout),
     }
   }
@@ -78,7 +79,7 @@ export class Ssd1306Device extends BaseDevice<Ssd1306ConfigDraft, Ssd1306CreateD
   createEditDraft(current: DeviceRecord): Ssd1306CreateDraft { return { ...this.normalizeConfig(current.config), typeName: this.typeName } }
   normalizeConfig(value: unknown): Ssd1306ConfigDraft { return Ssd1306Device.normalizeConfig(value) }
   normalizeOutput(): Record<string, never> { return {} }
-  override encodeConfig(config: Ssd1306ConfigDraft): Record<string, unknown> { return Ssd1306Device.encodeConfig(config) }
+  protected override encodeConfig(config: Ssd1306ConfigDraft): Record<string, unknown> { return Ssd1306Device.encodeConfig(config) }
   buildEditCommands(current: DeviceRecord, draft: Ssd1306CreateDraft): DeviceCommandRequest[] {
     const currentConfig = this.normalizeConfig(current.config)
     const commands: DeviceCommandRequest[] = []
@@ -100,9 +101,5 @@ export class Ssd1306Device extends BaseDevice<Ssd1306ConfigDraft, Ssd1306CreateD
       commands.push({ command: 'updateConfig', config: configDiff })
     }
     return commands
-  }
-  protected extractCreateConfig(draft: Ssd1306CreateDraft): Ssd1306ConfigDraft {
-    const { typeName: _typeName, ...config } = draft
-    return config
   }
 }

@@ -72,7 +72,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { BaseDeviceRuntime, DeviceCommandRequest, DeviceDependencyLink, DeviceRecord, ThermostatOutputSnapshot } from '@/api/contracts'
+import type { BaseDeviceRuntime, DeviceCommandRequest, DeviceRecord, ThermostatOutputSnapshot } from '@/api/contracts'
 import { ThermostatDevice, type ThermostatMode } from '@/models/devices/thermostat'
 import { kSwitchStateSeries, kTemperatureSeries } from '@/models/devices/history'
 import DeviceWidgetBase from '@/components/devices/common/DeviceWidgetBase.vue'
@@ -139,22 +139,24 @@ const isReady = computed(() => props.device.runtime.effectiveStatus === 'ready')
 
 const stepCelsius = 0.5
 
+const thermostatDevice = new ThermostatDevice()
+
+function emitQuickUpdate(partial: Partial<ReturnType<typeof thermostatDevice.createEditDraft>>): void {
+  for (const command of thermostatDevice.buildQuickUpdateCommands(props.device, partial)) {
+    emit('command', command)
+  }
+}
+
 function adjustTarget(delta: number): void {
-  const deps = props.device.config.deps as DeviceDependencyLink[] | undefined
-  const currentConfig = ThermostatDevice.normalizeConfig(props.device.config, deps)
+  const draft = thermostatDevice.createEditDraft(props.device)
   const nextTarget = Math.min(
-    currentConfig.maxSafeCelsius,
-    Math.max(currentConfig.minSafeCelsius, Math.round((currentConfig.targetCelsius + delta) * 10) / 10),
+    draft.maxSafeCelsius,
+    Math.max(draft.minSafeCelsius, Math.round((draft.targetCelsius + delta) * 10) / 10),
   )
-  if (nextTarget === currentConfig.targetCelsius) {
+  if (nextTarget === draft.targetCelsius) {
     return
   }
-  const nextConfig = { ...currentConfig, targetCelsius: nextTarget }
-  emit('command', {
-    command: 'updateConfig',
-    config: ThermostatDevice.encodeConfig(nextConfig),
-    deps: nextConfig.deps,
-  })
+  emitQuickUpdate({ targetCelsius: nextTarget })
 }
 
 const controlStatusColor = computed(() => ThermostatDevice.controlStatusColor(controlStatus.value))
@@ -165,13 +167,6 @@ function onModeChange(nextMode: unknown): void {
   if (typeof nextMode !== 'string') {
     return
   }
-  const deps = props.device.config.deps as DeviceDependencyLink[] | undefined
-  const currentConfig = ThermostatDevice.normalizeConfig(props.device.config, deps)
-  const nextConfig = { ...currentConfig, mode: nextMode as ThermostatMode }
-  emit('command', {
-    command: 'updateConfig',
-    config: ThermostatDevice.encodeConfig(nextConfig),
-    deps: nextConfig.deps,
-  })
+  emitQuickUpdate({ mode: nextMode as ThermostatMode })
 }
 </script>
