@@ -209,6 +209,32 @@ void test_onewire_api_adapter_parses_update_config_request() {
     TEST_ASSERT_TRUE(parsed.internalPullup != 0U);
 }
 
+void test_onewire_api_adapter_partial_update_preserves_internal_pullup() {
+    StaticJsonDocument<128> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["gpioPin"] = 19;
+
+    OneWireBusDeviceConfigV1 current{};
+    current.enabled = true;
+    std::snprintf(current.name, sizeof(current.name), "%s", "onewire");
+    current.gpioPin = 4;
+    current.internalPullup = 1;
+    const DeviceConfigBlob currentBlob = encodeOneWirePayload(current);
+    DeviceRegistryEntry record = makeRecord(currentBlob);
+    FakeOneWireBusDriver driver;
+    OneWireBusDevice runtime(current, driver);
+    runtime.bindDeviceIdentity(record, currentBlob);
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(OneWireBusDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error), error);
+
+    OneWireBusDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeOneWireBusDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT8(19, parsed.gpioPin);
+    TEST_ASSERT_TRUE(parsed.internalPullup != 0U);
+}
+
 void test_onewire_api_adapter_rejects_missing_update_config() {
     StaticJsonDocument<64> doc;
     OneWireBusDeviceConfigV1 current{};

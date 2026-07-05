@@ -34,7 +34,7 @@ bool OneWireBusDeviceConfigV1::parseJson(const JsonObjectConst& input, const cha
     if (!DeviceBaseConfigV1::parseJson(input, error)) {
         return false;
     }
-    internalPullup = (input["internalPullup"] | false) ? 1U : 0U;
+    internalPullup = (input["internalPullup"] | (internalPullup != 0U)) ? 1U : 0U;
 
     const JsonVariantConst pinVariant = input["gpioPin"];
     if (!pinVariant.isNull()) {

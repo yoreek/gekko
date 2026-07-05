@@ -278,6 +278,28 @@ void test_i2c_bus_scan_and_diagnostics_runtime_snapshot() {
     TEST_ASSERT_EQUAL_UINT8(0x3CU, output["runtime"]["scan"]["devices"][0]["address"].as<uint8_t>());
 }
 
+void test_i2c_bus_api_adapter_partial_update_preserves_internal_pullup_and_pins() {
+    StaticJsonDocument<128> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["frequencyHz"] = 200000;
+
+    FakeI2cBusDriver driver;
+    I2cBusDevice runtime(makeConfig(18U, 19U, true, 100000U), driver);
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        I2cBusDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error), error);
+
+    I2cBusDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeI2cBusDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT32(200000U, parsed.frequencyHz);
+    TEST_ASSERT_TRUE(parsed.internalPullup != 0U);
+    TEST_ASSERT_EQUAL_UINT8(18U, parsed.sdaPin);
+    TEST_ASSERT_EQUAL_UINT8(19U, parsed.sclPin);
+}
+
 void test_i2c_bus_api_adapter_parses_and_serializes_runtime() {
     StaticJsonDocument<256> doc;
     doc["typeName"] = "i2c_bus";

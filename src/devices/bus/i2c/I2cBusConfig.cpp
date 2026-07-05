@@ -62,7 +62,7 @@ bool I2cBusDeviceConfigV1::parseJson(const JsonObjectConst& input, const char*& 
         sclPin = static_cast<uint8_t>(pin);
     }
 
-    internalPullup = (input["internalPullup"] | false) ? 1U : 0U;
+    internalPullup = (input["internalPullup"] | (internalPullup != 0U)) ? 1U : 0U;
 
     const JsonVariantConst frequencyVariant = input["frequencyHz"];
     if (!frequencyVariant.isNull()) {

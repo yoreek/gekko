@@ -39,6 +39,7 @@ void test_i2c_default_registries_include_bus();
 void test_i2c_bus_runtime_lifecycle_and_duplicate_address_detection();
 void test_i2c_bus_runtime_reconfigures_and_advances_generation();
 void test_i2c_bus_api_adapter_parses_and_serializes_runtime();
+void test_i2c_bus_api_adapter_partial_update_preserves_internal_pullup_and_pins();
 void test_onewire_rom_address_format_parse_and_crc();
 void test_onewire_config_codec_and_json_helpers();
 void test_default_device_type_registry_contains_onewire();
@@ -139,6 +140,7 @@ int main(int, char**) {
     RUN_TEST(test_i2c_bus_runtime_lifecycle_and_duplicate_address_detection);
     RUN_TEST(test_i2c_bus_runtime_reconfigures_and_advances_generation);
     RUN_TEST(test_i2c_bus_api_adapter_parses_and_serializes_runtime);
+    RUN_TEST(test_i2c_bus_api_adapter_partial_update_preserves_internal_pullup_and_pins);
     RUN_TEST(test_onewire_rom_address_format_parse_and_crc);
     RUN_TEST(test_onewire_config_codec_and_json_helpers);
     RUN_TEST(test_default_device_type_registry_contains_onewire);
