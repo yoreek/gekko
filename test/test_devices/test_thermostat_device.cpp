@@ -6,6 +6,7 @@
 #include "devices/switch/TriStateSwitchDeviceBase.h"
 #include "devices/thermostat/ThermostatDevice.h"
 #include "devices/thermostat/ThermostatDeviceConfig.h"
+#include "integrations/rest/thermostat/ThermostatDeviceApiAdapter.h"
 
 #include <ArduinoJson.h>
 #include <cstdio>
@@ -285,6 +286,31 @@ void test_thermostat_parser_accepts_spa_milli_celsius_fields() {
     TEST_ASSERT_EQUAL_INT32(0, config.minSafeMilliCelsius);
     TEST_ASSERT_EQUAL_INT32(50000, config.maxSafeMilliCelsius);
     TEST_ASSERT_EQUAL_UINT16(50, config.hysteresisCentiCelsius);
+}
+
+void test_thermostat_api_adapter_partial_update_preserves_mode_and_thresholds() {
+    ThermostatDevice thermostat(makeThermostatConfig(ThermostatMode::Heat, 25000));
+
+    StaticJsonDocument<256> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["targetCelsius"] = 24.0;
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        ThermostatDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), thermostat, request, error), error);
+
+    ThermostatDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(decodeThermostatDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(),
+                                                   parsed));
+    TEST_ASSERT_EQUAL_INT32(24000, parsed.targetMilliCelsius);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ThermostatMode::Heat), parsed.mode);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ThermostatAlgorithm::Hysteresis), parsed.algorithm);
+    TEST_ASSERT_EQUAL_UINT16(50, parsed.hysteresisCentiCelsius);
+    TEST_ASSERT_EQUAL_UINT32(100, parsed.checkIntervalMs);
+    TEST_ASSERT_EQUAL_UINT32(200, parsed.sensorTimeoutMs);
+    TEST_ASSERT_EQUAL_UINT32(300, parsed.retryAfterErrorMs);
+    TEST_ASSERT_EQUAL_UINT32(150, parsed.minSwitchIntervalMs);
 }
 
 void test_device_type_registry_contains_thermostat() {

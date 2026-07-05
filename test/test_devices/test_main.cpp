@@ -81,6 +81,7 @@ void test_gpio_switch_update_hooks_release_old_pin_and_restart_with_startup_stat
 void test_registry_custom_switch_command_marks_retained_state_without_config_revision_change();
 void test_thermostat_config_codec_and_validation();
 void test_thermostat_parser_accepts_spa_milli_celsius_fields();
+void test_thermostat_api_adapter_partial_update_preserves_mode_and_thresholds();
 void test_device_type_registry_contains_thermostat();
 void test_runtime_capabilities_are_exposed();
 void test_metric_value_resolver_resolves_device_temperature_and_missing_sources();
@@ -178,6 +179,7 @@ int main(int, char**) {
     RUN_TEST(test_registry_custom_switch_command_marks_retained_state_without_config_revision_change);
     RUN_TEST(test_thermostat_config_codec_and_validation);
     RUN_TEST(test_thermostat_parser_accepts_spa_milli_celsius_fields);
+    RUN_TEST(test_thermostat_api_adapter_partial_update_preserves_mode_and_thresholds);
     RUN_TEST(test_device_type_registry_contains_thermostat);
     RUN_TEST(test_runtime_capabilities_are_exposed);
     RUN_TEST(test_metric_value_resolver_resolves_device_temperature_and_missing_sources);

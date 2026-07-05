@@ -14,7 +14,6 @@ bool thermostatAlgorithmFromByte(uint8_t value, ThermostatAlgorithm& algorithm);
 namespace {
 bool parseMode(const JsonVariantConst& variant, ThermostatMode& mode, const char*& error) {
     if (variant.isNull()) {
-        mode = ThermostatMode::Off;
         return true;
     }
     if (!variant.is<const char*>()) {
@@ -30,7 +29,6 @@ bool parseMode(const JsonVariantConst& variant, ThermostatMode& mode, const char
 
 bool parseAlgorithm(const JsonVariantConst& variant, ThermostatAlgorithm& algorithm, const char*& error) {
     if (variant.isNull()) {
-        algorithm = ThermostatAlgorithm::Hysteresis;
         return true;
     }
     if (!variant.is<const char*>()) {
@@ -221,6 +219,8 @@ bool ThermostatDeviceConfigV1::parseJson(const JsonObjectConst& input, const cha
 
     ThermostatMode mode{};
     ThermostatAlgorithm algorithm{};
+    (void)thermostatModeFromByte(this->mode, mode);
+    (void)thermostatAlgorithmFromByte(this->algorithm, algorithm);
     if (!parseMode(input["mode"], mode, error)) {
         return false;
     }
