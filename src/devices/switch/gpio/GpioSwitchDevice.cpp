@@ -65,12 +65,14 @@ bool decodeGpioSwitchDeviceConfig(const uint8_t* blob, size_t size, GpioSwitchDe
 }
 
 bool parseGpioSwitchDeviceConfigJson(const JsonObjectConst& input, GpioSwitchDevicePersistedConfigV1& config, const char*& error) {
-    config.switchConfig.restorePreviousState = (input["restorePreviousState"] | false) ? true : false;
-    config.switchConfig.inverted = (input["inverted"] | false) ? true : false;
+    config.switchConfig.restorePreviousState =
+        (input["restorePreviousState"] | config.switchConfig.restorePreviousState) ? true : false;
+    config.switchConfig.inverted = (input["inverted"] | config.switchConfig.inverted) ? true : false;
 
-    OutputState startup{};
-    OutputState safe{};
-    if (!parseOutputState(input["startupState"] | "off", startup, error) || !parseOutputState(input["safeState"] | "off", safe, error)) {
+    OutputState startup = config.switchConfig.startupState;
+    OutputState safe = config.switchConfig.safeState;
+    if (!parseOutputState(input["startupState"] | outputStateName(config.switchConfig.startupState), startup, error) ||
+        !parseOutputState(input["safeState"] | outputStateName(config.switchConfig.safeState), safe, error)) {
         return false;
     }
     config.switchConfig.startupState = startup;

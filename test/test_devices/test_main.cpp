@@ -22,6 +22,7 @@ void test_gpio_switch_api_adapter_rejects_invalid_pin();
 void test_gpio_switch_api_adapter_serializes_record();
 void test_gpio_switch_api_adapter_serializes_runtime_output();
 void test_gpio_switch_api_adapter_parses_update_config_request();
+void test_gpio_switch_api_adapter_partial_update_preserves_other_fields();
 void test_gpio_switch_api_adapter_rejects_missing_update_config();
 void test_gpio_switch_config_round_trip();
 void test_default_device_type_registry_contains_gpio_switch();
@@ -120,6 +121,7 @@ int main(int, char**) {
     RUN_TEST(test_gpio_switch_api_adapter_serializes_record);
     RUN_TEST(test_gpio_switch_api_adapter_serializes_runtime_output);
     RUN_TEST(test_gpio_switch_api_adapter_parses_update_config_request);
+    RUN_TEST(test_gpio_switch_api_adapter_partial_update_preserves_other_fields);
     RUN_TEST(test_gpio_switch_api_adapter_rejects_missing_update_config);
     RUN_TEST(test_gpio_switch_config_round_trip);
     RUN_TEST(test_default_device_type_registry_contains_gpio_switch);

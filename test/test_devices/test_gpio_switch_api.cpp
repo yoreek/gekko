@@ -201,6 +201,28 @@ void test_gpio_switch_api_adapter_parses_update_config_request() {
     TEST_ASSERT_EQUAL_UINT8(19, parsed.gpioConfig.gpioPin);
 }
 
+void test_gpio_switch_api_adapter_partial_update_preserves_other_fields() {
+    StaticJsonDocument<128> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["gpioPin"] = 19;
+
+    FakeGpioOutputDriver driver;
+    auto runtime = makeGpioSwitchRuntime(driver);
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        GpioSwitchDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), *runtime, request, error), error);
+
+    GpioSwitchDevicePersistedConfigV1 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeGpioSwitchDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT8(19, parsed.gpioConfig.gpioPin);
+    TEST_ASSERT_TRUE(parsed.switchConfig.restorePreviousState);
+    TEST_ASSERT_TRUE(parsed.switchConfig.inverted);
+    TEST_ASSERT_EQUAL(static_cast<int>(OutputState::On), static_cast<int>(parsed.switchConfig.startupState));
+    TEST_ASSERT_EQUAL(static_cast<int>(OutputState::Disabled), static_cast<int>(parsed.switchConfig.safeState));
+}
+
 void test_gpio_switch_api_adapter_rejects_missing_update_config() {
     StaticJsonDocument<64> doc;
     FakeGpioOutputDriver driver;
