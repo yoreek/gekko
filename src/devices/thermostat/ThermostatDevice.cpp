@@ -79,6 +79,11 @@ void ThermostatDevice::setDependencyRuntime(DeviceDependencyRole role, IDeviceRu
     refreshCapabilityCache();
 }
 
+void ThermostatDevice::setDependencyRuntimeAt(uint8_t index, IDeviceRuntime* dependencyRuntime) {
+    DeviceRuntimeBase::setDependencyRuntimeAt(index, dependencyRuntime);
+    refreshCapabilityCache();
+}
+
 void ThermostatDevice::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
     DeviceRuntimeBase::bindDeviceIdentity(record, config);
     refreshCapabilityCache();

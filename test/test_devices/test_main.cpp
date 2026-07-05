@@ -100,6 +100,7 @@ void test_display_text_evaluator_handles_missing_and_binding_only_metrics();
 void test_display_text_evaluator_reports_invalid_placeholders();
 void test_registry_captures_retained_state_after_internal_switch_output_change();
 void test_thermostat_heats_holds_and_cools();
+void test_thermostat_recovers_when_dependencies_rewired_by_index();
 void test_thermostat_waits_for_sensor_timeout_and_resets_on_valid_reading();
 
 int main(int, char**) {
@@ -204,6 +205,7 @@ int main(int, char**) {
     RUN_TEST(test_display_text_evaluator_reports_invalid_placeholders);
     RUN_TEST(test_registry_captures_retained_state_after_internal_switch_output_change);
     RUN_TEST(test_thermostat_heats_holds_and_cools);
+    RUN_TEST(test_thermostat_recovers_when_dependencies_rewired_by_index);
     RUN_TEST(test_thermostat_waits_for_sensor_timeout_and_resets_on_valid_reading);
     return UNITY_END();
 }

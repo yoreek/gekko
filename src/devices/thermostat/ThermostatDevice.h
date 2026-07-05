@@ -22,6 +22,7 @@ public:
     const char* controlStatus() const;
     uint32_t lastCheckAtMs() const;
     void setDependencyRuntime(DeviceDependencyRole role, IDeviceRuntime* dependencyRuntime) override;
+    void setDependencyRuntimeAt(uint8_t index, IDeviceRuntime* dependencyRuntime) override;
     void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     bool replaceBaseConfig(DeviceConfigBlob& configBlob, const DeviceBaseConfigV1& baseConfig) const override;

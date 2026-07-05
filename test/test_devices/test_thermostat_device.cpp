@@ -420,6 +420,40 @@ void test_thermostat_heats_holds_and_cools() {
     TEST_ASSERT_EQUAL(static_cast<int>(OutputState::Off), static_cast<int>(switchDevice.outputState()));
 }
 
+void test_thermostat_recovers_when_dependencies_rewired_by_index() {
+    // Mirrors DeviceRegistry::updateConfigAndDeps(): once a thermostat is already Ready and an
+    // unrelated config field changes (e.g. mode) with the *same* deps resent (the SPA always
+    // attaches the full deps snapshot to every save), bindDeviceIdentity() unconditionally nulls
+    // the dependency runtime array and syncRuntimeDependencyLinks() rewires it through the
+    // index-based setDependencyRuntimeAt() -- never through the role-based setDependencyRuntime()
+    // used to bring the device up initially below. ThermostatDevice::planConfigUpdate() never
+    // requests a state machine reset for a plain field change, so the SM stays in Ready and never
+    // passes through Starting/Reconfiguring's own self-healing refreshCapabilityCache() call.
+    // If the index-based rewire doesn't refresh the cached temperatureSensor_/switchOutput_
+    // pointers itself, Ready's own per-tick dependency check runs on stale null pointers and
+    // falsely declares the dependency blocked -- permanently, since DependencyBlocked's recovery
+    // check reads the same stale cache.
+    ThermostatDevice thermostat(makeThermostatConfig(ThermostatMode::Heat, 25000));
+    FakeTemperatureSensor sensor;
+    FakeTriStateSwitch switchDevice(makeSwitchConfig());
+
+    bindThermostatIdentity(thermostat, 50U, 51U, 52U);
+    thermostat.setDependencyRuntime(DeviceDependencyRole::TemperatureSensor, &sensor);
+    thermostat.setDependencyRuntime(DeviceDependencyRole::Switch, &switchDevice);
+    startSwitch(switchDevice);
+    startThermostat(thermostat, 100);
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(thermostat.status()));
+
+    // Simulate DeviceRegistry::updateConfigAndDeps() resending the same, unchanged deps.
+    bindThermostatIdentity(thermostat, 50U, 51U, 52U);
+    thermostat.setDependencyRuntimeAt(0, &sensor);
+    thermostat.setDependencyRuntimeAt(1, &switchDevice);
+
+    thermostat.tick100ms(101);
+    thermostat.tick100ms(102);
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(thermostat.status()));
+}
+
 void test_thermostat_waits_for_sensor_timeout_and_resets_on_valid_reading() {
     ThermostatDevice thermostat(makeThermostatConfig(ThermostatMode::Cool, 22000));
     FakeTemperatureSensor sensor;
