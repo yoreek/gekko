@@ -226,7 +226,8 @@ void test_onewire_api_adapter_partial_update_preserves_internal_pullup() {
     runtime.bindDeviceIdentity(record, currentBlob);
     DeviceConfigUpdateRequest request{};
     const char* error = nullptr;
-    TEST_ASSERT_TRUE_MESSAGE(OneWireBusDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error), error);
+    TEST_ASSERT_TRUE_MESSAGE(
+        OneWireBusDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error), error);
 
     OneWireBusDeviceConfigV1 parsed{};
     TEST_ASSERT_TRUE(

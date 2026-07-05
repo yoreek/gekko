@@ -65,8 +65,7 @@ bool decodeGpioSwitchDeviceConfig(const uint8_t* blob, size_t size, GpioSwitchDe
 }
 
 bool parseGpioSwitchDeviceConfigJson(const JsonObjectConst& input, GpioSwitchDevicePersistedConfigV1& config, const char*& error) {
-    config.switchConfig.restorePreviousState =
-        (input["restorePreviousState"] | config.switchConfig.restorePreviousState) ? true : false;
+    config.switchConfig.restorePreviousState = (input["restorePreviousState"] | config.switchConfig.restorePreviousState) ? true : false;
     config.switchConfig.inverted = (input["inverted"] | config.switchConfig.inverted) ? true : false;
 
     OutputState startup = config.switchConfig.startupState;
