@@ -1,5 +1,6 @@
 #include "config/MemoryConfigStorage.h"
 #include "devices/bus/onewire/OneWireBusDevice.h"
+#include "devices/core/DeviceBaseConfig.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/registry/DeviceRegistry.h"
 
@@ -167,7 +168,16 @@ void test_onewire_registry_create_scan_reconfigure_disable_and_delete() {
     TEST_ASSERT_TRUE(runtime->scan().ready);
     TEST_ASSERT_EQUAL_UINT8(1, runtime->scan().deviceCount);
 
-    DeviceMutationResult disabled = registry.setEnabled(created.deviceId, false, 30, DevicePersistencePolicy::Delayed);
+    IDeviceRuntime* runtimeToDisable = registry.runtime(created.deviceId);
+    DeviceConfigBlob currentBlob{};
+    TEST_ASSERT_TRUE(runtimeToDisable->serializeConfigBlob(currentBlob));
+    DeviceBaseConfigV1 disabledBase{};
+    disabledBase.enabled = 0U;
+    TEST_ASSERT_TRUE(copyBoundedText(disabledBase.name, runtimeToDisable->name()));
+    TEST_ASSERT_TRUE(runtimeToDisable->replaceBaseConfig(currentBlob, disabledBase));
+    DeviceMutationResult disabled =
+        registry.updateConfigAndDeps(created.deviceId, currentBlob, OneWireBusDevice::descriptor().currentConfigVersion,
+                                     runtimeToDisable->name(), false, false, {}, 0, 30, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE_MESSAGE(disabled.ok(), disabled.validation.message);
     registry.tick100ms(31);
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Disabled), static_cast<int>(registry.effectiveStatus(created.deviceId)));

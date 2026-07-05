@@ -10,6 +10,7 @@ void test_registry_begin_loads_runtime_devices();
 void test_registry_create_rename_and_flush();
 void test_registry_disable_enable_and_delete();
 void test_registry_rejects_duplicate_name_and_unsupported_type();
+void test_registry_update_config_rejects_duplicate_name();
 void test_registry_delayed_flushes_on_tick();
 void test_registry_revisions_and_runtime_status_do_not_mix_with_config();
 void test_registry_duplicate_generated_id_retries();
@@ -81,6 +82,7 @@ int main(int, char**) {
     RUN_TEST(test_registry_create_rename_and_flush);
     RUN_TEST(test_registry_disable_enable_and_delete);
     RUN_TEST(test_registry_rejects_duplicate_name_and_unsupported_type);
+    RUN_TEST(test_registry_update_config_rejects_duplicate_name);
     RUN_TEST(test_registry_delayed_flushes_on_tick);
     RUN_TEST(test_registry_revisions_and_runtime_status_do_not_mix_with_config);
     RUN_TEST(test_registry_duplicate_generated_id_retries);

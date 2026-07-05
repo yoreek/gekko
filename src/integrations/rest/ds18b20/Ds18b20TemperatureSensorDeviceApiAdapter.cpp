@@ -119,11 +119,6 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const Js
     if (!config.parseJson(configInput, error)) {
         return false;
     }
-    config.enabled = runtime.enabled() ? 1U : 0U;
-    if (!copyBoundedText(config.name, runtime.name())) {
-        error = "device base config is invalid";
-        return false;
-    }
     if (!config.validate().ok()) {
         error = "ds18b20 config is invalid";
         return false;
@@ -131,6 +126,11 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateConfigRequest(const Js
 
     request = {};
     request.configVersion = kDs18b20TemperatureSensorConfigVersion;
+    request.enabled = config.enabled != 0U;
+    if (!copyBoundedText(request.name, config.name)) {
+        error = "device base config is invalid";
+        return false;
+    }
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = ds18b20TemperatureSensorConfigSize(config);
     if (!encodeDs18b20TemperatureSensorConfig(config, buffer, size) || !request.configBlob.assign(buffer, size)) {

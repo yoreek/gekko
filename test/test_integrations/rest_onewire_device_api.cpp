@@ -203,10 +203,12 @@ void test_onewire_api_adapter_parses_update_config_request() {
     OneWireBusDeviceConfigV1 parsed{};
     TEST_ASSERT_TRUE(
         decodeOneWireBusDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
-    TEST_ASSERT_TRUE(parsed.enabled != 0U);
+    TEST_ASSERT_TRUE(parsed.enabled == 0U);
     TEST_ASSERT_EQUAL_STRING("onewire", parsed.name);
     TEST_ASSERT_EQUAL_UINT8(19, parsed.gpioPin);
     TEST_ASSERT_TRUE(parsed.internalPullup != 0U);
+    TEST_ASSERT_FALSE(request.enabled);
+    TEST_ASSERT_EQUAL_STRING("onewire", request.name);
 }
 
 void test_onewire_api_adapter_partial_update_preserves_internal_pullup() {

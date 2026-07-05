@@ -60,12 +60,10 @@ bool GpioSwitchDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst&
     }
 
     GpioSwitchDevicePersistedConfigV1 config = static_cast<const GpioSwitchDevice&>(runtime).config();
-    if (!parseGpioSwitchDeviceConfigJson(configInput, config, error)) {
+    if (!config.switchConfig.DeviceBaseConfigV1::parseJson(configInput, error)) {
         return false;
     }
-    config.switchConfig.enabled = runtime.enabled() ? 1U : 0U;
-    if (!copyBoundedText(config.switchConfig.name, runtime.name())) {
-        error = "device base config is invalid";
+    if (!parseGpioSwitchDeviceConfigJson(configInput, config, error)) {
         return false;
     }
     if (!config.switchConfig.validate().ok()) {
@@ -75,6 +73,11 @@ bool GpioSwitchDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst&
 
     request = {};
     request.configVersion = GpioSwitchDevice::descriptor().currentConfigVersion;
+    request.enabled = config.switchConfig.enabled != 0U;
+    if (!copyBoundedText(request.name, config.switchConfig.name)) {
+        error = "device base config is invalid";
+        return false;
+    }
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = gpioSwitchDeviceConfigSize(config);
     if (!encodeGpioSwitchDeviceConfig(config, buffer, size) || !request.configBlob.assign(buffer, size)) {

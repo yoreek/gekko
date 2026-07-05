@@ -223,17 +223,17 @@ bool St7735DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& inp
     if (!config.parseJson(configInput, error)) {
         return false;
     }
-    config.enabled = runtime.enabled() ? 1U : 0U;
-    if (!copyBoundedText(config.name, runtime.name())) {
-        error = "device base config is invalid";
-        return false;
-    }
     if (!config.validate().ok()) {
         error = "st7735 config is invalid";
         return false;
     }
     request = {};
     request.configVersion = St7735Device::descriptor().currentConfigVersion;
+    request.enabled = config.enabled != 0U;
+    if (!copyBoundedText(request.name, config.name)) {
+        error = "device base config is invalid";
+        return false;
+    }
     request.deps[0] = DeviceDependencyLink{DeviceDependencyRole::SpiBus, runtime.dependencyDeviceId(DeviceDependencyRole::SpiBus)};
     request.depCount = 1U;
     uint8_t buffer[kMaxDeviceConfigBytes]{};

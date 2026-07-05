@@ -97,26 +97,12 @@ export class I2cBusDevice extends BaseDevice<I2cBusConfigDraft, I2cBusCreateDraf
   buildEditCommands(current: DeviceRecord, draft: I2cBusCreateDraft): DeviceCommandRequest[] {
     const currentConfig = this.normalizeConfig(current.config)
     const commands: DeviceCommandRequest[] = []
-    if (draft.name.trim() !== currentConfig.name) {
-      commands.push({ command: 'rename', name: draft.name.trim() })
-    }
-    if (draft.enabled !== currentConfig.enabled) {
-      commands.push({ command: draft.enabled ? 'enable' : 'disable' })
-    }
-    const nextConfig = this.normalizeConfig(draft)
-    if (
-      nextConfig.sdaPin !== currentConfig.sdaPin ||
-      nextConfig.sclPin !== currentConfig.sclPin ||
-      nextConfig.internalPullup !== currentConfig.internalPullup ||
-      nextConfig.frequencyHz !== currentConfig.frequencyHz
-    ) {
-      const encodedConfig = {
-        ...nextConfig,
-        enabled: draft.enabled,
-      }
+    const nextConfig = this.normalizeConfig({ ...draft, name: draft.name.trim() })
+    const configDiff = this.buildConfigDiff(this.encodeConfig(nextConfig), this.encodeConfig(currentConfig))
+    if (Object.keys(configDiff).length > 0) {
       commands.push({
         command: 'updateConfig',
-        config: this.encodeConfig(encodedConfig),
+        config: configDiff,
       })
     }
     return commands

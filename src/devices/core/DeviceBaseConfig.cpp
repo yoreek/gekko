@@ -75,18 +75,20 @@ DeviceValidationResult DeviceBaseConfigV1::validate() const {
 }
 
 bool DeviceBaseConfigV1::parseJson(const JsonObjectConst& input, const char*& error) {
-    enabled = (input["enabled"] | true) ? 1U : 0U;
-    const char* name = input["name"] | "";
-    const size_t nameLength = boundedNameLength(name, kMaxDeviceBaseNameLength + 1U);
+    enabled = (input["enabled"] | (enabled != 0U)) ? 1U : 0U;
+    char previousName[kMaxDeviceBaseNameLength + 1]{};
+    std::memcpy(previousName, name, sizeof(previousName));
+    const char* newName = input["name"] | static_cast<const char*>(previousName);
+    const size_t nameLength = boundedNameLength(newName, kMaxDeviceBaseNameLength + 1U);
     if (nameLength > kMaxDeviceBaseNameLength) {
         error = "device name exceeds supported length";
         return false;
     }
-    std::memset(this->name, 0, sizeof(this->name));
+    std::memset(name, 0, sizeof(name));
     if (nameLength != 0U) {
-        std::memcpy(this->name, name, nameLength);
+        std::memcpy(name, newName, nameLength);
     }
-    this->name[nameLength] = '\0';
+    name[nameLength] = '\0';
     return true;
 }
 

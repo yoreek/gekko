@@ -8,7 +8,6 @@ import {
   defaultSsd1306Layout,
   encodeSsd1306Layout,
   normalizeSsd1306Layout,
-  ssd1306LayoutChanged,
   type Ssd1306LayoutDraft,
 } from './layout.ts'
 
@@ -83,9 +82,7 @@ export class Ssd1306Device extends BaseDevice<Ssd1306ConfigDraft, Ssd1306CreateD
   buildEditCommands(current: DeviceRecord, draft: Ssd1306CreateDraft): DeviceCommandRequest[] {
     const currentConfig = this.normalizeConfig(current.config)
     const commands: DeviceCommandRequest[] = []
-    if (draft.name.trim() !== currentConfig.name) commands.push({ command: 'rename', name: draft.name.trim() })
-    if (draft.enabled !== currentConfig.enabled) commands.push({ command: draft.enabled ? 'enable' : 'disable' })
-    const nextConfig = this.normalizeConfig(draft)
+    const nextConfig = this.normalizeConfig({ ...draft, name: draft.name.trim() })
     if (nextConfig.i2cBusDeviceId !== currentConfig.i2cBusDeviceId) {
       commands.push({
         command: 'setDeps',
@@ -97,15 +94,10 @@ export class Ssd1306Device extends BaseDevice<Ssd1306ConfigDraft, Ssd1306CreateD
         ],
       })
     }
-    if (
-      nextConfig.i2cBusDeviceId !== currentConfig.i2cBusDeviceId ||
-      nextConfig.i2cAddress !== currentConfig.i2cAddress ||
-      nextConfig.rotation !== currentConfig.rotation ||
-      nextConfig.width !== currentConfig.width ||
-      nextConfig.height !== currentConfig.height ||
-      ssd1306LayoutChanged(nextConfig.layout, currentConfig.layout)
-    ) {
-      commands.push({ command: 'updateConfig', config: this.encodeConfig(nextConfig) })
+    const configDiff = this.buildConfigDiff(this.encodeConfig(nextConfig), this.encodeConfig(currentConfig))
+    delete configDiff.i2cBusDeviceId
+    if (Object.keys(configDiff).length > 0) {
+      commands.push({ command: 'updateConfig', config: configDiff })
     }
     return commands
   }

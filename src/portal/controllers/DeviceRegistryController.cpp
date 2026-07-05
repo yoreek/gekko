@@ -438,42 +438,8 @@ void DeviceRegistryController::cmd() {
     }
 
     DeviceMutationResult mutationResult{};
-    if (std::strcmp(commandName, "enable") == 0) {
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Enable, deviceId_, ""}, 0);
-        if (!mutationResult.ok()) {
-            renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
-            return;
-        }
-    } else if (std::strcmp(commandName, "disable") == 0) {
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Disable, deviceId_, ""}, 0);
-        if (!mutationResult.ok()) {
-            renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
-            return;
-        }
-    } else if (std::strcmp(commandName, "delete") == 0) {
+    if (std::strcmp(commandName, "delete") == 0) {
         mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Delete, deviceId_, ""}, 0);
-        if (!mutationResult.ok()) {
-            renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
-            return;
-        }
-    } else if (std::strcmp(commandName, "rename") == 0) {
-        const char* name = input["name"] | "";
-        if (*name == '\0') {
-            renderError(400, "BAD_ARGS", "name is required");
-            return;
-        }
-        mutationResult = registry_.rename(deviceId_, name, 0);
-        if (!mutationResult.ok()) {
-            renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
-            return;
-        }
-    } else if (std::strcmp(commandName, "setStatus") == 0) {
-        const char* status = input["status"] | "";
-        if (*status == '\0') {
-            renderError(400, "BAD_ARGS", "status is required");
-            return;
-        }
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetStatus, deviceId_, status}, 0);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -577,8 +543,9 @@ void DeviceRegistryController::cmd() {
             renderError(400, errorCodeForDeviceError(updateValidation.error), updateValidation.message);
             return;
         }
-        mutationResult = registry_.updateConfigAndDeps(deviceId_, updateRequest.configBlob, updateRequest.configVersion,
-                                                       updateRequest.depsProvided, updateRequest.deps, updateRequest.depCount, 0);
+        mutationResult =
+            registry_.updateConfigAndDeps(deviceId_, updateRequest.configBlob, updateRequest.configVersion, updateRequest.name,
+                                          updateRequest.enabled, updateRequest.depsProvided, updateRequest.deps, updateRequest.depCount, 0);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;

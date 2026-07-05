@@ -11,8 +11,7 @@ this contract.
 - Device creation uses `typeName`, not numeric `typeId`.
 - Numeric device type ids are firmware/catalog internals and are not required in
   public REST payloads.
-- Device commands use camelCase command names: `updateConfig`, `setStatus`, and
-  `setOutput`.
+- Device commands use camelCase command names: `updateConfig` and `setOutput`.
 - Persisted settings live in `config`; live state, statuses, scans, and outputs
   live in `runtime`.
 - `registryRevision` belongs to response envelopes, not to individual device
@@ -269,9 +268,7 @@ Executes a structured command against a device.
 ```ts
 interface DeviceCommandRequest {
   deviceId?: number
-  command: 'rename' | 'enable' | 'disable' | 'delete' | 'updateConfig' | 'setStatus' | 'scan' | 'setOutput'
-  name?: string
-  status?: string
+  command: 'delete' | 'updateConfig' | 'scan' | 'setOutput'
   state?: DeviceOutputState
   config?: Record<string, unknown>
   deps?: DeviceDependencyLink[]
@@ -280,12 +277,20 @@ interface DeviceCommandRequest {
 
 Command rules:
 
-- `rename` requires `name`.
-- `enable`, `disable`, `delete`, and `scan` require no extra field.
-- `setStatus` requires `status`.
+- `delete` and `scan` require no extra field.
 - `setOutput` requires `state`.
-- `updateConfig` requires `config` and may include `deps` for atomic config and
-  dependency updates.
+- `updateConfig` requires `config`. `config` may be a partial object containing
+  only the keys that changed — the device applies a partial merge against its
+  current persisted config, so any field omitted from `config` keeps its
+  current value (omitted fields are never reset to compiled defaults). This
+  includes `name` and `enabled`: there is no separate rename/enable/disable
+  command — renaming a device or toggling it on/off is just another
+  `updateConfig` field change. Renaming rejects with `INVALID_CONFIG` if
+  another device already has that name; flipping `enabled` drives the
+  device's lifecycle (start/stop) the same way a dedicated command used to.
+  `deps`, when included, is not merged: it must be the full current
+  dependency snapshot for the device (all roles), matching existing
+  behavior.
 - `deviceId`, when provided, must match the `:id` path parameter.
 - Public clients must not send packed `payload` strings or binary config blobs.
 
@@ -310,6 +315,36 @@ Examples:
     "reportAlways": false
   },
   "deps": [{ "role": "onewire_bus", "deviceId": 670845751 }]
+}
+```
+
+Partial update — only `reportDeltaCelsius` changed; all other fields
+(`address`, `resolution`, `unit`, `pollMs`, `reportAlways`, `name`, `enabled`)
+are left untouched server-side:
+
+```json
+{
+  "command": "updateConfig",
+  "config": { "reportDeltaCelsius": 0.5 }
+}
+```
+
+Rename only (rejects with `INVALID_CONFIG` if another device already has this name):
+
+```json
+{
+  "command": "updateConfig",
+  "config": { "name": "Water Temperature (kitchen)" }
+}
+```
+
+Disable/enable only (drives the device's start/stop lifecycle the same way a
+dedicated command used to):
+
+```json
+{
+  "command": "updateConfig",
+  "config": { "enabled": false }
 }
 ```
 

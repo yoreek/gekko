@@ -12,6 +12,8 @@ namespace ewfm {
 struct DeviceConfigUpdateRequest {
     BoundedBlob<kMaxDeviceConfigBytes> configBlob{};
     uint32_t configVersion{0};
+    char name[kMaxDeviceBaseNameLength + 1]{};
+    bool enabled{true};
     bool depsProvided{false};
     std::array<DeviceDependencyLink, kMaxDeviceDependencies> deps{};
     uint8_t depCount{0};

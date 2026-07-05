@@ -60,17 +60,17 @@ bool SpiBusDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& inp
     if (!config.parseJson(configInput, error)) {
         return false;
     }
-    config.enabled = runtime.enabled() ? 1U : 0U;
-    if (!copyBoundedText(config.name, runtime.name())) {
-        error = "device base config is invalid";
-        return false;
-    }
     if (!config.validate().ok()) {
         error = "spi bus config is invalid";
         return false;
     }
     request = {};
     request.configVersion = SpiBusDevice::descriptor().currentConfigVersion;
+    request.enabled = config.enabled != 0U;
+    if (!copyBoundedText(request.name, config.name)) {
+        error = "device base config is invalid";
+        return false;
+    }
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = spiBusDeviceConfigSize(config);
     if (!encodeSpiBusDeviceConfig(config, buffer, size) || !request.configBlob.assign(buffer, size)) {

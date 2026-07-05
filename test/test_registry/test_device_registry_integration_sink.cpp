@@ -1,4 +1,5 @@
 #include "config/MemoryConfigStorage.h"
+#include "devices/core/DeviceBaseConfig.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/dummy/DummyDevice.h"
 #include "devices/registry/DeviceRegistry.h"
@@ -46,6 +47,42 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeDummyPayload(const DummyDeviceConfigV1&
     TEST_ASSERT_TRUE(encodeDummyDeviceConfig(config, buffer, dummyDeviceConfigSize(config)));
     TEST_ASSERT_TRUE(payload.assign(buffer, dummyDeviceConfigSize(config)));
     return payload;
+}
+
+// rename()/setEnabled() were consolidated into updateConfigAndDeps(); these helpers rebuild the
+// "just change name/enabled, keep everything else" call shape the old dedicated methods provided.
+DeviceMutationResult renameDevice(DeviceRegistry& registry, DeviceId deviceId, const std::string& name, uint32_t now,
+                                  DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed) {
+    IDeviceRuntime* rt = registry.runtime(deviceId);
+    if (rt == nullptr) {
+        DeviceMutationResult result{};
+        result.validation = {DeviceError::MissingRecord, "device not found"};
+        return result;
+    }
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(rt->serializeConfigBlob(blob));
+    DeviceBaseConfigV1 base{};
+    base.enabled = rt->enabled() ? 1U : 0U;
+    TEST_ASSERT_TRUE(copyBoundedText(base.name, name));
+    TEST_ASSERT_TRUE(rt->replaceBaseConfig(blob, base));
+    return registry.updateConfigAndDeps(deviceId, blob, 0, name, rt->enabled(), false, {}, 0, now, policy);
+}
+
+DeviceMutationResult setDeviceEnabled(DeviceRegistry& registry, DeviceId deviceId, bool enabled, uint32_t now,
+                                      DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed) {
+    IDeviceRuntime* rt = registry.runtime(deviceId);
+    if (rt == nullptr) {
+        DeviceMutationResult result{};
+        result.validation = {DeviceError::MissingRecord, "device not found"};
+        return result;
+    }
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(rt->serializeConfigBlob(blob));
+    DeviceBaseConfigV1 base{};
+    base.enabled = enabled ? 1U : 0U;
+    TEST_ASSERT_TRUE(copyBoundedText(base.name, rt->name()));
+    TEST_ASSERT_TRUE(rt->replaceBaseConfig(blob, base));
+    return registry.updateConfigAndDeps(deviceId, blob, 0, rt->name(), enabled, false, {}, 0, now, policy);
 }
 
 DeviceCreateRequest makeDummyCreateRequest(const std::string& name) {
@@ -102,8 +139,7 @@ void test_integration_sink_observes_order_revisions_and_pending_flags() {
     TEST_ASSERT_TRUE(created.ok());
     dispatcher.tickFastLoop(11);
 
-    DeviceMutationResult renamed = registry.command(
-        DeviceCommand{DeviceCommandType::Rename, created.deviceId, "sink-device-v2", DevicePersistencePolicy::Delayed}, 20);
+    DeviceMutationResult renamed = renameDevice(registry, created.deviceId, "sink-device-v2", 20, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE(renamed.ok());
     TEST_ASSERT_TRUE(renamed.pendingPersistence);
     dispatcher.tickFastLoop(21);
@@ -112,7 +148,7 @@ void test_integration_sink_observes_order_revisions_and_pending_flags() {
     dispatcher.tickFastLoop(23);
 
     DeviceMutationResult rejected =
-        registry.command(DeviceCommand{DeviceCommandType::SetStatus, 9999, "fault", DevicePersistencePolicy::Immediate}, 24);
+        registry.command(DeviceCommand{DeviceCommandType::Custom, 9999, "fault", DevicePersistencePolicy::Immediate}, 24);
     TEST_ASSERT_FALSE(rejected.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::MissingRecord), static_cast<int>(rejected.validation.error));
     dispatcher.tickFastLoop(25);
@@ -134,7 +170,9 @@ void test_integration_sink_observes_order_revisions_and_pending_flags() {
     const DeviceEvent* updatedEvent = findLastEvent(sink.events, DeviceEventKind::DeviceUpdated);
     TEST_ASSERT_NOT_NULL(updatedEvent);
     TEST_ASSERT_EQUAL_UINT32(2, updatedEvent->registryRevision);
-    TEST_ASSERT_EQUAL_UINT32(1, updatedEvent->configRevision);
+    // Rename now flows through updateConfigAndDeps() like any other config change, so it advances
+    // configRevision too (no more record-only special case for name changes).
+    TEST_ASSERT_EQUAL_UINT32(2, updatedEvent->configRevision);
     TEST_ASSERT_TRUE(updatedEvent->pendingPersistence);
 
     const DeviceEvent* persistedEvent = findLastEvent(sink.events, DeviceEventKind::ConfigPersisted);
@@ -173,14 +211,12 @@ void test_integration_sink_handles_bounded_payload_and_unavailable_path() {
 
     for (size_t i = 0; i < DeviceEventQueue::kMaxEvents + 2U; ++i) {
         const std::string nextName = std::string("rename-") + std::to_string(i);
-        DeviceMutationResult renameResult = registry.command(
-            DeviceCommand{DeviceCommandType::Rename, created.deviceId, nextName, DevicePersistencePolicy::Delayed}, 20U + i);
+        DeviceMutationResult renameResult = renameDevice(registry, created.deviceId, nextName, 20U + i, DevicePersistencePolicy::Delayed);
         TEST_ASSERT_TRUE(renameResult.ok());
     }
     TEST_ASSERT_TRUE(dispatcher.droppedEventCount() > 0);
 
-    DeviceMutationResult stillWorks =
-        registry.command(DeviceCommand{DeviceCommandType::Enable, created.deviceId, "", DevicePersistencePolicy::Immediate}, 100);
+    DeviceMutationResult stillWorks = setDeviceEnabled(registry, created.deviceId, true, 100, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE(stillWorks.ok());
 
     const std::string externalId = makeExternalDeviceId("Controller#A", created.deviceId);

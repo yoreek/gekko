@@ -20,7 +20,7 @@ Create can leave an orphan `record_*` if record write succeeds and index commit 
 
 Delete writes the new index first. Cleanup of the deleted `record_*` happens only after the index and format marker are committed.
 
-Config-only changes write only dirty device records. Rename is a record-only change and must not rewrite the index.
+Config-only changes write only dirty device records and must not rewrite the index. There is no separate rename command — renaming a device is just an `updateConfig` with a changed `name` field, so it follows the same config-only, record-only persistence path as any other field change (and, unlike create/delete, never touches the index, since the index only stores `DeviceId`/`DeviceTypeId`, which a name or enabled change never affects).
 
 ## Boot Recovery
 

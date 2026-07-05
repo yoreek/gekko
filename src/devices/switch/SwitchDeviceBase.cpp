@@ -117,19 +117,6 @@ void SwitchDeviceBase::applyRetainedState(OutputState state) {
 }
 
 bool SwitchDeviceBase::handleCommand(const DeviceCommand& command) {
-    if (command.type == DeviceCommandType::SetStatus) {
-        if (command.payload.equals("fault")) {
-            requestFault();
-            return true;
-        }
-        if (command.payload.equals("ready")) {
-            clearFaultRequested();
-            clearReconfigureRequested();
-            clearDisableRequested();
-            return true;
-        }
-    }
-
     OutputState requested{};
     if (!parseSetStateCommand(command, requested)) {
         return false;

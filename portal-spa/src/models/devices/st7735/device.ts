@@ -4,7 +4,6 @@ import { BaseDevice } from '../base-device.ts'
 import { st7735Display } from '../display/display.ts'
 import type { DisplayBaseConfig, DisplayCapabilities } from '../display/base.ts'
 import { normalizeDisplayRotation } from '../display/orientation.ts'
-import { st7735LayoutChanged } from './layout.ts'
 import {
   defaultSt7735Layout,
   encodeSt7735Layout,
@@ -140,34 +139,19 @@ export class St7735Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraf
   buildEditCommands(current: DeviceRecord, draft: St7735CreateDraft): DeviceCommandRequest[] {
     const currentConfig = this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined)
     const commands: DeviceCommandRequest[] = []
-    if (draft.name.trim() !== currentConfig.name) {
-      commands.push({ command: 'rename', name: draft.name.trim() })
-    }
-    if (draft.enabled !== currentConfig.enabled) {
-      commands.push({ command: draft.enabled ? 'enable' : 'disable' })
-    }
-    const nextConfig = this.normalizeConfig(draft, [
+    const nextConfig = this.normalizeConfig({ ...draft, name: draft.name.trim() }, [
       {
         role: 'spi_bus',
         deviceId: draft.spiBusDeviceId,
       },
     ])
-    if (
-      nextConfig.width !== currentConfig.width ||
-      nextConfig.height !== currentConfig.height ||
-      nextConfig.spiBusDeviceId !== currentConfig.spiBusDeviceId ||
-      nextConfig.chipSelectPin !== currentConfig.chipSelectPin ||
-      nextConfig.dcPin !== currentConfig.dcPin ||
-      nextConfig.resetPin !== currentConfig.resetPin ||
-      nextConfig.rotation !== currentConfig.rotation ||
-      st7735LayoutChanged(nextConfig.layout, currentConfig.layout)
-    ) {
+    const spiBusDeviceIdChanged = nextConfig.spiBusDeviceId !== currentConfig.spiBusDeviceId
+    const configDiff = this.buildConfigDiff(this.encodeConfig(nextConfig), this.encodeConfig(currentConfig))
+    delete configDiff.spiBusDeviceId
+    if (Object.keys(configDiff).length > 0 || spiBusDeviceIdChanged) {
       commands.push({
         command: 'updateConfig',
-        config: {
-          ...this.encodeConfig(nextConfig),
-          enabled: draft.enabled,
-        },
+        config: configDiff,
         deps: [
           {
             role: 'spi_bus',

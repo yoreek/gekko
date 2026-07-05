@@ -534,9 +534,8 @@ export interface DeviceDetailResponse<TConfig, TRuntime> {
 
 export interface DeviceCommandRequest<TConfig = Record<string, unknown>> {
     id: number;
-    command: 'rename' | 'enable' | 'disable' | 'delete' | 'updateConfig' | 'setStatus' | 'scan' | 'setOutput';
+    command: 'delete' | 'updateConfig' | 'scan' | 'setOutput';
     config?: Partial<TConfig>;
-    status?: string;
     state?: string;
 }
 

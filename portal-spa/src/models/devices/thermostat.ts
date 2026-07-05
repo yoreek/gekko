@@ -115,24 +115,6 @@ export class ThermostatDevice extends BaseDevice<ThermostatConfigDraft, Thermost
     }
   }
 
-  static configChanged(current: ThermostatConfigDraft, original: ThermostatConfigDraft): boolean {
-    return (
-      current.enabled !== original.enabled ||
-      current.mode !== original.mode ||
-      current.algorithm !== original.algorithm ||
-      current.targetCelsius !== original.targetCelsius ||
-      current.minSafeCelsius !== original.minSafeCelsius ||
-      current.maxSafeCelsius !== original.maxSafeCelsius ||
-      current.hysteresisCelsius !== original.hysteresisCelsius ||
-      current.checkIntervalMs !== original.checkIntervalMs ||
-      current.sensorTimeoutMs !== original.sensorTimeoutMs ||
-      current.retryAfterErrorMs !== original.retryAfterErrorMs ||
-      current.minSwitchIntervalMs !== original.minSwitchIntervalMs ||
-      current.temperatureSensorDeviceId !== original.temperatureSensorDeviceId ||
-      current.switchDeviceId !== original.switchDeviceId
-    )
-  }
-
   static encodeConfig(config: ThermostatConfigDraft): Record<string, unknown> {
     return {
       name: config.name,
@@ -300,13 +282,7 @@ export class ThermostatDevice extends BaseDevice<ThermostatConfigDraft, Thermost
   buildEditCommands(current: DeviceRecord, draft: ThermostatCreateDraft): DeviceCommandRequest[] {
     const currentConfig = this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined)
     const commands: DeviceCommandRequest[] = []
-    if (draft.name.trim() !== currentConfig.name) {
-      commands.push({ command: 'rename', name: draft.name.trim() })
-    }
-    if (draft.enabled !== currentConfig.enabled) {
-      commands.push({ command: draft.enabled ? 'enable' : 'disable' })
-    }
-    const nextConfig = this.normalizeConfig(draft, [
+    const nextConfig = this.normalizeConfig({ ...draft, name: draft.name.trim() }, [
       {
         role: 'temperature_sensor',
         deviceId: draft.temperatureSensorDeviceId,
@@ -316,13 +292,14 @@ export class ThermostatDevice extends BaseDevice<ThermostatConfigDraft, Thermost
         deviceId: draft.switchDeviceId,
       },
     ])
-    if (ThermostatDevice.configChanged(nextConfig, currentConfig)) {
+    const dependencyIdsChanged =
+      nextConfig.temperatureSensorDeviceId !== currentConfig.temperatureSensorDeviceId ||
+      nextConfig.switchDeviceId !== currentConfig.switchDeviceId
+    const configDiff = this.buildConfigDiff(this.encodeConfig(nextConfig), this.encodeConfig(currentConfig))
+    if (Object.keys(configDiff).length > 0 || dependencyIdsChanged) {
       commands.push({
         command: 'updateConfig',
-        config: {
-          ...this.encodeConfig(nextConfig),
-          enabled: draft.enabled,
-        },
+        config: configDiff,
         deps: ThermostatDevice.dependencyLinks(nextConfig),
       })
     }

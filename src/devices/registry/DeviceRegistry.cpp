@@ -1,7 +1,6 @@
 #include "devices/registry/DeviceRegistry.h"
 
 #include "debug/Debug.h"
-#include "devices/core/DeviceBaseConfig.h"
 #include "devices/registry/DeviceRegistryBinaryCodec.h"
 
 #include <algorithm>
@@ -97,11 +96,7 @@ DevicePersistencePolicy policyForCommand(const DeviceCommandType type) {
     case DeviceCommandType::Delete:
     case DeviceCommandType::SetDeps:
         return DevicePersistencePolicy::Immediate;
-    case DeviceCommandType::Rename:
-    case DeviceCommandType::Enable:
-    case DeviceCommandType::Disable:
     case DeviceCommandType::UpdateConfig:
-    case DeviceCommandType::SetStatus:
     case DeviceCommandType::Scan:
     case DeviceCommandType::SetOutput:
     case DeviceCommandType::Custom:
@@ -465,128 +460,20 @@ DeviceCreateResult DeviceRegistry::command(const DeviceCreateRequest& request, u
     return result;
 }
 
-DeviceMutationResult DeviceRegistry::rename(DeviceId deviceId, const std::string& name, uint32_t now, DevicePersistencePolicy policy) {
-    DeviceMutationResult result{};
-    if (name.empty()) {
-        result.validation = {DeviceError::InvalidConfig, "device name is empty"};
-        return result;
-    }
-    if (name.size() > kMaxDynamicDeviceNameLength) {
-        result.validation = {DeviceError::BoundsExceeded, "device name exceeds supported length"};
-        return result;
-    }
-    if (hasDuplicateNames(runtimes_, name, deviceId)) {
-        result.validation = {DeviceError::InvalidConfig, "device name already exists"};
-        return result;
-    }
-
-    IDeviceRuntime* currentRuntime = runtime(deviceId);
+DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const BoundedBlob<kMaxDeviceConfigBytes>& configBlob,
+                                                  uint32_t configVersion, uint32_t now, DevicePersistencePolicy policy) {
+    const IDeviceRuntime* currentRuntime = runtime(deviceId);
     if (currentRuntime == nullptr) {
+        DeviceMutationResult result{};
         result.validation = {DeviceError::MissingRecord, "device not found"};
         return result;
     }
-
-    DeviceRegistryEntry record = recordFromRuntime(*currentRuntime);
-    DeviceConfigBlob oldConfigBlob{};
-    DeviceConfigBlob configBlob{};
-    if (!currentRuntime->serializeConfigBlob(oldConfigBlob) || !currentRuntime->serializeConfigBlob(configBlob)) {
-        result.validation = {DeviceError::InvalidConfig, "device config is invalid"};
-        return result;
-    }
-    DeviceBaseConfigV1 base{};
-    base.enabled = currentRuntime->enabled() ? 1U : 0U;
-    if (!copyBoundedText(base.name, currentRuntime->name())) {
-        result.validation = {DeviceError::InvalidConfig, "device base config is invalid"};
-        return result;
-    }
-    if (!copyBoundedText(base.name, name)) {
-        result.validation = {DeviceError::BoundsExceeded, "device name exceeds supported length"};
-        return result;
-    }
-    if (!currentRuntime->replaceBaseConfig(configBlob, base)) {
-        result.validation = {DeviceError::StorageError, "failed to update device base config"};
-        return result;
-    }
-    if (!currentRuntime->applyConfig(configBlob, now)) {
-        result.validation = {DeviceError::InvalidConfig, "device config is invalid"};
-        return result;
-    }
-    record.header.payloadLength = static_cast<uint32_t>(configBlob.size());
-    const DeviceRegistryEntry oldRecord = recordFromRuntime(*currentRuntime);
-    std::array<IDeviceRuntime*, kMaxDeviceDependencies> dependencyRuntimes{};
-    const DeviceDependencyLink* dependencyLinks = currentRuntime->dependencyLinks();
-    const uint8_t dependencyCount = currentRuntime->dependencyCount();
-    for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
-        dependencyRuntimes[index] = currentRuntime->dependencyRuntimeAt(index);
-        if (dependencyRuntimes[index] != nullptr) {
-            dependencyRuntimes[index]->detachDependentRuntime(currentRuntime);
-        }
-    }
-    currentRuntime->bindDeviceIdentity(record, configBlob);
-    syncRuntimeDependencyLinks(deviceId);
-
-    if (policy == DevicePersistencePolicy::Immediate) {
-        const DeviceValidationResult persistResult = persistIfNeeded(policy);
-        if (!persistResult.ok()) {
-            const DeviceDependencyLink* currentLinks = currentRuntime->dependencyLinks();
-            const uint8_t currentDepCount = currentRuntime->dependencyCount();
-            for (uint8_t index = 0; index < currentDepCount && currentLinks != nullptr; ++index) {
-                if (IDeviceRuntime* dependency = currentRuntime->dependencyRuntimeAt(index); dependency != nullptr) {
-                    dependency->detachDependentRuntime(currentRuntime);
-                }
-            }
-            (void)currentRuntime->applyConfig(oldConfigBlob, now);
-            currentRuntime->bindDeviceIdentity(oldRecord, oldConfigBlob);
-            for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
-                if (dependencyRuntimes[index] != nullptr) {
-                    currentRuntime->setDependencyRuntimeAt(index, dependencyRuntimes[index]);
-                    dependencyRuntimes[index]->attachDependentRuntime(currentRuntime);
-                }
-            }
-            result.validation = persistResult;
-            return result;
-        }
-        ++registryRevision_;
-        persistence_.clearConfigDirtyAfterImmediateFlush();
-    } else {
-        ++registryRevision_;
-        persistence_.markConfigDirty(deviceId, now);
-    }
-
-    result.pendingPersistence = persistence_.hasPendingPersistence();
-    result.validation = {};
-    DeviceEvent updated{};
-    updated.kind = DeviceEventKind::DeviceUpdated;
-    updated.registryRevision = registryRevision_;
-    updated.configRevision = record.header.configRevision;
-    updated.deviceId = deviceId;
-    updated.typeId = record.header.typeId;
-    updated.status = effectiveStatus(deviceId);
-    updated.pendingPersistence = persistence_.hasPendingPersistence();
-    DeviceRegistryEventReporter::setEventDetail(updated, "renamed");
-    eventReporter_.emit(updated);
-
-    DeviceEvent accepted{};
-    accepted.kind = DeviceEventKind::CommandAccepted;
-    accepted.registryRevision = registryRevision_;
-    accepted.configRevision = record.header.configRevision;
-    accepted.deviceId = deviceId;
-    accepted.typeId = record.header.typeId;
-    accepted.status = updated.status;
-    accepted.pendingPersistence = persistence_.hasPendingPersistence();
-    accepted.commandAccepted = true;
-    DeviceRegistryEventReporter::setEventDetail(accepted, "rename");
-    eventReporter_.emit(accepted);
-    return result;
-}
-
-DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const BoundedBlob<kMaxDeviceConfigBytes>& configBlob,
-                                                  uint32_t configVersion, uint32_t now, DevicePersistencePolicy policy) {
-    return updateConfigAndDeps(deviceId, configBlob, configVersion, false, {}, 0, now, policy);
+    return updateConfigAndDeps(deviceId, configBlob, configVersion, currentRuntime->name(), currentRuntime->enabled(), false, {}, 0, now,
+                               policy);
 }
 
 DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, const BoundedBlob<kMaxDeviceConfigBytes>& configBlob,
-                                                         uint32_t configVersion, bool depsProvided,
+                                                         uint32_t configVersion, const std::string& name, bool enabled, bool depsProvided,
                                                          const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps,
                                                          uint8_t depCount, uint32_t now, DevicePersistencePolicy policy) {
     DeviceMutationResult result{};
@@ -600,6 +487,23 @@ DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, cons
         result.validation = {DeviceError::MissingRecord, "device not found"};
         return result;
     }
+
+    const bool nameChanged = name != currentRuntime->name();
+    if (nameChanged) {
+        if (name.empty()) {
+            result.validation = {DeviceError::InvalidConfig, "device name is empty"};
+            return result;
+        }
+        if (name.size() > kMaxDynamicDeviceNameLength) {
+            result.validation = {DeviceError::BoundsExceeded, "device name exceeds supported length"};
+            return result;
+        }
+        if (hasDuplicateNames(runtimes_, name, deviceId)) {
+            result.validation = {DeviceError::InvalidConfig, "device name already exists"};
+            return result;
+        }
+    }
+    const bool enabledChanged = enabled != currentRuntime->enabled();
 
     const bool dependenciesChanged =
         depsProvided && !sameDependencyLinks(currentRuntime->dependencyLinks(), currentRuntime->dependencyCount(), deps.data(), depCount);
@@ -625,6 +529,9 @@ DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, cons
         for (uint8_t index = 0; index < depCount && index < kMaxDeviceDependencies; ++index) {
             record.deps[index] = deps[index];
         }
+    }
+    if (enabledChanged) {
+        record.status = enabled ? DeviceStatus::Creating : DeviceStatus::Disabled;
     }
     const uint32_t nextConfigRevision = record.header.configRevision;
 
@@ -698,6 +605,15 @@ DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, cons
     } else {
         ++registryRevision_;
         persistence_.markConfigDirty(deviceId, now);
+    }
+
+    if (enabledChanged) {
+        currentRuntime->clearLifecycleRequests();
+        if (enabled) {
+            currentRuntime->begin(now);
+        } else {
+            currentRuntime->requestDisable();
+        }
     }
 
     result.pendingPersistence = persistence_.hasPendingPersistence();
@@ -849,117 +765,6 @@ DeviceMutationResult DeviceRegistry::setDeps(DeviceId deviceId, const std::array
     return result;
 }
 
-DeviceMutationResult DeviceRegistry::setEnabled(DeviceId deviceId, bool enabled, uint32_t now, DevicePersistencePolicy policy) {
-    DeviceMutationResult result{};
-    IDeviceRuntime* currentRuntime = runtime(deviceId);
-    if (currentRuntime == nullptr) {
-        result.validation = {DeviceError::MissingRecord, "device not found"};
-        return result;
-    }
-
-    DeviceConfigBlob oldConfigBlob{};
-    DeviceConfigBlob configBlob{};
-    if (!currentRuntime->serializeConfigBlob(oldConfigBlob) || !currentRuntime->serializeConfigBlob(configBlob)) {
-        result.validation = {DeviceError::InvalidConfig, "device config is invalid"};
-        return result;
-    }
-    DeviceRegistryEntry oldRecord = recordFromRuntime(*currentRuntime);
-    DeviceRegistryEntry record = oldRecord;
-    DeviceBaseConfigV1 base{};
-    base.enabled = currentRuntime->enabled() ? 1U : 0U;
-    if (!copyBoundedText(base.name, currentRuntime->name())) {
-        result.validation = {DeviceError::InvalidConfig, "device base config is invalid"};
-        return result;
-    }
-    base.enabled = enabled ? 1U : 0U;
-    if (!currentRuntime->replaceBaseConfig(configBlob, base)) {
-        result.validation = {DeviceError::StorageError, "failed to update device base config"};
-        return result;
-    }
-    if (!currentRuntime->applyConfig(configBlob, now)) {
-        result.validation = {DeviceError::InvalidConfig, "device config is invalid"};
-        return result;
-    }
-    record.status = enabled ? DeviceStatus::Creating : DeviceStatus::Disabled;
-    record.header.payloadLength = static_cast<uint32_t>(configBlob.size());
-    std::array<IDeviceRuntime*, kMaxDeviceDependencies> dependencyRuntimes{};
-    const DeviceDependencyLink* dependencyLinks = currentRuntime->dependencyLinks();
-    const uint8_t dependencyCount = currentRuntime->dependencyCount();
-    for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
-        dependencyRuntimes[index] = currentRuntime->dependencyRuntimeAt(index);
-        if (dependencyRuntimes[index] != nullptr) {
-            dependencyRuntimes[index]->detachDependentRuntime(currentRuntime);
-        }
-    }
-    currentRuntime->bindDeviceIdentity(record, configBlob);
-    syncRuntimeDependencyLinks(deviceId);
-
-    if (policy == DevicePersistencePolicy::Immediate) {
-        const DeviceValidationResult persistResult = persistIfNeeded(policy);
-        if (!persistResult.ok()) {
-            const DeviceDependencyLink* currentLinks = currentRuntime->dependencyLinks();
-            const uint8_t currentDepCount = currentRuntime->dependencyCount();
-            for (uint8_t index = 0; index < currentDepCount && currentLinks != nullptr; ++index) {
-                if (IDeviceRuntime* dependency = currentRuntime->dependencyRuntimeAt(index); dependency != nullptr) {
-                    dependency->detachDependentRuntime(currentRuntime);
-                }
-            }
-            (void)currentRuntime->applyConfig(oldConfigBlob, now);
-            currentRuntime->bindDeviceIdentity(oldRecord, oldConfigBlob);
-            for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
-                if (dependencyRuntimes[index] != nullptr) {
-                    currentRuntime->setDependencyRuntimeAt(index, dependencyRuntimes[index]);
-                    dependencyRuntimes[index]->attachDependentRuntime(currentRuntime);
-                }
-            }
-            result.validation = persistResult;
-            return result;
-        }
-        ++registryRevision_;
-        persistence_.clearConfigDirtyAfterImmediateFlush();
-    } else {
-        ++registryRevision_;
-        persistence_.markConfigDirty(deviceId, now);
-    }
-
-    result.pendingPersistence = persistence_.hasPendingPersistence();
-    result.validation = {};
-    if (enabled) {
-        currentRuntime->clearLifecycleRequests();
-        currentRuntime->begin(now);
-    } else {
-        currentRuntime->clearLifecycleRequests();
-        currentRuntime->requestDisable();
-    }
-    refreshDependentRuntimeStates(now);
-    captureDirtyRuntimeRetainedStates(now);
-    emitRuntimeStatusChanges();
-
-    DeviceEvent updated{};
-    updated.kind = DeviceEventKind::DeviceUpdated;
-    updated.registryRevision = registryRevision_;
-    updated.configRevision = record.header.configRevision;
-    updated.deviceId = deviceId;
-    updated.typeId = record.header.typeId;
-    updated.status = effectiveStatus(deviceId);
-    updated.pendingPersistence = persistence_.hasPendingPersistence();
-    DeviceRegistryEventReporter::setEventDetail(updated, enabled ? "enabled" : "disabled");
-    eventReporter_.emit(updated);
-
-    DeviceEvent accepted{};
-    accepted.kind = DeviceEventKind::CommandAccepted;
-    accepted.registryRevision = registryRevision_;
-    accepted.configRevision = record.header.configRevision;
-    accepted.deviceId = deviceId;
-    accepted.typeId = record.header.typeId;
-    accepted.status = updated.status;
-    accepted.pendingPersistence = persistence_.hasPendingPersistence();
-    accepted.commandAccepted = true;
-    DeviceRegistryEventReporter::setEventDetail(accepted, enabled ? "enable" : "disable");
-    eventReporter_.emit(accepted);
-    return result;
-}
-
 DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, DevicePersistencePolicy policy) {
     DeviceMutationResult result{};
     const IDeviceRuntime* currentRuntime = runtime(deviceId);
@@ -1068,17 +873,10 @@ DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint3
 
     const DevicePersistencePolicy policy = policyForCommand(command.type);
     switch (command.type) {
-    case DeviceCommandType::Rename:
-        return rename(command.deviceId, std::string(command.payload.view()), now, policy);
-    case DeviceCommandType::Enable:
-        return setEnabled(command.deviceId, true, now, policy);
-    case DeviceCommandType::Disable:
-        return setEnabled(command.deviceId, false, now, policy);
     case DeviceCommandType::Delete:
         return remove(command.deviceId, now, policy);
     case DeviceCommandType::UpdateConfig:
         return handleUpdateConfigCommand(*this, command, now, policy);
-    case DeviceCommandType::SetStatus:
     case DeviceCommandType::Scan:
     case DeviceCommandType::SetOutput:
     case DeviceCommandType::ResetDiagnostics:

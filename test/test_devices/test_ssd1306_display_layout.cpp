@@ -243,8 +243,8 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_TRUE(updateRequest.persistedStateProvided);
 
     const DeviceMutationResult updateResult =
-        registry.updateConfigAndDeps(createResult.deviceId, updateRequest.configBlob, updateRequest.configVersion,
-                                     updateRequest.depsProvided, updateRequest.deps, updateRequest.depCount, 0);
+        registry.updateConfigAndDeps(createResult.deviceId, updateRequest.configBlob, updateRequest.configVersion, updateRequest.name,
+                                     updateRequest.enabled, updateRequest.depsProvided, updateRequest.deps, updateRequest.depCount, 0);
     TEST_ASSERT_TRUE(updateResult.ok());
     TEST_ASSERT_TRUE(registry
                          .applyPersistedStateUpdate(createResult.deviceId, updateRequest.persistedStateBlob.data(),

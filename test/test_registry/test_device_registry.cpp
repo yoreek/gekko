@@ -1,4 +1,5 @@
 #include "config/MemoryConfigStorage.h"
+#include "devices/core/DeviceBaseConfig.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/dummy/DummyDevice.h"
 #include "devices/registry/DeviceRegistry.h"
@@ -20,6 +21,42 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeDummyConfig(const DummyDeviceConfigV1& 
     TEST_ASSERT_TRUE(ewfm::encodeDummyDeviceConfig(config, buffer, dummyDeviceConfigSize(config)));
     TEST_ASSERT_TRUE(payload.assign(buffer, dummyDeviceConfigSize(config)));
     return payload;
+}
+
+// rename()/setEnabled() were consolidated into updateConfigAndDeps(); these helpers rebuild the
+// "just change name/enabled, keep everything else" call shape the old dedicated methods provided.
+DeviceMutationResult renameDevice(DeviceRegistry& registry, DeviceId deviceId, const std::string& name, uint32_t now,
+                                  DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed) {
+    IDeviceRuntime* rt = registry.runtime(deviceId);
+    if (rt == nullptr) {
+        DeviceMutationResult result{};
+        result.validation = {DeviceError::MissingRecord, "device not found"};
+        return result;
+    }
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(rt->serializeConfigBlob(blob));
+    DeviceBaseConfigV1 base{};
+    base.enabled = rt->enabled() ? 1U : 0U;
+    TEST_ASSERT_TRUE(copyBoundedText(base.name, name));
+    TEST_ASSERT_TRUE(rt->replaceBaseConfig(blob, base));
+    return registry.updateConfigAndDeps(deviceId, blob, 0, name, rt->enabled(), false, {}, 0, now, policy);
+}
+
+DeviceMutationResult setDeviceEnabled(DeviceRegistry& registry, DeviceId deviceId, bool enabled, uint32_t now,
+                                      DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed) {
+    IDeviceRuntime* rt = registry.runtime(deviceId);
+    if (rt == nullptr) {
+        DeviceMutationResult result{};
+        result.validation = {DeviceError::MissingRecord, "device not found"};
+        return result;
+    }
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(rt->serializeConfigBlob(blob));
+    DeviceBaseConfigV1 base{};
+    base.enabled = enabled ? 1U : 0U;
+    TEST_ASSERT_TRUE(copyBoundedText(base.name, rt->name()));
+    TEST_ASSERT_TRUE(rt->replaceBaseConfig(blob, base));
+    return registry.updateConfigAndDeps(deviceId, blob, 0, rt->name(), enabled, false, {}, 0, now, policy);
 }
 
 struct FixedDeviceIdSource final : public IDeviceIdSource {
@@ -182,7 +219,7 @@ struct CountingRuntime final : public IDeviceRuntime {
         return persistencePolicy_;
     }
     bool handleCommand(const DeviceCommand& command) override {
-        if (command.type == DeviceCommandType::SetStatus) {
+        if (command.type == DeviceCommandType::Custom) {
             if (command.payload.equals("fault")) {
                 status_ = DeviceStatus::Faulted;
                 return true;
@@ -191,11 +228,11 @@ struct CountingRuntime final : public IDeviceRuntime {
                 status_ = DeviceStatus::Ready;
                 return true;
             }
-        }
-        if (command.type == DeviceCommandType::Custom && command.payload.view().rfind("retained=", 0) == 0) {
-            retainedValue_ = static_cast<uint8_t>(command.payload.view().back() - '0');
-            retainedStateDirty_ = true;
-            return true;
+            if (command.payload.view().rfind("retained=", 0) == 0) {
+                retainedValue_ = static_cast<uint8_t>(command.payload.view().back() - '0');
+                retainedStateDirty_ = true;
+                return true;
+            }
         }
         return false;
     }
@@ -601,7 +638,7 @@ void test_registry_create_rename_and_flush() {
     TEST_ASSERT_EQUAL_UINT32(1, createdSnapshot.records.size());
     assertDummyConfigName(createdConfigBlobs, 101, "dummy-a");
 
-    DeviceMutationResult renameResult = registry.rename(101, "dummy-b", 20, DevicePersistencePolicy::Delayed);
+    DeviceMutationResult renameResult = renameDevice(registry, 101, "dummy-b", 20, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE(renameResult.ok());
     TEST_ASSERT_TRUE(renameResult.pendingPersistence);
     TEST_ASSERT_TRUE(registry.hasPendingPersistence());
@@ -635,10 +672,14 @@ void test_registry_revisions_and_runtime_status_do_not_mix_with_config() {
     TEST_ASSERT_EQUAL_UINT32(1, registry.registryRevision());
     TEST_ASSERT_EQUAL_UINT32(1, registry.runtime(111)->configRevision());
 
-    DeviceMutationResult renameResult = registry.rename(111, "revision-dummy-renamed", 20, DevicePersistencePolicy::Delayed);
+    // Renaming now flows through the same updateConfigAndDeps() path as any other config field
+    // change (rename/enable/disable were consolidated into updateConfig), so it advances
+    // configRevision just like any other config mutation would -- there is no longer a
+    // "record-only, config-revision-exempt" special case for name changes.
+    DeviceMutationResult renameResult = renameDevice(registry, 111, "revision-dummy-renamed", 20, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE(renameResult.ok());
     TEST_ASSERT_EQUAL_UINT32(2, registry.registryRevision());
-    TEST_ASSERT_EQUAL_UINT32(1, registry.runtime(111)->configRevision());
+    TEST_ASSERT_EQUAL_UINT32(2, registry.runtime(111)->configRevision());
 
     DummyDeviceConfigV1 updatedConfig{};
     updatedConfig.enabled = true;
@@ -648,7 +689,7 @@ void test_registry_revisions_and_runtime_status_do_not_mix_with_config() {
         registry.updateConfig(111, updatedPayload, DummyDevice::descriptor().currentConfigVersion, 30, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE(updateResult.ok());
     TEST_ASSERT_EQUAL_UINT32(3, registry.registryRevision());
-    TEST_ASSERT_EQUAL_UINT32(2, registry.runtime(111)->configRevision());
+    TEST_ASSERT_EQUAL_UINT32(3, registry.runtime(111)->configRevision());
 
     DeviceCreateRequest statusRequest = makeDummyCreateRequest("status-dummy");
     statusRequest.typeId = 58;
@@ -661,7 +702,7 @@ void test_registry_revisions_and_runtime_status_do_not_mix_with_config() {
     TEST_ASSERT_NOT_NULL(runtime);
     const int statusBeforeCommand = static_cast<int>(runtime->status());
     const DeviceMutationResult commandResult =
-        registry.command(DeviceCommand{DeviceCommandType::SetStatus, 112, "fault", DevicePersistencePolicy::Delayed}, 50);
+        registry.command(DeviceCommand{DeviceCommandType::Custom, 112, "fault", DevicePersistencePolicy::Delayed}, 50);
     TEST_ASSERT_TRUE(commandResult.ok());
     TEST_ASSERT_EQUAL_UINT32(1, registry.runtime(112)->configRevision());
     registry.tickFastLoop(51);
@@ -699,7 +740,7 @@ void test_registry_rejects_invalid_device_id() {
     DeviceRegistry registry(store, types, idSource);
     TEST_ASSERT_TRUE(registry.begin(0).ok());
 
-    DeviceMutationResult renameResult = registry.rename(0, "invalid", 10, DevicePersistencePolicy::Delayed);
+    DeviceMutationResult renameResult = renameDevice(registry, 0, "invalid", 10, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_FALSE(renameResult.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::MissingRecord), static_cast<int>(renameResult.validation.error));
 }
@@ -756,14 +797,18 @@ void test_registry_disable_enable_and_delete() {
     const IDeviceRuntime* runtimeBeforeDisable = registry.runtime(201);
     TEST_ASSERT_NOT_NULL(runtimeBeforeDisable);
 
-    DeviceMutationResult disableResult = registry.setEnabled(201, false, 20, DevicePersistencePolicy::Immediate);
+    DeviceMutationResult disableResult = setDeviceEnabled(registry, 201, false, 20, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE(disableResult.ok());
     TEST_ASSERT_EQUAL_PTR(runtimeBeforeDisable, registry.runtime(201));
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Disabled), static_cast<int>(registry.runtime(201)->status()));
 
-    DeviceMutationResult enableResult = registry.setEnabled(201, true, 30, DevicePersistencePolicy::Immediate);
+    DeviceMutationResult enableResult = setDeviceEnabled(registry, 201, true, 30, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE(enableResult.ok());
     TEST_ASSERT_EQUAL_PTR(runtimeBeforeDisable, registry.runtime(201));
+    // Flipping enabled back to true through updateConfigAndDeps must actually drive the state
+    // machine out of Disabled (via the explicit begin() call) -- a bare config blob change alone
+    // does not do this for any device type except ThermostatDevice.
+    TEST_ASSERT_NOT_EQUAL(static_cast<int>(DeviceStatus::Disabled), static_cast<int>(registry.runtime(201)->status()));
 
     DeviceMutationResult deleteResult = registry.remove(201, 40, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE(deleteResult.ok());
@@ -988,8 +1033,8 @@ void test_registry_update_config_ignores_reordered_unchanged_dependencies() {
     std::snprintf(config.name, sizeof(config.name), "%s", "target");
 
     DeviceMutationResult updated =
-        registry.updateConfigAndDeps(target.deviceId, encodeDummyConfig(config), DummyDevice::descriptor().currentConfigVersion, true,
-                                     reorderedDeps, 2, 40, DevicePersistencePolicy::Immediate);
+        registry.updateConfigAndDeps(target.deviceId, encodeDummyConfig(config), DummyDevice::descriptor().currentConfigVersion, "target",
+                                     true, true, reorderedDeps, 2, 40, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE_MESSAGE(updated.ok(), updated.validation.message);
     TEST_ASSERT_EQUAL_PTR(targetRuntimeBefore, registry.runtime(target.deviceId));
     TEST_ASSERT_EQUAL_PTR(registry.runtime(dependencyA.deviceId),
@@ -1039,8 +1084,8 @@ void test_registry_update_config_and_deps_auto_escalates_real_reassignment_to_im
     // Caller passes Delayed (the generic save-flow default) even though the dependency is
     // actually changing -- the registry must accept this (not reject it as it used to) and
     // must flush immediately on its own rather than leaving the reassignment pending.
-    DeviceMutationResult updated = registry.updateConfigAndDeps(target.deviceId, encodeDummyConfig(config), 1, true, reassignedDeps, 1, 40,
-                                                                DevicePersistencePolicy::Delayed);
+    DeviceMutationResult updated = registry.updateConfigAndDeps(target.deviceId, encodeDummyConfig(config), 1, "target", true, true,
+                                                                reassignedDeps, 1, 40, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE_MESSAGE(updated.ok(), updated.validation.message);
     TEST_ASSERT_FALSE_MESSAGE(updated.pendingPersistence, "dependency reassignment must be persisted immediately, not left pending");
     TEST_ASSERT_EQUAL_UINT32(dependencyB.deviceId, registry.runtime(target.deviceId)->dependencyDeviceId(DeviceDependencyRole::OneWireBus));
@@ -1080,7 +1125,8 @@ void test_registry_propagates_dependency_status_and_recovers() {
     TEST_ASSERT_TRUE(dependentResult.ok());
     TEST_ASSERT_NOT_NULL(registry.runtime(dependentResult.deviceId));
 
-    DeviceMutationResult disableResult = registry.setEnabled(dependencyResult.deviceId, false, 30, DevicePersistencePolicy::Immediate);
+    DeviceMutationResult disableResult =
+        setDeviceEnabled(registry, dependencyResult.deviceId, false, 30, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE(disableResult.ok());
     TEST_ASSERT_NOT_NULL(registry.runtime(dependentResult.deviceId));
     auto disabledRecords = registry.list();
@@ -1095,7 +1141,7 @@ void test_registry_propagates_dependency_status_and_recovers() {
     TEST_ASSERT_EQUAL_UINT32(1, blockedDependents.size());
     TEST_ASSERT_EQUAL_PTR(registry.runtime(dependentResult.deviceId), blockedDependents[0]);
 
-    DeviceMutationResult enableResult = registry.setEnabled(dependencyResult.deviceId, true, 40, DevicePersistencePolicy::Immediate);
+    DeviceMutationResult enableResult = setDeviceEnabled(registry, dependencyResult.deviceId, true, 40, DevicePersistencePolicy::Immediate);
     TEST_ASSERT_TRUE(enableResult.ok());
     registry.tickFastLoop(41);
     registry.tickFastLoop(42);
@@ -1113,7 +1159,7 @@ void test_registry_propagates_dependency_status_and_recovers() {
     TEST_ASSERT_EQUAL_PTR(registry.runtime(dependentResult.deviceId), recoveredDependents[0]);
 
     DeviceMutationResult faultResult = registry.command(
-        DeviceCommand{DeviceCommandType::SetStatus, dependencyResult.deviceId, "fault", DevicePersistencePolicy::Delayed}, 50);
+        DeviceCommand{DeviceCommandType::Custom, dependencyResult.deviceId, "fault", DevicePersistencePolicy::Delayed}, 50);
     TEST_ASSERT_TRUE(faultResult.ok());
     registry.tickFastLoop(51);
     registry.tickFastLoop(52);
@@ -1258,13 +1304,12 @@ void test_registry_emits_required_event_kinds() {
     TEST_ASSERT_TRUE(created.ok());
     dispatcher.tickFastLoop(11);
 
-    DeviceMutationResult renamed =
-        registry.command(DeviceCommand{DeviceCommandType::Rename, created.deviceId, "events-2", DevicePersistencePolicy::Delayed}, 20);
+    DeviceMutationResult renamed = renameDevice(registry, created.deviceId, "events-2", 20, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE(renamed.ok());
     dispatcher.tickFastLoop(21);
 
     DeviceMutationResult rejected =
-        registry.command(DeviceCommand{DeviceCommandType::SetStatus, 9999, "fault", DevicePersistencePolicy::Immediate}, 22);
+        registry.command(DeviceCommand{DeviceCommandType::Custom, 9999, "fault", DevicePersistencePolicy::Immediate}, 22);
     TEST_ASSERT_FALSE(rejected.ok());
     dispatcher.tickFastLoop(23);
 
@@ -1322,6 +1367,31 @@ void test_registry_rejects_duplicate_name_and_unsupported_type() {
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::UnsupportedType), static_cast<int>(unsupportedResult.validation.error));
 }
 
+void test_registry_update_config_rejects_duplicate_name() {
+    // rename() used to be the only path that checked name uniqueness; now that name changes
+    // flow through updateConfigAndDeps(), this check must live there instead.
+    MemoryConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    FixedDeviceIdSource idSource({311, 312});
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(store, types, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+
+    TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("first"), 10).ok());
+    TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("second"), 20).ok());
+
+    const IDeviceRuntime* runtimeBefore = registry.runtime(312);
+    TEST_ASSERT_NOT_NULL(runtimeBefore);
+
+    DeviceMutationResult renamed = renameDevice(registry, 312, "first", 30, DevicePersistencePolicy::Delayed);
+    TEST_ASSERT_FALSE(renamed.ok());
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::InvalidConfig), static_cast<int>(renamed.validation.error));
+    TEST_ASSERT_EQUAL_STRING("second", registry.runtime(312)->name());
+    TEST_ASSERT_EQUAL_PTR(runtimeBefore, registry.runtime(312));
+}
+
 void test_registry_delayed_flushes_on_tick() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
@@ -1334,7 +1404,7 @@ void test_registry_delayed_flushes_on_tick() {
 
     TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("tick-dummy"), 10).ok());
 
-    DeviceMutationResult renameResult = registry.rename(401, "tick-dummy-2", 20, DevicePersistencePolicy::Delayed);
+    DeviceMutationResult renameResult = renameDevice(registry, 401, "tick-dummy-2", 20, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE(renameResult.ok());
     TEST_ASSERT_TRUE(registry.hasPendingPersistence());
 
@@ -1420,7 +1490,7 @@ void test_registry_delayed_dirty_state_and_forced_flush() {
 
     TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("dirty-dummy"), 10).ok());
 
-    DeviceMutationResult renameResult = registry.rename(701, "dirty-dummy-2", 20, DevicePersistencePolicy::Delayed);
+    DeviceMutationResult renameResult = renameDevice(registry, 701, "dirty-dummy-2", 20, DevicePersistencePolicy::Delayed);
     TEST_ASSERT_TRUE(renameResult.ok());
     TEST_ASSERT_TRUE(registry.hasPendingPersistence());
     TEST_ASSERT_FALSE(registry.dirtyIndex());
@@ -1541,7 +1611,7 @@ void test_registry_selective_flush_writes_only_dirty_record_and_not_index() {
     TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("first"), 10).ok());
     TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("second"), 20).ok());
 
-    TEST_ASSERT_TRUE(registry.rename(911, "first-renamed", 30, DevicePersistencePolicy::Delayed).ok());
+    TEST_ASSERT_TRUE(renameDevice(registry, 911, "first-renamed", 30, DevicePersistencePolicy::Delayed).ok());
     storage.clearLog();
     TEST_ASSERT_TRUE(registry.flushNow().ok());
 
@@ -1566,7 +1636,7 @@ void test_registry_delayed_rename_does_not_dirty_or_rewrite_index() {
     TEST_ASSERT_TRUE(registry.begin(0).ok());
     TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("rename-source"), 10).ok());
 
-    TEST_ASSERT_TRUE(registry.rename(921, "rename-target", 20, DevicePersistencePolicy::Delayed).ok());
+    TEST_ASSERT_TRUE(renameDevice(registry, 921, "rename-target", 20, DevicePersistencePolicy::Delayed).ok());
     TEST_ASSERT_FALSE(registry.dirtyIndex());
     TEST_ASSERT_EQUAL_UINT32(1, registry.dirtyConfigRecordIds().size());
     TEST_ASSERT_EQUAL_UINT32(921, registry.dirtyConfigRecordIds()[0]);
@@ -1630,8 +1700,8 @@ void test_registry_max_delay_flushes_after_repeated_dirty_updates() {
 
     TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("delay-dummy"), 10).ok());
 
-    TEST_ASSERT_TRUE(registry.rename(801, "delay-dummy-2", 20, DevicePersistencePolicy::Delayed).ok());
-    TEST_ASSERT_TRUE(registry.rename(801, "delay-dummy-3", 1700, DevicePersistencePolicy::Delayed).ok());
+    TEST_ASSERT_TRUE(renameDevice(registry, 801, "delay-dummy-2", 20, DevicePersistencePolicy::Delayed).ok());
+    TEST_ASSERT_TRUE(renameDevice(registry, 801, "delay-dummy-3", 1700, DevicePersistencePolicy::Delayed).ok());
     TEST_ASSERT_TRUE(registry.hasPendingPersistence());
     TEST_ASSERT_EQUAL_UINT32(20, registry.firstDirtyAt());
     TEST_ASSERT_EQUAL_UINT32(1700, registry.lastChangeAt());

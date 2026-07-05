@@ -95,18 +95,14 @@ public:
 
     DeviceCreateResult create(const DeviceCreateRequest& request, uint32_t now);
     DeviceCreateResult command(const DeviceCreateRequest& request, uint32_t now);
-    DeviceMutationResult rename(DeviceId deviceId, const std::string& name, uint32_t now,
-                                DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
     DeviceMutationResult updateConfig(DeviceId deviceId, const BoundedBlob<kMaxDeviceConfigBytes>& configBlob, uint32_t configVersion,
                                       uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
     DeviceMutationResult updateConfigAndDeps(DeviceId deviceId, const BoundedBlob<kMaxDeviceConfigBytes>& configBlob,
-                                             uint32_t configVersion, bool depsProvided,
+                                             uint32_t configVersion, const std::string& name, bool enabled, bool depsProvided,
                                              const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t depCount,
                                              uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
     DeviceMutationResult setDeps(DeviceId deviceId, const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t depCount,
                                  uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Immediate);
-    DeviceMutationResult setEnabled(DeviceId deviceId, bool enabled, uint32_t now,
-                                    DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
     DeviceMutationResult remove(DeviceId deviceId, uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Immediate);
     DeviceMutationResult command(const DeviceCommand& command, uint32_t now);
     DeviceValidationResult flushNow();

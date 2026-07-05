@@ -86,24 +86,12 @@ export class OneWireBusDevice extends BaseDevice<OneWireBusConfigDraft, OneWireB
   buildEditCommands(current: DeviceRecord, draft: OneWireBusCreateDraft): DeviceCommandRequest[] {
     const currentConfig = this.normalizeConfig(current.config)
     const commands: DeviceCommandRequest[] = []
-    if (draft.name.trim() !== currentConfig.name) {
-      commands.push({ command: 'rename', name: draft.name.trim() })
-    }
-    if (draft.enabled !== currentConfig.enabled) {
-      commands.push({ command: draft.enabled ? 'enable' : 'disable' })
-    }
-    const { enabled: _nextEnabled, ...nextConfig } = this.normalizeConfig(draft)
-    if (
-      nextConfig.gpioPin !== currentConfig.gpioPin ||
-      nextConfig.internalPullup !== currentConfig.internalPullup
-    ) {
-      const encodedConfig = {
-        ...nextConfig,
-        enabled: draft.enabled,
-      }
+    const nextConfig = this.normalizeConfig({ ...draft, name: draft.name.trim() })
+    const configDiff = this.buildConfigDiff(this.encodeConfig(nextConfig), this.encodeConfig(currentConfig))
+    if (Object.keys(configDiff).length > 0) {
       commands.push({
         command: 'updateConfig',
-        config: this.encodeConfig(encodedConfig),
+        config: configDiff,
       })
     }
     return commands

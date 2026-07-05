@@ -98,25 +98,12 @@ export class SpiBusDevice extends BaseDevice<SpiBusConfigDraft, SpiBusCreateDraf
   buildEditCommands(current: DeviceRecord, draft: SpiBusCreateDraft): DeviceCommandRequest[] {
     const currentConfig = this.normalizeConfig(current.config)
     const commands: DeviceCommandRequest[] = []
-    if (draft.name.trim() !== currentConfig.name) {
-      commands.push({ command: 'rename', name: draft.name.trim() })
-    }
-    if (draft.enabled !== currentConfig.enabled) {
-      commands.push({ command: draft.enabled ? 'enable' : 'disable' })
-    }
-    const nextConfig = this.normalizeConfig(draft)
-    if (
-      nextConfig.host !== currentConfig.host ||
-      nextConfig.sckPin !== currentConfig.sckPin ||
-      nextConfig.mosiPin !== currentConfig.mosiPin ||
-      nextConfig.misoPin !== currentConfig.misoPin
-    ) {
+    const nextConfig = this.normalizeConfig({ ...draft, name: draft.name.trim() })
+    const configDiff = this.buildConfigDiff(this.encodeConfig(nextConfig), this.encodeConfig(currentConfig))
+    if (Object.keys(configDiff).length > 0) {
       commands.push({
         command: 'updateConfig',
-        config: {
-          ...this.encodeConfig(nextConfig),
-          enabled: draft.enabled,
-        },
+        config: configDiff,
       })
     }
     return commands

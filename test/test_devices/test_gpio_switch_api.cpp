@@ -193,12 +193,15 @@ void test_gpio_switch_api_adapter_parses_update_config_request() {
     GpioSwitchDevicePersistedConfigV1 parsed{};
     TEST_ASSERT_TRUE(
         decodeGpioSwitchDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
-    TEST_ASSERT_TRUE(parsed.switchConfig.enabled);
+    TEST_ASSERT_FALSE(parsed.switchConfig.enabled);
+    TEST_ASSERT_EQUAL_STRING("relay", parsed.switchConfig.name);
     TEST_ASSERT_TRUE(parsed.switchConfig.restorePreviousState);
     TEST_ASSERT_EQUAL(static_cast<int>(OutputState::Off), static_cast<int>(parsed.switchConfig.startupState));
     TEST_ASSERT_EQUAL(static_cast<int>(OutputState::Disabled), static_cast<int>(parsed.switchConfig.safeState));
     TEST_ASSERT_TRUE(parsed.switchConfig.inverted);
     TEST_ASSERT_EQUAL_UINT8(19, parsed.gpioConfig.gpioPin);
+    TEST_ASSERT_FALSE(request.enabled);
+    TEST_ASSERT_EQUAL_STRING("relay", request.name);
 }
 
 void test_gpio_switch_api_adapter_partial_update_preserves_other_fields() {

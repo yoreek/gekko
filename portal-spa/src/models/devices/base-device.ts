@@ -4,6 +4,12 @@ import type { DeviceCommandRequest } from '@/api/contracts'
 
 export interface DeviceCreatePayload<TConfig extends BaseDeviceConfig = BaseDeviceConfig> extends DeviceCreateRequest<TConfig> {}
 
+function configValueEquals(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) return false
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
 export abstract class BaseDevice<
   TConfig extends object = Record<string, unknown>,
   TCreateDraft extends DeviceCreateDraftBase & object = DeviceCreateDraftBase & object,
@@ -41,6 +47,19 @@ export abstract class BaseDevice<
       } as BaseDeviceConfig,
     }
     return payload
+  }
+
+  protected buildConfigDiff(
+    nextEncoded: Record<string, unknown>,
+    currentEncoded: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const diff: Record<string, unknown> = {}
+    for (const key of Object.keys(nextEncoded)) {
+      if (!configValueEquals(nextEncoded[key], currentEncoded[key])) {
+        diff[key] = nextEncoded[key]
+      }
+    }
+    return diff
   }
 
   protected abstract extractCreateConfig(draft: TCreateDraft): TConfig

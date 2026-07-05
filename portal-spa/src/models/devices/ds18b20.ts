@@ -100,22 +100,6 @@ export class Ds18b20Device extends BaseDevice<
     }
   }
 
-  static configChanged(
-    current: Ds18b20ConfigDraft,
-    original: Ds18b20ConfigDraft,
-  ): boolean {
-    return (
-      current.dependencyDeviceId !== original.dependencyDeviceId ||
-      current.address.toUpperCase() !== original.address.toUpperCase() ||
-      current.resolution !== original.resolution ||
-      current.unit !== original.unit ||
-      current.pollMs !== original.pollMs ||
-      current.reportDeltaCelsius !== original.reportDeltaCelsius ||
-      current.reportAlways !== original.reportAlways ||
-      current.enabled !== original.enabled
-    )
-  }
-
   static encodeConfig(config: Ds18b20ConfigDraft): Record<string, unknown> {
     return {
       name: config.name,
@@ -179,25 +163,18 @@ export class Ds18b20Device extends BaseDevice<
   buildEditCommands(current: DeviceRecord, draft: Ds18b20CreateDraft): DeviceCommandRequest[] {
     const commands: DeviceCommandRequest[] = []
     const currentConfig = this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined)
-    if (draft.name.trim() !== currentConfig.name) {
-      commands.push({ command: 'rename', name: draft.name.trim() })
-    }
-    if (draft.enabled !== currentConfig.enabled) {
-      commands.push({ command: draft.enabled ? 'enable' : 'disable' })
-    }
-    const nextConfig = this.normalizeConfig(draft, [
+    const nextConfig = this.normalizeConfig({ ...draft, name: draft.name.trim() }, [
       {
         role: 'onewire_bus',
         deviceId: draft.dependencyDeviceId,
       },
     ])
-    if (Ds18b20Device.configChanged(nextConfig, currentConfig)) {
+    const dependencyIdChanged = nextConfig.dependencyDeviceId !== currentConfig.dependencyDeviceId
+    const configDiff = this.buildConfigDiff(this.encodeConfig(nextConfig), this.encodeConfig(currentConfig))
+    if (Object.keys(configDiff).length > 0 || dependencyIdChanged) {
       commands.push({
         command: 'updateConfig',
-        config: {
-          ...this.encodeConfig(nextConfig),
-          enabled: draft.enabled,
-        },
+        config: configDiff,
         deps: [
           {
             role: 'onewire_bus',

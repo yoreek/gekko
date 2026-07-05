@@ -74,17 +74,17 @@ bool OneWireBusDeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst&
     if (!config.parseJson(configInput, error)) {
         return false;
     }
-    config.enabled = runtime.enabled() ? 1U : 0U;
-    if (!copyBoundedText(config.name, runtime.name())) {
-        error = "device base config is invalid";
-        return false;
-    }
     if (!config.validate().ok()) {
         error = "onewire bus config is invalid";
         return false;
     }
     request = {};
     request.configVersion = OneWireBusDevice::descriptor().currentConfigVersion;
+    request.enabled = config.enabled != 0U;
+    if (!copyBoundedText(request.name, config.name)) {
+        error = "device base config is invalid";
+        return false;
+    }
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = oneWireBusDeviceConfigSize(config);
     if (!encodeOneWireBusDeviceConfig(config, buffer, size) || !request.configBlob.assign(buffer, size)) {

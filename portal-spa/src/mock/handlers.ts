@@ -423,33 +423,22 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
 
     const command = payload.command as string
     switch (command) {
-      case 'rename':
-        if (typeof payload.name !== 'string' || payload.name.trim().length === 0) {
-          throw new ApiClientError('name is required', 'BAD_ARGS', 400, null)
-        }
-        device.config.name = payload.name
-        break
-      case 'enable':
-        device.config.enabled = true
-        device.runtime.lifecycleStatus = 'ready'
-        device.runtime.effectiveStatus = 'ready'
-        device.runtime.status = 'ready'
-        break
-      case 'disable':
-        device.config.enabled = false
-        device.runtime.lifecycleStatus = 'disabled'
-        device.runtime.effectiveStatus = 'disabled'
-        device.runtime.status = 'disabled'
-        break
       case 'delete':
         removedDevice = { ...device }
         db.devices = db.devices.filter(entry => entry.record.id !== deviceId)
         pruneDashboardLayout(db)
         break
       case 'updateConfig':
-      case 'update_config':
+      case 'update_config': {
         if (!isRecordPayload(payload.config)) {
           throw new ApiClientError('config is required', 'BAD_ARGS', 400, null)
+        }
+        if (typeof payload.config.name === 'string' && payload.config.name.trim().length > 0) {
+          const nextName = payload.config.name.trim()
+          if (nextName !== device.config.name
+            && db.devices.some(entry => entry.record.id !== deviceId && entry.config.name === nextName)) {
+            throw new ApiClientError('device name already exists', 'INVALID_CONFIG', 400, null)
+          }
         }
         if (device.record.typeName === 'gpio_switch') {
           const currentConfig = (isRecordPayload(device.config) ? device.config : {}) as Record<string, unknown>
@@ -602,8 +591,15 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           }
           device.runtime.output = buildThermostatOutput(db, device.config, device.record.id)
         }
+        if (typeof device.config.enabled === 'boolean') {
+          const nextStatus = device.config.enabled ? 'ready' : 'disabled'
+          device.runtime.lifecycleStatus = nextStatus
+          device.runtime.effectiveStatus = nextStatus
+          device.runtime.status = nextStatus
+        }
         device.record.configRevision += 1
         break
+      }
       case 'setDeps':
       case 'set_deps': {
         const dependencyLinks = normalizeDependencyLinks(payload.deps)
@@ -656,22 +652,6 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
         device.record.configRevision += 1
         break
       }
-      case 'setStatus':
-      case 'set_status':
-        if (device.record.typeName === 'dummy') {
-          throw new ApiClientError('unsupported dummy command', 'BAD_ARGS', 400, null)
-        }
-        if (payload.status === 'fault') {
-          device.runtime.lifecycleStatus = 'faulted'
-          device.runtime.effectiveStatus = 'faulted'
-          device.runtime.status = 'faulted'
-        }
-        if (payload.status === 'ready') {
-          device.runtime.lifecycleStatus = 'ready'
-          device.runtime.effectiveStatus = 'ready'
-          device.runtime.status = 'ready'
-        }
-        break
       case 'resetDiagnostics':
         if (isRecordPayload(device.runtime.diagnostics)) {
           device.runtime.diagnostics = {

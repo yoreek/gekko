@@ -56,11 +56,16 @@ export class DummyDevice extends BaseDevice<DummyConfigDraft, DummyCreateDraft, 
   buildEditCommands(current: DeviceRecord, draft: DummyCreateDraft): DeviceCommandRequest[] {
     const config = current.config as Partial<DummyConfigDraft> | undefined
     const commands: DeviceCommandRequest[] = []
-    if (draft.name.trim() !== config?.name) {
-      commands.push({ command: 'rename', name: draft.name.trim() })
+    const configDiff: Record<string, unknown> = {}
+    const trimmedName = draft.name.trim()
+    if (trimmedName !== config?.name) {
+      configDiff.name = trimmedName
     }
     if (draft.enabled !== config?.enabled) {
-      commands.push({ command: draft.enabled ? 'enable' : 'disable' })
+      configDiff.enabled = draft.enabled
+    }
+    if (Object.keys(configDiff).length > 0) {
+      commands.push({ command: 'updateConfig', config: configDiff })
     }
     return commands
   }
