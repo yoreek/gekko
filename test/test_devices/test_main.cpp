@@ -5,6 +5,7 @@ void test_ds18b20_config_codec_json_and_validation();
 void test_ds18b20_protocol_helpers_parse_scratchpad();
 void test_ds18b20_type_and_api_adapter_are_registered();
 void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input();
+void test_ds18b20_api_adapter_partial_update_preserves_address_unit_and_report_always();
 void test_ds18b20_runtime_reads_addressed_temperature_and_configures_resolution();
 void test_ds18b20_runtime_serializes_fahrenheit_output_and_quiet_delta();
 void test_ds18b20_runtime_report_always_marks_repeated_reading_dirty();
@@ -104,6 +105,7 @@ int main(int, char**) {
     RUN_TEST(test_ds18b20_protocol_helpers_parse_scratchpad);
     RUN_TEST(test_ds18b20_type_and_api_adapter_are_registered);
     RUN_TEST(test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input);
+    RUN_TEST(test_ds18b20_api_adapter_partial_update_preserves_address_unit_and_report_always);
     RUN_TEST(test_ds18b20_runtime_reads_addressed_temperature_and_configures_resolution);
     RUN_TEST(test_ds18b20_runtime_serializes_fahrenheit_output_and_quiet_delta);
     RUN_TEST(test_ds18b20_runtime_report_always_marks_repeated_reading_dirty);

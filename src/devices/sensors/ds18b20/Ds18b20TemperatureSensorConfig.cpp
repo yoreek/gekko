@@ -117,12 +117,14 @@ bool Ds18b20TemperatureSensorConfigV1::parseJson(const JsonObjectConst& input, c
         return false;
     }
 
-    reportAlways = parseBoolField(input, "reportAlways", false) ? 1U : 0U;
+    reportAlways = parseBoolField(input, "reportAlways", reportAlways != 0U) ? 1U : 0U;
 
-    const char* address = input["address"] | "";
-    if (!parseOneWireRomAddress(address, this->address)) {
-        error = "ds18b20 address must be 16 hex characters";
-        return false;
+    const JsonVariantConst addressVariant = input["address"];
+    if (!addressVariant.isNull()) {
+        if (!parseOneWireRomAddress(addressVariant.as<const char*>(), this->address)) {
+            error = "ds18b20 address must be 16 hex characters";
+            return false;
+        }
     }
 
     const JsonVariantConst resolutionVariant = input["resolution"];
@@ -140,7 +142,7 @@ bool Ds18b20TemperatureSensorConfigV1::parseJson(const JsonObjectConst& input, c
     }
 
     TemperatureUnit unit{};
-    if (!temperatureUnitFromString(input["unit"] | "celsius", unit)) {
+    if (!temperatureUnitFromString(input["unit"] | temperatureUnitName(static_cast<TemperatureUnit>(outputUnit)), unit)) {
         error = "ds18b20 output unit is invalid";
         return false;
     }

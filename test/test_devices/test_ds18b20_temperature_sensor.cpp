@@ -435,6 +435,39 @@ void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input() {
         Ds18b20TemperatureSensorDeviceApiAdapter::instance().parseCreateRequest(badAddressDoc.as<JsonObjectConst>(), request, error));
 }
 
+void test_ds18b20_api_adapter_partial_update_preserves_address_unit_and_report_always() {
+    Ds18b20TemperatureSensorConfigV1 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "temperature");
+    TEST_ASSERT_TRUE(parseOneWireRomAddress("28FF641D621603AD", config.address));
+    config.resolution = 11;
+    config.outputUnit = temperatureUnitToByte(TemperatureUnit::Fahrenheit);
+    config.pollMs = 2000;
+    config.reportDeltaCentiCelsius = 25;
+    config.reportAlways = 1U;
+
+    const DeviceRegistryEntry record = makeSensorRecord(50, 44, config);
+    Ds18b20TemperatureSensorDevice runtime(record, encodeDs18b20Payload(config));
+
+    StaticJsonDocument<128> updateDoc;
+    JsonObject updateConfig = updateDoc.createNestedObject("config");
+    updateConfig["resolution"] = 9;
+
+    DeviceConfigUpdateRequest updateRequest{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(Ds18b20TemperatureSensorDeviceApiAdapter::instance().parseUpdateConfigRequest(
+                                 updateDoc.as<JsonObjectConst>(), runtime, updateRequest, error),
+                             error);
+
+    Ds18b20TemperatureSensorConfigV1 parsed{};
+    TEST_ASSERT_TRUE(decodeDs18b20TemperatureSensorConfig(reinterpret_cast<const uint8_t*>(updateRequest.configBlob.data()),
+                                                          updateRequest.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT8(9, parsed.resolution);
+    TEST_ASSERT_EQUAL_UINT8(temperatureUnitToByte(TemperatureUnit::Fahrenheit), parsed.outputUnit);
+    TEST_ASSERT_TRUE(parsed.reportAlways != 0U);
+    TEST_ASSERT_TRUE(std::memcmp(&parsed.address, &config.address, sizeof(config.address)) == 0);
+}
+
 void test_ds18b20_runtime_reads_addressed_temperature_and_configures_resolution() {
     FakeOneWireBusDriver driver;
     driver.setTemperatureRaw(0x0178, 9);
