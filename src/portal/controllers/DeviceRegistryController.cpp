@@ -1,9 +1,11 @@
 #include "portal/controllers/DeviceRegistryController.h"
 
+#include "debug/Debug.h"
 #include "devices/core/DeviceBaseConfig.h"
 
 #include <cstdlib>
 #include <cstring>
+#include <memory>
 #include <string>
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
@@ -351,12 +353,14 @@ void DeviceRegistryController::create() {
         renderError(400, "BAD_ARGS", error);
         return;
     }
-    DeviceCreatePersistenceRequest createPersistedRequest{};
-    if (!adapter->parseCreatePersistedStateRequest(input, createRequest, createPersistedRequest, error)) {
+    // Heap-allocated: DeviceCreatePersistenceRequest embeds a BoundedBlob<kMaxDisplayLayoutBytes>
+    // (4KB+), which overflowed the async_tcp task's stack when declared as a local here.
+    auto createPersistedRequest = std::make_unique<DeviceCreatePersistenceRequest>();
+    if (!adapter->parseCreatePersistedStateRequest(input, createRequest, *createPersistedRequest, error)) {
         renderError(400, "BAD_ARGS", error);
         return;
     }
-    const DeviceValidationResult createValidation = adapter->validateCreateRequest(createRequest, createPersistedRequest, registry_);
+    const DeviceValidationResult createValidation = adapter->validateCreateRequest(createRequest, *createPersistedRequest, registry_);
     if (!createValidation.ok()) {
         renderError(400, errorCodeForDeviceError(createValidation.error), createValidation.message);
         return;
@@ -367,9 +371,9 @@ void DeviceRegistryController::create() {
         renderError(400, errorCodeForDeviceError(result.validation.error), result.validation.message);
         return;
     }
-    if (createPersistedRequest.persistedStateProvided) {
+    if (createPersistedRequest->persistedStateProvided) {
         const DeviceValidationResult persistedResult = registry_.applyPersistedStateUpdate(
-            result.deviceId, createPersistedRequest.persistedStateBlob.data(), createPersistedRequest.persistedStateBlob.size());
+            result.deviceId, createPersistedRequest->persistedStateBlob.data(), createPersistedRequest->persistedStateBlob.size());
         if (!persistedResult.ok()) {
             renderError(400, errorCodeForDeviceError(persistedResult.error), persistedResult.message);
             return;
@@ -528,31 +532,34 @@ void DeviceRegistryController::cmd() {
             return;
         }
         const char* error = nullptr;
-        DeviceConfigUpdateRequest updateRequest{};
+        // Heap-allocated: DeviceConfigUpdateRequest embeds a BoundedBlob<kMaxDisplayLayoutBytes>
+        // (4KB+), too large to declare as a local on the async_tcp task's stack (see the matching
+        // fix in create() above for the same struct family and the stack overflow it caused there).
+        auto updateRequest = std::make_unique<DeviceConfigUpdateRequest>();
         IDeviceRuntime* runtime = registry_.runtime(deviceId_);
         if (runtime == nullptr) {
             renderError(404, "NOT_FOUND", "device not found");
             return;
         }
-        if (!adapter->parseUpdateConfigRequest(input, *runtime, updateRequest, error)) {
+        if (!adapter->parseUpdateConfigRequest(input, *runtime, *updateRequest, error)) {
             renderError(400, "BAD_ARGS", error);
             return;
         }
-        const DeviceValidationResult updateValidation = adapter->validateUpdateConfigRequest(*runtime, updateRequest, registry_);
+        const DeviceValidationResult updateValidation = adapter->validateUpdateConfigRequest(*runtime, *updateRequest, registry_);
         if (!updateValidation.ok()) {
             renderError(400, errorCodeForDeviceError(updateValidation.error), updateValidation.message);
             return;
         }
-        mutationResult =
-            registry_.updateConfigAndDeps(deviceId_, updateRequest.configBlob, updateRequest.configVersion, updateRequest.name,
-                                          updateRequest.enabled, updateRequest.depsProvided, updateRequest.deps, updateRequest.depCount, 0);
+        mutationResult = registry_.updateConfigAndDeps(deviceId_, updateRequest->configBlob, updateRequest->configVersion,
+                                                       updateRequest->name, updateRequest->enabled, updateRequest->depsProvided,
+                                                       updateRequest->deps, updateRequest->depCount, 0);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
-        if (updateRequest.persistedStateProvided) {
+        if (updateRequest->persistedStateProvided) {
             const DeviceValidationResult persistedResult = registry_.applyPersistedStateUpdate(
-                deviceId_, updateRequest.persistedStateBlob.data(), updateRequest.persistedStateBlob.size());
+                deviceId_, updateRequest->persistedStateBlob.data(), updateRequest->persistedStateBlob.size());
             if (!persistedResult.ok()) {
                 renderError(400, errorCodeForDeviceError(persistedResult.error), persistedResult.message);
                 return;

@@ -122,6 +122,7 @@ DeviceRegistry::DeviceRegistry(DeviceRegistryStore& store, const DeviceTypeRegis
     : DeviceRegistry(store, typeRegistry, idSource, retainedStateStore, nullptr, eventDispatcher) {}
 
 DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
+    DeviceRegistryLockGuard guard(mutex_);
     runtimes_.clear();
     persistence_.reset(now);
     eventReporter_.reset();
@@ -188,6 +189,7 @@ DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
 }
 
 void DeviceRegistry::tick(uint32_t now) {
+    DeviceRegistryLockGuard guard(mutex_);
     if (!persistence_.shouldFlush(now, kPersistenceDebounceMs, kPersistenceMaxDelayMs)) {
         return;
     }
@@ -196,6 +198,7 @@ void DeviceRegistry::tick(uint32_t now) {
 }
 
 void DeviceRegistry::tickFastLoop(uint32_t now) {
+    DeviceRegistryLockGuard guard(mutex_);
     for (auto& entry : runtimes_) {
         if (entry.second.runtime != nullptr && entry.second.descriptor != nullptr && entry.second.descriptor->ticksFastLoop) {
             entry.second.runtime->tickFastLoop(now);
@@ -207,6 +210,7 @@ void DeviceRegistry::tickFastLoop(uint32_t now) {
 }
 
 void DeviceRegistry::tick100ms(uint32_t now) {
+    DeviceRegistryLockGuard guard(mutex_);
     for (auto& entry : runtimes_) {
         if (entry.second.runtime != nullptr && entry.second.descriptor != nullptr && entry.second.descriptor->ticks100ms) {
             entry.second.runtime->tick100ms(now);
@@ -218,6 +222,7 @@ void DeviceRegistry::tick100ms(uint32_t now) {
 }
 
 void DeviceRegistry::tick1s(uint32_t now) {
+    DeviceRegistryLockGuard guard(mutex_);
     for (auto& entry : runtimes_) {
         if (entry.second.runtime != nullptr && entry.second.descriptor != nullptr && entry.second.descriptor->ticks1s) {
             entry.second.runtime->tick1s(now);
@@ -229,34 +234,42 @@ void DeviceRegistry::tick1s(uint32_t now) {
 }
 
 uint32_t DeviceRegistry::registryRevision() const {
+    DeviceRegistryLockGuard guard(mutex_);
     return registryRevision_;
 }
 
 bool DeviceRegistry::hasPendingPersistence() const {
+    DeviceRegistryLockGuard guard(mutex_);
     return persistence_.hasPendingPersistence();
 }
 
 bool DeviceRegistry::dirtyIndex() const {
+    DeviceRegistryLockGuard guard(mutex_);
     return persistence_.dirtyIndex();
 }
 
 std::vector<DeviceId> DeviceRegistry::dirtyConfigRecordIds() const {
+    DeviceRegistryLockGuard guard(mutex_);
     return persistence_.dirtyConfigRecordIds();
 }
 
 std::vector<DeviceId> DeviceRegistry::dirtyRetainedStateIds() const {
+    DeviceRegistryLockGuard guard(mutex_);
     return persistence_.dirtyRetainedStateIds();
 }
 
 uint32_t DeviceRegistry::firstDirtyAt() const {
+    DeviceRegistryLockGuard guard(mutex_);
     return persistence_.firstDirtyAt();
 }
 
 uint32_t DeviceRegistry::lastChangeAt() const {
+    DeviceRegistryLockGuard guard(mutex_);
     return persistence_.lastChangeAt();
 }
 
 std::vector<DeviceRegistryEntry> DeviceRegistry::list() const {
+    DeviceRegistryLockGuard guard(mutex_);
     std::vector<DeviceRegistryEntry> records;
     records.reserve(runtimes_.size());
     for (const auto& entry : runtimes_) {
@@ -271,6 +284,7 @@ std::vector<DeviceRegistryEntry> DeviceRegistry::list() const {
 }
 
 DeviceStatus DeviceRegistry::effectiveStatus(DeviceId deviceId) const {
+    DeviceRegistryLockGuard guard(mutex_);
     const IDeviceRuntime* runtimePtr = runtime(deviceId);
     if (runtimePtr == nullptr) {
         return DeviceStatus::Unknown;
@@ -279,6 +293,7 @@ DeviceStatus DeviceRegistry::effectiveStatus(DeviceId deviceId) const {
 }
 
 IDeviceRuntime* DeviceRegistry::runtime(DeviceId deviceId) {
+    DeviceRegistryLockGuard guard(mutex_);
     const auto it = runtimes_.find(deviceId);
     if (it == runtimes_.end()) {
         return nullptr;
@@ -287,6 +302,7 @@ IDeviceRuntime* DeviceRegistry::runtime(DeviceId deviceId) {
 }
 
 const IDeviceRuntime* DeviceRegistry::runtime(DeviceId deviceId) const {
+    DeviceRegistryLockGuard guard(mutex_);
     const auto it = runtimes_.find(deviceId);
     if (it == runtimes_.end()) {
         return nullptr;
@@ -295,6 +311,7 @@ const IDeviceRuntime* DeviceRegistry::runtime(DeviceId deviceId) const {
 }
 
 DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, uint32_t now) {
+    DeviceRegistryLockGuard guard(mutex_);
     DeviceCreateResult result{};
     const DeviceTypeDescriptor* descriptor = typeRegistry_.find(request.typeId);
     if (descriptor == nullptr) {
@@ -447,6 +464,7 @@ DeviceCreateResult DeviceRegistry::create(const DeviceCreateRequest& request, ui
 }
 
 DeviceCreateResult DeviceRegistry::command(const DeviceCreateRequest& request, uint32_t now) {
+    DeviceRegistryLockGuard guard(mutex_);
     const DeviceCreateResult result = create(request, now);
     if (!result.ok()) {
         DeviceEvent rejected{};
@@ -462,6 +480,7 @@ DeviceCreateResult DeviceRegistry::command(const DeviceCreateRequest& request, u
 
 DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const BoundedBlob<kMaxDeviceConfigBytes>& configBlob,
                                                   uint32_t configVersion, uint32_t now, DevicePersistencePolicy policy) {
+    DeviceRegistryLockGuard guard(mutex_);
     const IDeviceRuntime* currentRuntime = runtime(deviceId);
     if (currentRuntime == nullptr) {
         DeviceMutationResult result{};
@@ -476,6 +495,7 @@ DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, cons
                                                          uint32_t configVersion, const std::string& name, bool enabled, bool depsProvided,
                                                          const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps,
                                                          uint8_t depCount, uint32_t now, DevicePersistencePolicy policy) {
+    DeviceRegistryLockGuard guard(mutex_);
     DeviceMutationResult result{};
     if (configBlob.size() > kMaxDeviceConfigBytes) {
         result.validation = {DeviceError::BoundsExceeded, "device config exceeds supported size"};
@@ -649,6 +669,7 @@ DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, cons
 
 DeviceMutationResult DeviceRegistry::setDeps(DeviceId deviceId, const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps,
                                              uint8_t depCount, uint32_t now, DevicePersistencePolicy policy) {
+    DeviceRegistryLockGuard guard(mutex_);
     DeviceMutationResult result{};
     IDeviceRuntime* currentRuntime = runtime(deviceId);
     if (currentRuntime == nullptr) {
@@ -766,6 +787,7 @@ DeviceMutationResult DeviceRegistry::setDeps(DeviceId deviceId, const std::array
 }
 
 DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, DevicePersistencePolicy policy) {
+    DeviceRegistryLockGuard guard(mutex_);
     DeviceMutationResult result{};
     const IDeviceRuntime* currentRuntime = runtime(deviceId);
     if (currentRuntime == nullptr) {
@@ -851,6 +873,7 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
 }
 
 DeviceValidationResult DeviceRegistry::applyPersistedStateUpdate(DeviceId deviceId, const uint8_t* data, size_t size) {
+    DeviceRegistryLockGuard guard(mutex_);
     IDevicePersistedState* persistedRuntime = persistedStateRuntime(deviceId);
     if (persistedRuntime == nullptr) {
         return {DeviceError::InvalidConfig, "device type does not support persisted state"};
@@ -859,6 +882,7 @@ DeviceValidationResult DeviceRegistry::applyPersistedStateUpdate(DeviceId device
 }
 
 DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint32_t now) {
+    DeviceRegistryLockGuard guard(mutex_);
     if (!command.valid()) {
         DeviceMutationResult result{{DeviceError::BoundsExceeded, "command payload exceeds supported size"}, false};
         DeviceEvent rejected{};
@@ -986,6 +1010,7 @@ DeviceValidationResult DeviceRegistry::captureRuntimeRetainedState(DeviceId devi
 }
 
 DeviceValidationResult DeviceRegistry::flushNow() {
+    DeviceRegistryLockGuard guard(mutex_);
     if (!persistence_.hasPendingPersistence()) {
         return {};
     }
@@ -1113,6 +1138,7 @@ DeviceValidationResult DeviceRegistry::flushNow() {
 
 DeviceValidationResult DeviceRegistry::restore(const DeviceRegistrySnapshot& snapshot, const DeviceConfigBlobMap& configBlobs,
                                                uint32_t registryRevision, uint32_t now) {
+    DeviceRegistryLockGuard guard(mutex_);
     const DeviceValidationResult structureResult = validateSnapshot(snapshot, configBlobs);
     if (!structureResult.ok()) {
         return structureResult;

@@ -3,6 +3,7 @@
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/core/DeviceTypes.h"
 #include "devices/registry/DeviceRegistryEventReporter.h"
+#include "devices/registry/DeviceRegistryMutex.h"
 #include "devices/registry/DeviceRegistryPersistenceCoordinator.h"
 #include "devices/registry/DeviceRegistryStore.h"
 #include "devices/registry/DeviceRetainedDataStore.h"
@@ -83,6 +84,7 @@ public:
 
     std::vector<DeviceRegistryEntry> list() const;
     template <typename Fn> void forEachRuntime(Fn&& visitor) const {
+        DeviceRegistryLockGuard guard(mutex_);
         for (const auto& entry : runtimes_) {
             if (entry.second.runtime != nullptr) {
                 visitor(*entry.second.runtime);
@@ -149,6 +151,7 @@ private:
     DeviceRegistryPersistenceCoordinator persistence_{};
     DeviceRuntimeMap runtimes_{};
     uint32_t registryRevision_{0};
+    mutable DeviceRegistryMutex mutex_{};
 };
 
 } // namespace ewfm
