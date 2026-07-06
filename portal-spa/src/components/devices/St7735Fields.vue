@@ -1,11 +1,17 @@
 <template>
   <v-row density="comfortable">
     <!-- SPI connection -->
+    <v-col v-if="dependencyItems.length === 0" cols="12">
+      <v-alert type="warning" variant="tonal">
+        {{ t('device.dialog.st7735Display.noDependency') }}
+      </v-alert>
+    </v-col>
     <v-col cols="12" sm="6">
-      <v-text-field
+      <v-select
         :model-value="modelValue.spiBusDeviceId"
-        type="number"
+        :items="dependencyItems"
         :label="t('device.fields.spiBusDeviceId')"
+        :disabled="dependencyItems.length === 0"
         density="compact"
         hide-details="auto"
         @update:model-value="update('spiBusDeviceId', Number($event))"
@@ -84,8 +90,8 @@
       />
     </v-col>
 
-    <!-- Designer button -->
-    <v-col cols="12">
+    <!-- Designer button (only once the device exists) -->
+    <v-col v-if="device" cols="12">
       <v-btn
         color="primary"
         variant="tonal"
@@ -104,10 +110,12 @@ import { useI18n } from 'vue-i18n'
 import type { DeviceRecord } from '@/api/contracts'
 import type { St7735ConfigDraft } from '@/models/devices/st7735/device'
 import SpiChipSelectProbe from '@/components/devices/common/SpiChipSelectProbe.vue'
+import { SPI_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-type-ids'
+import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
 const props = defineProps<{
   modelValue: T
-  device: DeviceRecord
+  device?: DeviceRecord
 }>()
 
 const emit = defineEmits<{
@@ -115,6 +123,10 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const deviceStore = useDeviceRegistryStore()
+
+const dependencyDevices = computed(() => deviceStore.devices.filter(device => deviceTypeIdFromName(device.record.typeName) === SPI_BUS_DEVICE_TYPE_ID))
+const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ title: `${device.config.name} #${device.record.id}`, value: device.record.id })))
 
 const rotationItems = computed(() => [
   { title: t('device.fields.display.orientationPortrait'), value: 0 },

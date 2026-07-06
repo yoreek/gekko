@@ -125,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { commandDevice } from '@/api'
@@ -176,6 +176,15 @@ const measuredAtText = computed(() => (temperature.value?.valid ? String(tempera
 function update<K extends keyof Ds18b20ConfigDraft>(key: K, value: Ds18b20ConfigDraft[K]): void {
   emit('update:modelValue', { ...props.modelValue, [key]: value })
 }
+
+// Scan results arrive asynchronously (over the websocket-driven device store, not necessarily in
+// the scan command's own HTTP response), so watch the derived candidate list rather than reacting
+// only right after the command resolves. Never overwrites an address the user already set.
+watch(scanCandidateItems, candidates => {
+  if (props.modelValue.address.trim().length === 0 && candidates.length > 0) {
+    update('address', candidates[0].value)
+  }
+})
 
 async function scanSelectedDependency(): Promise<void> {
   if (props.modelValue.dependencyDeviceId === 0) return

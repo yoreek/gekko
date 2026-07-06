@@ -41,10 +41,11 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
-import { createDevice, type DeviceCreateRequest } from '@/api'
+import { createDevice } from '@/api'
 import { createDefaultDeviceDraft, type DeviceCreateDraft } from '@/models/devices/device-draft'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
+import { resolveDeviceModelByTypeName } from '@/models/devices/device-model-factory'
 import { useNotificationsStore } from '@/stores/notifications'
 import DeviceBaseFields from '@/components/device/DeviceBaseFields.vue'
 import PageContainer from '@/components/layout/PageContainer.vue'
@@ -89,18 +90,17 @@ async function submitCreate(): Promise<void> {
   errorMessage.value = ''
 
   try {
-    const payload = {
-      name: draft.value.name,
-      typeName: draft.value.typeName,
-      config: draft.value,
-    } as unknown as DeviceCreateRequest
+    const model = resolveDeviceModelByTypeName(draft.value.typeName)
+    const payload = model.buildCreatePayload(draft.value)
 
     const response = await createDevice(payload)
     deviceStore.setRevision(response.registryRevision)
     if (response.device) {
       deviceStore.upsertDevice(response.device, response.registryRevision)
       notifications.notify(t('notifications.deviceCreated', { name: response.device.config.name }), 'success')
-      await router.push({ name: 'device-detail', params: { id: response.device.record.id } })
+      // replace(), not push(): the create form shouldn't remain in history, so "back" from
+      // the list doesn't return to a stale create form for an already-created device.
+      await router.replace({ name: 'devices' })
     }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : t('device.dialog.unknownError')

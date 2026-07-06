@@ -1,11 +1,17 @@
 <template>
   <v-row density="comfortable">
     <!-- I2C connection (bus id, address + scan) -->
+    <v-col v-if="dependencyItems.length === 0" cols="12">
+      <v-alert type="warning" variant="tonal">
+        {{ t('device.dialog.ssd1306Display.noDependency') }}
+      </v-alert>
+    </v-col>
     <v-col cols="12" sm="4">
-      <v-text-field
+      <v-select
         :model-value="modelValue.i2cBusDeviceId"
-        type="number"
+        :items="dependencyItems"
         :label="t('device.fields.i2cBusDeviceId')"
+        :disabled="dependencyItems.length === 0"
         density="compact"
         hide-details="auto"
         @update:model-value="update('i2cBusDeviceId', Number($event))"
@@ -51,8 +57,8 @@
       />
     </v-col>
 
-    <!-- Designer button -->
-    <v-col cols="12">
+    <!-- Designer button (only once the device exists) -->
+    <v-col v-if="device" cols="12">
       <v-btn
         color="primary"
         variant="tonal"
@@ -71,10 +77,12 @@ import { useI18n } from 'vue-i18n'
 import type { DeviceRecord } from '@/api/contracts'
 import type { Ssd1306ConfigDraft } from '@/models/devices/ssd1306/device'
 import I2cAddressPicker from '@/components/devices/common/I2cAddressPicker.vue'
+import { I2C_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-type-ids'
+import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
 const props = defineProps<{
   modelValue: T
-  device: DeviceRecord
+  device?: DeviceRecord
 }>()
 
 const emit = defineEmits<{
@@ -82,6 +90,10 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const deviceStore = useDeviceRegistryStore()
+
+const dependencyDevices = computed(() => deviceStore.devices.filter(device => deviceTypeIdFromName(device.record.typeName) === I2C_BUS_DEVICE_TYPE_ID))
+const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ title: `${device.config.name} #${device.record.id}`, value: device.record.id })))
 
 const rotationItems = computed(() => [
   { title: t('device.fields.display.orientationPortrait'), value: 0 },
