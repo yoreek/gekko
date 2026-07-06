@@ -290,6 +290,7 @@ export default {
     },
     ha: {
       title: 'Home Assistant',
+      uniqueIdLabel: 'Home Assistant unique_id: {id}',
       enabled: 'Publish to Home Assistant',
       name: 'Home Assistant name',
       nameHint: 'Leave blank to use the device name above.',

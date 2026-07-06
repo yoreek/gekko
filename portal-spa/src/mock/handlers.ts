@@ -30,6 +30,7 @@ import {
   canonicalizeDeviceRecord,
   createSeedMockDatabase,
   createDeviceRecord,
+  isHaSupportedTypeName,
   loadMockDatabase,
   saveMockDatabase,
   type MockDeviceRecord,
@@ -734,7 +735,11 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
       case 'setHaSettings': {
         const haEnabled = Boolean(payload.haEnabled)
         const haName = typeof payload.haName === 'string' ? payload.haName : ''
+        if (haEnabled && !isHaSupportedTypeName(device.record.typeName)) {
+          throw new ApiClientError('device type does not support Home Assistant integration', 'BAD_ARGS', 400, null)
+        }
         device.ha = {
+          supported: isHaSupportedTypeName(device.record.typeName),
           enabled: haEnabled,
           name: haName,
           effectiveName: haName.length > 0 ? haName : device.config.name,

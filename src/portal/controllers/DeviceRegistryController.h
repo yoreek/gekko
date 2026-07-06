@@ -4,6 +4,10 @@
 #include "integrations/common/DeviceApiAdapter.h"
 #include "portal/controllers/BaseController.h"
 
+#if defined(WITH_HOME_ASSISTANT)
+#include "integrations/mqtt/HaEntityAdapter.h"
+#endif
+
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 class AsyncWebServer;
 class AsyncWebServerRequest;
@@ -46,6 +50,9 @@ private:
     const DeviceApiAdapterRegistry& adapters_;
     DeviceScopedDataStore* haSettingsStore_{nullptr};
     HaDiscoveryBridge* haDiscoveryBridge_{nullptr};
+#if defined(WITH_HOME_ASSISTANT)
+    HaEntityAdapterRegistry haAdapters_{HaEntityAdapterRegistry::withDefaults()};
+#endif
     DeviceId deviceId_{0};
 
     static bool parseDeviceIdPath(const char* url, bool requireCommandSuffix, DeviceId& deviceId);

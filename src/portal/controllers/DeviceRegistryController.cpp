@@ -20,6 +20,8 @@
 
 namespace ewfm {
 
+class HaEntityAdapterRegistry;
+
 DeviceRegistryController::DeviceRegistryController(AsyncWebServerRequest* request, const Action action, DeviceRegistry& registry,
                                                    const DeviceApiAdapterRegistry& adapters, DeviceScopedDataStore* haSettingsStore,
                                                    HaDiscoveryBridge* haDiscoveryBridge)
@@ -281,12 +283,14 @@ void writeFallbackDeviceJson(JsonObject device, const IDeviceRuntime& runtime, c
 #if defined(WITH_HOME_ASSISTANT)
 // Generic (type-agnostic) "ha" block, added alongside record/config/runtime regardless of which
 // adapter (or fallback) wrote the rest of the device JSON - no per-type adapter changes needed.
-void writeHaDeviceJson(JsonObject device, DeviceScopedDataStore* haSettingsStore, const IDeviceRuntime& runtime) {
+void writeHaDeviceJson(JsonObject device, DeviceScopedDataStore* haSettingsStore, const HaEntityAdapterRegistry* haAdapters,
+                       const IDeviceRuntime& runtime) {
     if (haSettingsStore == nullptr) {
         return;
     }
     const HaDeviceSettingsRecord settings = loadHaDeviceSettings(*haSettingsStore, runtime.deviceId());
     JsonObject ha = device.createNestedObject("ha");
+    ha["supported"] = haAdapters != nullptr && haAdapters->find(runtime.typeId()) != nullptr;
     ha["enabled"] = settings.enabled != 0U;
     ha["name"] = JsonString(settings.nameOverride, JsonString::Copied);
     const std::string effectiveName = effectiveHaDeviceName(settings, runtime.name());
@@ -295,8 +299,9 @@ void writeHaDeviceJson(JsonObject device, DeviceScopedDataStore* haSettingsStore
 #endif
 
 void writeIndexResponse(AsyncResponseStream* response, DeviceRegistry& registry, const DeviceApiAdapterRegistry& adapters,
-                        DeviceScopedDataStore* haSettingsStore) {
+                        DeviceScopedDataStore* haSettingsStore, const HaEntityAdapterRegistry* haAdapters) {
     (void)haSettingsStore;
+    (void)haAdapters;
     if (response == nullptr) {
         return;
     }
@@ -326,7 +331,7 @@ void writeIndexResponse(AsyncResponseStream* response, DeviceRegistry& registry,
         device["runtime"]["status"] = statusToString(lifecycleStatus);
         device["runtime"]["effectiveStatus"] = statusToString(effectiveStatus);
 #if defined(WITH_HOME_ASSISTANT)
-        writeHaDeviceJson(device, haSettingsStore, runtime);
+        writeHaDeviceJson(device, haSettingsStore, haAdapters, runtime);
 #endif
         serializeJson(item, *response);
     });
@@ -339,7 +344,11 @@ void writeIndexResponse(AsyncResponseStream* response, DeviceRegistry& registry,
 void DeviceRegistryController::index() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     AsyncResponseStream* response = request_->beginResponseStream("application/json");
-    writeIndexResponse(response, registry_, adapters_, haSettingsStore_);
+#if defined(WITH_HOME_ASSISTANT)
+    writeIndexResponse(response, registry_, adapters_, haSettingsStore_, &haAdapters_);
+#else
+    writeIndexResponse(response, registry_, adapters_, haSettingsStore_, nullptr);
+#endif
     send(response);
 #endif
 }
@@ -366,7 +375,7 @@ void DeviceRegistryController::show() {
     device["runtime"]["status"] = statusToString(runtime->status());
     device["runtime"]["effectiveStatus"] = statusToString(effectiveStatus);
 #if defined(WITH_HOME_ASSISTANT)
-    writeHaDeviceJson(device, haSettingsStore_, *runtime);
+    writeHaDeviceJson(device, haSettingsStore_, &haAdapters_, *runtime);
 #endif
     renderOk(doc);
 #endif
@@ -607,6 +616,10 @@ void DeviceRegistryController::cmd() {
         }
         const bool haEnabled = input["haEnabled"] | false;
         const char* haName = input["haName"] | "";
+        if (haEnabled && haAdapters_.find(currentRuntime->typeId()) == nullptr) {
+            renderError(400, "BAD_ARGS", "device type does not support Home Assistant integration");
+            return;
+        }
         const DeviceValidationResult saveResult = saveHaDeviceSettings(*haSettingsStore_, deviceId_, haEnabled, haName);
         if (!saveResult.ok()) {
             renderError(400, errorCodeForDeviceError(saveResult.error), saveResult.message);
@@ -640,7 +653,7 @@ void DeviceRegistryController::cmd() {
         device["runtime"]["status"] = statusToString(runtime->status());
         device["runtime"]["effectiveStatus"] = statusToString(effectiveStatus);
 #if defined(WITH_HOME_ASSISTANT)
-        writeHaDeviceJson(device, haSettingsStore_, *runtime);
+        writeHaDeviceJson(device, haSettingsStore_, &haAdapters_, *runtime);
 #endif
     }
     renderOk(doc);

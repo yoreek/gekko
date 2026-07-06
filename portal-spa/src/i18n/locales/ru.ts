@@ -289,6 +289,7 @@ export default {
     },
     ha: {
       title: 'Home Assistant',
+      uniqueIdLabel: 'unique_id в Home Assistant: {id}',
       enabled: 'Публиковать в Home Assistant',
       name: 'Имя в Home Assistant',
       nameHint: 'Оставьте пустым, чтобы использовать имя устройства выше.',

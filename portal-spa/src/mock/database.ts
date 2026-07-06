@@ -28,6 +28,14 @@ import {
 } from '../models/devices/st7735/layout.ts'
 import { safeReadStorage, safeWriteStorage } from '../utils/storage.ts'
 
+// Mirrors the firmware's HaEntityAdapterRegistry::withDefaults() (src/integrations/mqtt/HaEntityAdapter.cpp)
+// - keep in sync whenever a new IHaEntityAdapter is added there.
+const HA_SUPPORTED_TYPE_NAMES = new Set(['gpio_switch', 'ds18b20_temperature_sensor', 'thermostat'])
+
+export function isHaSupportedTypeName(typeName: string): boolean {
+  return HA_SUPPORTED_TYPE_NAMES.has(typeName)
+}
+
 const storageKey = 'gekko.mockDb.v7'
 
 type MockDeviceConfig = BaseDeviceConfig & Record<string, unknown>
@@ -620,6 +628,7 @@ export function canonicalizeDeviceRecord(value: unknown): MockDeviceRecord {
   const haEnabled = typeof haSource.enabled === 'boolean' ? haSource.enabled : false
   const haName = typeof haSource.name === 'string' ? haSource.name : ''
   const ha: DeviceHaSettings = {
+    supported: isHaSupportedTypeName(typeName),
     enabled: haEnabled,
     name: haName,
     effectiveName: haName.length > 0 ? haName : config.name,

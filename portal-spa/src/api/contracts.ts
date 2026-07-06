@@ -103,6 +103,7 @@ export interface DeviceRecordBase {
 }
 
 export interface DeviceHaSettings {
+  supported: boolean
   enabled: boolean
   name: string
   effectiveName: string

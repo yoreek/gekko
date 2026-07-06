@@ -53,9 +53,9 @@
         </template>
       </PageCard>
 
-      <PageCard v-if="mqttStore.enabled" class="mt-4">
+      <PageCard v-if="mqttStore.enabled && device.ha?.supported" class="mt-4">
         <template #header>
-          <PageToolbar :title="t('device.ha.title')" />
+          <PageToolbar :title="t('device.ha.title')" :subtitle="haUniqueId ? t('device.ha.uniqueIdLabel', { id: haUniqueId }) : undefined" />
         </template>
 
         <div class="d-flex flex-column ga-4">
@@ -93,7 +93,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import type { DeviceCommandRequest } from '@/api/contracts'
-import { fetchMqttStatus } from '@/api'
+import { fetchMqttSettings, fetchMqttStatus } from '@/api'
 import { deviceStatusColor, deviceStatusLabelKey } from '@/models/devices/device-status'
 import { useDeviceDetail } from '@/composables/useDeviceDetail'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
@@ -161,9 +161,21 @@ onBeforeMount(async () => {
   await refresh()
   const mqttStatus = await fetchMqttStatus()
   mqttStore.replaceFromStatus(mqttStatus)
+  if (mqttStatus.enabled) {
+    // haNodeId lives in settings, not status - needed to show the real HA unique_id below.
+    const mqttSettings = await fetchMqttSettings()
+    mqttStore.replaceFromSettings(mqttSettings)
+  }
 })
 
 const typeUi = computed(() => (device.value ? resolveDeviceUi(device.value.record.typeName) : null))
+
+const haUniqueId = computed(() => {
+  if (!device.value || !mqttStore.haNodeId) {
+    return ''
+  }
+  return `${mqttStore.haNodeId}_${device.value.record.typeName}_${device.value.record.id}`
+})
 
 const effectiveStatus = computed(() => device.value?.runtime.effectiveStatus ?? device.value?.runtime.status ?? 'unknown')
 
