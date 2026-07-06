@@ -11,6 +11,10 @@
 
 namespace ewfm {
 
+class MqttConfigStore;
+class MqttManager;
+class HaDiscoveryBridge;
+
 enum class PortalRuntimeState {
     Idle,
     WaitingForNetwork,
@@ -22,7 +26,9 @@ enum class PortalRuntimeState {
 class PortalServer {
 public:
     PortalServer(WifiManager& wifiManager, IWifiDriver& wifiDriver, DeviceRegistry* deviceRegistry = nullptr,
-                 DeviceEventDispatcher* deviceEventDispatcher = nullptr, DashboardLayoutStore* dashboardLayoutStore = nullptr);
+                 DeviceEventDispatcher* deviceEventDispatcher = nullptr, DashboardLayoutStore* dashboardLayoutStore = nullptr,
+                 MqttConfigStore* mqttConfigStore = nullptr, MqttManager* mqttManager = nullptr,
+                 DeviceScopedDataStore* haSettingsStore = nullptr, HaDiscoveryBridge* haDiscoveryBridge = nullptr);
     // NOLINTNEXTLINE(performance-trivially-destructible)
     ~PortalServer();
 
@@ -46,6 +52,10 @@ private:
     DeviceRegistry* deviceRegistry_{nullptr};
     DeviceEventDispatcher* deviceEventDispatcher_{nullptr};
     DashboardLayoutStore* dashboardLayoutStore_{nullptr};
+    MqttConfigStore* mqttConfigStore_{nullptr};
+    MqttManager* mqttManager_{nullptr};
+    DeviceScopedDataStore* haSettingsStore_{nullptr};
+    HaDiscoveryBridge* haDiscoveryBridge_{nullptr};
     std::unique_ptr<Impl> impl_;
 };
 

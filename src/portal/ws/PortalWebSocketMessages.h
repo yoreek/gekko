@@ -23,6 +23,7 @@ public:
     static std::string buildWifiStatus(const WifiManager& wifiManager, const IWifiDriver& wifiDriver, uint32_t revision);
     static std::string buildOtaStatus(bool enabled, bool hasError, uint32_t freeSketchSpace, uint32_t revision);
     static std::string buildSystemStatus(const char* status, bool rebooting, uint32_t revision);
+    static std::string buildMqttStatus(bool enabled, bool connected, bool waitingForStation, uint32_t revision);
 
 private:
     static std::string buildEnvelope(const char* topic, uint32_t revision, JsonDocument& payload);

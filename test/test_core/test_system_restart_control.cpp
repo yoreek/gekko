@@ -1,3 +1,4 @@
+#include "portal/controllers/MqttController.h"
 #include "portal/controllers/SystemController.h"
 #include "portal/controllers/SystemRestartController.h"
 
@@ -54,5 +55,13 @@ void test_restart_route_build_flag_state_matches_compilation() {
     TEST_ASSERT_TRUE(SystemController::restartApiEnabledForBuild());
 #else
     TEST_ASSERT_FALSE(SystemController::restartApiEnabledForBuild());
+#endif
+}
+
+void test_mqtt_route_build_flag_state_matches_compilation() {
+#if defined(WITH_HOME_ASSISTANT)
+    TEST_ASSERT_TRUE(MqttController::compiledIn());
+#else
+    TEST_ASSERT_FALSE(MqttController::compiledIn());
 #endif
 }

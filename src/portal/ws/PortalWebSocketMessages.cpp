@@ -202,4 +202,13 @@ std::string PortalWebSocketMessages::buildSystemStatus(const char* status, const
     return buildEnvelope("system.status", revision, payload);
 }
 
+std::string PortalWebSocketMessages::buildMqttStatus(const bool enabled, const bool connected, const bool waitingForStation,
+                                                     const uint32_t revision) {
+    DynamicJsonDocument payload(128);
+    payload["enabled"] = enabled;
+    payload["connected"] = connected;
+    payload["waitingForStation"] = waitingForStation;
+    return buildEnvelope("mqtt.status", revision, payload);
+}
+
 } // namespace ewfm

@@ -1,8 +1,10 @@
 #include "config/ConfigStore.h"
 #include "config/MemoryConfigStorage.h"
+#include "config/MqttConfig.h"
 #include "core/Clock.h"
 #include "core/StateMachine.h"
 #include "platform/ArduinoOtaService.h"
+#include "platform/MqttManager.h"
 #include "portal/PortalServer.h"
 #include "wifi/WifiManager.h"
 
@@ -912,6 +914,213 @@ void test_arduino_ota_restarts_after_station_ip_changes() {
     ota.tick(107);
     TEST_ASSERT_TRUE(ota.started());
     TEST_ASSERT_EQUAL(2, ota.startCount());
+}
+
+void test_mqtt_manager_connects_after_wifi_station_ready() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    WifiManager manager(driver);
+    DeviceConfig config = defaultConfig();
+    config.wifi.ssid = "office";
+    config.wifi.password = "secret";
+
+    manager.begin(config);
+    MqttManager mqtt;
+    mqtt.begin(manager);
+    MqttSettings settings = defaultMqttSettings();
+    settings.enabled = true;
+    settings.host = "broker.local";
+    settings.clientId = "node1";
+    mqtt.applySettings(settings, {});
+
+    mqtt.tick(100);
+    TEST_ASSERT_FALSE(mqtt.connected());
+
+    manager.tick(100);
+    mqtt.tick(100);
+    TEST_ASSERT_FALSE(mqtt.connected());
+
+    manager.tick(101);
+    mqtt.tick(101);
+    TEST_ASSERT_FALSE(mqtt.connected());
+
+    driver.statusValue = WifiDriverStatus::Connected;
+    driver.stationIpValue = "192.168.1.240";
+    manager.tick(102);
+    mqtt.tick(102);
+    TEST_ASSERT_FALSE(mqtt.connected());
+
+    mqtt.tick(103);
+    TEST_ASSERT_TRUE(mqtt.connected());
+    TEST_ASSERT_EQUAL(1, mqtt.connectCount());
+}
+
+void test_mqtt_manager_does_not_connect_on_setup_ap_readiness_only() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    WifiManager manager(driver);
+    DeviceConfig config = defaultConfig();
+
+    manager.begin(config);
+    MqttManager mqtt;
+    mqtt.begin(manager);
+    MqttSettings settings = defaultMqttSettings();
+    settings.enabled = true;
+    settings.host = "broker.local";
+    settings.clientId = "node1";
+    mqtt.applySettings(settings, {});
+
+    manager.tick(100);
+    mqtt.tick(100);
+    TEST_ASSERT_FALSE(mqtt.connected());
+
+    manager.tick(101);
+    mqtt.tick(101);
+    TEST_ASSERT_FALSE(mqtt.connected());
+
+    mqtt.tick(102);
+    TEST_ASSERT_FALSE(mqtt.connected());
+    mqtt.tick(103);
+    TEST_ASSERT_FALSE(mqtt.connected());
+
+    TEST_ASSERT_TRUE(manager.setupApReady());
+    TEST_ASSERT_FALSE(manager.stationReady());
+    TEST_ASSERT_EQUAL(0, mqtt.connectCount());
+}
+
+void test_mqtt_manager_stops_and_restarts_after_wifi_loss() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    WifiManager manager(driver);
+    DeviceConfig config = defaultConfig();
+    config.wifi.ssid = "office";
+    config.wifi.password = "secret";
+
+    manager.begin(config);
+    manager.tick(100);
+    manager.tick(101);
+    manager.tick(102);
+    driver.statusValue = WifiDriverStatus::Connected;
+    driver.stationIpValue = "192.168.1.240";
+    manager.tick(103);
+
+    MqttManager mqtt;
+    mqtt.begin(manager);
+    MqttSettings settings = defaultMqttSettings();
+    settings.enabled = true;
+    settings.host = "broker.local";
+    settings.clientId = "node1";
+    mqtt.applySettings(settings, {});
+
+    mqtt.tick(104);
+    mqtt.tick(105);
+    TEST_ASSERT_FALSE(mqtt.connected());
+
+    mqtt.tick(106);
+    TEST_ASSERT_TRUE(mqtt.connected());
+    TEST_ASSERT_EQUAL(1, mqtt.connectCount());
+
+    driver.statusValue = WifiDriverStatus::Disconnected;
+    driver.stationIpValue.clear();
+    manager.tick(107);
+    mqtt.tick(107);
+
+    TEST_ASSERT_FALSE(mqtt.connected());
+    TEST_ASSERT_TRUE(mqtt.waitingForStation());
+    TEST_ASSERT_EQUAL(1, mqtt.disconnectCount());
+
+    manager.tick(108);
+    mqtt.tick(108);
+    TEST_ASSERT_FALSE(mqtt.connected());
+
+    manager.tick(109);
+    mqtt.tick(109);
+    TEST_ASSERT_FALSE(mqtt.connected());
+
+    driver.statusValue = WifiDriverStatus::Connected;
+    driver.stationIpValue = "192.168.1.241";
+    mqtt.tick(110);
+    TEST_ASSERT_FALSE(mqtt.connected());
+
+    manager.tick(110);
+    mqtt.tick(111);
+    TEST_ASSERT_FALSE(mqtt.connected());
+
+    mqtt.tick(112);
+    TEST_ASSERT_TRUE(mqtt.connected());
+    TEST_ASSERT_EQUAL(2, mqtt.connectCount());
+}
+
+void test_mqtt_manager_applies_new_settings_and_reconnects() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    WifiManager manager(driver);
+    DeviceConfig config = defaultConfig();
+    config.wifi.ssid = "office";
+    config.wifi.password = "secret";
+
+    manager.begin(config);
+    manager.tick(100);
+    manager.tick(101);
+    manager.tick(102);
+    driver.statusValue = WifiDriverStatus::Connected;
+    driver.stationIpValue = "192.168.1.240";
+    manager.tick(103);
+
+    MqttManager mqtt;
+    mqtt.begin(manager);
+    MqttSettings settings = defaultMqttSettings();
+    settings.enabled = true;
+    settings.host = "broker.local";
+    settings.clientId = "node1";
+    mqtt.applySettings(settings, {});
+
+    mqtt.tick(104);
+    mqtt.tick(105);
+    mqtt.tick(106);
+    TEST_ASSERT_TRUE(mqtt.connected());
+    TEST_ASSERT_EQUAL(1, mqtt.connectCount());
+
+    settings.host = "broker2.local";
+    mqtt.applySettings(settings, {});
+    mqtt.tick(107);
+    TEST_ASSERT_FALSE(mqtt.connected());
+    TEST_ASSERT_EQUAL(1, mqtt.disconnectCount());
+
+    mqtt.tick(108);
+    TEST_ASSERT_TRUE(mqtt.connected());
+    TEST_ASSERT_EQUAL(2, mqtt.connectCount());
+}
+
+void test_mqtt_manager_enabled_toggle_prevents_connection() {
+    ManualClock clock;
+    FakeWifiDriver driver;
+    WifiManager manager(driver);
+    DeviceConfig config = defaultConfig();
+    config.wifi.ssid = "office";
+    config.wifi.password = "secret";
+
+    manager.begin(config);
+    manager.tick(100);
+    manager.tick(101);
+    manager.tick(102);
+    driver.statusValue = WifiDriverStatus::Connected;
+    driver.stationIpValue = "192.168.1.240";
+    manager.tick(103);
+
+    MqttManager mqtt;
+    mqtt.begin(manager);
+    MqttSettings settings = defaultMqttSettings();
+    settings.enabled = false;
+    settings.host = "broker.local";
+    settings.clientId = "node1";
+    mqtt.applySettings(settings, {});
+
+    mqtt.tick(104);
+    mqtt.tick(105);
+    mqtt.tick(106);
+    TEST_ASSERT_FALSE(mqtt.connected());
+    TEST_ASSERT_EQUAL(0, mqtt.connectCount());
 }
 
 void test_state_machine_stack_and_return_to_popped_state() {

@@ -25,3 +25,4 @@ This project keeps the PlatformIO environment layout intentionally small:
 - OTA-enabled firmware needs more flash headroom than the current 4 MB ESP32 board provides in this project.
 - For 4 MB hardware validation, use the no-OTA single-app layout and keep OTA disabled in the build flags.
 - The no-OTA test profile may reclaim the OTA partitions for a larger LittleFS area, raise `littlefs` to 500 KiB, and enable `WITH_DEBUG` for runtime tracing.
+- `WITH_HOME_ASSISTANT` (MQTT + Home Assistant discovery, see `docs/mqtt-home-assistant.md`) is optional and adds `knolleary/PubSubClient` plus `WiFiClientSecure` TLS support to the build; evaluate it against the same flash budget before enabling it by default.

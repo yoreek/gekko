@@ -69,6 +69,13 @@ void test_device_scoped_data_store_missing_namespace_is_missing_record();
 void test_dummy_device_lifecycle_and_command_output();
 void test_dummy_device_base_config_is_loaded_and_runtime_starts_disabled();
 void test_dummy_device_dependency_wiring_survive_base_refactor();
+void test_mqtt_config_store_round_trips_settings();
+void test_mqtt_config_store_rejects_enabled_without_host_or_client_id();
+void test_mqtt_config_store_rejects_invalid_node_id();
+void test_mqtt_config_store_round_trips_ca_cert();
+void test_mqtt_config_store_rejects_oversized_ca_cert();
+void test_default_ha_node_id_is_sanitized_and_bounded();
+void test_ha_device_settings_round_trip_and_default();
 
 int main(int, char**) {
     UNITY_BEGIN();
@@ -141,5 +148,12 @@ int main(int, char**) {
     RUN_TEST(test_dummy_device_lifecycle_and_command_output);
     RUN_TEST(test_dummy_device_base_config_is_loaded_and_runtime_starts_disabled);
     RUN_TEST(test_dummy_device_dependency_wiring_survive_base_refactor);
+    RUN_TEST(test_mqtt_config_store_round_trips_settings);
+    RUN_TEST(test_mqtt_config_store_rejects_enabled_without_host_or_client_id);
+    RUN_TEST(test_mqtt_config_store_rejects_invalid_node_id);
+    RUN_TEST(test_mqtt_config_store_round_trips_ca_cert);
+    RUN_TEST(test_mqtt_config_store_rejects_oversized_ca_cert);
+    RUN_TEST(test_default_ha_node_id_is_sanitized_and_bounded);
+    RUN_TEST(test_ha_device_settings_round_trip_and_default);
     return UNITY_END();
 }

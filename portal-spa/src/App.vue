@@ -99,7 +99,7 @@ const drawerOpen = ref(false)
 const locales = supportedLocales
 
 interface MenuItem {
-  name: 'dashboard' | 'panels' | 'devices' | 'device-events' | 'wifi' | 'ota' | 'system' | 'overview'
+  name: 'dashboard' | 'panels' | 'devices' | 'device-events' | 'wifi' | 'ota' | 'mqtt' | 'system' | 'overview'
   to: RouteLocationRaw
   label: string
   icon: PortalIconName
@@ -113,6 +113,7 @@ const menuItems = computed<MenuItem[]>(() => [
   { name: 'device-events', to: { name: 'device-events' }, label: t('navigation.deviceEvents'), icon: 'journal', exact: true },
   { name: 'wifi', to: { name: 'wifi' }, label: t('navigation.wifi'), icon: 'wifi', exact: true },
   { name: 'ota', to: { name: 'ota' }, label: t('navigation.ota'), icon: 'ota', exact: true },
+  { name: 'mqtt', to: { name: 'mqtt' }, label: t('navigation.mqtt'), icon: 'mqtt', exact: true },
   { name: 'system', to: { name: 'system' }, label: t('navigation.system'), icon: 'system', exact: true },
   { name: 'overview', to: { name: 'overview' }, label: t('navigation.overview'), icon: 'portal', exact: true },
 ])

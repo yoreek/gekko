@@ -102,6 +102,12 @@ export interface DeviceRecordBase {
   configRevision: number
 }
 
+export interface DeviceHaSettings {
+  enabled: boolean
+  name: string
+  effectiveName: string
+}
+
 export interface BaseDeviceConfig {
   name: string
   enabled: boolean
@@ -142,6 +148,7 @@ export interface DeviceRecord<
   record: DeviceRecordBase
   config: TConfig
   runtime: TRuntime
+  ha?: DeviceHaSettings
 }
 
 export interface DeviceCreateRequest<TConfig extends BaseDeviceConfig = BaseDeviceConfig> {
@@ -165,10 +172,13 @@ export interface DeviceCommandRequest {
     | 'setDeps'
     | 'resetDiagnostics'
     | 'checkDevice'
+    | 'setHaSettings'
   state?: DeviceOutputState
   config?: Record<string, unknown>
   deps?: DeviceDependencyLink[]
   csPin?: number
+  haEnabled?: boolean
+  haName?: string
 }
 
 export interface DeviceMutationResponse<TRecord extends DeviceRecord = DeviceRecord> {
@@ -264,4 +274,32 @@ export interface SystemRestartResponse {
   rebooting: boolean
   success?: boolean
   status?: string
+}
+
+export interface MqttStatusResponse {
+  enabled: boolean
+  connected: boolean
+  waitingForStation: boolean
+  host: string
+  port: number
+  useTls: boolean
+  clientId: string
+  hasCaCert: boolean
+  success?: boolean
+}
+
+export interface MqttSettingsRecord {
+  enabled: boolean
+  host: string
+  port: number
+  useTls: boolean
+  clientId: string
+  username: string
+  password: string
+  passwordRedacted?: boolean
+  haDiscoveryPrefix: string
+  haNodeId: string
+  haNodeName: string
+  hasCaCert?: boolean
+  success?: boolean
 }

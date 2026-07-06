@@ -76,15 +76,23 @@ void PortalWebSocketManager::end(AsyncWebServer& server) {
 #endif
 
 void PortalWebSocketManager::tick(uint32_t now, const WifiManager& wifiManager, const IWifiDriver& wifiDriver) {
-    tick(now, wifiManager, wifiDriver, false, false, 0U);
+    tick(now, wifiManager, wifiDriver, false, false, 0U, false, false, false);
 }
 
 void PortalWebSocketManager::tick(uint32_t now, const WifiManager& wifiManager, const IWifiDriver& wifiDriver, const bool otaEnabled,
                                   const bool otaHasError, const uint32_t freeSketchSpace) {
+    tick(now, wifiManager, wifiDriver, otaEnabled, otaHasError, freeSketchSpace, false, false, false);
+}
+
+void PortalWebSocketManager::tick(uint32_t now, const WifiManager& wifiManager, const IWifiDriver& wifiDriver, const bool otaEnabled,
+                                  const bool otaHasError, const uint32_t freeSketchSpace, const bool mqttEnabled, const bool mqttConnected,
+                                  const bool mqttWaitingForStation) {
     (void)now;
     const std::string wifiPayload = PortalWebSocketMessages::buildWifiStatus(wifiManager, wifiDriver, lastRevision_);
     const std::string otaPayload = PortalWebSocketMessages::buildOtaStatus(otaEnabled, otaHasError, freeSketchSpace, lastRevision_);
-    publishSnapshotPayloads(wifiPayload, otaPayload);
+    const std::string mqttPayload =
+        PortalWebSocketMessages::buildMqttStatus(mqttEnabled, mqttConnected, mqttWaitingForStation, lastRevision_);
+    publishSnapshotPayloads(wifiPayload, otaPayload, mqttPayload);
 }
 
 void PortalWebSocketManager::onDeviceEvent(const DeviceEvent& event) {
@@ -187,7 +195,8 @@ void PortalWebSocketManager::publishDeviceSnapshots() {
     });
 }
 
-void PortalWebSocketManager::publishSnapshotPayloads(const std::string& wifiPayload, const std::string& otaPayload) {
+void PortalWebSocketManager::publishSnapshotPayloads(const std::string& wifiPayload, const std::string& otaPayload,
+                                                     const std::string& mqttPayload) {
     if (resyncSnapshots_ || wifiPayload != lastWifiStatusPayload_) {
         lastWifiStatusPayload_ = wifiPayload;
         sendText(wifiPayload);
@@ -196,6 +205,11 @@ void PortalWebSocketManager::publishSnapshotPayloads(const std::string& wifiPayl
     if (resyncSnapshots_ || otaPayload != lastOtaStatusPayload_) {
         lastOtaStatusPayload_ = otaPayload;
         sendText(otaPayload);
+    }
+
+    if (resyncSnapshots_ || mqttPayload != lastMqttStatusPayload_) {
+        lastMqttStatusPayload_ = mqttPayload;
+        sendText(mqttPayload);
     }
 
     resyncSnapshots_ = false;
@@ -219,8 +233,9 @@ void PortalWebSocketManager::publishDeviceSnapshotsForTest() {
     publishDeviceSnapshots();
 }
 
-void PortalWebSocketManager::publishSnapshotPayloadsForTest(const std::string& wifiPayload, const std::string& otaPayload) {
-    publishSnapshotPayloads(wifiPayload, otaPayload);
+void PortalWebSocketManager::publishSnapshotPayloadsForTest(const std::string& wifiPayload, const std::string& otaPayload,
+                                                            const std::string& mqttPayload) {
+    publishSnapshotPayloads(wifiPayload, otaPayload, mqttPayload);
 }
 #endif
 

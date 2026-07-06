@@ -34,7 +34,13 @@ App::App()
       deviceRegistry_(deviceRegistryStore_, deviceTypeRegistry_, deviceIdSource_, &retainedStateStore_, &deviceScopedDataStore_,
                       &deviceEventDispatcher_),
       displayRenderCoordinator_(deviceRegistry_, wifiDriver_), dashboardLayoutStore_(dashboardLayoutStorage_, &deviceRegistry_),
-      portalServer_(wifiManager_, wifiDriver_, &deviceRegistry_, &deviceEventDispatcher_, &dashboardLayoutStore_) {}
+      portalServer_(wifiManager_, wifiDriver_, &deviceRegistry_, &deviceEventDispatcher_, &dashboardLayoutStore_
+#if defined(WITH_HOME_ASSISTANT)
+                    ,
+                    &mqttConfigStore_, &mqttManager_, &deviceScopedDataStore_, &haDiscoveryBridge_
+#endif
+      ) {
+}
 
 bool App::begin() {
     EWFM_APP_LOG_INFO("ESP32 WiFi Manager booting");
@@ -97,6 +103,15 @@ bool App::begin() {
     return true;
 #endif
 
+#if defined(WITH_HOME_ASSISTANT)
+    EWFM_BOOT_PRINTF("BOOT App::begin mqttConfigStore\n");
+    if (!mqttConfigStore_.begin()) {
+        EWFM_BOOT_PRINTF("BOOT App::begin MqttConfigStore failed\n");
+        return false;
+    }
+    mqttConfigStore_.load();
+#endif
+
     EWFM_BOOT_PRINTF("BOOT App::begin config load\n");
     ValidationResult loaded = configStore_.load();
     if (!loaded.ok()) {
@@ -108,6 +123,13 @@ bool App::begin() {
 #endif
 
     const DeviceConfig& config = configStore_.config();
+#if defined(WITH_HOME_ASSISTANT)
+    if (mqttConfigStore_.settings().haNodeId.empty()) {
+        MqttSettings seeded = mqttConfigStore_.settings();
+        seeded.haNodeId = defaultHaNodeId(config.deviceName, wifiDriver_.macSuffix());
+        mqttConfigStore_.save(seeded);
+    }
+#endif
     const uint32_t now = clock_.millis();
     EWFM_BOOT_PRINTF("BOOT App::begin deviceRegistry begin\n");
     const DeviceValidationResult registryResult = deviceRegistry_.begin(now);
@@ -139,6 +161,18 @@ bool App::begin() {
     EWFM_BOOT_PRINTF("BOOT App::begin ota begin\n");
     otaService_.begin(config.deviceName, wifiManager_);
 #endif
+#if defined(WITH_HOME_ASSISTANT)
+    EWFM_BOOT_PRINTF("BOOT App::begin mqttManager begin\n");
+    mqttManager_.begin(wifiManager_);
+    {
+        std::vector<uint8_t> caCert;
+        mqttConfigStore_.loadCaCert(caCert);
+        mqttManager_.applySettings(mqttConfigStore_.settings(), caCert);
+    }
+    haDiscoveryBridge_.begin(mqttConfigStore_.settings().haNodeId, mqttConfigStore_.settings().haNodeName,
+                             mqttConfigStore_.settings().haDiscoveryPrefix);
+    haDiscoveryBridge_.attachDispatcher();
+#endif
     EWFM_BOOT_PRINTF("BOOT App::begin done\n");
 
     return true;
@@ -151,6 +185,9 @@ void App::tick() {
     const uint32_t now = clock_.millis();
 
     wifiManager_.tick(now);
+#if defined(WITH_HOME_ASSISTANT)
+    mqttManager_.tick(now);
+#endif
     portalServer_.tick(now);
     tickDeviceCadence(now);
     deviceEventDispatcher_.tickFastLoop(now);

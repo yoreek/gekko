@@ -48,12 +48,18 @@ void test_arduino_ota_starts_after_wifi_connects();
 void test_arduino_ota_starts_on_setup_ap_readiness();
 void test_arduino_ota_stops_and_restarts_after_wifi_loss();
 void test_arduino_ota_restarts_after_station_ip_changes();
+void test_mqtt_manager_connects_after_wifi_station_ready();
+void test_mqtt_manager_does_not_connect_on_setup_ap_readiness_only();
+void test_mqtt_manager_stops_and_restarts_after_wifi_loss();
+void test_mqtt_manager_applies_new_settings_and_reconnects();
+void test_mqtt_manager_enabled_toggle_prevents_connection();
 void test_state_machine_stack_and_return_to_popped_state();
 void test_state_machine_pause_restart_and_updated_flag();
 void test_state_machine_timeout_helpers();
 void test_restart_controller_requests_reboot_when_flush_succeeds();
 void test_restart_controller_rejects_reboot_when_flush_fails();
 void test_restart_route_build_flag_state_matches_compilation();
+void test_mqtt_route_build_flag_state_matches_compilation();
 
 int main(int, char**) {
     UNITY_BEGIN();
@@ -105,11 +111,17 @@ int main(int, char**) {
     RUN_TEST(test_arduino_ota_starts_on_setup_ap_readiness);
     RUN_TEST(test_arduino_ota_stops_and_restarts_after_wifi_loss);
     RUN_TEST(test_arduino_ota_restarts_after_station_ip_changes);
+    RUN_TEST(test_mqtt_manager_connects_after_wifi_station_ready);
+    RUN_TEST(test_mqtt_manager_does_not_connect_on_setup_ap_readiness_only);
+    RUN_TEST(test_mqtt_manager_stops_and_restarts_after_wifi_loss);
+    RUN_TEST(test_mqtt_manager_applies_new_settings_and_reconnects);
+    RUN_TEST(test_mqtt_manager_enabled_toggle_prevents_connection);
     RUN_TEST(test_state_machine_stack_and_return_to_popped_state);
     RUN_TEST(test_state_machine_pause_restart_and_updated_flag);
     RUN_TEST(test_state_machine_timeout_helpers);
     RUN_TEST(test_restart_controller_requests_reboot_when_flush_succeeds);
     RUN_TEST(test_restart_controller_rejects_reboot_when_flush_fails);
     RUN_TEST(test_restart_route_build_flag_state_matches_compilation);
+    RUN_TEST(test_mqtt_route_build_flag_state_matches_compilation);
     return UNITY_END();
 }

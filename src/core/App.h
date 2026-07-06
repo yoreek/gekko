@@ -1,6 +1,11 @@
 #pragma once
 
 #include "config/ConfigStore.h"
+#if defined(WITH_HOME_ASSISTANT)
+#include "config/MqttConfigStore.h"
+#include "integrations/mqtt/HaDiscoveryBridge.h"
+#include "platform/MqttManager.h"
+#endif
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/core/DeviceTypes.h"
 #include "devices/display/DisplayLayoutStore.h"
@@ -60,6 +65,12 @@ private:
     bool begun_{false};
 #if defined(WITH_ARDUINO_OTA)
     ArduinoOtaService otaService_;
+#endif
+#if defined(WITH_HOME_ASSISTANT)
+    PreferencesConfigStorage mqttConfigStorage_;
+    MqttConfigStore mqttConfigStore_{mqttConfigStorage_};
+    MqttManager mqttManager_;
+    HaDiscoveryBridge haDiscoveryBridge_{&mqttManager_, &deviceRegistry_, &deviceEventDispatcher_, &deviceScopedDataStore_};
 #endif
 };
 

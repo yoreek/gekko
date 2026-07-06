@@ -11,6 +11,8 @@ import type {
   MetricValuesResponse,
   DeviceSetupTransferResponse,
   DeviceRegistryResponse,
+  MqttSettingsRecord,
+  MqttStatusResponse,
   OtaStatusResponse,
   SystemRestartResponse,
   WifiScanResponse,
@@ -729,6 +731,16 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           throw new ApiClientError('unsupported output command', 'BAD_ARGS', 400, null)
         }
         break
+      case 'setHaSettings': {
+        const haEnabled = Boolean(payload.haEnabled)
+        const haName = typeof payload.haName === 'string' ? payload.haName : ''
+        device.ha = {
+          enabled: haEnabled,
+          name: haName,
+          effectiveName: haName.length > 0 ? haName : device.config.name,
+        }
+        break
+      }
       default:
         break
     }
@@ -783,6 +795,93 @@ export function mockDeleteDevice(deviceId: number): Promise<DeviceMutationRespon
 export function mockFetchOtaStatus(): OtaStatusResponse {
   const db = loadMockDatabase()
   return ok(db.ota)
+}
+
+function mqttConnectedFrom(mqtt: { enabled: boolean; host: string }): boolean {
+  return mqtt.enabled && mqtt.host.trim().length > 0
+}
+
+function publishMqttStatus(db: ReturnType<typeof createSeedMockDatabase>): void {
+  publishRealtimeMessage({
+    topic: 'mqtt.status',
+    revision: db.registryRevision,
+    payload: {
+      enabled: db.mqtt.compiledIn,
+      connected: db.mqtt.connected,
+      waitingForStation: db.mqtt.waitingForStation,
+    },
+  })
+}
+
+export function mockFetchMqttStatus(): MqttStatusResponse {
+  const db = loadMockDatabase()
+  return ok({
+    enabled: db.mqtt.compiledIn,
+    connected: db.mqtt.connected,
+    waitingForStation: db.mqtt.waitingForStation,
+    host: db.mqtt.host,
+    port: db.mqtt.port,
+    useTls: db.mqtt.useTls,
+    clientId: db.mqtt.clientId,
+    hasCaCert: db.mqtt.hasCaCert,
+  })
+}
+
+export function mockFetchMqttSettings(): MqttSettingsRecord {
+  const db = loadMockDatabase()
+  return ok({
+    enabled: db.mqtt.enabled,
+    host: db.mqtt.host,
+    port: db.mqtt.port,
+    useTls: db.mqtt.useTls,
+    clientId: db.mqtt.clientId,
+    username: db.mqtt.username,
+    password: '',
+    passwordRedacted: db.mqtt.password.length > 0,
+    haDiscoveryPrefix: db.mqtt.haDiscoveryPrefix,
+    haNodeId: db.mqtt.haNodeId,
+    haNodeName: db.mqtt.haNodeName,
+    hasCaCert: db.mqtt.hasCaCert,
+  })
+}
+
+export function mockUpdateMqttSettings(settings: Partial<MqttSettingsRecord>): Promise<MqttSettingsRecord> {
+  const response = mutateRegistry(db => {
+    db.mqtt = {
+      ...db.mqtt,
+      ...(settings.enabled !== undefined ? { enabled: settings.enabled } : {}),
+      ...(settings.host !== undefined ? { host: settings.host } : {}),
+      ...(settings.port !== undefined ? { port: settings.port } : {}),
+      ...(settings.useTls !== undefined ? { useTls: settings.useTls } : {}),
+      ...(settings.clientId !== undefined ? { clientId: settings.clientId } : {}),
+      ...(settings.username !== undefined ? { username: settings.username } : {}),
+      ...(settings.password !== undefined ? { password: settings.password } : {}),
+      ...(settings.haDiscoveryPrefix !== undefined ? { haDiscoveryPrefix: settings.haDiscoveryPrefix } : {}),
+      ...(settings.haNodeId !== undefined ? { haNodeId: settings.haNodeId } : {}),
+      ...(settings.haNodeName !== undefined ? { haNodeName: settings.haNodeName } : {}),
+    }
+    db.mqtt.connected = mqttConnectedFrom(db.mqtt)
+    db.mqtt.waitingForStation = db.mqtt.enabled && !db.mqtt.connected
+    return mockFetchMqttSettings()
+  })
+  publishMqttStatus(loadMockDatabase())
+  return Promise.resolve(response)
+}
+
+export function mockUploadMqttCaCert(_file: File): Promise<MqttStatusResponse> {
+  mutateRegistry(db => {
+    db.mqtt.hasCaCert = true
+    return null
+  })
+  return Promise.resolve(mockFetchMqttStatus())
+}
+
+export function mockDeleteMqttCaCert(): Promise<MqttStatusResponse> {
+  mutateRegistry(db => {
+    db.mqtt.hasCaCert = false
+    return null
+  })
+  return Promise.resolve(mockFetchMqttStatus())
 }
 
 export function mockRestartSystem(): Promise<SystemRestartResponse> {

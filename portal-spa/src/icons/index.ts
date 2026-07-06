@@ -41,6 +41,7 @@ export type PortalIconName =
   | 'panels'
   | 'ota'
   | 'system'
+  | 'mqtt'
   | 'ws'
   | 'journal'
   | 'locale'
@@ -122,6 +123,7 @@ const localIconRegistry: Record<
   | 'panels'
   | 'ota'
   | 'system'
+  | 'mqtt'
   | 'ws'
   | 'journal'
   | 'locale'
@@ -159,6 +161,7 @@ const localIconRegistry: Record<
   panels: createIconShape(['M4 5h5v14H4z', 'M11 5h9v5h-9z', 'M11 12h9v7h-9z']),
   ota: createIconShape(['M7 16h10a4 4 0 00.5-7.97A6 6 0 006.3 9.6 3.5 3.5 0 007 16z', 'M12 16V8', 'M9 11l3-3 3 3']),
   system: createIconShape(['M12 8a4 4 0 100 8 4 4 0 000-8z', 'M12 3v3', 'M12 18v3', 'M4.8 6.2l2.1 2.1', 'M17.1 15.7l2.1 2.1', 'M3 12h3', 'M18 12h3', 'M4.8 17.8l2.1-2.1', 'M17.1 8.3l2.1-2.1']),
+  mqtt: createIconShape(['M12 3v4', 'M12 17v4', 'M7 9l5-2 5 2', 'M7 9v6l5 2 5-2V9', 'M12 13v2']),
   journal: createIconShape(['M6 4h10l2 2v14H6z', 'M16 4v4h4', 'M8 10h6', 'M8 14h6', 'M8 18h4']),
   ws: createIconShape(['M6 8h12', 'M6 16h12', 'M8 6a2 2 0 110 4 2 2 0 010-4z', 'M16 14a2 2 0 110 4 2 2 0 010-4z', 'M16 6a2 2 0 110 4 2 2 0 010-4z', 'M8 14a2 2 0 110 4 2 2 0 010-4z']),
   locale: createIconShape(['M12 4a8 8 0 100 16 8 8 0 000-16z', 'M4 12h16', 'M12 4a12 12 0 010 16', 'M12 4a12 12 0 000 16']),

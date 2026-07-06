@@ -2,6 +2,11 @@
 
 #include "debug/Debug.h"
 #include "devices/core/DeviceBaseConfig.h"
+#include "integrations/mqtt/HaDeviceSettings.h"
+
+#if defined(WITH_HOME_ASSISTANT)
+#include "integrations/mqtt/HaDiscoveryBridge.h"
+#endif
 
 #include <cstdlib>
 #include <cstring>
@@ -16,14 +21,17 @@
 namespace ewfm {
 
 DeviceRegistryController::DeviceRegistryController(AsyncWebServerRequest* request, const Action action, DeviceRegistry& registry,
-                                                   const DeviceApiAdapterRegistry& adapters)
-    : BaseController(request, action), registry_(registry), adapters_(adapters) {}
+                                                   const DeviceApiAdapterRegistry& adapters, DeviceScopedDataStore* haSettingsStore,
+                                                   HaDiscoveryBridge* haDiscoveryBridge)
+    : BaseController(request, action), registry_(registry), adapters_(adapters), haSettingsStore_(haSettingsStore),
+      haDiscoveryBridge_(haDiscoveryBridge) {}
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-void DeviceRegistryController::registerRoutes(AsyncWebServer& server, DeviceRegistry& registry) {
+void DeviceRegistryController::registerRoutes(AsyncWebServer& server, DeviceRegistry& registry, DeviceScopedDataStore* haSettingsStore,
+                                              HaDiscoveryBridge* haDiscoveryBridge) {
     static const DeviceApiAdapterRegistry adapters = DeviceApiAdapterRegistry::withDefaults();
-    server.on(AsyncURIMatcher::exact("/api/devices"), HTTP_GET, [&registry](AsyncWebServerRequest* request) {
-        DeviceRegistryController(request, Action::Index, registry, adapters).dispatch();
+    server.on(AsyncURIMatcher::exact("/api/devices"), HTTP_GET, [&registry, haSettingsStore](AsyncWebServerRequest* request) {
+        DeviceRegistryController(request, Action::Index, registry, adapters, haSettingsStore).dispatch();
     });
     server.on(
         AsyncURIMatcher::exact("/api/devices"), HTTP_POST, [&registry](AsyncWebServerRequest* request) { (void)request; }, nullptr,
@@ -47,20 +55,22 @@ void DeviceRegistryController::registerRoutes(AsyncWebServer& server, DeviceRegi
         DeviceRegistryController(request, Action::Options, registry, adapters).dispatch();
     });
 
-    server.on(AsyncURIMatcher::prefix("/api/devices/"), HTTP_GET, [&registry](AsyncWebServerRequest* request) {
-        DeviceRegistryController(request, Action::Show, registry, adapters).dispatch();
+    server.on(AsyncURIMatcher::prefix("/api/devices/"), HTTP_GET, [&registry, haSettingsStore](AsyncWebServerRequest* request) {
+        DeviceRegistryController(request, Action::Show, registry, adapters, haSettingsStore).dispatch();
     });
     server.on(AsyncURIMatcher::prefix("/api/devices/"), HTTP_DELETE, [&registry](AsyncWebServerRequest* request) {
         DeviceRegistryController(request, Action::Destroy, registry, adapters).dispatch();
     });
     server.on(
         AsyncURIMatcher::prefix("/api/devices/"), HTTP_POST, [&registry](AsyncWebServerRequest* request) { (void)request; }, nullptr,
-        [&registry](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+        [&registry, haSettingsStore, haDiscoveryBridge](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index,
+                                                        size_t total) {
             if (!BaseController::appendRequestBody(request, data, len, index, total)) {
                 return;
             }
 
-            DeviceRegistryController(request, Action::Cmd, registry, adapters).dispatch(static_cast<uint8_t*>(request->_tempObject), total);
+            DeviceRegistryController(request, Action::Cmd, registry, adapters, haSettingsStore, haDiscoveryBridge)
+                .dispatch(static_cast<uint8_t*>(request->_tempObject), total);
             BaseController::clearRequestBody(request);
         });
     server.on(AsyncURIMatcher::prefix("/api/devices/"), HTTP_OPTIONS, [&registry](AsyncWebServerRequest* request) {
@@ -268,7 +278,25 @@ void writeFallbackDeviceJson(JsonObject device, const IDeviceRuntime& runtime, c
     runtimeJson["effectiveStatus"] = statusToString(effectiveStatus);
 }
 
-void writeIndexResponse(AsyncResponseStream* response, DeviceRegistry& registry, const DeviceApiAdapterRegistry& adapters) {
+#if defined(WITH_HOME_ASSISTANT)
+// Generic (type-agnostic) "ha" block, added alongside record/config/runtime regardless of which
+// adapter (or fallback) wrote the rest of the device JSON - no per-type adapter changes needed.
+void writeHaDeviceJson(JsonObject device, DeviceScopedDataStore* haSettingsStore, const IDeviceRuntime& runtime) {
+    if (haSettingsStore == nullptr) {
+        return;
+    }
+    const HaDeviceSettingsRecord settings = loadHaDeviceSettings(*haSettingsStore, runtime.deviceId());
+    JsonObject ha = device.createNestedObject("ha");
+    ha["enabled"] = settings.enabled != 0U;
+    ha["name"] = JsonString(settings.nameOverride, JsonString::Copied);
+    const std::string effectiveName = effectiveHaDeviceName(settings, runtime.name());
+    ha["effectiveName"] = JsonString(effectiveName.c_str(), JsonString::Copied);
+}
+#endif
+
+void writeIndexResponse(AsyncResponseStream* response, DeviceRegistry& registry, const DeviceApiAdapterRegistry& adapters,
+                        DeviceScopedDataStore* haSettingsStore) {
+    (void)haSettingsStore;
     if (response == nullptr) {
         return;
     }
@@ -297,6 +325,9 @@ void writeIndexResponse(AsyncResponseStream* response, DeviceRegistry& registry,
         const DeviceStatus lifecycleStatus = runtime.status();
         device["runtime"]["status"] = statusToString(lifecycleStatus);
         device["runtime"]["effectiveStatus"] = statusToString(effectiveStatus);
+#if defined(WITH_HOME_ASSISTANT)
+        writeHaDeviceJson(device, haSettingsStore, runtime);
+#endif
         serializeJson(item, *response);
     });
 
@@ -308,7 +339,7 @@ void writeIndexResponse(AsyncResponseStream* response, DeviceRegistry& registry,
 void DeviceRegistryController::index() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     AsyncResponseStream* response = request_->beginResponseStream("application/json");
-    writeIndexResponse(response, registry_, adapters_);
+    writeIndexResponse(response, registry_, adapters_, haSettingsStore_);
     send(response);
 #endif
 }
@@ -334,6 +365,9 @@ void DeviceRegistryController::show() {
     }
     device["runtime"]["status"] = statusToString(runtime->status());
     device["runtime"]["effectiveStatus"] = statusToString(effectiveStatus);
+#if defined(WITH_HOME_ASSISTANT)
+    writeHaDeviceJson(device, haSettingsStore_, *runtime);
+#endif
     renderOk(doc);
 #endif
 }
@@ -565,6 +599,27 @@ void DeviceRegistryController::cmd() {
                 return;
             }
         }
+    } else if (std::strcmp(commandName, "setHaSettings") == 0) {
+#if defined(WITH_HOME_ASSISTANT)
+        if (haSettingsStore_ == nullptr) {
+            renderError(400, "BAD_ARGS", "home assistant integration is not available");
+            return;
+        }
+        const bool haEnabled = input["haEnabled"] | false;
+        const char* haName = input["haName"] | "";
+        const DeviceValidationResult saveResult = saveHaDeviceSettings(*haSettingsStore_, deviceId_, haEnabled, haName);
+        if (!saveResult.ok()) {
+            renderError(400, errorCodeForDeviceError(saveResult.error), saveResult.message);
+            return;
+        }
+        if (haDiscoveryBridge_ != nullptr) {
+            haDiscoveryBridge_->refreshDevice(deviceId_);
+        }
+        mutationResult = DeviceMutationResult{};
+#else
+        renderError(400, "BAD_ARGS", "unsupported command");
+        return;
+#endif
     } else {
         renderError(400, "BAD_ARGS", "unsupported command");
         return;
@@ -584,6 +639,9 @@ void DeviceRegistryController::cmd() {
         }
         device["runtime"]["status"] = statusToString(runtime->status());
         device["runtime"]["effectiveStatus"] = statusToString(effectiveStatus);
+#if defined(WITH_HOME_ASSISTANT)
+        writeHaDeviceJson(device, haSettingsStore_, *runtime);
+#endif
     }
     renderOk(doc);
 #endif

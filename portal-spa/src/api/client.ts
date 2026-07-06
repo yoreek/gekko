@@ -9,6 +9,8 @@ import type {
   MetricValuesResponse,
   DeviceSetupTransferResponse,
   DeviceRegistryResponse,
+  MqttSettingsRecord,
+  MqttStatusResponse,
   OtaStatusResponse,
   SystemRestartResponse,
   WifiScanResponse,
@@ -18,8 +20,11 @@ import { detectTransportMode } from './transport'
 import { requestEmpty, requestFormData, requestJson, requestText } from './http'
 import {
   mockCommandDevice,
+  mockDeleteMqttCaCert,
   mockExportDeviceSetupBundle,
   mockFetchDashboardLayout,
+  mockFetchMqttSettings,
+  mockFetchMqttStatus,
   mockImportDeviceSetupBundle,
   mockConfigureWifi,
   mockCreateDevice,
@@ -35,6 +40,8 @@ import {
   mockSaveDashboardLayout,
   mockResetWifiCredentials,
   mockStartBleWifiConfig,
+  mockUpdateMqttSettings,
+  mockUploadMqttCaCert,
 } from '@/mock/handlers'
 
 function useMockTransport(): boolean {
@@ -210,4 +217,50 @@ export function importDeviceSetupBundle(file: File): Promise<DeviceSetupTransfer
   return requestFormData<DeviceSetupTransferResponse>('/api/device-setup/import', formData, {
     method: 'POST',
   })
+}
+
+export function fetchMqttStatus(): Promise<MqttStatusResponse> {
+  if (useMockTransport()) {
+    return Promise.resolve(mockFetchMqttStatus())
+  }
+  return requestJson<MqttStatusResponse>('/api/mqtt/status')
+}
+
+export function fetchMqttSettings(): Promise<MqttSettingsRecord> {
+  if (useMockTransport()) {
+    return Promise.resolve(mockFetchMqttSettings())
+  }
+  return requestJson<MqttSettingsRecord>('/api/mqtt/settings')
+}
+
+export function updateMqttSettings(settings: Partial<MqttSettingsRecord>): Promise<MqttSettingsRecord> {
+  if (useMockTransport()) {
+    return mockUpdateMqttSettings(settings)
+  }
+  return requestJson<MqttSettingsRecord>('/api/mqtt/settings', {
+    method: 'PUT',
+    body: JSON.stringify(settings),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+}
+
+export function uploadMqttCaCert(file: File): Promise<MqttStatusResponse> {
+  if (useMockTransport()) {
+    return mockUploadMqttCaCert(file)
+  }
+
+  const formData = new FormData()
+  formData.append('cert', file, file.name || 'ca.pem')
+  return requestFormData<MqttStatusResponse>('/api/mqtt/ca-cert', formData, {
+    method: 'POST',
+  })
+}
+
+export function deleteMqttCaCert(): Promise<MqttStatusResponse> {
+  if (useMockTransport()) {
+    return mockDeleteMqttCaCert()
+  }
+  return requestJson<MqttStatusResponse>('/api/mqtt/ca-cert', { method: 'DELETE' })
 }

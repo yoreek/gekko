@@ -89,4 +89,5 @@ Vue 3 + Vuetify 4 SPA. Uses `pnpm`. State is managed with Pinia. Real-time updat
 - `docs/controller-ruleschain.md` — HTTP controller and hook pattern
 - `docs/device-registry-persistence.md` — NVS storage layout and commit order
 - `docs/frontend-deployment.md` — SPA build → data/ → LittleFS workflow
+- `docs/mqtt-home-assistant.md` — optional MQTT + Home Assistant discovery integration (`WITH_HOME_ASSISTANT`)
 - `openspec/specs/app-icon-registry/spec.md` — Vuetify icon alias and SVG registry contract

@@ -11,13 +11,18 @@ class AsyncWebServerRequest;
 
 namespace ewfm {
 
+class DeviceScopedDataStore;
+class HaDiscoveryBridge;
+
 class DeviceRegistryController : public BaseController {
 public:
     DeviceRegistryController(AsyncWebServerRequest* request, Action action, DeviceRegistry& registry,
-                             const DeviceApiAdapterRegistry& adapters);
+                             const DeviceApiAdapterRegistry& adapters, DeviceScopedDataStore* haSettingsStore = nullptr,
+                             HaDiscoveryBridge* haDiscoveryBridge = nullptr);
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    static void registerRoutes(AsyncWebServer& server, DeviceRegistry& registry);
+    static void registerRoutes(AsyncWebServer& server, DeviceRegistry& registry, DeviceScopedDataStore* haSettingsStore = nullptr,
+                               HaDiscoveryBridge* haDiscoveryBridge = nullptr);
 #endif
 
 #if defined(UNIT_TEST)
@@ -39,6 +44,8 @@ protected:
 private:
     DeviceRegistry& registry_;
     const DeviceApiAdapterRegistry& adapters_;
+    DeviceScopedDataStore* haSettingsStore_{nullptr};
+    HaDiscoveryBridge* haDiscoveryBridge_{nullptr};
     DeviceId deviceId_{0};
 
     static bool parseDeviceIdPath(const char* url, bool requireCommandSuffix, DeviceId& deviceId);

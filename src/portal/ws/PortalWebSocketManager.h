@@ -32,6 +32,8 @@ public:
     void tick(uint32_t now, const WifiManager& wifiManager, const IWifiDriver& wifiDriver);
     void tick(uint32_t now, const WifiManager& wifiManager, const IWifiDriver& wifiDriver, bool otaEnabled, bool otaHasError,
               uint32_t freeSketchSpace);
+    void tick(uint32_t now, const WifiManager& wifiManager, const IWifiDriver& wifiDriver, bool otaEnabled, bool otaHasError,
+              uint32_t freeSketchSpace, bool mqttEnabled, bool mqttConnected, bool mqttWaitingForStation);
 
     void onDeviceEvent(const DeviceEvent& event) override;
     void tickFastLoop(uint32_t now) override;
@@ -43,7 +45,8 @@ public:
     size_t sentMessageCount() const;
     void setClientCountForTest(size_t clientCount);
     void publishDeviceSnapshotsForTest();
-    void publishSnapshotPayloadsForTest(const std::string& wifiPayload, const std::string& otaPayload);
+    void publishSnapshotPayloadsForTest(const std::string& wifiPayload, const std::string& otaPayload,
+                                        const std::string& mqttPayload = std::string());
 #endif
 
 private:
@@ -51,7 +54,7 @@ private:
     void broadcastHello();
     void resyncSnapshots();
     void publishDeviceSnapshots();
-    void publishSnapshotPayloads(const std::string& wifiPayload, const std::string& otaPayload);
+    void publishSnapshotPayloads(const std::string& wifiPayload, const std::string& otaPayload, const std::string& mqttPayload);
 
     DeviceEventDispatcher* dispatcher_{nullptr};
     DeviceRegistry* deviceRegistry_{nullptr};
@@ -59,6 +62,7 @@ private:
     uint32_t lastRevision_{0};
     std::string lastWifiStatusPayload_{};
     std::string lastOtaStatusPayload_{};
+    std::string lastMqttStatusPayload_{};
     size_t connectedClientCount_{0};
     bool resyncSnapshots_{true};
 

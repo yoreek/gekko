@@ -6,6 +6,7 @@
 #include "portal/controllers/DeviceRegistryController.h"
 #include "portal/controllers/DeviceSetupTransferController.h"
 #include "portal/controllers/MetricsController.h"
+#include "portal/controllers/MqttController.h"
 #include "portal/controllers/OtaController.h"
 #include "portal/controllers/PortalAssetController.h"
 #include "portal/controllers/SystemController.h"
@@ -27,9 +28,12 @@ namespace ewfm {
 class PortalServer::Impl : public StateMachine {
 public:
     Impl(WifiManager& wifiManager, IWifiDriver& wifiDriver, DeviceRegistry* deviceRegistry, DeviceEventDispatcher* deviceEventDispatcher,
-         DashboardLayoutStore* dashboardLayoutStore)
+         DashboardLayoutStore* dashboardLayoutStore, MqttConfigStore* mqttConfigStore, MqttManager* mqttManager,
+         DeviceScopedDataStore* haSettingsStore, HaDiscoveryBridge* haDiscoveryBridge)
         : StateMachine((PState)&PortalServer::Impl::Idle), wifiManager_(wifiManager), wifiDriver_(wifiDriver),
-          deviceRegistry_(deviceRegistry), deviceEventDispatcher_(deviceEventDispatcher), dashboardLayoutStore_(dashboardLayoutStore) {}
+          deviceRegistry_(deviceRegistry), deviceEventDispatcher_(deviceEventDispatcher), dashboardLayoutStore_(dashboardLayoutStore),
+          mqttConfigStore_(mqttConfigStore), mqttManager_(mqttManager), haSettingsStore_(haSettingsStore),
+          haDiscoveryBridge_(haDiscoveryBridge) {}
 
     bool begin() {
         configured_ = true;
@@ -104,7 +108,7 @@ private:
         WifiController::registerRoutes(*server_, wifiManager_, wifiDriver_);
         MetricsController::registerRoutes(*server_, deviceRegistry_, wifiDriver_);
         if (deviceRegistry_ != nullptr) {
-            DeviceRegistryController::registerRoutes(*server_, *deviceRegistry_);
+            DeviceRegistryController::registerRoutes(*server_, *deviceRegistry_, haSettingsStore_, haDiscoveryBridge_);
             DeviceSetupTransferController::registerRoutes(*server_, *deviceRegistry_);
         }
         if (dashboardLayoutStore_ != nullptr) {
@@ -112,6 +116,7 @@ private:
         }
         OtaController::registerRoutes(*server_, deviceRegistry_);
         SystemController::registerRoutes(*server_, deviceRegistry_);
+        MqttController::registerRoutes(*server_, mqttConfigStore_, mqttManager_, haDiscoveryBridge_);
         if (!webSocketManager_) {
             webSocketManager_ = std::make_unique<PortalWebSocketManager>(deviceEventDispatcher_, deviceRegistry_);
         }
@@ -223,6 +228,10 @@ private:
     DeviceRegistry* deviceRegistry_{nullptr};
     DeviceEventDispatcher* deviceEventDispatcher_{nullptr};
     DashboardLayoutStore* dashboardLayoutStore_{nullptr};
+    MqttConfigStore* mqttConfigStore_{nullptr};
+    MqttManager* mqttManager_{nullptr};
+    DeviceScopedDataStore* haSettingsStore_{nullptr};
+    HaDiscoveryBridge* haDiscoveryBridge_{nullptr};
     std::unique_ptr<PortalWebSocketManager> webSocketManager_;
     bool configured_{false};
     bool dependencyWaitLogged_{false};
@@ -282,10 +291,14 @@ SM_STATE(Running) {
 
     updateDns();
     if (webSocketManager_ != nullptr) {
+        const bool mqttEnabled = MqttController::compiledIn();
+        const bool mqttConnected = mqttManager_ != nullptr && mqttManager_->connected();
+        const bool mqttWaitingForStation = mqttManager_ != nullptr && mqttManager_->waitingForStation();
 #if defined(WITH_WEB_OTA)
-        webSocketManager_->tick(uptime(), wifiManager_, wifiDriver_, true, Update.hasError(), ESP.getFreeSketchSpace());
+        webSocketManager_->tick(uptime(), wifiManager_, wifiDriver_, true, Update.hasError(), ESP.getFreeSketchSpace(), mqttEnabled,
+                                mqttConnected, mqttWaitingForStation);
 #else
-        webSocketManager_->tick(uptime(), wifiManager_, wifiDriver_, false, false, 0U);
+        webSocketManager_->tick(uptime(), wifiManager_, wifiDriver_, false, false, 0U, mqttEnabled, mqttConnected, mqttWaitingForStation);
 #endif
     }
 }
@@ -306,15 +319,19 @@ SM_STATE(Faulted) {
 }
 
 PortalServer::PortalServer(WifiManager& wifiManager, IWifiDriver& wifiDriver, DeviceRegistry* deviceRegistry,
-                           DeviceEventDispatcher* deviceEventDispatcher, DashboardLayoutStore* dashboardLayoutStore)
+                           DeviceEventDispatcher* deviceEventDispatcher, DashboardLayoutStore* dashboardLayoutStore,
+                           MqttConfigStore* mqttConfigStore, MqttManager* mqttManager, DeviceScopedDataStore* haSettingsStore,
+                           HaDiscoveryBridge* haDiscoveryBridge)
     : wifiManager_(wifiManager), wifiDriver_(wifiDriver), deviceRegistry_(deviceRegistry), deviceEventDispatcher_(deviceEventDispatcher),
-      dashboardLayoutStore_(dashboardLayoutStore) {}
+      dashboardLayoutStore_(dashboardLayoutStore), mqttConfigStore_(mqttConfigStore), mqttManager_(mqttManager),
+      haSettingsStore_(haSettingsStore), haDiscoveryBridge_(haDiscoveryBridge) {}
 
 PortalServer::~PortalServer() = default;
 
 bool PortalServer::begin() {
     if (!impl_) {
-        impl_ = std::make_unique<Impl>(wifiManager_, wifiDriver_, deviceRegistry_, deviceEventDispatcher_, dashboardLayoutStore_);
+        impl_ = std::make_unique<Impl>(wifiManager_, wifiDriver_, deviceRegistry_, deviceEventDispatcher_, dashboardLayoutStore_,
+                                       mqttConfigStore_, mqttManager_, haSettingsStore_, haDiscoveryBridge_);
     }
     return impl_ != nullptr && impl_->begin();
 }

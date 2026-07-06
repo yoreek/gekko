@@ -52,6 +52,29 @@
           </v-btn>
         </template>
       </PageCard>
+
+      <PageCard v-if="mqttStore.enabled" class="mt-4">
+        <template #header>
+          <PageToolbar :title="t('device.ha.title')" />
+        </template>
+
+        <div class="d-flex flex-column ga-4">
+          <v-switch v-model="haForm.enabled" :label="t('device.ha.enabled')" inset hide-details />
+          <v-text-field
+            v-model="haForm.name"
+            :label="t('device.ha.name')"
+            :hint="t('device.ha.nameHint')"
+            persistent-hint
+            :placeholder="device?.config.name"
+          />
+        </div>
+
+        <template #actions>
+          <v-btn color="primary" size="small" :loading="haSaving" @click="onSaveHaSettings">
+            {{ t('actions.save') }}
+          </v-btn>
+        </template>
+      </PageCard>
     </template>
 
     <PageCard v-else-if="!loading">
@@ -65,14 +88,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, toRef } from 'vue'
+import { computed, onBeforeMount, reactive, ref, toRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import type { DeviceCommandRequest } from '@/api/contracts'
+import { fetchMqttStatus } from '@/api'
 import { deviceStatusColor, deviceStatusLabelKey } from '@/models/devices/device-status'
 import { useDeviceDetail } from '@/composables/useDeviceDetail'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
+import { useMqttStore } from '@/stores/mqtt'
 import { resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
 import { useNotificationsStore } from '@/stores/notifications'
 import DeviceBaseFields from '@/components/device/DeviceBaseFields.vue'
@@ -88,9 +113,13 @@ const { t } = useI18n()
 const router = useRouter()
 const deviceStore = useDeviceRegistryStore()
 const notifications = useNotificationsStore()
+const mqttStore = useMqttStore()
 
 const { device, deviceName, loading, isSaving, errorMessage, draft, canSave, refresh, save, submitCommand } =
   useDeviceDetail(toRef(props, 'deviceId'))
+
+const haForm = reactive({ enabled: false, name: '' })
+const haSaving = ref(false)
 
 async function onSave(): Promise<void> {
   await save()
@@ -106,9 +135,32 @@ async function onCommand(payload: DeviceCommandRequest): Promise<void> {
   }
 }
 
+async function onSaveHaSettings(): Promise<void> {
+  haSaving.value = true
+  try {
+    await submitCommand({
+      command: 'setHaSettings',
+      haEnabled: haForm.enabled,
+      haName: haForm.name,
+    })
+    if (!errorMessage.value) {
+      notifications.notify(t('device.ha.saveSuccess'), 'success')
+    }
+  } finally {
+    haSaving.value = false
+  }
+}
+
+watch(device, value => {
+  haForm.enabled = value?.ha?.enabled ?? false
+  haForm.name = value?.ha?.name ?? ''
+})
+
 onBeforeMount(async () => {
   await deviceStore.initialize()
   await refresh()
+  const mqttStatus = await fetchMqttStatus()
+  mqttStore.replaceFromStatus(mqttStatus)
 })
 
 const typeUi = computed(() => (device.value ? resolveDeviceUi(device.value.record.typeName) : null))

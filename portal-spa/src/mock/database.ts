@@ -3,6 +3,7 @@ import type {
   BaseDeviceRuntime,
   DashboardLayoutRecord,
   DashboardLayoutWidgetRecord,
+  DeviceHaSettings,
   DeviceRecord,
   DeviceOutputSnapshot,
   I2cBusScanSnapshot,
@@ -60,6 +61,22 @@ export interface MockDatabase {
   system: {
     status: string
     rebooting: boolean
+  }
+  mqtt: {
+    compiledIn: boolean
+    enabled: boolean
+    connected: boolean
+    waitingForStation: boolean
+    host: string
+    port: number
+    useTls: boolean
+    clientId: string
+    username: string
+    password: string
+    haDiscoveryPrefix: string
+    haNodeId: string
+    haNodeName: string
+    hasCaCert: boolean
   }
 }
 
@@ -495,6 +512,22 @@ const seedDatabase: SeedDatabase = {
     status: 'idle',
     rebooting: false,
   },
+  mqtt: {
+    compiledIn: true,
+    enabled: false,
+    connected: false,
+    waitingForStation: false,
+    host: '',
+    port: 1883,
+    useTls: false,
+    clientId: '',
+    username: '',
+    password: '',
+    haDiscoveryPrefix: 'homeassistant',
+    haNodeId: 'gekko-mock',
+    haNodeName: 'Gekko (mock)',
+    hasCaCert: false,
+  },
 }
 
 export function canonicalizeDeviceRecord(value: unknown): MockDeviceRecord {
@@ -583,6 +616,15 @@ export function canonicalizeDeviceRecord(value: unknown): MockDeviceRecord {
     runtime.scan = source.scan as OneWireScanSnapshot
   }
 
+  const haSource = isRecord(source.ha) ? source.ha : {}
+  const haEnabled = typeof haSource.enabled === 'boolean' ? haSource.enabled : false
+  const haName = typeof haSource.name === 'string' ? haSource.name : ''
+  const ha: DeviceHaSettings = {
+    enabled: haEnabled,
+    name: haName,
+    effectiveName: haName.length > 0 ? haName : config.name,
+  }
+
   return {
     record: {
       id,
@@ -591,6 +633,7 @@ export function canonicalizeDeviceRecord(value: unknown): MockDeviceRecord {
     },
     config,
     runtime,
+    ha,
   }
 }
 
@@ -690,6 +733,10 @@ export function normalizeStoredDatabase(stored: unknown): MockDatabase {
     system: {
       ...seed.system,
       ...system,
+    },
+    mqtt: {
+      ...seed.mqtt,
+      ...(isRecord(stored.mqtt) ? stored.mqtt : {}),
     },
   }
 }

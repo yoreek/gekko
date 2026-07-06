@@ -4,6 +4,7 @@ import type { DeviceRecord } from '@/api'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { useDeviceEventLogStore } from '@/stores/deviceEventLog'
 import { useDeviceHistoryStore } from '@/stores/deviceHistory'
+import { useMqttStore } from '@/stores/mqtt'
 import { useOtaStore } from '@/stores/ota'
 import { useSystemStore } from '@/stores/system'
 import { useWebSocketStore } from '@/stores/websocket'
@@ -23,6 +24,7 @@ export function bindRealtimeBridge(
   const wifiStore = useWifiStore(pinia)
   const otaStore = useOtaStore(pinia)
   const systemStore = useSystemStore(pinia)
+  const mqttStore = useMqttStore(pinia)
   const wsStore = useWebSocketStore(pinia)
 
   return subscribe(message => {
@@ -60,6 +62,20 @@ export function bindRealtimeBridge(
           appStore.systemStatus = 'rebooting'
         }
         systemStore.replaceFromResponse(payload)
+        break
+      }
+      case 'mqtt.status': {
+        const payload = message.payload as { enabled?: boolean; connected?: boolean; waitingForStation?: boolean }
+        mqttStore.replaceFromStatus({
+          enabled: Boolean(payload.enabled),
+          connected: Boolean(payload.connected),
+          waitingForStation: Boolean(payload.waitingForStation),
+          host: mqttStore.host,
+          port: mqttStore.port,
+          useTls: mqttStore.useTls,
+          clientId: mqttStore.clientId,
+          hasCaCert: mqttStore.hasCaCert,
+        })
         break
       }
       case 'device.upsert': {

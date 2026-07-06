@@ -478,6 +478,81 @@ the controller returns a closing response, and the device reboots.
 { "success": true, "status": "ok", "rebooting": true }
 ```
 
+## MQTT
+
+Optional feature, compiled in only with `-DWITH_HOME_ASSISTANT` (see
+`docs/mqtt-home-assistant.md`). `enabled` in `MqttStatusResponse` reflects
+whether the flag was compiled in, not the runtime on/off toggle (that's
+`MqttSettingsRecord.enabled`) — the frontend uses the former to gray out the
+settings page and the latter to drive the enable switch.
+
+### `GET /api/mqtt/status`
+
+```ts
+interface MqttStatusResponse {
+  success: true
+  enabled: boolean // compiled in (WITH_HOME_ASSISTANT)
+  connected: boolean
+  waitingForStation: boolean
+  host: string
+  port: number
+  useTls: boolean
+  clientId: string
+  hasCaCert: boolean
+}
+```
+
+### `GET /api/mqtt/settings` / `PUT /api/mqtt/settings`
+
+`PUT` accepts a partial object — only provided fields are updated. `haNodeId`
+defaults (once, on first boot) to `<deviceName>-<macSuffix>` sanitized to
+`[a-zA-Z0-9_-]`; changing it after devices have been announced to Home
+Assistant creates a **new** device there (old entities/history are orphaned).
+
+```ts
+interface MqttSettingsRecord {
+  enabled: boolean
+  host: string
+  port: number
+  useTls: boolean
+  clientId: string
+  username: string
+  password: string // write-only; GET responses omit it (see passwordRedacted)
+  passwordRedacted: boolean // GET only
+  haDiscoveryPrefix: string
+  haNodeId: string
+  haNodeName: string
+  hasCaCert: boolean
+}
+```
+
+### `POST /api/mqtt/ca-cert` / `DELETE /api/mqtt/ca-cert`
+
+Multipart upload (field name `cert`) of a PEM-encoded CA certificate, used
+only when `useTls` is `true`. `DELETE` clears the stored certificate. Both
+respond with the same shape as `GET /api/mqtt/status`.
+
+### Per-device Home Assistant opt-in
+
+Devices are **not** published to Home Assistant by default. Each device's
+JSON envelope gains a generic `ha` block (present only when
+`WITH_HOME_ASSISTANT` is compiled in), alongside `record`/`config`/`runtime`:
+
+```ts
+interface DeviceHaSettings {
+  enabled: boolean
+  name: string // override; empty means "use config.name"
+  effectiveName: string // name override if set, else config.name
+}
+```
+
+Toggling it is a `cmd` on the device (`POST /api/devices/:id`, mirroring
+`setOutput`/`setDeps`):
+
+```json
+{ "command": "setHaSettings", "haEnabled": true, "haName": "Pump" }
+```
+
 ## System
 
 ### `POST /api/system/restart`
@@ -518,6 +593,12 @@ Known error codes include `BAD_ARGS`, `BAD_PARAMS`, `BAD_JSON`, `BOUNDS_EXCEEDED
 `INVALID_COMMAND`, `INVALID_CONFIG`, `INVALID_DEVICE_ID`,
 `INVALID_RELATIONSHIP`, `INVALID_VERSION`, `NOT_FOUND`, `OTA_FAILED`,
 `STORAGE_ERROR`, and `UNSUPPORTED_TYPE`.
+
+MQTT-specific codes (`## MQTT`): `HOST_REQUIRED`, `HOST_TOO_LONG`,
+`PORT_INVALID`, `CLIENT_ID_REQUIRED`, `CLIENT_ID_TOO_LONG`,
+`USERNAME_TOO_LONG`, `PASSWORD_TOO_LONG`, `DISCOVERY_PREFIX_INVALID`,
+`NODE_ID_REQUIRED`, `NODE_ID_TOO_LONG`, `NODE_ID_INVALID_CHARACTERS`,
+`NODE_NAME_TOO_LONG`, and `CERT_TOO_LARGE`.
 
 Error example:
 

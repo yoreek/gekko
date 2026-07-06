@@ -9,6 +9,7 @@ import DeviceEventJournalView from '@/views/DeviceEventJournalView.vue'
 import PanelsView from '@/views/PanelsView.vue'
 import WifiView from '@/views/WifiView.vue'
 import OtaView from '@/views/OtaView.vue'
+import MqttView from '@/views/MqttView.vue'
 import SystemView from '@/views/SystemView.vue'
 import OverviewView from '@/views/OverviewView.vue'
 import NotFoundView from '@/views/NotFoundView.vue'
@@ -62,6 +63,11 @@ const router = createRouter({
       path: '/ota',
       name: 'ota',
       component: OtaView,
+    },
+    {
+      path: '/mqtt',
+      name: 'mqtt',
+      component: MqttView,
     },
     {
       path: '/system',
