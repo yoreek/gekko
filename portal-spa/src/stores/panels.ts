@@ -301,6 +301,11 @@ export const usePanelStore = defineStore('panels', {
         }
       })()
       await this.initializePromise
+      // The layout fetched above only reflects devices that existed when it was last saved --
+      // normalizeSnapshot() merely filters stale widgets, it never seeds new ones. Backfill any
+      // device that already existed by the time this loaded but has no widget yet (e.g. created
+      // in another tab, or right before the dashboard's first mount this session).
+      await this.syncDeviceIds(deviceIds)
     },
     async reload(deviceIds: number[] = []): Promise<void> {
       if (this.initializePromise !== null) {
