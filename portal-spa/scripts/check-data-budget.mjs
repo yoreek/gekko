@@ -2,8 +2,8 @@ import { promises as fs } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
-// Keep this in sync with `littlefs` in `my_partitions.csv` (0x7D000 = 500 KiB).
-const dataBudgetBytes = 500 * 1024
+// Keep this in sync with `littlefs` in `my_partitions.csv` (0x6D000 = 436 KiB).
+const dataBudgetBytes = 436 * 1024
 const dataDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../data')
 
 async function walk(dir) {
