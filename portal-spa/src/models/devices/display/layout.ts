@@ -81,7 +81,7 @@ export interface DisplayLayoutDraft {
 export const DISPLAY_LAYOUT_SCHEMA_VERSION = 1
 export const DISPLAY_LAYOUT_MAX_PAGES = 2
 export const DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE = 10
-export const DISPLAY_LAYOUT_TEXT_CAPACITY = 32
+export const DISPLAY_LAYOUT_TEXT_CAPACITY = 128
 export const DISPLAY_LAYOUT_PAGE_ID_CAPACITY = 16
 
 export type Ssd1306WidgetType = DisplayWidgetType
