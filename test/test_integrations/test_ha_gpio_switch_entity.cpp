@@ -7,6 +7,8 @@
 
 #include <cstdio>
 #include <unity.h>
+#include <utility>
+#include <vector>
 
 using namespace ewfm;
 
@@ -37,6 +39,12 @@ DeviceCreateRequest makeGpioSwitchCreateRequest(const char* name) {
     request.configVersion = GpioSwitchDevice::descriptor().currentConfigVersion;
     request.enabled = true;
     return request;
+}
+
+HaTopicBuilder topicForDevice(DeviceId deviceId) {
+    return [deviceId](const char* channel, const char* suffix) {
+        return "node1/" + std::string(channel) + "/" + std::to_string(deviceId) + "/" + suffix;
+    };
 }
 
 } // namespace
@@ -74,7 +82,7 @@ void test_gpio_switch_ha_entity_adapter_builds_discovery_payload() {
 
     DynamicJsonDocument doc(512);
     JsonObject output = doc.to<JsonObject>();
-    adapter.buildDiscoveryPayload(*runtime, uniqueId, "Pump", stateTopic, commandTopic, output);
+    adapter.buildDiscoveryPayload(*runtime, uniqueId, "Pump", topicForDevice(created.deviceId), output);
 
     TEST_ASSERT_EQUAL_STRING(uniqueId.c_str(), output["unique_id"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("Pump", output["name"].as<const char*>());
@@ -82,6 +90,7 @@ void test_gpio_switch_ha_entity_adapter_builds_discovery_payload() {
     TEST_ASSERT_EQUAL_STRING(commandTopic.c_str(), output["command_topic"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("ON", output["payload_on"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("OFF", output["payload_off"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("mdi:toggle-switch", output["icon"].as<const char*>());
 }
 
 void test_gpio_switch_ha_entity_adapter_builds_state_payload_for_on_off_and_skips_disabled() {
@@ -98,34 +107,54 @@ void test_gpio_switch_ha_entity_adapter_builds_state_payload_for_on_off_and_skip
     registry.tickFastLoop(11);
 
     const GpioSwitchHaEntityAdapter& adapter = GpioSwitchHaEntityAdapter::instance();
-    std::string payload;
+    std::vector<std::pair<std::string, std::string>> published;
+    const HaStatePublisher publish = [&published](const std::string& topic, const std::string& payload) {
+        published.emplace_back(topic, payload);
+    };
 
     IDeviceRuntime* runtime = registry.runtime(created.deviceId);
     TEST_ASSERT_NOT_NULL(runtime);
-    TEST_ASSERT_TRUE(adapter.buildStatePayload(*runtime, payload));
-    TEST_ASSERT_EQUAL_STRING("OFF", payload.c_str());
+    adapter.publishState(*runtime, topicForDevice(created.deviceId), publish);
+    TEST_ASSERT_EQUAL_INT(1, static_cast<int>(published.size()));
+    TEST_ASSERT_EQUAL_STRING("OFF", published.back().second.c_str());
 
     DeviceMutationResult on = registry.command(DeviceCommand{DeviceCommandType::SetOutput, created.deviceId, "on"}, 20);
     TEST_ASSERT_TRUE_MESSAGE(on.ok(), on.validation.message);
-    TEST_ASSERT_TRUE(adapter.buildStatePayload(*registry.runtime(created.deviceId), payload));
-    TEST_ASSERT_EQUAL_STRING("ON", payload.c_str());
+    published.clear();
+    adapter.publishState(*registry.runtime(created.deviceId), topicForDevice(created.deviceId), publish);
+    TEST_ASSERT_EQUAL_INT(1, static_cast<int>(published.size()));
+    TEST_ASSERT_EQUAL_STRING("ON", published.back().second.c_str());
 
     DeviceMutationResult disabled = registry.command(DeviceCommand{DeviceCommandType::SetOutput, created.deviceId, "disabled"}, 30);
     TEST_ASSERT_TRUE_MESSAGE(disabled.ok(), disabled.validation.message);
-    TEST_ASSERT_FALSE(adapter.buildStatePayload(*registry.runtime(created.deviceId), payload));
+    published.clear();
+    adapter.publishState(*registry.runtime(created.deviceId), topicForDevice(created.deviceId), publish);
+    TEST_ASSERT_TRUE(published.empty());
 }
 
-void test_gpio_switch_ha_entity_adapter_parses_on_off_commands_case_insensitively() {
+void test_gpio_switch_ha_entity_adapter_applies_on_off_commands_case_insensitively() {
+    MemoryConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+    SequentialDeviceIdSource ids(700);
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(store, types, ids);
+    TEST_ASSERT_TRUE(registry.begin(1).ok());
+
+    DeviceCreateResult created = registry.create(makeGpioSwitchCreateRequest("Fan"), 10);
+    TEST_ASSERT_TRUE_MESSAGE(created.ok(), created.validation.message);
+    registry.tickFastLoop(11);
+
     const GpioSwitchHaEntityAdapter& adapter = GpioSwitchHaEntityAdapter::instance();
-    DeviceCommand command;
+    IDeviceRuntime* runtime = registry.runtime(created.deviceId);
+    TEST_ASSERT_NOT_NULL(runtime);
 
-    TEST_ASSERT_TRUE(adapter.parseCommand("ON", 7, command));
-    TEST_ASSERT_TRUE(command.type == DeviceCommandType::SetOutput);
-    TEST_ASSERT_EQUAL_UINT32(7, command.deviceId);
-    TEST_ASSERT_TRUE(command.payload.equals("on"));
+    TEST_ASSERT_TRUE(adapter.applyCommand(registry, *runtime, created.deviceId, "switch", "ON", 20));
+    TEST_ASSERT_TRUE(registry.runtime(created.deviceId)->switchOutputRuntime()->currentOutputState() == OutputState::On);
 
-    TEST_ASSERT_TRUE(adapter.parseCommand("off", 8, command));
-    TEST_ASSERT_TRUE(command.payload.equals("off"));
+    TEST_ASSERT_TRUE(adapter.applyCommand(registry, *registry.runtime(created.deviceId), created.deviceId, "switch", "off", 30));
+    TEST_ASSERT_TRUE(registry.runtime(created.deviceId)->switchOutputRuntime()->currentOutputState() == OutputState::Off);
 
-    TEST_ASSERT_FALSE(adapter.parseCommand("toggle", 9, command));
+    TEST_ASSERT_FALSE(adapter.applyCommand(registry, *registry.runtime(created.deviceId), created.deviceId, "switch", "toggle", 40));
+    TEST_ASSERT_FALSE(adapter.applyCommand(registry, *registry.runtime(created.deviceId), created.deviceId, "not_switch", "ON", 40));
 }

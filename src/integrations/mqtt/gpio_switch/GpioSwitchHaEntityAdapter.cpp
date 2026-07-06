@@ -1,5 +1,6 @@
 #include "integrations/mqtt/gpio_switch/GpioSwitchHaEntityAdapter.h"
 
+#include "devices/registry/DeviceRegistry.h"
 #include "devices/switch/OutputState.h"
 #include "devices/switch/gpio/GpioSwitchDevice.h"
 
@@ -25,54 +26,64 @@ const char* GpioSwitchHaEntityAdapter::haComponent() const {
 }
 
 void GpioSwitchHaEntityAdapter::buildDiscoveryPayload(const IDeviceRuntime& runtime, const std::string& uniqueId,
-                                                      const std::string& effectiveName, const std::string& stateTopic,
-                                                      const std::string& commandTopic, JsonObject output) const {
+                                                      const std::string& effectiveName, const HaTopicBuilder& topicFor,
+                                                      JsonObject output) const {
     (void)runtime;
     output["unique_id"] = uniqueId;
     output["object_id"] = uniqueId;
     output["name"] = effectiveName;
-    output["state_topic"] = stateTopic;
-    output["command_topic"] = commandTopic;
+    output["state_topic"] = topicFor("switch", "state");
+    output["command_topic"] = topicFor("switch", "set");
     output["payload_on"] = "ON";
     output["payload_off"] = "OFF";
     output["state_on"] = "ON";
     output["state_off"] = "OFF";
+    output["icon"] = "mdi:toggle-switch";
 }
 
-bool GpioSwitchHaEntityAdapter::buildStatePayload(const IDeviceRuntime& runtime, std::string& payload) const {
+void GpioSwitchHaEntityAdapter::publishState(const IDeviceRuntime& runtime, const HaTopicBuilder& topicFor,
+                                             const HaStatePublisher& publish) const {
     const ISwitchOutputRuntime* switchRuntime = runtime.switchOutputRuntime();
     if (switchRuntime == nullptr) {
-        return false;
+        return;
     }
+    std::string payload;
     switch (switchRuntime->currentOutputState()) {
     case OutputState::On:
         payload = "ON";
-        return true;
+        break;
     case OutputState::Off:
         payload = "OFF";
-        return true;
+        break;
     case OutputState::Disabled:
     default:
         // HA's binary switch component has no third state; skip the publish rather than invent one.
-        return false;
+        return;
     }
+    publish(topicFor("switch", "state"), payload);
 }
 
-bool GpioSwitchHaEntityAdapter::parseCommand(const std::string& payload, DeviceId deviceId, DeviceCommand& command) const {
+bool GpioSwitchHaEntityAdapter::applyCommand(DeviceRegistry& registry, const IDeviceRuntime& runtime, DeviceId deviceId,
+                                             const std::string& commandKey, const std::string& payload, uint32_t now) const {
+    (void)runtime;
+    (void)now;
+    if (commandKey != "switch") {
+        return false;
+    }
     std::string normalized;
     normalized.reserve(payload.size());
     for (char c : payload) {
         normalized.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
     }
+    DeviceCommand command;
     if (normalized == "on") {
         command = DeviceCommand{DeviceCommandType::SetOutput, deviceId, "on"};
-        return true;
-    }
-    if (normalized == "off") {
+    } else if (normalized == "off") {
         command = DeviceCommand{DeviceCommandType::SetOutput, deviceId, "off"};
-        return true;
+    } else {
+        return false;
     }
-    return false;
+    return registry.command(command, 0).ok();
 }
 
 } // namespace ewfm

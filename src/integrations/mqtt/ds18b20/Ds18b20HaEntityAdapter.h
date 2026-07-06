@@ -4,9 +4,9 @@
 
 namespace ewfm {
 
-class GpioSwitchHaEntityAdapter final : public IHaEntityAdapter {
+class Ds18b20HaEntityAdapter final : public IHaEntityAdapter {
 public:
-    static const GpioSwitchHaEntityAdapter& instance();
+    static const Ds18b20HaEntityAdapter& instance();
 
     DeviceTypeId typeId() const override;
     const char* typeName() const override;

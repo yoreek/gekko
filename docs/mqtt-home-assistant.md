@@ -61,12 +61,47 @@ strings instead, precisely to avoid this collision.
   nothing about specific device types; it only talks to the
   `IHaEntityAdapter` interface (`src/integrations/mqtt/HaEntityAdapter.h`).
   Adding a new publishable device type means adding one more adapter, not
-  touching the bridge.
-- `src/integrations/mqtt/gpio_switch/GpioSwitchHaEntityAdapter` — the only
-  GPIO-switch-specific code: builds the HA `switch` discovery payload, the
-  ON/OFF state payload, and parses incoming `ON`/`OFF` commands into the same
+  touching the bridge. Convention: every adapter's discovery payload sets an
+  explicit `icon` (an `mdi:*` slug) — don't rely on Home Assistant's
+  per-domain/per-`device_class` default icon.
+  - Each adapter requests as many topics as its entity needs via a
+    `HaTopicBuilder` callback (`topicFor(channel, suffix)` →
+    `<haNodeId>/<channel>/<deviceId>/<suffix>`) instead of the bridge handing
+    it one fixed state/command topic pair. A simple entity (switch, sensor)
+    uses its own `haComponent()` as the channel; a multi-topic entity
+    (thermostat) uses distinct channel names per topic — see "Topic scheme"
+    below.
+  - Applying an incoming command is fully owned by the adapter too:
+    `IHaEntityAdapter::applyCommand(registry, runtime, deviceId, commandKey,
+    payload, now)` mutates the device however that type requires — a
+    lightweight `DeviceCommand` via `DeviceRegistry::command()` for simple
+    runtime state (switch ON/OFF), or a full validated config replace via
+    `DeviceRegistry::updateConfig()` for persisted settings (thermostat
+    mode/setpoint) — the bridge never needs to know which.
+- `src/integrations/mqtt/gpio_switch/GpioSwitchHaEntityAdapter` — the
+  GPIO-switch-specific adapter: builds the HA `switch` discovery payload, the
+  ON/OFF state payload, and applies incoming `ON`/`OFF` commands as the same
   `DeviceCommand{SetOutput, ...}` shape the REST API already uses (so HA
   commands go through the same validation/persistence path as the portal UI).
+- `src/integrations/mqtt/ds18b20/Ds18b20HaEntityAdapter` — the
+  DS18B20-specific adapter: builds the HA `sensor` discovery payload
+  (`device_class: "temperature"`, `unit_of_measurement: "°C"`) and the state
+  payload from the device's latest temperature reading. Read-only —
+  `applyCommand()` always rejects, and no `command_topic` is published.
+- `src/integrations/mqtt/thermostat/ThermostatHaEntityAdapter` — the
+  thermostat-specific adapter: builds the HA `climate` discovery payload
+  (`modes: ["off","heat","cool"]`, `min_temp`/`max_temp` from the thermostat's
+  own safe range, `temperature_unit: "C"`) and publishes four independent
+  state messages (mode, setpoint, current temperature, `action`). Unlike the
+  other two adapters, its `applyCommand()` doesn't call
+  `DeviceRegistry::command()` at all: `ThermostatDevice` has
+  `supportsCommands = false` and no `handleCommand()` override — mode and
+  setpoint are persisted config fields, so an incoming HA command is patched
+  onto a copy of the current `ThermostatDeviceConfigV1`, re-encoded, and
+  applied via `DeviceRegistry::updateConfig()` — the exact same
+  validate-then-persist path the portal's own "update config" REST call
+  uses, so an out-of-range setpoint from Home Assistant is rejected the same
+  way an out-of-range setpoint from the portal UI would be.
 - `src/config/MqttConfigStore` / `src/config/MqttConfig.h` — scalar settings
   persisted the same way as WiFi credentials (`ConfigStore`); the CA
   certificate is a variable-length blob stored via raw `putBlob`/`getBlob`
@@ -96,7 +131,7 @@ flowchart TD
     HA --> MM["MqttManager<br/>PubSubClient callback<br/>dispatchIncoming()"]:::ha
     UI --> DRC["DeviceRegistryController::cmd()<br/>parses body, builds DeviceCommand"]:::ui
 
-    MM --> HDB["HaDiscoveryBridge::onMqttMessage()<br/>finds device + adapter, then<br/>GpioSwitchHaEntityAdapter::parseCommand()"]:::ha
+    MM --> HDB["HaDiscoveryBridge::onMqttMessage()<br/>finds device + adapter, then<br/>GpioSwitchHaEntityAdapter::applyCommand()"]:::ha
 
     HDB --> DR["DeviceRegistry::command(cmd, now)<br/>— single entry point —"]:::junction
     DRC --> DR
@@ -108,7 +143,7 @@ flowchart TD
     BUS --> HDB2["HaDiscoveryBridge::onDeviceEvent()<br/>StateChanged → publishStateOnly()"]:::ha
     BUS --> WS["PortalWebSocketManager::onDeviceEvent()<br/>builds device.upsert / command_result"]:::ui
 
-    HDB2 --> MQTTOUT["GpioSwitchHaEntityAdapter::buildStatePayload()<br/>→ MqttManager::publish(state topic, retain=true)"]:::ha
+    HDB2 --> MQTTOUT["GpioSwitchHaEntityAdapter::publishState()<br/>→ MqttManager::publish(state topic, retain=true)"]:::ha
     WS --> WSOUT["PortalWebSocketManager::sendText()<br/>→ socket_->textAll()"]:::ui
 
     MQTTOUT --> HAOUT["MQTT broker → Home Assistant<br/>entity shows the new state"]:::ha
@@ -126,6 +161,13 @@ via `attachDispatcher()`, at startup. Neither class knows the other exists. A
 change made from Home Assistant reaches the browser, and a change made in the
 browser reaches Home Assistant, purely because they both listen to the same
 event bus — not because either side calls the other directly.
+
+This diagram uses the GPIO switch as the worked example. The thermostat's
+`ThermostatHaEntityAdapter::applyCommand()` sits at the same "DR" junction
+but calls `DeviceRegistry::updateConfig()` instead of `::command()` — see
+"Architecture" above for why (mode/setpoint are persisted config, not
+lightweight runtime state). Everything downstream of that junction (the
+event bus fan-out to both sinks) is identical either way.
 
 ## Node and entity identifiers
 
@@ -153,20 +195,44 @@ event bus — not because either side calls the other directly.
   Assistant's MQTT discovery schema whenever a payload includes a `device`
   block.
 
-## Topic scheme (GPIO switch)
+## Topic scheme
 
 ```
 <haDiscoveryPrefix>/switch/<haNodeId>/<haNodeId>_gpio_switch_<deviceId>/config   discovery (retained)
 <haNodeId>/status                                                               availability (retained, LWT)
 <haNodeId>/switch/<deviceId>/state                                              state (retained, "ON"/"OFF")
 <haNodeId>/switch/<deviceId>/set                                                command ("ON"/"OFF")
+
+<haDiscoveryPrefix>/sensor/<haNodeId>/<haNodeId>_ds18b20_temperature_sensor_<deviceId>/config   discovery (retained)
+<haNodeId>/sensor/<deviceId>/state                                              state (retained, e.g. "23.46")
+
+<haDiscoveryPrefix>/climate/<haNodeId>/<haNodeId>_thermostat_<deviceId>/config   discovery (retained)
+<haNodeId>/climate_mode/<deviceId>/state                                        mode state (retained, "off"/"heat"/"cool")
+<haNodeId>/climate_mode/<deviceId>/set                                          mode command ("off"/"heat"/"cool")
+<haNodeId>/climate_temperature/<deviceId>/state                                 setpoint state (retained, e.g. "24.50")
+<haNodeId>/climate_temperature/<deviceId>/set                                   setpoint command (e.g. "24.5")
+<haNodeId>/climate_current_temperature/<deviceId>/state                        current temperature (retained, e.g. "23.80")
+<haNodeId>/climate_action/<deviceId>/state                                      hvac action (retained, "off"/"idle"/"heating"/"cooling")
 ```
 
+DS18B20 sensors have no `set` topic — the wildcard command subscription below
+still matches their state topic shape, but `Ds18b20HaEntityAdapter::applyCommand()`
+always rejects, so no command ever reaches the device.
+
+The thermostat's "channel" segment (`climate_mode`, `climate_temperature`,
+`climate_current_temperature`, `climate_action`) is not the HA component name
+(that's always `climate`, used only in the discovery topic) — it's a
+per-topic key `ThermostatHaEntityAdapter` picks so a single entity can own
+several independent state/command topics. `HaDiscoveryBridge` never
+special-cases this; it just passes whatever channel the topic used through
+to `applyCommand()`/`publishState()` as an opaque string.
+
 The bridge subscribes to a **single wildcard** `<haNodeId>/+/+/set` once, on
-connect — not one subscription per entity. New devices created afterwards are
-picked up automatically without any resubscribe; incoming messages are routed
-to the right device by parsing the topic's device-id segment and looking up
-its runtime/adapter, not by the number of active subscriptions.
+connect — not one subscription per entity or per channel. New devices (and
+new channels within an existing entity) are picked up automatically without
+any resubscribe; incoming messages are routed to the right device by parsing
+the topic's device-id segment and looking up its runtime/adapter, not by the
+number of active subscriptions.
 
 ## Lifecycle (birth/LWT)
 
@@ -198,9 +264,31 @@ per-device `ha` block / `setHaSettings` command).
 
 ## Current scope
 
-Only GPIO switch devices (`gpio_switch`) are published to Home Assistant in
-this iteration, mapped to HA's `switch` component. Other device types
-(temperature sensors, thermostat, displays) are out of scope for now, but the
+Three device types are published to Home Assistant in this iteration:
+
+- GPIO switch (`gpio_switch`) — mapped to HA's `switch` component, with
+  `icon: "mdi:toggle-switch"` and command support (`ON`/`OFF` routed back
+  through `DeviceRegistry::command`).
+- DS18B20 temperature sensor (`ds18b20_temperature_sensor`) — mapped to HA's
+  `sensor` component with `device_class: "temperature"`,
+  `state_class: "measurement"`, `unit_of_measurement: "°C"`, and
+  `icon: "mdi:thermometer"`. Read-only: no `command_topic` is published and
+  incoming commands are rejected. The state is always published in Celsius
+  regardless of the device's configured display unit (that setting only
+  affects the portal UI/OLED output) — Home Assistant converts to the user's
+  preferred unit on its own.
+- Thermostat (`thermostat`) — mapped to HA's `climate` component, with
+  `icon: "mdi:thermostat"`, `modes: ["off","heat","cool"]`,
+  `min_temp`/`max_temp` taken from the thermostat's own configured safe
+  range, `temp_step: 0.5`, `precision: 0.1`, `temperature_unit: "C"`. Mode
+  and setpoint changes from Home Assistant are applied through
+  `DeviceRegistry::updateConfig()` (full validated config replace, see
+  "Architecture" above) — an out-of-range setpoint is rejected exactly like
+  it would be from the portal UI. The `action` topic (`off`/`idle`/`heating`/
+  `cooling`) is derived from the thermostat's own mode + actual switch output
+  state, not a separate stored field.
+
+Other device types (displays) are out of scope for now, but the
 adapter/registry seam (`IHaEntityAdapter`/`HaEntityAdapterRegistry`) is
 designed so adding one is a new adapter file, not a change to
 `HaDiscoveryBridge` or `MqttManager`.

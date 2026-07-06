@@ -184,12 +184,10 @@ void HaDiscoveryBridge::onMqttMessage(const std::string& topic, const uint8_t* p
         return;
     }
     const std::string payloadStr(reinterpret_cast<const char*>(payload), length);
-    DeviceCommand command;
-    if (!adapter->parseCommand(payloadStr, deviceId, command)) {
+    const std::string& commandKey = parts[1];
+    if (!adapter->applyCommand(*deviceRegistry_, *runtime, deviceId, commandKey, payloadStr, 0)) {
         EWFM_MQTT_LOG_WARN("unrecognized command payload for device %lu", static_cast<unsigned long>(deviceId));
-        return;
     }
-    deviceRegistry_->command(command, 0);
 }
 
 void HaDiscoveryBridge::publishDiscoveryAndState(DeviceId deviceId, const IDeviceRuntime& runtime, const IHaEntityAdapter& adapter) {
@@ -197,14 +195,15 @@ void HaDiscoveryBridge::publishDiscoveryAndState(DeviceId deviceId, const IDevic
         return;
     }
     const std::string uniqueId = uniqueIdFor(adapter, deviceId);
-    const std::string stateTopic = stateTopicFor(adapter, deviceId);
-    const std::string commandTopic = commandTopicFor(adapter, deviceId);
+    const HaTopicBuilder topicFor = topicBuilderFor(deviceId);
     const HaDeviceSettingsRecord settings = loadHaDeviceSettings(*haSettingsStore_, deviceId);
     const std::string effectiveName = effectiveHaDeviceName(settings, runtime.name());
 
-    DynamicJsonDocument doc(768);
+    // Sized for the largest entity type (thermostat/climate has 6 topic fields plus numeric
+    // bounds) - GPIO switch/DS18B20 sensor payloads use a small fraction of this.
+    DynamicJsonDocument doc(1536);
     JsonObject output = doc.to<JsonObject>();
-    adapter.buildDiscoveryPayload(runtime, uniqueId, effectiveName, stateTopic, commandTopic, output);
+    adapter.buildDiscoveryPayload(runtime, uniqueId, effectiveName, topicFor, output);
     output["availability_topic"] = availabilityTopic();
     output["has_entity_name"] = true;
 
@@ -230,11 +229,11 @@ void HaDiscoveryBridge::publishStateOnly(DeviceId deviceId, const IDeviceRuntime
     if (mqttManager_ == nullptr) {
         return;
     }
-    std::string payload;
-    if (!adapter.buildStatePayload(runtime, payload)) {
-        return;
-    }
-    mqttManager_->publish(stateTopicFor(adapter, deviceId), payload, true);
+    const HaTopicBuilder topicFor = topicBuilderFor(deviceId);
+    const HaStatePublisher publish = [this](const std::string& topic, const std::string& payload) {
+        mqttManager_->publish(topic, payload, true);
+    };
+    adapter.publishState(runtime, topicFor, publish);
 }
 
 void HaDiscoveryBridge::retractDiscovery(DeviceId deviceId, DeviceTypeId typeId) {
@@ -257,12 +256,11 @@ std::string HaDiscoveryBridge::discoveryTopicFor(const IHaEntityAdapter& adapter
     return haDiscoveryPrefix_ + "/" + adapter.haComponent() + "/" + nodeId_ + "/" + uniqueId + "/config";
 }
 
-std::string HaDiscoveryBridge::stateTopicFor(const IHaEntityAdapter& adapter, DeviceId deviceId) const {
-    return nodeId_ + "/" + adapter.haComponent() + "/" + std::to_string(deviceId) + "/state";
-}
-
-std::string HaDiscoveryBridge::commandTopicFor(const IHaEntityAdapter& adapter, DeviceId deviceId) const {
-    return nodeId_ + "/" + adapter.haComponent() + "/" + std::to_string(deviceId) + "/set";
+HaTopicBuilder HaDiscoveryBridge::topicBuilderFor(DeviceId deviceId) const {
+    const std::string& nodeId = nodeId_;
+    return [nodeId, deviceId](const char* channel, const char* suffix) {
+        return nodeId + "/" + channel + "/" + std::to_string(deviceId) + "/" + suffix;
+    };
 }
 
 std::string HaDiscoveryBridge::availabilityTopic() const {

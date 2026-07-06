@@ -1,0 +1,128 @@
+#include "integrations/mqtt/thermostat/ThermostatHaEntityAdapter.h"
+
+#include "devices/registry/DeviceRegistry.h"
+#include "devices/thermostat/ThermostatDevice.h"
+
+#include <cstdio>
+#include <cstdlib>
+
+namespace ewfm {
+
+namespace {
+const char* actionForState(ThermostatMode mode, OutputState actualOutputState) {
+    if (mode == ThermostatMode::Off) {
+        return "off";
+    }
+    if (actualOutputState == OutputState::On) {
+        return mode == ThermostatMode::Heat ? "heating" : "cooling";
+    }
+    return "idle";
+}
+} // namespace
+
+const ThermostatHaEntityAdapter& ThermostatHaEntityAdapter::instance() {
+    static const ThermostatHaEntityAdapter adapter;
+    return adapter;
+}
+
+DeviceTypeId ThermostatHaEntityAdapter::typeId() const {
+    return ThermostatDevice::descriptor().typeId;
+}
+
+const char* ThermostatHaEntityAdapter::typeName() const {
+    return "thermostat";
+}
+
+const char* ThermostatHaEntityAdapter::haComponent() const {
+    return "climate";
+}
+
+void ThermostatHaEntityAdapter::buildDiscoveryPayload(const IDeviceRuntime& runtime, const std::string& uniqueId,
+                                                      const std::string& effectiveName, const HaTopicBuilder& topicFor,
+                                                      JsonObject output) const {
+    const auto& thermostat = static_cast<const ThermostatDevice&>(runtime);
+    const ThermostatDeviceConfigV1& config = thermostat.config();
+
+    output["unique_id"] = uniqueId;
+    output["object_id"] = uniqueId;
+    output["name"] = effectiveName;
+    output["icon"] = "mdi:thermostat";
+
+    JsonArray modes = output.createNestedArray("modes");
+    modes.add("off");
+    modes.add("heat");
+    modes.add("cool");
+    output["mode_state_topic"] = topicFor("climate_mode", "state");
+    output["mode_command_topic"] = topicFor("climate_mode", "set");
+
+    output["temperature_state_topic"] = topicFor("climate_temperature", "state");
+    output["temperature_command_topic"] = topicFor("climate_temperature", "set");
+    output["current_temperature_topic"] = topicFor("climate_current_temperature", "state");
+    output["action_topic"] = topicFor("climate_action", "state");
+
+    output["temperature_unit"] = "C";
+    output["min_temp"] = static_cast<float>(config.minSafeMilliCelsius) / 1000.0F;
+    output["max_temp"] = static_cast<float>(config.maxSafeMilliCelsius) / 1000.0F;
+    output["temp_step"] = 0.5F;
+    output["precision"] = 0.1F;
+}
+
+void ThermostatHaEntityAdapter::publishState(const IDeviceRuntime& runtime, const HaTopicBuilder& topicFor,
+                                             const HaStatePublisher& publish) const {
+    const auto& thermostat = static_cast<const ThermostatDevice&>(runtime);
+    const ThermostatDeviceConfigV1& config = thermostat.config();
+    const auto mode = static_cast<ThermostatMode>(config.mode);
+
+    publish(topicFor("climate_mode", "state"), thermostatModeName(mode));
+
+    char buffer[16];
+    std::snprintf(buffer, sizeof(buffer), "%.2f", static_cast<double>(config.targetMilliCelsius) / 1000.0);
+    publish(topicFor("climate_temperature", "state"), buffer);
+
+    const TemperatureReading& reading = thermostat.latestTemperature();
+    if (reading.valid) {
+        std::snprintf(buffer, sizeof(buffer), "%.2f", static_cast<double>(reading.milliCelsius) / 1000.0);
+        publish(topicFor("climate_current_temperature", "state"), buffer);
+    }
+
+    publish(topicFor("climate_action", "state"), actionForState(mode, thermostat.actualOutputState()));
+}
+
+bool ThermostatHaEntityAdapter::applyCommand(DeviceRegistry& registry, const IDeviceRuntime& runtime, DeviceId deviceId,
+                                             const std::string& commandKey, const std::string& payload, uint32_t now) const {
+    const auto& thermostat = static_cast<const ThermostatDevice&>(runtime);
+    ThermostatDeviceConfigV1 config = thermostat.config();
+
+    if (commandKey == "climate_mode") {
+        ThermostatMode mode{};
+        if (!thermostatModeFromString(payload.c_str(), mode)) {
+            return false;
+        }
+        config.mode = static_cast<uint8_t>(mode);
+    } else if (commandKey == "climate_temperature") {
+        if (payload.empty()) {
+            return false;
+        }
+        char* end = nullptr;
+        const double celsius = std::strtod(payload.c_str(), &end);
+        if (end == payload.c_str()) {
+            return false;
+        }
+        config.targetMilliCelsius = static_cast<int32_t>(celsius * 1000.0 + (celsius >= 0.0 ? 0.5 : -0.5));
+    } else {
+        return false;
+    }
+
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = thermostatDeviceConfigSize(config);
+    if (!encodeThermostatDeviceConfig(config, buffer, size)) {
+        return false;
+    }
+    DeviceConfigBlob blob{};
+    if (!blob.assign(buffer, size)) {
+        return false;
+    }
+    return registry.updateConfig(deviceId, blob, 0, now).ok();
+}
+
+} // namespace ewfm

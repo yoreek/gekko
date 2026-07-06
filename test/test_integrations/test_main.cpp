@@ -15,12 +15,21 @@ void test_ssd1306_device_api_adapter_encodes_layout_update_payload();
 void test_ha_entity_adapter_registry_resolves_gpio_switch_and_rejects_unknown();
 void test_gpio_switch_ha_entity_adapter_builds_discovery_payload();
 void test_gpio_switch_ha_entity_adapter_builds_state_payload_for_on_off_and_skips_disabled();
-void test_gpio_switch_ha_entity_adapter_parses_on_off_commands_case_insensitively();
+void test_gpio_switch_ha_entity_adapter_applies_on_off_commands_case_insensitively();
 void test_ha_discovery_bridge_publishes_birth_and_subscribes_on_connect();
 void test_ha_discovery_bridge_skips_unopted_in_device_on_create();
 void test_ha_discovery_bridge_publishes_discovery_and_state_after_opt_in();
 void test_ha_discovery_bridge_retracts_discovery_on_delete();
 void test_ha_discovery_bridge_routes_incoming_command_to_device_registry();
+void test_ha_entity_adapter_registry_resolves_ds18b20();
+void test_ds18b20_ha_entity_adapter_builds_discovery_payload();
+void test_ds18b20_ha_entity_adapter_builds_state_payload_for_valid_reading_and_skips_invalid();
+void test_ds18b20_ha_entity_adapter_rejects_all_commands();
+void test_ha_entity_adapter_registry_resolves_thermostat();
+void test_thermostat_ha_entity_adapter_builds_discovery_payload();
+void test_thermostat_ha_entity_adapter_publishes_mode_temperature_and_action();
+void test_thermostat_ha_entity_adapter_reports_off_action_when_mode_is_off();
+void test_thermostat_ha_entity_adapter_applies_mode_and_temperature_commands();
 
 int main(int, char**) {
     UNITY_BEGIN();
@@ -39,11 +48,20 @@ int main(int, char**) {
     RUN_TEST(test_ha_entity_adapter_registry_resolves_gpio_switch_and_rejects_unknown);
     RUN_TEST(test_gpio_switch_ha_entity_adapter_builds_discovery_payload);
     RUN_TEST(test_gpio_switch_ha_entity_adapter_builds_state_payload_for_on_off_and_skips_disabled);
-    RUN_TEST(test_gpio_switch_ha_entity_adapter_parses_on_off_commands_case_insensitively);
+    RUN_TEST(test_gpio_switch_ha_entity_adapter_applies_on_off_commands_case_insensitively);
     RUN_TEST(test_ha_discovery_bridge_publishes_birth_and_subscribes_on_connect);
     RUN_TEST(test_ha_discovery_bridge_skips_unopted_in_device_on_create);
     RUN_TEST(test_ha_discovery_bridge_publishes_discovery_and_state_after_opt_in);
     RUN_TEST(test_ha_discovery_bridge_retracts_discovery_on_delete);
     RUN_TEST(test_ha_discovery_bridge_routes_incoming_command_to_device_registry);
+    RUN_TEST(test_ha_entity_adapter_registry_resolves_ds18b20);
+    RUN_TEST(test_ds18b20_ha_entity_adapter_builds_discovery_payload);
+    RUN_TEST(test_ds18b20_ha_entity_adapter_builds_state_payload_for_valid_reading_and_skips_invalid);
+    RUN_TEST(test_ds18b20_ha_entity_adapter_rejects_all_commands);
+    RUN_TEST(test_ha_entity_adapter_registry_resolves_thermostat);
+    RUN_TEST(test_thermostat_ha_entity_adapter_builds_discovery_payload);
+    RUN_TEST(test_thermostat_ha_entity_adapter_publishes_mode_temperature_and_action);
+    RUN_TEST(test_thermostat_ha_entity_adapter_reports_off_action_when_mode_is_off);
+    RUN_TEST(test_thermostat_ha_entity_adapter_applies_mode_and_temperature_commands);
     return UNITY_END();
 }

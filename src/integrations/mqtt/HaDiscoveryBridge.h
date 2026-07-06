@@ -43,8 +43,7 @@ private:
 
     std::string uniqueIdFor(const IHaEntityAdapter& adapter, DeviceId deviceId) const;
     std::string discoveryTopicFor(const IHaEntityAdapter& adapter, const std::string& uniqueId) const;
-    std::string stateTopicFor(const IHaEntityAdapter& adapter, DeviceId deviceId) const;
-    std::string commandTopicFor(const IHaEntityAdapter& adapter, DeviceId deviceId) const;
+    HaTopicBuilder topicBuilderFor(DeviceId deviceId) const;
     std::string availabilityTopic() const;
 
     MqttManager* mqttManager_{nullptr};
