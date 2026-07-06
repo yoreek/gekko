@@ -183,15 +183,40 @@ watch(() => [namespace.value, sourceId.value], () => {
 
 async function copyPlaceholder(): Promise<void> {
   if (placeholderText.value.length === 0) return
-  try {
-    await navigator.clipboard.writeText(placeholderText.value)
-    copied.value = true
+  const ok = await writeClipboardText(placeholderText.value)
+  copied.value = ok
+  if (ok) {
     window.setTimeout(() => {
       copied.value = false
     }, 1200)
-  } catch {
-    copied.value = false
   }
+}
+
+async function writeClipboardText(text: string): Promise<boolean> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch {
+      // Falls through to the legacy fallback below (e.g. insecure-context browsers
+      // that expose navigator.clipboard but reject the call outright).
+    }
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  let ok = false
+  try {
+    ok = document.execCommand('copy')
+  } catch {
+    ok = false
+  }
+  document.body.removeChild(textarea)
+  return ok
 }
 
 function normalizeSelection(): void {
