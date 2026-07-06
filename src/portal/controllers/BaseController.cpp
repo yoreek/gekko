@@ -12,6 +12,9 @@ namespace ewfm {
 
 namespace {
 constexpr size_t kMaxControllerJsonBodyBytes = 8192;
+// ArduinoJson's DynamicJsonDocument needs headroom beyond the raw body bytes for its
+// per-object/array variant slots, on top of the body content itself (mostly zero-copied).
+constexpr size_t kJsonParseOverheadBytes = 1024;
 
 BaseController::RequestFile* requestFilesStorage(AsyncWebServerRequest* request, size_t& fileCount) {
 #if defined(ARDUINO) || defined(UNIT_TEST)
@@ -47,7 +50,7 @@ BaseController::~BaseController() {
 const BaseController::RulesChain* BaseController::beforeChain() {
     static constexpr HookRule rules[] = {
         {&BaseController::beforeCorsOptions, ALL},
-        {[](BaseController& self) { return self.parseBody(); }, A(Action::Create) | A(Action::Cmd)},
+        {[](BaseController& self) { return self.parseBody(self.bodyLen_ + kJsonParseOverheadBytes); }, A(Action::Create) | A(Action::Cmd)},
     };
     static const RulesChain node{rules, std::size(rules), nullptr};
     return &node;
