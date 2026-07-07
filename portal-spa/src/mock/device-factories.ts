@@ -538,6 +538,64 @@ export function createDs18b20Device(
   })
 }
 
+const kNtcAttenuationOptions = new Set(['0db', '2_5db', '6db', '11db'])
+
+function normalizeNtcAttenuation(value: unknown): string {
+  return typeof value === 'string' && kNtcAttenuationOptions.has(value) ? value : '11db'
+}
+
+function normalizeNtcThermistorConfigPayload(value: unknown, enabledFallback: boolean): Record<string, unknown> & { enabled: boolean } {
+  if (!isRecordPayload(value)) {
+    throw new ApiClientError('invalid ntc thermistor config', 'BAD_ARGS', 400, null)
+  }
+  return {
+    enabled: typeof value.enabled === 'boolean' ? value.enabled : enabledFallback,
+    gpioPin: normalizeFiniteNumber(value.gpioPin, 34),
+    attenuation: normalizeNtcAttenuation(value.attenuation),
+    seriesResistorOhms: Math.max(1, normalizeFiniteNumber(value.seriesResistorOhms, 10000)),
+    nominalResistanceOhms: Math.max(1, normalizeFiniteNumber(value.nominalResistanceOhms, 100000)),
+    nominalTempCelsius: normalizeFiniteNumber(value.nominalTempCelsius, 25),
+    betaCoefficient: Math.max(1, normalizeFiniteNumber(value.betaCoefficient, 3950)),
+    adcSamples: Math.min(64, Math.max(1, normalizeFiniteNumber(value.adcSamples, 8))),
+    unit: normalizeDs18b20Unit(value.unit),
+    pollMs: Math.max(1000, normalizeFiniteNumber(value.pollMs, 5000)),
+    reportDeltaCelsius: Math.max(0.01, normalizeFiniteNumber(value.reportDeltaCelsius, 0.1)),
+    reportAlways: typeof value.reportAlways === 'boolean' ? value.reportAlways : false,
+    smoothingWeight: Math.min(1, Math.max(0.01, normalizeFiniteNumber(value.smoothingWeight, 1))),
+    calibrationFactor: normalizeFiniteNumber(value.calibrationFactor, 1) || 1,
+    calibrationOffset: normalizeFiniteNumber(value.calibrationOffset, 0),
+  }
+}
+
+export function createNtcThermistorDevice(
+  nextId: number,
+  configSource: Record<string, unknown>,
+  baseDeps: Array<{ role: string; deviceId: number }>,
+  enabled: boolean,
+  name: string,
+): DeviceRecord {
+  const config = normalizeNtcThermistorConfigPayload(configSource, enabled)
+  return createDeviceRecord(nextId, 'ntc_thermistor_temperature_sensor', 1, {
+    ...config,
+    deps: baseDeps,
+    name,
+  }, {
+    status: 'ready',
+    lifecycleStatus: 'ready',
+    effectiveStatus: 'ready',
+    output: {
+      temperature: {
+        value: config.nominalTempCelsius as number,
+        unit: config.unit === 'fahrenheit' ? 'fahrenheit' : 'celsius',
+        unitSymbol: config.unit === 'fahrenheit' ? 'F' : 'C',
+        measuredAtMs: Date.now(),
+        valid: true,
+        status: 'ok',
+      },
+    },
+  })
+}
+
 export function createThermostatDevice(
   nextId: number,
   configSource: Record<string, unknown>,

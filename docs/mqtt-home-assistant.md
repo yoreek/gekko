@@ -86,11 +86,15 @@ strings instead, precisely to avoid this collision.
   ON/OFF state payload, and applies incoming `ON`/`OFF` commands as the same
   `DeviceCommand{SetOutput, ...}` shape the REST API already uses (so HA
   commands go through the same validation/persistence path as the portal UI).
-- `src/integrations/mqtt/ds18b20/Ds18b20HaEntityAdapter` — the
-  DS18B20-specific adapter: builds the HA `sensor` discovery payload
+- `src/integrations/mqtt/temperature/TemperatureSensorHaEntityAdapter` — a
+  generic adapter shared by every temperature-reading device (DS18B20, NTC
+  thermistor, ...): builds the HA `sensor` discovery payload
   (`device_class: "temperature"`, `unit_of_measurement: "°C"`) and the state
-  payload from the device's latest temperature reading. Read-only —
-  `applyCommand()` always rejects, and no `command_topic` is published.
+  payload from the device's latest temperature reading via
+  `ITemperatureReadingRuntime`. One instance is registered per device type
+  (parameterized by `typeId`/`typeName`/`icon`) instead of a separate adapter
+  class per sensor. Read-only — `applyCommand()` always rejects, and no
+  `command_topic` is published.
 - `src/integrations/mqtt/thermostat/ThermostatHaEntityAdapter` — the
   thermostat-specific adapter: builds the HA `climate` discovery payload
   (`modes: ["off","heat","cool"]`, `min_temp`/`max_temp` from the thermostat's
@@ -242,9 +246,10 @@ event bus fan-out to both sinks) is identical either way.
 <haNodeId>/system/restart/set                                                   command (any payload triggers it)
 ```
 
-DS18B20 sensors have no `set` topic — the wildcard command subscription below
-still matches their state topic shape, but `Ds18b20HaEntityAdapter::applyCommand()`
-always rejects, so no command ever reaches the device.
+Temperature sensors (DS18B20, NTC thermistor) have no `set` topic — the
+wildcard command subscription below still matches their state topic shape,
+but `TemperatureSensorHaEntityAdapter::applyCommand()` always rejects, so no
+command ever reaches the device.
 
 The thermostat's "channel" segment (`climate_mode`, `climate_temperature`,
 `climate_current_temperature`, `climate_action`) is not the HA component name

@@ -16,7 +16,6 @@ constexpr uint32_t kRetryBackoffMs = 1000;
 constexpr uint32_t kFaultRetryBackoffMs = 30000;
 constexpr uint8_t kFaultErrorThreshold = 3;
 
-const char* kOutputOk = "ok";
 const char* kOutputNotReady = "not_ready";
 const char* kOutputDependencyUnavailable = "dependency_unavailable";
 const char* kOutputDependencyBusy = "dependency_busy";
@@ -52,11 +51,11 @@ const char* Ds18b20TemperatureSensorDevice::name() const {
 }
 
 const TemperatureReading& Ds18b20TemperatureSensorDevice::reading() const {
-    return reading_;
+    return publisher_.reading();
 }
 
 const char* Ds18b20TemperatureSensorDevice::outputStatus() const {
-    return outputStatus_;
+    return publisher_.status();
 }
 
 uint8_t Ds18b20TemperatureSensorDevice::consecutiveErrors() const {
@@ -72,12 +71,12 @@ const ITemperatureReadingRuntime* Ds18b20TemperatureSensorDevice::temperatureRea
 }
 
 bool Ds18b20TemperatureSensorDevice::latestTemperatureReading(TemperatureReading& reading) const {
-    reading = reading_;
+    reading = publisher_.reading();
     return true;
 }
 
 const char* Ds18b20TemperatureSensorDevice::latestTemperatureStatus() const {
-    return outputStatus_;
+    return publisher_.status();
 }
 
 void Ds18b20TemperatureSensorDevice::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
@@ -132,7 +131,7 @@ void Ds18b20TemperatureSensorDevice::writeDeviceJson(JsonObject output) const {
     config_.writeJson(output);
     JsonObject outputObject = output.createNestedObject("output");
     JsonObject temperatureObject = outputObject.createNestedObject("temperature");
-    writeTemperatureOutputJson(reading_, outputUnit(), outputStatus_, temperatureObject);
+    writeTemperatureOutputJson(publisher_.reading(), outputUnit(), publisher_.status(), temperatureObject);
 }
 
 DeviceTypeDescriptor Ds18b20TemperatureSensorDevice::descriptor() {
@@ -277,27 +276,15 @@ bool Ds18b20TemperatureSensorDevice::readTemperature(IOneWireBusDriver& driver, 
 }
 
 void Ds18b20TemperatureSensorDevice::publishReading(int32_t milliCelsius, uint32_t now) {
-    const TemperatureReading previous = reading_;
-    reading_.milliCelsius = milliCelsius;
-    reading_.measuredAtMs = now;
-    reading_.valid = true;
-    const bool shouldPublish = config_.reportAlways != 0U ||
-                               temperatureReadingChanged(previous, reading_, config_.reportDeltaCentiCelsius) ||
-                               std::strcmp(outputStatus_, kOutputOk) != 0;
-    outputStatus_ = kOutputOk;
+    publisher_.configure(config_.reportAlways != 0U, config_.reportDeltaCentiCelsius);
     consecutiveErrors_ = 0;
-    if (shouldPublish) {
+    if (publisher_.publish(milliCelsius, now)) {
         markRuntimeStateDirty();
     }
 }
 
 void Ds18b20TemperatureSensorDevice::invalidateReading(const char* status) {
-    const bool changed = reading_.valid || std::strcmp(outputStatus_, status) != 0;
-    reading_.milliCelsius = 0;
-    reading_.measuredAtMs = 0;
-    reading_.valid = false;
-    outputStatus_ = status;
-    if (changed) {
+    if (publisher_.invalidate(status)) {
         markRuntimeStateDirty();
     }
 }
@@ -658,8 +645,8 @@ SM_STATE(Ds18b20TemperatureSensorDevice::RetryBackoff) {
     if (!EWFM_SM_TIME_REACHED(uptime(), retryDeadline_)) {
         return;
     }
-    if (std::strcmp(outputStatus_, kOutputDependencyBusy) == 0) {
-        outputStatus_ = kOutputNotReady;
+    if (std::strcmp(publisher_.status(), kOutputDependencyBusy) == 0) {
+        publisher_.setStatusQuietly(kOutputNotReady);
     }
     SM_GOTO(Starting);
 }

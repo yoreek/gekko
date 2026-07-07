@@ -5,6 +5,7 @@
 #include "integrations/rest/dummy/DummyDeviceApiAdapter.h"
 #include "integrations/rest/gpio_switch/GpioSwitchDeviceApiAdapter.h"
 #include "integrations/rest/i2c_bus/I2cBusDeviceApiAdapter.h"
+#include "integrations/rest/ntc_thermistor/NtcThermistorTemperatureSensorDeviceApiAdapter.h"
 #include "integrations/rest/onewire_bus/OneWireBusDeviceApiAdapter.h"
 #include "integrations/rest/spi_bus/SpiBusDeviceApiAdapter.h"
 #include "integrations/rest/ssd1306/Ssd1306DeviceApiAdapter.h"
@@ -160,6 +161,7 @@ DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(Ssd1306DeviceApiAdapter::instance());
     (void)registry.registerAdapter(St7735DeviceApiAdapter::instance());
     (void)registry.registerAdapter(Ds18b20TemperatureSensorDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(NtcThermistorTemperatureSensorDeviceApiAdapter::instance());
     (void)registry.registerAdapter(ThermostatDeviceApiAdapter::instance());
     return registry;
 }

@@ -8,6 +8,7 @@ import { I2cBusDevice } from './i2c-bus.ts'
 import { Ssd1306Device } from './ssd1306/device.ts'
 import { St7735Device } from './st7735/device.ts'
 import { SpiBusDevice } from './spi-bus.ts'
+import { NtcThermistorDevice } from './ntc-thermistor.ts'
 import { OneWireBusDevice } from './onewire-bus.ts'
 import { ThermostatDevice } from './thermostat.ts'
 import { UnknownDevice } from './unknown-device.ts'
@@ -23,6 +24,7 @@ const allDeviceModels: BaseDevice<any, any, any>[] = [
   new Ssd1306Device(),
   new St7735Device(),
   new Ds18b20Device(),
+  new NtcThermistorDevice(),
   new ThermostatDevice(),
 ]
 

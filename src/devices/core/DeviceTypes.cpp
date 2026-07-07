@@ -7,6 +7,7 @@
 #include "devices/display/st7735/St7735Device.h"
 #include "devices/dummy/DummyDevice.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
+#include "devices/sensors/ntc_thermistor/NtcThermistorTemperatureSensorDevice.h"
 #include "devices/switch/gpio/GpioSwitchDevice.h"
 #include "devices/thermostat/ThermostatDevice.h"
 
@@ -113,6 +114,7 @@ DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     (void)registry.registerDescriptor(Ssd1306Device::descriptor());
     (void)registry.registerDescriptor(St7735Device::descriptor());
     (void)registry.registerDescriptor(Ds18b20TemperatureSensorDevice::descriptor());
+    (void)registry.registerDescriptor(NtcThermistorTemperatureSensorDevice::descriptor());
     (void)registry.registerDescriptor(ThermostatDevice::descriptor());
     return registry;
 }

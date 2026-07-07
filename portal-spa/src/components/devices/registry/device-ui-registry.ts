@@ -6,6 +6,7 @@ import { OneWireBusDevice } from '@/models/devices/onewire-bus'
 import { I2cBusDevice } from '@/models/devices/i2c-bus'
 import { SpiBusDevice } from '@/models/devices/spi-bus'
 import { Ds18b20Device } from '@/models/devices/ds18b20'
+import { NtcThermistorDevice } from '@/models/devices/ntc-thermistor'
 import { ThermostatDevice } from '@/models/devices/thermostat'
 import { Ssd1306Device } from '@/models/devices/ssd1306/device'
 import { St7735Device } from '@/models/devices/st7735/device'
@@ -21,6 +22,8 @@ import SpiBusFields from '@/components/devices/spi-bus/SpiBusFields.vue'
 import SpiBusWidget from '@/components/devices/spi-bus/SpiBusWidget.vue'
 import Ds18b20Fields from '@/components/devices/ds18b20/Ds18b20Fields.vue'
 import Ds18b20Widget from '@/components/devices/ds18b20/Ds18b20Widget.vue'
+import NtcThermistorFields from '@/components/devices/ntc-thermistor/NtcThermistorFields.vue'
+import NtcThermistorWidget from '@/components/devices/ntc-thermistor/NtcThermistorWidget.vue'
 import ThermostatFields from '@/components/devices/thermostat/ThermostatFields.vue'
 import ThermostatWidget from '@/components/devices/thermostat/ThermostatWidget.vue'
 import Ssd1306Fields from '@/components/devices/Ssd1306Fields.vue'
@@ -89,6 +92,15 @@ const ds18b20Ui: DeviceUi = {
   widgetComponent: Ds18b20Widget,
 }
 
+const ntcThermistorUi: DeviceUi = {
+  typeId: NtcThermistorDevice.TYPE_ID,
+  typeName: NtcThermistorDevice.TYPE_NAME,
+  labelKey: 'device.type.ntcThermistorTemperatureSensor',
+  icon: 'temperature',
+  fieldsComponent: NtcThermistorFields,
+  widgetComponent: NtcThermistorWidget,
+}
+
 const thermostatUi: DeviceUi = {
   typeId: ThermostatDevice.TYPE_ID,
   typeName: ThermostatDevice.TYPE_NAME,
@@ -123,6 +135,7 @@ const deviceUiV2ByTypeId: Record<number, DeviceUi> = {
   [i2cBusUi.typeId]: i2cBusUi,
   [spiBusUi.typeId]: spiBusUi,
   [ds18b20Ui.typeId]: ds18b20Ui,
+  [ntcThermistorUi.typeId]: ntcThermistorUi,
   [thermostatUi.typeId]: thermostatUi,
   [ssd1306Ui.typeId]: ssd1306Ui,
   [st7735Ui.typeId]: st7735Ui,

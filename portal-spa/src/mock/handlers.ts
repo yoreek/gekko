@@ -42,6 +42,7 @@ import {
   createSsd1306Device,
   createSt7735Device,
   createDs18b20Device,
+  createNtcThermistorDevice,
   createThermostatDevice,
   createDummyDevice,
   normalizeDependencyLinks,
@@ -360,6 +361,7 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
       typeName !== 'ssd1306' &&
       typeName !== 'st7735' &&
       typeName !== 'ds18b20_temperature_sensor' &&
+      typeName !== 'ntc_thermistor_temperature_sensor' &&
       typeName !== 'thermostat'
     ) {
       throw new ApiClientError('unsupported device type', 'UNSUPPORTED_TYPE', 400, null)
@@ -384,6 +386,8 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
           return createSt7735Device(nextId, configSource, baseDeps, enabled, name, db)
         case 'ds18b20_temperature_sensor':
           return createDs18b20Device(nextId, configSource, baseDeps, enabled, name, db)
+        case 'ntc_thermistor_temperature_sensor':
+          return createNtcThermistorDevice(nextId, configSource, baseDeps, enabled, name)
         case 'thermostat':
           return createThermostatDevice(nextId, configSource, baseDeps, enabled, name, db)
         default:

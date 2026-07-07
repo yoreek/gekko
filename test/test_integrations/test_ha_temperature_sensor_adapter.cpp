@@ -2,8 +2,9 @@
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/registry/DeviceRegistry.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
+#include "devices/sensors/ntc_thermistor/NtcThermistorTemperatureSensorDevice.h"
 #include "integrations/mqtt/HaEntityAdapter.h"
-#include "integrations/mqtt/ds18b20/Ds18b20HaEntityAdapter.h"
+#include "integrations/mqtt/temperature/TemperatureSensorHaEntityAdapter.h"
 
 #include <ArduinoJson.h>
 #include <unity.h>
@@ -65,6 +66,11 @@ public:
     TemperatureReading reading_{};
 };
 
+TemperatureSensorHaEntityAdapter makeDs18b20Adapter() {
+    return TemperatureSensorHaEntityAdapter(
+        {Ds18b20TemperatureSensorDevice::descriptor().typeId, "ds18b20_temperature_sensor", "mdi:thermometer"});
+}
+
 } // namespace
 
 void test_ha_entity_adapter_registry_resolves_ds18b20() {
@@ -75,12 +81,12 @@ void test_ha_entity_adapter_registry_resolves_ds18b20() {
     TEST_ASSERT_EQUAL_STRING("sensor", adapter->haComponent());
 }
 
-void test_ds18b20_ha_entity_adapter_builds_discovery_payload() {
+void test_temperature_sensor_ha_entity_adapter_builds_discovery_payload() {
     FakeTemperatureRuntime runtime;
     runtime.deviceId_ = 77;
     runtime.typeId_ = Ds18b20TemperatureSensorDevice::descriptor().typeId;
 
-    const Ds18b20HaEntityAdapter& adapter = Ds18b20HaEntityAdapter::instance();
+    const TemperatureSensorHaEntityAdapter adapter = makeDs18b20Adapter();
     const std::string uniqueId = "node1_ds18b20_temperature_sensor_77";
     const std::string stateTopic = "node1/sensor/77/state";
 
@@ -98,9 +104,9 @@ void test_ds18b20_ha_entity_adapter_builds_discovery_payload() {
     TEST_ASSERT_FALSE(output.containsKey("command_topic"));
 }
 
-void test_ds18b20_ha_entity_adapter_builds_state_payload_for_valid_reading_and_skips_invalid() {
+void test_temperature_sensor_ha_entity_adapter_builds_state_payload_for_valid_reading_and_skips_invalid() {
     FakeTemperatureRuntime runtime;
-    const Ds18b20HaEntityAdapter& adapter = Ds18b20HaEntityAdapter::instance();
+    const TemperatureSensorHaEntityAdapter adapter = makeDs18b20Adapter();
     std::vector<std::pair<std::string, std::string>> published;
     const HaStatePublisher publish = [&published](const std::string& topic, const std::string& payload) {
         published.emplace_back(topic, payload);
@@ -117,7 +123,7 @@ void test_ds18b20_ha_entity_adapter_builds_state_payload_for_valid_reading_and_s
     TEST_ASSERT_TRUE(published.empty());
 }
 
-void test_ds18b20_ha_entity_adapter_rejects_all_commands() {
+void test_temperature_sensor_ha_entity_adapter_rejects_all_commands() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
@@ -127,7 +133,34 @@ void test_ds18b20_ha_entity_adapter_rejects_all_commands() {
     TEST_ASSERT_TRUE(registry.begin(1).ok());
 
     FakeTemperatureRuntime runtime;
-    const Ds18b20HaEntityAdapter& adapter = Ds18b20HaEntityAdapter::instance();
+    const TemperatureSensorHaEntityAdapter adapter = makeDs18b20Adapter();
     TEST_ASSERT_FALSE(adapter.applyCommand(registry, runtime, 1, "sensor", "23.5", 0));
     TEST_ASSERT_FALSE(adapter.applyCommand(registry, runtime, 1, "sensor", "", 0));
+}
+
+void test_ha_entity_adapter_registry_resolves_ntc_thermistor() {
+    const HaEntityAdapterRegistry registry = HaEntityAdapterRegistry::withDefaults();
+    const IHaEntityAdapter* adapter = registry.find(NtcThermistorTemperatureSensorDevice::descriptor().typeId);
+    TEST_ASSERT_NOT_NULL(adapter);
+    TEST_ASSERT_EQUAL_STRING("ntc_thermistor_temperature_sensor", adapter->typeName());
+    TEST_ASSERT_EQUAL_STRING("sensor", adapter->haComponent());
+    TEST_ASSERT_NOT_EQUAL(Ds18b20TemperatureSensorDevice::descriptor().typeId, NtcThermistorTemperatureSensorDevice::descriptor().typeId);
+}
+
+void test_temperature_sensor_ha_entity_adapter_registers_distinct_type_ids_without_collision() {
+    HaEntityAdapterRegistry registry;
+    const TemperatureSensorHaEntityAdapter ds18b20Adapter =
+        TemperatureSensorHaEntityAdapter({1001, "fake_temperature_sensor_a", "mdi:thermometer"});
+    const TemperatureSensorHaEntityAdapter otherAdapter =
+        TemperatureSensorHaEntityAdapter({1002, "fake_temperature_sensor_b", "mdi:thermometer-lines"});
+
+    TEST_ASSERT_TRUE(registry.registerAdapter(ds18b20Adapter));
+    TEST_ASSERT_TRUE(registry.registerAdapter(otherAdapter));
+
+    const IHaEntityAdapter* first = registry.find(1001);
+    const IHaEntityAdapter* second = registry.find(1002);
+    TEST_ASSERT_NOT_NULL(first);
+    TEST_ASSERT_NOT_NULL(second);
+    TEST_ASSERT_EQUAL_STRING("fake_temperature_sensor_a", first->typeName());
+    TEST_ASSERT_EQUAL_STRING("fake_temperature_sensor_b", second->typeName());
 }

@@ -1,5 +1,26 @@
 #include <unity.h>
 
+void test_ntc_thermistor_config_codec_json_and_validation();
+void test_ntc_thermistor_config_rejects_invalid_fields();
+void test_ntc_thermistor_type_and_api_adapter_are_registered();
+void test_ntc_thermistor_beta_equation_matches_nominal_point_and_direction();
+void test_ntc_thermistor_runtime_configures_pin_and_reports_out_of_range();
+void test_ntc_thermistor_runtime_faults_when_pin_cannot_be_configured();
+void test_ntc_thermistor_runtime_disable_reconfigure_and_delete_lifecycle();
+void test_ntc_thermistor_runtime_smoothing_filter_dampens_step_change_and_no_op_passes_through();
+void test_temperature_reading_publisher_publishes_first_reading_and_deadbands_small_changes();
+void test_temperature_reading_publisher_report_always_forces_dirty_on_every_publish();
+void test_temperature_reading_publisher_invalidate_marks_dirty_once_and_clears_reading();
+void test_temperature_reading_publisher_republishes_after_recovering_from_error_status();
+void test_temperature_reading_publisher_forces_heartbeat_republish_after_five_minutes_unchanged();
+void test_temperature_reading_publisher_set_status_quietly_does_not_mark_dirty();
+void test_sensor_filter_config_default_is_valid_no_op();
+void test_sensor_filter_config_rejects_invalid_coefficients();
+void test_sensor_filter_config_json_round_trip();
+void test_sensor_reading_filter_is_pass_through_with_default_config();
+void test_sensor_reading_filter_applies_calibration_before_smoothing();
+void test_sensor_reading_filter_smooths_step_input_toward_target();
+void test_sensor_reading_filter_reset_reseeds_instead_of_blending();
 void test_temperature_helpers_convert_units_and_dirty_threshold();
 void test_ds18b20_config_codec_json_and_validation();
 void test_ds18b20_protocol_helpers_parse_scratchpad();
@@ -105,6 +126,27 @@ void test_thermostat_waits_for_sensor_timeout_and_resets_on_valid_reading();
 
 int main(int, char**) {
     UNITY_BEGIN();
+    RUN_TEST(test_ntc_thermistor_config_codec_json_and_validation);
+    RUN_TEST(test_ntc_thermistor_config_rejects_invalid_fields);
+    RUN_TEST(test_ntc_thermistor_type_and_api_adapter_are_registered);
+    RUN_TEST(test_ntc_thermistor_beta_equation_matches_nominal_point_and_direction);
+    RUN_TEST(test_ntc_thermistor_runtime_configures_pin_and_reports_out_of_range);
+    RUN_TEST(test_ntc_thermistor_runtime_faults_when_pin_cannot_be_configured);
+    RUN_TEST(test_ntc_thermistor_runtime_disable_reconfigure_and_delete_lifecycle);
+    RUN_TEST(test_ntc_thermistor_runtime_smoothing_filter_dampens_step_change_and_no_op_passes_through);
+    RUN_TEST(test_temperature_reading_publisher_publishes_first_reading_and_deadbands_small_changes);
+    RUN_TEST(test_temperature_reading_publisher_report_always_forces_dirty_on_every_publish);
+    RUN_TEST(test_temperature_reading_publisher_invalidate_marks_dirty_once_and_clears_reading);
+    RUN_TEST(test_temperature_reading_publisher_republishes_after_recovering_from_error_status);
+    RUN_TEST(test_temperature_reading_publisher_forces_heartbeat_republish_after_five_minutes_unchanged);
+    RUN_TEST(test_temperature_reading_publisher_set_status_quietly_does_not_mark_dirty);
+    RUN_TEST(test_sensor_filter_config_default_is_valid_no_op);
+    RUN_TEST(test_sensor_filter_config_rejects_invalid_coefficients);
+    RUN_TEST(test_sensor_filter_config_json_round_trip);
+    RUN_TEST(test_sensor_reading_filter_is_pass_through_with_default_config);
+    RUN_TEST(test_sensor_reading_filter_applies_calibration_before_smoothing);
+    RUN_TEST(test_sensor_reading_filter_smooths_step_input_toward_target);
+    RUN_TEST(test_sensor_reading_filter_reset_reseeds_instead_of_blending);
     RUN_TEST(test_temperature_helpers_convert_units_and_dirty_threshold);
     RUN_TEST(test_ds18b20_config_codec_json_and_validation);
     RUN_TEST(test_ds18b20_protocol_helpers_parse_scratchpad);

@@ -30,13 +30,13 @@ import { safeReadStorage, safeWriteStorage } from '../utils/storage.ts'
 
 // Mirrors the firmware's HaEntityAdapterRegistry::withDefaults() (src/integrations/mqtt/HaEntityAdapter.cpp)
 // - keep in sync whenever a new IHaEntityAdapter is added there.
-const HA_SUPPORTED_TYPE_NAMES = new Set(['gpio_switch', 'ds18b20_temperature_sensor', 'thermostat'])
+const HA_SUPPORTED_TYPE_NAMES = new Set(['gpio_switch', 'ds18b20_temperature_sensor', 'ntc_thermistor_temperature_sensor', 'thermostat'])
 
 export function isHaSupportedTypeName(typeName: string): boolean {
   return HA_SUPPORTED_TYPE_NAMES.has(typeName)
 }
 
-const storageKey = 'gekko.mockDb.v7'
+const storageKey = 'gekko.mockDb.v8'
 
 type MockDeviceConfig = BaseDeviceConfig & Record<string, unknown>
 type MockDeviceRuntime = BaseDeviceRuntime & {
@@ -107,7 +107,7 @@ export function createDeviceRecord(
 }
 
 const seedDatabase: SeedDatabase = {
-  registryRevision: 20,
+  registryRevision: 21,
   dashboardLayoutRevision: 1,
   dashboardLayout: {
     schemaVersion: 1,
@@ -127,6 +127,7 @@ const seedDatabase: SeedDatabase = {
           [670845754, 6, 0, 1, 1],
           [670845755, 7, 0, 1, 1],
           [670845756, 8, 0, 1, 1],
+          [670845758, 9, 0, 1, 1],
         ],
       },
     ],
@@ -442,6 +443,39 @@ const seedDatabase: SeedDatabase = {
       output: {
         temperature: {
           value: 24.625,
+          unit: 'celsius',
+          unitSymbol: 'C',
+          measuredAtMs: 18500,
+          valid: true,
+          status: 'ok',
+        },
+      },
+    }),
+    createDeviceRecord(670845758, 'ntc_thermistor_temperature_sensor', 1, {
+      enabled: true,
+      name: 'Air Temperature',
+      deps: [],
+      gpioPin: 34,
+      attenuation: '11db',
+      seriesResistorOhms: 10000,
+      nominalResistanceOhms: 100000,
+      nominalTempCelsius: 25,
+      betaCoefficient: 3950,
+      adcSamples: 8,
+      unit: 'celsius',
+      pollMs: 5000,
+      reportDeltaCelsius: 0.1,
+      reportAlways: false,
+      smoothingWeight: 1,
+      calibrationFactor: 1,
+      calibrationOffset: 0,
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: {
+        temperature: {
+          value: 23.4,
           unit: 'celsius',
           unitSymbol: 'C',
           measuredAtMs: 18500,

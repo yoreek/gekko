@@ -33,7 +33,9 @@ export function simulateMockSensorDrift(now: number = Date.now()): void {
   const driftedSensorIds: number[] = []
 
   for (const device of db.devices) {
-    if (device.record.typeName !== 'ds18b20_temperature_sensor' || !device.config.enabled) {
+    const isTemperatureSensor = device.record.typeName === 'ds18b20_temperature_sensor'
+      || device.record.typeName === 'ntc_thermistor_temperature_sensor'
+    if (!isTemperatureSensor || !device.config.enabled) {
       continue
     }
     const temperature = (device.runtime.output as { temperature?: TemperatureOutputSnapshot } | undefined)?.temperature
@@ -45,7 +47,7 @@ export function simulateMockSensorDrift(now: number = Date.now()): void {
       continue
     }
 
-    const step = resolutionStepCelsius(device.config.resolution)
+    const step = device.record.typeName === 'ds18b20_temperature_sensor' ? resolutionStepCelsius(device.config.resolution) : 0.1
     device.runtime.output = {
       ...(device.runtime.output as Record<string, unknown>),
       temperature: {

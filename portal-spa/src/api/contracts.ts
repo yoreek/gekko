@@ -9,6 +9,10 @@ export interface Ds18b20TemperatureSensorOutputSnapshot {
   temperature?: TemperatureOutputSnapshot
 }
 
+export interface NtcThermistorTemperatureSensorOutputSnapshot {
+  temperature?: TemperatureOutputSnapshot
+}
+
 export interface ThermostatOutputSnapshot {
   desiredSwitchState?: DeviceOutputState
   actualSwitchState?: DeviceOutputState
@@ -20,6 +24,7 @@ export interface ThermostatOutputSnapshot {
 export type DeviceOutputSnapshot =
   | GpioSwitchOutputSnapshot
   | Ds18b20TemperatureSensorOutputSnapshot
+  | NtcThermistorTemperatureSensorOutputSnapshot
   | ThermostatOutputSnapshot
 
 export type TemperatureUnit = 'celsius' | 'fahrenheit'

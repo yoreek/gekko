@@ -3,6 +3,7 @@ import type {
   DeviceRecord,
   GpioSwitchOutputSnapshot,
   Ds18b20TemperatureSensorOutputSnapshot,
+  NtcThermistorTemperatureSensorOutputSnapshot,
   ThermostatOutputSnapshot,
 } from '@/api/contracts'
 
@@ -19,7 +20,9 @@ export interface HistorySeriesReading {
   unitSymbol?: string
 }
 
-function temperatureReading(snapshot: Ds18b20TemperatureSensorOutputSnapshot | ThermostatOutputSnapshot | undefined): HistorySeriesReading {
+function temperatureReading(
+  snapshot: Ds18b20TemperatureSensorOutputSnapshot | NtcThermistorTemperatureSensorOutputSnapshot | ThermostatOutputSnapshot | undefined,
+): HistorySeriesReading {
   const temperature = snapshot?.temperature
   return {
     key: kTemperatureSeries,
@@ -45,6 +48,8 @@ export function extractReadings(device: DeviceRecord): HistorySeriesReading[] {
   switch (device.record.typeName) {
     case 'ds18b20_temperature_sensor':
       return [temperatureReading(output as Ds18b20TemperatureSensorOutputSnapshot | undefined)]
+    case 'ntc_thermistor_temperature_sensor':
+      return [temperatureReading(output as NtcThermistorTemperatureSensorOutputSnapshot | undefined)]
     case 'gpio_switch':
       return [switchStateReading((output as GpioSwitchOutputSnapshot | undefined)?.state)]
     case 'thermostat': {

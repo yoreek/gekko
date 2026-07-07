@@ -4,6 +4,7 @@
 #include "devices/core/DeviceRuntimeBase.h"
 #include "devices/sensors/ds18b20/Ds18b20OneWireProtocol.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorConfig.h"
+#include "devices/sensors/temperature/TemperatureReadingPublisher.h"
 #include "devices/sensors/temperature/TemperatureSensorTypes.h"
 
 #include <ArduinoJson.h>
@@ -76,8 +77,7 @@ private:
     TemperatureUnit outputUnit() const;
 
     Ds18b20TemperatureSensorConfigV1 config_{};
-    TemperatureReading reading_{};
-    const char* outputStatus_{"not_ready"};
+    TemperatureReadingPublisher publisher_{};
     uint32_t lastDependencyGeneration_{0};
     uint32_t conversionDeadline_{0};
     uint32_t nextPollAt_{0};
