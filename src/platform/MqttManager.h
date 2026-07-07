@@ -87,6 +87,13 @@ private:
     void dispatchIncoming(const char* topic, const uint8_t* payload, unsigned int length);
 
     static constexpr uint32_t kMqttRetryDelayMs = 3000;
+    // PubSubClient defaults to a 256-byte packet buffer (MQTT_MAX_PACKET_SIZE), which silently
+    // drops any publish() whose header+topic+payload exceeds it (returns false, no exception, no
+    // log). HA discovery payloads run up to ~1536 bytes (see HaDiscoveryBridge's per-device
+    // DynamicJsonDocument), so the default buffer would drop every discovery publish while still
+    // allowing small state-topic publishes through - exactly the "MQTT connects and state topics
+    // work, but no HA discovery ever appears" symptom.
+    static constexpr uint16_t kMqttPacketBufferBytes = 2048;
 
     const WifiManager* wifiManager_{nullptr};
     MqttSettings settings_{};

@@ -123,21 +123,28 @@ void HaDiscoveryBridge::tick1s(uint32_t now) {
 
 void HaDiscoveryBridge::refreshDevice(DeviceId deviceId) {
     if (!begun_ || deviceRegistry_ == nullptr || haSettingsStore_ == nullptr) {
+        EWFM_MQTT_LOG_WARN("refreshDevice(%lu) aborted: bridge not begun or missing registry/settings store",
+                           static_cast<unsigned long>(deviceId));
         return;
     }
     const IDeviceRuntime* runtime = deviceRegistry_->runtime(deviceId);
     if (runtime == nullptr) {
+        EWFM_MQTT_LOG_WARN("refreshDevice(%lu) aborted: no runtime for that device id", static_cast<unsigned long>(deviceId));
         return;
     }
     const IHaEntityAdapter* adapter = adapters_.find(runtime->typeId());
     if (adapter == nullptr) {
+        EWFM_MQTT_LOG_WARN("refreshDevice(%lu) aborted: no HA adapter registered for typeId=%u", static_cast<unsigned long>(deviceId),
+                           static_cast<unsigned>(runtime->typeId()));
         return;
     }
     const HaDeviceSettingsRecord settings = loadHaDeviceSettings(*haSettingsStore_, deviceId);
     if (settings.enabled == 0U) {
+        EWFM_MQTT_LOG_DEBUG("refreshDevice(%lu): ha settings disabled, retracting discovery", static_cast<unsigned long>(deviceId));
         retractDiscovery(deviceId, runtime->typeId());
         return;
     }
+    EWFM_MQTT_LOG_DEBUG("refreshDevice(%lu): publishing discovery+state", static_cast<unsigned long>(deviceId));
     publishDiscoveryAndState(deviceId, *runtime, *adapter);
 }
 
@@ -212,7 +219,10 @@ void HaDiscoveryBridge::publishDiscoveryAndState(DeviceId deviceId, const IDevic
     const size_t length = serializeJson(doc, buffer.data(), buffer.size());
     const std::string payloadJson(buffer.data(), length);
 
-    mqttManager_->publish(discoveryTopicFor(adapter, uniqueId), payloadJson, true);
+    const std::string discoveryTopic = discoveryTopicFor(adapter, uniqueId);
+    const bool published = mqttManager_->publish(discoveryTopic, payloadJson, true);
+    EWFM_MQTT_LOG_DEBUG("discovery publish %s: topic=%s payloadBytes=%u", published ? "ok" : "FAILED", discoveryTopic.c_str(),
+                        static_cast<unsigned>(length));
     publishStateOnly(deviceId, runtime, adapter);
 }
 

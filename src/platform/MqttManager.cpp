@@ -10,6 +10,7 @@ namespace ewfm {
 MqttManager::MqttManager() : StateMachine((PState)&MqttManager::Idle) {
 #if defined(ARDUINO) && !defined(UNIT_TEST) && defined(WITH_HOME_ASSISTANT)
     client_.setCallback([this](char* topic, uint8_t* payload, unsigned int length) { dispatchIncoming(topic, payload, length); });
+    client_.setBufferSize(kMqttPacketBufferBytes);
 #endif
 }
 
@@ -47,7 +48,14 @@ bool MqttManager::publish(const std::string& topic, const std::string& payload, 
     if (!connected_) {
         return false;
     }
-    return client_.publish(topic.c_str(), reinterpret_cast<const uint8_t*>(payload.data()), payload.size(), retain);
+    const bool ok = client_.publish(topic.c_str(), reinterpret_cast<const uint8_t*>(payload.data()), payload.size(), retain);
+    if (!ok) {
+        // PubSubClient::publish() fails silently (oversized packet for the configured buffer,
+        // or an underlying write error) - log it once here rather than at every call site, since
+        // callers otherwise have no way to notice a dropped publish.
+        EWFM_MQTT_LOG_WARN("mqtt publish failed (topic=%s, payloadBytes=%u)", topic.c_str(), static_cast<unsigned>(payload.size()));
+    }
+    return ok;
 #else
 #if defined(UNIT_TEST)
     if (connected_) {
@@ -221,6 +229,13 @@ void MqttManager::doConnect() {
         ok = client_.connect(settings_.clientId.c_str(), username, password, willTopic_.c_str(), 0, willRetain_, willPayload_.c_str());
     } else {
         ok = client_.connect(settings_.clientId.c_str(), username, password);
+    }
+    if (!ok) {
+        // PubSubClient::state() distinguishes network-level failures (timeout/refused, negative
+        // codes) from broker-level CONNACK rejections (bad credentials/unauthorized/etc, positive
+        // codes) - see PubSubClient.h's MQTT_CONNECT_* / MQTT_CONNECTION_* constants.
+        EWFM_MQTT_LOG_WARN("mqtt client_.connect() failed: state=%d host=%s port=%u useTls=%d", client_.state(), settings_.host.c_str(),
+                           static_cast<unsigned>(settings_.port), static_cast<int>(settings_.useTls));
     }
     connected_ = ok;
 #else
