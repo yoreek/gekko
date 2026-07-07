@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 
 import { fetchDevices, type DeviceRecord, type DeviceRegistryResponse } from '@/api'
+import { mergeUpsertedDevice } from './device-upsert-merge.ts'
 
 export const useDeviceRegistryStore = defineStore('deviceRegistry', {
   state: () => ({
@@ -46,7 +47,7 @@ export const useDeviceRegistryStore = defineStore('deviceRegistry', {
     upsertDevice(device: DeviceRecord, revision: number): void {
       const index = this.devices.findIndex(entry => entry.record.id === device.record.id)
       if (index >= 0) {
-        this.devices.splice(index, 1, device)
+        this.devices.splice(index, 1, mergeUpsertedDevice(this.devices[index], device))
       } else {
         this.devices.push(device)
       }
