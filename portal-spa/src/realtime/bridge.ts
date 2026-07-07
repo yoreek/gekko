@@ -1,4 +1,4 @@
-import type { RealtimeMessage } from './messages'
+import type { DeviceRemoveEventPayload, RealtimeMessage } from './messages'
 import type { useAppStore } from '@/stores/app'
 import type { DeviceRecord } from '@/api'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
@@ -90,7 +90,7 @@ export function bindRealtimeBridge(
         journalStore.append(message)
         appStore.registryRevision = message.revision
         deviceStore.setRevision(message.revision)
-        deviceStore.removeDevice((message.payload as DeviceRecord).record.id, message.revision)
+        deviceStore.removeDevice((message.payload as DeviceRemoveEventPayload).deviceId, message.revision)
         break
       }
       case 'device.command_result': {

@@ -6,6 +6,7 @@ import { publishMockSnapshot } from '@/mock/snapshot'
 import { canonicalizeDeviceRecord, loadMockDatabase, saveMockDatabase, type MockDeviceRecord } from '@/mock/database'
 import { decorateDeviceRecord, publishThermostatDependents, refreshMockDerivedDeviceState } from '@/mock/handlers'
 import { startMockSensorSimulation } from '@/mock/simulation'
+import { deviceTypeIdFromName } from '@/models/device-type-ids.ts'
 import { useAppStore } from '@/stores/app'
 import { useWebSocketStore } from '@/stores/websocket'
 
@@ -42,11 +43,20 @@ function publishDeviceUpsert(device: DeviceRecord, eventKind: 'device_created' |
   })
 }
 
-function publishDeviceRemove(device: DeviceRecord | undefined, revision: number): void {
+function publishDeviceRemove(device: DeviceRecord | undefined, deviceId: number, revision: number): void {
+  // Mirrors PortalWebSocketMessages::buildDeviceRemove() on the firmware: identity + removal
+  // metadata only, not a full DeviceRecord - the real device is already gone by the time this fires.
   publishRealtimeMessage({
     topic: 'device.remove',
     revision,
-    payload: device ? decorateDeviceRecord(device, revision) : { record: { id: 0, typeName: '', configRevision: revision }, config: {}, runtime: {} },
+    payload: {
+      eventKind: 'device_deleted',
+      deviceId,
+      typeId: device ? deviceTypeIdFromName(device.record.typeName) : 0,
+      registryRevision: revision,
+      name: device?.config.name ?? '',
+      typeName: device?.record.typeName ?? '',
+    },
   })
 }
 
@@ -107,7 +117,7 @@ export function connectMockRealtimeSocket(pinia: Pinia): MockRealtimeSocketHandl
       refreshMockDerivedDeviceState(db)
       db.registryRevision += 1
       saveMockDatabase(db)
-      publishDeviceRemove(removedDevice, db.registryRevision)
+      publishDeviceRemove(removedDevice, deviceId, db.registryRevision)
       publishThermostatDependents(db, deviceId)
     },
     refreshSnapshot(): void {

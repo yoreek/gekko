@@ -24,6 +24,7 @@ import {
   normalizeSsd1306Layout,
 } from '@/models/devices/ssd1306/layout'
 import { ApiClientError } from '@/api/http'
+import { deviceTypeIdFromName } from '@/models/device-type-ids.ts'
 import { publishRealtimeMessage } from '@/realtime/bus'
 import { scheduleMockPersistenceFlush } from '@/realtime/mockRuntime'
 import {
@@ -766,10 +767,19 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
     ? decorateDeviceRecord(response.device as DeviceRecord, db.registryRevision)
     : { record: { id: deviceId, typeName: '', configRevision: db.registryRevision }, config: {}, runtime: {} }
   if (payload.command === 'delete') {
+    // Mirrors PortalWebSocketMessages::buildDeviceRemove() on the firmware: identity + removal
+    // metadata only, not a full DeviceRecord - the real device is already gone by the time this fires.
     publishRealtimeMessage({
       topic: 'device.remove',
       revision: db.registryRevision,
-      payload: removedDevice ? decorateDeviceRecord(removedDevice, db.registryRevision) : { record: { id: deviceId, typeName: '', configRevision: db.registryRevision }, config: {}, runtime: {} },
+      payload: {
+        eventKind: 'device_deleted',
+        deviceId,
+        typeId: removedDevice ? deviceTypeIdFromName(removedDevice.record.typeName) : 0,
+        registryRevision: db.registryRevision,
+        name: removedDevice?.config.name ?? '',
+        typeName: removedDevice?.record.typeName ?? '',
+      },
     })
   } else {
     publishRealtimeMessage({

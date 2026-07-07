@@ -103,19 +103,23 @@ void PortalWebSocketManager::onDeviceEvent(const DeviceEvent& event) {
         sendText(PortalWebSocketMessages::buildDeviceRemove(event));
         return;
     case DeviceEventKind::CommandAccepted:
-    case DeviceEventKind::CommandRejected:
-        if (deviceRegistry_ != nullptr) {
-            const IDeviceRuntime* runtime = deviceRegistry_->runtime(event.deviceId);
-            if (runtime != nullptr) {
-                const IDeviceApiAdapter* adapter = adapters_.find(runtime->typeId());
-                sendText(PortalWebSocketMessages::buildDeviceCommandResult(
-                    *runtime, deviceRegistry_->effectiveStatus(event.deviceId), deviceRegistry_->registryRevision(),
-                    deviceRegistry_->hasPendingPersistence(), adapter, deviceEventKindName(event.kind)));
-                return;
-            }
+    case DeviceEventKind::CommandRejected: {
+        if (deviceRegistry_ == nullptr) {
+            return;
         }
-        sendText(PortalWebSocketMessages::buildDeviceCommandResult(event));
+        const IDeviceRuntime* runtime = deviceRegistry_->runtime(event.deviceId);
+        if (runtime == nullptr) {
+            // The device was deleted before this queued event was dispatched. device.command_result
+            // is contractually required to carry the full device payload, and there's no live
+            // runtime left to build one from - drop the stale event rather than send a malformed one.
+            return;
+        }
+        const IDeviceApiAdapter* adapter = adapters_.find(runtime->typeId());
+        sendText(PortalWebSocketMessages::buildDeviceCommandResult(
+            *runtime, deviceRegistry_->effectiveStatus(event.deviceId), deviceRegistry_->registryRevision(),
+            deviceRegistry_->hasPendingPersistence(), adapter, deviceEventKindName(event.kind)));
         return;
+    }
     case DeviceEventKind::PersistencePendingCleared:
         return;
     case DeviceEventKind::DeviceCreated:
@@ -123,19 +127,22 @@ void PortalWebSocketManager::onDeviceEvent(const DeviceEvent& event) {
     case DeviceEventKind::StatusChanged:
     case DeviceEventKind::StateChanged:
     case DeviceEventKind::ConfigPersisted:
-    case DeviceEventKind::RetainedStateChanged:
-        if (deviceRegistry_ != nullptr) {
-            const IDeviceRuntime* runtime = deviceRegistry_->runtime(event.deviceId);
-            if (runtime != nullptr) {
-                const IDeviceApiAdapter* adapter = adapters_.find(runtime->typeId());
-                sendText(PortalWebSocketMessages::buildDeviceUpsert(
-                    *runtime, deviceRegistry_->effectiveStatus(event.deviceId), deviceRegistry_->registryRevision(),
-                    deviceRegistry_->hasPendingPersistence(), adapter, deviceEventKindName(event.kind)));
-                return;
-            }
+    case DeviceEventKind::RetainedStateChanged: {
+        if (deviceRegistry_ == nullptr) {
+            return;
         }
-        sendText(PortalWebSocketMessages::buildDeviceUpsert(event));
+        const IDeviceRuntime* runtime = deviceRegistry_->runtime(event.deviceId);
+        if (runtime == nullptr) {
+            // Same reasoning as above: device.upsert must always carry the full payload, so a
+            // stale event for an already-deleted device must be dropped, not sent malformed.
+            return;
+        }
+        const IDeviceApiAdapter* adapter = adapters_.find(runtime->typeId());
+        sendText(PortalWebSocketMessages::buildDeviceUpsert(*runtime, deviceRegistry_->effectiveStatus(event.deviceId),
+                                                            deviceRegistry_->registryRevision(), deviceRegistry_->hasPendingPersistence(),
+                                                            adapter, deviceEventKindName(event.kind)));
         return;
+    }
     case DeviceEventKind::RegistryLoaded:
     default:
         sendText(PortalWebSocketMessages::buildHello(event.registryRevision, event.registryRevision, 0));

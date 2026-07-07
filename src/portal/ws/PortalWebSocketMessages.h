@@ -17,9 +17,7 @@ public:
                                          bool pendingPersistence, const IDeviceApiAdapter* adapter, const char* eventKind);
     static std::string buildDeviceCommandResult(const IDeviceRuntime& runtime, DeviceStatus effectiveStatus, uint32_t revision,
                                                 bool pendingPersistence, const IDeviceApiAdapter* adapter, const char* eventKind);
-    static std::string buildDeviceUpsert(const DeviceEvent& event);
     static std::string buildDeviceRemove(const DeviceEvent& event);
-    static std::string buildDeviceCommandResult(const DeviceEvent& event);
     static std::string buildWifiStatus(const WifiManager& wifiManager, const IWifiDriver& wifiDriver, uint32_t revision);
     static std::string buildOtaStatus(bool enabled, bool hasError, uint32_t freeSketchSpace, uint32_t revision);
     static std::string buildSystemStatus(const char* status, bool rebooting, uint32_t revision);

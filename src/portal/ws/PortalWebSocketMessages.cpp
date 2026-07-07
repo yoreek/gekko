@@ -32,30 +32,6 @@ const char* deviceStatusToString(const DeviceStatus status) {
     }
 }
 
-void fillDeviceEventPayload(JsonDocument& payload, const DeviceEvent& event) {
-    if (!event.eventKind.empty()) {
-        payload["eventKind"] = JsonString(event.eventKind.c_str(), JsonString::Copied);
-    } else {
-        payload["eventKind"] = deviceEventKindName(event.kind);
-    }
-    payload["deviceId"] = event.deviceId;
-    payload["typeId"] = event.typeId;
-    if (!event.name.empty()) {
-        payload["name"] = JsonString(event.name.c_str(), JsonString::Copied);
-    }
-    if (!event.typeName.empty()) {
-        payload["typeName"] = JsonString(event.typeName.c_str(), JsonString::Copied);
-    }
-    payload["registryRevision"] = event.registryRevision;
-    payload["configRevision"] = event.configRevision;
-    payload["previousStatus"] = static_cast<uint8_t>(event.previousStatus);
-    payload["status"] = static_cast<uint8_t>(event.status);
-    payload["pendingPersistence"] = event.pendingPersistence;
-    payload["commandAccepted"] = event.commandAccepted;
-    if (!event.detail.empty()) {
-        payload["detail"] = JsonString(event.detail.c_str(), JsonString::Copied);
-    }
-}
 } // namespace
 
 std::string PortalWebSocketMessages::buildEnvelope(const char* topic, const uint32_t revision, JsonDocument& payload) {
@@ -135,12 +111,6 @@ std::string PortalWebSocketMessages::buildDeviceCommandResult(const IDeviceRunti
     return buildEnvelope("device.command_result", revision, payload);
 }
 
-std::string PortalWebSocketMessages::buildDeviceUpsert(const DeviceEvent& event) {
-    DynamicJsonDocument payload(512);
-    fillDeviceEventPayload(payload, event);
-    return buildEnvelope("device.upsert", event.registryRevision, payload);
-}
-
 std::string PortalWebSocketMessages::buildDeviceRemove(const DeviceEvent& event) {
     DynamicJsonDocument payload(384);
     if (!event.eventKind.empty()) {
@@ -159,12 +129,6 @@ std::string PortalWebSocketMessages::buildDeviceRemove(const DeviceEvent& event)
         payload["detail"] = JsonString(event.detail.c_str(), JsonString::Copied);
     }
     return buildEnvelope("device.remove", event.registryRevision, payload);
-}
-
-std::string PortalWebSocketMessages::buildDeviceCommandResult(const DeviceEvent& event) {
-    DynamicJsonDocument payload(512);
-    fillDeviceEventPayload(payload, event);
-    return buildEnvelope("device.command_result", event.registryRevision, payload);
 }
 
 std::string PortalWebSocketMessages::buildWifiStatus(const WifiManager& wifiManager, const IWifiDriver& wifiDriver,

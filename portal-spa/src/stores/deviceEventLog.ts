@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 
 import type { DeviceRecord } from '@/api'
-import type { RealtimeMessage } from '@/realtime/messages'
+import type { DeviceRemoveEventPayload, RealtimeMessage } from '@/realtime/messages'
 import { deviceTypeIdFromName } from '../models/device-type-ids.ts'
 
 export type DeviceJournalTypeFilter = number | 'all'
@@ -81,9 +81,40 @@ export function journalEventKindTranslationKey(eventKind: string): string | null
   }
 }
 
+function createEntryFromRemovePayload(message: RealtimeMessage, receivedAt: number): DeviceEventJournalEntry | null {
+  // device.remove carries identity + removal metadata directly (deviceId/typeId at the top level),
+  // not a nested record/config block like device.upsert and device.command_result do.
+  const payload = message.payload as DeviceRemoveEventPayload
+  const deviceId = asNumber(payload.deviceId)
+  const typeId = asNumber(payload.typeId)
+  if (deviceId === null || deviceId <= 0 || typeId === null || typeId <= 0) {
+    return null
+  }
+
+  return {
+    sequence: 0,
+    receivedAt,
+    topic: message.topic,
+    revision: message.revision,
+    deviceId,
+    typeId,
+    typeName: asText(payload.typeName),
+    name: asText(payload.name),
+    eventKind: asText(payload.eventKind) || eventKindFromTopic(message.topic),
+    registryRevision: asNumber(payload.registryRevision ?? message.revision) ?? message.revision,
+    configRevision: null,
+    details: payload as unknown as Record<string, unknown>,
+    raw: message as RealtimeMessage<Record<string, unknown>>,
+  }
+}
+
 function createEntry(message: RealtimeMessage, receivedAt: number): DeviceEventJournalEntry | null {
   if (message.topic !== 'device.upsert' && message.topic !== 'device.command_result' && message.topic !== 'device.remove') {
     return null
+  }
+
+  if (message.topic === 'device.remove') {
+    return createEntryFromRemovePayload(message, receivedAt)
   }
 
   const payload = message.payload as DeviceRecord & {

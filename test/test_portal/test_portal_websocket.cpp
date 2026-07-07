@@ -91,24 +91,6 @@ DeviceCreateRequest makeCreateRequest(const char* name = "Living Room Lamp") {
 } // namespace
 
 void test_ws_message_builders_create_compact_envelopes() {
-    DeviceEvent upsertEvent = makeDeviceEvent(DeviceEventKind::DeviceUpdated, 12);
-    const std::string upsert = PortalWebSocketMessages::buildDeviceUpsert(upsertEvent);
-    DynamicJsonDocument upsertDoc(1536);
-    TEST_ASSERT_FALSE(deserializeJson(upsertDoc, upsert));
-    TEST_ASSERT_EQUAL_STRING("device.upsert", upsertDoc["topic"].as<const char*>());
-    TEST_ASSERT_EQUAL_UINT32(12, upsertDoc["revision"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_UINT32(42, upsertDoc["payload"]["deviceId"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_STRING("device_updated", upsertDoc["payload"]["eventKind"].as<const char*>());
-    TEST_ASSERT_EQUAL_UINT32(99, upsertDoc["payload"]["typeId"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_UINT32(7, upsertDoc["payload"]["configRevision"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_UINT32(static_cast<uint8_t>(DeviceStatus::Starting), upsertDoc["payload"]["previousStatus"].as<uint8_t>());
-    TEST_ASSERT_EQUAL_UINT32(static_cast<uint8_t>(DeviceStatus::Ready), upsertDoc["payload"]["status"].as<uint8_t>());
-    TEST_ASSERT_EQUAL_STRING("Living Room Lamp", upsertDoc["payload"]["name"].as<const char*>());
-    TEST_ASSERT_EQUAL_STRING("Dummy device", upsertDoc["payload"]["typeName"].as<const char*>());
-    TEST_ASSERT_TRUE(upsertDoc["payload"]["pendingPersistence"].as<bool>());
-    TEST_ASSERT_FALSE(upsertDoc["payload"]["commandAccepted"].as<bool>());
-    TEST_ASSERT_EQUAL_STRING("detail", upsertDoc["payload"]["detail"].as<const char*>());
-
     const DeviceRegistryEntry record = makeDeviceRecord();
     const DeviceConfigBlob configBlob = makeDeviceConfigBlob();
     DummyDevice runtime(record, configBlob);
@@ -162,8 +144,18 @@ void test_ws_manager_attaches_and_detaches_from_dispatcher() {
 }
 
 void test_ws_manager_receives_device_events_when_attached() {
+    MemoryConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+    FixedDeviceIdSource idSource(42);
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(store, types, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+    TEST_ASSERT_TRUE(registry.create(makeCreateRequest(), 10).ok());
+    registry.tickFastLoop(11);
+
     DeviceEventDispatcher dispatcher;
-    PortalWebSocketManager manager(&dispatcher);
+    PortalWebSocketManager manager(&dispatcher, &registry);
     manager.attachDispatcher();
     manager.setClientCountForTest(1);
 
@@ -177,12 +169,33 @@ void test_ws_manager_receives_device_events_when_attached() {
     DynamicJsonDocument doc(1536);
     TEST_ASSERT_FALSE(deserializeJson(doc, message));
     TEST_ASSERT_EQUAL_STRING("device.upsert", doc["topic"].as<const char*>());
-    TEST_ASSERT_EQUAL_UINT32(33, doc["revision"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_UINT32(42, doc["payload"]["deviceId"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_UINT32(99, doc["payload"]["typeId"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32(registry.registryRevision(), doc["revision"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32(42, doc["payload"]["record"]["id"].as<uint32_t>());
     TEST_ASSERT_EQUAL_STRING("device_updated", doc["payload"]["eventKind"].as<const char*>());
-    TEST_ASSERT_FALSE(doc["payload"]["commandAccepted"].as<bool>());
-    TEST_ASSERT_EQUAL_STRING("detail", doc["payload"]["detail"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("Living Room Lamp", doc["payload"]["config"]["name"].as<const char*>());
+#endif
+}
+
+void test_ws_manager_drops_stale_events_for_devices_no_longer_in_the_registry() {
+    // device.upsert and device.command_result are contractually required to always carry the full
+    // device payload (record/config/runtime). If a queued event outlives the device it refers to
+    // (e.g. deleted between the event being queued and dispatched), there's no runtime left to build
+    // that payload from, so the event must be dropped rather than sent malformed.
+    DeviceEventDispatcher dispatcher;
+    PortalWebSocketManager manager(&dispatcher);
+    manager.attachDispatcher();
+    manager.setClientCountForTest(1);
+
+    const DeviceEvent updateEvent = makeDeviceEvent(DeviceEventKind::DeviceUpdated, 33);
+    TEST_ASSERT_TRUE(dispatcher.enqueue(updateEvent));
+    dispatcher.tickFastLoop(0);
+
+    const DeviceEvent commandEvent = makeDeviceEvent(DeviceEventKind::CommandAccepted, 34);
+    TEST_ASSERT_TRUE(dispatcher.enqueue(commandEvent));
+    dispatcher.tickFastLoop(0);
+
+#if defined(UNIT_TEST)
+    TEST_ASSERT_EQUAL_UINT32(0, static_cast<uint32_t>(manager.sentMessageCount()));
 #endif
 }
 

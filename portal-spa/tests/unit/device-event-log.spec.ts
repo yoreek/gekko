@@ -63,22 +63,13 @@ test('classifies and stores event kinds in the journal', () => {
     topic: 'device.remove',
     revision: 20,
     payload: {
+      // device.remove carries identity + removal metadata directly, not a nested record/config
+      // block - matches PortalWebSocketMessages::buildDeviceRemove() on the firmware.
       eventKind: 'device_deleted',
-      record: {
-        id: 25,
-        typeName: 'gpio_switch',
-        configRevision: 3,
-      },
-      config: {
-        name: 'Removed Device',
-        enabled: true,
-        deps: [],
-      },
-      runtime: {
-        lifecycleStatus: 'ready',
-        effectiveStatus: 'ready',
-        status: 'ready',
-      },
+      deviceId: 25,
+      typeId: 2,
+      typeName: 'gpio_switch',
+      name: 'Removed Device',
       registryRevision: 20,
     },
   }, 105)

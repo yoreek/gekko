@@ -16,6 +16,7 @@ void test_fake_esp_async_web_server_header_is_available();
 void test_ws_message_builders_create_compact_envelopes();
 void test_ws_manager_attaches_and_detaches_from_dispatcher();
 void test_ws_manager_receives_device_events_when_attached();
+void test_ws_manager_drops_stale_events_for_devices_no_longer_in_the_registry();
 void test_ws_manager_stops_receiving_after_detach();
 void test_ws_manager_ignores_registry_persistence_cleared_events();
 void test_ws_manager_broadcasts_snapshots_only_when_clients_are_connected();
@@ -40,6 +41,7 @@ int main(int, char**) {
     RUN_TEST(test_ws_message_builders_create_compact_envelopes);
     RUN_TEST(test_ws_manager_attaches_and_detaches_from_dispatcher);
     RUN_TEST(test_ws_manager_receives_device_events_when_attached);
+    RUN_TEST(test_ws_manager_drops_stale_events_for_devices_no_longer_in_the_registry);
     RUN_TEST(test_ws_manager_stops_receiving_after_detach);
     RUN_TEST(test_ws_manager_ignores_registry_persistence_cleared_events);
     RUN_TEST(test_ws_manager_broadcasts_snapshots_only_when_clients_are_connected);
