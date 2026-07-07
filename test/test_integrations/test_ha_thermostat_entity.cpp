@@ -8,6 +8,7 @@
 #include "integrations/mqtt/thermostat/ThermostatHaEntityAdapter.h"
 
 #include <cstdio>
+#include <string>
 #include <unity.h>
 #include <utility>
 #include <vector>
@@ -232,6 +233,15 @@ void test_thermostat_ha_entity_adapter_builds_discovery_payload() {
     TEST_ASSERT_EQUAL_FLOAT(50.0F, output["max_temp"].as<float>());
     TEST_ASSERT_EQUAL_FLOAT(0.5F, output["temp_step"].as<float>());
     TEST_ASSERT_EQUAL_FLOAT(0.1F, output["precision"].as<float>());
+
+    // Home Assistant's climate discovery schema requires "precision" to serialize as exactly one of
+    // 0.1/0.5/1.0 - comparing the parsed float above isn't enough to catch this, since a `0.1F` literal
+    // and a `0.1` (double) literal both parse back to the same nearby float. Only the wire string
+    // representation (a float literal renders as "0.100000001" due to binary rounding) reveals it.
+    std::string serialized;
+    serializeJson(doc, serialized);
+    TEST_ASSERT_TRUE(serialized.find("\"precision\":0.1") != std::string::npos);
+    TEST_ASSERT_TRUE(serialized.find("\"precision\":0.100000") == std::string::npos);
 }
 
 void test_thermostat_ha_entity_adapter_publishes_mode_temperature_and_action() {

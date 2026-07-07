@@ -64,7 +64,10 @@ void ThermostatHaEntityAdapter::buildDiscoveryPayload(const IDeviceRuntime& runt
     output["min_temp"] = static_cast<float>(config.minSafeMilliCelsius) / 1000.0F;
     output["max_temp"] = static_cast<float>(config.maxSafeMilliCelsius) / 1000.0F;
     output["temp_step"] = 0.5F;
-    output["precision"] = 0.1F;
+    // Must serialize as exactly 0.1 (not e.g. 0.100000001, which a float literal produces due to
+    // binary rounding) - Home Assistant's climate discovery schema only accepts precision values of
+    // exactly 0.1, 0.5, or 1.0 and silently rejects the whole discovery payload otherwise.
+    output["precision"] = 0.1;
 }
 
 void ThermostatHaEntityAdapter::publishState(const IDeviceRuntime& runtime, const HaTopicBuilder& topicFor,
