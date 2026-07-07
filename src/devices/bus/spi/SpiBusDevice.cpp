@@ -184,7 +184,10 @@ bool SpiBusDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now)
 void SpiBusDevice::writeDeviceJson(JsonObject output) const {
     writeCommonDeviceJson(output);
     config_.writeJson(output);
-    JsonObject runtimeJson = output.createNestedObject("runtime");
+    // Reuse the "runtime" object IDeviceApiAdapter::writeCommonDeviceJson already created (with
+    // status/effectiveStatus) rather than createNestedObject(), which would clear it and silently
+    // drop those fields from the response.
+    JsonObject runtimeJson = output["runtime"].as<JsonObject>();
     runtimeJson["generation"] = generation_;
     runtimeJson["transactionActive"] = dependencyTransactionActive_;
     diagnostics_.writeJson(runtimeJson);
