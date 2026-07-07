@@ -21,6 +21,8 @@ public:
     bool startScan() override;
     bool scanComplete(std::vector<WifiNetwork>& networks, size_t maxResults) override;
     std::string macSuffix() const override;
+    int32_t rssi() const override;
+    std::string ssid() const override;
 
 private:
     static bool ipValid(const std::string& ip);

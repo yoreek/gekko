@@ -172,6 +172,8 @@ bool App::begin() {
     haDiscoveryBridge_.begin(mqttConfigStore_.settings().haNodeId, mqttConfigStore_.settings().haNodeName,
                              mqttConfigStore_.settings().haDiscoveryPrefix);
     haDiscoveryBridge_.attachDispatcher();
+    systemHaPublisher_.begin(mqttConfigStore_.settings().haNodeId, mqttConfigStore_.settings().haNodeName,
+                             mqttConfigStore_.settings().haDiscoveryPrefix);
 #endif
     EWFM_BOOT_PRINTF("BOOT App::begin done\n");
 
@@ -187,6 +189,7 @@ void App::tick() {
     wifiManager_.tick(now);
 #if defined(WITH_HOME_ASSISTANT)
     mqttManager_.tick(now);
+    systemHaPublisher_.tick(now);
 #endif
     portalServer_.tick(now);
     tickDeviceCadence(now);

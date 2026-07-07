@@ -55,7 +55,10 @@ strings instead, precisely to avoid this collision.
   attempts to connect in AP-fallback mode, only once the device has a real
   station IP. Runtime settings changes (host, TLS, credentials) bump an
   internal revision counter that forces a clean reconnect on the next tick,
-  without a reboot.
+  without a reboot. `onConnect()`/`onMessage()`/`onDisconnect()` are
+  **multi-subscriber** (each holds a `std::vector` of callbacks, not a single
+  one) — `HaDiscoveryBridge` and `SystemHaPublisher` (see below) each
+  register independently without overwriting each other's callback.
 - `src/integrations/mqtt/HaDiscoveryBridge` — a `IDeviceEventSink` that
   bridges `DeviceRegistry` changes to Home Assistant MQTT discovery. Knows
   nothing about specific device types; it only talks to the
@@ -114,6 +117,19 @@ strings instead, precisely to avoid this collision.
   own config struct. A device is **not** published to Home Assistant until
   the user explicitly opts in (`setHaSettings` command, `cmd` action on
   `POST /api/devices/:id`).
+- `src/integrations/mqtt/system/SystemHaPublisher` — publishes firmware-level
+  diagnostics (uptime, free heap, heap fragmentation, WiFi RSSI/SSID/IP) and
+  a restart button. Deliberately **not** an `IHaEntityAdapter` and not tied
+  to `DeviceRegistry` at all — these entities describe the board itself, not
+  any device in the registry, so they're always published (no per-entity
+  opt-in) whenever MQTT is enabled and connected, under the same HA `device`
+  block as the per-device entities. Discovery + a state refresh happen once
+  on every MQTT connect (birth), then state alone repeats every 30s via
+  `tick(now)` (called from `App::tick()`, same as `MqttManager::tick()`).
+  The restart button reuses `SystemRestartController` — the exact same
+  flush-before-reboot safety check and `esp_timer`-based reboot scheduling
+  the REST `POST /api/system/restart` endpoint uses (extracted so both paths
+  share one implementation instead of duplicating it).
 
 ## Command & state round-trip
 
@@ -213,6 +229,17 @@ event bus fan-out to both sinks) is identical either way.
 <haNodeId>/climate_temperature/<deviceId>/set                                   setpoint command (e.g. "24.5")
 <haNodeId>/climate_current_temperature/<deviceId>/state                        current temperature (retained, e.g. "23.80")
 <haNodeId>/climate_action/<deviceId>/state                                      hvac action (retained, "off"/"idle"/"heating"/"cooling")
+
+# each system sensor has its own <haDiscoveryPrefix>/sensor/<haNodeId>/<haNodeId>_system_<key>/config
+<haNodeId>/system/uptime/state                                                  seconds since boot (retained, e.g. "3600")
+<haNodeId>/system/free_heap/state                                               bytes (retained, e.g. "123456")
+<haNodeId>/system/heap_fragmentation/state                                      percent 0-100 (retained, e.g. "12")
+<haNodeId>/system/wifi_rssi/state                                               dBm (retained, e.g. "-55")
+<haNodeId>/system/wifi_ssid/state                                               currently associated SSID (retained)
+<haNodeId>/system/wifi_ip/state                                                 station IP (retained)
+
+<haDiscoveryPrefix>/button/<haNodeId>/<haNodeId>_system_restart/config           discovery (retained)
+<haNodeId>/system/restart/set                                                   command (any payload triggers it)
 ```
 
 DS18B20 sensors have no `set` topic — the wildcard command subscription below
@@ -234,6 +261,22 @@ any resubscribe; incoming messages are routed to the right device by parsing
 the topic's device-id segment and looking up its runtime/adapter, not by the
 number of active subscriptions.
 
+`SystemHaPublisher`'s `system/restart/set` topic also matches this same
+wildcard shape (`<haNodeId>/system/restart/set` → 4 segments), so both
+`HaDiscoveryBridge` and `SystemHaPublisher` receive every incoming message
+(that's why `MqttManager::onMessage()` is multi-subscriber) and each just
+ignores whatever isn't meant for it — `HaDiscoveryBridge` fails to parse
+`"restart"` as a numeric device id and returns; `SystemHaPublisher` only
+reacts to the one exact topic it owns.
+
+Unlike per-device entities, the system entities have **no opt-in toggle** -
+they're always published whenever MQTT is enabled and connected, since they
+describe the board itself rather than a specific `DeviceRegistry` device.
+They're also on a different cadence: instead of being event-driven
+(published only when something changes), state repeats unconditionally every
+30 seconds, because "free heap" and "uptime" don't have discrete change
+events the way a switch's on/off state does.
+
 ## Lifecycle (birth/LWT)
 
 - `MqttManager::setWill(<haNodeId>/status, "offline", retain=true)` is armed
@@ -243,7 +286,10 @@ number of active subscriptions.
   `<haNodeId>/status` (retained), resubscribes the command wildcard, and
   republishes discovery + current state for every device that has opted in —
   this is what makes a broker restart or firmware reconnect self-healing
-  without manual re-discovery in Home Assistant.
+  without manual re-discovery in Home Assistant. `SystemHaPublisher`
+  independently does the same for the system diagnostics/restart entities on
+  the same connect event (both register their own `MqttManager::onConnect()`
+  callback).
 
 ## TLS
 
@@ -292,3 +338,25 @@ Other device types (displays) are out of scope for now, but the
 adapter/registry seam (`IHaEntityAdapter`/`HaEntityAdapterRegistry`) is
 designed so adding one is a new adapter file, not a change to
 `HaDiscoveryBridge` or `MqttManager`.
+
+In addition to per-device entities, `SystemHaPublisher` always publishes six
+firmware-level diagnostic sensors and a restart button, regardless of which
+(if any) devices exist in the registry:
+
+- **Uptime** — `sensor`, `device_class: "duration"`, `unit_of_measurement: "s"`,
+  seconds since boot. No wall-clock/NTP dependency (the firmware doesn't sync
+  real time anywhere) — a `device_class: "timestamp"` "last boot" sensor was
+  considered and rejected for exactly that reason.
+- **Free heap** / **heap fragmentation** — `sensor`, `entity_category: "diagnostic"`,
+  backed by a new `ISystemStats` interface (`ArduinoSystemStats` wraps
+  `ESP.getFreeHeap()`/`ESP.getMaxAllocHeap()`).
+- **WiFi RSSI** — `sensor`, `device_class: "signal_strength"`, `unit_of_measurement: "dBm"`.
+- **WiFi SSID** / **WiFi IP** — plain diagnostic `sensor`s.
+- **Restart** — `button`, `device_class: "restart"`, `entity_category: "config"`.
+  Routes through `SystemRestartController::requestRestart()` +
+  `::scheduleReboot()` — the same flush-before-reboot safety check the REST
+  restart endpoint uses, not a separate/weaker path.
+
+WiFi RSSI/SSID needed two new non-pure `IWifiDriver` methods (`rssi()`/
+`ssid()`, default `0`/`""`) — non-pure specifically so the many existing
+`FakeWifiDriver` test doubles across the test suite didn't all need updating.

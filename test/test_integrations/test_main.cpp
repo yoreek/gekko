@@ -30,6 +30,10 @@ void test_thermostat_ha_entity_adapter_builds_discovery_payload();
 void test_thermostat_ha_entity_adapter_publishes_mode_temperature_and_action();
 void test_thermostat_ha_entity_adapter_reports_off_action_when_mode_is_off();
 void test_thermostat_ha_entity_adapter_applies_mode_and_temperature_commands();
+void test_system_ha_publisher_publishes_discovery_and_state_on_connect();
+void test_system_ha_publisher_republishes_state_periodically();
+void test_system_ha_publisher_restart_command_flushes_pending_persistence();
+void test_system_ha_publisher_ignores_unrelated_topics();
 
 int main(int, char**) {
     UNITY_BEGIN();
@@ -63,5 +67,9 @@ int main(int, char**) {
     RUN_TEST(test_thermostat_ha_entity_adapter_publishes_mode_temperature_and_action);
     RUN_TEST(test_thermostat_ha_entity_adapter_reports_off_action_when_mode_is_off);
     RUN_TEST(test_thermostat_ha_entity_adapter_applies_mode_and_temperature_commands);
+    RUN_TEST(test_system_ha_publisher_publishes_discovery_and_state_on_connect);
+    RUN_TEST(test_system_ha_publisher_republishes_state_periodically);
+    RUN_TEST(test_system_ha_publisher_restart_command_flushes_pending_persistence);
+    RUN_TEST(test_system_ha_publisher_ignores_unrelated_topics);
     return UNITY_END();
 }

@@ -4,6 +4,8 @@
 #if defined(WITH_HOME_ASSISTANT)
 #include "config/MqttConfigStore.h"
 #include "integrations/mqtt/HaDiscoveryBridge.h"
+#include "integrations/mqtt/system/SystemHaPublisher.h"
+#include "platform/ArduinoSystemStats.h"
 #include "platform/MqttManager.h"
 #endif
 #include "devices/core/DeviceIdGenerator.h"
@@ -71,6 +73,8 @@ private:
     MqttConfigStore mqttConfigStore_{mqttConfigStorage_};
     MqttManager mqttManager_;
     HaDiscoveryBridge haDiscoveryBridge_{&mqttManager_, &deviceRegistry_, &deviceEventDispatcher_, &deviceScopedDataStore_};
+    ArduinoSystemStats systemStats_;
+    SystemHaPublisher systemHaPublisher_{&mqttManager_, &wifiManager_, &systemStats_, &deviceRegistry_};
 #endif
 };
 

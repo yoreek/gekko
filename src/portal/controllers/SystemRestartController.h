@@ -33,6 +33,11 @@ struct SystemRestartDecision {
 class SystemRestartController {
 public:
     static SystemRestartDecision requestRestart(ISystemRestartPrecondition& precondition);
+
+    // Arms a one-shot timer that calls ESP.restart() shortly after returning, giving the caller
+    // (an HTTP response, an MQTT publish) time to flush before the reboot actually happens. No-op
+    // outside a real Arduino build.
+    static void scheduleReboot();
 };
 
 } // namespace ewfm

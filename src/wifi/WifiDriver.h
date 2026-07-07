@@ -50,6 +50,16 @@ public:
     virtual bool startScan() = 0;
     virtual bool scanComplete(std::vector<WifiNetwork>& networks, size_t maxResults) = 0;
     virtual std::string macSuffix() const = 0;
+
+    // Non-pure with neutral defaults (unlike the rest of this interface) so existing test fakes
+    // don't need updating - only ArduinoWifiDriver and callers that actually need live-connection
+    // signal info (system diagnostics) care about these.
+    virtual int32_t rssi() const {
+        return 0;
+    }
+    virtual std::string ssid() const {
+        return {};
+    }
 };
 
 } // namespace ewfm

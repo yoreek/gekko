@@ -262,6 +262,22 @@ std::string ArduinoWifiDriver::macSuffix() const {
 #endif
 }
 
+int32_t ArduinoWifiDriver::rssi() const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return WiFi.RSSI();
+#else
+    return 0;
+#endif
+}
+
+std::string ArduinoWifiDriver::ssid() const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return WiFi.SSID().c_str();
+#else
+    return {};
+#endif
+}
+
 bool ArduinoWifiDriver::ipValid(const std::string& ip) {
     return !ip.empty() && ip != "0.0.0.0";
 }

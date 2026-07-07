@@ -63,6 +63,12 @@ public:
     std::string stationIp() const {
         return driver_.stationIp();
     }
+    int32_t rssi() const {
+        return driver_.rssi();
+    }
+    std::string ssid() const {
+        return driver_.ssid();
+    }
     std::string otaIp() const {
         if (stationReady()) {
             return driver_.stationIp();

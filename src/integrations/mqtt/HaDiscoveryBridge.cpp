@@ -2,6 +2,7 @@
 
 #include "debug/Debug.h"
 #include "integrations/mqtt/HaDeviceSettings.h"
+#include "integrations/mqtt/HaDiscoveryEnvelope.h"
 
 #include <vector>
 
@@ -204,17 +205,7 @@ void HaDiscoveryBridge::publishDiscoveryAndState(DeviceId deviceId, const IDevic
     DynamicJsonDocument doc(1536);
     JsonObject output = doc.to<JsonObject>();
     adapter.buildDiscoveryPayload(runtime, uniqueId, effectiveName, topicFor, output);
-    output["availability_topic"] = availabilityTopic();
-    output["has_entity_name"] = true;
-
-    JsonObject device = output.createNestedObject("device");
-    JsonArray identifiers = device.createNestedArray("identifiers");
-    identifiers.add(nodeId_);
-    device["name"] = nodeName_.empty() ? nodeId_ : nodeName_;
-    device["manufacturer"] = "ESP32WIFIManager";
-
-    JsonObject origin = output.createNestedObject("origin");
-    origin["name"] = "ESP32WIFIManager";
+    writeHaDiscoveryEnvelope(output, nodeId_, nodeName_, availabilityTopic());
 
     const size_t payloadSize = measureJson(doc) + 1U;
     std::vector<char> buffer(payloadSize);

@@ -31,15 +31,15 @@ void MqttManager::setWill(const std::string& topic, const std::string& payload, 
 }
 
 void MqttManager::onMessage(MessageCallback callback) {
-    onMessage_ = std::move(callback);
+    onMessageCallbacks_.push_back(std::move(callback));
 }
 
 void MqttManager::onConnect(ConnectCallback callback) {
-    onConnect_ = std::move(callback);
+    onConnectCallbacks_.push_back(std::move(callback));
 }
 
 void MqttManager::onDisconnect(DisconnectCallback callback) {
-    onDisconnect_ = std::move(callback);
+    onDisconnectCallbacks_.push_back(std::move(callback));
 }
 
 bool MqttManager::publish(const std::string& topic, const std::string& payload, bool retain) {
@@ -81,8 +81,14 @@ bool MqttManager::subscribe(const std::string& topic) {
 }
 
 void MqttManager::dispatchIncoming(const char* topic, const uint8_t* payload, unsigned int length) {
-    if (onMessage_ && topic != nullptr) {
-        onMessage_(std::string(topic), payload, length);
+    if (topic == nullptr) {
+        return;
+    }
+    const std::string topicStr(topic);
+    for (const auto& callback : onMessageCallbacks_) {
+        if (callback) {
+            callback(topicStr, payload, length);
+        }
     }
 }
 
@@ -137,8 +143,10 @@ SM_STATE(Connecting) {
     if (connected_) {
         appliedRevision_ = settingsRevision_;
         EWFM_MQTT_LOG_INFO("mqtt connected");
-        if (onConnect_) {
-            onConnect_();
+        for (const auto& callback : onConnectCallbacks_) {
+            if (callback) {
+                callback();
+            }
         }
         SM_GOTO(Connected);
     }
@@ -149,8 +157,10 @@ SM_STATE(Connected) {
     if (!mqttReady()) {
         doDisconnect();
         EWFM_MQTT_LOG_INFO("mqtt disconnected: dependency lost");
-        if (onDisconnect_) {
-            onDisconnect_();
+        for (const auto& callback : onDisconnectCallbacks_) {
+            if (callback) {
+                callback();
+            }
         }
         SM_GOTO(WaitingForStation);
     }
@@ -161,8 +171,10 @@ SM_STATE(Connected) {
         // out the retry backoff meant for throttling repeated failed-connection attempts.
         everAttempted_ = false;
         EWFM_MQTT_LOG_INFO("mqtt settings changed, reconnecting");
-        if (onDisconnect_) {
-            onDisconnect_();
+        for (const auto& callback : onDisconnectCallbacks_) {
+            if (callback) {
+                callback();
+            }
         }
         SM_GOTO(Connecting);
     }
@@ -172,8 +184,10 @@ SM_STATE(Connected) {
     if (!client_.connected()) {
         connected_ = false;
         EWFM_MQTT_LOG_WARN("mqtt connection lost");
-        if (onDisconnect_) {
-            onDisconnect_();
+        for (const auto& callback : onDisconnectCallbacks_) {
+            if (callback) {
+                callback();
+            }
         }
         SM_GOTO(WaitingForStation);
     }

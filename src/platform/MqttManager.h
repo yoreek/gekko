@@ -33,6 +33,8 @@ public:
 
     void setWill(const std::string& topic, const std::string& payload, bool retain);
 
+    // Multi-subscriber: every registered callback fires for every event/message - callers never
+    // overwrite each other (HaDiscoveryBridge and SystemHaPublisher both subscribe independently).
     void onMessage(MessageCallback callback);
     void onConnect(ConnectCallback callback);
     void onDisconnect(DisconnectCallback callback);
@@ -99,9 +101,9 @@ private:
     std::string willTopic_{};
     std::string willPayload_{};
     bool willRetain_{false};
-    MessageCallback onMessage_{};
-    ConnectCallback onConnect_{};
-    DisconnectCallback onDisconnect_{};
+    std::vector<MessageCallback> onMessageCallbacks_{};
+    std::vector<ConnectCallback> onConnectCallbacks_{};
+    std::vector<DisconnectCallback> onDisconnectCallbacks_{};
     uint16_t connectCount_{0};
     uint16_t disconnectCount_{0};
 #if defined(UNIT_TEST)
