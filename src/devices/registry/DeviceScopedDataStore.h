@@ -97,8 +97,16 @@ private:
     static bool makeNamespace(char* buffer, size_t bufferSize, DeviceId deviceId);
     static std::string makeDataKey(const char* dataType);
     bool openDeviceNamespace(DeviceId deviceId, bool readOnly, bool& opened);
+    bool isNamespaceKnownMissing(DeviceId deviceId) const;
+    void rememberNamespaceMissing(DeviceId deviceId);
+    void forgetNamespaceMissing(DeviceId deviceId);
 
     IConfigStorage& storage_;
+    // Preferences::begin(ns, readOnly=true) logs an ESP-IDF "nvs_open failed: NOT_FOUND" error every
+    // time it's called on a namespace that has never been written (e.g. a device that supports HA but
+    // has never had it enabled). Remembering confirmed-missing namespaces avoids repeating that read-only
+    // open - and its noisy log line - on every subsequent poll until something actually writes to it.
+    std::vector<DeviceId> knownMissingNamespaces_;
 };
 
 } // namespace ewfm

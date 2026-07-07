@@ -288,9 +288,20 @@ void writeHaDeviceJson(JsonObject device, DeviceScopedDataStore* haSettingsStore
     if (haSettingsStore == nullptr) {
         return;
     }
-    const HaDeviceSettingsRecord settings = loadHaDeviceSettings(*haSettingsStore, runtime.deviceId());
+    const bool supported = haAdapters != nullptr && haAdapters->find(runtime.typeId()) != nullptr;
     JsonObject ha = device.createNestedObject("ha");
-    ha["supported"] = haAdapters != nullptr && haAdapters->find(runtime.typeId()) != nullptr;
+    ha["supported"] = supported;
+    if (!supported) {
+        // Device types with no HA adapter (bus/infra devices: SPI/I2C/OneWire bus, displays,
+        // dummy) can never have HA settings saved - skip the NVS lookup entirely instead of
+        // opening a namespace that will never exist, which otherwise logs a
+        // "nvs_open failed: NOT_FOUND" error on every device list fetch for every such device.
+        ha["enabled"] = false;
+        ha["name"] = "";
+        ha["effectiveName"] = JsonString(runtime.name() != nullptr ? runtime.name() : "", JsonString::Copied);
+        return;
+    }
+    const HaDeviceSettingsRecord settings = loadHaDeviceSettings(*haSettingsStore, runtime.deviceId());
     ha["enabled"] = settings.enabled != 0U;
     ha["name"] = JsonString(settings.nameOverride, JsonString::Copied);
     const std::string effectiveName = effectiveHaDeviceName(settings, runtime.name());

@@ -1,5 +1,6 @@
 #include "devices/registry/DeviceScopedDataStore.h"
 
+#include <algorithm>
 #include <cstdio>
 
 namespace ewfm {
@@ -86,10 +87,43 @@ std::string DeviceScopedDataStore::makeDataKey(const char* dataType) {
 bool DeviceScopedDataStore::openDeviceNamespace(DeviceId deviceId, bool readOnly, bool& opened) {
     char namespaceName[16];
     if (!makeNamespace(namespaceName, sizeof(namespaceName), deviceId)) {
+        opened = false;
         return false;
     }
+
+    if (readOnly && isNamespaceKnownMissing(deviceId)) {
+        opened = false;
+        return false;
+    }
+
     opened = storage_.begin(namespaceName, readOnly);
+
+    if (readOnly) {
+        if (!opened) {
+            rememberNamespaceMissing(deviceId);
+        }
+    } else if (opened) {
+        // A successful write-mode open creates the namespace if it didn't already exist, so any
+        // earlier "missing" verdict for this device no longer holds.
+        forgetNamespaceMissing(deviceId);
+    }
+
     return opened;
+}
+
+bool DeviceScopedDataStore::isNamespaceKnownMissing(DeviceId deviceId) const {
+    return std::find(knownMissingNamespaces_.begin(), knownMissingNamespaces_.end(), deviceId) != knownMissingNamespaces_.end();
+}
+
+void DeviceScopedDataStore::rememberNamespaceMissing(DeviceId deviceId) {
+    if (!isNamespaceKnownMissing(deviceId)) {
+        knownMissingNamespaces_.push_back(deviceId);
+    }
+}
+
+void DeviceScopedDataStore::forgetNamespaceMissing(DeviceId deviceId) {
+    knownMissingNamespaces_.erase(std::remove(knownMissingNamespaces_.begin(), knownMissingNamespaces_.end(), deviceId),
+                                  knownMissingNamespaces_.end());
 }
 
 } // namespace ewfm

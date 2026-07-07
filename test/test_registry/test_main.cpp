@@ -66,6 +66,7 @@ void test_device_retained_data_store_round_trip_and_remove();
 void test_device_retained_data_store_rejects_corrupt_record();
 void test_device_scoped_data_store_round_trip_and_clear();
 void test_device_scoped_data_store_missing_namespace_is_missing_record();
+void test_device_scoped_data_store_caches_missing_namespace_to_avoid_repeat_nvs_opens();
 void test_dummy_device_lifecycle_and_command_output();
 void test_dummy_device_base_config_is_loaded_and_runtime_starts_disabled();
 void test_dummy_device_dependency_wiring_survive_base_refactor();
@@ -145,6 +146,7 @@ int main(int, char**) {
     RUN_TEST(test_device_retained_data_store_rejects_corrupt_record);
     RUN_TEST(test_device_scoped_data_store_round_trip_and_clear);
     RUN_TEST(test_device_scoped_data_store_missing_namespace_is_missing_record);
+    RUN_TEST(test_device_scoped_data_store_caches_missing_namespace_to_avoid_repeat_nvs_opens);
     RUN_TEST(test_dummy_device_lifecycle_and_command_output);
     RUN_TEST(test_dummy_device_base_config_is_loaded_and_runtime_starts_disabled);
     RUN_TEST(test_dummy_device_dependency_wiring_survive_base_refactor);

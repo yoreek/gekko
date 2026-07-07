@@ -5,8 +5,13 @@
 #include "devices/registry/DeviceRetainedDataStore.h"
 #include "devices/registry/DeviceScopedDataStore.h"
 
+#include <algorithm>
 #include <cstdio>
+#include <map>
+#include <set>
+#include <string>
 #include <unity.h>
+#include <vector>
 
 using namespace ewfm;
 
@@ -45,6 +50,103 @@ DummyDeviceConfigV1 makeDummyConfig(const char* name, bool enabled) {
     std::snprintf(config.name, sizeof(config.name), "%s", name);
     return config;
 }
+
+// Unlike MemoryConfigStorage (a single flat map that always accepts begin()), this fake models the
+// real ESP32 Preferences::begin() behavior that motivated the DeviceScopedDataStore caching fix:
+// opening a namespace read-only fails until that namespace has first been opened for writing.
+class NamespaceTrackingConfigStorage final : public IConfigStorage {
+public:
+    bool begin(const char* namespaceName, bool readOnly) override {
+        currentNamespace_ = namespaceName;
+        readOnly_ = readOnly;
+        if (readOnly) {
+            ++readOnlyOpenAttempts_[currentNamespace_];
+            if (existingNamespaces_.count(currentNamespace_) == 0U) {
+                return false;
+            }
+        } else {
+            existingNamespaces_.insert(currentNamespace_);
+        }
+        return true;
+    }
+    void end() override {
+        readOnly_ = false;
+    }
+    bool hasKey(const char* key) const override {
+        return blobs_.count(scopedKey(key)) != 0U;
+    }
+    bool putString(const char*, const std::string&) override {
+        return false;
+    }
+    bool getString(const char*, std::string&) const override {
+        return false;
+    }
+    bool putBlob(const char* key, const uint8_t* value, size_t size) override {
+        if (readOnly_) {
+            return false;
+        }
+        blobs_[scopedKey(key)] = std::vector<uint8_t>(value, value + size);
+        return true;
+    }
+    bool getBlob(const char* key, uint8_t* value, size_t& size) const override {
+        const auto it = blobs_.find(scopedKey(key));
+        if (it == blobs_.end() || size < it->second.size()) {
+            return false;
+        }
+        std::copy(it->second.begin(), it->second.end(), value);
+        size = it->second.size();
+        return true;
+    }
+    bool putBlob(const char* key, const std::vector<uint8_t>& value) override {
+        return putBlob(key, value.data(), value.size());
+    }
+    bool getBlob(const char* key, std::vector<uint8_t>& value) const override {
+        const auto it = blobs_.find(scopedKey(key));
+        if (it == blobs_.end()) {
+            return false;
+        }
+        value = it->second;
+        return true;
+    }
+    bool putUInt(const char*, uint32_t) override {
+        return false;
+    }
+    bool getUInt(const char*, uint32_t&) const override {
+        return false;
+    }
+    bool putBool(const char*, bool) override {
+        return false;
+    }
+    bool getBool(const char*, bool&) const override {
+        return false;
+    }
+    bool remove(const char* key) override {
+        if (readOnly_) {
+            return false;
+        }
+        blobs_.erase(scopedKey(key));
+        return true;
+    }
+    bool clear() override {
+        return false;
+    }
+
+    int readOnlyOpenAttempts(const char* namespaceName) const {
+        const auto it = readOnlyOpenAttempts_.find(namespaceName);
+        return it == readOnlyOpenAttempts_.end() ? 0 : it->second;
+    }
+
+private:
+    std::string scopedKey(const char* key) const {
+        return currentNamespace_ + ":" + key;
+    }
+
+    std::string currentNamespace_;
+    bool readOnly_{false};
+    std::map<std::string, std::vector<uint8_t>> blobs_;
+    std::map<std::string, int> readOnlyOpenAttempts_;
+    std::set<std::string> existingNamespaces_;
+};
 
 } // namespace
 
@@ -222,6 +324,37 @@ void test_device_scoped_data_store_missing_namespace_is_missing_record() {
     DeviceValidationResult result = store.load(99, "retained_state", loaded);
     TEST_ASSERT_FALSE(result.ok());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::MissingRecord), static_cast<int>(result.error));
+}
+
+void test_device_scoped_data_store_caches_missing_namespace_to_avoid_repeat_nvs_opens() {
+    NamespaceTrackingConfigStorage storage;
+    DeviceScopedDataStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    SwitchRetainedStateRecord loaded{};
+
+    // First read of a device that has never been written: the namespace genuinely doesn't exist yet
+    // (e.g. HA support present but never enabled), so this attempt must reach the storage layer once.
+    TEST_ASSERT_FALSE(store.load(123, "ha", loaded).ok());
+    TEST_ASSERT_EQUAL_INT(1, storage.readOnlyOpenAttempts("dev_0000007b"));
+
+    // Repeated reads for the same still-nonexistent namespace must not touch storage again - that's
+    // exactly the repeated "nvs_open failed: NOT_FOUND" log spam this cache exists to prevent.
+    TEST_ASSERT_FALSE(store.load(123, "ha", loaded).ok());
+    TEST_ASSERT_FALSE(store.load(123, "ha", loaded).ok());
+    TEST_ASSERT_EQUAL_INT(1, storage.readOnlyOpenAttempts("dev_0000007b"));
+
+    // Once something actually saves data for that device, the namespace exists again and reads must
+    // resume hitting storage (and succeed).
+    SwitchRetainedStateRecord record{};
+    record.deviceId = 123;
+    record.outputState = OutputState::On;
+    TEST_ASSERT_TRUE(store.save(123, "ha", record).ok());
+
+    SwitchRetainedStateRecord reloaded{};
+    TEST_ASSERT_TRUE(store.load(123, "ha", reloaded).ok());
+    TEST_ASSERT_EQUAL_UINT32(123, reloaded.deviceId);
+    TEST_ASSERT_EQUAL_INT(2, storage.readOnlyOpenAttempts("dev_0000007b"));
 }
 
 void test_device_retained_data_store_rejects_corrupt_record() {
