@@ -344,7 +344,11 @@ bool BaseController::appendUploadFile(AsyncWebServerRequest* request, const size
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     if (index == 0U && LittleFS.exists(file.tmpPath))
         (void)LittleFS.remove(file.tmpPath);
-    File out = LittleFS.open(file.tmpPath, index == 0U ? "w" : "a");
+    // create=true: the upload tmp dir (default "/tmp") is never pre-created on the flashed
+    // LittleFS image, and FS::open() only auto-mkdir's missing parent directories when this
+    // flag is explicitly set - without it, opening a file under a not-yet-existing directory
+    // fails outright.
+    File out = LittleFS.open(file.tmpPath, index == 0U ? "w" : "a", true);
     if (!out)
         return false;
     const size_t written = out.write(data, len);

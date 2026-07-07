@@ -221,8 +221,8 @@ async function saveSettings(): Promise<void> {
     applySettingsToForm()
     notifications.notify(t('mqtt.saveSuccess'), 'success')
     await refreshMqttStatus()
-  } catch {
-    errorMessage.value = t('mqtt.saveError')
+  } catch (error) {
+    errorMessage.value = error instanceof Error && error.message.length > 0 ? error.message : t('mqtt.saveError')
   } finally {
     saving.value = false
   }
@@ -238,8 +238,9 @@ async function onCertFileSelected(files: File | File[] | null): Promise<void> {
     const status = await uploadMqttCaCert(file)
     mqttStore.replaceFromStatus(status)
     notifications.notify(t('mqtt.caCertUploadSuccess'), 'success')
-  } catch {
-    notifications.notify(t('mqtt.caCertUploadError'), 'error')
+  } catch (error) {
+    const message = error instanceof Error && error.message.length > 0 ? error.message : t('mqtt.caCertUploadError')
+    notifications.notify(message, 'error')
   } finally {
     certLoading.value = false
   }

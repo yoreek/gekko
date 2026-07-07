@@ -90,10 +90,17 @@ void MqttController::registerRoutes(AsyncWebServer& server, MqttConfigStore* sto
 #endif
 
 const BaseController::RulesChain* MqttController::beforeChain() {
+    // Does not chain to BaseController::beforeChain(): its shared rule runs parseBody() for
+    // every Action::Create dispatch, but the ca-cert upload route dispatches Action::Create via
+    // the zero-arg dispatch() (the file arrives through the separate onUpload callback, not a
+    // JSON body), so body_ is always null there and that rule would unconditionally reject the
+    // upload with 400 "invalid body" before create() ever runs. Rebuild the CORS rule directly
+    // instead, matching DeviceSetupTransferController::beforeChain()'s same-shaped route.
     static constexpr HookRule rules[] = {
+        {&BaseController::beforeCorsOptions, ALL},
         {MqttController::parseUpdateBody, A(Action::Update)},
     };
-    static const RulesChain node{rules, sizeof(rules) / sizeof(rules[0]), BaseController::beforeChain()};
+    static const RulesChain node{rules, sizeof(rules) / sizeof(rules[0]), nullptr};
     return &node;
 }
 

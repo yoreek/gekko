@@ -2,6 +2,8 @@
 
 void test_base_controller_dispatches_action_to_virtual_override();
 void test_base_controller_parses_valid_and_invalid_json_body();
+void test_base_controller_default_chain_rejects_bodyless_create_dispatch();
+void test_base_controller_upload_style_chain_allows_bodyless_create_dispatch();
 void test_base_controller_builds_standard_envelopes();
 void test_base_controller_exposes_expected_cors_headers();
 void test_base_controller_request_file_defaults_and_tmp_dir();
@@ -24,6 +26,8 @@ int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_base_controller_dispatches_action_to_virtual_override);
     RUN_TEST(test_base_controller_parses_valid_and_invalid_json_body);
+    RUN_TEST(test_base_controller_default_chain_rejects_bodyless_create_dispatch);
+    RUN_TEST(test_base_controller_upload_style_chain_allows_bodyless_create_dispatch);
     RUN_TEST(test_base_controller_builds_standard_envelopes);
     RUN_TEST(test_base_controller_exposes_expected_cors_headers);
     RUN_TEST(test_base_controller_request_file_defaults_and_tmp_dir);

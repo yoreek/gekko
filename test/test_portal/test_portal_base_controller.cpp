@@ -62,6 +62,33 @@ public:
     bool flushCalled{false};
 };
 
+// Mirrors a multipart-upload controller (e.g. MqttController's ca-cert route,
+// DeviceSetupTransferController's import route): the file arrives via a separate onUpload
+// callback, so the Create dispatch is the zero-arg dispatch() with body_ left null.
+class UploadStyleTestController final : public BaseController {
+public:
+    using BaseController::BaseController;
+    using BaseController::dispatch;
+
+    void create() override {
+        createCalled = true;
+    }
+
+    bool createCalled{false};
+
+protected:
+    // Does not chain to BaseController::beforeChain(): that shared chain runs parseBody() for
+    // every Action::Create dispatch regardless of whether this particular route ever expects a
+    // JSON body, which would reject this dispatch with "invalid body" before create() runs.
+    const RulesChain* beforeChain() override {
+        static constexpr HookRule rules[] = {
+            {&BaseController::beforeCorsOptions, ALL},
+        };
+        static const RulesChain node{rules, sizeof(rules) / sizeof(rules[0]), nullptr};
+        return &node;
+    }
+};
+
 void test_base_controller_dispatches_action_to_virtual_override() {
     TestController controller(nullptr, BaseController::Action::Options);
 
@@ -82,6 +109,26 @@ void test_base_controller_parses_valid_and_invalid_json_body() {
     uint8_t validBody[] = "{\"name\":\"demo\"}";
     validController.dispatch(validBody, sizeof(validBody) - 1U);
     TEST_ASSERT_TRUE(validController.createCalled);
+}
+
+void test_base_controller_default_chain_rejects_bodyless_create_dispatch() {
+    // Documents the defect: a controller that keeps the default beforeChain() (chains to
+    // BaseController::beforeChain()) cannot support a multipart-upload Create route, because the
+    // shared parseBody-for-Create rule runs unconditionally and body_ is never set for a
+    // zero-arg dispatch() call.
+    TestController controller(nullptr, BaseController::Action::Create);
+    controller.dispatch();
+    TEST_ASSERT_FALSE(controller.createCalled);
+}
+
+void test_base_controller_upload_style_chain_allows_bodyless_create_dispatch() {
+    // Documents the fix pattern (used by MqttController's ca-cert route and
+    // DeviceSetupTransferController's import route): a beforeChain() override that does not
+    // chain to the base's parseBody-for-Create rule lets a zero-arg Create dispatch reach
+    // create() normally.
+    UploadStyleTestController controller(nullptr, BaseController::Action::Create);
+    controller.dispatch();
+    TEST_ASSERT_TRUE(controller.createCalled);
 }
 
 void test_base_controller_builds_standard_envelopes() {
