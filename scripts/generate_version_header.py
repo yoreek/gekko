@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
-"""PlatformIO pre-build script: writes src/generated/Version.h from git state.
+"""Writes src/generated/Version.h from git state.
 
-Regenerated on every build, not committed to git (see .gitignore).
+Regenerated on every build, not committed to git (see .gitignore). Works both
+as a PlatformIO extra_script (`pre:`, run via SCons with an injected `env`)
+and as a plain script (`python3 scripts/generate_version_header.py`) -- the
+latter is needed because `pio test` does not run platformio.ini's
+extra_scripts, unlike `pio run`/`pio check`.
 """
 import datetime
 import os
 import subprocess
 
-Import("env")  # noqa: F821 - provided by PlatformIO/SCons at exec() time
+try:
+    Import("env")  # noqa: F821 - provided by PlatformIO/SCons at exec() time
+    ROOT_DIR = env.subst("$PROJECT_DIR")  # noqa: F821
+except NameError:
+    ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-ROOT_DIR = env.subst("$PROJECT_DIR")
 OUT_DIR = os.path.join(ROOT_DIR, "src", "generated")
 OUT_PATH = os.path.join(OUT_DIR, "Version.h")
 

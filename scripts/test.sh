@@ -6,6 +6,10 @@ cd "$ROOT_DIR"
 
 "$ROOT_DIR/scripts/lint.sh"
 
+# `pio test` does not run platformio.ini's extra_scripts (unlike `pio run`), so
+# generated/Version.h would be missing on a fresh checkout without this.
+python3 "$ROOT_DIR/scripts/generate_version_header.py"
+
 PIO_HOME_DIR="${TMPDIR:-/tmp}/.platformio"
 ORIGINAL_PIO_HOME="${HOME}/.platformio"
 mkdir -p "$PIO_HOME_DIR"
