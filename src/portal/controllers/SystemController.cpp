@@ -18,12 +18,10 @@ namespace ewfm {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 
 void SystemController::registerRoutes(AsyncWebServer& server, DeviceRegistry* registry) {
-    server.on("/api/system/version", HTTP_GET, [registry](AsyncWebServerRequest* request) {
-        SystemController(request, Action::Show, registry).dispatch();
-    });
-    server.on("/api/system/version", HTTP_OPTIONS, [registry](AsyncWebServerRequest* request) {
-        SystemController(request, Action::Options, registry).dispatch();
-    });
+    server.on("/api/system/version", HTTP_GET,
+              [registry](AsyncWebServerRequest* request) { SystemController(request, Action::Show, registry).dispatch(); });
+    server.on("/api/system/version", HTTP_OPTIONS,
+              [registry](AsyncWebServerRequest* request) { SystemController(request, Action::Options, registry).dispatch(); });
 
 #if defined(WITH_SYSTEM_RESTART_API)
     server.on(
