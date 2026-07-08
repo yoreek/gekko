@@ -215,7 +215,7 @@ void bindSensorDependency(Ds18b20TemperatureSensorDevice& sensor, DeviceId senso
     record.header.configRevision = 1;
     record.header.payloadLength = static_cast<uint32_t>(encodeDs18b20Payload(sensor.config()).size());
     record.depCount = 1;
-    record.deps[0] = {DeviceDependencyRole::OneWireBus, dependencyId};
+    record.deps[0] = {DeviceRole::OneWireBus, dependencyId};
     record.status = DeviceStatus::Ready;
     sensor.bindDeviceIdentity(record, encodeDs18b20Payload(sensor.config()));
 }
@@ -235,7 +235,7 @@ DeviceRegistryEntry makeSensorRecord(DeviceId id, DeviceId dependencyId, const D
     record.header.configRevision = 1;
     record.header.payloadLength = static_cast<uint32_t>(configBlob.size());
     record.depCount = 1;
-    record.deps[0] = {DeviceDependencyRole::OneWireBus, dependencyId};
+    record.deps[0] = {DeviceRole::OneWireBus, dependencyId};
     record.status = DeviceStatus::Ready;
     return record;
 }
@@ -256,7 +256,7 @@ DeviceCreateRequest makeSensorCreateRequest(const char* name, DeviceId dependenc
     request.name = name;
     request.enabled = true;
     request.depCount = 1;
-    request.deps[0] = {DeviceDependencyRole::OneWireBus, dependencyId};
+    request.deps[0] = {DeviceRole::OneWireBus, dependencyId};
     request.configVersion = kDs18b20TemperatureSensorConfigVersion;
     request.configBlob = encodeDs18b20Payload(config);
     return request;
@@ -332,7 +332,9 @@ void test_ds18b20_type_and_api_adapter_are_registered() {
     TEST_ASSERT_FALSE(descriptor->supportsRetainedState);
     TEST_ASSERT_TRUE(descriptor->ticks100ms);
     TEST_ASSERT_EQUAL_UINT32(1, descriptor->dependencyRequirements.size());
-    TEST_ASSERT_EQUAL_UINT32(OneWireBusDevice::descriptor().typeId, descriptor->dependencyRequirements[0].compatibleTypeIds[0]);
+    TEST_ASSERT_TRUE(descriptor->dependencyRequirements[0].role == DeviceRole::OneWireBus);
+    TEST_ASSERT_TRUE(OneWireBusDevice::descriptor().providedRole == DeviceRole::OneWireBus);
+    TEST_ASSERT_TRUE(descriptor->providedRole == DeviceRole::TemperatureSensor);
 
     DeviceApiAdapterRegistry adapterRegistry = DeviceApiAdapterRegistry::withDefaults();
     TEST_ASSERT_NOT_NULL(adapterRegistry.find(kDs18b20TemperatureSensorTypeId));
@@ -478,7 +480,7 @@ void test_ds18b20_runtime_reads_addressed_temperature_and_configures_resolution(
 
     Ds18b20TemperatureSensorDevice sensor(makeSensorConfig());
     bindSensorDependency(sensor, 1001, bus.deviceId());
-    sensor.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &bus);
+    sensor.setDependencyRuntime(DeviceRole::OneWireBus, &bus);
     driveSensorUntilReading(sensor);
 
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(sensor.status()));
@@ -504,7 +506,7 @@ void test_ds18b20_runtime_serializes_fahrenheit_output_and_quiet_delta() {
     config.reportDeltaCentiCelsius = 50;
     Ds18b20TemperatureSensorDevice sensor(config);
     bindSensorDependency(sensor, 1002, bus.deviceId());
-    sensor.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &bus);
+    sensor.setDependencyRuntime(DeviceRole::OneWireBus, &bus);
     driveSensorUntilReading(sensor);
     IDeviceRuntime* runtime = &sensor;
     TEST_ASSERT_TRUE(runtime->runtimeStateDirty());
@@ -545,7 +547,7 @@ void test_ds18b20_runtime_report_always_marks_repeated_reading_dirty() {
     config.reportAlways = 1;
     Ds18b20TemperatureSensorDevice sensor(config);
     bindSensorDependency(sensor, 1003, bus.deviceId());
-    sensor.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &bus);
+    sensor.setDependencyRuntime(DeviceRole::OneWireBus, &bus);
     driveSensorUntilReading(sensor);
     IDeviceRuntime* runtime = &sensor;
     runtime->clearRuntimeStateDirty();
@@ -565,7 +567,7 @@ void test_ds18b20_runtime_publishes_invalid_crc_and_recovers() {
 
     Ds18b20TemperatureSensorDevice sensor(makeSensorConfig());
     bindSensorDependency(sensor, 1004, bus.deviceId());
-    sensor.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &bus);
+    sensor.setDependencyRuntime(DeviceRole::OneWireBus, &bus);
     driveSensorUntilReading(sensor);
     TEST_ASSERT_TRUE(sensor.reading().valid);
     IDeviceRuntime* runtime = &sensor;
@@ -608,7 +610,7 @@ void test_ds18b20_runtime_handles_missing_device_as_unavailable() {
 
     Ds18b20TemperatureSensorDevice sensor(makeSensorConfig());
     bindSensorDependency(sensor, 1005, bus.deviceId());
-    sensor.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &bus);
+    sensor.setDependencyRuntime(DeviceRole::OneWireBus, &bus);
     sensor.begin(10);
     for (uint32_t now = 11; now < 600; now += 50U) {
         sensor.tick100ms(now);
@@ -627,7 +629,7 @@ void test_ds18b20_runtime_reinitializes_on_dependency_generation_and_own_reconfi
 
     Ds18b20TemperatureSensorDevice sensor(makeSensorConfig());
     bindSensorDependency(sensor, 1006, bus.deviceId());
-    sensor.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &bus);
+    sensor.setDependencyRuntime(DeviceRole::OneWireBus, &bus);
     driveSensorUntilReading(sensor);
     const uint32_t firstGeneration = sensor.lastDependencyGeneration();
     TEST_ASSERT_TRUE(sensor.reading().valid);
@@ -661,8 +663,8 @@ void test_ds18b20_sibling_sensor_failure_does_not_poison_other_runtime() {
     Ds18b20TemperatureSensorDevice healthySensor(makeSensorConfig(0xA2));
     bindSensorDependency(failingSensor, 1007, bus.deviceId());
     bindSensorDependency(healthySensor, 1008, bus.deviceId());
-    failingSensor.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &bus);
-    healthySensor.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &bus);
+    failingSensor.setDependencyRuntime(DeviceRole::OneWireBus, &bus);
+    healthySensor.setDependencyRuntime(DeviceRole::OneWireBus, &bus);
 
     driver.resetOk = false;
     failingSensor.begin(10);
@@ -688,7 +690,7 @@ void test_ds18b20_dependency_scan_defers_child_transaction() {
 
     Ds18b20TemperatureSensorDevice sensor(makeSensorConfig());
     bindSensorDependency(sensor, 1009, bus.deviceId());
-    sensor.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &bus);
+    sensor.setDependencyRuntime(DeviceRole::OneWireBus, &bus);
     sensor.begin(10);
     sensor.tick100ms(11);
     sensor.tick100ms(31);
@@ -707,8 +709,8 @@ void test_onewire_bus_detects_duplicate_dependent_rom_address() {
     Ds18b20TemperatureSensorDevice second(makeSensorConfig(0x11));
     bindSensorDependency(first, 1010, bus.deviceId());
     bindSensorDependency(second, 1011, bus.deviceId());
-    first.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &bus);
-    second.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &bus);
+    first.setDependencyRuntime(DeviceRole::OneWireBus, &bus);
+    second.setDependencyRuntime(DeviceRole::OneWireBus, &bus);
     bus.attachDependentRuntime(&first);
     bus.attachDependentRuntime(&second);
 
@@ -766,7 +768,7 @@ void test_ds18b20_adapter_rejects_duplicate_address_on_dependency_change() {
     duplicateMove.configBlob = encodeDs18b20Payload(addressA);
     duplicateMove.depsProvided = true;
     duplicateMove.depCount = 1;
-    duplicateMove.deps[0] = DeviceDependencyLink{DeviceDependencyRole::OneWireBus, busA.deviceId};
+    duplicateMove.deps[0] = DeviceDependencyLink{DeviceRole::OneWireBus, busA.deviceId};
     const IDeviceRuntime* secondRuntime = registry.runtime(second.deviceId);
     TEST_ASSERT_NOT_NULL(secondRuntime);
     const DeviceValidationResult duplicateValidation =
@@ -779,14 +781,14 @@ void test_ds18b20_adapter_rejects_duplicate_address_on_dependency_change() {
     validMove.configBlob = encodeDs18b20Payload(addressB);
     validMove.depsProvided = true;
     validMove.depCount = 1;
-    validMove.deps[0] = DeviceDependencyLink{DeviceDependencyRole::OneWireBus, busA.deviceId};
+    validMove.deps[0] = DeviceDependencyLink{DeviceRole::OneWireBus, busA.deviceId};
     const DeviceValidationResult validValidation =
         Ds18b20TemperatureSensorDeviceApiAdapter::instance().validateUpdateConfigRequest(*secondRuntime, validMove, registry);
     TEST_ASSERT_TRUE_MESSAGE(validValidation.ok(), validValidation.message);
 
     const DeviceValidationResult dependencyValidation = Ds18b20TemperatureSensorDeviceApiAdapter::instance().validateSetDepsRequest(
         *secondRuntime,
-        std::array<DeviceDependencyLink, kMaxDeviceDependencies>{{DeviceDependencyLink{DeviceDependencyRole::OneWireBus, busB.deviceId}}},
-        1, registry);
+        std::array<DeviceDependencyLink, kMaxDeviceDependencies>{{DeviceDependencyLink{DeviceRole::OneWireBus, busB.deviceId}}}, 1,
+        registry);
     TEST_ASSERT_TRUE_MESSAGE(dependencyValidation.ok(), dependencyValidation.message);
 }

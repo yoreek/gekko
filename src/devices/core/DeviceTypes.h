@@ -40,7 +40,7 @@ constexpr size_t kMaxDeviceRecordBytes = 1024;
 constexpr size_t kMaxDeviceIdGenerationAttempts = 8;
 constexpr size_t kMaxDeviceDependencies = 16;
 
-enum class DeviceDependencyRole : uint8_t {
+enum class DeviceRole : uint8_t {
     Unknown = 0,
     OneWireBus = 1,
     TemperatureSensor = 2,
@@ -52,7 +52,7 @@ enum class DeviceDependencyRole : uint8_t {
 };
 
 struct DeviceDependencyLink {
-    DeviceDependencyRole role{DeviceDependencyRole::Unknown};
+    DeviceRole role{DeviceRole::Unknown};
     DeviceId deviceId{0};
 };
 
@@ -94,17 +94,28 @@ template <typename TConfig> struct DeviceSetupRecord {
     TConfig config{};
 };
 
+// A requirement only names the role it needs; which concrete types can satisfy that role is
+// never enumerated here. Each type that can provide a role declares it once, on itself, via the
+// corresponding I*Runtime interface's `kProvidedRole` (see below) -- the validator compares
+// `DeviceTypeDescriptor::providedRole` against `role` directly instead of matching a hand-kept
+// type-id list.
 struct DeviceDependencyRequirement {
-    DeviceDependencyRole role{DeviceDependencyRole::Unknown};
+    DeviceRole role{DeviceRole::Unknown};
     bool required{false};
-    std::vector<DeviceTypeId> compatibleTypeIds{};
 };
 
-const char* deviceDependencyRoleName(DeviceDependencyRole role);
-bool parseDeviceDependencyRole(std::string_view value, DeviceDependencyRole& role);
+const char* deviceRoleName(DeviceRole role);
+bool parseDeviceRole(std::string_view value, DeviceRole& role);
 
+// Role-marker interfaces: implementing one of these is what makes a device type a provider of
+// the corresponding DeviceRole. `descriptor()` for such a type sets
+// `providedRole = I*Runtime::kProvidedRole` -- the role constant lives on the interface itself,
+// nowhere else, so every implementor is guaranteed to agree with any other implementor of the
+// same interface.
 class ITemperatureReadingRuntime {
 public:
+    static constexpr DeviceRole kProvidedRole = DeviceRole::TemperatureSensor;
+
     ITemperatureReadingRuntime() = default;
     ITemperatureReadingRuntime(const ITemperatureReadingRuntime&) = delete;
     ITemperatureReadingRuntime& operator=(const ITemperatureReadingRuntime&) = delete;
@@ -118,6 +129,8 @@ public:
 
 class ISwitchOutputRuntime {
 public:
+    static constexpr DeviceRole kProvidedRole = DeviceRole::Switch;
+
     ISwitchOutputRuntime() = default;
     ISwitchOutputRuntime(const ISwitchOutputRuntime&) = delete;
     ISwitchOutputRuntime& operator=(const ISwitchOutputRuntime&) = delete;
@@ -128,6 +141,45 @@ public:
     virtual OutputStateMask supportedOutputStateMask() const = 0;
     virtual OutputState currentOutputState() const = 0;
     virtual bool requestOutputState(OutputState state, uint32_t now) = 0;
+};
+
+// Bus roles have exactly one implementation each today, so dependents still access them through
+// the concrete class (static_cast), not through these interfaces -- they exist purely to carry
+// `kProvidedRole` for the dependency-role mechanism described above.
+class IOneWireBusRuntime {
+public:
+    static constexpr DeviceRole kProvidedRole = DeviceRole::OneWireBus;
+
+    IOneWireBusRuntime() = default;
+    IOneWireBusRuntime(const IOneWireBusRuntime&) = delete;
+    IOneWireBusRuntime& operator=(const IOneWireBusRuntime&) = delete;
+    IOneWireBusRuntime(IOneWireBusRuntime&&) = delete;
+    IOneWireBusRuntime& operator=(IOneWireBusRuntime&&) = delete;
+    virtual ~IOneWireBusRuntime() = default;
+};
+
+class II2cBusRuntime {
+public:
+    static constexpr DeviceRole kProvidedRole = DeviceRole::I2CBus;
+
+    II2cBusRuntime() = default;
+    II2cBusRuntime(const II2cBusRuntime&) = delete;
+    II2cBusRuntime& operator=(const II2cBusRuntime&) = delete;
+    II2cBusRuntime(II2cBusRuntime&&) = delete;
+    II2cBusRuntime& operator=(II2cBusRuntime&&) = delete;
+    virtual ~II2cBusRuntime() = default;
+};
+
+class ISpiBusRuntime {
+public:
+    static constexpr DeviceRole kProvidedRole = DeviceRole::SpiBus;
+
+    ISpiBusRuntime() = default;
+    ISpiBusRuntime(const ISpiBusRuntime&) = delete;
+    ISpiBusRuntime& operator=(const ISpiBusRuntime&) = delete;
+    ISpiBusRuntime(ISpiBusRuntime&&) = delete;
+    ISpiBusRuntime& operator=(ISpiBusRuntime&&) = delete;
+    virtual ~ISpiBusRuntime() = default;
 };
 
 class IDevicePersistedState {
@@ -376,7 +428,7 @@ struct DeviceRegistryEntry {
         return deps.data();
     }
 
-    const DeviceDependencyLink* dependencyLink(DeviceDependencyRole role) const {
+    const DeviceDependencyLink* dependencyLink(DeviceRole role) const {
         const DeviceDependencyLink* links = dependencyLinks();
         const uint8_t count = dependencyCount();
         for (uint8_t index = 0; index < count; ++index) {
@@ -387,7 +439,7 @@ struct DeviceRegistryEntry {
         return nullptr;
     }
 
-    DeviceId dependencyDeviceId(DeviceDependencyRole role) const {
+    DeviceId dependencyDeviceId(DeviceRole role) const {
         const DeviceDependencyLink* link = dependencyLink(role);
         return link != nullptr ? link->deviceId : 0;
     }
@@ -492,7 +544,7 @@ public:
     virtual void resetStateMachine(uint32_t now) {
         (void)now;
     }
-    virtual void setDependencyRuntime(DeviceDependencyRole role, IDeviceRuntime* dependencyRuntime) {
+    virtual void setDependencyRuntime(DeviceRole role, IDeviceRuntime* dependencyRuntime) {
         (void)role;
         (void)dependencyRuntime;
     }
@@ -500,7 +552,7 @@ public:
         (void)index;
         (void)dependencyRuntime;
     }
-    virtual IDeviceRuntime* dependencyRuntime(DeviceDependencyRole role) const {
+    virtual IDeviceRuntime* dependencyRuntime(DeviceRole role) const {
         (void)role;
         return nullptr;
     }
@@ -566,7 +618,7 @@ public:
     virtual bool hasDependencies() const {
         return false;
     }
-    virtual DeviceId dependencyDeviceId(DeviceDependencyRole role) const {
+    virtual DeviceId dependencyDeviceId(DeviceRole role) const {
         (void)role;
         return 0;
     }
@@ -653,6 +705,9 @@ public:
     bool ticks100ms{false};
     bool ticks1s{false};
     std::vector<DeviceDependencyRequirement> dependencyRequirements{};
+    // The single role this type provides to other devices' dependencies, if any (`Unknown` means
+    // it provides none). Set from the corresponding I*Runtime interface's `kProvidedRole`.
+    DeviceRole providedRole{DeviceRole::Unknown};
 #ifdef UNIT_TEST
 #endif
     RuntimeFactory createRuntime{nullptr};

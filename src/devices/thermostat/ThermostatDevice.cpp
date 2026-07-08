@@ -1,8 +1,5 @@
 #include "devices/thermostat/ThermostatDevice.h"
 
-#include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
-#include "devices/switch/gpio/GpioSwitchDevice.h"
-
 #include <cstring>
 
 namespace ewfm {
@@ -74,7 +71,7 @@ uint32_t ThermostatDevice::lastCheckAtMs() const {
     return lastCheckAtMs_;
 }
 
-void ThermostatDevice::setDependencyRuntime(DeviceDependencyRole role, IDeviceRuntime* dependencyRuntime) {
+void ThermostatDevice::setDependencyRuntime(DeviceRole role, IDeviceRuntime* dependencyRuntime) {
     DeviceRuntimeBase::setDependencyRuntime(role, dependencyRuntime);
     refreshCapabilityCache();
 }
@@ -155,9 +152,8 @@ DeviceTypeDescriptor ThermostatDevice::descriptor() {
     descriptor.supportsRetainedState = false;
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
     descriptor.ticks100ms = true;
-    descriptor.dependencyRequirements = {
-        DeviceDependencyRequirement{DeviceDependencyRole::TemperatureSensor, true, {Ds18b20TemperatureSensorDevice::descriptor().typeId}},
-        DeviceDependencyRequirement{DeviceDependencyRole::Switch, true, {GpioSwitchDevice::descriptor().typeId}}};
+    descriptor.dependencyRequirements = {DeviceDependencyRequirement{DeviceRole::TemperatureSensor, true},
+                                         DeviceDependencyRequirement{DeviceRole::Switch, true}};
     descriptor.createRuntime = &ThermostatDevice::createRuntime;
     descriptor.validateConfig = &ThermostatDevice::validateConfig;
     return descriptor;
@@ -168,8 +164,7 @@ std::unique_ptr<IDeviceRuntime> ThermostatDevice::createRuntime(const DeviceRegi
 }
 
 DeviceValidationResult ThermostatDevice::validateConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
-    if (record.dependencyDeviceId(DeviceDependencyRole::TemperatureSensor) == 0U ||
-        record.dependencyDeviceId(DeviceDependencyRole::Switch) == 0U) {
+    if (record.dependencyDeviceId(DeviceRole::TemperatureSensor) == 0U || record.dependencyDeviceId(DeviceRole::Switch) == 0U) {
         return {DeviceError::InvalidRelationship, "thermostat requires temperature_sensor and switch dependencies"};
     }
     if (configBlob.size() > kMaxDeviceConfigBytes) {
@@ -185,38 +180,35 @@ DeviceValidationResult ThermostatDevice::validateConfig(const DeviceRegistryEntr
 void ThermostatDevice::refreshCapabilityCache() {
     temperatureSensor_ = nullptr;
     switchOutput_ = nullptr;
-    if (const IDeviceRuntime* temperatureRuntime = dependencyRuntime(DeviceDependencyRole::TemperatureSensor);
-        temperatureRuntime != nullptr) {
+    if (const IDeviceRuntime* temperatureRuntime = dependencyRuntime(DeviceRole::TemperatureSensor); temperatureRuntime != nullptr) {
         temperatureSensor_ = temperatureRuntime->temperatureReadingRuntime();
     }
-    if (const IDeviceRuntime* switchRuntime = dependencyRuntime(DeviceDependencyRole::Switch); switchRuntime != nullptr) {
+    if (const IDeviceRuntime* switchRuntime = dependencyRuntime(DeviceRole::Switch); switchRuntime != nullptr) {
         switchOutput_ = const_cast<ISwitchOutputRuntime*>(switchRuntime->switchOutputRuntime());
     }
 }
 
 bool ThermostatDevice::dependenciesAvailable() const {
-    return dependencyRuntime(DeviceDependencyRole::TemperatureSensor) != nullptr &&
-           dependencyRuntime(DeviceDependencyRole::Switch) != nullptr && temperatureSensor_ != nullptr && switchOutput_ != nullptr;
+    return dependencyRuntime(DeviceRole::TemperatureSensor) != nullptr && dependencyRuntime(DeviceRole::Switch) != nullptr &&
+           temperatureSensor_ != nullptr && switchOutput_ != nullptr;
 }
 
 bool ThermostatDevice::dependenciesReady() const {
-    return dependencyReady(DeviceDependencyRole::TemperatureSensor) && dependencyReady(DeviceDependencyRole::Switch) &&
-           dependenciesAvailable();
+    return dependencyReady(DeviceRole::TemperatureSensor) && dependencyReady(DeviceRole::Switch) && dependenciesAvailable();
 }
 
 bool ThermostatDevice::dependencyIsDisabled() const {
-    return (dependencyRuntime(DeviceDependencyRole::TemperatureSensor) != nullptr &&
-            dependencyRuntime(DeviceDependencyRole::TemperatureSensor)->status() == DeviceStatus::Disabled) ||
-           (dependencyRuntime(DeviceDependencyRole::Switch) != nullptr &&
-            dependencyRuntime(DeviceDependencyRole::Switch)->status() == DeviceStatus::Disabled);
+    return (dependencyRuntime(DeviceRole::TemperatureSensor) != nullptr &&
+            dependencyRuntime(DeviceRole::TemperatureSensor)->status() == DeviceStatus::Disabled) ||
+           (dependencyRuntime(DeviceRole::Switch) != nullptr && dependencyRuntime(DeviceRole::Switch)->status() == DeviceStatus::Disabled);
 }
 
 bool ThermostatDevice::dependencyBlocked() const {
     if (!dependenciesAvailable()) {
         return true;
     }
-    const IDeviceRuntime* temperatureRuntime = dependencyRuntime(DeviceDependencyRole::TemperatureSensor);
-    const IDeviceRuntime* switchRuntime = dependencyRuntime(DeviceDependencyRole::Switch);
+    const IDeviceRuntime* temperatureRuntime = dependencyRuntime(DeviceRole::TemperatureSensor);
+    const IDeviceRuntime* switchRuntime = dependencyRuntime(DeviceRole::Switch);
     return temperatureRuntime == nullptr || switchRuntime == nullptr || temperatureRuntime->status() != DeviceStatus::Ready ||
            switchRuntime->status() != DeviceStatus::Ready;
 }

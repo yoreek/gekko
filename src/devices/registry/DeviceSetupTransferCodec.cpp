@@ -379,8 +379,8 @@ bool parseDeviceLine(const JsonObjectConst& input, DeviceRegistryEntry& record, 
             }
             const JsonObjectConst depObject = item.as<JsonObjectConst>();
             const char* roleName = depObject["role"] | "";
-            DeviceDependencyRole role{DeviceDependencyRole::Unknown};
-            if (!parseDeviceDependencyRole(roleName, role)) {
+            DeviceRole role{DeviceRole::Unknown};
+            if (!parseDeviceRole(roleName, role)) {
                 error = "device bundle contains an invalid dependency role";
                 return false;
             }
@@ -438,7 +438,7 @@ template <typename Writer> bool writeBundleImpl(Writer& writer, const DeviceRegi
         JsonArray deps = config.createNestedArray("deps");
         for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
             JsonObject dep = deps.createNestedObject();
-            dep["role"] = deviceDependencyRoleName(links[index].role);
+            dep["role"] = deviceRoleName(links[index].role);
             dep["deviceId"] = links[index].deviceId;
         }
 

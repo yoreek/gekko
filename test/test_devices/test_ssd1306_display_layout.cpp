@@ -302,7 +302,7 @@ void test_ssd1306_api_adapter_partial_update_preserves_bus_and_dimensions() {
     record.header.configRevision = 1U;
     record.header.payloadLength = static_cast<uint32_t>(configBlob.size());
     record.depCount = 1U;
-    record.deps[0] = {DeviceDependencyRole::I2CBus, 12};
+    record.deps[0] = {DeviceRole::I2CBus, 12};
     record.status = DeviceStatus::Ready;
 
     Ssd1306Device device(record, configBlob);

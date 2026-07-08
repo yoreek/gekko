@@ -143,6 +143,7 @@ DeviceTypeDescriptor NtcThermistorTemperatureSensorDevice::descriptor() {
     descriptor.supportsRetainedState = false;
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
     descriptor.ticks1s = true;
+    descriptor.providedRole = ITemperatureReadingRuntime::kProvidedRole;
     descriptor.createRuntime = &NtcThermistorTemperatureSensorDevice::createRuntime;
     descriptor.validateConfig = &NtcThermistorTemperatureSensorDevice::validateConfig;
     return descriptor;

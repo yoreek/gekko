@@ -50,6 +50,7 @@ void test_validator_accepts_valid_structure();
 void test_validator_rejects_duplicate_device_id();
 void test_validator_rejects_cycle();
 void test_validator_typed_relationship_checks();
+void test_validator_rejects_dependency_whose_provided_role_does_not_match_requirement();
 void test_device_setup_export_includes_metadata_and_redacts_secret_strings();
 void test_device_setup_export_round_trips_back_into_registry();
 void test_device_setup_transfer_rejects_unsupported_version();
@@ -130,6 +131,7 @@ int main(int, char**) {
     RUN_TEST(test_validator_rejects_duplicate_device_id);
     RUN_TEST(test_validator_rejects_cycle);
     RUN_TEST(test_validator_typed_relationship_checks);
+    RUN_TEST(test_validator_rejects_dependency_whose_provided_role_does_not_match_requirement);
     RUN_TEST(test_device_setup_export_includes_metadata_and_redacts_secret_strings);
     RUN_TEST(test_device_setup_export_round_trips_back_into_registry);
     RUN_TEST(test_device_setup_transfer_rejects_unsupported_version);

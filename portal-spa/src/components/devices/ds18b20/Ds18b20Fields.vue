@@ -130,8 +130,8 @@ import { useI18n } from 'vue-i18n'
 
 import { commandDevice } from '@/api'
 import type { DeviceCommandRequest, DeviceRecord, Ds18b20TemperatureSensorOutputSnapshot, TemperatureOutputSnapshot, TemperatureUnit } from '@/api/contracts'
-import { ONEWIRE_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-type-ids'
 import { Ds18b20Device, type Ds18b20ConfigDraft } from '@/models/devices/ds18b20'
+import { devicesForDependencyRole, dependencyOptionsForRole } from '@/models/devices/device-model-factory'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
 const props = defineProps<{
@@ -150,8 +150,8 @@ const deviceStore = useDeviceRegistryStore()
 const scanBusy = ref(false)
 const scanError = ref('')
 
-const dependencyDevices = computed(() => deviceStore.devices.filter(device => deviceTypeIdFromName(device.record.typeName) === ONEWIRE_BUS_DEVICE_TYPE_ID))
-const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ title: `${device.config.name} #${device.record.id}`, value: device.record.id })))
+const dependencyDevices = computed(() => devicesForDependencyRole(deviceStore.devices, 'onewire_bus'))
+const dependencyItems = computed(() => dependencyOptionsForRole(deviceStore.devices, 'onewire_bus'))
 const selectedDependency = computed(() => dependencyDevices.value.find(device => device.record.id === props.modelValue.dependencyDeviceId))
 const selectedDependencyScanInProgress = computed(() => {
   const scan = selectedDependency.value ? (selectedDependency.value.runtime as { scan?: { inProgress?: boolean } }).scan : undefined

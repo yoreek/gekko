@@ -57,7 +57,7 @@ void IDeviceApiAdapter::writeCommonDeviceJson(const IDeviceRuntime& runtime, con
     const uint8_t dependencyCount = runtime.dependencyCount();
     for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
         JsonObject item = deps.createNestedObject();
-        item["role"] = deviceDependencyRoleName(dependencyLinks[index].role);
+        item["role"] = deviceRoleName(dependencyLinks[index].role);
         item["deviceId"] = dependencyLinks[index].deviceId;
     }
 

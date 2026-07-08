@@ -218,6 +218,7 @@ DeviceTypeDescriptor OneWireBusDevice::descriptor() {
     descriptor.supportsRetainedState = false;
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
     descriptor.ticks100ms = true;
+    descriptor.providedRole = IOneWireBusRuntime::kProvidedRole;
     descriptor.createRuntime = &OneWireBusDevice::createRuntime;
     descriptor.validateConfig = &OneWireBusDevice::validateConfig;
     return descriptor;

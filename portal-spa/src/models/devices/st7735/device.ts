@@ -130,7 +130,7 @@ export class St7735Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraf
     return St7735Device.encodeConfig(config)
   }
 
-  protected override createCreateDeps(config: St7735ConfigDraft) {
+  protected override createCreateDeps(config: St7735ConfigDraft): DeviceDependencyLink[] {
     return [
       {
         role: 'spi_bus',

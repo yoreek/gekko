@@ -248,7 +248,7 @@ void test_st7735_registry_migrates_legacy_blob_on_begin() {
     displayRecord.header.configVersion = 1U;
     displayRecord.header.configRevision = 4U;
     displayRecord.depCount = 1U;
-    displayRecord.deps[0] = {DeviceDependencyRole::SpiBus, spiRecord.header.deviceId};
+    displayRecord.deps[0] = {DeviceRole::SpiBus, spiRecord.header.deviceId};
     displayRecord.persistencePolicy = DevicePersistencePolicy::Delayed;
     displayRecord.status = DeviceStatus::Ready;
 
@@ -304,7 +304,7 @@ void test_st7735_api_adapter_partial_update_preserves_bus_and_pins() {
     record.header.configRevision = 1U;
     record.header.payloadLength = static_cast<uint32_t>(configBlob.size());
     record.depCount = 1U;
-    record.deps[0] = {DeviceDependencyRole::SpiBus, 12};
+    record.deps[0] = {DeviceRole::SpiBus, 12};
     record.status = DeviceStatus::Ready;
 
     St7735Device device(record, configBlob);

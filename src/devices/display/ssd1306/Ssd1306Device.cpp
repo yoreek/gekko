@@ -217,7 +217,7 @@ void Ssd1306Device::writeDisplayConfigJson(JsonObject output) const {
 bool Ssd1306Device::initializeDisplayHardware(uint32_t now) {
     (void)now;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    I2cBusDevice* bus = static_cast<I2cBusDevice*>(dependencyRuntime(DeviceDependencyRole::I2CBus));
+    I2cBusDevice* bus = static_cast<I2cBusDevice*>(dependencyRuntime(DeviceRole::I2CBus));
     if (bus == nullptr) {
         return false;
     }
@@ -289,7 +289,7 @@ DeviceTypeDescriptor Ssd1306Device::descriptor() {
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
     descriptor.ticks100ms = true;
     descriptor.dependencyRequirements = {
-        {DeviceDependencyRole::I2CBus, true, {I2cBusDevice::descriptor().typeId}},
+        {DeviceRole::I2CBus, true},
     };
     descriptor.createRuntime = &Ssd1306Device::createRuntime;
     descriptor.validateConfig = &Ssd1306Device::validateConfig;

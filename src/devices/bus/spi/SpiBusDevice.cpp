@@ -271,6 +271,7 @@ DeviceTypeDescriptor SpiBusDevice::descriptor() {
     descriptor.supportsRetainedState = false;
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
     descriptor.ticks100ms = true;
+    descriptor.providedRole = ISpiBusRuntime::kProvidedRole;
     descriptor.createRuntime = &SpiBusDevice::createRuntime;
     descriptor.validateConfig = &SpiBusDevice::validateConfig;
     return descriptor;

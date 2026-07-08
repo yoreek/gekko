@@ -187,6 +187,7 @@ DeviceTypeDescriptor GpioSwitchDevice::descriptor() {
     descriptor.supportsRetainedState = true;
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
     descriptor.ticksFastLoop = true;
+    descriptor.providedRole = ISwitchOutputRuntime::kProvidedRole;
     descriptor.createRuntime = &GpioSwitchDevice::createRuntime;
     descriptor.validateConfig = &GpioSwitchDevice::validateConfig;
     return descriptor;

@@ -37,7 +37,7 @@ DeviceRegistryEntry makeDummyRecord(DeviceId id, DeviceId dependencyId, bool has
     (void)name;
     record.depCount = hasDependency ? 1U : 0U;
     if (hasDependency) {
-        record.deps[0] = {DeviceDependencyRole::OneWireBus, dependencyId};
+        record.deps[0] = {DeviceRole::OneWireBus, dependencyId};
     }
     record.persistencePolicy = DevicePersistencePolicy::Delayed;
     record.status = DeviceStatus::Ready;
@@ -412,10 +412,10 @@ void test_dummy_device_dependency_wiring_survive_base_refactor() {
     DummyDevice dependency(dependencyRecord, encodeDummyConfig(config));
     DummyDevice dependent(dependentRecord, encodeDummyConfig(config));
 
-    dependent.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &dependency);
+    dependent.setDependencyRuntime(DeviceRole::OneWireBus, &dependency);
     dependency.attachDependentRuntime(&dependent);
     dependency.attachDependentRuntime(&dependent);
-    TEST_ASSERT_EQUAL_PTR(static_cast<IDeviceRuntime*>(&dependency), dependent.dependencyRuntime(DeviceDependencyRole::OneWireBus));
+    TEST_ASSERT_EQUAL_PTR(static_cast<IDeviceRuntime*>(&dependency), dependent.dependencyRuntime(DeviceRole::OneWireBus));
     TEST_ASSERT_EQUAL_UINT32(1, dependency.dependentRuntimes().size());
 
     dependent.begin(300);

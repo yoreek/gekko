@@ -613,7 +613,7 @@ export default {
         heuristicWarning: 'Heuristic method: CS pull-resistor detection is not fully reliable. Verify device manually.',
       },
       thermostat: {
-        noTemperatureSensor: 'Create or connect a DS18B20 temperature sensor before configuring the thermostat.',
+        noTemperatureSensor: 'Create or connect a temperature sensor before configuring the thermostat.',
         noSwitch: 'Create or connect a GPIO switch before configuring the thermostat.',
         mode: {
           off: 'Off',

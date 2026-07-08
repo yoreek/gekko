@@ -1,4 +1,4 @@
-import { BaseDevice } from '@/models/devices/base-device'
+import { BaseDevice } from './base-device.ts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import type { DeviceCommandRequest, DeviceRecord } from '@/api/contracts'
 

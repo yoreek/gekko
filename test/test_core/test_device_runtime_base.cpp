@@ -87,7 +87,7 @@ void test_device_runtime_base_dependency_wiring() {
     record.header.configVersion = 1;
     record.header.configRevision = 1;
     record.depCount = 1;
-    record.deps[0] = {DeviceDependencyRole::OneWireBus, 99};
+    record.deps[0] = {DeviceRole::OneWireBus, 99};
 
     DeviceBaseConfigV1 base{};
     base.enabled = 1;
@@ -98,8 +98,8 @@ void test_device_runtime_base_dependency_wiring() {
 
     runtime.bindDeviceIdentity(record, configBlob);
     runtime.begin(0);
-    runtime.setDependencyRuntime(DeviceDependencyRole::OneWireBus, &dependency);
-    TEST_ASSERT_EQUAL_PTR(&dependency, runtime.dependencyRuntime(DeviceDependencyRole::OneWireBus));
+    runtime.setDependencyRuntime(DeviceRole::OneWireBus, &dependency);
+    TEST_ASSERT_EQUAL_PTR(&dependency, runtime.dependencyRuntime(DeviceRole::OneWireBus));
 
     runtime.attachDependentRuntime(&dependent);
     runtime.attachDependentRuntime(&dependent);

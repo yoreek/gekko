@@ -22,7 +22,7 @@ struct I2cScanResult {
     bool truncated{false};
 };
 
-class I2cBusDevice final : public DeviceRuntimeBase {
+class I2cBusDevice final : public DeviceRuntimeBase, public II2cBusRuntime {
 public:
     class DependencyTransaction {
     public:

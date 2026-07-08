@@ -130,8 +130,8 @@ void bindThermostatIdentity(ThermostatDevice& device, DeviceId thermostatId, Dev
     record.header.configRevision = 1U;
     record.header.payloadLength = static_cast<uint32_t>(configBlob.size());
     record.depCount = 2U;
-    record.deps[0] = {DeviceDependencyRole::TemperatureSensor, temperatureSensorId};
-    record.deps[1] = {DeviceDependencyRole::Switch, switchId};
+    record.deps[0] = {DeviceRole::TemperatureSensor, temperatureSensorId};
+    record.deps[1] = {DeviceRole::Switch, switchId};
     record.status = DeviceStatus::Ready;
     device.bindDeviceIdentity(record, configBlob);
 }
@@ -187,8 +187,8 @@ DeviceCreateRequest makeThermostatCreateRequest(const char* name, ThermostatMode
     request.configVersion = kThermostatDeviceConfigVersion;
     request.configBlob = payload;
     request.depCount = 2;
-    request.deps[0] = {DeviceDependencyRole::TemperatureSensor, temperatureSensorId};
-    request.deps[1] = {DeviceDependencyRole::Switch, switchId};
+    request.deps[0] = {DeviceRole::TemperatureSensor, temperatureSensorId};
+    request.deps[1] = {DeviceRole::Switch, switchId};
     return request;
 }
 
@@ -249,8 +249,8 @@ void test_thermostat_ha_entity_adapter_publishes_mode_temperature_and_action() {
     FakeThermostatTemperatureSensor sensor;
     FakeThermostatSwitch switchDevice;
     bindThermostatIdentity(thermostat, 40U, 41U, 42U);
-    thermostat.setDependencyRuntime(DeviceDependencyRole::TemperatureSensor, &sensor);
-    thermostat.setDependencyRuntime(DeviceDependencyRole::Switch, &switchDevice);
+    thermostat.setDependencyRuntime(DeviceRole::TemperatureSensor, &sensor);
+    thermostat.setDependencyRuntime(DeviceRole::Switch, &switchDevice);
     thermostat.begin(100);
     thermostat.tick100ms(101);
 

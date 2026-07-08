@@ -77,7 +77,7 @@ import { useI18n } from 'vue-i18n'
 import type { DeviceRecord } from '@/api/contracts'
 import type { Ssd1306ConfigDraft } from '@/models/devices/ssd1306/device'
 import I2cAddressPicker from '@/components/devices/common/I2cAddressPicker.vue'
-import { I2C_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-type-ids'
+import { dependencyOptionsForRole } from '@/models/devices/device-model-factory'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
 const props = defineProps<{
@@ -92,8 +92,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
 
-const dependencyDevices = computed(() => deviceStore.devices.filter(device => deviceTypeIdFromName(device.record.typeName) === I2C_BUS_DEVICE_TYPE_ID))
-const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ title: `${device.config.name} #${device.record.id}`, value: device.record.id })))
+const dependencyItems = computed(() => dependencyOptionsForRole(deviceStore.devices, 'i2c_bus'))
 
 const rotationItems = computed(() => [
   { title: t('device.fields.display.orientationPortrait'), value: 0 },

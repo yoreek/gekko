@@ -1,6 +1,7 @@
-import type { BaseDeviceConfig, DeviceDependencyLink, DeviceOutputState, DeviceRecord, DeviceCreateRequest } from '@/api/contracts'
+import type { BaseDeviceConfig, DeviceDependencyLink, DeviceRecord, DeviceCreateRequest } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import type { DeviceCommandRequest } from '@/api/contracts'
+import type { DeviceRole } from '@/models/device-type-ids'
 
 export interface DeviceCreatePayload<TConfig extends BaseDeviceConfig = BaseDeviceConfig> extends DeviceCreateRequest<TConfig> {}
 
@@ -64,7 +65,11 @@ export abstract class BaseDevice<
 > {
   abstract readonly typeName: string
   abstract readonly typeId: number
-  readonly supportedOutputStates?: DeviceOutputState[] = undefined
+  // Which single dependency role (mirroring the firmware's DeviceRole wire names) this device
+  // type can fill, so picker components can list every compatible type for a role instead of
+  // hardcoding one type id per dependency field. 'unknown' means it provides none, matching the
+  // firmware's DeviceRole::Unknown default on DeviceTypeDescriptor::providedRole.
+  readonly dependencyRole: DeviceRole = 'unknown'
 
   abstract createDefaultConfig(): TConfig
 

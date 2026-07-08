@@ -1,5 +1,6 @@
 import type { BaseDeviceConfig, DeviceRecord, SpiBusRuntimeSnapshot } from '../../api/contracts.ts'
 import type { DeviceCreateDraftBase } from './base.ts'
+import type { DeviceRole } from '../device-type-ids.ts'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig } from './base-device.ts'
 
 export interface SpiBusConfigDraft extends BaseDeviceConfig {
@@ -22,6 +23,7 @@ export class SpiBusDevice extends BaseDevice<SpiBusConfigDraft, SpiBusCreateDraf
 
   readonly typeName = SpiBusDevice.TYPE_NAME
   readonly typeId = SpiBusDevice.TYPE_ID
+  readonly dependencyRole: DeviceRole = 'spi_bus'
 
   static defaultConfig(): SpiBusConfigDraft {
     return {

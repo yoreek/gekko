@@ -18,7 +18,7 @@ import type {
   WifiScanResponse,
   WifiStatusResponse,
 } from '@/api'
-import type { TemperatureOutputSnapshot } from '@/api/contracts'
+import type { DeviceDependencyLink, TemperatureOutputSnapshot } from '@/api/contracts'
 import {
   defaultSsd1306Layout,
   normalizeSsd1306Layout,
@@ -928,15 +928,17 @@ function normalizeDependencyDeviceId(value: unknown): number {
   return Number.isInteger(numeric) && numeric > 0 ? numeric : 0
 }
 
-function normalizeThermostatDependencyLinks(value: unknown, fallbackConfig: unknown = null): Array<{ role: string; deviceId: number }> {
+function normalizeThermostatDependencyLinks(value: unknown, fallbackConfig: unknown = null): DeviceDependencyLink[] {
   if (Array.isArray(value)) {
+    // Parsing untyped mock-persisted JSON (analogous to a wire boundary): role is only known to
+    // be a non-empty string here, not yet narrowed to DeviceRole.
     const links = value
       .filter(isRecordPayload)
       .map(item => ({
         role: typeof item.role === 'string' ? item.role.trim() : '',
         deviceId: normalizeDependencyDeviceId(item.deviceId),
       }))
-      .filter(item => item.role.length > 0 && item.deviceId > 0)
+      .filter(item => item.role.length > 0 && item.deviceId > 0) as DeviceDependencyLink[]
     if (links.length > 0) {
       return links.filter(item => item.role === 'temperature_sensor' || item.role === 'switch')
     }
@@ -945,7 +947,7 @@ function normalizeThermostatDependencyLinks(value: unknown, fallbackConfig: unkn
   if (isRecordPayload(fallbackConfig)) {
     const temperatureSensorId = normalizeDependencyDeviceId(fallbackConfig.temperatureSensorDeviceId)
     const switchDeviceId = normalizeDependencyDeviceId(fallbackConfig.switchDeviceId)
-    const links: Array<{ role: string; deviceId: number }> = []
+    const links: DeviceDependencyLink[] = []
     if (temperatureSensorId > 0) {
       links.push({ role: 'temperature_sensor', deviceId: temperatureSensorId })
     }
@@ -994,7 +996,7 @@ function normalizeThermostatConfigPayload(
   }
 }
 
-function requireThermostatDependencies(db: ReturnType<typeof createSeedMockDatabase>, deps: Array<{ role: string; deviceId: number }>): void {
+function requireThermostatDependencies(db: ReturnType<typeof createSeedMockDatabase>, deps: DeviceDependencyLink[]): void {
   const sensorDeviceId = dependencyDeviceIdForRole(deps, 'temperature_sensor')
   const switchDeviceId = dependencyDeviceIdForRole(deps, 'switch')
   const sensor = db.devices.find(entry => entry.record.id === sensorDeviceId)
@@ -1013,8 +1015,8 @@ function buildThermostatOutput(
   currentDeviceId: number,
 ): Record<string, unknown> {
   const deps = Array.isArray(config.deps) ? config.deps : []
-  const sensorDeviceId = dependencyDeviceIdForRole(deps as Array<{ role: string; deviceId: number }>, 'temperature_sensor')
-  const switchDeviceId = dependencyDeviceIdForRole(deps as Array<{ role: string; deviceId: number }>, 'switch')
+  const sensorDeviceId = dependencyDeviceIdForRole(deps as DeviceDependencyLink[], 'temperature_sensor')
+  const switchDeviceId = dependencyDeviceIdForRole(deps as DeviceDependencyLink[], 'switch')
   const sensor = db.devices.find(entry => entry.record.id === sensorDeviceId)
   const switchDevice = db.devices.find(entry => entry.record.id === switchDeviceId)
   const temperature = (sensor?.runtime.output as
@@ -1156,7 +1158,7 @@ function ensureUniqueDs18b20Address(
   const duplicate = db.devices.some(device => (
     device.record.id !== currentDeviceId &&
     device.record.typeName === 'ds18b20_temperature_sensor' &&
-    dependencyDeviceIdForRole((device.config.deps ?? []) as Array<{ role: string; deviceId: number }>, 'onewire_bus') === dependencyDeviceId &&
+    dependencyDeviceIdForRole((device.config.deps ?? []) as DeviceDependencyLink[], 'onewire_bus') === dependencyDeviceId &&
     typeof device.config.address === 'string' &&
     device.config.address.trim().toUpperCase() === normalizedAddress
   ))
@@ -1190,7 +1192,7 @@ function ensureUniqueI2cAddress(
   const duplicate = db.devices.some(device => (
     device.record.id !== currentDeviceId &&
     device.record.typeName === 'ssd1306' &&
-    dependencyDeviceIdForRole((device.config.deps ?? []) as Array<{ role: string; deviceId: number }>, 'i2c_bus') === dependencyDeviceId &&
+    dependencyDeviceIdForRole((device.config.deps ?? []) as DeviceDependencyLink[], 'i2c_bus') === dependencyDeviceId &&
     normalizeFiniteNumber((device.config as Record<string, unknown>).i2cAddress, -1) === address
   ))
   if (duplicate) {
@@ -1262,8 +1264,8 @@ function refreshChildEffectiveStatuses(db: ReturnType<typeof createSeedMockDatab
       continue
     }
     const config = device.config as Record<string, unknown>
-    const sensorDeviceId = dependencyDeviceIdForRole((config.deps ?? []) as Array<{ role: string; deviceId: number }>, 'temperature_sensor')
-    const switchDeviceId = dependencyDeviceIdForRole((config.deps ?? []) as Array<{ role: string; deviceId: number }>, 'switch')
+    const sensorDeviceId = dependencyDeviceIdForRole((config.deps ?? []) as DeviceDependencyLink[], 'temperature_sensor')
+    const switchDeviceId = dependencyDeviceIdForRole((config.deps ?? []) as DeviceDependencyLink[], 'switch')
     const sensor = db.devices.find(entry => entry.record.id === sensorDeviceId)
     const switchDevice = db.devices.find(entry => entry.record.id === switchDeviceId)
 

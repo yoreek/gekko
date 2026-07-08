@@ -106,6 +106,7 @@ void test_binary_switch_rejects_disabled_state_and_toggle_command();
 void test_disable_applies_safe_state_and_disabled_can_be_ready_capable_output();
 void test_gpio_switch_update_hooks_release_old_pin_and_restart_with_startup_state();
 void test_registry_custom_switch_command_marks_retained_state_without_config_revision_change();
+void test_thermostat_descriptor_accepts_any_standard_temperature_sensor_type();
 void test_thermostat_config_codec_and_validation();
 void test_thermostat_parser_accepts_spa_milli_celsius_fields();
 void test_thermostat_api_adapter_partial_update_preserves_mode_and_thresholds();
@@ -232,6 +233,7 @@ int main(int, char**) {
     RUN_TEST(test_disable_applies_safe_state_and_disabled_can_be_ready_capable_output);
     RUN_TEST(test_gpio_switch_update_hooks_release_old_pin_and_restart_with_startup_state);
     RUN_TEST(test_registry_custom_switch_command_marks_retained_state_without_config_revision_change);
+    RUN_TEST(test_thermostat_descriptor_accepts_any_standard_temperature_sensor_type);
     RUN_TEST(test_thermostat_config_codec_and_validation);
     RUN_TEST(test_thermostat_parser_accepts_spa_milli_celsius_fields);
     RUN_TEST(test_thermostat_api_adapter_partial_update_preserves_mode_and_thresholds);

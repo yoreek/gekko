@@ -244,6 +244,7 @@ DeviceTypeDescriptor I2cBusDevice::descriptor() {
     descriptor.supportsRetainedState = false;
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
     descriptor.ticks100ms = true;
+    descriptor.providedRole = II2cBusRuntime::kProvidedRole;
     descriptor.createRuntime = &I2cBusDevice::createRuntime;
     descriptor.validateConfig = &I2cBusDevice::validateConfig;
     return descriptor;

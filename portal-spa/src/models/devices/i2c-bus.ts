@@ -1,5 +1,6 @@
 import type { DeviceRecord, I2cBusRuntimeSnapshot } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
+import type { DeviceRole } from '@/models/device-type-ids'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig } from './base-device.ts'
 import type { BaseDeviceConfig } from '@/api/contracts'
 
@@ -18,6 +19,7 @@ export class I2cBusDevice extends BaseDevice<I2cBusConfigDraft, I2cBusCreateDraf
 
   readonly typeName = I2cBusDevice.TYPE_NAME
   readonly typeId = I2cBusDevice.TYPE_ID
+  readonly dependencyRole: DeviceRole = 'i2c_bus'
 
   static defaultConfig(): I2cBusConfigDraft {
     return {

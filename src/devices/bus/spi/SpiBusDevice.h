@@ -31,7 +31,7 @@ struct SpiProbeResult {
     bool ready{false};
 };
 
-class SpiBusDevice final : public DeviceRuntimeBase {
+class SpiBusDevice final : public DeviceRuntimeBase, public ISpiBusRuntime {
 public:
     class DependencyTransaction {
     public:

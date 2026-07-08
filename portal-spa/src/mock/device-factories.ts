@@ -1,4 +1,4 @@
-import type { TemperatureOutputSnapshot } from '@/api/contracts'
+import type { DeviceDependencyLink, TemperatureOutputSnapshot } from '@/api/contracts'
 import {
   defaultSsd1306Layout,
   normalizeSsd1306Layout,
@@ -31,20 +31,22 @@ function normalizeDependencyDeviceId(value: unknown): number {
   return Number.isInteger(numeric) && numeric > 0 ? numeric : 0
 }
 
-export function normalizeDependencyLinks(value: unknown): Array<{ role: string; deviceId: number }> {
+export function normalizeDependencyLinks(value: unknown): DeviceDependencyLink[] {
   if (Array.isArray(value)) {
+    // Parsing untyped mock-persisted JSON (analogous to a wire boundary): role is only known to
+    // be a non-empty string here, not yet narrowed to DeviceRole.
     return value
       .filter(isRecordPayload)
       .map(item => ({
         role: typeof item.role === 'string' ? item.role.trim() : '',
         deviceId: normalizeDependencyDeviceId(item.deviceId),
       }))
-      .filter(item => item.role.length > 0 && item.deviceId > 0)
+      .filter(item => item.role.length > 0 && item.deviceId > 0) as DeviceDependencyLink[]
   }
   return []
 }
 
-export function dependencyDeviceIdForRole(deps: Array<{ role: string; deviceId: number }>, role: string): number {
+export function dependencyDeviceIdForRole(deps: DeviceDependencyLink[], role: string): number {
   const dependency = deps.find(link => link.role === role)
   return dependency?.deviceId ?? 0
 }
@@ -85,7 +87,7 @@ function normalizeThermostatConfigPayload(
   }
 }
 
-function normalizeThermostatDependencyLinks(value: unknown, fallbackConfig: unknown = null): Array<{ role: string; deviceId: number }> {
+function normalizeThermostatDependencyLinks(value: unknown, fallbackConfig: unknown = null): DeviceDependencyLink[] {
   if (Array.isArray(value)) {
     const links = value
       .filter(isRecordPayload)
@@ -93,7 +95,7 @@ function normalizeThermostatDependencyLinks(value: unknown, fallbackConfig: unkn
         role: typeof item.role === 'string' ? item.role.trim() : '',
         deviceId: normalizeDependencyDeviceId(item.deviceId),
       }))
-      .filter(item => item.role.length > 0 && item.deviceId > 0)
+      .filter(item => item.role.length > 0 && item.deviceId > 0) as DeviceDependencyLink[]
     if (links.length > 0) {
       return links.filter(item => item.role === 'temperature_sensor' || item.role === 'switch')
     }
@@ -102,7 +104,7 @@ function normalizeThermostatDependencyLinks(value: unknown, fallbackConfig: unkn
   if (isRecordPayload(fallbackConfig)) {
     const temperatureSensorId = normalizeDependencyDeviceId(fallbackConfig.temperatureSensorDeviceId)
     const switchDeviceId = normalizeDependencyDeviceId(fallbackConfig.switchDeviceId)
-    const links: Array<{ role: string; deviceId: number }> = []
+    const links: DeviceDependencyLink[] = []
     if (temperatureSensorId > 0) {
       links.push({ role: 'temperature_sensor', deviceId: temperatureSensorId })
     }
@@ -121,8 +123,8 @@ function buildThermostatOutput(
   currentDeviceId: number,
 ): Record<string, unknown> {
   const deps = Array.isArray(config.deps) ? config.deps : []
-  const sensorDeviceId = dependencyDeviceIdForRole(deps as Array<{ role: string; deviceId: number }>, 'temperature_sensor')
-  const switchDeviceId = dependencyDeviceIdForRole(deps as Array<{ role: string; deviceId: number }>, 'switch')
+  const sensorDeviceId = dependencyDeviceIdForRole(deps as DeviceDependencyLink[], 'temperature_sensor')
+  const switchDeviceId = dependencyDeviceIdForRole(deps as DeviceDependencyLink[], 'switch')
   const sensor = db.devices.find(entry => entry.record.id === sensorDeviceId)
   const switchDevice = db.devices.find(entry => entry.record.id === switchDeviceId)
   const temperature = (sensor?.runtime.output as
@@ -198,7 +200,7 @@ function buildThermostatOutput(
   }
 }
 
-function requireThermostatDependencies(db: Database, deps: Array<{ role: string; deviceId: number }>): void {
+function requireThermostatDependencies(db: Database, deps: DeviceDependencyLink[]): void {
   const sensorDeviceId = dependencyDeviceIdForRole(deps, 'temperature_sensor')
   const switchDeviceId = dependencyDeviceIdForRole(deps, 'switch')
   const sensor = db.devices.find(entry => entry.record.id === sensorDeviceId)
@@ -264,7 +266,7 @@ function ensureUniqueDs18b20Address(
   const duplicate = db.devices.some(device => (
     device.record.id !== currentDeviceId &&
     device.record.typeName === 'ds18b20_temperature_sensor' &&
-    dependencyDeviceIdForRole((device.config.deps ?? []) as Array<{ role: string; deviceId: number }>, 'onewire_bus') === dependencyDeviceId &&
+    dependencyDeviceIdForRole((device.config.deps ?? []) as DeviceDependencyLink[], 'onewire_bus') === dependencyDeviceId &&
     typeof device.config.address === 'string' &&
     device.config.address.trim().toUpperCase() === normalizedAddress
   ))
@@ -311,7 +313,7 @@ function ensureUniqueI2cAddress(
   const duplicate = db.devices.some(device => (
     device.record.id !== currentDeviceId &&
     device.record.typeName === 'ssd1306' &&
-    dependencyDeviceIdForRole((device.config.deps ?? []) as Array<{ role: string; deviceId: number }>, 'i2c_bus') === dependencyDeviceId &&
+    dependencyDeviceIdForRole((device.config.deps ?? []) as DeviceDependencyLink[], 'i2c_bus') === dependencyDeviceId &&
     normalizeFiniteNumber((device.config as Record<string, unknown>).i2cAddress, -1) === address
   ))
   if (duplicate) {
@@ -338,7 +340,7 @@ function requireSpiDependency(db: Database, dependencyDeviceId: number): DeviceR
 export function createGpioSwitchDevice(
   nextId: number,
   configSource: Record<string, unknown>,
-  baseDeps: Array<{ role: string; deviceId: number }>,
+  baseDeps: DeviceDependencyLink[],
   enabled: boolean,
   name: string,
 ): DeviceRecord {
@@ -372,7 +374,7 @@ export function createGpioSwitchDevice(
 export function createOneWireBusDevice(
   nextId: number,
   configSource: Record<string, unknown>,
-  baseDeps: Array<{ role: string; deviceId: number }>,
+  baseDeps: DeviceDependencyLink[],
   enabled: boolean,
   name: string,
 ): DeviceRecord {
@@ -400,7 +402,7 @@ export function createOneWireBusDevice(
 export function createI2cBusDevice(
   nextId: number,
   configSource: Record<string, unknown>,
-  baseDeps: Array<{ role: string; deviceId: number }>,
+  baseDeps: DeviceDependencyLink[],
   enabled: boolean,
   name: string,
 ): DeviceRecord {
@@ -421,7 +423,7 @@ export function createI2cBusDevice(
 export function createSsd1306Device(
   nextId: number,
   configSource: Record<string, unknown>,
-  baseDeps: Array<{ role: string; deviceId: number }>,
+  baseDeps: DeviceDependencyLink[],
   enabled: boolean,
   name: string,
   db: Database,
@@ -444,7 +446,7 @@ export function createSsd1306Device(
         role: 'i2c_bus',
         deviceId: dependencyDeviceId,
       },
-    ],
+    ] satisfies DeviceDependencyLink[],
     i2cBusDeviceId: dependencyDeviceId,
     i2cAddress,
     width: normalizeFiniteNumber(configSource.width, 128),
@@ -461,7 +463,7 @@ export function createSsd1306Device(
 export function createSt7735Device(
   nextId: number,
   configSource: Record<string, unknown>,
-  baseDeps: Array<{ role: string; deviceId: number }>,
+  baseDeps: DeviceDependencyLink[],
   enabled: boolean,
   name: string,
   db: Database,
@@ -480,7 +482,7 @@ export function createSt7735Device(
         role: 'spi_bus',
         deviceId: dependencyDeviceId,
       },
-    ],
+    ] satisfies DeviceDependencyLink[],
     spiBusDeviceId: dependencyDeviceId,
     chipSelectPin: normalizeFiniteNumber(configSource.chipSelectPin, 5),
     dcPin: normalizeFiniteNumber(configSource.dcPin, 2),
@@ -504,7 +506,7 @@ export function createSt7735Device(
 export function createDs18b20Device(
   nextId: number,
   configSource: Record<string, unknown>,
-  baseDeps: Array<{ role: string; deviceId: number }>,
+  baseDeps: DeviceDependencyLink[],
   enabled: boolean,
   name: string,
   db: Database,
@@ -570,7 +572,7 @@ function normalizeNtcThermistorConfigPayload(value: unknown, enabledFallback: bo
 export function createNtcThermistorDevice(
   nextId: number,
   configSource: Record<string, unknown>,
-  baseDeps: Array<{ role: string; deviceId: number }>,
+  baseDeps: DeviceDependencyLink[],
   enabled: boolean,
   name: string,
 ): DeviceRecord {
@@ -599,7 +601,7 @@ export function createNtcThermistorDevice(
 export function createThermostatDevice(
   nextId: number,
   configSource: Record<string, unknown>,
-  baseDeps: Array<{ role: string; deviceId: number }>,
+  baseDeps: DeviceDependencyLink[],
   enabled: boolean,
   name: string,
   db: Database,
@@ -622,7 +624,7 @@ export function createThermostatDevice(
 export function createDummyDevice(
   nextId: number,
   configSource: Record<string, unknown>,
-  baseDeps: Array<{ role: string; deviceId: number }>,
+  baseDeps: DeviceDependencyLink[],
   enabled: boolean,
   name: string,
 ): DeviceRecord {

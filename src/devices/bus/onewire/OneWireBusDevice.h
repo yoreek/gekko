@@ -19,7 +19,7 @@ struct OneWireScanResult {
     bool invalidCandidateSeen{false};
 };
 
-class OneWireBusDevice final : public DeviceRuntimeBase {
+class OneWireBusDevice final : public DeviceRuntimeBase, public IOneWireBusRuntime {
 public:
     class DependencyTransaction {
     public:

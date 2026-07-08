@@ -59,7 +59,7 @@ void test_codec_record_round_trip() {
     DeviceConfigBlob configBlob = makePayload("payload-v1");
     DeviceRegistryEntry record = makeRecord(501, 7, configBlob);
     record.depCount = 1;
-    record.deps[0] = {DeviceDependencyRole::OneWireBus, 500};
+    record.deps[0] = {DeviceRole::OneWireBus, 500};
     record.status = DeviceStatus::DependencyBlocked;
     record.persistencePolicy = DevicePersistencePolicy::Coalesced;
 

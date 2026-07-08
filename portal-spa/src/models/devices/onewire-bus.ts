@@ -1,5 +1,6 @@
 import type { DeviceRecord } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
+import type { DeviceRole } from '@/models/device-type-ids'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig } from './base-device.ts'
 import type { BaseDeviceConfig } from '@/api/contracts'
 
@@ -16,6 +17,7 @@ export class OneWireBusDevice extends BaseDevice<OneWireBusConfigDraft, OneWireB
 
   readonly typeName = OneWireBusDevice.TYPE_NAME
   readonly typeId = OneWireBusDevice.TYPE_ID
+  readonly dependencyRole: DeviceRole = 'onewire_bus'
 
   static defaultConfig(): OneWireBusConfigDraft {
     return {

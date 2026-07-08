@@ -14,7 +14,7 @@
 namespace ewfm {
 
 namespace {
-constexpr const char* kDeviceDependencyRoleNames[] = {
+constexpr const char* kDeviceRoleNames[] = {
     "unknown", "onewire_bus", "temperature_sensor", "switch", "i2c_bus", "ssd1306", "spi_bus", "metric_source",
 };
 
@@ -33,44 +33,44 @@ constexpr const char* kDeviceEventKindNames[] = {
 };
 } // namespace
 
-const char* deviceDependencyRoleName(DeviceDependencyRole role) {
+const char* deviceRoleName(DeviceRole role) {
     const auto index = static_cast<size_t>(role);
-    if (index >= (sizeof(kDeviceDependencyRoleNames) / sizeof(kDeviceDependencyRoleNames[0]))) {
-        return kDeviceDependencyRoleNames[0];
+    if (index >= (sizeof(kDeviceRoleNames) / sizeof(kDeviceRoleNames[0]))) {
+        return kDeviceRoleNames[0];
     }
-    return kDeviceDependencyRoleNames[index];
+    return kDeviceRoleNames[index];
 }
 
-bool parseDeviceDependencyRole(std::string_view value, DeviceDependencyRole& role) {
+bool parseDeviceRole(std::string_view value, DeviceRole& role) {
     if (value == "onewire_bus") {
-        role = DeviceDependencyRole::OneWireBus;
+        role = DeviceRole::OneWireBus;
         return true;
     }
     if (value == "temperature_sensor") {
-        role = DeviceDependencyRole::TemperatureSensor;
+        role = DeviceRole::TemperatureSensor;
         return true;
     }
     if (value == "switch") {
-        role = DeviceDependencyRole::Switch;
+        role = DeviceRole::Switch;
         return true;
     }
     if (value == "i2c_bus") {
-        role = DeviceDependencyRole::I2CBus;
+        role = DeviceRole::I2CBus;
         return true;
     }
     if (value == "ssd1306") {
-        role = DeviceDependencyRole::Ssd1306;
+        role = DeviceRole::Ssd1306;
         return true;
     }
     if (value == "spi_bus") {
-        role = DeviceDependencyRole::SpiBus;
+        role = DeviceRole::SpiBus;
         return true;
     }
     if (value == "metric_source") {
-        role = DeviceDependencyRole::MetricSource;
+        role = DeviceRole::MetricSource;
         return true;
     }
-    role = DeviceDependencyRole::Unknown;
+    role = DeviceRole::Unknown;
     return false;
 }
 

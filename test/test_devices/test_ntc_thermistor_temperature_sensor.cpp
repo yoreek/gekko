@@ -149,6 +149,7 @@ void test_ntc_thermistor_type_and_api_adapter_are_registered() {
     TEST_ASSERT_EQUAL_STRING("NtcThermistorTemperatureSensorDevice", descriptor->name);
     TEST_ASSERT_TRUE(descriptor->ticks1s);
     TEST_ASSERT_EQUAL_UINT32(0, descriptor->dependencyRequirements.size());
+    TEST_ASSERT_TRUE(descriptor->providedRole == DeviceRole::TemperatureSensor);
 
     DeviceApiAdapterRegistry adapterRegistry = DeviceApiAdapterRegistry::withDefaults();
     TEST_ASSERT_NOT_NULL(adapterRegistry.find(kNtcThermistorTemperatureSensorTypeId));

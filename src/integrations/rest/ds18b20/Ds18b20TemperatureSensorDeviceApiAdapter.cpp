@@ -18,8 +18,8 @@ bool parseDepsField(const JsonObjectConst& input, std::array<DeviceDependencyLin
             error = "ds18b20 deps exceed supported count";
             return false;
         }
-        DeviceDependencyRole role{DeviceDependencyRole::Unknown};
-        if (!parseDeviceDependencyRole(item["role"] | "", role)) {
+        DeviceRole role{DeviceRole::Unknown};
+        if (!parseDeviceRole(item["role"] | "", role)) {
             error = "ds18b20 dependency role is invalid";
             return false;
         }
@@ -35,7 +35,7 @@ bool parseDepsField(const JsonObjectConst& input, std::array<DeviceDependencyLin
 
 DeviceId onewireBusDependencyId(const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t depCount) {
     for (uint8_t index = 0; index < depCount; ++index) {
-        if (deps[index].role == DeviceDependencyRole::OneWireBus) {
+        if (deps[index].role == DeviceRole::OneWireBus) {
             return deps[index].deviceId;
         }
     }
@@ -169,8 +169,8 @@ DeviceValidationResult Ds18b20TemperatureSensorDeviceApiAdapter::validateUpdateC
         return {DeviceError::InvalidConfig, "ds18b20 config is invalid"};
     }
 
-    const DeviceId dependencyDeviceId = request.depsProvided ? onewireBusDependencyId(request.deps, request.depCount)
-                                                             : runtime.dependencyDeviceId(DeviceDependencyRole::OneWireBus);
+    const DeviceId dependencyDeviceId =
+        request.depsProvided ? onewireBusDependencyId(request.deps, request.depCount) : runtime.dependencyDeviceId(DeviceRole::OneWireBus);
     return validateUniqueDependencyAddress(registry, &runtime, config.address, dependencyDeviceId);
 }
 

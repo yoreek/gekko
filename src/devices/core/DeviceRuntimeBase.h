@@ -17,9 +17,9 @@ public:
     void tick1s(uint32_t now) override;
     void end(uint32_t now) override;
     void resetStateMachine(uint32_t now) override;
-    void setDependencyRuntime(DeviceDependencyRole role, IDeviceRuntime* dependencyRuntime) override;
+    void setDependencyRuntime(DeviceRole role, IDeviceRuntime* dependencyRuntime) override;
     void setDependencyRuntimeAt(uint8_t index, IDeviceRuntime* dependencyRuntime) override;
-    IDeviceRuntime* dependencyRuntime(DeviceDependencyRole role) const override;
+    IDeviceRuntime* dependencyRuntime(DeviceRole role) const override;
     IDeviceRuntime* dependencyRuntimeAt(uint8_t index) const override;
     uint8_t dependencyCount() const override;
     const DeviceDependencyLink* dependencyLinks() const override;
@@ -38,7 +38,7 @@ public:
     uint32_t configVersion() const override;
     uint32_t configRevision() const override;
     bool hasDependencies() const override;
-    DeviceId dependencyDeviceId(DeviceDependencyRole role) const override;
+    DeviceId dependencyDeviceId(DeviceRole role) const override;
     bool enabled() const override;
     const char* name() const override;
     DevicePersistencePolicy persistencePolicy() const override;
@@ -50,7 +50,7 @@ public:
 protected:
     void tickRuntime(uint32_t now);
     void setStatus(DeviceStatus status);
-    bool dependencyReady(DeviceDependencyRole role) const;
+    bool dependencyReady(DeviceRole role) const;
     bool dependenciesReady() const;
     bool hasDependentRuntime(const IDeviceRuntime* dependentRuntime) const;
     bool startRequested() const;

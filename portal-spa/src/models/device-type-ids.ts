@@ -59,6 +59,19 @@ const deviceTypeNames: Record<DeviceTypeId, DeviceTypeName> = {
   [St7735Device.TYPE_ID]: St7735Device.TYPE_NAME,
 }
 
+// Mirrors the firmware's DeviceDependencyRole wire names (kDeviceDependencyRoleNames in
+// src/devices/core/DeviceTypes.cpp) so picker filtering on the frontend uses the same role
+// vocabulary devices already exchange via their `deps` links.
+export type DeviceRole =
+  | 'unknown'
+  | 'onewire_bus'
+  | 'temperature_sensor'
+  | 'switch'
+  | 'i2c_bus'
+  | 'ssd1306'
+  | 'spi_bus'
+  | 'metric_source'
+
 export function deviceTypeIdFromName(typeName: string | undefined | null): DeviceTypeId {
   return typeName && typeName in deviceTypeIds ? deviceTypeIds[typeName as DeviceTypeName] : 0
 }

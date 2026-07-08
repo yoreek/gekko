@@ -53,7 +53,7 @@ void DeviceRuntimeBase::resetStateMachine(uint32_t now) {
     clearFaultRequested();
 }
 
-void DeviceRuntimeBase::setDependencyRuntime(DeviceDependencyRole role, IDeviceRuntime* dependencyRuntime) {
+void DeviceRuntimeBase::setDependencyRuntime(DeviceRole role, IDeviceRuntime* dependencyRuntime) {
     for (uint8_t index = 0; index < dependencyCount_ && index < kMaxDeviceDependencies; ++index) {
         if (dependencyLinks_[index].role == role) {
             dependencyRuntimes_[index] = dependencyRuntime;
@@ -69,7 +69,7 @@ void DeviceRuntimeBase::setDependencyRuntimeAt(uint8_t index, IDeviceRuntime* de
     dependencyRuntimes_[index] = dependencyRuntime;
 }
 
-IDeviceRuntime* DeviceRuntimeBase::dependencyRuntime(DeviceDependencyRole role) const {
+IDeviceRuntime* DeviceRuntimeBase::dependencyRuntime(DeviceRole role) const {
     for (uint8_t index = 0; index < dependencyCount_ && index < kMaxDeviceDependencies; ++index) {
         if (dependencyLinks_[index].role == role) {
             return dependencyRuntimes_[index];
@@ -160,7 +160,7 @@ bool DeviceRuntimeBase::hasDependencies() const {
     return dependencyCount_ > 0;
 }
 
-DeviceId DeviceRuntimeBase::dependencyDeviceId(DeviceDependencyRole role) const {
+DeviceId DeviceRuntimeBase::dependencyDeviceId(DeviceRole role) const {
     for (uint8_t index = 0; index < dependencyCount_ && index < kMaxDeviceDependencies; ++index) {
         if (dependencyLinks_[index].role == role) {
             return dependencyLinks_[index].deviceId;
@@ -194,7 +194,7 @@ void DeviceRuntimeBase::setStatus(DeviceStatus status) {
     status_ = status;
 }
 
-bool DeviceRuntimeBase::dependencyReady(DeviceDependencyRole role) const {
+bool DeviceRuntimeBase::dependencyReady(DeviceRole role) const {
     const IDeviceRuntime* dependency = dependencyRuntime(role);
     if (dependency == nullptr) {
         return false;

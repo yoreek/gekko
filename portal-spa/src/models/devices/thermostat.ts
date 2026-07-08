@@ -6,6 +6,7 @@ import type {
 } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import type { DeviceRecord } from '@/api/contracts'
+import type { DeviceRole } from '@/models/device-type-ids'
 import type { PortalIconName } from '@/icons'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
 
@@ -54,7 +55,7 @@ function normalizeAlgorithm(value: unknown): ThermostatAlgorithm {
   return algorithmOptions.includes(value as ThermostatAlgorithm) ? (value as ThermostatAlgorithm) : 'hysteresis'
 }
 
-function deviceIdFromDeps(deps: DeviceDependencyLink[] | undefined, role: string): number {
+function deviceIdFromDeps(deps: DeviceDependencyLink[] | undefined, role: DeviceRole): number {
   return deps?.find(dep => dep.role === role)?.deviceId ?? 0
 }
 

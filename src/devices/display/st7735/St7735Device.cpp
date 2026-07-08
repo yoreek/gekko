@@ -223,7 +223,7 @@ void St7735Device::writeDisplayConfigJson(JsonObject output) const {
 bool St7735Device::initializeDisplayHardware(uint32_t now) {
     (void)now;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    SpiBusDevice* bus = static_cast<SpiBusDevice*>(dependencyRuntime(DeviceDependencyRole::SpiBus));
+    SpiBusDevice* bus = static_cast<SpiBusDevice*>(dependencyRuntime(DeviceRole::SpiBus));
     if (bus == nullptr) {
         return false;
     }
@@ -290,7 +290,7 @@ DeviceTypeDescriptor St7735Device::descriptor() {
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
     descriptor.ticks100ms = true;
     descriptor.dependencyRequirements = {
-        {DeviceDependencyRole::SpiBus, true, {SpiBusDevice::descriptor().typeId}},
+        {DeviceRole::SpiBus, true},
     };
     descriptor.createRuntime = &St7735Device::createRuntime;
     descriptor.validateConfig = &St7735Device::validateConfig;

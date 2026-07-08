@@ -1,5 +1,5 @@
 import type { DeviceRecord } from '@/api/contracts'
-import { deviceTypeIdFromName } from '../device-type-ids.ts'
+import { deviceTypeIdFromName, type DeviceRole } from '../device-type-ids.ts'
 import { BaseDevice } from './base-device.ts'
 import { Ds18b20Device } from './ds18b20.ts'
 import { DummyDevice } from './dummy.ts'
@@ -47,4 +47,17 @@ export function resolveDeviceModel(record: DeviceRecord | Record<string, unknown
     : ''
   const typeId = deviceTypeIdFromName(typeName)
   return resolveDeviceModelByTypeId(typeId)
+}
+
+// Devices whose type can fill the given dependency role, so picker components list every
+// compatible type instead of hardcoding one type id per dependency field.
+export function devicesForDependencyRole(devices: DeviceRecord[], role: DeviceRole): DeviceRecord[] {
+  return devices.filter(device => resolveDeviceModelByTypeName(device.record.typeName).dependencyRole === role)
+}
+
+export function dependencyOptionsForRole(devices: DeviceRecord[], role: DeviceRole): { title: string; value: number }[] {
+  return devicesForDependencyRole(devices, role).map(device => ({
+    title: `${device.config.name} #${device.record.id}`,
+    value: device.record.id,
+  }))
 }

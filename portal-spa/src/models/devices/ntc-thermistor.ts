@@ -1,11 +1,11 @@
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
-import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
+import { defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
+import { TemperatureSensorDevice } from './temperature-sensor-device.ts'
 import { defaultSensorFilterConfig, normalizeSensorFilterConfig, type SensorFilterConfig } from './sensor-filter.ts'
 import type {
   BaseDeviceConfig,
   DeviceRecord,
   NtcThermistorTemperatureSensorOutputSnapshot,
-  TemperatureOutputSnapshot,
   TemperatureUnit,
 } from '@/api/contracts'
 
@@ -32,7 +32,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-export class NtcThermistorDevice extends BaseDevice<
+export class NtcThermistorDevice extends TemperatureSensorDevice<
   NtcThermistorConfigDraft,
   NtcThermistorCreateDraft,
   NtcThermistorTemperatureSensorOutputSnapshot
@@ -40,7 +40,6 @@ export class NtcThermistorDevice extends BaseDevice<
   static readonly TYPE_ID = 10 as const
   static readonly TYPE_NAME = 'ntc_thermistor_temperature_sensor' as const
   static readonly attenuationOptions: NtcAttenuation[] = ['0db', '2_5db', '6db', '11db']
-  static readonly temperatureUnitOptions: TemperatureUnit[] = ['celsius', 'fahrenheit']
 
   readonly typeName = NtcThermistorDevice.TYPE_NAME
   readonly typeId = NtcThermistorDevice.TYPE_ID
@@ -117,13 +116,6 @@ export class NtcThermistorDevice extends BaseDevice<
       calibrationFactor: config.filter.calibrationFactor,
       calibrationOffset: config.filter.calibrationOffset,
     }
-  }
-
-  static formatTemperature(output: TemperatureOutputSnapshot | undefined): string {
-    if (!output?.valid) {
-      return ''
-    }
-    return `${output.value.toFixed(2)} ${output.unitSymbol}`
   }
 
   createDefaultConfig(): NtcThermistorConfigDraft {

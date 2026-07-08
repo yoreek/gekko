@@ -110,7 +110,7 @@ import { useI18n } from 'vue-i18n'
 import type { DeviceRecord } from '@/api/contracts'
 import type { St7735ConfigDraft } from '@/models/devices/st7735/device'
 import SpiChipSelectProbe from '@/components/devices/common/SpiChipSelectProbe.vue'
-import { SPI_BUS_DEVICE_TYPE_ID, deviceTypeIdFromName } from '@/models/device-type-ids'
+import { dependencyOptionsForRole } from '@/models/devices/device-model-factory'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
 const props = defineProps<{
@@ -125,8 +125,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
 
-const dependencyDevices = computed(() => deviceStore.devices.filter(device => deviceTypeIdFromName(device.record.typeName) === SPI_BUS_DEVICE_TYPE_ID))
-const dependencyItems = computed(() => dependencyDevices.value.map(device => ({ title: `${device.config.name} #${device.record.id}`, value: device.record.id })))
+const dependencyItems = computed(() => dependencyOptionsForRole(deviceStore.devices, 'spi_bus'))
 
 const rotationItems = computed(() => [
   { title: t('device.fields.display.orientationPortrait'), value: 0 },

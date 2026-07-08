@@ -55,7 +55,7 @@ bool appendMetricSourceDependency(std::array<DeviceDependencyLink, kMaxDeviceDep
         return true;
     }
     for (uint8_t index = 0; index < depCount; ++index) {
-        if (deps[index].role == DeviceDependencyRole::MetricSource && deps[index].deviceId == sourceId) {
+        if (deps[index].role == DeviceRole::MetricSource && deps[index].deviceId == sourceId) {
             return true;
         }
     }
@@ -63,7 +63,7 @@ bool appendMetricSourceDependency(std::array<DeviceDependencyLink, kMaxDeviceDep
         error = "st7735 layout exceeds supported dependency count";
         return false;
     }
-    deps[depCount++] = DeviceDependencyLink{DeviceDependencyRole::MetricSource, sourceId};
+    deps[depCount++] = DeviceDependencyLink{DeviceRole::MetricSource, sourceId};
     return true;
 }
 
@@ -137,7 +137,7 @@ bool St7735DeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, De
     }
     request.name = config.name;
     request.enabled = config.enabled != 0U;
-    request.deps[0] = DeviceDependencyLink{DeviceDependencyRole::SpiBus, config.spiBusDeviceId};
+    request.deps[0] = DeviceDependencyLink{DeviceRole::SpiBus, config.spiBusDeviceId};
     request.depCount = 1U;
     if (!config.validate().ok()) {
         error = "st7735 config is invalid";
@@ -176,12 +176,11 @@ bool St7735DeviceApiAdapter::parseCreatePersistedStateRequest(const JsonObjectCo
 DeviceValidationResult St7735DeviceApiAdapter::validateCreateRequest(const DeviceCreateRequest& request,
                                                                      const DeviceRegistry& registry) const {
     if (request.dependencyCount() < 1U || request.dependencyLinks() == nullptr || request.dependencyLinks()[0].deviceId == 0U ||
-        request.dependencyLinks()[0].role != DeviceDependencyRole::SpiBus) {
+        request.dependencyLinks()[0].role != DeviceRole::SpiBus) {
         return {DeviceError::InvalidRelationship, "st7735 requires spi bus dependency"};
     }
     for (uint8_t index = 1; index < request.dependencyCount(); ++index) {
-        if (request.dependencyLinks()[index].role != DeviceDependencyRole::MetricSource ||
-            request.dependencyLinks()[index].deviceId == 0U) {
+        if (request.dependencyLinks()[index].role != DeviceRole::MetricSource || request.dependencyLinks()[index].deviceId == 0U) {
             return {DeviceError::InvalidRelationship, "st7735 metric source dependency is invalid"};
         }
     }
@@ -234,7 +233,7 @@ bool St7735DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& inp
         error = "device base config is invalid";
         return false;
     }
-    request.deps[0] = DeviceDependencyLink{DeviceDependencyRole::SpiBus, runtime.dependencyDeviceId(DeviceDependencyRole::SpiBus)};
+    request.deps[0] = DeviceDependencyLink{DeviceRole::SpiBus, runtime.dependencyDeviceId(DeviceRole::SpiBus)};
     request.depCount = 1U;
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = st7735DeviceConfigSize(config);
@@ -269,13 +268,13 @@ DeviceValidationResult St7735DeviceApiAdapter::validateUpdateConfigRequest(const
         return {DeviceError::InvalidConfig, "st7735 config is invalid"};
     }
 
-    DeviceId busDeviceId = runtime.dependencyDeviceId(DeviceDependencyRole::SpiBus);
+    DeviceId busDeviceId = runtime.dependencyDeviceId(DeviceRole::SpiBus);
     if (request.depsProvided) {
-        if (request.depCount < 1U || request.deps[0].role != DeviceDependencyRole::SpiBus || request.deps[0].deviceId == 0U) {
+        if (request.depCount < 1U || request.deps[0].role != DeviceRole::SpiBus || request.deps[0].deviceId == 0U) {
             return {DeviceError::InvalidRelationship, "st7735 requires spi bus dependency"};
         }
         for (uint8_t index = 1; index < request.depCount; ++index) {
-            if (request.deps[index].role != DeviceDependencyRole::MetricSource || request.deps[index].deviceId == 0U) {
+            if (request.deps[index].role != DeviceRole::MetricSource || request.deps[index].deviceId == 0U) {
                 return {DeviceError::InvalidRelationship, "st7735 metric source dependency is invalid"};
             }
         }
@@ -300,11 +299,11 @@ DeviceValidationResult St7735DeviceApiAdapter::validateUpdateConfigRequest(const
 DeviceValidationResult St7735DeviceApiAdapter::validateSetDepsRequest(const IDeviceRuntime& runtime,
                                                                       const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps,
                                                                       uint8_t depCount, const DeviceRegistry& registry) const {
-    if (depCount < 1U || deps[0].role != DeviceDependencyRole::SpiBus || deps[0].deviceId == 0U) {
+    if (depCount < 1U || deps[0].role != DeviceRole::SpiBus || deps[0].deviceId == 0U) {
         return {DeviceError::InvalidRelationship, "st7735 requires spi bus dependency"};
     }
     for (uint8_t index = 1; index < depCount; ++index) {
-        if (deps[index].role != DeviceDependencyRole::MetricSource || deps[index].deviceId == 0U) {
+        if (deps[index].role != DeviceRole::MetricSource || deps[index].deviceId == 0U) {
             return {DeviceError::InvalidRelationship, "st7735 metric source dependency is invalid"};
         }
     }

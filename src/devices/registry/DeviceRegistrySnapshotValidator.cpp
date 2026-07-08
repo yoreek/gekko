@@ -105,7 +105,7 @@ DeviceValidationResult DeviceRegistrySnapshotValidator::validateStructure(const 
         }
         const DeviceDependencyLink* links = record.dependencyLinks();
         for (uint8_t index = 0; index < record.dependencyCount() && links != nullptr; ++index) {
-            if (links[index].role == DeviceDependencyRole::Unknown) {
+            if (links[index].role == DeviceRole::Unknown) {
                 return {DeviceError::InvalidRelationship, "duplicate dependency role or invalid dependency role"};
             }
         }
@@ -196,9 +196,7 @@ DeviceValidationResult DeviceRegistrySnapshotValidator::validateTypedRelationshi
             if (requirementIt == dependentDescriptor->dependencyRequirements.end()) {
                 return {DeviceError::InvalidRelationship, "unsupported dependency role"};
             }
-            if (!requirementIt->compatibleTypeIds.empty() &&
-                std::find(requirementIt->compatibleTypeIds.begin(), requirementIt->compatibleTypeIds.end(),
-                          dependencyRecord.header.typeId) == requirementIt->compatibleTypeIds.end()) {
+            if (dependencyDescriptor->providedRole != requirementIt->role) {
                 return {DeviceError::InvalidRelationship, "incompatible dependency type"};
             }
             const size_t nextCount = ++dependentCounts[dependencyRecord.header.deviceId];

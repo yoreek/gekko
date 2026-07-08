@@ -315,7 +315,7 @@ DeviceValidationResult DeviceRegistryBinaryCodec::parseRecord(const uint8_t* blo
             !readLE(blob, size, pos, link.deviceId)) {
             return {DeviceError::CorruptRecord, "device record dependency data is truncated"};
         }
-        link.role = static_cast<DeviceDependencyRole>(role);
+        link.role = static_cast<DeviceRole>(role);
         record.deps[index] = link;
         (void)reservedLink8;
         (void)reservedLink16;

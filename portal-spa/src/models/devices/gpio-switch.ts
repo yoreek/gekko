@@ -1,7 +1,8 @@
 import type { DeviceRecord, GpioSwitchOutputSnapshot } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
+import type { DeviceRole } from '@/models/device-type-ids'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig } from './base-device.ts'
-import { outputStateOptions, type OutputState } from './switch.ts'
+import { type OutputState } from './switch.ts'
 import type { SwitchConfigDraft } from '@/models/devices/switch-config'
 import type { BaseDeviceConfig } from '@/api/contracts'
 
@@ -21,7 +22,7 @@ export class GpioSwitchDevice extends BaseDevice<GpioSwitchConfigDraft, GpioSwit
 
   readonly typeName = GpioSwitchDevice.TYPE_NAME
   readonly typeId = GpioSwitchDevice.TYPE_ID
-  readonly supportedOutputStates = outputStateOptions
+  readonly dependencyRole: DeviceRole = 'switch'
 
   static defaultConfig(): GpioSwitchConfigDraft {
     return {

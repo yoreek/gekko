@@ -144,8 +144,8 @@ DeviceTypeDescriptor Ds18b20TemperatureSensorDevice::descriptor() {
     descriptor.supportsRetainedState = false;
     descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
     descriptor.ticks100ms = true;
-    descriptor.dependencyRequirements = {
-        {DeviceDependencyRequirement{DeviceDependencyRole::OneWireBus, true, {OneWireBusDevice::descriptor().typeId}}}};
+    descriptor.dependencyRequirements = {DeviceDependencyRequirement{DeviceRole::OneWireBus, true}};
+    descriptor.providedRole = ITemperatureReadingRuntime::kProvidedRole;
     descriptor.createRuntime = &Ds18b20TemperatureSensorDevice::createRuntime;
     descriptor.validateConfig = &Ds18b20TemperatureSensorDevice::validateConfig;
     return descriptor;
@@ -158,7 +158,7 @@ std::unique_ptr<IDeviceRuntime> Ds18b20TemperatureSensorDevice::createRuntime(co
 
 DeviceValidationResult Ds18b20TemperatureSensorDevice::validateConfig(const DeviceRegistryEntry& record,
                                                                       const DeviceConfigBlob& configBlob) {
-    if (record.dependencyDeviceId(DeviceDependencyRole::OneWireBus) == 0U) {
+    if (record.dependencyDeviceId(DeviceRole::OneWireBus) == 0U) {
         return {DeviceError::InvalidRelationship, "ds18b20 requires a onewire dependency"};
     }
     if (configBlob.size() > kMaxDeviceConfigBytes) {
@@ -172,10 +172,10 @@ DeviceValidationResult Ds18b20TemperatureSensorDevice::validateConfig(const Devi
 }
 
 OneWireBusDevice* Ds18b20TemperatureSensorDevice::dependencyBus() const {
-    if (dependencyRuntime(DeviceDependencyRole::OneWireBus) == nullptr) {
+    if (dependencyRuntime(DeviceRole::OneWireBus) == nullptr) {
         return nullptr;
     }
-    return static_cast<OneWireBusDevice*>(dependencyRuntime(DeviceDependencyRole::OneWireBus));
+    return static_cast<OneWireBusDevice*>(dependencyRuntime(DeviceRole::OneWireBus));
 }
 
 bool Ds18b20TemperatureSensorDevice::dependencyBusReady() const {

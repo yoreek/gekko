@@ -1,12 +1,12 @@
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
-import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
+import { defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
+import { TemperatureSensorDevice } from './temperature-sensor-device.ts'
 import type {
   BaseDeviceConfig,
   DeviceDependencyLink,
   DeviceRecord,
   Ds18b20TemperatureSensorOutputSnapshot,
   OneWireScanDeviceSnapshot,
-  TemperatureOutputSnapshot,
   TemperatureUnit,
 } from '@/api/contracts'
 
@@ -33,7 +33,7 @@ function normalizeDependencyDeviceId(value: unknown): number {
   return Number.isFinite(numeric) && numeric > 0 ? numeric : 0
 }
 
-export class Ds18b20Device extends BaseDevice<
+export class Ds18b20Device extends TemperatureSensorDevice<
   Ds18b20ConfigDraft,
   Ds18b20CreateDraft,
   Ds18b20TemperatureSensorOutputSnapshot
@@ -41,7 +41,6 @@ export class Ds18b20Device extends BaseDevice<
   static readonly TYPE_ID = 4 as const
   static readonly TYPE_NAME = 'ds18b20_temperature_sensor' as const
   static readonly resolutionOptions: Ds18b20Resolution[] = [9, 10, 11, 12]
-  static readonly temperatureUnitOptions: TemperatureUnit[] = ['celsius', 'fahrenheit']
 
   readonly typeName = Ds18b20Device.TYPE_NAME
   readonly typeId = Ds18b20Device.TYPE_ID
@@ -114,13 +113,6 @@ export class Ds18b20Device extends BaseDevice<
     return candidate.familyCode.toUpperCase() === '28' && Ds18b20Device.addressValid(candidate.address)
   }
 
-  static formatTemperature(output: TemperatureOutputSnapshot | undefined): string {
-    if (!output?.valid) {
-      return ''
-    }
-    return `${output.value.toFixed(2)} ${output.unitSymbol}`
-  }
-
   createDefaultConfig(): Ds18b20ConfigDraft {
     return Ds18b20Device.defaultConfig()
   }
@@ -152,7 +144,7 @@ export class Ds18b20Device extends BaseDevice<
     return Ds18b20Device.encodeConfig(config)
   }
 
-  protected override createCreateDeps(config: Ds18b20ConfigDraft) {
+  protected override createCreateDeps(config: Ds18b20ConfigDraft): DeviceDependencyLink[] {
     return [
       {
         role: 'onewire_bus',

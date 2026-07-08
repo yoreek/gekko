@@ -55,7 +55,7 @@ bool appendMetricSourceDependency(std::array<DeviceDependencyLink, kMaxDeviceDep
         return true;
     }
     for (uint8_t index = 0; index < depCount; ++index) {
-        if (deps[index].role == DeviceDependencyRole::MetricSource && deps[index].deviceId == sourceId) {
+        if (deps[index].role == DeviceRole::MetricSource && deps[index].deviceId == sourceId) {
             return true;
         }
     }
@@ -63,7 +63,7 @@ bool appendMetricSourceDependency(std::array<DeviceDependencyLink, kMaxDeviceDep
         error = "ssd1306 layout exceeds supported dependency count";
         return false;
     }
-    deps[depCount++] = DeviceDependencyLink{DeviceDependencyRole::MetricSource, sourceId};
+    deps[depCount++] = DeviceDependencyLink{DeviceRole::MetricSource, sourceId};
     return true;
 }
 
@@ -137,7 +137,7 @@ bool Ssd1306DeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, D
     }
     request.name = config.name;
     request.enabled = config.enabled != 0U;
-    request.deps[0] = DeviceDependencyLink{DeviceDependencyRole::I2CBus, config.i2cBusDeviceId};
+    request.deps[0] = DeviceDependencyLink{DeviceRole::I2CBus, config.i2cBusDeviceId};
     request.depCount = 1U;
     if (!config.validate().ok()) {
         error = "ssd1306 config is invalid";
@@ -176,12 +176,11 @@ bool Ssd1306DeviceApiAdapter::parseCreatePersistedStateRequest(const JsonObjectC
 DeviceValidationResult Ssd1306DeviceApiAdapter::validateCreateRequest(const DeviceCreateRequest& request,
                                                                       const DeviceRegistry& registry) const {
     if (request.dependencyCount() < 1U || request.dependencyLinks() == nullptr || request.dependencyLinks()[0].deviceId == 0U ||
-        request.dependencyLinks()[0].role != DeviceDependencyRole::I2CBus) {
+        request.dependencyLinks()[0].role != DeviceRole::I2CBus) {
         return {DeviceError::InvalidRelationship, "ssd1306 requires i2c bus dependency"};
     }
     for (uint8_t index = 1; index < request.dependencyCount(); ++index) {
-        if (request.dependencyLinks()[index].role != DeviceDependencyRole::MetricSource ||
-            request.dependencyLinks()[index].deviceId == 0U) {
+        if (request.dependencyLinks()[index].role != DeviceRole::MetricSource || request.dependencyLinks()[index].deviceId == 0U) {
             return {DeviceError::InvalidRelationship, "ssd1306 metric source dependency is invalid"};
         }
     }
@@ -234,7 +233,7 @@ bool Ssd1306DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& in
         error = "device base config is invalid";
         return false;
     }
-    request.deps[0] = DeviceDependencyLink{DeviceDependencyRole::I2CBus, runtime.dependencyDeviceId(DeviceDependencyRole::I2CBus)};
+    request.deps[0] = DeviceDependencyLink{DeviceRole::I2CBus, runtime.dependencyDeviceId(DeviceRole::I2CBus)};
     request.depCount = 1U;
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = ssd1306DeviceConfigSize(config);
@@ -269,13 +268,13 @@ DeviceValidationResult Ssd1306DeviceApiAdapter::validateUpdateConfigRequest(cons
         return {DeviceError::InvalidConfig, "ssd1306 config is invalid"};
     }
 
-    DeviceId busDeviceId = runtime.dependencyDeviceId(DeviceDependencyRole::I2CBus);
+    DeviceId busDeviceId = runtime.dependencyDeviceId(DeviceRole::I2CBus);
     if (request.depsProvided) {
-        if (request.depCount < 1U || request.deps[0].role != DeviceDependencyRole::I2CBus || request.deps[0].deviceId == 0U) {
+        if (request.depCount < 1U || request.deps[0].role != DeviceRole::I2CBus || request.deps[0].deviceId == 0U) {
             return {DeviceError::InvalidRelationship, "ssd1306 requires i2c bus dependency"};
         }
         for (uint8_t index = 1; index < request.depCount; ++index) {
-            if (request.deps[index].role != DeviceDependencyRole::MetricSource || request.deps[index].deviceId == 0U) {
+            if (request.deps[index].role != DeviceRole::MetricSource || request.deps[index].deviceId == 0U) {
                 return {DeviceError::InvalidRelationship, "ssd1306 metric source dependency is invalid"};
             }
         }
@@ -301,11 +300,11 @@ DeviceValidationResult Ssd1306DeviceApiAdapter::validateUpdateConfigRequest(cons
 DeviceValidationResult Ssd1306DeviceApiAdapter::validateSetDepsRequest(const IDeviceRuntime& runtime,
                                                                        const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps,
                                                                        uint8_t depCount, const DeviceRegistry& registry) const {
-    if (depCount < 1U || deps[0].role != DeviceDependencyRole::I2CBus || deps[0].deviceId == 0U) {
+    if (depCount < 1U || deps[0].role != DeviceRole::I2CBus || deps[0].deviceId == 0U) {
         return {DeviceError::InvalidRelationship, "ssd1306 requires i2c bus dependency"};
     }
     for (uint8_t index = 1; index < depCount; ++index) {
-        if (deps[index].role != DeviceDependencyRole::MetricSource || deps[index].deviceId == 0U) {
+        if (deps[index].role != DeviceRole::MetricSource || deps[index].deviceId == 0U) {
             return {DeviceError::InvalidRelationship, "ssd1306 metric source dependency is invalid"};
         }
     }

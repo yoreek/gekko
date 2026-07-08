@@ -21,8 +21,8 @@ bool parseDepsField(const JsonObjectConst& input, std::array<DeviceDependencyLin
             error = "thermostat deps exceed supported count";
             return false;
         }
-        DeviceDependencyRole role{DeviceDependencyRole::Unknown};
-        if (!parseDeviceDependencyRole(item["role"] | "", role)) {
+        DeviceRole role{DeviceRole::Unknown};
+        if (!parseDeviceRole(item["role"] | "", role)) {
             error = "thermostat dependency role is invalid";
             return false;
         }
@@ -31,9 +31,9 @@ bool parseDepsField(const JsonObjectConst& input, std::array<DeviceDependencyLin
             error = "thermostat dependency device id is required";
             return false;
         }
-        if (role == DeviceDependencyRole::TemperatureSensor) {
+        if (role == DeviceRole::TemperatureSensor) {
             hasTemperatureSensor = true;
-        } else if (role == DeviceDependencyRole::Switch) {
+        } else if (role == DeviceRole::Switch) {
             hasSwitch = true;
         } else {
             error = "thermostat dependency role is invalid";
@@ -48,12 +48,12 @@ bool parseDepsField(const JsonObjectConst& input, std::array<DeviceDependencyLin
     return true;
 }
 
-DeviceValidationResult validateCapability(const DeviceRegistry& registry, DeviceDependencyRole role, DeviceId deviceId) {
+DeviceValidationResult validateCapability(const DeviceRegistry& registry, DeviceRole role, DeviceId deviceId) {
     const IDeviceRuntime* dependency = registry.runtime(deviceId);
     if (dependency == nullptr) {
         return {DeviceError::InvalidRelationship, "thermostat dependency is missing"};
     }
-    if (role == DeviceDependencyRole::TemperatureSensor) {
+    if (role == DeviceRole::TemperatureSensor) {
         const ITemperatureReadingRuntime* temperature = dependency->temperatureReadingRuntime();
         if (temperature == nullptr) {
             return {DeviceError::InvalidRelationship, "temperature_sensor dependency lacks temperature capability"};
@@ -166,9 +166,9 @@ DeviceValidationResult ThermostatDeviceApiAdapter::validateCreateRequest(const D
     const DeviceDependencyLink* switchLink = nullptr;
     for (uint8_t index = 0; index < request.dependencyCount(); ++index) {
         const DeviceDependencyLink& link = request.dependencyLinks()[index];
-        if (link.role == DeviceDependencyRole::TemperatureSensor) {
+        if (link.role == DeviceRole::TemperatureSensor) {
             tempLink = &link;
-        } else if (link.role == DeviceDependencyRole::Switch) {
+        } else if (link.role == DeviceRole::Switch) {
             switchLink = &link;
         }
     }
@@ -181,11 +181,11 @@ DeviceValidationResult ThermostatDeviceApiAdapter::validateCreateRequest(const D
         return {DeviceError::InvalidConfig, "thermostat config is invalid"};
     }
 
-    const DeviceValidationResult tempResult = validateCapability(registry, DeviceDependencyRole::TemperatureSensor, tempLink->deviceId);
+    const DeviceValidationResult tempResult = validateCapability(registry, DeviceRole::TemperatureSensor, tempLink->deviceId);
     if (!tempResult.ok()) {
         return tempResult;
     }
-    const DeviceValidationResult switchResult = validateCapability(registry, DeviceDependencyRole::Switch, switchLink->deviceId);
+    const DeviceValidationResult switchResult = validateCapability(registry, DeviceRole::Switch, switchLink->deviceId);
     if (!switchResult.ok()) {
         return switchResult;
     }
@@ -200,16 +200,16 @@ DeviceValidationResult ThermostatDeviceApiAdapter::validateUpdateConfigRequest(c
         return {DeviceError::InvalidConfig, "thermostat config is invalid"};
     }
 
-    DeviceId temperatureDeviceId = runtime.dependencyDeviceId(DeviceDependencyRole::TemperatureSensor);
-    DeviceId switchDeviceId = runtime.dependencyDeviceId(DeviceDependencyRole::Switch);
+    DeviceId temperatureDeviceId = runtime.dependencyDeviceId(DeviceRole::TemperatureSensor);
+    DeviceId switchDeviceId = runtime.dependencyDeviceId(DeviceRole::Switch);
     if (request.depsProvided) {
         temperatureDeviceId = 0;
         switchDeviceId = 0;
         for (uint8_t index = 0; index < request.depCount; ++index) {
             const DeviceDependencyLink& link = request.deps[index];
-            if (link.role == DeviceDependencyRole::TemperatureSensor) {
+            if (link.role == DeviceRole::TemperatureSensor) {
                 temperatureDeviceId = link.deviceId;
-            } else if (link.role == DeviceDependencyRole::Switch) {
+            } else if (link.role == DeviceRole::Switch) {
                 switchDeviceId = link.deviceId;
             }
         }
@@ -219,11 +219,11 @@ DeviceValidationResult ThermostatDeviceApiAdapter::validateUpdateConfigRequest(c
         return {DeviceError::InvalidRelationship, "thermostat requires temperature_sensor and switch deps"};
     }
 
-    const DeviceValidationResult tempResult = validateCapability(registry, DeviceDependencyRole::TemperatureSensor, temperatureDeviceId);
+    const DeviceValidationResult tempResult = validateCapability(registry, DeviceRole::TemperatureSensor, temperatureDeviceId);
     if (!tempResult.ok()) {
         return tempResult;
     }
-    const DeviceValidationResult switchResult = validateCapability(registry, DeviceDependencyRole::Switch, switchDeviceId);
+    const DeviceValidationResult switchResult = validateCapability(registry, DeviceRole::Switch, switchDeviceId);
     if (!switchResult.ok()) {
         return switchResult;
     }
@@ -242,21 +242,20 @@ ThermostatDeviceApiAdapter::validateSetDepsRequest(const IDeviceRuntime& runtime
     const DeviceDependencyLink* switchDependency = nullptr;
     for (uint8_t index = 0; index < depCount; ++index) {
         const DeviceDependencyLink& link = deps[index];
-        if (link.role == DeviceDependencyRole::TemperatureSensor) {
+        if (link.role == DeviceRole::TemperatureSensor) {
             temperatureDependency = &link;
-        } else if (link.role == DeviceDependencyRole::Switch) {
+        } else if (link.role == DeviceRole::Switch) {
             switchDependency = &link;
         }
     }
     if (temperatureDependency == nullptr || switchDependency == nullptr) {
         return {DeviceError::InvalidRelationship, "thermostat requires temperature_sensor and switch deps"};
     }
-    const DeviceValidationResult tempResult =
-        validateCapability(registry, DeviceDependencyRole::TemperatureSensor, temperatureDependency->deviceId);
+    const DeviceValidationResult tempResult = validateCapability(registry, DeviceRole::TemperatureSensor, temperatureDependency->deviceId);
     if (!tempResult.ok()) {
         return tempResult;
     }
-    const DeviceValidationResult switchResult = validateCapability(registry, DeviceDependencyRole::Switch, switchDependency->deviceId);
+    const DeviceValidationResult switchResult = validateCapability(registry, DeviceRole::Switch, switchDependency->deviceId);
     if (!switchResult.ok()) {
         return switchResult;
     }

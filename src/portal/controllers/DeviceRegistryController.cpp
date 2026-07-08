@@ -271,7 +271,7 @@ void writeFallbackDeviceJson(JsonObject device, const IDeviceRuntime& runtime, c
     const uint8_t dependencyCount = runtime.dependencyCount();
     for (uint8_t index = 0; index < dependencyCount && dependencyLinks != nullptr; ++index) {
         JsonObject item = deps.createNestedObject();
-        item["role"] = deviceDependencyRoleName(dependencyLinks[index].role);
+        item["role"] = deviceRoleName(dependencyLinks[index].role);
         item["deviceId"] = dependencyLinks[index].deviceId;
     }
 
@@ -551,8 +551,8 @@ void DeviceRegistryController::cmd() {
                 renderError(400, "BAD_ARGS", "deps exceed supported count");
                 return;
             }
-            DeviceDependencyRole role{DeviceDependencyRole::Unknown};
-            if (!parseDeviceDependencyRole(item["role"] | "", role)) {
+            DeviceRole role{DeviceRole::Unknown};
+            if (!parseDeviceRole(item["role"] | "", role)) {
                 renderError(400, "BAD_ARGS", "dependency role is invalid");
                 return;
             }

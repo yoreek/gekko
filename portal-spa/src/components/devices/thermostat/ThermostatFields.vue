@@ -155,12 +155,6 @@
 
     <v-row v-if="device">
       <v-col cols="12" sm="6">
-        <v-text-field :label="t('device.fields.temperatureSensor')" :model-value="sensorLabel" readonly />
-      </v-col>
-      <v-col cols="12" sm="6">
-        <v-text-field :label="t('device.fields.switchDevice')" :model-value="switchLabel" readonly />
-      </v-col>
-      <v-col cols="12" sm="6">
         <v-text-field :label="t('device.fields.desiredSwitchState')" :model-value="desiredSwitchText" readonly />
       </v-col>
       <v-col cols="12" sm="6">
@@ -175,12 +169,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceRecord, ThermostatOutputSnapshot } from '@/api/contracts'
-import {
-  DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID,
-  GPIO_SWITCH_DEVICE_TYPE_ID,
-  deviceTypeIdFromName,
-} from '@/models/device-type-ids'
-import { resolveDeviceModelByTypeId } from '@/models/devices/device-model-factory'
+import { dependencyOptionsForRole } from '@/models/devices/device-model-factory'
 import {
   ThermostatDevice,
   type ThermostatAlgorithm,
@@ -203,26 +192,14 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
 
-const sensorItems = computed(() =>
-  deviceStore.devices
-    .filter(device => deviceTypeIdFromName(device.record.typeName) === DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID)
-    .map(device => ({ title: `${device.config.name} #${device.record.id}`, value: device.record.id })))
+const sensorItems = computed(() => dependencyOptionsForRole(deviceStore.devices, 'temperature_sensor'))
 
-const switchItems = computed(() =>
-  deviceStore.devices
-    .filter(device => {
-      const typeId = deviceTypeIdFromName(device.record.typeName)
-      const model = resolveDeviceModelByTypeId(typeId)
-      return typeId === GPIO_SWITCH_DEVICE_TYPE_ID || (model.supportedOutputStates?.includes('off') && model.supportedOutputStates?.includes('on'))
-    })
-    .map(device => ({ title: `${device.config.name} #${device.record.id}`, value: device.record.id })))
+const switchItems = computed(() => dependencyOptionsForRole(deviceStore.devices, 'switch'))
 
 const modeItems = computed(() => (['off', 'heat', 'cool'] as ThermostatMode[]).map(value => ({ title: t(ThermostatDevice.modeLabelKey(value)), value })))
 const algorithmItems = computed(() => (['hysteresis'] as ThermostatAlgorithm[]).map(value => ({ title: t(ThermostatDevice.algorithmLabelKey(value)), value })))
 
 const output = computed(() => (props.device?.runtime as { output?: ThermostatOutputSnapshot } | undefined)?.output)
-const sensorDevice = computed(() => deviceStore.devices.find(device => device.record.id === props.modelValue.temperatureSensorDeviceId))
-const switchDevice = computed(() => deviceStore.devices.find(device => device.record.id === props.modelValue.switchDeviceId))
 const temperature = computed(() => output.value?.temperature)
 const temperatureText = computed(() => (props.device && temperature.value ? ThermostatDevice.formatOutput(temperature.value) || t('device.dialog.temperatureUnavailableShort') : ''))
 const modeText = computed(() => t(ThermostatDevice.modeLabelKey(props.modelValue.mode)))
@@ -230,8 +207,6 @@ const statusText = computed(() => t(ThermostatDevice.statusLabelKey(output.value
 const controlText = computed(() => `${t('device.fields.controlStatus')}: ${statusText.value}`)
 const desiredSwitchText = computed(() => t(`labels.output.${output.value?.desiredSwitchState ?? 'off'}`))
 const actualSwitchText = computed(() => t(`labels.output.${output.value?.actualSwitchState ?? 'off'}`))
-const sensorLabel = computed(() => (sensorDevice.value ? `${sensorDevice.value.config.name} #${sensorDevice.value.record.id}` : `#${props.modelValue.temperatureSensorDeviceId || '—'}`))
-const switchLabel = computed(() => (switchDevice.value ? `${switchDevice.value.config.name} #${switchDevice.value.record.id}` : `#${props.modelValue.switchDeviceId || '—'}`))
 const statusTone = computed(() => ThermostatDevice.outputTone(props.device?.runtime.effectiveStatus ?? props.device?.runtime.status ?? 'unknown'))
 const temperatureColor = computed(() => (temperature.value?.valid ? 'primary' : 'secondary'))
 const alertType = computed(() => {

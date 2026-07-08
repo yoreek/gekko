@@ -16,7 +16,7 @@ The config model is intentionally layered so each device family can extend only 
 
 ```cpp
 struct DeviceDependencyLink {
-    DeviceDependencyRole role{DeviceDependencyRole::Unknown};
+    DeviceRole role{DeviceRole::Unknown};
     DeviceId deviceId{0};
 };
 
@@ -595,6 +595,26 @@ export interface DeviceRecord<TConfig, TRuntime> {
     runtime: TRuntime;
 }
 ```
+
+`DeviceDependencyLink.role` is typed as `DeviceRole` on both sides (the firmware enum in
+`src/devices/core/DeviceTypes.h`; the frontend union in `portal-spa/src/models/device-type-ids.ts`
+mirrors its wire names). A device provides at most one role today -- not a list -- expressed as a
+single value on each side:
+
+- **Firmware**: `DeviceTypeDescriptor.providedRole: DeviceRole` (`DeviceTypes.h`) names the one role
+  a type provides, if any (`Unknown` = none). It is never set by hand on the providing type's own
+  `descriptor()`; it is read off a role-marker interface the runtime class already implements --
+  `kProvidedRole` on `ITemperatureReadingRuntime`/`ISwitchOutputRuntime`/`IOneWireBusRuntime`/
+  `II2cBusRuntime`/`ISpiBusRuntime` (`DeviceTypes.h`). A consumer's `DeviceDependencyRequirement`
+  names only the role it needs (`{role, required}`, no type-id list); `DeviceRegistrySnapshotValidator`
+  accepts a dependency link by comparing `dependencyDescriptor->providedRole` against the
+  requirement's `role` directly. This means adding a new provider of an existing role (e.g. a second
+  temperature sensor type) never requires touching the consumer's descriptor.
+- **Frontend**: `BaseDevice.dependencyRole: DeviceRole` (`base-device.ts`, default `'unknown'`) is the mirror of
+  the same idea. `devicesForDependencyRole`/`dependencyOptionsForRole` (`device-model-factory.ts`)
+  filter the device registry by role for picker components (thermostat sensor/switch, bus
+  pickers, ...) -- a frontend-only convenience for listing eligible devices in a dropdown, unrelated
+  to the firmware's dependency-role validation and not exposed over REST.
 
 ### Current frontend migration targets
 

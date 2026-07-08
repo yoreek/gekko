@@ -1,3 +1,5 @@
+import type { DeviceRole } from '@/models/device-type-ids'
+
 export type DeviceOutputState = 'off' | 'on' | 'disabled'
 
 export interface GpioSwitchOutputSnapshot {
@@ -97,7 +99,7 @@ export interface I2cBusScanSnapshot {
 }
 
 export interface DeviceDependencyLink {
-  role: string
+  role: DeviceRole
   deviceId: number
 }
 

@@ -2,6 +2,8 @@
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/registry/DeviceRegistry.h"
 #include "devices/registry/DeviceRetainedDataStore.h"
+#include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
+#include "devices/sensors/ntc_thermistor/NtcThermistorTemperatureSensorDevice.h"
 #include "devices/switch/BinarySwitchDeviceBase.h"
 #include "devices/switch/TriStateSwitchDeviceBase.h"
 #include "devices/thermostat/ThermostatDevice.h"
@@ -9,6 +11,7 @@
 #include "integrations/rest/thermostat/ThermostatDeviceApiAdapter.h"
 
 #include <ArduinoJson.h>
+#include <algorithm>
 #include <cstdio>
 #include <unity.h>
 
@@ -235,13 +238,27 @@ void bindThermostatIdentity(ThermostatDevice& device, DeviceId thermostatId, Dev
     record.header.configRevision = 1U;
     record.header.payloadLength = static_cast<uint32_t>(configBlob.size());
     record.depCount = 2U;
-    record.deps[0] = {DeviceDependencyRole::TemperatureSensor, temperatureSensorId};
-    record.deps[1] = {DeviceDependencyRole::Switch, switchId};
+    record.deps[0] = {DeviceRole::TemperatureSensor, temperatureSensorId};
+    record.deps[1] = {DeviceRole::Switch, switchId};
     record.status = DeviceStatus::Ready;
     device.bindDeviceIdentity(record, configBlob);
 }
 
 } // namespace
+
+void test_thermostat_descriptor_accepts_any_standard_temperature_sensor_type() {
+    const DeviceTypeDescriptor descriptor = ThermostatDevice::descriptor();
+    const auto requirementIt =
+        std::find_if(descriptor.dependencyRequirements.begin(), descriptor.dependencyRequirements.end(),
+                     [](const DeviceDependencyRequirement& requirement) { return requirement.role == DeviceRole::TemperatureSensor; });
+    TEST_ASSERT_TRUE(requirementIt != descriptor.dependencyRequirements.end());
+
+    // The requirement only names the role -- acceptance of a given sensor type comes from that
+    // type's own descriptor declaring the matching providedRole, not from a type-id list kept
+    // here. Any type providing TemperatureSensor (today: DS18B20 and NTC thermistor) is accepted.
+    TEST_ASSERT_TRUE(Ds18b20TemperatureSensorDevice::descriptor().providedRole == DeviceRole::TemperatureSensor);
+    TEST_ASSERT_TRUE(NtcThermistorTemperatureSensorDevice::descriptor().providedRole == DeviceRole::TemperatureSensor);
+}
 
 void test_thermostat_config_codec_and_validation() {
     ThermostatDeviceConfigV1 config = makeThermostatConfig(ThermostatMode::Heat, 25000);
@@ -393,8 +410,8 @@ void test_thermostat_heats_holds_and_cools() {
     FakeTriStateSwitch switchDevice(makeSwitchConfig());
 
     bindThermostatIdentity(thermostat, 10U, 11U, 12U);
-    thermostat.setDependencyRuntime(DeviceDependencyRole::TemperatureSensor, &sensor);
-    thermostat.setDependencyRuntime(DeviceDependencyRole::Switch, &switchDevice);
+    thermostat.setDependencyRuntime(DeviceRole::TemperatureSensor, &sensor);
+    thermostat.setDependencyRuntime(DeviceRole::Switch, &switchDevice);
     startSwitch(switchDevice);
     startThermostat(thermostat, 100);
 
@@ -438,8 +455,8 @@ void test_thermostat_recovers_when_dependencies_rewired_by_index() {
     FakeTriStateSwitch switchDevice(makeSwitchConfig());
 
     bindThermostatIdentity(thermostat, 50U, 51U, 52U);
-    thermostat.setDependencyRuntime(DeviceDependencyRole::TemperatureSensor, &sensor);
-    thermostat.setDependencyRuntime(DeviceDependencyRole::Switch, &switchDevice);
+    thermostat.setDependencyRuntime(DeviceRole::TemperatureSensor, &sensor);
+    thermostat.setDependencyRuntime(DeviceRole::Switch, &switchDevice);
     startSwitch(switchDevice);
     startThermostat(thermostat, 100);
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(thermostat.status()));
@@ -460,8 +477,8 @@ void test_thermostat_waits_for_sensor_timeout_and_resets_on_valid_reading() {
     FakeTriStateSwitch switchDevice(makeSwitchConfig());
 
     bindThermostatIdentity(thermostat, 20U, 21U, 22U);
-    thermostat.setDependencyRuntime(DeviceDependencyRole::TemperatureSensor, &sensor);
-    thermostat.setDependencyRuntime(DeviceDependencyRole::Switch, &switchDevice);
+    thermostat.setDependencyRuntime(DeviceRole::TemperatureSensor, &sensor);
+    thermostat.setDependencyRuntime(DeviceRole::Switch, &switchDevice);
     startSwitch(switchDevice);
     sensor.setReading(24000, 0, false);
     startThermostat(thermostat, 100);
@@ -496,8 +513,8 @@ void test_thermostat_waits_for_sensor_timeout_and_resets_on_valid_reading() {
     FakeMissingCapabilityRuntime missingSensor;
     FakeTriStateSwitch blockedSwitch(makeSwitchConfig());
     bindThermostatIdentity(blocked, 30U, 31U, 32U);
-    blocked.setDependencyRuntime(DeviceDependencyRole::TemperatureSensor, &missingSensor);
-    blocked.setDependencyRuntime(DeviceDependencyRole::Switch, &blockedSwitch);
+    blocked.setDependencyRuntime(DeviceRole::TemperatureSensor, &missingSensor);
+    blocked.setDependencyRuntime(DeviceRole::Switch, &blockedSwitch);
     startSwitch(blockedSwitch);
     startThermostat(blocked, 1000);
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(blocked.status()));
