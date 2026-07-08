@@ -28,6 +28,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang-format
 
+      - name: Prepare PlatformIO home dirs
+        run: mkdir -p ~/.platformio/packages ~/.platformio/platforms
+
       - name: Lint + native unit tests
         run: scripts/test.sh
 
