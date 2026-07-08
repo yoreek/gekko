@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
@@ -5,7 +6,22 @@ import vue from '@vitejs/plugin-vue'
 import vuetify from 'vite-plugin-vuetify'
 import { compression } from 'vite-plugin-compression2'
 
+function gitDescribe(): string {
+  try {
+    return execSync('git describe --tags --always --dirty', { cwd: __dirname }).toString().trim()
+  } catch {
+    return 'unknown'
+  }
+}
+
+const appVersion = gitDescribe()
+const appBuildDate = new Date().toISOString()
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
+    __APP_BUILD_DATE__: JSON.stringify(appBuildDate),
+  },
   // Must be absolute, not relative: the firmware always serves /assets/* from the
   // site root regardless of the requested path (PortalAssetController registers a
   // fixed "/assets/" prefix route), while vue-router's createWebHistory means deep

@@ -2,6 +2,7 @@
 
 #include "debug/Debug.h"
 #include "devices/registry/DeviceRegistry.h"
+#include "generated/Version.h"
 #include "portal/controllers/SystemRestartController.h"
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
@@ -17,6 +18,13 @@ namespace ewfm {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 
 void SystemController::registerRoutes(AsyncWebServer& server, DeviceRegistry* registry) {
+    server.on("/api/system/version", HTTP_GET, [registry](AsyncWebServerRequest* request) {
+        SystemController(request, Action::Show, registry).dispatch();
+    });
+    server.on("/api/system/version", HTTP_OPTIONS, [registry](AsyncWebServerRequest* request) {
+        SystemController(request, Action::Options, registry).dispatch();
+    });
+
 #if defined(WITH_SYSTEM_RESTART_API)
     server.on(
         "/api/system/restart", HTTP_POST, [registry](AsyncWebServerRequest* request) { (void)request; }, nullptr,
@@ -39,6 +47,15 @@ void SystemController::registerRoutes(AsyncWebServer& server, DeviceRegistry* re
 
 SystemController::SystemController(AsyncWebServerRequest* request, const Action action, DeviceRegistry* registry)
     : BaseController(request, action), deviceRegistry_(registry) {}
+
+void SystemController::show() {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    StaticJsonDocument<128> doc;
+    doc["version"] = EWFM_FIRMWARE_VERSION;
+    doc["buildDate"] = EWFM_FIRMWARE_BUILD_DATE;
+    renderOk(doc);
+#endif
+}
 
 void SystemController::create() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)

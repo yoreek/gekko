@@ -15,3 +15,4 @@ portal-spa/test-results/
 portal-spa/.vite/
 .vite/
 easy-iot-manager/
+src/generated/

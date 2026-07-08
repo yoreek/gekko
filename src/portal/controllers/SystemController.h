@@ -29,6 +29,7 @@ public:
 
 protected:
     void create() override;
+    void show() override;
 
 private:
     DeviceRegistry* deviceRegistry_{nullptr};
