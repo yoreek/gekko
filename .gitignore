@@ -16,3 +16,5 @@ portal-spa/.vite/
 .vite/
 easy-iot-manager/
 src/generated/
+certs/
+webflash/esptool

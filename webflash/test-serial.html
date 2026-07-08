@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Web Serial Diagnostics</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; }
+    button { font-size: 1rem; padding: 0.5rem 1rem; margin: 0.5rem 0; }
+    pre {
+      background: #111;
+      color: #0f0;
+      padding: 1rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 12rem;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Web Serial Diagnostics (no esp-web-tools)</h1>
+  <p>Click the button, pick the board's port. Copy the whole log below and send it back.</p>
+  <button id="run">Run diagnostics</button>
+  <pre id="log"></pre>
+
+  <script>
+    const logEl = document.getElementById('log');
+    function log(msg) {
+      logEl.textContent += msg + '\n';
+      console.log(msg);
+    }
+
+    async function sleep(ms) {
+      return new Promise((r) => setTimeout(r, ms));
+    }
+
+    document.getElementById('run').addEventListener('click', async () => {
+      logEl.textContent = '';
+      log('navigator.serial available: ' + (!!navigator.serial));
+
+      let port;
+      try {
+        log('Requesting requestPort()...');
+        port = await navigator.serial.requestPort();
+        log('OK: requestPort() returned a port');
+        const info = port.getInfo();
+        log('Info: usbVendorId=' + info.usbVendorId + ' usbProductId=' + info.usbProductId);
+      } catch (e) {
+        log('ERROR on requestPort(): ' + e.name + ': ' + e.message);
+        return;
+      }
+
+      try {
+        log('Opening port.open({baudRate: 115200})...');
+        await port.open({ baudRate: 115200 });
+        log('OK: open() completed without error');
+      } catch (e) {
+        log('ERROR on open(): ' + e.name + ': ' + e.message);
+        return;
+      }
+
+      log('port.readable = ' + (port.readable ? 'present' : 'NULL'));
+      log('port.writable = ' + (port.writable ? 'present' : 'NULL'));
+
+      try {
+        log('Trying setSignals({dataTerminalReady:false, requestToSend:true}) (reset)...');
+        await port.setSignals({ dataTerminalReady: false, requestToSend: true });
+        await sleep(100);
+        log('Trying setSignals({dataTerminalReady:true, requestToSend:false}) (bootloader entry)...');
+        await port.setSignals({ dataTerminalReady: true, requestToSend: false });
+        await sleep(50);
+        await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+        log('OK: setSignals() calls completed without error');
+      } catch (e) {
+        log('ERROR on setSignals(): ' + e.name + ': ' + e.message);
+      }
+
+      if (port.readable) {
+        try {
+          log('Reading raw bytes for 2 seconds...');
+          const reader = port.readable.getReader();
+          const timeout = setTimeout(() => reader.cancel(), 2000);
+          let total = 0;
+          try {
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) break;
+              total += value.length;
+            }
+          } catch (e) {
+            log('Read stopped: ' + e.message);
+          }
+          clearTimeout(timeout);
+          reader.releaseLock();
+          log('Bytes read: ' + total);
+        } catch (e) {
+          log('ERROR while reading: ' + e.name + ': ' + e.message);
+        }
+      }
+
+      try {
+        await port.close();
+        log('Port closed cleanly.');
+      } catch (e) {
+        log('ERROR while closing: ' + e.name + ': ' + e.message);
+      }
+
+      log('--- DONE ---');
+    });
+  </script>
+</body>
+</html>
