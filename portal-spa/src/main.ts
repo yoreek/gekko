@@ -26,7 +26,6 @@ if (store.mockResetRequested) {
   resetStoredPanels()
   store.consumeMockReset()
 }
-applyLocale(store.locale)
 bindRealtimeBridge(pinia, store, subscribeRealtimeMessage)
 const realtimeSocket = store.transportMode === 'real' ? connectRealtimeSocket(pinia) : connectMockRealtimeSocket(pinia)
 
@@ -35,7 +34,12 @@ app.use(router)
 app.use(appI18n)
 app.use(createAppVuetify())
 app.directive('select-on-focus', selectOnFocus)
-app.mount('#app')
+
+// Await the detected locale's lazy chunk before mounting so a persisted non-English locale renders
+// immediately instead of flashing English first. applyLocale degrades to English on chunk failure.
+void applyLocale(store.locale).finally(() => {
+  app.mount('#app')
+})
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {

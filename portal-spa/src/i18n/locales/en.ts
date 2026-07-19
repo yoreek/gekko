@@ -1,3 +1,5 @@
+import { en as vuetifyEn } from 'vuetify/locale'
+
 const deviceDialogCommon = {
   gpioPinHint: 'Hardware output pin used by the switch runtime.',
   onewirePinHint: 'Numeric data line used by the OneWire bus runtime.',
@@ -15,22 +17,24 @@ const st7735Dialog = {
 }
 
 export default {
+  $vuetify: vuetifyEn,
   app: {
-    title: 'Gekko Portal',
-    subtitle: 'Offline controller dashboard',
+    title: 'Gekko',
+    subtitle: 'Modular device controller',
   },
   navigation: {
     menu: 'Open menu',
     dashboard: 'Dashboard',
     panels: 'Panels',
     devices: 'Devices',
-    deviceEvents: 'Device events',
-    wifi: 'WiFi',
-    ota: 'OTA',
+    deviceEvents: 'Event log',
+    wifi: 'Wi-Fi',
+    ota: 'Firmware',
     mqtt: 'Home Assistant',
-    time: 'Time',
+    time: 'Date & time',
     system: 'System',
-    overview: 'Controller overview',
+    overview: 'Overview',
+    language: 'Change language',
   },
   validation: {
     required: 'Required',
@@ -102,10 +106,10 @@ export default {
     empty: 'No devices match the current filters.',
   },
   wifi: {
-    title: 'WiFi',
+    title: 'Wi-Fi',
     subtitle: 'Current connection state and manual network scans',
     copy: 'Scan on demand to keep the network list current without paying the cost on every page load.',
-    status: 'WiFi status',
+    status: 'Wi-Fi status',
     stationIp: 'Station IP',
     setupApIp: 'AP IP',
     networks: 'Networks',
@@ -119,21 +123,21 @@ export default {
     ssid: 'SSID',
     ssidHint: 'Choose one of the scanned networks or type a network name manually.',
     password: 'Password',
-    passwordHint: 'Enter the WiFi password if the selected network is protected.',
+    passwordHint: 'Enter the Wi-Fi password if the selected network is protected.',
     connectAction: 'Connect to network',
-    connectSuccess: 'WiFi credentials sent. The device is connecting now.',
-    connectError: 'Could not send WiFi credentials.',
+    connectSuccess: 'Wi-Fi credentials sent. The device is connecting now.',
+    connectError: 'Could not send Wi-Fi credentials.',
     bleConfigAction: 'BLE config',
     bleConfigSuccess: 'BLE provisioning mode requested.',
     bleConfigError: 'Could not start BLE provisioning mode.',
-    resetCredentialsAction: 'Reset WiFi credentials',
-    resetCredentialsSuccess: 'WiFi credentials cleared. The device will fall back to AP mode.',
-    resetCredentialsError: 'Could not clear WiFi credentials.',
+    resetCredentialsAction: 'Reset Wi-Fi credentials',
+    resetCredentialsSuccess: 'Wi-Fi credentials cleared. The device will fall back to AP mode.',
+    resetCredentialsError: 'Could not clear Wi-Fi credentials.',
   },
   ota: {
-    title: 'OTA',
+    title: 'Firmware update',
     subtitle: 'Firmware update status',
-    copy: 'Review OTA readiness and free sketch space on a dedicated page.',
+    copy: 'Review firmware update readiness and free sketch space on a dedicated page.',
     enabled: 'OTA enabled',
     freeSketchSpace: 'Free sketch space',
     hasError: 'OTA has error',
@@ -169,7 +173,7 @@ export default {
     saveError: 'Could not save MQTT settings.',
     status: {
       connected: 'Connected',
-      waitingForStation: 'Waiting for WiFi',
+      waitingForStation: 'Waiting for Wi-Fi',
       disconnected: 'Disconnected',
     },
   },
@@ -198,7 +202,7 @@ export default {
     manualSetError: 'Could not set the time.',
     status: {
       synced: 'Synced',
-      waitingForStation: 'Waiting for WiFi',
+      waitingForStation: 'Waiting for Wi-Fi',
       notSynced: 'Not synced',
       disabled: 'Disabled',
     },
@@ -269,10 +273,10 @@ export default {
   overview: {
     title: 'Overview',
     subtitle: 'Controller overview',
-    copy: 'A consolidated status page that pulls from the same device, WiFi, OTA, and system stores.',
+    copy: 'A consolidated status page that pulls from the same device, Wi-Fi, firmware, and system stores.',
     registry: 'Registry',
-    wifi: 'WiFi',
-    ota: 'OTA',
+    wifi: 'Wi-Fi',
+    ota: 'Firmware',
     system: 'System',
     hardware: 'Hardware',
     storage: 'Storage',
@@ -791,7 +795,7 @@ export default {
         metricGroups: {
           devices: 'Devices',
           system: 'System',
-          wifi: 'WiFi',
+          wifi: 'Wi-Fi',
         },
       },
       st7735Display: {
@@ -1060,8 +1064,8 @@ export default {
     },
   },
   journal: {
-    title: 'Device events',
-    subtitle: 'Device event journal',
+    title: 'Event log',
+    subtitle: 'Device event history',
     copy: 'Track create, update, delete, command, and snapshot messages while the browser session stays open.',
     metrics: {
       retained: '{count} retained',

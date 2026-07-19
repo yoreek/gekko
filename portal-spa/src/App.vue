@@ -60,15 +60,27 @@
         @click="toggleTheme"
       />
 
-      <v-btn
-        v-for="locale in locales"
-        :key="locale"
-        class="ms-1"
-        :variant="locale === appStore.locale ? 'flat' : 'text'"
-        @click="selectLocale(locale)"
-      >
-        {{ locale.toUpperCase() }}
-      </v-btn>
+      <v-menu location="bottom end">
+        <template #activator="{ props: menuProps }">
+          <v-btn
+            v-bind="menuProps"
+            class="app-bar__icon-button ms-1"
+            icon="locale"
+            variant="text"
+            :aria-label="t('navigation.language')"
+          />
+        </template>
+        <v-list density="comfortable">
+          <v-list-item
+            v-for="option in localeOptions"
+            :key="option.code"
+            :active="option.code === appStore.locale"
+            @click="selectLocale(option.code)"
+          >
+            <v-list-item-title>{{ option.nativeName }}</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
     </v-app-bar>
 
     <v-main class="app-main">
@@ -88,7 +100,7 @@ import { useRoute, type RouteLocationRaw } from 'vue-router'
 import { useTheme } from 'vuetify'
 
 import type { PortalIconName } from './icons'
-import { applyLocale, supportedLocales, type AppLocale } from './i18n'
+import { localeOptions, type AppLocale } from './i18n'
 import { useAppStore } from './stores/app'
 import { useOtaStore } from './stores/ota'
 import { usePanelStore } from './stores/panels'
@@ -101,7 +113,6 @@ const panelStore = usePanelStore()
 const otaStore = useOtaStore()
 
 const drawerOpen = ref(false)
-const locales = supportedLocales
 
 interface MenuItem {
   name: 'dashboard' | 'panels' | 'devices' | 'device-events' | 'wifi' | 'ota' | 'mqtt' | 'time' | 'system' | 'overview'
@@ -133,8 +144,7 @@ const menuItems = computed<MenuItem[]>(() =>
 const activePanelName = computed(() => (route.name === 'dashboard' ? panelStore.activePanel?.name ?? '' : ''))
 
 function selectLocale(locale: AppLocale): void {
-  appStore.setLocale(locale)
-  applyLocale(locale)
+  void appStore.setLocale(locale)
 }
 
 function toggleTheme(): void {

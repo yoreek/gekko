@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-import { detectInitialLocale, type AppLocale } from '@/i18n'
+import { applyLocale, detectInitialLocale, type AppLocale } from '@/i18n'
 import {
   detectMockReset,
   detectTransportMode,
@@ -9,7 +9,6 @@ import {
 } from '@/api/transport'
 import { safeReadStorage, safeWriteStorage } from '@/utils/storage'
 
-const localeStorageKey = 'gekko.locale'
 const themeStorageKey = 'gekko.theme'
 
 export type PortalMode = 'ap' | 'station'
@@ -59,9 +58,9 @@ export const useAppStore = defineStore('app', {
       }
       this.initialized = true
     },
-    setLocale(locale: AppLocale): void {
+    async setLocale(locale: AppLocale): Promise<void> {
       this.locale = locale
-      safeWriteStorage(localeStorageKey, locale)
+      await applyLocale(locale)
     },
     setTheme(theme: AppTheme): void {
       this.theme = theme

@@ -1,6 +1,8 @@
 import 'vuetify/styles'
 
+import { useI18n } from 'vue-i18n'
 import { createVuetify } from 'vuetify'
+import { createVueI18nAdapter } from 'vuetify/locale/adapters/vue-i18n'
 import {
   VApp,
   VAppBar,
@@ -63,10 +65,14 @@ import {
   VTabsWindowItem,
 } from 'vuetify/components'
 
+import { appI18n } from '@/i18n'
 import { portalDefaults, portalIconAliases, portalIconSet, portalThemes } from '@/theme/portal-ui'
 
 export function createAppVuetify() {
   return createVuetify({
+    locale: {
+      adapter: createVueI18nAdapter({ i18n: appI18n, useI18n }),
+    },
     components: {
       VApp,
       VAppBar,

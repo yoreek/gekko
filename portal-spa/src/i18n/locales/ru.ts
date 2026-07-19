@@ -1,3 +1,5 @@
+import { ru as vuetifyRu } from 'vuetify/locale'
+
 const deviceDialogCommon = {
   gpioPinHint: 'Аппаратный вывод, которым управляет реле или выключатель.',
   onewirePinHint: 'Номер линии данных, используемой шиной OneWire.',
@@ -15,22 +17,24 @@ const st7735Dialog = {
 }
 
 export default {
+  $vuetify: vuetifyRu,
   app: {
-    title: 'Gekko Portal',
-    subtitle: 'Офлайн панель управления',
+    title: 'Gekko',
+    subtitle: 'Модульный контроллер устройств',
   },
   navigation: {
     menu: 'Открыть меню',
     dashboard: 'Дашборд',
     panels: 'Панели',
     devices: 'Устройства',
-    deviceEvents: 'События устройств',
-    wifi: 'WiFi',
-    ota: 'OTA',
+    deviceEvents: 'Журнал событий',
+    wifi: 'Wi-Fi',
+    ota: 'Прошивка',
     mqtt: 'Home Assistant',
-    time: 'Время',
+    time: 'Дата и время',
     system: 'Система',
-    overview: 'Состояние контроллера',
+    overview: 'Обзор',
+    language: 'Сменить язык',
   },
   validation: {
     required: 'Обязательное поле',
@@ -102,10 +106,10 @@ export default {
     empty: 'Под текущие фильтры ничего не подошло.',
   },
   wifi: {
-    title: 'WiFi',
+    title: 'Wi-Fi',
     subtitle: 'Текущее состояние подключения и ручное сканирование сетей',
     copy: 'Сканируйте сети по запросу, чтобы не выполнять дорогую операцию при каждом открытии страницы.',
-    status: 'Статус WiFi',
+    status: 'Статус Wi-Fi',
     stationIp: 'IP станции',
     setupApIp: 'IP AP',
     networks: 'Сети',
@@ -119,21 +123,21 @@ export default {
     ssid: 'SSID',
     ssidHint: 'Выберите одну из отсканированных сетей или введите имя сети вручную.',
     password: 'Пароль',
-    passwordHint: 'Введите пароль WiFi, если сеть защищена.',
+    passwordHint: 'Введите пароль Wi-Fi, если сеть защищена.',
     connectAction: 'Подключиться',
-    connectSuccess: 'Данные WiFi отправлены. Устройство подключается.',
-    connectError: 'Не удалось отправить данные WiFi.',
+    connectSuccess: 'Данные Wi-Fi отправлены. Устройство подключается.',
+    connectError: 'Не удалось отправить данные Wi-Fi.',
     bleConfigAction: 'BLE настройка',
     bleConfigSuccess: 'Режим BLE настройки запрошен.',
     bleConfigError: 'Не удалось запустить режим BLE настройки.',
-    resetCredentialsAction: 'Сбросить WiFi креды',
-    resetCredentialsSuccess: 'WiFi креды очищены. Устройство вернётся в AP режим.',
-    resetCredentialsError: 'Не удалось очистить WiFi креды.',
+    resetCredentialsAction: 'Сбросить Wi-Fi креды',
+    resetCredentialsSuccess: 'Wi-Fi креды очищены. Устройство вернётся в AP режим.',
+    resetCredentialsError: 'Не удалось очистить Wi-Fi креды.',
   },
   ota: {
-    title: 'OTA',
+    title: 'Обновление прошивки',
     subtitle: 'Статус обновления прошивки',
-    copy: 'Проверяйте готовность OTA и свободную область прошивки на отдельной странице.',
+    copy: 'Проверяйте готовность обновления прошивки и свободное место для неё на отдельной странице.',
     enabled: 'OTA включено',
     freeSketchSpace: 'Свободная область прошивки',
     hasError: 'Ошибка OTA',
@@ -169,7 +173,7 @@ export default {
     saveError: 'Не удалось сохранить настройки MQTT.',
     status: {
       connected: 'Подключено',
-      waitingForStation: 'Ожидание WiFi',
+      waitingForStation: 'Ожидание Wi-Fi',
       disconnected: 'Отключено',
     },
   },
@@ -198,7 +202,7 @@ export default {
     manualSetError: 'Не удалось установить время.',
     status: {
       synced: 'Синхронизировано',
-      waitingForStation: 'Ожидание WiFi',
+      waitingForStation: 'Ожидание Wi-Fi',
       notSynced: 'Не синхронизировано',
       disabled: 'Отключено',
     },
@@ -269,10 +273,10 @@ export default {
   overview: {
     title: 'Обзор',
     subtitle: 'Состояние контроллера',
-    copy: 'Сводная страница собирает данные из тех же stores для устройств, WiFi, OTA и системы.',
+    copy: 'Сводная страница собирает данные из тех же stores для устройств, Wi-Fi, прошивки и системы.',
     registry: 'Реестр',
-    wifi: 'WiFi',
-    ota: 'OTA',
+    wifi: 'Wi-Fi',
+    ota: 'Прошивка',
     system: 'Система',
     hardware: 'Оборудование',
     storage: 'Хранилище',
@@ -348,6 +352,7 @@ export default {
       portExpanderDeviceId: 'ID расширителя портов',
       portExpanderChannel: 'Канал',
       portExpanderInverted: 'Инверсия (весь регистр)',
+      i2cAddress: 'I2C адрес',
       spiBusDeviceId: 'ID SPI шины',
       analogPin: 'Пин выхода',
       analogLedcChannel: 'LEDC канал',
@@ -765,7 +770,7 @@ export default {
         metricGroups: {
           devices: 'Устройства',
           system: 'Система',
-          wifi: 'WiFi',
+          wifi: 'Wi-Fi',
         },
       },
       st7735Display: {
@@ -1059,8 +1064,8 @@ export default {
     },
   },
   journal: {
-    title: 'События устройств',
-    subtitle: 'Журнал событий устройств',
+    title: 'Журнал событий',
+    subtitle: 'История событий устройств',
     copy: 'Отслеживайте сообщения создания, обновления, удаления, команд и снимков, пока браузерная сессия открыта.',
     metrics: {
       retained: 'Сохранено: {count}',
