@@ -1,5 +1,7 @@
 # MQTT + Home Assistant Integration
 
+> User-facing guide: <https://yoreek.github.io/gekko/guides/mqtt-home-assistant/> — keep the two in sync when changing behavior described here.
+
 Optional feature that connects the firmware to an MQTT broker and publishes
 Home Assistant MQTT discovery for supported devices. Disabled by default.
 

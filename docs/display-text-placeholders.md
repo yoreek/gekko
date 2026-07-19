@@ -1,5 +1,7 @@
 # Display Text Placeholders
 
+> User-facing guide: <https://yoreek.github.io/gekko/guides/displays/> — keep the two in sync when changing behavior described here.
+
 This document defines how metric placeholders work in display text widgets across the frontend, firmware, and mock/runtime layers.
 
 ## Scope

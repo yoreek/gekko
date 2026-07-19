@@ -11,7 +11,8 @@
     "check:data-budget": "node scripts/check-data-budget.mjs",
     "test:unit": "node --experimental-strip-types --test $(find tests/unit -name '*.spec.ts' | sort)",
     "test:unit:coverage": "node --experimental-strip-types --experimental-test-coverage --test tests/unit/oled-display.spec.ts",
-    "smoke": "playwright test"
+    "smoke": "playwright test",
+    "shots:docs": "playwright test -c playwright.docs.config.ts"
   },
   "dependencies": {
     "@mdi/js": "^7.4.47",

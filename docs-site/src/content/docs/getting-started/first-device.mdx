@@ -1,0 +1,55 @@
+---
+title: Your first device
+description: Add a GPIO switch in the Gekko portal, toggle it, and pin it to the dashboard.
+sidebar:
+  order: 6
+---
+
+import { Steps } from '@astrojs/starlight/components';
+
+Let's add the simplest possible device — a **GPIO switch** — and control it
+from the dashboard. A GPIO switch drives one output pin: a relay board, a
+MOSFET module, or just the board's LED for a first test.
+
+<Steps>
+
+1. Open **Devices** in the portal and click the add-device button.
+
+   ![Device type selection](../../../assets/screenshots/portal-device-create.png)
+
+2. Pick **GPIO Switch** from the catalog.
+
+3. Fill in the settings:
+
+   ![GPIO switch settings](../../../assets/screenshots/device-gpio-switch.png)
+
+   - **Name** — whatever you like, e.g. `Test LED`.
+   - **GPIO pin** — the pin your load is wired to (GPIO 2 drives the onboard
+     LED on many dev boards).
+   - **Inverted** — check this if your relay board is active-low (very common).
+   - **Startup state** and **Restore previous state** — what the output should
+     do right after a reboot: a fixed state, or whatever it was before power
+     was lost.
+   - **Safe state** — the state the output falls back to if the device that
+     controls it becomes unavailable.
+
+4. Save. The device appears in the list, reaches **ready**, and shows a live
+   on/off toggle — click it and your relay clicks.
+
+5. Pin it to the dashboard: open **Panels**, add a switch widget for your new
+   device, and place it where you want. From now on it is one tap from the
+   landing page.
+
+</Steps>
+
+## Where to go from here
+
+- Wire a **DS18B20 temperature probe**: create a
+  [1-Wire bus](/gekko/reference/devices/onewire-bus/) on a free GPIO, scan it,
+  and add the [probe](/gekko/reference/devices/ds18b20/) the scan found.
+- Put the switch on a [schedule](/gekko/reference/devices/schedule/) with an
+  [auto switch](/gekko/guides/schedules-and-automation/).
+- Keep temperature stable with a
+  [thermostat](/gekko/reference/devices/thermostat/) driving your switch.
+- Show it all on an OLED with the
+  [display designer](/gekko/guides/displays/).

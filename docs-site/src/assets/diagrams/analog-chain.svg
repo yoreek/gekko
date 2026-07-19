@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 300" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <rect x="1" y="1" width="918" height="298" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+
+  <text x="35" y="42" font-size="19" font-weight="700" fill="#0f172a">One channel: the decorator chain</text>
+
+  <!-- Scheduled -->
+  <g>
+    <rect x="50" y="90" width="220" height="110" rx="12" fill="#ffffff" stroke="#8b5cf6" stroke-width="3"/>
+    <text x="160" y="122" text-anchor="middle" font-size="16" font-weight="700" fill="#6d28d9">scheduled_analog_output</text>
+    <!-- mini curve -->
+    <path d="M80 178 L 110 178 L 135 148 L 185 148 L 210 178 L 240 178" fill="none" stroke="#8b5cf6" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <text x="160" y="222" text-anchor="middle" font-size="13.5" fill="#64748b">computes the level</text>
+    <text x="160" y="239" text-anchor="middle" font-size="13.5" fill="#64748b">for the current minute</text>
+  </g>
+
+  <path d="M270 145 h 40" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M310 138 l 15 7 -15 7 z" fill="#94a3b8"/>
+
+  <!-- Fade -->
+  <g>
+    <rect x="330" y="90" width="200" height="110" rx="12" fill="#ffffff" stroke="#0ea5e9" stroke-width="3"/>
+    <text x="430" y="122" text-anchor="middle" font-size="16" font-weight="700" fill="#0369a1">fade_analog_output</text>
+    <!-- step vs ramp -->
+    <path d="M355 178 h 40 v -28 h 20" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M430 178 C 460 178 470 150 505 150" fill="none" stroke="#0ea5e9" stroke-width="3" stroke-linecap="round"/>
+    <text x="430" y="222" text-anchor="middle" font-size="13.5" fill="#64748b">turns every change</text>
+    <text x="430" y="239" text-anchor="middle" font-size="13.5" fill="#64748b">into a smooth ramp</text>
+  </g>
+
+  <path d="M530 145 h 40" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M570 138 l 15 7 -15 7 z" fill="#94a3b8"/>
+
+  <!-- LEDC -->
+  <g>
+    <rect x="590" y="90" width="190" height="110" rx="12" fill="#ffffff" stroke="#475569" stroke-width="3"/>
+    <text x="685" y="122" text-anchor="middle" font-size="16" font-weight="700" fill="#334155">analog_output</text>
+    <!-- PWM square wave -->
+    <path d="M615 178 h 18 v -26 h 14 v 26 h 22 v -26 h 14 v 26 h 22 v -26 h 14 v 26 h 16" fill="none" stroke="#475569" stroke-width="3" stroke-linejoin="round"/>
+    <text x="685" y="222" text-anchor="middle" font-size="13.5" fill="#64748b">writes the PWM duty</text>
+    <text x="685" y="239" text-anchor="middle" font-size="13.5" fill="#64748b">on an ESP32 pin (LEDC)</text>
+  </g>
+
+  <path d="M780 145 h 34" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M814 138 l 15 7 -15 7 z" fill="#94a3b8"/>
+
+  <!-- LED -->
+  <g transform="translate(862,145)">
+    <circle r="22" fill="#fef08a" stroke="#eab308" stroke-width="3"/>
+    <g stroke="#eab308" stroke-width="3" stroke-linecap="round">
+      <line x1="0" y1="-32" x2="0" y2="-42"/>
+      <line x1="0" y1="32" x2="0" y2="42"/>
+      <line x1="-32" y1="0" x2="-42" y2="0"/>
+      <line x1="32" y1="0" x2="42" y2="0"/>
+      <line x1="-24" y1="-24" x2="-31" y2="-31"/>
+      <line x1="24" y1="-24" x2="31" y2="-31"/>
+      <line x1="-24" y1="24" x2="-31" y2="31"/>
+      <line x1="24" y1="24" x2="31" y2="31"/>
+    </g>
+  </g>
+  <text x="862" y="222" text-anchor="middle" font-size="13.5" fill="#64748b">LED driver</text>
+
+  <text x="50" y="278" font-size="14" fill="#475569">Each block is its own device; the arrows are registry dependencies. The registry allows at most one controller per output.</text>
+</svg>

@@ -1,5 +1,7 @@
 # Schedule + Auto Switch
 
+> User-facing guide: <https://yoreek.github.io/gekko/guides/schedules-and-automation/> — keep the two in sync when changing behavior described here.
+
 Two device types that let a switch turn on/off based on a bounded list of AND
 conditions: `schedule` (`ScheduleDevice`) holds a time-of-day/weekday rule set
 and reports whether it's currently active; `auto_switch` (`AutoSwitchDevice`)

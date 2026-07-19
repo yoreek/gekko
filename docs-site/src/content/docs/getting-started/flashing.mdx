@@ -1,0 +1,74 @@
+---
+title: Flashing the firmware
+description: Flash Gekko onto an ESP32 from your browser, with esptool, or with PlatformIO.
+sidebar:
+  order: 3
+---
+
+import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Ready-to-flash binaries (`bootloader.bin`, `partitions.bin`, `firmware.bin`,
+`littlefs.bin`) are built from every commit and include both the firmware and
+the web portal assets.
+
+## Option 1 — Web installer (easiest)
+
+Flash directly from the browser, no software to install:
+
+<LinkButton href="/gekko/install/" icon="rocket">Open the Gekko web installer</LinkButton>
+
+<Steps>
+
+1. Connect the ESP32 board to your computer with a USB **data** cable.
+
+2. Open the installer in **Chrome**, **Edge**, or **Opera** on desktop (Web
+   Serial is not available in Firefox/Safari or on mobile).
+
+3. Click **Install Gekko**, pick the board's serial port in the browser
+   dialog, and confirm. A first-time install offers to erase the device.
+
+4. Wait for the progress bar to finish, then continue with
+   [First boot & WiFi setup](/gekko/getting-started/first-boot-wifi/).
+
+</Steps>
+
+:::caution
+Browser flashing depends on OS/USB-chip serial support and has known issues on
+some Linux + USB-serial chip combinations. If it fails, use one of the options
+below — they flash the exact same binaries.
+:::
+
+## Option 2 — esptool
+
+<Tabs syncKey="os">
+  <TabItem label="Windows / macOS / Linux (no Python)">
+
+    1. Download the standalone `esptool` binary for your OS from the
+       [esptool releases page](https://github.com/espressif/esptool/releases).
+    2. Place it next to the scripts in the repository's `webflash/` folder
+       (rename to `esptool` on macOS/Linux, `esptool.exe` on Windows).
+    3. Run `webflash/flash.sh [PORT]` (macOS/Linux) or `webflash/flash.bat
+       [PORT]` (Windows). Without a port argument, esptool auto-detects it.
+
+  </TabItem>
+  <TabItem label="Python">
+
+    ```sh
+    pip install esptool
+    python3 webflash/flash.py [PORT]
+    ```
+
+  </TabItem>
+</Tabs>
+
+## Option 3 — PlatformIO (for development)
+
+If you build from source:
+
+```sh
+pio run -e esp32dev -t upload       # firmware, over serial
+pio run -e esp32dev -t uploadfs     # LittleFS portal assets, over serial
+```
+
+See the repository's `CLAUDE.md` and `docs/platformio-environments.md` for the
+full development workflow.

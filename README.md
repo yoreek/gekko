@@ -1,6 +1,9 @@
 # Gekko
 
 [![Test](https://github.com/yoreek/gekko/actions/workflows/build.yml/badge.svg)](https://github.com/yoreek/gekko/actions/workflows/build.yml)
+[![Docs](https://github.com/yoreek/gekko/actions/workflows/docs.yml/badge.svg)](https://yoreek.github.io/gekko/)
+
+**Documentation: [yoreek.github.io/gekko](https://yoreek.github.io/gekko/)** — getting started, guides, and device reference. AI-generated repo walkthrough: [DeepWiki](https://deepwiki.com/yoreek/gekko).
 
 ESP32 firmware (PlatformIO, C++) + web portal (Vue SPA in `portal-spa/`), served by the firmware itself from LittleFS.
 
@@ -42,7 +45,9 @@ GitHub Actions CI duplicates the test run on the server for every push/PR — a 
 
 Ready-to-flash binaries (`bootloader.bin`, `partitions.bin`, `firmware.bin`, `littlefs.bin`) live in `webflash/` and are kept up to date by the pre-commit hook.
 
-**Recommended — esptool script (Windows/macOS/Linux, no Python required):**
+**Easiest — web installer:** open **[yoreek.github.io/gekko/install](https://yoreek.github.io/gekko/install/)** in Chrome/Edge/Opera on desktop and flash over Web Serial, nothing to install. (Browser serial support has known issues on some Linux + USB-chip combinations — fall back to the options below if it fails.)
+
+**Recommended offline — esptool script (Windows/macOS/Linux, no Python required):**
 
 1. Download the standalone `esptool` binary for your OS from the [esptool releases page](https://github.com/espressif/esptool/releases).
 2. Place it next to the scripts in `webflash/` (rename to `esptool` on macOS/Linux, `esptool.exe` on Windows).
@@ -62,7 +67,7 @@ pio run -e esp32dev -t upload       # firmware, over serial
 pio run -e esp32dev -t uploadfs     # LittleFS data, over serial
 ```
 
-**Browser (experimental):** `webflash/index.html` uses [ESP Web Tools](https://esphome.github.io/esp-web-tools/) for one-click flashing from Chrome/Edge over Web Serial, serve it with any static file server (e.g. `python3 -m http.server` from `webflash/`). This depends on browser/OS/USB-chip serial support that has known issues on some Linux + Chrome/Firefox + USB-serial chip combinations — if it fails, use one of the options above instead.
+**Browser, local copy:** `webflash/index.html` is the same [ESP Web Tools](https://esphome.github.io/esp-web-tools/) installer that is published at the web installer link above; serve it with any static file server (e.g. `python3 -m http.server` from `webflash/`) to flash local binaries.
 
 ## Development commands
 

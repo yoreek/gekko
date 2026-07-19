@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 310" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <rect x="1" y="1" width="918" height="308" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+
+  <text x="35" y="42" font-size="19" font-weight="700" fill="#0f172a">The control loop</text>
+
+  <!-- Sensor -->
+  <g>
+    <rect x="60" y="100" width="180" height="90" rx="12" fill="#ffffff" stroke="#0ea5e9" stroke-width="3"/>
+    <text x="150" y="130" text-anchor="middle" font-size="16" font-weight="700" fill="#0369a1">DS18B20</text>
+    <text x="150" y="152" text-anchor="middle" font-size="13.5" fill="#64748b">measures 24.3 °C</text>
+    <text x="150" y="174" text-anchor="middle" font-size="12.5" fill="#94a3b8">temperature_sensor</text>
+  </g>
+
+  <path d="M240 145 h 60" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M300 138 l 15 7 -15 7 z" fill="#94a3b8"/>
+
+  <!-- Thermostat -->
+  <g>
+    <rect x="320" y="100" width="200" height="90" rx="12" fill="#ffffff" stroke="#f59e0b" stroke-width="3"/>
+    <text x="420" y="132" text-anchor="middle" font-size="16" font-weight="700" fill="#b45309">Thermostat</text>
+    <text x="420" y="154" text-anchor="middle" font-size="13.5" fill="#64748b">target 25.0 °C</text>
+    <text x="420" y="172" text-anchor="middle" font-size="13.5" fill="#64748b">24.3 &lt; 24.5 → heat!</text>
+  </g>
+
+  <path d="M520 145 h 60" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M580 138 l 15 7 -15 7 z" fill="#94a3b8"/>
+
+  <!-- Relay + heater -->
+  <g>
+    <rect x="600" y="100" width="180" height="90" rx="12" fill="#ffffff" stroke="#ef4444" stroke-width="3"/>
+    <text x="690" y="130" text-anchor="middle" font-size="16" font-weight="700" fill="#b91c1c">Relay → heater</text>
+    <text x="690" y="152" text-anchor="middle" font-size="13.5" fill="#64748b">switch turns ON</text>
+    <text x="690" y="174" text-anchor="middle" font-size="12.5" fill="#94a3b8">gpio_switch</text>
+  </g>
+
+  <!-- feedback arc: heater warms the water, sensor sees it -->
+  <path d="M690 190 C 690 258 160 258 151 196" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" stroke-dasharray="9 7"/>
+  <path d="M144 210 l 4 -18 14 10 z" fill="#38bdf8"/>
+  <text x="420" y="292" text-anchor="middle" font-size="14" fill="#0369a1">the water warms up — the sensor sees it, and the loop repeats every second</text>
+</svg>

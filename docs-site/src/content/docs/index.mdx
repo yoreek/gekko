@@ -1,0 +1,49 @@
+---
+title: Gekko
+description: A modular device controller for ESP32 — one firmware image, a catalog of device types, configured entirely from the built-in web portal.
+template: splash
+hero:
+  tagline: A modular device controller for ESP32. One firmware image, 23 composable device types, no per-project recompilation — everything is wired together from the built-in web portal.
+  image:
+    file: ../../assets/logo.svg
+  actions:
+    - text: Get started
+      link: /gekko/getting-started/what-is-gekko/
+      icon: right-arrow
+    - text: Flash from your browser
+      link: /gekko/install/
+      icon: rocket
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid stagger>
+  <Card title="No reflash per project" icon="setting">
+    Add switches, sensors, displays, schedules, and pumps from the web portal at
+    runtime. The device registry, dependency graph, and dashboard layout all live
+    on the device — never in a YAML file you have to recompile.
+  </Card>
+  <Card title="Local-first" icon="laptop">
+    The portal is served from the ESP32's own flash over WiFi. MQTT + Home
+    Assistant discovery and OTA updates are optional and off by default.
+  </Card>
+  <Card title="Typed device registry" icon="puzzle">
+    Devices declare dependencies on each other — a switch behind a port
+    expander, a sensor behind an I2C bus, a pump gated by a schedule — and the
+    registry enforces and persists that graph.
+  </Card>
+  <Card title="Displays, schedules, dosing" icon="rocket">
+    OLED/TFT displays with a visual layout designer, minute-precision schedules,
+    condition-driven automation, thermostats, and dosing pumps with calibration
+    and history.
+  </Card>
+  <Card title="Backup and restore" icon="document">
+    Export the full device setup as a single human-editable bundle and restore
+    it on any Gekko controller.
+  </Card>
+  <Card title="Speaks your language" icon="translate">
+    The portal ships in English, Ukrainian, Russian, German, Spanish, French,
+    and Italian with automatic browser-language detection.
+  </Card>
+</CardGrid>

@@ -11,6 +11,9 @@ portal-spa/node_modules/
 portal-spa/dist/
 portal-spa/test-results/
 portal-spa/.vite/
+docs-site/node_modules/
+docs-site/dist/
+docs-site/.astro/
 .vite/
 easy-iot-manager/
 src/generated/

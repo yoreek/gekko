@@ -1,7 +1,6 @@
 {
   "name": "Gekko",
-  "version": "local-test",
-  "home_assistant_domain": "esphome",
+  "version": "latest",
   "funding_url": "",
   "new_install_prompt_erase": true,
   "builds": [

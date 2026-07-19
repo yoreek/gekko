@@ -28,15 +28,16 @@
   </style>
 </head>
 <body>
-  <h1>Gekko</h1>
+  <h1>Gekko Web Installer</h1>
   <p>Connect the ESP32 to your computer via USB and click the button below.</p>
 
   <esp-web-install-button manifest="manifest.json">
-    <button slot="activate">Flash device</button>
+    <button slot="activate">Install Gekko</button>
     <span slot="unsupported">Your browser doesn't support Web Serial. Open this page in Chrome or Edge.</span>
     <span slot="not-allowed">This page must be served over HTTPS or localhost.</span>
   </esp-web-install-button>
 
-  <p class="note">Local test build (webflash/). Requires Chrome, Edge, or Opera on desktop.</p>
+  <p class="note">Requires Chrome, Edge, or Opera on desktop.</p>
+  <p class="note"><a href="../">&larr; Back to the Gekko documentation</a></p>
 </body>
 </html>

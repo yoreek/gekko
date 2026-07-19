@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 430" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <rect x="1" y="1" width="918" height="428" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+
+  <text x="35" y="42" font-size="19" font-weight="700" fill="#0f172a">Hysteresis in heat mode: target 25.0 °C, hysteresis 0.5 °C</text>
+
+  <!-- plot: x 80..860, y: 25.0 -> 120, 24.5 -> 240 (0.1° = 24px), curve range 24.4..25.1 -->
+  <!-- hysteresis band -->
+  <rect x="80" y="120" width="780" height="120" fill="#fef3c7" opacity="0.55"/>
+
+  <!-- target line -->
+  <line x1="80" y1="120" x2="860" y2="120" stroke="#16a34a" stroke-width="2.5" stroke-dasharray="8 6"/>
+  <text x="856" y="110" font-size="13.5" fill="#16a34a" text-anchor="end" font-weight="600">25.0 — heater turns OFF here</text>
+
+  <!-- lower bound -->
+  <line x1="80" y1="240" x2="860" y2="240" stroke="#d97706" stroke-width="2.5" stroke-dasharray="8 6"/>
+  <text x="856" y="262" font-size="13.5" fill="#b45309" text-anchor="end" font-weight="600">24.5 (target − hysteresis) — heater turns ON here</text>
+
+  <!-- temperature curve: starts 24.8 cooling, hits 24.5 at x=200, heats to 25.0 at x=340,
+       coasts +0.05 overshoot, cools to 24.5 at x=560, heats to 25.0 at x=700, cools to end -->
+  <path d="M80 168
+           C 120 190 170 218 200 240
+           C 240 208 300 150 340 120
+           C 352 112 364 112 376 118
+           C 430 148 520 214 560 240
+           C 600 208 660 150 700 120
+           C 712 112 724 112 736 118
+           C 780 142 830 180 860 200"
+        fill="none" stroke="#0ea5e9" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- axis labels -->
+  <g font-size="12" fill="#94a3b8" text-anchor="end">
+    <text x="74" y="124">25.0°</text>
+    <text x="74" y="244">24.5°</text>
+  </g>
+  <line x1="80" y1="80" x2="80" y2="320" stroke="#94a3b8" stroke-width="2.5"/>
+  <line x1="80" y1="320" x2="860" y2="320" stroke="#94a3b8" stroke-width="2.5"/>
+  <text x="860" y="342" font-size="13" fill="#64748b" text-anchor="end">time →</text>
+
+  <!-- heater state bars -->
+  <text x="80" y="368" font-size="13.5" fill="#475569" font-weight="600">heater:</text>
+  <!-- ON: 200..340, 560..700 -->
+  <rect x="80" y="376" width="120" height="16" rx="8" fill="#e2e8f0"/>
+  <rect x="200" y="376" width="140" height="16" rx="8" fill="#f97316"/>
+  <rect x="340" y="376" width="220" height="16" rx="8" fill="#e2e8f0"/>
+  <rect x="560" y="376" width="140" height="16" rx="8" fill="#f97316"/>
+  <rect x="700" y="376" width="160" height="16" rx="8" fill="#e2e8f0"/>
+  <text x="270" y="410" font-size="12.5" fill="#c2410c" text-anchor="middle">ON</text>
+  <text x="630" y="410" font-size="12.5" fill="#c2410c" text-anchor="middle">ON</text>
+  <text x="450" y="410" font-size="12.5" fill="#94a3b8" text-anchor="middle">OFF</text>
+
+  <!-- dead band note -->
+  <text x="98" y="266" font-size="13" fill="#a16207">inside the band nothing switches — that's the point</text>
+</svg>

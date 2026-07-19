@@ -1,5 +1,7 @@
 # Device Setup Backup and Restore
 
+> User-facing guide: <https://yoreek.github.io/gekko/guides/backup-restore/> — keep the two in sync when changing behavior described here.
+
 The device-setup transfer bundle is a **human-editable NDJSON document**: every device
 config is plain JSON in the same shape the REST API accepts. You can export it from one
 controller, tweak fields by hand, and upload it to another controller. The registry keeps

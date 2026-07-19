@@ -1,0 +1,77 @@
+---
+title: What is Gekko?
+description: An introduction to Gekko — a modular ESP32 device controller with a built-in web portal.
+sidebar:
+  order: 1
+---
+
+Gekko is firmware for the ESP32 plus a web portal served straight from the
+device's own flash. Together they let you build your own controller —
+aquarium, terrarium, greenhouse, or general home automation — out of a catalog
+of device types, wired together and configured entirely through the UI.
+
+**One firmware image, no per-project rebuild.** Every supported device type is
+already built in. Adding a relay, a temperature sensor, a display, or a dosing
+pump is a web portal action against the running device, never a recompile.
+
+## What you can build with it
+
+- **Switches and outputs** — GPIO relays, switches behind PCF8574/PCF8575 I2C
+  port expanders, PWM/analog outputs with smooth fade transitions, daily
+  brightness curves, and multi-channel grouping.
+- **Sensors** — DS18B20 (1-Wire) and NTC thermistor temperature sensors, HTU21
+  temperature + humidity, and digital binary inputs (door contacts, float
+  switches, leak sensors).
+- **Automation** — minute-precision daily schedules, condition-driven auto
+  switches with manual override and pause, hysteresis thermostats, and dosing
+  pumps with calibration and a dose journal.
+- **Displays** — SSD1306 OLED and ST7735 TFT screens with a visual page/widget
+  layout designer built into the portal, including live metric placeholders
+  like `{{dev.123.temperature}}`.
+- **Infrastructure** — I2C/SPI/1-Wire buses, a DS3231 real-time clock, and a
+  dashboard you compose from panels.
+
+Devices declare **dependencies** on each other — a switch on a port expander, a
+sensor on an I2C bus, a pump gated by a schedule — and the registry validates,
+enforces, and persists that graph. See
+[Devices and dependencies](/gekko/guides/devices-and-dependencies/) for the
+concept.
+
+## How it compares to ESPHome and Tasmota
+
+**ESPHome** compiles your YAML configuration into a dedicated firmware image per
+device — adding a sensor means editing YAML, recompiling, and reflashing.
+Gekko ships one firmware image with every supported device type built in;
+changing your setup is a portal action, never a rebuild.
+
+**Tasmota** also configures at runtime through its web UI, but as a flat set of
+GPIO templates and console rules. Gekko models devices as a typed registry with
+declared dependencies, versioned migratable configs, a REST API and realtime
+WebSocket state, a device event journal, a visual display designer, and
+dashboard panels.
+
+The trade-off: Gekko's device-type catalog is fixed at compile time, so it does
+not yet match Tasmota's or ESPHome's breadth of supported hardware. It is a
+smaller, more structured base to build on — not a drop-in replacement for
+either.
+
+## Everything runs on the device
+
+- **Local-first** — the portal is served from the ESP32 over WiFi; no cloud, no
+  account, no app store.
+- **Optional integrations** — MQTT + Home Assistant discovery and OTA updates
+  exist but are off by default.
+- **WiFi provisioning** — a setup access point (or BLE, when enabled) gets the
+  device onto your network without any hardcoded credentials.
+- **Backup and restore** — the full device setup exports as a single
+  human-editable bundle.
+- **Seven languages** — the portal auto-detects your browser language and ships
+  in English, Ukrainian, Russian, German, Spanish, French, and Italian.
+
+## Next steps
+
+1. [Check the hardware requirements](/gekko/getting-started/hardware/)
+2. [Flash the firmware](/gekko/getting-started/flashing/) — from your browser,
+   or with esptool/PlatformIO
+3. [Connect the device to WiFi](/gekko/getting-started/first-boot-wifi/)
+4. [Add your first device](/gekko/getting-started/first-device/)

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 330" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <rect x="1" y="1" width="918" height="328" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+
+  <text x="35" y="42" font-size="19" font-weight="700" fill="#0f172a">The 64-bit ROM address</text>
+
+  <!-- address example -->
+  <text x="460" y="86" text-anchor="middle" font-size="24" font-weight="700" fill="#334155" font-family="ui-monospace, 'Cascadia Code', monospace">
+    <tspan fill="#b45309">28</tspan><tspan fill="#0369a1">FF641D621603</tspan><tspan fill="#7c3aed">AD</tspan>
+  </text>
+
+  <!-- three segments -->
+  <g>
+    <rect x="80" y="110" width="150" height="64" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.5"/>
+    <text x="155" y="137" text-anchor="middle" font-size="15" font-weight="700" fill="#b45309">family code</text>
+    <text x="155" y="158" text-anchor="middle" font-size="13" fill="#92400e">8 bits — 28 = DS18B20</text>
+
+    <rect x="250" y="110" width="420" height="64" rx="10" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2.5"/>
+    <text x="460" y="137" text-anchor="middle" font-size="15" font-weight="700" fill="#0369a1">unique serial number</text>
+    <text x="460" y="158" text-anchor="middle" font-size="13" fill="#075985">48 bits — burned in at the factory, never repeats</text>
+
+    <rect x="690" y="110" width="150" height="64" rx="10" fill="#f3e8ff" stroke="#a855f7" stroke-width="2.5"/>
+    <text x="765" y="137" text-anchor="middle" font-size="15" font-weight="700" fill="#7c3aed">CRC</text>
+    <text x="765" y="158" text-anchor="middle" font-size="13" fill="#6b21a8">8 bits — checksum</text>
+  </g>
+
+  <!-- how addressing works -->
+  <g font-size="14.5" fill="#475569">
+    <text x="80" y="218">1. <tspan font-weight="600" fill="#334155">Scan (search)</tspan> — the controller walks a binary search over these 64 bits and</text>
+    <text x="80" y="240">discovers every address present on the bus, without knowing them in advance.</text>
+    <text x="80" y="272">2. <tspan font-weight="600" fill="#334155">Match</tspan> — to take a measurement, it calls one address; only that probe answers.</text>
+    <text x="80" y="304">Devices never talk on their own, so many probes coexist on one wire without collisions.</text>
+  </g>
+</svg>
