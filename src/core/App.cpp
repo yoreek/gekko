@@ -46,7 +46,7 @@ App::App()
 }
 
 bool App::begin() {
-    EWFM_APP_LOG_INFO("ESP32 WiFi Manager booting version=%s build=%s", EWFM_FIRMWARE_VERSION, EWFM_FIRMWARE_BUILD_DATE);
+    EWFM_APP_LOG_INFO("Gekko booting version=%s build=%s", EWFM_FIRMWARE_VERSION, EWFM_FIRMWARE_BUILD_DATE);
 
 #if defined(ARDUINO) && !defined(UNIT_TEST) && defined(ESP32)
     EWFM_BOOT_PRINTF("BOOT App::begin LittleFS start\n");

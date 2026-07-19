@@ -61,7 +61,7 @@ struct TimeConfig {
 
 struct DeviceConfig {
     uint32_t schemaVersion{kCurrentConfigSchemaVersion};
-    std::string deviceName{"esp32-wifi-manager"};
+    std::string deviceName{"gekko"};
     WiFiCredentials wifi{};
     ProvisioningConfig provisioning{};
     WifiRuntimeConfig wifiRuntime{};

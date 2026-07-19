@@ -1,11 +1,11 @@
-# ESP32 WiFi Manager
+# Gekko
 
 [![Test](https://github.com/yoreek/gekko/actions/workflows/build.yml/badge.svg)](https://github.com/yoreek/gekko/actions/workflows/build.yml)
 
 ESP32 firmware (PlatformIO, C++) + web portal (Vue SPA in `portal-spa/`), served by the firmware itself from LittleFS.
 
 Firmware and SPA are versioned from `git describe` at build time, not from a hand-maintained version file or a release tag. The exact running version is always visible at runtime:
-- Firmware: `GET /api/system/version` on the device, or the boot log line `ESP32 WiFi Manager booting version=... build=...`.
+- Firmware: `GET /api/system/version` on the device, or the boot log line `Gekko booting version=... build=...`.
 - SPA: `APP_VERSION`/`APP_BUILD_DATE` exported from `portal-spa/src/utils/version.ts`.
 
 ## One-time setup after cloning

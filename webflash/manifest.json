@@ -1,5 +1,5 @@
 {
-  "name": "ESP32 WiFi Manager",
+  "name": "Gekko",
   "version": "local-test",
   "home_assistant_domain": "esphome",
   "funding_url": "",

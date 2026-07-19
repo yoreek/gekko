@@ -107,8 +107,8 @@ void test_mqtt_config_store_rejects_oversized_ca_cert() {
 }
 
 void test_default_ha_node_id_is_sanitized_and_bounded() {
-    TEST_ASSERT_EQUAL_STRING("esp32_wifi_manager-ABC123", defaultHaNodeId("esp32 wifi manager", "ABC123").c_str());
-    TEST_ASSERT_TRUE(isValidHaNodeIdCharset(defaultHaNodeId("esp32 wifi manager", "ABC123")));
+    TEST_ASSERT_EQUAL_STRING("gekko-ABC123", defaultHaNodeId("gekko", "ABC123").c_str());
+    TEST_ASSERT_TRUE(isValidHaNodeIdCharset(defaultHaNodeId("gekko", "ABC123")));
     TEST_ASSERT_TRUE(isValidHaNodeIdCharset(defaultHaNodeId("<no name>", "ABC123")));
     TEST_ASSERT_EQUAL_STRING("esp32-setup", defaultHaNodeId("esp32", "").c_str());
 }
