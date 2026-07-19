@@ -1,0 +1,157 @@
+import type { DeviceCreateDraftBase } from '@/models/devices/base'
+import { defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
+import { TemperatureSensorDevice } from './temperature-sensor-device.ts'
+import { defaultSensorFilterConfig, normalizeSensorFilterConfig, type SensorFilterConfig } from './sensor-filter.ts'
+import type {
+  BaseDeviceConfig,
+  DeviceDependencyLink,
+  DeviceRecord,
+  Htu21SensorOutputSnapshot,
+  HumidityOutputSnapshot,
+  TemperatureUnit,
+} from '@/api/contracts'
+
+export interface Htu21ConfigDraft extends BaseDeviceConfig {
+  dependencyDeviceId: number
+  i2cAddress: number
+  unit: TemperatureUnit
+  pollMs: number
+  reportDeltaCelsius: number
+  reportDeltaHumidity: number
+  reportAlways: boolean
+  temperatureFilter: SensorFilterConfig
+  humidityFilter: SensorFilterConfig
+}
+
+export interface Htu21CreateDraft extends DeviceCreateDraftBase, Htu21ConfigDraft {}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function normalizeDependencyDeviceId(value: unknown): number {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : 0
+}
+
+export class Htu21Device extends TemperatureSensorDevice<Htu21ConfigDraft, Htu21CreateDraft, Htu21SensorOutputSnapshot> {
+  static readonly TYPE_ID = 17 as const
+  static readonly TYPE_NAME = 'htu21' as const
+
+  readonly typeName = Htu21Device.TYPE_NAME
+  readonly typeId = Htu21Device.TYPE_ID
+
+  static formatHumidity(output: HumidityOutputSnapshot | undefined): string {
+    if (!output?.valid) {
+      return ''
+    }
+    return `${output.value.toFixed(1)} ${output.unitSymbol}`
+  }
+
+  static defaultConfig(): Htu21ConfigDraft {
+    return {
+      ...defaultBaseDeviceConfig(),
+      dependencyDeviceId: 0,
+      i2cAddress: 0x40,
+      unit: 'celsius',
+      pollMs: 5000,
+      reportDeltaCelsius: 0.1,
+      reportDeltaHumidity: 0.1,
+      reportAlways: false,
+      temperatureFilter: defaultSensorFilterConfig(),
+      humidityFilter: defaultSensorFilterConfig(),
+    }
+  }
+
+  static normalizeConfig(value: unknown, dependencyDeviceOrDeps?: number | DeviceDependencyLink[]): Htu21ConfigDraft {
+    const defaults = Htu21Device.defaultConfig()
+    const dependencyDeviceId = Array.isArray(dependencyDeviceOrDeps)
+      ? (dependencyDeviceOrDeps.find(dep => dep.role === 'i2c_bus')?.deviceId ?? 0)
+      : typeof dependencyDeviceOrDeps === 'number'
+        ? dependencyDeviceOrDeps
+        : 0
+    if (!isRecord(value)) {
+      return {
+        ...defaults,
+        dependencyDeviceId: normalizeDependencyDeviceId(dependencyDeviceId),
+        deps: Array.isArray(dependencyDeviceOrDeps) ? dependencyDeviceOrDeps : defaults.deps,
+      }
+    }
+    const reportDeltaCenti = typeof value.reportDeltaCentiCelsius === 'number' ? value.reportDeltaCentiCelsius / 100 : undefined
+    const reportDeltaCentiHumidity = typeof value.reportDeltaCentiPercent === 'number' ? value.reportDeltaCentiPercent / 100 : undefined
+    return {
+      ...normalizeBaseDeviceConfig(value, defaults),
+      dependencyDeviceId: normalizeDependencyDeviceId(dependencyDeviceId ?? value.dependencyDeviceId),
+      i2cAddress: typeof value.i2cAddress === 'number' && Number.isFinite(value.i2cAddress)
+        ? value.i2cAddress
+        : defaults.i2cAddress,
+      unit: Htu21Device.temperatureUnitOptions.includes(value.unit as TemperatureUnit)
+        ? (value.unit as TemperatureUnit)
+        : defaults.unit,
+      pollMs: typeof value.pollMs === 'number' && Number.isFinite(value.pollMs) ? value.pollMs : defaults.pollMs,
+      reportDeltaCelsius: typeof value.reportDeltaCelsius === 'number' && Number.isFinite(value.reportDeltaCelsius)
+        ? value.reportDeltaCelsius
+        : reportDeltaCenti ?? defaults.reportDeltaCelsius,
+      reportDeltaHumidity: typeof value.reportDeltaHumidity === 'number' && Number.isFinite(value.reportDeltaHumidity)
+        ? value.reportDeltaHumidity
+        : reportDeltaCentiHumidity ?? defaults.reportDeltaHumidity,
+      reportAlways: typeof value.reportAlways === 'boolean' ? value.reportAlways : defaults.reportAlways,
+      temperatureFilter: normalizeSensorFilterConfig(value.temperatureFilter, defaults.temperatureFilter),
+      humidityFilter: normalizeSensorFilterConfig(value.humidityFilter, defaults.humidityFilter),
+    }
+  }
+
+  static encodeConfig(config: Htu21ConfigDraft): Record<string, unknown> {
+    return {
+      ...encodeBaseDeviceConfig(config),
+      i2cAddress: config.i2cAddress,
+      unit: config.unit,
+      pollMs: config.pollMs,
+      reportDeltaCelsius: config.reportDeltaCelsius,
+      reportDeltaHumidity: config.reportDeltaHumidity,
+      reportAlways: config.reportAlways,
+      temperatureFilter: { ...config.temperatureFilter },
+      humidityFilter: { ...config.humidityFilter },
+    }
+  }
+
+  createDefaultConfig(): Htu21ConfigDraft {
+    return Htu21Device.defaultConfig()
+  }
+
+  createDefaultCreateDraft(common: Partial<DeviceCreateDraftBase> = {}): Htu21CreateDraft {
+    return {
+      ...this.createDefaultConfig(),
+      ...common,
+      typeName: common.typeName ?? this.typeName,
+    }
+  }
+
+  createEditDraft(current: DeviceRecord): Htu21CreateDraft {
+    return {
+      ...this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined),
+      typeName: this.typeName,
+    }
+  }
+
+  normalizeConfig(value: unknown, deps?: DeviceDependencyLink[]): Htu21ConfigDraft {
+    return Htu21Device.normalizeConfig(value, deps)
+  }
+
+  normalizeOutput(record: DeviceRecord): Htu21SensorOutputSnapshot {
+    return record.runtime as Htu21SensorOutputSnapshot
+  }
+
+  protected override encodeConfig(config: Htu21ConfigDraft): Record<string, unknown> {
+    return Htu21Device.encodeConfig(config)
+  }
+
+  protected override createCreateDeps(config: Htu21ConfigDraft): DeviceDependencyLink[] {
+    return [
+      {
+        role: 'i2c_bus',
+        deviceId: config.dependencyDeviceId,
+      },
+    ]
+  }
+}

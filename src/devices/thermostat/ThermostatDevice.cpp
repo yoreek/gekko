@@ -1,0 +1,609 @@
+#include "devices/thermostat/ThermostatDevice.h"
+
+#include <cstring>
+
+namespace ewfm {
+
+#undef SM_CLASS
+#define SM_CLASS ThermostatDevice
+
+namespace {
+constexpr const char* kControlOk = "ok";
+constexpr const char* kControlNotReady = "not_ready";
+constexpr const char* kControlDependencyBlocked = "dependency_blocked";
+constexpr const char* kControlDisabled = "disabled";
+constexpr const char* kControlSensorTimeout = "sensor_timeout";
+constexpr const char* kControlOutOfRange = "out_of_range";
+constexpr const char* kControlSwitchError = "switch_error";
+constexpr const char* kControlRetryBackoff = "retry_backoff";
+constexpr const char* kControlSafeOff = "safe_off";
+
+bool configBlobToThermostatConfig(const DeviceConfigBlob& configBlob, ThermostatDeviceConfigV1& config) {
+    return decodeValidatedFixedConfigBlob(ThermostatDeviceConfigV1::kMagic, configBlob.data(), configBlob.size(), config);
+}
+
+int32_t halfBandMilliCelsius(const ThermostatDeviceConfigV1& config) {
+    return static_cast<int32_t>(config.hysteresisCentiCelsius) * 5;
+}
+} // namespace
+
+ThermostatDevice::ThermostatDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob)
+    : ThermostatDevice([&configBlob]() {
+          ThermostatDeviceConfigV1 config{};
+          (void)configBlobToThermostatConfig(configBlob, config);
+          return config;
+      }()) {
+    bindDeviceIdentity(record, configBlob);
+}
+
+ThermostatDevice::ThermostatDevice(const ThermostatDeviceConfigV1& config)
+    : DeviceRuntimeBase((PState)&ThermostatDevice::Idle), config_(config) {}
+
+const ThermostatDeviceConfigV1& ThermostatDevice::config() const {
+    return config_;
+}
+
+const DeviceBaseConfigV1& ThermostatDevice::baseConfig() const {
+    return config_;
+}
+
+const TemperatureReading& ThermostatDevice::latestTemperature() const {
+    return latestTemperature_;
+}
+
+ThermostatDevice::StateType ThermostatDevice::desiredOutputState() const {
+    return desiredOutputState_;
+}
+
+ThermostatDevice::StateType ThermostatDevice::actualOutputState() const {
+    return actualOutputState_;
+}
+
+const char* ThermostatDevice::controlStatus() const {
+    return controlStatus_;
+}
+
+uint32_t ThermostatDevice::lastCheckAtMs() const {
+    return lastCheckAtMs_;
+}
+
+void ThermostatDevice::setDependencyRuntime(DeviceRole role, IDeviceRuntime* dependencyRuntime) {
+    DeviceRuntimeBase::setDependencyRuntime(role, dependencyRuntime);
+    refreshCapabilityCache();
+}
+
+void ThermostatDevice::setDependencyRuntimeAt(uint8_t index, IDeviceRuntime* dependencyRuntime) {
+    DeviceRuntimeBase::setDependencyRuntimeAt(index, dependencyRuntime);
+    refreshCapabilityCache();
+}
+
+void ThermostatDevice::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
+    DeviceRuntimeBase::bindDeviceIdentity(record, config);
+    refreshCapabilityCache();
+}
+
+bool ThermostatDevice::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = thermostatDeviceConfigSize(config_);
+    return encodeFixedConfigBlob(ThermostatDeviceConfigV1::kMagic, config_, buffer, size) && configBlob.assign(buffer, size);
+}
+
+DeviceConfigUpdatePlan ThermostatDevice::planConfigUpdate(const DeviceConfigBlob& configBlob) const {
+    ThermostatDeviceConfigV1 config{};
+    if (!decodeValidatedFixedConfigBlob(ThermostatDeviceConfigV1::kMagic, configBlob.data(), configBlob.size(), config)) {
+        return {};
+    }
+    return {};
+}
+
+bool ThermostatDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
+    ThermostatDeviceConfigV1 config{};
+    if (!decodeValidatedFixedConfigBlob(ThermostatDeviceConfigV1::kMagic, configBlob.data(), configBlob.size(), config)) {
+        return false;
+    }
+    const bool checkIntervalChanged = config.checkIntervalMs != config_.checkIntervalMs;
+    const bool retryAfterErrorChanged = config.retryAfterErrorMs != config_.retryAfterErrorMs;
+    const bool minSwitchIntervalChanged = config.minSwitchIntervalMs != config_.minSwitchIntervalMs;
+    config_ = config;
+    if (checkIntervalChanged) {
+        nextCheckAtMs_ = now + config_.checkIntervalMs;
+    }
+    if (retryAfterErrorChanged && status_ == DeviceStatus::Faulted) {
+        retryDeadlineMs_ = now + config_.retryAfterErrorMs;
+    }
+    if (minSwitchIntervalChanged && pendingOutputState_ != desiredOutputState_) {
+        nextCheckAtMs_ = lastOrdinarySwitchChangeAtMs_ + config_.minSwitchIntervalMs;
+    }
+    return true;
+}
+DeviceTypeDescriptor ThermostatDevice::descriptor() {
+    DeviceTypeDescriptor descriptor;
+    descriptor.typeId = kThermostatDeviceTypeId;
+    descriptor.name = "ThermostatDevice";
+    descriptor.currentConfigVersion = kThermostatDeviceConfigVersion;
+    descriptor.maxDependents = 0;
+    descriptor.supportsCommands = false;
+    descriptor.supportsRetainedState = false;
+    descriptor.defaultPersistencePolicy = DevicePersistencePolicy::Delayed;
+    descriptor.ticks100ms = true;
+    descriptor.dependencyRequirements = {DeviceDependencyRequirement{DeviceRole::TemperatureSensor, true},
+                                         DeviceDependencyRequirement{DeviceRole::Switch, true}};
+    descriptor.createRuntime = &ThermostatDevice::createRuntime;
+    descriptor.validateConfig = &ThermostatDevice::validateConfig;
+    return descriptor;
+}
+
+std::unique_ptr<IDeviceRuntime> ThermostatDevice::createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+    return std::unique_ptr<IDeviceRuntime>(new ThermostatDevice(record, configBlob));
+}
+
+DeviceValidationResult ThermostatDevice::validateConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
+    if (record.dependencyDeviceId(DeviceRole::TemperatureSensor) == 0U || record.dependencyDeviceId(DeviceRole::Switch) == 0U) {
+        return {DeviceError::InvalidRelationship, "thermostat requires temperature_sensor and switch dependencies"};
+    }
+    if (configBlob.size() > kMaxDeviceConfigBytes) {
+        return {DeviceError::BoundsExceeded, "thermostat config exceeds supported size"};
+    }
+    ThermostatDeviceConfigV1 config{};
+    if (!decodeValidatedFixedConfigBlob(ThermostatDeviceConfigV1::kMagic, configBlob.data(), configBlob.size(), config)) {
+        return {DeviceError::InvalidConfig, "thermostat config is invalid"};
+    }
+    return config.validate();
+}
+
+void ThermostatDevice::refreshCapabilityCache() {
+    temperatureSensor_ = nullptr;
+    switchOutput_ = nullptr;
+    if (const IDeviceRuntime* temperatureRuntime = dependencyRuntime(DeviceRole::TemperatureSensor); temperatureRuntime != nullptr) {
+        temperatureSensor_ = temperatureRuntime->temperatureReadingRuntime();
+    }
+    if (const IDeviceRuntime* switchRuntime = dependencyRuntime(DeviceRole::Switch); switchRuntime != nullptr) {
+        switchOutput_ = const_cast<ISwitchOutputRuntime*>(switchRuntime->switchOutputRuntime());
+    }
+}
+
+bool ThermostatDevice::dependenciesAvailable() const {
+    return dependencyRuntime(DeviceRole::TemperatureSensor) != nullptr && dependencyRuntime(DeviceRole::Switch) != nullptr &&
+           temperatureSensor_ != nullptr && switchOutput_ != nullptr;
+}
+
+bool ThermostatDevice::dependenciesReady() const {
+    return dependencyReady(DeviceRole::TemperatureSensor) && dependencyReady(DeviceRole::Switch) && dependenciesAvailable();
+}
+
+bool ThermostatDevice::dependencyIsDisabled() const {
+    return (dependencyRuntime(DeviceRole::TemperatureSensor) != nullptr &&
+            dependencyRuntime(DeviceRole::TemperatureSensor)->status() == DeviceStatus::Disabled) ||
+           (dependencyRuntime(DeviceRole::Switch) != nullptr && dependencyRuntime(DeviceRole::Switch)->status() == DeviceStatus::Disabled);
+}
+
+bool ThermostatDevice::dependencyBlocked() const {
+    if (!dependenciesAvailable()) {
+        return true;
+    }
+    const IDeviceRuntime* temperatureRuntime = dependencyRuntime(DeviceRole::TemperatureSensor);
+    const IDeviceRuntime* switchRuntime = dependencyRuntime(DeviceRole::Switch);
+    return temperatureRuntime == nullptr || switchRuntime == nullptr || temperatureRuntime->status() != DeviceStatus::Ready ||
+           switchRuntime->status() != DeviceStatus::Ready;
+}
+
+bool ThermostatDevice::sensorReadingTimedOut(uint32_t now) const {
+    return sensorInvalidSinceMs_ != 0U && static_cast<uint32_t>(now - sensorInvalidSinceMs_) >= config_.sensorTimeoutMs;
+}
+
+bool ThermostatDevice::sensorReadingInRange(const TemperatureReading& reading) const {
+    return reading.milliCelsius >= config_.minSafeMilliCelsius && reading.milliCelsius <= config_.maxSafeMilliCelsius;
+}
+
+ThermostatDevice::StateType ThermostatDevice::desiredStateForTemperature(const TemperatureReading& reading) const {
+    if (static_cast<ThermostatMode>(config_.mode) == ThermostatMode::Off) {
+        return false;
+    }
+
+    const int32_t halfBand = halfBandMilliCelsius(config_);
+    const int32_t lower = config_.targetMilliCelsius - halfBand;
+    const int32_t upper = config_.targetMilliCelsius + halfBand;
+
+    if (static_cast<ThermostatMode>(config_.mode) == ThermostatMode::Heat) {
+        if (reading.milliCelsius <= lower) {
+            return true;
+        }
+        if (reading.milliCelsius >= upper) {
+            return false;
+        }
+        return desiredOutputState_;
+    }
+
+    if (reading.milliCelsius >= upper) {
+        return true;
+    }
+    if (reading.milliCelsius <= lower) {
+        return false;
+    }
+    return desiredOutputState_;
+}
+
+bool ThermostatDevice::switchCapable() const {
+    return switchOutput_ != nullptr;
+}
+
+bool ThermostatDevice::minSwitchIntervalElapsed(uint32_t now) const {
+    if (config_.minSwitchIntervalMs == 0U || lastOrdinarySwitchChangeAtMs_ == 0U) {
+        return true;
+    }
+    return static_cast<uint32_t>(now - lastOrdinarySwitchChangeAtMs_) >= config_.minSwitchIntervalMs;
+}
+
+void ThermostatDevice::publishTemperature(const TemperatureReading& reading, const char* status) {
+    const bool changed = latestTemperature_.valid != reading.valid || latestTemperature_.measuredAtMs != reading.measuredAtMs ||
+                         latestTemperature_.milliCelsius != reading.milliCelsius || std::strcmp(controlStatus_, status) != 0;
+    latestTemperature_ = reading;
+    controlStatus_ = status;
+    if (changed) {
+        markRuntimeStateDirty();
+    }
+}
+
+void ThermostatDevice::invalidateTemperature(const char* status) {
+    TemperatureReading invalid{};
+    invalid.valid = false;
+    publishTemperature(invalid, status);
+}
+
+void ThermostatDevice::scheduleNextCheck(uint32_t now) {
+    nextCheckAtMs_ = now + config_.checkIntervalMs;
+}
+
+bool ThermostatDevice::requestSwitchOutput(const StateType state, uint32_t now, bool safetyOff) {
+    if (switchOutput_ == nullptr) {
+        return true;
+    }
+    if (!switchOutput_->requestOutputState(state, now)) {
+        return false;
+    }
+    desiredOutputState_ = state;
+    actualOutputState_ = switchOutput_->currentOutputState();
+    if (!safetyOff) {
+        lastOrdinarySwitchChangeAtMs_ = now;
+    }
+    markRuntimeStateDirty();
+    return true;
+}
+
+bool ThermostatDevice::requestSafeOff(uint32_t now) {
+    pendingSafetyOff_ = true;
+    pendingOutputState_ = false;
+    if (switchOutput_ == nullptr) {
+        return true;
+    }
+    if (!switchOutput_->requestOutputState(false, now)) {
+        return false;
+    }
+    desiredOutputState_ = false;
+    actualOutputState_ = switchOutput_->currentOutputState();
+    markRuntimeStateDirty();
+    return true;
+}
+
+SM_STATE(ThermostatDevice::Idle) {
+    status_ = DeviceStatus::Creating;
+    const uint32_t now = uptime();
+    if (deleteRequested_) {
+        status_ = DeviceStatus::Deleting;
+        setDeleted();
+        (void)requestSafeOff(now);
+        SM_GOTO(Deleting);
+    }
+    if (disableRequested_ || config_.enabled == 0U) {
+        status_ = DeviceStatus::Disabled;
+        (void)requestSafeOff(now);
+        SM_GOTO(Disabled);
+    }
+    if (startRequested_) {
+        SM_GOTO(Starting);
+    }
+}
+
+SM_STATE(ThermostatDevice::Starting) {
+    status_ = DeviceStatus::Starting;
+    const uint32_t now = uptime();
+    refreshCapabilityCache();
+    if (deleteRequested_) {
+        status_ = DeviceStatus::Deleting;
+        setDeleted();
+        (void)requestSafeOff(now);
+        SM_GOTO(Deleting);
+    }
+    if (disableRequested_ || config_.enabled == 0U) {
+        status_ = DeviceStatus::Disabled;
+        (void)requestSafeOff(now);
+        SM_GOTO(Disabled);
+    }
+    if (dependencyIsDisabled()) {
+        status_ = DeviceStatus::Disabled;
+        (void)requestSafeOff(now);
+        SM_GOTO(Disabled);
+    }
+    if (dependencyBlocked()) {
+        status_ = DeviceStatus::DependencyBlocked;
+        invalidateTemperature(kControlDependencyBlocked);
+        (void)requestSafeOff(now);
+        SM_GOTO(DependencyBlocked);
+    }
+
+    startRequested_ = false;
+    reconfigureRequested_ = false;
+    faultRequested_ = false;
+    lastCheckAtMs_ = now;
+    nextCheckAtMs_ = now;
+    retryDeadlineMs_ = 0;
+    pendingSafetyOff_ = false;
+    pendingOutputState_ = false;
+    desiredOutputState_ = switchCapable() ? switchOutput_->currentOutputState() : false;
+    actualOutputState_ = desiredOutputState_;
+    invalidateTemperature(kControlNotReady);
+    status_ = DeviceStatus::Ready;
+    SM_GOTO(Ready);
+}
+
+SM_STATE(ThermostatDevice::Reconfiguring) {
+    status_ = DeviceStatus::Reconfiguring;
+    const uint32_t now = uptime();
+    refreshCapabilityCache();
+    reconfigureRequested_ = false;
+    faultRequested_ = false;
+    if (deleteRequested_) {
+        status_ = DeviceStatus::Deleting;
+        setDeleted();
+        (void)requestSafeOff(now);
+        SM_GOTO(Deleting);
+    }
+    if (disableRequested_ || config_.enabled == 0U) {
+        status_ = DeviceStatus::Disabled;
+        (void)requestSafeOff(now);
+        SM_GOTO(Disabled);
+    }
+    if (dependencyIsDisabled()) {
+        status_ = DeviceStatus::Disabled;
+        (void)requestSafeOff(now);
+        SM_GOTO(Disabled);
+    }
+    if (dependencyBlocked()) {
+        status_ = DeviceStatus::DependencyBlocked;
+        invalidateTemperature(kControlDependencyBlocked);
+        (void)requestSafeOff(now);
+        SM_GOTO(DependencyBlocked);
+    }
+
+    lastCheckAtMs_ = now;
+    nextCheckAtMs_ = now;
+    retryDeadlineMs_ = 0;
+    controlStatus_ = kControlNotReady;
+    status_ = DeviceStatus::Ready;
+    SM_GOTO(Ready);
+}
+
+SM_STATE(ThermostatDevice::Ready) {
+    status_ = DeviceStatus::Ready;
+    const uint32_t now = uptime();
+    if (deleteRequested_) {
+        status_ = DeviceStatus::Deleting;
+        setDeleted();
+        (void)requestSafeOff(now);
+        SM_GOTO(Deleting);
+    }
+    if (disableRequested_ || config_.enabled == 0U) {
+        status_ = DeviceStatus::Disabled;
+        (void)requestSafeOff(now);
+        SM_GOTO(Disabled);
+    }
+    if (dependencyIsDisabled()) {
+        status_ = DeviceStatus::Disabled;
+        (void)requestSafeOff(now);
+        SM_GOTO(Disabled);
+    }
+    if (dependencyBlocked()) {
+        status_ = DeviceStatus::DependencyBlocked;
+        invalidateTemperature(kControlDependencyBlocked);
+        (void)requestSafeOff(now);
+        SM_GOTO(DependencyBlocked);
+    }
+    if (reconfigureRequested_) {
+        SM_GOTO(Reconfiguring);
+    }
+    if (faultRequested_) {
+        status_ = DeviceStatus::Faulted;
+        SM_GOTO(Faulted);
+    }
+    if (!EWFM_SM_TIME_REACHED(now, nextCheckAtMs_)) {
+        return;
+    }
+    SM_GOTO(CheckTemperature);
+}
+
+SM_STATE(ThermostatDevice::CheckTemperature) {
+    status_ = DeviceStatus::Ready;
+    const uint32_t now = uptime();
+    TemperatureReading reading{};
+    if (temperatureSensor_ == nullptr || !temperatureSensor_->latestTemperatureReading(reading) || !reading.valid) {
+        if (sensorInvalidSinceMs_ == 0U) {
+            sensorInvalidSinceMs_ = now;
+        }
+        invalidateTemperature(kControlSensorTimeout);
+        lastCheckAtMs_ = now;
+        if (sensorReadingTimedOut(now)) {
+            retryDeadlineMs_ = now + config_.retryAfterErrorMs;
+            status_ = DeviceStatus::Faulted;
+            SM_GOTO(Faulted);
+        }
+        scheduleNextCheck(now);
+        SM_GOTO(Ready);
+    }
+    sensorInvalidSinceMs_ = 0U;
+    if (!sensorReadingInRange(reading)) {
+        invalidateTemperature(kControlOutOfRange);
+        retryDeadlineMs_ = now + config_.retryAfterErrorMs;
+        status_ = DeviceStatus::Faulted;
+        SM_GOTO(Faulted);
+    }
+
+    publishTemperature(reading, kControlOk);
+    lastCheckAtMs_ = now;
+    sensorInvalidSinceMs_ = 0U;
+    pendingOutputState_ = desiredStateForTemperature(reading);
+    pendingSafetyOff_ = false;
+
+    if (pendingOutputState_ == desiredOutputState_) {
+        if (actualOutputState_ != desiredOutputState_ && switchCapable()) {
+            SM_GOTO(ApplyOutput);
+        }
+        scheduleNextCheck(now);
+        SM_GOTO(Ready);
+    }
+
+    if (!minSwitchIntervalElapsed(now)) {
+        nextCheckAtMs_ = lastOrdinarySwitchChangeAtMs_ + config_.minSwitchIntervalMs;
+        SM_GOTO(Ready);
+    }
+
+    SM_GOTO(ApplyOutput);
+}
+
+SM_STATE(ThermostatDevice::ApplyOutput) {
+    status_ = DeviceStatus::Ready;
+    const uint32_t now = uptime();
+    if (deleteRequested_) {
+        status_ = DeviceStatus::Deleting;
+        setDeleted();
+        (void)requestSafeOff(now);
+        SM_GOTO(Deleting);
+    }
+    if (disableRequested_ || config_.enabled == 0U) {
+        status_ = DeviceStatus::Disabled;
+        (void)requestSafeOff(now);
+        SM_GOTO(Disabled);
+    }
+    if (dependencyIsDisabled()) {
+        status_ = DeviceStatus::Disabled;
+        (void)requestSafeOff(now);
+        SM_GOTO(Disabled);
+    }
+    if (dependencyBlocked()) {
+        status_ = DeviceStatus::DependencyBlocked;
+        invalidateTemperature(kControlDependencyBlocked);
+        (void)requestSafeOff(now);
+        SM_GOTO(DependencyBlocked);
+    }
+
+    if (!pendingSafetyOff_ && !minSwitchIntervalElapsed(now) && pendingOutputState_ != desiredOutputState_) {
+        nextCheckAtMs_ = lastOrdinarySwitchChangeAtMs_ + config_.minSwitchIntervalMs;
+        SM_GOTO(Ready);
+    }
+
+    if (!requestSwitchOutput(pendingOutputState_, now, pendingSafetyOff_)) {
+        invalidateTemperature(kControlSwitchError);
+        retryDeadlineMs_ = now + config_.retryAfterErrorMs;
+        status_ = DeviceStatus::Faulted;
+        SM_GOTO(Faulted);
+    }
+
+    pendingSafetyOff_ = false;
+    scheduleNextCheck(now);
+    SM_GOTO(Ready);
+}
+
+SM_STATE(ThermostatDevice::RetryBackoff) {
+    status_ = DeviceStatus::Faulted;
+    const uint32_t now = uptime();
+    controlStatus_ = kControlRetryBackoff;
+    (void)requestSafeOff(now);
+    if (deleteRequested_) {
+        status_ = DeviceStatus::Deleting;
+        setDeleted();
+        SM_GOTO(Deleting);
+    }
+    if (disableRequested_ || config_.enabled == 0U) {
+        status_ = DeviceStatus::Disabled;
+        SM_GOTO(Disabled);
+    }
+    if (dependencyIsDisabled()) {
+        status_ = DeviceStatus::Disabled;
+        SM_GOTO(Disabled);
+    }
+    if (dependencyBlocked()) {
+        status_ = DeviceStatus::DependencyBlocked;
+        SM_GOTO(DependencyBlocked);
+    }
+    if (!EWFM_SM_TIME_REACHED(now, retryDeadlineMs_)) {
+        return;
+    }
+    SM_GOTO(Reconfiguring);
+}
+
+SM_STATE(ThermostatDevice::DependencyBlocked) {
+    status_ = DeviceStatus::DependencyBlocked;
+    const uint32_t now = uptime();
+    controlStatus_ = kControlDependencyBlocked;
+    (void)requestSafeOff(now);
+    if (deleteRequested_) {
+        status_ = DeviceStatus::Deleting;
+        setDeleted();
+        SM_GOTO(Deleting);
+    }
+    if (disableRequested_ || config_.enabled == 0U) {
+        status_ = DeviceStatus::Disabled;
+        SM_GOTO(Disabled);
+    }
+    if (dependencyIsDisabled()) {
+        status_ = DeviceStatus::Disabled;
+        SM_GOTO(Disabled);
+    }
+    if (dependenciesReady()) {
+        status_ = DeviceStatus::Reconfiguring;
+        SM_GOTO(Reconfiguring);
+    }
+}
+
+SM_STATE(ThermostatDevice::Disabled) {
+    status_ = DeviceStatus::Disabled;
+    const uint32_t now = uptime();
+    controlStatus_ = kControlDisabled;
+    (void)requestSafeOff(now);
+    if (deleteRequested_) {
+        status_ = DeviceStatus::Deleting;
+        setDeleted();
+        SM_GOTO(Deleting);
+    }
+    if (!disableRequested_ && config_.enabled != 0U && dependenciesReady()) {
+        SM_GOTO(Reconfiguring);
+    }
+}
+
+SM_STATE(ThermostatDevice::Faulted) {
+    status_ = DeviceStatus::Faulted;
+    const uint32_t now = uptime();
+    if (std::strcmp(controlStatus_, kControlNotReady) == 0) {
+        controlStatus_ = kControlSwitchError;
+    }
+    (void)requestSafeOff(now);
+    if (deleteRequested_) {
+        status_ = DeviceStatus::Deleting;
+        setDeleted();
+        SM_GOTO(Deleting);
+    }
+    if (disableRequested_ || config_.enabled == 0U) {
+        status_ = DeviceStatus::Disabled;
+        SM_GOTO(Disabled);
+    }
+    SM_GOTO(RetryBackoff);
+}
+
+SM_STATE(ThermostatDevice::Deleting) {
+    status_ = DeviceStatus::Deleting;
+    const uint32_t now = uptime();
+    controlStatus_ = kControlSafeOff;
+    (void)requestSafeOff(now);
+    setDeleted();
+}
+
+} // namespace ewfm

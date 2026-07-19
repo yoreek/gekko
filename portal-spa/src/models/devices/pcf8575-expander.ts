@@ -1,0 +1,14 @@
+import { Pcf857xExpanderDeviceBase } from './pcf857x-expander.ts'
+import type { Pcf857xExpanderConfigDraft, Pcf857xExpanderCreateDraft } from './pcf857x-expander.ts'
+
+export type Pcf8575ExpanderConfigDraft = Pcf857xExpanderConfigDraft
+export type Pcf8575ExpanderCreateDraft = Pcf857xExpanderCreateDraft
+
+export class Pcf8575ExpanderDevice extends Pcf857xExpanderDeviceBase {
+  static readonly TYPE_ID = 13 as const
+  static readonly TYPE_NAME = 'pcf8575_expander' as const
+  static readonly CHANNEL_COUNT = 16
+
+  readonly typeName = Pcf8575ExpanderDevice.TYPE_NAME
+  readonly typeId = Pcf8575ExpanderDevice.TYPE_ID
+}

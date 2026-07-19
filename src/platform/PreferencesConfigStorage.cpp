@@ -1,0 +1,171 @@
+#include "platform/PreferencesConfigStorage.h"
+
+namespace ewfm {
+
+bool PreferencesConfigStorage::begin(const char* ns, bool readOnly) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return preferences_.begin(ns, readOnly);
+#else
+    (void)ns;
+    (void)readOnly;
+    return false;
+#endif
+}
+
+void PreferencesConfigStorage::end() {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    preferences_.end();
+#endif
+}
+
+bool PreferencesConfigStorage::hasKey(const char* key) const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return preferences_.isKey(key);
+#else
+    (void)key;
+    return false;
+#endif
+}
+
+bool PreferencesConfigStorage::putString(const char* key, const std::string& value) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return preferences_.putString(key, value.c_str()) == value.size();
+#else
+    (void)key;
+    (void)value;
+    return false;
+#endif
+}
+
+bool PreferencesConfigStorage::getString(const char* key, std::string& value) const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    if (!preferences_.isKey(key)) {
+        return false;
+    }
+    value = preferences_.getString(key, value.c_str()).c_str();
+    return true;
+#else
+    (void)key;
+    (void)value;
+    return false;
+#endif
+}
+
+bool PreferencesConfigStorage::putBlob(const char* key, const uint8_t* value, size_t size) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return preferences_.putBytes(key, value, size) == size;
+#else
+    (void)key;
+    (void)value;
+    (void)size;
+    return false;
+#endif
+}
+
+bool PreferencesConfigStorage::getBlob(const char* key, uint8_t* value, size_t& size) const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    const size_t available = preferences_.getBytesLength(key);
+    if (available == 0U || size < available) {
+        return false;
+    }
+    size = available;
+    return preferences_.getBytes(key, value, available) == available;
+#else
+    (void)key;
+    (void)value;
+    (void)size;
+    return false;
+#endif
+}
+
+bool PreferencesConfigStorage::putBlob(const char* key, const std::vector<uint8_t>& value) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return putBlob(key, value.data(), value.size());
+#else
+    (void)key;
+    (void)value;
+    return false;
+#endif
+}
+
+bool PreferencesConfigStorage::getBlob(const char* key, std::vector<uint8_t>& value) const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    size_t size = preferences_.getBytesLength(key);
+    if (size == 0U) {
+        return false;
+    }
+    value.resize(size);
+    return getBlob(key, value.data(), size);
+#else
+    (void)key;
+    (void)value;
+    return false;
+#endif
+}
+
+bool PreferencesConfigStorage::putUInt(const char* key, uint32_t value) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return preferences_.putUInt(key, value) == sizeof(uint32_t);
+#else
+    (void)key;
+    (void)value;
+    return false;
+#endif
+}
+
+bool PreferencesConfigStorage::getUInt(const char* key, uint32_t& value) const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    if (!preferences_.isKey(key)) {
+        return false;
+    }
+    value = preferences_.getUInt(key, value);
+    return true;
+#else
+    (void)key;
+    (void)value;
+    return false;
+#endif
+}
+
+bool PreferencesConfigStorage::putBool(const char* key, bool value) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return preferences_.putBool(key, value) == sizeof(bool);
+#else
+    (void)key;
+    (void)value;
+    return false;
+#endif
+}
+
+bool PreferencesConfigStorage::getBool(const char* key, bool& value) const {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    if (!preferences_.isKey(key)) {
+        return false;
+    }
+    value = preferences_.getBool(key, value);
+    return true;
+#else
+    (void)key;
+    (void)value;
+    return false;
+#endif
+}
+
+bool PreferencesConfigStorage::remove(const char* key) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return preferences_.remove(key);
+#else
+    (void)key;
+    return false;
+#endif
+}
+
+bool PreferencesConfigStorage::clear() {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    return preferences_.clear();
+#else
+    return false;
+#endif
+}
+
+} // namespace ewfm

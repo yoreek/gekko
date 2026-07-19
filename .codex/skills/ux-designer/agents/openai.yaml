@@ -1,0 +1,6 @@
+interface:
+  display_name: "UX Designer"
+  short_description: "Vuetify-first UX review and layout guidance"
+  default_prompt: "Use $ux-designer to review or improve Vuetify UI readability, spacing, and mode-aware layouts."
+policy:
+  allow_implicit_invocation: true

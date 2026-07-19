@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vue-tsc --noEmit -p tsconfig.json)",
+      "Bash(curl -s http://127.0.0.1:5176*)"
+    ]
+  }
+}

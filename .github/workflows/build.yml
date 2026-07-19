@@ -1,0 +1,35 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+
+      - name: Install PlatformIO + clang-format
+        run: |
+          pip install -U platformio
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      - name: Prepare PlatformIO home dirs
+        run: mkdir -p ~/.platformio/packages ~/.platformio/platforms
+
+      - name: Lint + native unit tests
+        run: scripts/test.sh
