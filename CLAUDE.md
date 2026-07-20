@@ -88,7 +88,7 @@ Vue 3 + Vuetify 4 SPA. Uses `pnpm`. State is managed with Pinia. Real-time updat
 
 ### Data folder
 
-`data/` contains the gzipped LittleFS assets served by the firmware. It is updated by `pnpm deploy:data` in `portal-spa/`. The LittleFS partition is 500 KiB; `portal-spa/scripts/check-data-budget.mjs` enforces this limit. Run `pio run -t uploadfs` to push a refreshed `data/` to the device.
+`data/` contains the gzipped LittleFS assets served by the firmware. It is updated by `pnpm deploy:data` in `portal-spa/`. The LittleFS partition is 640 KiB (`my_partitions.csv`); `portal-spa/scripts/check-data-budget.mjs` enforces this as a soft ceiling on the gzip payload, but LittleFS itself spends some of that on per-file/block overhead — confirm with `pio run -t buildfs` before shipping if usage is close to the line. Run `pio run -t uploadfs` to push a refreshed `data/` to the device.
 
 ## Key Docs
 

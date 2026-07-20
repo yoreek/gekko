@@ -2,8 +2,11 @@ import { promises as fs } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
-// Keep this in sync with `littlefs` in `my_partitions.csv` (0x80000 = 512 KiB).
-const dataBudgetBytes = 512 * 1024
+// Keep this in sync with `littlefs` in `my_partitions.csv` (0xA0000 = 640 KiB). LittleFS itself
+// spends some of that on per-file/block overhead beyond raw byte totals (metadata, block
+// rounding), so this is a soft ceiling on the gzip payload, not the true usable capacity - always
+// confirm with `pio run -t buildfs` before shipping if this is close to the line.
+const dataBudgetBytes = 640 * 1024
 const dataDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../data')
 
 async function walk(dir) {
