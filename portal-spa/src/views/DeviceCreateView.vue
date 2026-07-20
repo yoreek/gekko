@@ -39,11 +39,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { createDevice } from '@/api'
 import { createDefaultDeviceDraft, type DeviceCreateDraft } from '@/models/devices/device-draft'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
+import { usePanelStore } from '@/stores/panels'
 import { resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
 import { resolveDeviceModelByTypeName } from '@/models/devices/device-model-factory'
 import { useNotificationsStore } from '@/stores/notifications'
@@ -53,9 +54,16 @@ import PageToolbar from '@/components/layout/PageToolbar.vue'
 import PageCard from '@/components/layout/PageCard.vue'
 
 const { t } = useI18n()
+const route = useRoute()
 const router = useRouter()
 const deviceStore = useDeviceRegistryStore()
+const panelStore = usePanelStore()
 const notifications = useNotificationsStore()
+
+const targetPanelId = computed(() => {
+  const value = route.query.panelId
+  return typeof value === 'string' && value.length > 0 ? value : null
+})
 
 const isCreating = ref(false)
 const errorMessage = ref('')
@@ -100,7 +108,13 @@ async function submitCreate(): Promise<void> {
       notifications.notify(t('notifications.deviceCreated', { name: response.device.config.name }), 'success')
       // replace(), not push(): the create form shouldn't remain in history, so "back" from
       // the list doesn't return to a stale create form for an already-created device.
-      await router.replace({ name: 'devices' })
+      if (targetPanelId.value) {
+        panelStore.assignDeviceToPanel(targetPanelId.value, response.device.record.id)
+        panelStore.setActivePanel(targetPanelId.value)
+        await router.replace({ name: 'dashboard' })
+      } else {
+        await router.replace({ name: 'devices' })
+      }
     }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : t('device.dialog.unknownError')

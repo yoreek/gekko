@@ -1,8 +1,8 @@
 <template>
   <PageContainer dense>
     <div class="d-flex flex-column h-100">
-      <v-row no-gutters align="center" class="ga-2 pa-3">
-        <v-col v-if="canMoveActivePanel(-1) || panelStore.panels.length > 1">
+      <v-row no-gutters align="center" class="ga-2 pa-3 pb-0">
+        <v-col v-if="canMoveActivePanel(-1) || panelStore.panels.length > 1" cols="auto">
           <v-btn
             icon="chevron-left"
             variant="text"
@@ -12,8 +12,8 @@
             @click="moveActivePanel(-1)"
           />
         </v-col>
-        <v-col>
-          <v-tabs v-model="activePanelId" color="primary" density="comfortable">
+        <v-col class="overflow-hidden">
+          <v-tabs v-model="activePanelId" color="primary" density="comfortable" show-arrows>
             <v-tab v-for="panel in panelStore.panels" :key="panel.id" :value="panel.id">
               {{ panel.name }}
             </v-tab>
@@ -29,40 +29,49 @@
             @click="moveActivePanel(1)"
           />
         </v-col>
-        <v-col cols="auto">
-          <div class="d-flex ga-1 flex-wrap">
-            <v-btn
-              variant="text"
-              color="primary"
-              size="small"
-              :disabled="deviceStore.devices.length === 0 || !activePanel"
-              :aria-label="t('dashboard.addDevice')"
-              prepend-icon="plus"
-              @click="openAddDeviceDialog"
-            >
-              {{ t('dashboard.addDevice') }}
-            </v-btn>
-            <v-btn variant="text" color="primary" size="small" prepend-icon="plus" @click="openCreatePanelDialog">
-              {{ t('dashboard.addPanel') }}
-            </v-btn>
-            <v-btn variant="text" color="primary" size="small" :loading="devicesLoading" prepend-icon="refresh" @click="refreshDevices()">
-              {{ t('actions.refresh') }}
-            </v-btn>
-            <v-btn variant="text" size="small" prepend-icon="refresh" @click="resetLayout">
-              {{ t('dashboard.resetLayout') }}
-            </v-btn>
-            <v-btn
-              :variant="editing ? 'flat' : 'text'"
-              :color="editing ? 'primary' : 'default'"
-              size="small"
-              :prepend-icon="editing ? 'close' : 'edit'"
-              @click="editing = !editing"
-            >
-              {{ editing ? t('dashboard.doneMode') : t('dashboard.editMode') }}
-            </v-btn>
-          </div>
-        </v-col>
       </v-row>
+
+      <div class="d-flex ga-1 flex-wrap pa-3 pt-2">
+        <v-btn
+          variant="text"
+          color="primary"
+          size="small"
+          :disabled="deviceStore.devices.length === 0 || !activePanel"
+          :aria-label="t('dashboard.addDevice')"
+          prepend-icon="plus"
+          @click="openAddDeviceDialog"
+        >
+          {{ t('dashboard.addDevice') }}
+        </v-btn>
+        <v-btn
+          variant="text"
+          color="primary"
+          size="small"
+          :disabled="!activePanel"
+          prepend-icon="plus"
+          @click="goToCreateDevice"
+        >
+          {{ t('dashboard.createDevice') }}
+        </v-btn>
+        <v-btn variant="text" color="primary" size="small" prepend-icon="plus" @click="openCreatePanelDialog">
+          {{ t('dashboard.addPanel') }}
+        </v-btn>
+        <v-btn variant="text" color="primary" size="small" :loading="devicesLoading" prepend-icon="refresh" @click="refreshDevices()">
+          {{ t('actions.refresh') }}
+        </v-btn>
+        <v-btn variant="text" size="small" prepend-icon="refresh" @click="resetLayout">
+          {{ t('dashboard.resetLayout') }}
+        </v-btn>
+        <v-btn
+          :variant="editing ? 'flat' : 'text'"
+          :color="editing ? 'primary' : 'default'"
+          size="small"
+          :prepend-icon="editing ? 'close' : 'edit'"
+          @click="editing = !editing"
+        >
+          {{ editing ? t('dashboard.doneMode') : t('dashboard.editMode') }}
+        </v-btn>
+      </div>
 
       <v-divider />
 
@@ -77,8 +86,10 @@
             :columns="gridColumns"
             :editable="editing"
             :reset-token="layoutRevision"
+            :panels="otherPanels"
             @open="openMoreInfo"
             @remove="removeWidget"
+            @move="moveWidgetToPanel"
             @command="submitDashboardCommand"
             @layout-change="saveWidgetLayout"
           />
@@ -144,6 +155,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 
 import { commandDevice, type DeviceCommandRequest, type DeviceRecord } from '@/api'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
@@ -153,6 +165,7 @@ import DeviceMoreInfoDialog from '@/components/devices/common/DeviceMoreInfoDial
 import PageContainer from '@/components/layout/PageContainer.vue'
 
 const { t } = useI18n()
+const router = useRouter()
 const deviceStore = useDeviceRegistryStore()
 const panelStore = usePanelStore()
 
@@ -219,6 +232,10 @@ const deviceOptions = computed(() =>
     title: `${device.config.name} #${device.record.id}`,
     value: device.record.id,
   })),
+)
+
+const otherPanels = computed(() =>
+  panelStore.panels.filter(panel => panel.id !== activePanel.value?.id).map(panel => ({ id: panel.id, name: panel.name })),
 )
 
 const moreInfoDevice = computed(() => deviceStore.devices.find(device => device.record.id === moreInfoDeviceId.value) ?? null)
@@ -354,6 +371,17 @@ function removeWidget(deviceId: number): void {
     return
   }
   panelStore.removeWidget(activePanel.value.id, deviceId)
+}
+
+function moveWidgetToPanel(deviceId: number, targetPanelId: string): void {
+  if (!activePanel.value) {
+    return
+  }
+  panelStore.moveDeviceToPanel(activePanel.value.id, targetPanelId, deviceId)
+}
+
+function goToCreateDevice(): void {
+  void router.push({ name: 'device-create', query: activePanel.value ? { panelId: activePanel.value.id } : {} })
 }
 
 function saveWidgetLayout(widgets: DashboardPanelWidget[]): void {

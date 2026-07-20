@@ -31,9 +31,9 @@ test('seed bitmap payloads match their declared dimensions', () => {
 
   const composer = database.devices.find(device => device.record.typeName === 'analog_output_composer')
   assert.ok(composer)
-  const composerWidget = database.dashboardLayout.panels[0].widgets.find(
-    widget => widget[0] === composer.record.id,
-  )
+  const composerWidget = database.dashboardLayout.panels
+    .flatMap(panel => panel.widgets)
+    .find(widget => widget[0] === composer.record.id)
   assert.ok(composerWidget)
   assert.equal(composerWidget[3], 1)
 })

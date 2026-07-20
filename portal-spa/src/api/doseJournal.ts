@@ -1,11 +1,10 @@
 import type { DoseJournalResponse } from './contracts'
 import { detectTransportMode } from './transport'
 import { requestJson } from './http'
-import { mockFetchDoseJournal } from '@/mock/handlers'
 
 export function fetchDoseJournal(deviceId: number, periodDays: number): Promise<DoseJournalResponse> {
-  if (detectTransportMode() === 'mock') {
-    return Promise.resolve(mockFetchDoseJournal(deviceId, periodDays))
+  if (import.meta.env.DEV && detectTransportMode() === 'mock') {
+    return import('@/mock/handlers').then(m => m.mockFetchDoseJournal(deviceId, periodDays))
   }
   const params = new URLSearchParams()
   if (deviceId > 0) {

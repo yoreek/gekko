@@ -6,8 +6,8 @@ test('check device detail page', async ({ page }) => {
 
   await page.goto('http://127.0.0.1:5176/devices/670845748?mockMode=1&mockReset=1')
 
-  await expect(page.getByRole('heading', { name: 'Aquarium Lamp' })).toBeVisible()
-  await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue('Aquarium Lamp')
+  await expect(page.getByRole('heading', { name: 'Aquarium Lamp PWM' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue('Aquarium Lamp PWM')
   await expect(page.getByRole('button', { name: 'Save' })).toBeVisible()
   await expect(page.locator('[role="alert"]')).toHaveCount(0)
   expect(pageErrors).toEqual([])

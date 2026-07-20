@@ -471,6 +471,22 @@ export const usePanelStore = defineStore('panels', {
     assignDeviceToActivePanel(deviceId: number): void {
       this.assignDeviceToPanel(this.activePanelId, deviceId)
     },
+    moveDeviceToPanel(fromPanelId: string, toPanelId: string, deviceId: number): void {
+      if (fromPanelId === toPanelId) {
+        return
+      }
+      const from = this.panels.find(panel => panel.id === fromPanelId)
+      const to = this.panels.find(panel => panel.id === toPanelId)
+      if (!from || !to) {
+        return
+      }
+
+      from.widgets = sanitizeWidgets(from.widgets.filter(widget => widget.deviceId !== deviceId), defaultColumns)
+      if (!to.widgets.some(widget => widget.deviceId === deviceId)) {
+        to.widgets = [...to.widgets, ...seedWidgets([deviceId], defaultColumns, bottomOf(to.widgets))]
+      }
+      void this.persistNow()
+    },
     removeDevice(deviceId: number): void {
       this.panels = removeDeviceFromPanels(this.panels, deviceId)
       void this.persistNow()

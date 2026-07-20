@@ -7,7 +7,7 @@
     @keydown.enter.prevent="handleOpen"
     @keydown.space.prevent="handleOpen"
   >
-    <DeviceIdentityHeader :device="device" :subtitle="subtitle" :editable="editable" dense @remove="$emit('remove')">
+    <DeviceIdentityHeader :device="device" :subtitle="subtitle" :editable="editable" :panels="panels" dense @remove="$emit('remove')" @move="$emit('move', $event)">
       <template v-if="$slots.prepend" #prepend>
         <slot name="prepend" />
       </template>
@@ -26,15 +26,19 @@
 import type { DeviceRecord } from '@/api/contracts'
 import DeviceIdentityHeader from '@/components/devices/common/DeviceIdentityHeader.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   device: DeviceRecord
   editable?: boolean
   subtitle?: string
-}>()
+  panels?: { id: string; name: string }[]
+}>(), {
+  panels: () => [],
+})
 
 const emit = defineEmits<{
   open: []
   remove: []
+  move: [panelId: string]
 }>()
 
 function handleOpen(): void {

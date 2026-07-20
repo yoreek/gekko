@@ -29,7 +29,7 @@ test('exports and imports device setup bundles using record and config only', as
     },
     config: {
       enabled: true,
-      name: 'Aquarium Lamp',
+      name: 'Aquarium Lamp PWM',
       deps: [],
     },
   })

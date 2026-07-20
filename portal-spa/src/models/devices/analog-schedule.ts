@@ -141,7 +141,6 @@ export function moveAnalogSchedulePoint(
     pointIndex < 0
     || pointIndex >= points.length
     || points[pointIndex].deleted
-    || points.filter(point => !point.deleted).length <= 1
   ) {
     return points
   }

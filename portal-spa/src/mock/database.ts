@@ -48,7 +48,7 @@ export function isHaSupportedTypeName(typeName: string): boolean {
   return HA_SUPPORTED_TYPE_NAMES.has(typeName)
 }
 
-const storageKey = 'gekko.mockDb.v11'
+export const storageKey = 'gekko.mockDb.v11'
 
 type MockDeviceConfig = BaseDeviceConfig & Record<string, unknown>
 type MockDeviceRuntime = BaseDeviceRuntime & {
@@ -249,28 +249,117 @@ function seedDoseJournalEntries(): MockDoseJournalEntry[] {
 }
 
 const seedDatabase: SeedDatabase = {
-  registryRevision: 21,
+  registryRevision: 24,
   dashboardLayoutRevision: 1,
   dashboardLayout: {
     schemaVersion: 1,
-    activePanelId: 'main',
+    activePanelId: 'buses',
     panels: [
       {
-        id: 'main',
-        name: 'Main panel',
+        id: 'buses',
+        name: 'Buses',
         order: 0,
+        widgets: [
+          [670845751, 0, 0, 1, 1],
+          [670845754, 1, 0, 1, 1],
+          [670845757, 2, 0, 1, 1],
+        ],
+      },
+      {
+        id: 'analog-input',
+        name: 'Analog input',
+        order: 1,
+        widgets: [
+          [670845793, 0, 0, 1, 1],
+          [670845794, 1, 0, 1, 1],
+          [670845795, 2, 0, 1, 1],
+          [670845796, 3, 0, 1, 1],
+          [670845797, 4, 0, 1, 1],
+          [670845798, 5, 0, 1, 1],
+        ],
+      },
+      {
+        id: 'switches',
+        name: 'Switches',
+        order: 2,
+        widgets: [
+          [670845760, 0, 0, 1, 1],
+          [670845761, 1, 0, 1, 1],
+          [670845762, 2, 0, 1, 1],
+          [670845799, 3, 0, 1, 1],
+          [670845763, 4, 0, 1, 1],
+          [670845750, 5, 0, 1, 1],
+          [670845764, 6, 0, 1, 1],
+          [670845765, 7, 0, 1, 1],
+        ],
+      },
+      {
+        id: 'temperature-sensors',
+        name: 'Temperature sensors',
+        order: 3,
+        widgets: [
+          [670845758, 0, 0, 1, 1],
+          [670845766, 1, 0, 1, 1],
+          [670845752, 2, 0, 1, 1],
+        ],
+      },
+      {
+        id: 'dosing-pump',
+        name: 'Dosing pump',
+        order: 4,
+        widgets: [
+          [kSeedDosingPumpId, 0, 0, 1, 1],
+          [670845774, 1, 0, 1, 1],
+          [670845776, 2, 0, 1, 1],
+          [670845801, 3, 0, 1, 1],
+          [670845770, 4, 0, 1, 1],
+          [670845773, 5, 0, 1, 1],
+          [670845775, 6, 0, 1, 1],
+          [670845800, 7, 0, 1, 1],
+          [670845771, 8, 0, 1, 1],
+        ],
+      },
+      {
+        id: 'analog-output',
+        name: 'Analog output',
+        order: 5,
+        widgets: [
+          [kSeedAnalogOutputId, 0, 0, 1, 1],
+          [670845778, 1, 0, 1, 1],
+          [670845779, 2, 0, 1, 1],
+          [670845780, 3, 0, 1, 1],
+          [670845781, 4, 0, 1, 1],
+          [670845782, 5, 0, 1, 1],
+          [670845783, 6, 0, 1, 1],
+          [670845784, 7, 0, 1, 1],
+          [670845785, 8, 0, 1, 1],
+          [670845786, 9, 0, 1, 1],
+        ],
+      },
+      {
+        id: 'aquarium-lamp',
+        name: 'Aquarium lamp',
+        order: 6,
+        widgets: [
+          [kSeedAnalogComposerId, 0, 0, 1, 1],
+          [670845787, 1, 0, 1, 1],
+          [670845788, 2, 0, 1, 1],
+          [670845789, 3, 0, 1, 1],
+          [670845790, 4, 0, 1, 1],
+          [670845791, 5, 0, 1, 1],
+        ],
+      },
+      {
+        id: 'misc',
+        name: 'Misc',
+        order: 7,
         widgets: [
           [670845748, 0, 0, 1, 1],
           [670845749, 1, 0, 1, 1],
-          [670845750, 2, 0, 1, 1],
-          [670845752, 3, 0, 1, 1],
-          [670845753, 4, 0, 1, 1],
-          [670845751, 5, 0, 1, 1],
-          [670845754, 6, 0, 1, 1],
-          [670845755, 7, 0, 1, 1],
-          [670845756, 8, 0, 1, 1],
-          [670845758, 9, 0, 1, 1],
-          [kSeedAnalogComposerId, 10, 0, 1, 1],
+          [670845753, 2, 0, 1, 1],
+          [670845759, 3, 0, 1, 1],
+          [670845755, 4, 0, 1, 1],
+          [670845756, 5, 0, 1, 1],
         ],
       },
     ],
@@ -957,6 +1046,28 @@ const seedDatabase: SeedDatabase = {
         state: true,
       },
     }),
+    createDeviceRecord(670845799, 'port_expander_switch', 1, {
+      enabled: true,
+      name: 'Grow Light Expander Channel 0',
+      deps: [
+        {
+          role: 'port_expander',
+          deviceId: 670845761,
+        },
+      ],
+      restorePreviousState: false,
+      startupState: false,
+      safeState: false,
+      inverted: false,
+      channel: 0,
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: {
+        state: false,
+      },
+    }),
     createDeviceRecord(670845763, 'gpio_switch', 1, {
       enabled: true,
       name: 'Grow Light',
@@ -1282,6 +1393,80 @@ const seedDatabase: SeedDatabase = {
           status: 'warning',
         },
         skipNext: [false, false],
+      },
+    }),
+    createDeviceRecord(670845800, 'gpio_switch', 1, {
+      enabled: true,
+      name: 'Phosphate Pump Relay',
+      deps: [],
+      gpioPin: 33,
+      inverted: false,
+      restorePreviousState: false,
+      startupState: false,
+      safeState: false,
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: {
+        state: false,
+      },
+    }),
+    createDeviceRecord(670845801, 'dosing_pump', 1, {
+      enabled: true,
+      name: 'Phosphate',
+      deps: [
+        {
+          role: 'switch',
+          deviceId: 670845800,
+        },
+      ],
+      dosingSpeedMlPerSec: 1,
+      container: {
+        capacityMl: 500,
+        thresholdPercent: 10,
+        blockAutoWhenEmpty: true,
+      },
+      schedule: {
+        mode: 'weekly',
+        everyDays: 1,
+        daysOfWeek: [2, 5],
+        anchorDay: 0,
+        doses: [
+          { time: '11:00', amountMl: 3 },
+        ],
+      },
+      pumpSwitchDeviceId: 670845800,
+      levelSensorDeviceId: 0,
+      levelSensorInvert: false,
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: {
+        state: 'idle',
+        autoMode: true,
+        timeValid: true,
+        lastRunDosedMl: 3,
+        todayDosedMl: 0,
+        todayTargetMl: 0,
+        nextDoseAt: seedJournalNow - (seedJournalNow % 3600) + 5400,
+        nextDoseAmountMl: 3,
+        lastDose: {
+          at: seedJournalNow - 72 * 3600,
+          type: 'schedule',
+          amountMl: 3,
+        },
+        daysLeft: 12,
+        container: {
+          capacityMl: 500,
+          currentMl: 410,
+          percent: 82,
+          empty: false,
+          sensorPresent: false,
+          status: 'normal',
+        },
+        skipNext: [false],
       },
     }),
     createDeviceRecord(kSeedAnalogOutputId, 'analog_output', 2, {

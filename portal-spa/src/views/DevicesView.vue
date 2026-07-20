@@ -16,7 +16,7 @@
           <v-text-field v-select-on-focus v-model="nameFilter" :label="t('devices.search')" density="compact" hide-details />
         </v-col>
         <v-col cols="12" md="4">
-          <v-select v-model="typeFilter" :items="typeFilterOptions" :label="t('devices.filterByType')" density="compact" hide-details />
+          <v-autocomplete v-model="typeFilter" :items="typeFilterOptions" :label="t('devices.filterByType')" density="compact" hide-details />
         </v-col>
         <v-col cols="12" md="4">
           <v-text-field v-select-on-focus v-model="idFilter" :label="t('device.fields.deviceId')" density="compact" hide-details inputmode="numeric" />
@@ -35,6 +35,8 @@
 
       <v-data-table
         v-else
+        v-model:page="page"
+        v-model:items-per-page="itemsPerPage"
         :headers="tableHeaders"
         :items="filteredDevices"
         :item-value="item => item.record.id"
@@ -91,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, ref } from 'vue'
+import { computed, onBeforeMount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -102,6 +104,7 @@ import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore } from '@/stores/panels'
 import { allDeviceUis, resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
 import { useNotificationsStore } from '@/stores/notifications'
+import { safeReadStorage, safeWriteStorage } from '@/utils/storage'
 import PageContainer from '@/components/layout/PageContainer.vue'
 import PageToolbar from '@/components/layout/PageToolbar.vue'
 import PageCard from '@/components/layout/PageCard.vue'
@@ -118,9 +121,57 @@ onBeforeMount(async () => {
 
 const countLabel = computed(() => t('device.dashboard.count', { count: deviceStore.devices.length }))
 
-const nameFilter = ref('')
-const idFilter = ref('')
-const typeFilter = ref<'all' | number>('all')
+const filtersStorageKey = 'gekko.devicesView.filters'
+
+interface StoredDevicesViewFilters {
+  nameFilter: string
+  idFilter: string
+  typeFilter: 'all' | number
+  page: number
+  itemsPerPage: number
+}
+
+function readStoredFilters(): Partial<StoredDevicesViewFilters> {
+  const raw = safeReadStorage(filtersStorageKey)
+  if (!raw) {
+    return {}
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    return typeof parsed === 'object' && parsed !== null ? (parsed as Partial<StoredDevicesViewFilters>) : {}
+  } catch {
+    return {}
+  }
+}
+
+const storedFilters = readStoredFilters()
+
+const nameFilter = ref(typeof storedFilters.nameFilter === 'string' ? storedFilters.nameFilter : '')
+const idFilter = ref(typeof storedFilters.idFilter === 'string' ? storedFilters.idFilter : '')
+const typeFilter = ref<'all' | number>(
+  storedFilters.typeFilter === 'all' || typeof storedFilters.typeFilter === 'number' ? storedFilters.typeFilter : 'all',
+)
+const page = ref(Number.isInteger(storedFilters.page) && (storedFilters.page as number) > 0 ? (storedFilters.page as number) : 1)
+// -1 is Vuetify's own sentinel for the "All" items-per-page option, not a corrupt/invalid value.
+const itemsPerPage = ref(
+  Number.isInteger(storedFilters.itemsPerPage) && ((storedFilters.itemsPerPage as number) > 0 || storedFilters.itemsPerPage === -1)
+    ? (storedFilters.itemsPerPage as number)
+    : 10,
+)
+
+watch([nameFilter, idFilter, typeFilter], () => {
+  page.value = 1
+})
+
+watch([nameFilter, idFilter, typeFilter, page, itemsPerPage], () => {
+  safeWriteStorage(filtersStorageKey, JSON.stringify({
+    nameFilter: nameFilter.value,
+    idFilter: idFilter.value,
+    typeFilter: typeFilter.value,
+    page: page.value,
+    itemsPerPage: itemsPerPage.value,
+  } satisfies StoredDevicesViewFilters))
+})
 
 const typeFilterOptions = computed(() => [
   { title: t('devices.filterAllTypes'), value: 'all' },

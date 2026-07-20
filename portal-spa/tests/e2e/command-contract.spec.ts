@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
+import { storageKey } from '../../src/mock/database.ts'
 
 const mockPath = '/devices?mockMode=1&mockReset=1'
-const storageKey = 'gekko.mockDb.v9'
 
 test('switch commands use structured output state fields', async ({ page }) => {
   await page.goto(mockPath)
@@ -24,6 +24,8 @@ test('switch commands use structured output state fields', async ({ page }) => {
 
 test('dashboard switch power remains enabled when snapshot only has ready status', async ({ page }) => {
   await page.goto('/?mockMode=1&mockReset=1')
+  // GPIO Relay lives on the "Switches" panel, not the default active "Buses" panel.
+  await page.getByRole('tab', { name: 'Switches' }).click()
 
   await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) || '{}')
@@ -89,13 +91,14 @@ test('dummy device has no command UI and creates only base config', async ({ pag
   await page.getByText('Aquarium Lamp').click()
   await expect(page.getByText('No additional type-specific settings.')).toBeVisible()
   await expect(page.getByText('Quick commands')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'On' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Off' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'On', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Off', exact: true })).toHaveCount(0)
 
   await page.goto(mockPath)
   await page.getByRole('link', { name: 'Create device' }).click()
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Dummy Basic')
   await page.getByRole('button', { name: 'Save' }).click()
+  await page.waitForURL('**/devices')
 
   const created = await page.evaluate(key => {
     const db = JSON.parse(localStorage.getItem(key) || '{}')

@@ -1,12 +1,11 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-
-const storageKey = 'gekko.mockDb.v9'
+import { storageKey } from '../../src/mock/database.ts'
 
 async function selectOption(page: Page, name: string, option: string | RegExp): Promise<void> {
   const input = page.getByRole('combobox', { name, exact: true })
   await input.locator('xpath=ancestor::*[contains(@class, "v-field")][1]').click()
-  await page.getByRole('option', { name: option }).click()
+  await page.getByRole('option', { name: option, exact: true }).click()
 }
 
 const seededPumpId = 670845772

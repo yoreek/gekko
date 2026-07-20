@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
+import { storageKey } from '../../src/mock/database.ts'
 
 const mockPath = '/devices?mockMode=1&mockReset=1'
-const storageKey = 'gekko.mockDb.v9'
 
 async function selectOption(page: Page, name: string, option: string | RegExp): Promise<void> {
   const input = page.getByRole('combobox', { name, exact: true })
   await input.locator('xpath=ancestor::*[contains(@class, "v-field")][1]').click()
-  await page.getByRole('option', { name: option }).click()
+  await page.getByRole('option', { name: option, exact: true }).click()
 }
 
 async function saveAndOpenByName(page: Page, name: string): Promise<void> {
@@ -108,13 +108,13 @@ test('creates an auto switch bound to a target switch and a schedule', async ({ 
   // 02:00 clock) schedule.
   await page.getByRole('button', { name: 'On', exact: true }).click()
   await expect.poll(async () => (await outputOf()).mode).toBe('on')
-  await expect.poll(async () => (await outputOf()).state).toBe('on')
+  await expect.poll(async () => (await outputOf()).state).toBe(true)
 
   // Back to Auto: the schedule is inactive at this (frozen) time, so this must turn the target off
   // - it must not keep whatever the manual "On" override left it at.
   await page.getByRole('button', { name: 'Auto', exact: true }).click()
   await expect.poll(async () => (await outputOf()).mode).toBe('auto')
-  await expect.poll(async () => (await outputOf()).state).toBe('off')
+  await expect.poll(async () => (await outputOf()).state).toBe(false)
 
   // Paused is a flat 4th mode (mirrors ReefDuino's ScheduledSwitchMode), only reachable from Auto -
   // pausedUntilMs must be set and mode itself reports "paused".

@@ -15,8 +15,10 @@
           :is="resolveDeviceUi(item.device.record.typeName).widgetComponent"
           :device="item.device"
           :editable="editable"
+          :panels="panels"
           @open="$emit('open', item.device.record.id)"
           @remove="$emit('remove', item.device.record.id)"
+          @move="$emit('move', item.device.record.id, $event)"
           @command="$emit('command', item.device.record.id, $event)"
         />
       </div>
@@ -39,18 +41,22 @@ interface DashboardGridItem {
   device: DeviceRecord
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   widgets: DashboardGridItem[]
   columns: number
   editable?: boolean
   // Bumped by the parent on an explicit "reset layout" so the grid rebuilds from
   // the freshly seeded widget positions (position changes alone don't re-init).
   resetToken?: number
-}>()
+  panels?: { id: string; name: string }[]
+}>(), {
+  panels: () => [],
+})
 
 const emit = defineEmits<{
   open: [deviceId: number]
   remove: [deviceId: number]
+  move: [deviceId: number, panelId: string]
   command: [deviceId: number, payload: DeviceCommandRequest]
   'layout-change': [widgets: DashboardPanelWidget[]]
 }>()

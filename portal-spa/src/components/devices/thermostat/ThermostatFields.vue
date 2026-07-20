@@ -170,6 +170,7 @@ import { useI18n } from 'vue-i18n'
 
 import type { DeviceRecord, ThermostatOutputSnapshot } from '@/api/contracts'
 import { dependencyOptionsForRole } from '@/models/devices/device-model-factory'
+import { switchStateLabelKey } from '@/models/devices/switch'
 import {
   ThermostatDevice,
   type ThermostatAlgorithm,
@@ -206,8 +207,8 @@ const temperatureText = computed(() => (props.device && temperature.value ? Ther
 const modeText = computed(() => t(ThermostatDevice.modeLabelKey(props.modelValue.mode)))
 const statusText = computed(() => t(ThermostatDevice.statusLabelKey(output.value?.controlStatus ?? props.device?.runtime.effectiveStatus ?? props.device?.runtime.status ?? 'unknown')))
 const controlText = computed(() => `${t('device.fields.controlStatus')}: ${statusText.value}`)
-const desiredSwitchText = computed(() => t(`labels.output.${output.value?.desiredSwitchState ?? 'off'}`))
-const actualSwitchText = computed(() => t(`labels.output.${output.value?.actualSwitchState ?? 'off'}`))
+const desiredSwitchText = computed(() => t(switchStateLabelKey(output.value?.desiredSwitchState ?? false)))
+const actualSwitchText = computed(() => t(switchStateLabelKey(output.value?.actualSwitchState ?? false)))
 const statusTone = computed(() => ThermostatDevice.outputTone(props.device?.runtime.effectiveStatus ?? props.device?.runtime.status ?? 'unknown'))
 const temperatureColor = computed(() => (temperature.value?.valid ? 'primary' : 'secondary'))
 const alertType = computed(() => {

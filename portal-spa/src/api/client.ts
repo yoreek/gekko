@@ -26,60 +26,34 @@ import type {
 import { TIMEZONE_CATALOG } from '@/data/timezones'
 import { detectTransportMode } from './transport'
 import { requestEmpty, requestFormData, requestJson, requestText } from './http'
-import {
-  mockCommandDevice,
-  mockDeleteMqttCaCert,
-  mockExportDeviceSetupBundle,
-  mockFetchDashboardLayout,
-  mockFetchMqttSettings,
-  mockFetchMqttStatus,
-  mockImportDeviceSetupBundle,
-  mockConfigureWifi,
-  mockCreateDevice,
-  mockDeleteDevice,
-  mockFetchDevice,
-  mockFetchDeviceLayout,
-  mockFetchDevices,
-  mockFetchMetricPlaceholders,
-  mockFetchMetricValues,
-  mockFetchOtaStatus,
-  mockFetchSystemStatus,
-  mockFetchSystemVersion,
-  mockFetchWifiScan,
-  mockFetchWifiStatus,
-  mockRestartSystem,
-  mockSaveDashboardLayout,
-  mockResetWifiCredentials,
-  mockStartBleWifiConfig,
-  mockFetchTimeSettings,
-  mockFetchTimeStatus,
-  mockSetSystemTime,
-  mockUpdateMqttSettings,
-  mockUpdateTimeSettings,
-  mockUploadMqttCaCert,
-} from '@/mock/handlers'
 
+// `import.meta.env.DEV` is inlined to a literal by Vite's build-time define pass, so in a
+// production build (`vite build`, what ships to `data/` and the device's LittleFS) this whole
+// branch - and the dynamic import()s it guards - is provably dead code. Rollup drops it (and
+// never emits a chunk for `@/mock/handlers` or its dependency tree) instead of shipping the
+// mock device fixtures to real hardware. Dev server / Playwright runs (`pnpm dev`) keep DEV
+// true, so mock mode keeps working there.
 function useMockTransport(): boolean {
-  return detectTransportMode() === 'mock'
+  return import.meta.env.DEV && detectTransportMode() === 'mock'
 }
 
 export function fetchWifiStatus(): Promise<WifiStatusResponse> {
   if (useMockTransport()) {
-    return Promise.resolve(mockFetchWifiStatus())
+    return import('@/mock/handlers').then(m => m.mockFetchWifiStatus())
   }
   return requestJson<WifiStatusResponse>('/api/wifi/status')
 }
 
 export function fetchWifiScan(): Promise<WifiScanResponse> {
   if (useMockTransport()) {
-    return Promise.resolve(mockFetchWifiScan())
+    return import('@/mock/handlers').then(m => m.mockFetchWifiScan())
   }
   return requestJson<WifiScanResponse>('/api/wifi/scan')
 }
 
 export function configureWifi(ssid: string, password = ''): Promise<{ status: string }> {
   if (useMockTransport()) {
-    return mockConfigureWifi(ssid, password)
+    return import('@/mock/handlers').then(m => m.mockConfigureWifi(ssid, password))
   }
   return requestJson<{ status: string }>('/api/wifi/configure', {
     method: 'POST',
@@ -92,7 +66,7 @@ export function configureWifi(ssid: string, password = ''): Promise<{ status: st
 
 export function startBleWifiConfig(): Promise<{ status: string; action: string }> {
   if (useMockTransport()) {
-    return mockStartBleWifiConfig()
+    return import('@/mock/handlers').then(m => m.mockStartBleWifiConfig())
   }
   return requestJson<{ status: string; action: string }>('/api/wifi/ble-config', {
     method: 'POST',
@@ -105,42 +79,42 @@ export function startBleWifiConfig(): Promise<{ status: string; action: string }
 
 export function resetWifiCredentials(): Promise<{ status: string; action: string }> {
   if (useMockTransport()) {
-    return mockResetWifiCredentials()
+    return import('@/mock/handlers').then(m => m.mockResetWifiCredentials())
   }
   return requestJson<{ status: string; action: string }>('/api/wifi/configure', { method: 'DELETE' })
 }
 
 export function fetchDevices(): Promise<DeviceRegistryResponse> {
   if (useMockTransport()) {
-    return Promise.resolve(mockFetchDevices())
+    return import('@/mock/handlers').then(m => m.mockFetchDevices())
   }
   return requestJson<DeviceRegistryResponse>('/api/devices')
 }
 
 export function fetchMetricPlaceholders(): Promise<MetricPlaceholderCatalogResponse> {
   if (useMockTransport()) {
-    return Promise.resolve(mockFetchMetricPlaceholders())
+    return import('@/mock/handlers').then(m => m.mockFetchMetricPlaceholders())
   }
   return requestJson<MetricPlaceholderCatalogResponse>('/api/metrics/placeholders')
 }
 
 export function fetchMetricValues(): Promise<MetricValuesResponse> {
   if (useMockTransport()) {
-    return Promise.resolve(mockFetchMetricValues())
+    return import('@/mock/handlers').then(m => m.mockFetchMetricValues())
   }
   return requestJson<MetricValuesResponse>('/api/metrics/values')
 }
 
 export function fetchDevice(deviceId: number): Promise<DeviceDetailResponse> {
   if (useMockTransport()) {
-    return Promise.resolve().then(() => mockFetchDevice(deviceId))
+    return import('@/mock/handlers').then(m => m.mockFetchDevice(deviceId))
   }
   return requestJson<DeviceDetailResponse>(`/api/devices/${deviceId}`)
 }
 
 export function fetchDeviceLayout(deviceId: number, page?: number): Promise<DeviceLayoutResponse> {
   if (useMockTransport()) {
-    return Promise.resolve().then(() => mockFetchDeviceLayout(deviceId, page))
+    return import('@/mock/handlers').then(m => m.mockFetchDeviceLayout(deviceId, page))
   }
   const query = typeof page === 'number' ? `?page=${page}` : ''
   return requestJson<DeviceLayoutResponse>(`/api/devices/${deviceId}/layout${query}`)
@@ -148,7 +122,7 @@ export function fetchDeviceLayout(deviceId: number, page?: number): Promise<Devi
 
 export function createDevice(payload: DeviceCreateRequest): Promise<DeviceMutationResponse> {
   if (useMockTransport()) {
-    return mockCreateDevice(payload)
+    return import('@/mock/handlers').then(m => m.mockCreateDevice(payload))
   }
   return requestJson<DeviceMutationResponse>('/api/devices', {
     method: 'POST',
@@ -161,7 +135,7 @@ export function createDevice(payload: DeviceCreateRequest): Promise<DeviceMutati
 
 export function commandDevice(deviceId: number, payload: DeviceCommandRequest): Promise<DeviceMutationResponse> {
   if (useMockTransport()) {
-    return mockCommandDevice(deviceId, payload)
+    return import('@/mock/handlers').then(m => m.mockCommandDevice(deviceId, payload))
   }
   return requestJson<DeviceMutationResponse>(`/api/devices/${deviceId}/command`, {
     method: 'POST',
@@ -174,21 +148,21 @@ export function commandDevice(deviceId: number, payload: DeviceCommandRequest): 
 
 export function deleteDevice(deviceId: number): Promise<DeviceMutationResponse> {
   if (useMockTransport()) {
-    return mockDeleteDevice(deviceId)
+    return import('@/mock/handlers').then(m => m.mockDeleteDevice(deviceId))
   }
   return requestJson<DeviceMutationResponse>(`/api/devices/${deviceId}`, { method: 'DELETE' })
 }
 
 export function fetchDashboardLayout(): Promise<DashboardLayoutResponse> {
   if (useMockTransport()) {
-    return Promise.resolve(mockFetchDashboardLayout())
+    return import('@/mock/handlers').then(m => m.mockFetchDashboardLayout())
   }
   return requestJson<DashboardLayoutResponse>('/api/dashboard/layout')
 }
 
 export function saveDashboardLayout(layout: DashboardLayoutRecord): Promise<void> {
   if (useMockTransport()) {
-    return mockSaveDashboardLayout(layout)
+    return import('@/mock/handlers').then(m => m.mockSaveDashboardLayout(layout))
   }
   return requestEmpty('/api/dashboard/layout', {
     method: 'PUT',
@@ -201,14 +175,14 @@ export function saveDashboardLayout(layout: DashboardLayoutRecord): Promise<void
 
 export function fetchOtaStatus(): Promise<OtaStatusResponse> {
   if (useMockTransport()) {
-    return Promise.resolve(mockFetchOtaStatus())
+    return import('@/mock/handlers').then(m => m.mockFetchOtaStatus())
   }
   return requestJson<OtaStatusResponse>('/api/ota/status')
 }
 
 export function restartSystem(): Promise<SystemRestartResponse> {
   if (useMockTransport()) {
-    return mockRestartSystem()
+    return import('@/mock/handlers').then(m => m.mockRestartSystem())
   }
   return requestJson<SystemRestartResponse>('/api/system/restart', {
     method: 'POST',
@@ -221,21 +195,21 @@ export function restartSystem(): Promise<SystemRestartResponse> {
 
 export function fetchSystemVersion(): Promise<SystemVersionResponse> {
   if (useMockTransport()) {
-    return Promise.resolve(mockFetchSystemVersion())
+    return import('@/mock/handlers').then(m => m.mockFetchSystemVersion())
   }
   return requestJson<SystemVersionResponse>('/api/system/version')
 }
 
 export function fetchSystemStatus(): Promise<SystemStatusResponse> {
   if (useMockTransport()) {
-    return Promise.resolve(mockFetchSystemStatus())
+    return import('@/mock/handlers').then(m => m.mockFetchSystemStatus())
   }
   return requestJson<SystemStatusResponse>('/api/system/status')
 }
 
 export function fetchDeviceSetupBundle(): Promise<string> {
   if (useMockTransport()) {
-    return Promise.resolve(mockExportDeviceSetupBundle())
+    return import('@/mock/handlers').then(m => m.mockExportDeviceSetupBundle())
   }
   return requestText('/api/device-setup/export', {
     headers: {
@@ -246,7 +220,7 @@ export function fetchDeviceSetupBundle(): Promise<string> {
 
 export function importDeviceSetupBundle(file: File): Promise<DeviceSetupTransferResponse> {
   if (useMockTransport()) {
-    return mockImportDeviceSetupBundle(file)
+    return import('@/mock/handlers').then(m => m.mockImportDeviceSetupBundle(file))
   }
 
   const formData = new FormData()
@@ -258,21 +232,21 @@ export function importDeviceSetupBundle(file: File): Promise<DeviceSetupTransfer
 
 export function fetchMqttStatus(): Promise<MqttStatusResponse> {
   if (useMockTransport()) {
-    return Promise.resolve(mockFetchMqttStatus())
+    return import('@/mock/handlers').then(m => m.mockFetchMqttStatus())
   }
   return requestJson<MqttStatusResponse>('/api/mqtt/status')
 }
 
 export function fetchMqttSettings(): Promise<MqttSettingsRecord> {
   if (useMockTransport()) {
-    return Promise.resolve(mockFetchMqttSettings())
+    return import('@/mock/handlers').then(m => m.mockFetchMqttSettings())
   }
   return requestJson<MqttSettingsRecord>('/api/mqtt/settings')
 }
 
 export function updateMqttSettings(settings: Partial<MqttSettingsRecord>): Promise<MqttSettingsRecord> {
   if (useMockTransport()) {
-    return mockUpdateMqttSettings(settings)
+    return import('@/mock/handlers').then(m => m.mockUpdateMqttSettings(settings))
   }
   return requestJson<MqttSettingsRecord>('/api/mqtt/settings', {
     method: 'PUT',
@@ -285,7 +259,7 @@ export function updateMqttSettings(settings: Partial<MqttSettingsRecord>): Promi
 
 export function uploadMqttCaCert(file: File): Promise<MqttStatusResponse> {
   if (useMockTransport()) {
-    return mockUploadMqttCaCert(file)
+    return import('@/mock/handlers').then(m => m.mockUploadMqttCaCert(file))
   }
 
   const formData = new FormData()
@@ -297,28 +271,28 @@ export function uploadMqttCaCert(file: File): Promise<MqttStatusResponse> {
 
 export function deleteMqttCaCert(): Promise<MqttStatusResponse> {
   if (useMockTransport()) {
-    return mockDeleteMqttCaCert()
+    return import('@/mock/handlers').then(m => m.mockDeleteMqttCaCert())
   }
   return requestJson<MqttStatusResponse>('/api/mqtt/ca-cert', { method: 'DELETE' })
 }
 
 export function fetchTimeStatus(): Promise<TimeStatusResponse> {
   if (useMockTransport()) {
-    return Promise.resolve(mockFetchTimeStatus())
+    return import('@/mock/handlers').then(m => m.mockFetchTimeStatus())
   }
   return requestJson<TimeStatusResponse>('/api/system/time')
 }
 
 export function fetchTimeSettings(): Promise<TimeSettingsRecord> {
   if (useMockTransport()) {
-    return Promise.resolve(mockFetchTimeSettings())
+    return import('@/mock/handlers').then(m => m.mockFetchTimeSettings())
   }
   return requestJson<TimeSettingsRecord>('/api/system/time/settings')
 }
 
 export function updateTimeSettings(settings: Partial<TimeSettingsRecord>): Promise<TimeSettingsRecord> {
   if (useMockTransport()) {
-    return mockUpdateTimeSettings(settings)
+    return import('@/mock/handlers').then(m => m.mockUpdateTimeSettings(settings))
   }
   return requestJson<TimeSettingsRecord>('/api/system/time/settings', {
     method: 'PUT',
@@ -337,7 +311,7 @@ export function fetchTimezones(): Promise<TimezoneCatalogResponse> {
 
 export function setSystemTime(payload: SetTimeRequest): Promise<TimeStatusResponse> {
   if (useMockTransport()) {
-    return mockSetSystemTime(payload)
+    return import('@/mock/handlers').then(m => m.mockSetSystemTime(payload))
   }
   return requestJson<TimeStatusResponse>('/api/system/time', {
     method: 'POST',

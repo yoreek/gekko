@@ -7,6 +7,8 @@ const mockPath = '/devices?mockMode=1&mockReset=1'
 async function selectOption(page: Page, name: string, option: string | RegExp): Promise<void> {
   const input = page.getByRole('combobox', { name, exact: true })
   await input.locator('xpath=ancestor::*[contains(@class, "v-field")][1]').click()
+  // Filter options carry a composite accessible name (title + description, e.g. "Format
+  // Custom date/time or duration pattern."), so this must stay a substring match.
   await page.getByRole('option', { name: option }).click()
 }
 

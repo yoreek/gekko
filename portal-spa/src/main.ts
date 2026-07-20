@@ -4,13 +4,11 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import { appI18n, applyLocale } from './i18n'
-import { resetMockDatabase } from './mock/database'
 import { useAppStore } from './stores/app'
 import { resetStoredPanels } from './stores/panels'
 import { createAppVuetify } from './plugins/vuetify'
 import { selectOnFocus } from './directives/selectOnFocus'
 import { bindRealtimeBridge } from './realtime/bridge'
-import { connectMockRealtimeSocket } from './realtime/mockSocket'
 import { connectRealtimeSocket } from './realtime/socket'
 import { subscribeRealtimeMessage } from './realtime/bus'
 import './styles/main.css'
@@ -21,13 +19,20 @@ const store = useAppStore(pinia)
 
 store.initializeApp()
 store.setTransportMode(store.transportMode)
-if (store.mockResetRequested) {
+// import.meta.env.DEV is a build-time literal: in a production build (what ships to the
+// device's LittleFS) this whole branch, and the mock module tree it dynamically imports, is
+// dead code that Rollup never bundles. Mock mode stays fully functional under `pnpm dev`.
+if (import.meta.env.DEV && store.mockResetRequested) {
+  const { resetMockDatabase } = await import('./mock/database')
   resetMockDatabase()
   resetStoredPanels()
   store.consumeMockReset()
 }
 bindRealtimeBridge(pinia, store, subscribeRealtimeMessage)
-const realtimeSocket = store.transportMode === 'real' ? connectRealtimeSocket(pinia) : connectMockRealtimeSocket(pinia)
+const realtimeSocket =
+  import.meta.env.DEV && store.transportMode === 'mock'
+    ? (await import('./realtime/mockSocket')).connectMockRealtimeSocket(pinia)
+    : connectRealtimeSocket(pinia)
 
 app.use(pinia)
 app.use(router)

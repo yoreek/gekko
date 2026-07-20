@@ -67,11 +67,12 @@ test('dragging a card in edit mode keeps free placement without overlap', async 
   const box = await handle.boundingBox()
   if (!box) throw new Error('no bounding box for drag target')
 
-  // The delete (close) button must be fully inside the card content, not clipped.
-  // Scoped to the aria-label directly: the card root also has role="button" with
-  // an aggregated accessible name containing "Delete" as a substring, which would
-  // otherwise match too under getByRole's default substring matching.
-  const closeBtn = handle.locator('button[aria-label="Delete"]')
+  // The per-card action button (the "..." menu when other panels exist, otherwise the
+  // plain delete/close button) must be fully inside the card content, not clipped.
+  // Scoped to the aria-label directly: the card root also has role="button" with an
+  // aggregated accessible name that would otherwise match too under getByRole's
+  // default substring matching.
+  const closeBtn = handle.locator('button[aria-label="Widget actions"], button[aria-label="Delete"]')
   const closeBox = await closeBtn.boundingBox()
   if (!closeBox) throw new Error('no close button visible in edit mode')
   expect(closeBox.x + closeBox.width, 'close button not clipped on the right').toBeLessThanOrEqual(box.x + box.width + 1)

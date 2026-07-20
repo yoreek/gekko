@@ -6,7 +6,7 @@ const mockPath = '/devices?mockMode=1&mockReset=1'
 async function selectOption(page: Page, name: string, option: string | RegExp): Promise<void> {
   const input = page.getByRole('combobox', { name, exact: true })
   await input.locator('xpath=ancestor::*[contains(@class, "v-field")][1]').click()
-  await page.getByRole('option', { name: option }).click()
+  await page.getByRole('option', { name: option, exact: true }).click()
 }
 
 test('creates a CD74HC4067 hub and a channel bound to it', async ({ page }) => {
