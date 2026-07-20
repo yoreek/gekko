@@ -2,6 +2,10 @@
 
 #include "devices/analog/composer/AnalogOutputComposerDevice.h"
 #include "devices/analog/fade/FadeAnalogOutputDevice.h"
+#include "devices/analog/input/ads1115/Ads1115HubDevice.h"
+#include "devices/analog/input/cd74hc4067/Cd74hc4067HubDevice.h"
+#include "devices/analog/input/channel/AnalogInputChannelDevice.h"
+#include "devices/analog/input/port/AnalogPortInputDevice.h"
 #include "devices/analog/ledc/LedcAnalogOutputDevice.h"
 #include "devices/analog/scheduled/ScheduledAnalogOutputDevice.h"
 #include "devices/bus/i2c/I2cBusDevice.h"
@@ -28,8 +32,9 @@ namespace ewfm {
 
 namespace {
 constexpr const char* kDeviceRoleNames[] = {
-    "unknown",       "onewire_bus",     "temperature_sensor", "switch",   "i2c_bus",   "ssd1306",       "spi_bus",
-    "metric_source", "real_time_clock", "port_expander",      "schedule", "condition", "analog_output", "analog_output_group",
+    "unknown",       "onewire_bus",         "temperature_sensor", "switch",           "i2c_bus",  "ssd1306",
+    "spi_bus",       "metric_source",       "real_time_clock",    "port_expander",    "schedule", "condition",
+    "analog_output", "analog_output_group", "analog_input",       "analog_input_hub",
 };
 
 constexpr const char* kDeviceEventKindNames[] = {
@@ -108,6 +113,14 @@ bool parseDeviceRole(std::string_view value, DeviceRole& role) {
         role = DeviceRole::AnalogOutputGroup;
         return true;
     }
+    if (value == "analog_input") {
+        role = DeviceRole::AnalogInput;
+        return true;
+    }
+    if (value == "analog_input_hub") {
+        role = DeviceRole::AnalogInputHub;
+        return true;
+    }
     role = DeviceRole::Unknown;
     return false;
 }
@@ -179,6 +192,10 @@ DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     (void)registry.registerDescriptor(AutoSwitchDevice::descriptor());
     (void)registry.registerDescriptor(BinarySensorDevice::descriptor());
     (void)registry.registerDescriptor(DosingPumpDevice::descriptor());
+    (void)registry.registerDescriptor(AnalogPortInputDevice::descriptor());
+    (void)registry.registerDescriptor(Cd74hc4067HubDevice::descriptor());
+    (void)registry.registerDescriptor(Ads1115HubDevice::descriptor());
+    (void)registry.registerDescriptor(AnalogInputChannelDevice::descriptor());
     return registry;
 }
 

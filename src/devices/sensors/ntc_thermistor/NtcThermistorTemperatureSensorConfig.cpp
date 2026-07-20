@@ -33,12 +33,14 @@ bool parseUint16(const JsonVariantConst& variant, uint16_t& value) {
     return true;
 }
 
-bool parseUint8(const JsonVariantConst& variant, uint8_t& value) {
-    uint32_t parsed = value;
-    if (!parseUint32(variant, parsed) || parsed > 255UL) {
+bool parseFloat(const JsonVariantConst& variant, float& value) {
+    if (variant.isNull()) {
+        return true;
+    }
+    if (!variant.is<float>() && !variant.is<double>() && !variant.is<int>()) {
         return false;
     }
-    value = static_cast<uint8_t>(parsed);
+    value = variant.as<float>();
     return true;
 }
 
@@ -104,70 +106,6 @@ static_assert(sizeof(NtcThermistorTemperatureSensorConfigV1::kMagic) - 1U + size
                   kMaxDeviceConfigBytes,
               "NtcThermistorTemperatureSensorConfigV1 exceeds device config bound");
 
-bool ntcThermistorGpioPinIsValid(uint8_t pin) {
-    // ADC1-capable input-only pins on the original ESP32 (esp32dev). ADC2 pins are excluded
-    // because the ADC2 peripheral is unusable while WiFi is active, and WiFi is always active
-    // on this project.
-    switch (pin) {
-    case 32:
-    case 33:
-    case 34:
-    case 35:
-    case 36:
-    case 37:
-    case 38:
-    case 39:
-        return true;
-    default:
-        return false;
-    }
-}
-
-bool attenuationFromByte(uint8_t value, AdcAttenuation& attenuation) {
-    if (value > static_cast<uint8_t>(AdcAttenuation::Db11)) {
-        return false;
-    }
-    attenuation = static_cast<AdcAttenuation>(value);
-    return true;
-}
-
-bool attenuationFromString(const char* value, AdcAttenuation& attenuation) {
-    if (value == nullptr) {
-        return false;
-    }
-    if (std::strcmp(value, "0db") == 0) {
-        attenuation = AdcAttenuation::Db0;
-        return true;
-    }
-    if (std::strcmp(value, "2_5db") == 0) {
-        attenuation = AdcAttenuation::Db2_5;
-        return true;
-    }
-    if (std::strcmp(value, "6db") == 0) {
-        attenuation = AdcAttenuation::Db6;
-        return true;
-    }
-    if (std::strcmp(value, "11db") == 0) {
-        attenuation = AdcAttenuation::Db11;
-        return true;
-    }
-    return false;
-}
-
-const char* attenuationName(AdcAttenuation attenuation) {
-    switch (attenuation) {
-    case AdcAttenuation::Db0:
-        return "0db";
-    case AdcAttenuation::Db2_5:
-        return "2_5db";
-    case AdcAttenuation::Db6:
-        return "6db";
-    case AdcAttenuation::Db11:
-        return "11db";
-    }
-    return "11db";
-}
-
 bool parseNtcThermistorTemperatureSensorConfigJson(const JsonObjectConst& input, NtcThermistorTemperatureSensorConfigV1& config,
                                                    const char*& error) {
     return config.parseJson(input, error);
@@ -182,24 +120,27 @@ DeviceValidationResult NtcThermistorTemperatureSensorConfigV1::validate() const 
     if (!baseValidation.ok()) {
         return baseValidation;
     }
-    if (!ntcThermistorGpioPinIsValid(gpioPin)) {
-        return {DeviceError::InvalidConfig, "ntc thermistor gpio pin is invalid"};
-    }
-    AdcAttenuation parsedAttenuation{};
-    if (!attenuationFromByte(attenuation, parsedAttenuation)) {
-        return {DeviceError::InvalidConfig, "ntc thermistor attenuation is invalid"};
+    NtcFormulaMode mode{};
+    if (!ntcFormulaModeFromByte(formulaMode, mode)) {
+        return {DeviceError::InvalidConfig, "ntc thermistor formula mode is invalid"};
     }
     if (seriesResistorOhms == 0U) {
         return {DeviceError::InvalidConfig, "ntc thermistor series resistor is invalid"};
     }
-    if (nominalResistanceOhms == 0U) {
-        return {DeviceError::InvalidConfig, "ntc thermistor nominal resistance is invalid"};
+    if (supplyMilliVolts == 0U) {
+        return {DeviceError::InvalidConfig, "ntc thermistor supply voltage is invalid"};
     }
-    if (betaCoefficient == 0U) {
-        return {DeviceError::InvalidConfig, "ntc thermistor beta coefficient is invalid"};
-    }
-    if (adcSamples < kNtcThermistorMinAdcSamples || adcSamples > kNtcThermistorMaxAdcSamples) {
-        return {DeviceError::InvalidConfig, "ntc thermistor adc sample count is invalid"};
+    if (mode == NtcFormulaMode::Beta) {
+        if (nominalResistanceOhms == 0U) {
+            return {DeviceError::InvalidConfig, "ntc thermistor nominal resistance is invalid"};
+        }
+        if (betaCoefficient == 0U) {
+            return {DeviceError::InvalidConfig, "ntc thermistor beta coefficient is invalid"};
+        }
+    } else {
+        if (steinhartA == 0.0F && steinhartB == 0.0F && steinhartC == 0.0F) {
+            return {DeviceError::InvalidConfig, "ntc thermistor steinhart-hart coefficients are invalid"};
+        }
     }
     TemperatureUnit unit{};
     if (!temperatureUnitFromByte(outputUnit, unit)) {
@@ -224,22 +165,15 @@ bool NtcThermistorTemperatureSensorConfigV1::parseJson(const JsonObjectConst& in
 
     reportAlways = parseBoolField(input, "reportAlways", reportAlways != 0U) ? 1U : 0U;
 
-    uint8_t pin = gpioPin;
-    if (!parseUint8(input["gpioPin"], pin)) {
-        error = "ntc thermistor gpio pin must be numeric";
+    NtcFormulaMode parsedMode{};
+    if (!ntcFormulaModeFromByte(formulaMode, parsedMode)) {
+        parsedMode = NtcFormulaMode::Beta;
+    }
+    if (!ntcFormulaModeFromString(input["formulaMode"] | ntcFormulaModeName(parsedMode), parsedMode)) {
+        error = "ntc thermistor formula mode is invalid";
         return false;
     }
-    gpioPin = pin;
-
-    AdcAttenuation parsedAttenuation{};
-    if (!attenuationFromByte(attenuation, parsedAttenuation)) {
-        parsedAttenuation = AdcAttenuation::Db11;
-    }
-    if (!attenuationFromString(input["attenuation"] | attenuationName(parsedAttenuation), parsedAttenuation)) {
-        error = "ntc thermistor attenuation is invalid";
-        return false;
-    }
-    attenuation = static_cast<uint8_t>(parsedAttenuation);
+    formulaMode = static_cast<uint8_t>(parsedMode);
 
     uint16_t seriesResistor = seriesResistorOhms;
     if (!parseUint16(input["seriesResistorOhms"], seriesResistor)) {
@@ -247,6 +181,13 @@ bool NtcThermistorTemperatureSensorConfigV1::parseJson(const JsonObjectConst& in
         return false;
     }
     seriesResistorOhms = seriesResistor;
+
+    uint16_t supply = supplyMilliVolts;
+    if (!parseUint16(input["supplyMilliVolts"], supply)) {
+        error = "ntc thermistor supply voltage must be numeric";
+        return false;
+    }
+    supplyMilliVolts = supply;
 
     uint32_t nominalResistance = nominalResistanceOhms;
     if (!parseUint32(input["nominalResistanceOhms"], nominalResistance)) {
@@ -269,12 +210,11 @@ bool NtcThermistorTemperatureSensorConfigV1::parseJson(const JsonObjectConst& in
     }
     betaCoefficient = beta;
 
-    uint8_t samples = adcSamples;
-    if (!parseUint8(input["adcSamples"], samples)) {
-        error = "ntc thermistor adc sample count must be numeric";
+    if (!parseFloat(input["steinhartA"], steinhartA) || !parseFloat(input["steinhartB"], steinhartB) ||
+        !parseFloat(input["steinhartC"], steinhartC)) {
+        error = "ntc thermistor steinhart-hart coefficients must be numeric";
         return false;
     }
-    adcSamples = samples;
 
     TemperatureUnit unit{};
     if (!temperatureUnitFromString(input["unit"] | temperatureUnitName(static_cast<TemperatureUnit>(outputUnit)), unit)) {
@@ -311,16 +251,18 @@ bool NtcThermistorTemperatureSensorConfigV1::parseJson(const JsonObjectConst& in
 
 void NtcThermistorTemperatureSensorConfigV1::writeJson(JsonObject output) const {
     DeviceBaseConfigV1::writeJson(output);
-    output["gpioPin"] = gpioPin;
-    AdcAttenuation parsedAttenuation{};
-    (void)attenuationFromByte(attenuation, parsedAttenuation);
-    output["attenuation"] = attenuationName(parsedAttenuation);
+    NtcFormulaMode parsedMode{};
+    (void)ntcFormulaModeFromByte(formulaMode, parsedMode);
+    output["formulaMode"] = ntcFormulaModeName(parsedMode);
     output["seriesResistorOhms"] = seriesResistorOhms;
+    output["supplyMilliVolts"] = supplyMilliVolts;
     output["nominalResistanceOhms"] = nominalResistanceOhms;
     output["nominalTempCelsius"] = static_cast<float>(nominalTempCentiCelsius) / 100.0F;
     output["nominalTempCentiCelsius"] = nominalTempCentiCelsius;
     output["betaCoefficient"] = betaCoefficient;
-    output["adcSamples"] = adcSamples;
+    output["steinhartA"] = steinhartA;
+    output["steinhartB"] = steinhartB;
+    output["steinhartC"] = steinhartC;
     output["unit"] = temperatureUnitName(static_cast<TemperatureUnit>(outputUnit));
     output["pollMs"] = pollMs;
     output["reportDeltaCelsius"] = static_cast<float>(reportDeltaCentiCelsius) / 100.0F;

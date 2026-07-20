@@ -1,6 +1,10 @@
 #include "integrations/common/DeviceApiAdapter.h"
 
 #include "devices/core/DeviceBaseConfig.h"
+#include "integrations/rest/analog_input/Ads1115HubDeviceApiAdapter.h"
+#include "integrations/rest/analog_input/AnalogInputChannelDeviceApiAdapter.h"
+#include "integrations/rest/analog_input/AnalogPortInputDeviceApiAdapter.h"
+#include "integrations/rest/analog_input/Cd74hc4067HubDeviceApiAdapter.h"
 #include "integrations/rest/analog_output/AnalogOutputComposerDeviceApiAdapter.h"
 #include "integrations/rest/analog_output/FadeAnalogOutputDeviceApiAdapter.h"
 #include "integrations/rest/analog_output/LedcAnalogOutputDeviceApiAdapter.h"
@@ -274,6 +278,10 @@ DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(AutoSwitchDeviceApiAdapter::instance());
     (void)registry.registerAdapter(BinarySensorDeviceApiAdapter::instance());
     (void)registry.registerAdapter(DosingPumpDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(AnalogPortInputDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(Cd74hc4067HubDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(Ads1115HubDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(AnalogInputChannelDeviceApiAdapter::instance());
     return registry;
 }
 

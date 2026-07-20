@@ -89,6 +89,10 @@ import {
   portExpanderChannelCount,
   ensureUniquePortExpanderChannel,
   ensureUniqueI2cAddressAcrossTypes,
+  createAnalogPortInputDevice,
+  createAds1115HubDevice,
+  createCd74hc4067HubDevice,
+  createAnalogInputChannelDevice,
 } from './device-factories'
 
 function isRecordPayload(value: unknown): value is Record<string, unknown> {
@@ -537,7 +541,11 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
       typeName !== 'analog_output' &&
       typeName !== 'fade_analog_output' &&
       typeName !== 'scheduled_analog_output' &&
-      typeName !== 'analog_output_composer'
+      typeName !== 'analog_output_composer' &&
+      typeName !== 'analog_port_input' &&
+      typeName !== 'ads1115_hub' &&
+      typeName !== 'cd74hc4067_hub' &&
+      typeName !== 'analog_input_channel'
     ) {
       throw new ApiClientError('unsupported device type', 'UNSUPPORTED_TYPE', 400, null)
     }
@@ -569,7 +577,7 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
         case 'ds18b20_temperature_sensor':
           return createDs18b20Device(nextId, configSource, baseDeps, enabled, name, db)
         case 'ntc_thermistor_temperature_sensor':
-          return createNtcThermistorDevice(nextId, configSource, baseDeps, enabled, name)
+          return createNtcThermistorDevice(nextId, configSource, baseDeps, enabled, name, db)
         case 'htu21':
           return createHtu21Device(nextId, configSource, baseDeps, enabled, name, db)
         case 'thermostat':
@@ -598,6 +606,14 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
           return createScheduledAnalogOutputDevice(nextId, configSource, baseDeps, enabled, name)
         case 'analog_output_composer':
           return createAnalogOutputComposerDevice(nextId, configSource, baseDeps, enabled, name, db)
+        case 'analog_port_input':
+          return createAnalogPortInputDevice(nextId, configSource, baseDeps, enabled, name)
+        case 'ads1115_hub':
+          return createAds1115HubDevice(nextId, configSource, baseDeps, enabled, name, db)
+        case 'cd74hc4067_hub':
+          return createCd74hc4067HubDevice(nextId, configSource, baseDeps, enabled, name)
+        case 'analog_input_channel':
+          return createAnalogInputChannelDevice(nextId, configSource, baseDeps, enabled, name, db)
         default:
           return createDummyDevice(nextId, configSource, baseDeps, enabled, name)
       }

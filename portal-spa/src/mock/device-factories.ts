@@ -1,5 +1,6 @@
 import type { AnalogOutputOutputSnapshot, DeviceDependencyLink, ScheduleRuleConfig, TemperatureOutputSnapshot } from '@/api/contracts'
 import { isScheduleActiveAt } from '@/models/devices/schedule-preview'
+import { analogInputHubChannelCount } from '@/models/devices/analog-input-channel'
 import {
   defaultSsd1306Layout,
   normalizeSsd1306Layout,
@@ -528,7 +529,7 @@ function normalizeSpiBusConfigPayload(value: unknown, enabledFallback: boolean):
 // ssd1306-only `ensureUniqueI2cAddress` above, which is left untouched for its existing callers.
 // ============================================================================
 
-const I2C_ADDRESS_BEARING_TYPE_NAMES = new Set(['ssd1306', 'rtc_ds3231', 'pcf8574_expander', 'pcf8575_expander', 'htu21'])
+const I2C_ADDRESS_BEARING_TYPE_NAMES = new Set(['ssd1306', 'rtc_ds3231', 'pcf8574_expander', 'pcf8575_expander', 'htu21', 'ads1115_hub'])
 
 function deviceI2cAddress(device: DeviceRecord): number {
   return normalizeFiniteNumber((device.config as Record<string, unknown>).i2cAddress, -1)
@@ -800,25 +801,30 @@ export function createDs18b20Device(
   })
 }
 
-const kNtcAttenuationOptions = new Set(['0db', '2_5db', '6db', '11db'])
+const kNtcFormulaModeOptions = new Set(['beta', 'steinhart_hart'])
 
-function normalizeNtcAttenuation(value: unknown): string {
-  return typeof value === 'string' && kNtcAttenuationOptions.has(value) ? value : '11db'
+function normalizeNtcFormulaMode(value: unknown): string {
+  return typeof value === 'string' && kNtcFormulaModeOptions.has(value) ? value : 'beta'
 }
 
+// A pure resistance->temperature calculator over an AnalogInput-role dependency -- it owns no
+// ADC hardware itself, only the divider geometry and the Beta/Steinhart-Hart curve (see
+// "Analog input" below for the AnalogInput-role leaves it depends on).
 function normalizeNtcThermistorConfigPayload(value: unknown, enabledFallback: boolean): Record<string, unknown> & { enabled: boolean } {
   if (!isRecordPayload(value)) {
     throw new ApiClientError('invalid ntc thermistor config', 'BAD_ARGS', 400, null)
   }
   return {
     enabled: typeof value.enabled === 'boolean' ? value.enabled : enabledFallback,
-    gpioPin: normalizeFiniteNumber(value.gpioPin, 34),
-    attenuation: normalizeNtcAttenuation(value.attenuation),
+    formulaMode: normalizeNtcFormulaMode(value.formulaMode),
     seriesResistorOhms: Math.max(1, normalizeFiniteNumber(value.seriesResistorOhms, 10000)),
-    nominalResistanceOhms: Math.max(1, normalizeFiniteNumber(value.nominalResistanceOhms, 100000)),
+    supplyMilliVolts: Math.max(1, normalizeFiniteNumber(value.supplyMilliVolts, 3300)),
+    nominalResistanceOhms: Math.max(1, normalizeFiniteNumber(value.nominalResistanceOhms, 10000)),
     nominalTempCelsius: normalizeFiniteNumber(value.nominalTempCelsius, 25),
     betaCoefficient: Math.max(1, normalizeFiniteNumber(value.betaCoefficient, 3950)),
-    adcSamples: Math.min(64, Math.max(1, normalizeFiniteNumber(value.adcSamples, 8))),
+    steinhartA: normalizeFiniteNumber(value.steinhartA, 0),
+    steinhartB: normalizeFiniteNumber(value.steinhartB, 0),
+    steinhartC: normalizeFiniteNumber(value.steinhartC, 0),
     unit: normalizeDs18b20Unit(value.unit),
     pollMs: Math.max(1000, normalizeFiniteNumber(value.pollMs, 5000)),
     reportDeltaCelsius: Math.max(0.01, normalizeFiniteNumber(value.reportDeltaCelsius, 0.1)),
@@ -829,17 +835,31 @@ function normalizeNtcThermistorConfigPayload(value: unknown, enabledFallback: bo
   }
 }
 
+function requireAnalogInputDependency(db: Database, dependencyDeviceId: number): DeviceRecord {
+  const dependency = db.devices.find(device => device.record.id === dependencyDeviceId)
+  if (!dependency || !ANALOG_INPUT_TYPE_NAMES.has(dependency.record.typeName)) {
+    throw new ApiClientError('ntc thermistor requires an analog input dependency', 'BAD_ARGS', 400, null)
+  }
+  return dependency
+}
+
 export function createNtcThermistorDevice(
   nextId: number,
   configSource: Record<string, unknown>,
   baseDeps: DeviceDependencyLink[],
   enabled: boolean,
   name: string,
+  db: Database,
 ): DeviceRecord {
+  const dependencyDeviceId = dependencyDeviceIdForRole(baseDeps, 'analog_input') || normalizeDependencyDeviceId(configSource.dependencyDeviceId)
+  if (dependencyDeviceId <= 0) {
+    throw new ApiClientError('ntc thermistor requires an analog input dependency', 'BAD_ARGS', 400, null)
+  }
+  requireAnalogInputDependency(db, dependencyDeviceId)
   const config = normalizeNtcThermistorConfigPayload(configSource, enabled)
   return createDeviceRecord(nextId, 'ntc_thermistor_temperature_sensor', 1, {
     ...config,
-    deps: baseDeps,
+    deps: [{ role: 'analog_input', deviceId: dependencyDeviceId }],
     name,
   }, {
     status: enabled ? 'ready' : 'disabled',
@@ -855,6 +875,228 @@ export function createNtcThermistorDevice(
         status: 'ok',
       },
     },
+  })
+}
+
+// ============================================================================
+// Analog input
+//
+// analog_port_input is a standalone AnalogInput-role leaf (no dependency). ads1115_hub and
+// cd74hc4067_hub are AnalogInputHub-role hubs; analog_input_channel is the single per-channel
+// AnalogInput-role leaf type that depends on whichever hub is wired up -- deliberately one type,
+// not one per hub chip, mirroring the firmware's role-based, hub-implementation-agnostic
+// dependency (see AnalogInputHubChannelDeviceBase/AnalogInputChannelDevice). The real channel
+// bound comes from whichever hub is actually selected (analogInputHubChannelCount), not a static
+// per-type constant. NtcThermistorTemperatureSensorDevice above depends on any AnalogInput-role
+// leaf (analog_port_input or analog_input_channel) via the plain AnalogInput role.
+// ============================================================================
+
+const ANALOG_INPUT_TYPE_NAMES = new Set(['analog_port_input', 'analog_input_channel'])
+const ANALOG_INPUT_HUB_TYPE_NAMES = new Set(['ads1115_hub', 'cd74hc4067_hub'])
+
+const kAdcAttenuationOptions = new Set(['0db', '2_5db', '6db', '11db'])
+
+function normalizeAdcAttenuation(value: unknown): string {
+  return typeof value === 'string' && kAdcAttenuationOptions.has(value) ? value : '11db'
+}
+
+function normalizeAnalogPortInputConfigPayload(value: unknown, enabledFallback: boolean): Record<string, unknown> & { enabled: boolean } {
+  if (!isRecordPayload(value)) {
+    throw new ApiClientError('invalid analog port input config', 'BAD_ARGS', 400, null)
+  }
+  return {
+    enabled: typeof value.enabled === 'boolean' ? value.enabled : enabledFallback,
+    gpioPin: normalizeFiniteNumber(value.gpioPin, 34),
+    attenuation: normalizeAdcAttenuation(value.attenuation),
+    adcSamples: Math.min(64, Math.max(1, normalizeFiniteNumber(value.adcSamples, 8))),
+    reportAlways: typeof value.reportAlways === 'boolean' ? value.reportAlways : false,
+    reportDeltaMilliVolts: Math.max(1, normalizeFiniteNumber(value.reportDeltaMilliVolts, 10)),
+    pollMs: Math.max(100, normalizeFiniteNumber(value.pollMs, 1000)),
+  }
+}
+
+function analogInputOutput(milliVolts: number): { analogInput: Record<string, unknown> } {
+  return {
+    analogInput: {
+      milliVolts,
+      rawCode: Math.max(0, Math.min(4095, Math.round((milliVolts / 3300) * 4095))),
+      measuredAtMs: Date.now(),
+      valid: true,
+      status: 'ok',
+    },
+  }
+}
+
+export function createAnalogPortInputDevice(
+  nextId: number,
+  configSource: Record<string, unknown>,
+  baseDeps: DeviceDependencyLink[],
+  enabled: boolean,
+  name: string,
+): DeviceRecord {
+  const config = normalizeAnalogPortInputConfigPayload(configSource, enabled)
+  return createDeviceRecord(nextId, 'analog_port_input', 1, {
+    ...config,
+    deps: baseDeps,
+    name,
+  }, {
+    status: enabled ? 'ready' : 'disabled',
+    lifecycleStatus: enabled ? 'ready' : 'disabled',
+    effectiveStatus: enabled ? 'ready' : 'disabled',
+    output: analogInputOutput(1650),
+  })
+}
+
+function normalizeAds1115GainOption(value: unknown): string {
+  const options = new Set(['fsr6144', 'fsr4096', 'fsr2048', 'fsr1024', 'fsr0512', 'fsr0256'])
+  return typeof value === 'string' && options.has(value) ? value : 'fsr2048'
+}
+
+function normalizeAds1115DataRateOption(value: unknown): string {
+  const options = new Set(['8', '16', '32', '64', '128', '250', '475', '860'])
+  return typeof value === 'string' && options.has(value) ? value : '128'
+}
+
+function normalizeAds1115HubConfigPayload(value: unknown, enabledFallback: boolean): Record<string, unknown> & { enabled: boolean } {
+  if (!isRecordPayload(value)) {
+    throw new ApiClientError('invalid ads1115 hub config', 'BAD_ARGS', 400, null)
+  }
+  return {
+    enabled: typeof value.enabled === 'boolean' ? value.enabled : enabledFallback,
+    i2cAddress: normalizeI2cAddress(value.i2cAddress, 0x48),
+    gain: normalizeAds1115GainOption(value.gain),
+    dataRateSps: normalizeAds1115DataRateOption(value.dataRateSps),
+  }
+}
+
+export function createAds1115HubDevice(
+  nextId: number,
+  configSource: Record<string, unknown>,
+  baseDeps: DeviceDependencyLink[],
+  enabled: boolean,
+  name: string,
+  db: Database,
+): DeviceRecord {
+  const dependencyDeviceId = dependencyDeviceIdForRole(baseDeps, 'i2c_bus') || normalizeDependencyDeviceId(configSource.dependencyDeviceId)
+  if (dependencyDeviceId <= 0) {
+    throw new ApiClientError('ads1115 hub i2c dependency is required', 'BAD_ARGS', 400, null)
+  }
+  requireI2cDependency(db, dependencyDeviceId)
+  const config = normalizeAds1115HubConfigPayload(configSource, enabled)
+  ensureUniqueI2cAddressAcrossTypes(db, dependencyDeviceId, normalizeFiniteNumber(config.i2cAddress, 0x48), nextId)
+  return createDeviceRecord(nextId, 'ads1115_hub', 1, {
+    ...config,
+    name,
+    deps: [{ role: 'i2c_bus', deviceId: dependencyDeviceId }],
+  }, {
+    status: 'ready',
+    lifecycleStatus: 'ready',
+    effectiveStatus: 'ready',
+  })
+}
+
+function normalizeCd74hc4067HubConfigPayload(value: unknown, enabledFallback: boolean): Record<string, unknown> & { enabled: boolean } {
+  if (!isRecordPayload(value)) {
+    throw new ApiClientError('invalid cd74hc4067 hub config', 'BAD_ARGS', 400, null)
+  }
+  const rawSelectPins = Array.isArray(value.selectPins) ? value.selectPins : []
+  const selectPins = [0, 1, 2, 3].map(index => normalizeFiniteNumber(rawSelectPins[index], [16, 17, 18, 19][index]))
+  return {
+    enabled: typeof value.enabled === 'boolean' ? value.enabled : enabledFallback,
+    selectPins,
+    enablePin: normalizeFiniteNumber(value.enablePin, 0xff),
+    sigPin: normalizeFiniteNumber(value.sigPin, 34),
+    sigAttenuation: normalizeAdcAttenuation(value.sigAttenuation),
+  }
+}
+
+export function createCd74hc4067HubDevice(
+  nextId: number,
+  configSource: Record<string, unknown>,
+  baseDeps: DeviceDependencyLink[],
+  enabled: boolean,
+  name: string,
+): DeviceRecord {
+  const config = normalizeCd74hc4067HubConfigPayload(configSource, enabled)
+  return createDeviceRecord(nextId, 'cd74hc4067_hub', 1, {
+    ...config,
+    deps: baseDeps,
+    name,
+  }, {
+    status: enabled ? 'ready' : 'disabled',
+    lifecycleStatus: enabled ? 'ready' : 'disabled',
+    effectiveStatus: enabled ? 'ready' : 'disabled',
+  })
+}
+
+function requireAnalogInputHubDependency(db: Database, dependencyDeviceId: number): DeviceRecord {
+  const dependency = db.devices.find(device => device.record.id === dependencyDeviceId)
+  if (!dependency || !ANALOG_INPUT_HUB_TYPE_NAMES.has(dependency.record.typeName)) {
+    throw new ApiClientError('analog input channel requires an analog input hub dependency', 'BAD_ARGS', 400, null)
+  }
+  return dependency
+}
+
+function ensureUniqueAnalogInputChannel(
+  db: Database,
+  dependencyDeviceId: number,
+  channel: number,
+  currentDeviceId: number,
+): void {
+  const duplicate = db.devices.some(device => (
+    device.record.id !== currentDeviceId &&
+    ANALOG_INPUT_TYPE_NAMES.has(device.record.typeName) &&
+    dependencyDeviceIdForRole((device.config.deps ?? []) as DeviceDependencyLink[], 'analog_input_hub') === dependencyDeviceId &&
+    normalizeFiniteNumber((device.config as Record<string, unknown>).channel, -1) === channel
+  ))
+  if (duplicate) {
+    throw new ApiClientError('analog input channel already exists on this dependency', 'DUPLICATE_CHANNEL', 400, null)
+  }
+}
+
+function normalizeAnalogInputChannelConfigPayload(value: unknown, enabledFallback: boolean): Record<string, unknown> & { enabled: boolean } {
+  if (!isRecordPayload(value)) {
+    throw new ApiClientError('invalid analog input channel config', 'BAD_ARGS', 400, null)
+  }
+  return {
+    enabled: typeof value.enabled === 'boolean' ? value.enabled : enabledFallback,
+    channel: Math.max(0, Math.round(normalizeFiniteNumber(value.channel, 0))),
+    adcSamples: Math.min(32, Math.max(1, normalizeFiniteNumber(value.adcSamples, 4))),
+    reportAlways: typeof value.reportAlways === 'boolean' ? value.reportAlways : false,
+    reportDeltaMilliVolts: Math.max(1, normalizeFiniteNumber(value.reportDeltaMilliVolts, 10)),
+    pollMs: Math.max(100, normalizeFiniteNumber(value.pollMs, 1000)),
+  }
+}
+
+export function createAnalogInputChannelDevice(
+  nextId: number,
+  configSource: Record<string, unknown>,
+  baseDeps: DeviceDependencyLink[],
+  enabled: boolean,
+  name: string,
+  db: Database,
+  defaultMilliVolts = 1650,
+): DeviceRecord {
+  const dependencyDeviceId = dependencyDeviceIdForRole(baseDeps, 'analog_input_hub') || normalizeDependencyDeviceId(configSource.dependencyDeviceId)
+  if (dependencyDeviceId <= 0) {
+    throw new ApiClientError('analog_input_channel requires an analog input hub dependency', 'BAD_ARGS', 400, null)
+  }
+  const dependency = requireAnalogInputHubDependency(db, dependencyDeviceId)
+  const config = normalizeAnalogInputChannelConfigPayload(configSource, enabled)
+  const channel = config.channel as number
+  if (channel >= analogInputHubChannelCount(dependency.record.typeName)) {
+    throw new ApiClientError('analog_input_channel channel is out of range', 'BAD_ARGS', 400, null)
+  }
+  ensureUniqueAnalogInputChannel(db, dependencyDeviceId, channel, nextId)
+  return createDeviceRecord(nextId, 'analog_input_channel', 1, {
+    ...config,
+    name,
+    deps: [{ role: 'analog_input_hub', deviceId: dependencyDeviceId }],
+  }, {
+    status: 'ready',
+    lifecycleStatus: 'ready',
+    effectiveStatus: 'ready',
+    output: analogInputOutput(defaultMilliVolts),
   })
 }
 

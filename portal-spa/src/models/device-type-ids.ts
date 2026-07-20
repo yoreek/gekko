@@ -19,6 +19,10 @@ import { BinarySensorDevice } from './devices/binary-sensor.ts'
 import { DosingPumpDevice } from './devices/dosing-pump.ts'
 import { AnalogOutputDevice } from './devices/analog-output.ts'
 import { AnalogOutputComposerDevice, FadeAnalogOutputDevice, ScheduledAnalogOutputDevice } from './devices/composable-analog-output.ts'
+import { AnalogPortInputDevice } from './devices/analog-port-input.ts'
+import { Ads1115HubDevice } from './devices/ads1115-hub.ts'
+import { Cd74hc4067HubDevice } from './devices/cd74hc4067-hub.ts'
+import { AnalogInputChannelDevice } from './devices/analog-input-channel.ts'
 
 export const DUMMY_DEVICE_TYPE_ID = DummyDevice.TYPE_ID
 export const GPIO_SWITCH_DEVICE_TYPE_ID = GpioSwitchDevice.TYPE_ID
@@ -43,6 +47,10 @@ export const ANALOG_OUTPUT_DEVICE_TYPE_ID = AnalogOutputDevice.TYPE_ID
 export const FADE_ANALOG_OUTPUT_DEVICE_TYPE_ID = FadeAnalogOutputDevice.TYPE_ID
 export const SCHEDULED_ANALOG_OUTPUT_DEVICE_TYPE_ID = ScheduledAnalogOutputDevice.TYPE_ID
 export const ANALOG_OUTPUT_COMPOSER_DEVICE_TYPE_ID = AnalogOutputComposerDevice.TYPE_ID
+export const ANALOG_PORT_INPUT_DEVICE_TYPE_ID = AnalogPortInputDevice.TYPE_ID
+export const ADS1115_HUB_DEVICE_TYPE_ID = Ads1115HubDevice.TYPE_ID
+export const CD74HC4067_HUB_DEVICE_TYPE_ID = Cd74hc4067HubDevice.TYPE_ID
+export const ANALOG_INPUT_CHANNEL_DEVICE_TYPE_ID = AnalogInputChannelDevice.TYPE_ID
 
 export type DeviceTypeName =
   | typeof DummyDevice.TYPE_NAME
@@ -68,6 +76,10 @@ export type DeviceTypeName =
   | typeof FadeAnalogOutputDevice.TYPE_NAME
   | typeof ScheduledAnalogOutputDevice.TYPE_NAME
   | typeof AnalogOutputComposerDevice.TYPE_NAME
+  | typeof AnalogPortInputDevice.TYPE_NAME
+  | typeof Ads1115HubDevice.TYPE_NAME
+  | typeof Cd74hc4067HubDevice.TYPE_NAME
+  | typeof AnalogInputChannelDevice.TYPE_NAME
 export type DeviceTypeId = number
 
 const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
@@ -94,6 +106,10 @@ const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
   [FadeAnalogOutputDevice.TYPE_NAME]: FadeAnalogOutputDevice.TYPE_ID,
   [ScheduledAnalogOutputDevice.TYPE_NAME]: ScheduledAnalogOutputDevice.TYPE_ID,
   [AnalogOutputComposerDevice.TYPE_NAME]: AnalogOutputComposerDevice.TYPE_ID,
+  [AnalogPortInputDevice.TYPE_NAME]: AnalogPortInputDevice.TYPE_ID,
+  [Ads1115HubDevice.TYPE_NAME]: Ads1115HubDevice.TYPE_ID,
+  [Cd74hc4067HubDevice.TYPE_NAME]: Cd74hc4067HubDevice.TYPE_ID,
+  [AnalogInputChannelDevice.TYPE_NAME]: AnalogInputChannelDevice.TYPE_ID,
 }
 
 const deviceTypeNames: Record<DeviceTypeId, DeviceTypeName> = {
@@ -120,6 +136,10 @@ const deviceTypeNames: Record<DeviceTypeId, DeviceTypeName> = {
   [FadeAnalogOutputDevice.TYPE_ID]: FadeAnalogOutputDevice.TYPE_NAME,
   [ScheduledAnalogOutputDevice.TYPE_ID]: ScheduledAnalogOutputDevice.TYPE_NAME,
   [AnalogOutputComposerDevice.TYPE_ID]: AnalogOutputComposerDevice.TYPE_NAME,
+  [AnalogPortInputDevice.TYPE_ID]: AnalogPortInputDevice.TYPE_NAME,
+  [Ads1115HubDevice.TYPE_ID]: Ads1115HubDevice.TYPE_NAME,
+  [Cd74hc4067HubDevice.TYPE_ID]: Cd74hc4067HubDevice.TYPE_NAME,
+  [AnalogInputChannelDevice.TYPE_ID]: AnalogInputChannelDevice.TYPE_NAME,
 }
 
 // Mirrors the firmware's DeviceDependencyRole wire names (kDeviceDependencyRoleNames in
@@ -140,6 +160,8 @@ export type DeviceRole =
   | 'condition'
   | 'analog_output'
   | 'analog_output_group'
+  | 'analog_input'
+  | 'analog_input_hub'
 
 export function deviceTypeIdFromName(typeName: string | undefined | null): DeviceTypeId {
   return typeName && typeName in deviceTypeIds ? deviceTypeIds[typeName as DeviceTypeName] : 0

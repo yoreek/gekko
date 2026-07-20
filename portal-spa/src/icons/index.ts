@@ -38,6 +38,7 @@ import {
   mdiRefresh as refreshPath,
   mdiUpload as uploadPath,
   mdiTrashCan as trashPath,
+  mdiFlashOutline as flashOutlinePath,
 } from '@mdi/js'
 
 export type PortalIconName =
@@ -97,6 +98,7 @@ export type PortalIconName =
   | 'flame'
   | 'snowflake'
   | 'analog-output'
+  | 'analog-input'
   | 'check-circle'
   | 'alert'
   | 'bell'
@@ -233,6 +235,7 @@ const mdiIconRegistry: Record<
   | 'flame'
   | 'snowflake'
   | 'analog-output'
+  | 'analog-input'
   | 'check-circle'
   | 'alert'
   | 'bell'
@@ -267,6 +270,7 @@ const mdiIconRegistry: Record<
   flame: createFilledIconShape(firePath),
   snowflake: createFilledIconShape(snowflakePath),
   'analog-output': createFilledIconShape(sineWavePath),
+  'analog-input': createFilledIconShape(flashOutlinePath),
   'check-circle': createFilledIconShape(checkCircleOutlinePath),
   alert: createFilledIconShape(alertOutlinePath),
   bell: createFilledIconShape(bellOutlinePath),

@@ -161,17 +161,20 @@ void test_ntc_thermistor_api_adapter_parses_create_request() {
     JsonObject config = doc.createNestedObject("config");
     config["name"] = "boiler probe";
     config["enabled"] = true;
-    config["gpioPin"] = 34;
-    config["attenuation"] = "11db";
+    config["formulaMode"] = "beta";
     config["seriesResistorOhms"] = 9800;
+    config["supplyMilliVolts"] = 3300;
     config["nominalResistanceOhms"] = 100000;
     config["betaCoefficient"] = 3950;
-    config["adcSamples"] = 16;
+    JsonArray deps = config.createNestedArray("deps");
+    JsonObject analogInputDep = deps.createNestedObject();
+    analogInputDep["role"] = "analog_input";
+    analogInputDep["deviceId"] = 42;
 
     DeviceCreateRequest request{};
     const char* error = nullptr;
-    TEST_ASSERT_TRUE(
-        NtcThermistorTemperatureSensorDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error));
+    TEST_ASSERT_TRUE_MESSAGE(
+        NtcThermistorTemperatureSensorDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error), error);
     TEST_ASSERT_EQUAL_UINT32(kNtcThermistorTemperatureSensorTypeId, request.typeId);
     TEST_ASSERT_EQUAL_UINT32(kNtcThermistorTemperatureSensorConfigVersion, request.configVersion);
     TEST_ASSERT_EQUAL_STRING("boiler probe", request.baseConfig.name);
@@ -181,11 +184,10 @@ void test_ntc_thermistor_api_adapter_parses_create_request() {
     TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(NtcThermistorTemperatureSensorConfigV1::kMagic,
                                                     reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(),
                                                     parsed));
-    TEST_ASSERT_EQUAL_UINT8(34, parsed.gpioPin);
     TEST_ASSERT_EQUAL_UINT16(9800, parsed.seriesResistorOhms);
+    TEST_ASSERT_EQUAL_UINT16(3300, parsed.supplyMilliVolts);
     TEST_ASSERT_EQUAL_UINT32(100000, parsed.nominalResistanceOhms);
     TEST_ASSERT_EQUAL_UINT16(3950, parsed.betaCoefficient);
-    TEST_ASSERT_EQUAL_UINT8(16, parsed.adcSamples);
 }
 
 void test_ntc_thermistor_api_adapter_rejects_missing_config() {
@@ -203,13 +205,13 @@ void test_ntc_thermistor_api_adapter_rejects_invalid_config() {
     StaticJsonDocument<256> doc;
     JsonObject config = doc.createNestedObject("config");
     config["name"] = "boiler probe";
-    config["gpioPin"] = 5; // not an ADC1 pin; parseJson runs validate() itself and surfaces its message
+    config["seriesResistorOhms"] = 0; // parseJson runs validate() itself and surfaces its message
 
     DeviceCreateRequest request{};
     const char* error = nullptr;
     TEST_ASSERT_FALSE(
         NtcThermistorTemperatureSensorDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error));
-    TEST_ASSERT_EQUAL_STRING("ntc thermistor gpio pin is invalid", error);
+    TEST_ASSERT_EQUAL_STRING("ntc thermistor series resistor is invalid", error);
 }
 
 void test_binary_sensor_api_adapter_parses_create_request() {
@@ -397,14 +399,14 @@ void test_ntc_thermistor_api_adapter_partial_update_preserves_calibration() {
     NtcThermistorTemperatureSensorConfigV1 current{};
     current.enabled = 1U;
     std::snprintf(current.name, sizeof(current.name), "%s", "boiler probe");
-    current.gpioPin = 35;
+    current.supplyMilliVolts = 3250;
     current.betaCoefficient = 4100;
     current.seriesResistorOhms = 9800;
     NtcThermistorTemperatureSensorDevice runtime(current);
 
     StaticJsonDocument<256> doc;
     JsonObject config = doc.createNestedObject("config");
-    config["adcSamples"] = 32;
+    config["pollMs"] = 2000;
 
     DeviceConfigUpdateRequest request{};
     const char* error = nullptr;
@@ -417,8 +419,8 @@ void test_ntc_thermistor_api_adapter_partial_update_preserves_calibration() {
     TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(NtcThermistorTemperatureSensorConfigV1::kMagic,
                                                     reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(),
                                                     parsed));
-    TEST_ASSERT_EQUAL_UINT8(32, parsed.adcSamples);
-    TEST_ASSERT_EQUAL_UINT8(35, parsed.gpioPin);
+    TEST_ASSERT_EQUAL_UINT32(2000, parsed.pollMs);
+    TEST_ASSERT_EQUAL_UINT16(3250, parsed.supplyMilliVolts);
     TEST_ASSERT_EQUAL_UINT16(4100, parsed.betaCoefficient);
     TEST_ASSERT_EQUAL_UINT16(9800, parsed.seriesResistorOhms);
 }

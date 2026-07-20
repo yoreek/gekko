@@ -22,6 +22,10 @@ import { BinarySensorDevice } from './binary-sensor.ts'
 import { DosingPumpDevice } from './dosing-pump.ts'
 import { AnalogOutputDevice } from './analog-output.ts'
 import { AnalogOutputComposerDevice, FadeAnalogOutputDevice, ScheduledAnalogOutputDevice } from './composable-analog-output.ts'
+import { AnalogPortInputDevice } from './analog-port-input.ts'
+import { Ads1115HubDevice } from './ads1115-hub.ts'
+import { Cd74hc4067HubDevice } from './cd74hc4067-hub.ts'
+import { AnalogInputChannelDevice } from './analog-input-channel.ts'
 import { UnknownDevice } from './unknown-device.ts'
 
 const fallbackDevice = new UnknownDevice()
@@ -50,6 +54,10 @@ const allDeviceModels: BaseDevice<any, any, any>[] = [
   new FadeAnalogOutputDevice(),
   new ScheduledAnalogOutputDevice(),
   new AnalogOutputComposerDevice(),
+  new AnalogPortInputDevice(),
+  new Ads1115HubDevice(),
+  new Cd74hc4067HubDevice(),
+  new AnalogInputChannelDevice(),
 ]
 
 const deviceModelsByTypeId: Record<number, BaseDevice<any, any, any>> = Object.fromEntries(

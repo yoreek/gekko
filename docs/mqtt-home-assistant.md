@@ -443,6 +443,13 @@ The following device types are published to Home Assistant in this iteration:
   chosen mode to every compatible child channel. See
   [Analog Output](analog-output.md) for the decorator-chain architecture behind these
   three types.
+- Analog input leaves (`analog_port_input`, `analog_input_channel`) — each
+  mapped to HA's `sensor` component via one shared `AnalogInputHaEntityAdapter`
+  (`icon: "mdi:flash-outline"`), publishing the raw dependency voltage
+  (`device_class: "voltage"`, `unit_of_measurement: "V"`, `state = milliVolts / 1000.0`).
+  Read-only. The hub types (`ads1115_hub`, `cd74hc4067_hub`) are **not** registered — they
+  arbitrate channels but publish no reading of their own. See
+  [Analog Input](analog-input.md) for the hub/channel architecture.
 - Binary sensor (`binary_sensor`) — mapped to HA's `binary_sensor` component
   with `icon: "mdi:electric-switch"` and no `device_class` (the firmware
   config has no semantic hint; pick one per-entity in HA if wanted).

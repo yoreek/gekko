@@ -4,21 +4,29 @@ import { TemperatureSensorDevice } from './temperature-sensor-device.ts'
 import { defaultSensorFilterConfig, normalizeSensorFilterConfig, type SensorFilterConfig } from './sensor-filter.ts'
 import type {
   BaseDeviceConfig,
+  DeviceDependencyLink,
   DeviceRecord,
   NtcThermistorTemperatureSensorOutputSnapshot,
   TemperatureUnit,
 } from '@/api/contracts'
+import type { DeviceRole } from '@/models/device-type-ids'
 
-export type NtcAttenuation = '0db' | '2_5db' | '6db' | '11db'
+export type NtcFormulaMode = 'beta' | 'steinhart_hart'
 
+// A pure resistance->temperature calculator over an AnalogInput-role dependency (see
+// docs/analog-input.md) -- it owns no ADC hardware itself, only the divider geometry
+// (seriesResistorOhms/supplyMilliVolts) and the Beta/Steinhart-Hart curve.
 export interface NtcThermistorConfigDraft extends BaseDeviceConfig {
-  gpioPin: number
-  attenuation: NtcAttenuation
+  dependencyDeviceId: number
+  formulaMode: NtcFormulaMode
   seriesResistorOhms: number
+  supplyMilliVolts: number
   nominalResistanceOhms: number
   nominalTempCelsius: number
   betaCoefficient: number
-  adcSamples: number
+  steinhartA: number
+  steinhartB: number
+  steinhartC: number
   unit: TemperatureUnit
   pollMs: number
   reportDeltaCelsius: number
@@ -32,6 +40,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function normalizeDependencyDeviceId(value: unknown): number {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : 0
+}
+
 export class NtcThermistorDevice extends TemperatureSensorDevice<
   NtcThermistorConfigDraft,
   NtcThermistorCreateDraft,
@@ -39,21 +52,27 @@ export class NtcThermistorDevice extends TemperatureSensorDevice<
 > {
   static readonly TYPE_ID = 10 as const
   static readonly TYPE_NAME = 'ntc_thermistor_temperature_sensor' as const
-  static readonly attenuationOptions: NtcAttenuation[] = ['0db', '2_5db', '6db', '11db']
+  static readonly formulaModeOptions: NtcFormulaMode[] = ['beta', 'steinhart_hart']
 
   readonly typeName = NtcThermistorDevice.TYPE_NAME
   readonly typeId = NtcThermistorDevice.TYPE_ID
+  // Provides temperature_sensor (unchanged); additionally consumes analog_input, unlike the
+  // shared TemperatureSensorDevice base which only declares the provided role.
+  readonly dependencyRoles: DeviceRole[] = ['temperature_sensor']
 
   static defaultConfig(): NtcThermistorConfigDraft {
     return {
       ...defaultBaseDeviceConfig(),
-      gpioPin: 34,
-      attenuation: '11db',
+      dependencyDeviceId: 0,
+      formulaMode: 'beta',
       seriesResistorOhms: 10000,
-      nominalResistanceOhms: 100000,
+      supplyMilliVolts: 3300,
+      nominalResistanceOhms: 10000,
       nominalTempCelsius: 25,
       betaCoefficient: 3950,
-      adcSamples: 8,
+      steinhartA: 0,
+      steinhartB: 0,
+      steinhartC: 0,
       unit: 'celsius',
       pollMs: 5000,
       reportDeltaCelsius: 0.1,
@@ -62,20 +81,32 @@ export class NtcThermistorDevice extends TemperatureSensorDevice<
     }
   }
 
-  static normalizeConfig(value: unknown): NtcThermistorConfigDraft {
+  static normalizeConfig(value: unknown, dependencyDeviceOrDeps?: number | DeviceDependencyLink[]): NtcThermistorConfigDraft {
     const defaults = NtcThermistorDevice.defaultConfig()
+    const dependencyDeviceId = Array.isArray(dependencyDeviceOrDeps)
+      ? (dependencyDeviceOrDeps.find(dep => dep.role === 'analog_input')?.deviceId ?? 0)
+      : typeof dependencyDeviceOrDeps === 'number'
+        ? dependencyDeviceOrDeps
+        : 0
     if (!isRecord(value)) {
-      return { ...defaults }
+      return {
+        ...defaults,
+        dependencyDeviceId: normalizeDependencyDeviceId(dependencyDeviceId),
+        deps: Array.isArray(dependencyDeviceOrDeps) ? dependencyDeviceOrDeps : defaults.deps,
+      }
     }
     return {
       ...normalizeBaseDeviceConfig(value, defaults),
-      gpioPin: typeof value.gpioPin === 'number' && Number.isFinite(value.gpioPin) ? value.gpioPin : defaults.gpioPin,
-      attenuation: NtcThermistorDevice.attenuationOptions.includes(value.attenuation as NtcAttenuation)
-        ? (value.attenuation as NtcAttenuation)
-        : defaults.attenuation,
+      dependencyDeviceId: normalizeDependencyDeviceId(dependencyDeviceId ?? value.dependencyDeviceId),
+      formulaMode: NtcThermistorDevice.formulaModeOptions.includes(value.formulaMode as NtcFormulaMode)
+        ? (value.formulaMode as NtcFormulaMode)
+        : defaults.formulaMode,
       seriesResistorOhms: typeof value.seriesResistorOhms === 'number' && Number.isFinite(value.seriesResistorOhms)
         ? value.seriesResistorOhms
         : defaults.seriesResistorOhms,
+      supplyMilliVolts: typeof value.supplyMilliVolts === 'number' && Number.isFinite(value.supplyMilliVolts)
+        ? value.supplyMilliVolts
+        : defaults.supplyMilliVolts,
       nominalResistanceOhms: typeof value.nominalResistanceOhms === 'number' && Number.isFinite(value.nominalResistanceOhms)
         ? value.nominalResistanceOhms
         : defaults.nominalResistanceOhms,
@@ -85,7 +116,9 @@ export class NtcThermistorDevice extends TemperatureSensorDevice<
       betaCoefficient: typeof value.betaCoefficient === 'number' && Number.isFinite(value.betaCoefficient)
         ? value.betaCoefficient
         : defaults.betaCoefficient,
-      adcSamples: typeof value.adcSamples === 'number' && Number.isFinite(value.adcSamples) ? value.adcSamples : defaults.adcSamples,
+      steinhartA: typeof value.steinhartA === 'number' && Number.isFinite(value.steinhartA) ? value.steinhartA : defaults.steinhartA,
+      steinhartB: typeof value.steinhartB === 'number' && Number.isFinite(value.steinhartB) ? value.steinhartB : defaults.steinhartB,
+      steinhartC: typeof value.steinhartC === 'number' && Number.isFinite(value.steinhartC) ? value.steinhartC : defaults.steinhartC,
       unit: NtcThermistorDevice.temperatureUnitOptions.includes(value.unit as TemperatureUnit)
         ? (value.unit as TemperatureUnit)
         : defaults.unit,
@@ -101,13 +134,15 @@ export class NtcThermistorDevice extends TemperatureSensorDevice<
   static encodeConfig(config: NtcThermistorConfigDraft): Record<string, unknown> {
     return {
       ...encodeBaseDeviceConfig(config),
-      gpioPin: config.gpioPin,
-      attenuation: config.attenuation,
+      formulaMode: config.formulaMode,
       seriesResistorOhms: config.seriesResistorOhms,
+      supplyMilliVolts: config.supplyMilliVolts,
       nominalResistanceOhms: config.nominalResistanceOhms,
       nominalTempCelsius: config.nominalTempCelsius,
       betaCoefficient: config.betaCoefficient,
-      adcSamples: config.adcSamples,
+      steinhartA: config.steinhartA,
+      steinhartB: config.steinhartB,
+      steinhartC: config.steinhartC,
       unit: config.unit,
       pollMs: config.pollMs,
       reportDeltaCelsius: config.reportDeltaCelsius,
@@ -132,13 +167,13 @@ export class NtcThermistorDevice extends TemperatureSensorDevice<
 
   createEditDraft(current: DeviceRecord): NtcThermistorCreateDraft {
     return {
-      ...this.normalizeConfig(current.config),
+      ...this.normalizeConfig(current.config, current.config.deps as DeviceDependencyLink[] | undefined),
       typeName: this.typeName,
     }
   }
 
-  normalizeConfig(value: unknown): NtcThermistorConfigDraft {
-    return NtcThermistorDevice.normalizeConfig(value)
+  normalizeConfig(value: unknown, deps?: DeviceDependencyLink[]): NtcThermistorConfigDraft {
+    return NtcThermistorDevice.normalizeConfig(value, deps)
   }
 
   normalizeOutput(record: DeviceRecord): NtcThermistorTemperatureSensorOutputSnapshot {
@@ -147,5 +182,14 @@ export class NtcThermistorDevice extends TemperatureSensorDevice<
 
   protected override encodeConfig(config: NtcThermistorConfigDraft): Record<string, unknown> {
     return NtcThermistorDevice.encodeConfig(config)
+  }
+
+  protected override createCreateDeps(config: NtcThermistorConfigDraft): DeviceDependencyLink[] {
+    return [
+      {
+        role: 'analog_input',
+        deviceId: config.dependencyDeviceId,
+      },
+    ]
   }
 }

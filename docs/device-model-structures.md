@@ -21,9 +21,10 @@ one entry per supported `typeName`, in the same order:
 `ds18b20_temperature_sensor`, `ntc_thermistor_temperature_sensor`, `htu21`, `thermostat`,
 `rtc_ds3231`, `pcf8574_expander`, `pcf8575_expander`, `analog_output`, `fade_analog_output`,
 `scheduled_analog_output`, `analog_output_composer`, `port_expander_switch`, `schedule`,
-`auto_switch`, `binary_sensor`, `dosing_pump`.
+`auto_switch`, `binary_sensor`, `dosing_pump`, `analog_port_input`, `ads1115_hub`,
+`cd74hc4067_hub`, `analog_input_channel`.
 
-`portal-spa/src/models/devices/device-model-factory.ts::allDeviceModels` mirrors the same 23 types
+`portal-spa/src/models/devices/device-model-factory.ts::allDeviceModels` mirrors the same 27 types
 one-to-one (plus an `UnknownDevice` fallback for an unrecognized `typeName`, which is never
 registered). This document uses DS18B20 as the running worked example throughout, since it's the
 simplest complete sensor family; HTU21 and the PCF857x expanders are called out separately below
@@ -32,7 +33,12 @@ and two sibling types sharing one family base). The `analog_output` family (LEDC
 `fade_analog_output`/`scheduled_analog_output`/`analog_output_composer` decorators) is a separate
 worked example in [Analog Output](analog-output.md), since its `AbstractOutputDevice<ValueType>`
 hierarchy and decorator dependency chain don't fit the sensor-family pattern used elsewhere in
-this document.
+this document. The `analog_port_input`/`ads1115_hub`/`cd74hc4067_hub`/`analog_input_channel`
+family (the AnalogInput role NTC thermistor now depends on instead of owning ADC hardware itself)
+is likewise a separate worked example in [Analog Input](analog-input.md), since its hub-and-channel
+dependency shape mirrors the PCF857x expanders below but adds a second multi-implementor hub role
+- and unlike PCF857x (two typeIds, one shared config), the channel leaf collapses to a *single*
+typeId because it has no per-hub state of its own at all, not even a channel-count constant.
 
 ## Canonical Config Hierarchy
 
@@ -519,12 +525,20 @@ side:
   provides, if any (empty = none). Each entry is read off a role-marker interface the runtime class
   already implements -- `kProvidedRole` on `ITemperatureReadingRuntime`/`ISwitchOutputRuntime`/
   `IOneWireBusRuntime`/`II2cBusRuntime`/`ISpiBusRuntime`/`IRealTimeClockRuntime`/
-  `IPortExpanderRuntime`/`IScheduleRuntime`/`IStatusRuntime` (`DeviceTypes.h`), assembled via
-  `ProvidedRoles::of({...})` in each type's `descriptor()`. `IPortExpanderRuntime` is the
-  multi-implementor case: both `Pcf8574ExpanderDevice` and `Pcf8575ExpanderDevice` include
+  `IPortExpanderRuntime`/`IScheduleRuntime`/`IStatusRuntime`/`IAnalogInputRuntime`/
+  `IAnalogInputHubRuntime` (`DeviceTypes.h`), assembled via `ProvidedRoles::of({...})` in each
+  type's `descriptor()`. `IPortExpanderRuntime` is the multi-implementor case: both
+  `Pcf8574ExpanderDevice` and `Pcf8575ExpanderDevice` include
   `IPortExpanderRuntime::kProvidedRole` in their `providedRoles`, so `PortExpanderSwitchDevice` (one
   channel presented as an ordinary `switch`-role device, mirroring `GpioSwitchDevice`) can depend on
-  either chip family interchangeably. `IStatusRuntime`/`DeviceRole::Condition` is the
+  either chip family interchangeably. `IAnalogInputHubRuntime`/`DeviceRole::AnalogInputHub` is the
+  same pattern applied to a second, unrelated hub family: `Ads1115HubDevice` and
+  `Cd74hc4067HubDevice` both provide it, so `AnalogInputChannelDevice` (one channel, providing the
+  plain `AnalogInput` role - a single typeId precisely because it never needs to know which
+  concrete hub backs it) and, one level further, `NtcThermistorTemperatureSensorDevice` (a pure
+  resistance-to-temperature calculator depending on `AnalogInput`) never need to know or care which
+  concrete hub or leaf backs their dependency - see [Analog Input](analog-input.md).
+  `IStatusRuntime`/`DeviceRole::Condition` is the
   multi-*role* case: `ScheduleDevice`, `GpioSwitchDevice`, `PortExpanderSwitchDevice`, and
   `AutoSwitchDevice` each include it *alongside* their primary role (`Schedule` or `Switch`), so a
   `Condition`-role dependency link (AutoSwitchDevice's AND-condition list) can point at any of them
@@ -559,11 +573,21 @@ real structure across sibling types:
   case: `Pcf8574ExpanderDevice`/`Pcf8575ExpanderDevice` differ only in type id/name/channel count,
   so `defaultPcf857xExpanderConfig()`/`normalizePcf857xExpanderConfig()`/`encodePcf857xExpanderConfig()`
   are hoisted to module-level functions shared by both, rather than duplicated per class.
+  `Ads1115HubDevice` and `Cd74hc4067HubDevice` are *not* siblings of each other (their config
+  shapes are unrelated - one is I2C-address+gain+rate, the other is four GPIO select pins plus a
+  signal pin) and each extends `BaseDevice` directly.
+
+There is no `AnalogInputChannelDeviceBase`: `AnalogInputChannelDevice` (`analog-input-channel.ts`)
+is a single concrete type, not a sibling family - "one channel of whatever AnalogInputHub is wired
+up" has exactly one shape regardless of which concrete hub backs it, so there is nothing for a
+family base to factor out; the real channel bound comes from the selected hub at render/validation
+time, not a per-type constant (see [Analog Input](analog-input.md)).
 
 Everything else (`DummyDevice`, `GpioSwitchDevice`, `I2cBusDevice`, `SpiBusDevice`,
 `OneWireBusDevice`, `Ssd1306Device`, `St7735Device`, `ThermostatDevice`, `RtcDs3231Device`,
 `PortExpanderSwitchDevice`, `ScheduleDevice`, `AutoSwitchDevice`, `BinarySensorDevice`,
-`DosingPumpDevice`, `UnknownDevice`) extends `BaseDevice` with no family base in between.
+`DosingPumpDevice`, `AnalogPortInputDevice`, `Ads1115HubDevice`, `Cd74hc4067HubDevice`,
+`AnalogInputChannelDevice`, `UnknownDevice`) extends `BaseDevice` with no family base in between.
 `DosingPumpDevice` (`portal-spa/src/models/devices/dosing-pump.ts`) is the one exception to the
 usual "config mirrors the wire payload" shape: its draft carries `pumpSwitchDeviceId`/
 `levelSensorDeviceId`/`levelSensorInvert` as dependency *projections* alongside the real config

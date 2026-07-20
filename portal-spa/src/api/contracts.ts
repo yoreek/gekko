@@ -121,6 +121,22 @@ export interface AnalogOutputComposerOutputSnapshot {
   mode?: AnalogOutputMode
 }
 
+export interface AnalogInputReadingSnapshot {
+  milliVolts?: number
+  rawCode?: number
+  measuredAtMs?: number
+  valid?: boolean
+  status?: string
+}
+
+export interface AnalogInputOutputSnapshot {
+  analogInput?: AnalogInputReadingSnapshot
+}
+
+// Hubs (ads1115_hub, cd74hc4067_hub) publish no output of their own -- they only provide channels
+// -- so their runtime envelope's "output" object is always empty.
+export type AnalogInputHubOutputSnapshot = Record<string, never>
+
 export interface DoseJournalEntry {
   at: number
   type: 'schedule' | 'manual'
@@ -148,6 +164,8 @@ export type DeviceOutputSnapshot =
   | FadeAnalogOutputOutputSnapshot
   | ScheduledAnalogOutputOutputSnapshot
   | AnalogOutputComposerOutputSnapshot
+  | AnalogInputOutputSnapshot
+  | AnalogInputHubOutputSnapshot
 
 export type TemperatureUnit = 'celsius' | 'fahrenheit'
 

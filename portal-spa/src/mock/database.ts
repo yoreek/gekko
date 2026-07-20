@@ -593,17 +593,48 @@ const seedDatabase: SeedDatabase = {
         },
       },
     }),
-    createDeviceRecord(670845758, 'ntc_thermistor_temperature_sensor', 1, {
+    createDeviceRecord(670845793, 'analog_port_input', 1, {
       enabled: true,
-      name: 'Air Temperature',
+      name: 'Air Temperature Analog Port',
       deps: [],
       gpioPin: 34,
       attenuation: '11db',
+      adcSamples: 8,
+      reportAlways: false,
+      reportDeltaMilliVolts: 10,
+      pollMs: 1000,
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: {
+        analogInput: {
+          milliVolts: 1780,
+          rawCode: 2208,
+          measuredAtMs: 18500,
+          valid: true,
+          status: 'ok',
+        },
+      },
+    }),
+    createDeviceRecord(670845758, 'ntc_thermistor_temperature_sensor', 1, {
+      enabled: true,
+      name: 'Air Temperature',
+      deps: [
+        {
+          role: 'analog_input',
+          deviceId: 670845793,
+        },
+      ],
+      formulaMode: 'beta',
       seriesResistorOhms: 10000,
-      nominalResistanceOhms: 100000,
+      supplyMilliVolts: 3300,
+      nominalResistanceOhms: 10000,
       nominalTempCelsius: 25,
       betaCoefficient: 3950,
-      adcSamples: 8,
+      steinhartA: 0,
+      steinhartB: 0,
+      steinhartC: 0,
       unit: 'celsius',
       pollMs: 5000,
       reportDeltaCelsius: 0.1,
@@ -620,6 +651,120 @@ const seedDatabase: SeedDatabase = {
           value: 23.4,
           unit: 'celsius',
           unitSymbol: 'C',
+          measuredAtMs: 18500,
+          valid: true,
+          status: 'ok',
+        },
+      },
+    }),
+    createDeviceRecord(670845794, 'ads1115_hub', 1, {
+      enabled: true,
+      name: 'Analog Expansion ADC',
+      deps: [
+        {
+          role: 'i2c_bus',
+          deviceId: 670845754,
+        },
+      ],
+      i2cAddress: 0x48,
+      gain: 'fsr2048',
+      dataRateSps: '128',
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+    }),
+    createDeviceRecord(670845795, 'analog_input_channel', 1, {
+      enabled: true,
+      name: 'pH Probe Voltage',
+      deps: [
+        {
+          role: 'analog_input_hub',
+          deviceId: 670845794,
+        },
+      ],
+      channel: 0,
+      adcSamples: 4,
+      reportAlways: false,
+      reportDeltaMilliVolts: 5,
+      pollMs: 1000,
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: {
+        analogInput: {
+          milliVolts: 2048,
+          rawCode: 2540,
+          measuredAtMs: 18500,
+          valid: true,
+          status: 'ok',
+        },
+      },
+    }),
+    createDeviceRecord(670845796, 'analog_input_channel', 1, {
+      enabled: true,
+      name: 'ORP Probe Voltage',
+      deps: [
+        {
+          role: 'analog_input_hub',
+          deviceId: 670845794,
+        },
+      ],
+      channel: 1,
+      adcSamples: 4,
+      reportAlways: false,
+      reportDeltaMilliVolts: 5,
+      pollMs: 1000,
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: {
+        analogInput: {
+          milliVolts: 1523,
+          rawCode: 1889,
+          measuredAtMs: 18500,
+          valid: true,
+          status: 'ok',
+        },
+      },
+    }),
+    createDeviceRecord(670845797, 'cd74hc4067_hub', 1, {
+      enabled: true,
+      name: 'Analog Multiplexer',
+      deps: [],
+      selectPins: [16, 17, 18, 19],
+      enablePin: 255,
+      sigPin: 35,
+      sigAttenuation: '11db',
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+    }),
+    createDeviceRecord(670845798, 'analog_input_channel', 1, {
+      enabled: true,
+      name: 'Sump Level Probe',
+      deps: [
+        {
+          role: 'analog_input_hub',
+          deviceId: 670845797,
+        },
+      ],
+      channel: 3,
+      adcSamples: 8,
+      reportAlways: false,
+      reportDeltaMilliVolts: 10,
+      pollMs: 1000,
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: {
+        analogInput: {
+          milliVolts: 980,
+          rawCode: 1215,
           measuredAtMs: 18500,
           valid: true,
           status: 'ok',

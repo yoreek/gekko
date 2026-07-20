@@ -92,6 +92,7 @@ Supported public `typeName` values:
 - `gpio_switch`
 - `onewire_bus`
 - `ds18b20_temperature_sensor`
+- `ntc_thermistor_temperature_sensor`
 - `htu21`
 - `thermostat`
 - `rtc_ds3231`
@@ -106,6 +107,10 @@ Supported public `typeName` values:
 - `fade_analog_output`
 - `scheduled_analog_output`
 - `analog_output_composer`
+- `analog_port_input`
+- `ads1115_hub`
+- `cd74hc4067_hub`
+- `analog_input_channel`
 
 ## Device Config And Runtime
 
@@ -229,6 +234,98 @@ The composer provides an `analog_output_group` role rather than `analog_output` 
 does not represent one scalar output itself. Its `mode` command applies to every
 compatible (`scheduled_analog_output`) child dependency.
 
+### Analog Port Input
+
+```ts
+type AdcAttenuation = '0db' | '2_5db' | '6db' | '11db'
+
+interface AnalogPortInputConfig extends BaseDeviceConfig {
+  gpioPin: number
+  attenuation: AdcAttenuation
+  adcSamples: number
+  reportAlways: boolean
+  reportDeltaMilliVolts: number
+  pollMs: number
+}
+
+interface AnalogInputReadingSnapshot {
+  milliVolts?: number
+  rawCode?: number
+  measuredAtMs?: number
+  valid?: boolean
+  status?: string
+}
+
+interface AnalogPortInputRuntime extends BaseDeviceRuntime {
+  output?: {
+    analogInput?: AnalogInputReadingSnapshot
+  }
+}
+```
+
+The ESP32's own ADC on `gpioPin`, no dependency. Provides the `analog_input` role. See
+[Analog Input](analog-input.md).
+
+### ADS1115 Hub
+
+```ts
+type Ads1115Gain = 'fsr6144' | 'fsr4096' | 'fsr2048' | 'fsr1024' | 'fsr0512' | 'fsr0256'
+type Ads1115DataRate = '8' | '16' | '32' | '64' | '128' | '250' | '475' | '860'
+
+interface Ads1115HubConfig extends BaseDeviceConfig {
+  i2cAddress: number
+  gain: Ads1115Gain
+  dataRateSps: Ads1115DataRate
+}
+
+interface Ads1115HubRuntime extends BaseDeviceRuntime {}
+```
+
+`config.deps` must contain one `i2c_bus` dependency link; `i2cAddress` defaults to `0x48`.
+Provides the `analog_input_hub` role and publishes no `output` of its own — see
+[Analog Input](analog-input.md) for the channel arbitration protocol.
+
+### CD74HC4067 Hub
+
+```ts
+interface Cd74hc4067HubConfig extends BaseDeviceConfig {
+  selectPins: [number, number, number, number] // S0..S3
+  enablePin: number // 255 = not wired
+  sigPin: number
+  sigAttenuation: AdcAttenuation
+}
+
+interface Cd74hc4067HubRuntime extends BaseDeviceRuntime {}
+```
+
+No dependency — owns its GPIO pins directly. Provides the `analog_input_hub` role and
+publishes no `output` of its own.
+
+### Analog Input Channel
+
+```ts
+interface AnalogInputChannelConfig extends BaseDeviceConfig {
+  channel: number
+  adcSamples: number
+  reportAlways: boolean
+  reportDeltaMilliVolts: number
+  pollMs: number
+}
+
+interface AnalogInputChannelRuntime extends BaseDeviceRuntime {
+  output?: {
+    analogInput?: AnalogInputReadingSnapshot
+  }
+}
+```
+
+`config.deps` must contain one `analog_input_hub` dependency link, pointing at an `ads1115_hub`,
+a `cd74hc4067_hub`, or any other `analog_input_hub`-role provider — the role is matched
+generically, not by concrete type, so there is exactly one channel type rather than one per hub
+chip. `channel` must be unique among every dependent of that hub, and must fit the *attached*
+hub's own `channelCount` (checked dynamically against whichever hub is actually wired up, not a
+static per-type bound). Provides the `analog_input` role.
+
 ### OneWire Bus
 
 ```ts
@@ -278,6 +375,47 @@ interface Ds18b20Runtime extends BaseDeviceRuntime {
 ```
 
 `config.deps` must contain one `onewire_bus` dependency link.
+
+### NTC Thermistor Temperature Sensor
+
+```ts
+type NtcFormulaMode = 'beta' | 'steinhartHart'
+
+interface NtcThermistorConfig extends BaseDeviceConfig {
+  formulaMode: NtcFormulaMode
+  seriesResistorOhms: number
+  supplyMilliVolts: number
+  nominalResistanceOhms: number // R0, used when formulaMode is "beta"
+  nominalTempCelsius: number // T0, used when formulaMode is "beta"
+  betaCoefficient: number // used when formulaMode is "beta"
+  steinhartA: number // used when formulaMode is "steinhartHart"
+  steinhartB: number
+  steinhartC: number
+  unit: TemperatureUnit
+  pollMs: number
+  reportDeltaCelsius: number
+  reportAlways: boolean
+  smoothingWeight: number
+  calibrationFactor: number
+  calibrationOffset: number
+}
+
+interface NtcThermistorRuntime extends BaseDeviceRuntime {
+  output?: {
+    temperature?: TemperatureOutputSnapshot
+  }
+}
+```
+
+The sensor is a pure resistance-to-temperature calculator; it owns none of the ADC hardware.
+`config.deps` must contain exactly one dependency link whose target provides the `analog_input`
+role (`analog_port_input` or `analog_input_channel` — matched generically, not by concrete type).
+`Rntc = seriesResistorOhms * Vout / (supplyMilliVolts - Vout)` where `Vout` is the
+dependency's latest `milliVolts` reading, then either the Beta equation or the Steinhart-Hart
+equation converts `Rntc` to temperature depending on `formulaMode`. The three filter fields are the
+same flattened `smoothingWeight`/`calibrationFactor`/`calibrationOffset` shape used elsewhere (see
+`SensorFilterConfig` below) — applied after the curve, before the report-delta/report-always
+policy. See [Analog Input](analog-input.md) for the dependency architecture and preset table.
 
 ### HTU21 Temperature+Humidity Sensor
 

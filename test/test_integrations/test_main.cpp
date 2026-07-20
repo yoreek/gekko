@@ -52,6 +52,12 @@ void test_temperature_sensor_ha_entity_adapter_builds_state_payload_for_valid_re
 void test_temperature_sensor_ha_entity_adapter_rejects_all_commands();
 void test_ha_entity_adapter_registry_resolves_ntc_thermistor();
 void test_temperature_sensor_ha_entity_adapter_registers_distinct_type_ids_without_collision();
+void test_ha_entity_adapter_registry_resolves_analog_port_input();
+void test_ha_entity_adapter_registry_resolves_analog_input_channel();
+void test_ha_entity_adapter_registry_does_not_resolve_analog_input_hubs();
+void test_analog_input_ha_entity_adapter_builds_discovery_payload();
+void test_analog_input_ha_entity_adapter_builds_state_payload_for_valid_reading_and_skips_invalid();
+void test_analog_input_ha_entity_adapter_rejects_all_commands();
 void test_ha_entity_adapter_registry_resolves_htu21_humidity();
 void test_humidity_sensor_ha_entity_adapter_builds_discovery_payload();
 void test_humidity_sensor_ha_entity_adapter_builds_state_payload_for_valid_reading_and_skips_invalid();
@@ -129,6 +135,12 @@ int main(int, char**) {
     RUN_TEST(test_temperature_sensor_ha_entity_adapter_rejects_all_commands);
     RUN_TEST(test_ha_entity_adapter_registry_resolves_ntc_thermistor);
     RUN_TEST(test_temperature_sensor_ha_entity_adapter_registers_distinct_type_ids_without_collision);
+    RUN_TEST(test_ha_entity_adapter_registry_resolves_analog_port_input);
+    RUN_TEST(test_ha_entity_adapter_registry_resolves_analog_input_channel);
+    RUN_TEST(test_ha_entity_adapter_registry_does_not_resolve_analog_input_hubs);
+    RUN_TEST(test_analog_input_ha_entity_adapter_builds_discovery_payload);
+    RUN_TEST(test_analog_input_ha_entity_adapter_builds_state_payload_for_valid_reading_and_skips_invalid);
+    RUN_TEST(test_analog_input_ha_entity_adapter_rejects_all_commands);
     RUN_TEST(test_ha_entity_adapter_registry_resolves_htu21_humidity);
     RUN_TEST(test_humidity_sensor_ha_entity_adapter_builds_discovery_payload);
     RUN_TEST(test_humidity_sensor_ha_entity_adapter_builds_state_payload_for_valid_reading_and_skips_invalid);

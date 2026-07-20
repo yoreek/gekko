@@ -105,3 +105,4 @@ Vue 3 + Vuetify 4 SPA. Uses `pnpm`. State is managed with Pinia. Real-time updat
 - `docs/portal-alerts.md` — SPA alert/notification pipeline (bell + toasts), `extractAlerts` hook for new device-type alerts
 - `docs/dosing-pump.md` — dosing run execution model (non-blocking commands, backend timing), collision/busy rules, grace window and drop-don't-dose-late policy, calibration flow, LittleFS dose-journal ring layout
 - `docs/analog-output.md` — shared `AbstractOutputDevice<T>` output runtime, analog-output decorator chain (LEDC/fade/scheduled/composer), SPA schedule graph
+- `docs/analog-input.md` — `AnalogInput`/`AnalogInputHub` roles, hub-and-channel pattern (ADS1115, CD74HC4067), non-blocking hub arbitration, NTC thermistor presets/formulas built on top

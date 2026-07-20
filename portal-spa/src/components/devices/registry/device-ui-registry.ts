@@ -22,6 +22,10 @@ import { BinarySensorDevice } from '@/models/devices/binary-sensor'
 import { DosingPumpDevice } from '@/models/devices/dosing-pump'
 import { AnalogOutputDevice } from '@/models/devices/analog-output'
 import { AnalogOutputComposerDevice, FadeAnalogOutputDevice, ScheduledAnalogOutputDevice } from '@/models/devices/composable-analog-output'
+import { AnalogPortInputDevice } from '@/models/devices/analog-port-input'
+import { Ads1115HubDevice } from '@/models/devices/ads1115-hub'
+import { AnalogInputChannelDevice } from '@/models/devices/analog-input-channel'
+import { Cd74hc4067HubDevice } from '@/models/devices/cd74hc4067-hub'
 import DummyFields from '@/components/devices/dummy/DummyFields.vue'
 import DummyWidget from '@/components/devices/dummy/DummyWidget.vue'
 import GpioSwitchFields from '@/components/devices/gpio-switch/GpioSwitchFields.vue'
@@ -63,6 +67,13 @@ import ScheduledAnalogOutputFields from '@/components/devices/analog-output/Sche
 import ScheduledAnalogOutputWidget from '@/components/devices/analog-output/ScheduledAnalogOutputWidget.vue'
 import AnalogOutputComposerFields from '@/components/devices/analog-output/AnalogOutputComposerFields.vue'
 import AnalogOutputComposerWidget from '@/components/devices/analog-output/AnalogOutputComposerWidget.vue'
+import AnalogPortInputFields from '@/components/devices/analog-port-input/AnalogPortInputFields.vue'
+import AnalogPortInputWidget from '@/components/devices/analog-port-input/AnalogPortInputWidget.vue'
+import Ads1115HubFields from '@/components/devices/ads1115-hub/Ads1115HubFields.vue'
+import Cd74hc4067HubFields from '@/components/devices/cd74hc4067-hub/Cd74hc4067HubFields.vue'
+import AnalogInputHubWidget from '@/components/devices/analog-input/AnalogInputHubWidget.vue'
+import AnalogInputChannelFields from '@/components/devices/analog-input/AnalogInputChannelFields.vue'
+import AnalogInputChannelWidget from '@/components/devices/analog-input/AnalogInputChannelWidget.vue'
 
 const unknownUi: DeviceUi = {
   typeId: 0,
@@ -300,6 +311,42 @@ const analogOutputComposerUi: DeviceUi = {
   moreInfoMaxWidth: 960,
 }
 
+const analogPortInputUi: DeviceUi = {
+  typeId: AnalogPortInputDevice.TYPE_ID,
+  typeName: AnalogPortInputDevice.TYPE_NAME,
+  labelKey: 'device.type.analogPortInput',
+  icon: 'analog-input',
+  fieldsComponent: AnalogPortInputFields,
+  widgetComponent: AnalogPortInputWidget,
+}
+
+const ads1115HubUi: DeviceUi = {
+  typeId: Ads1115HubDevice.TYPE_ID,
+  typeName: Ads1115HubDevice.TYPE_NAME,
+  labelKey: 'device.type.ads1115Hub',
+  icon: 'chip',
+  fieldsComponent: Ads1115HubFields,
+  widgetComponent: AnalogInputHubWidget,
+}
+
+const cd74hc4067HubUi: DeviceUi = {
+  typeId: Cd74hc4067HubDevice.TYPE_ID,
+  typeName: Cd74hc4067HubDevice.TYPE_NAME,
+  labelKey: 'device.type.cd74hc4067Hub',
+  icon: 'chip',
+  fieldsComponent: Cd74hc4067HubFields,
+  widgetComponent: AnalogInputHubWidget,
+}
+
+const analogInputChannelUi: DeviceUi = {
+  typeId: AnalogInputChannelDevice.TYPE_ID,
+  typeName: AnalogInputChannelDevice.TYPE_NAME,
+  labelKey: 'device.type.analogInputChannel',
+  icon: 'analog-input',
+  fieldsComponent: AnalogInputChannelFields,
+  widgetComponent: AnalogInputChannelWidget,
+}
+
 const deviceUiV2ByTypeId: Record<number, DeviceUi> = {
   [dummyUi.typeId]: dummyUi,
   [gpioSwitchUi.typeId]: gpioSwitchUi,
@@ -324,6 +371,10 @@ const deviceUiV2ByTypeId: Record<number, DeviceUi> = {
   [fadeAnalogOutputUi.typeId]: fadeAnalogOutputUi,
   [scheduledAnalogOutputUi.typeId]: scheduledAnalogOutputUi,
   [analogOutputComposerUi.typeId]: analogOutputComposerUi,
+  [analogPortInputUi.typeId]: analogPortInputUi,
+  [ads1115HubUi.typeId]: ads1115HubUi,
+  [cd74hc4067HubUi.typeId]: cd74hc4067HubUi,
+  [analogInputChannelUi.typeId]: analogInputChannelUi,
 }
 
 export const allDeviceUis: DeviceUi[] = Object.values(deviceUiV2ByTypeId)

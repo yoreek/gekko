@@ -2,6 +2,8 @@
 
 #include "devices/analog/composer/AnalogOutputComposerDevice.h"
 #include "devices/analog/fade/FadeAnalogOutputDevice.h"
+#include "devices/analog/input/channel/AnalogInputChannelDevice.h"
+#include "devices/analog/input/port/AnalogPortInputDevice.h"
 #include "devices/analog/ledc/LedcAnalogOutputDevice.h"
 #include "devices/analog/scheduled/ScheduledAnalogOutputDevice.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
@@ -9,6 +11,7 @@
 #include "devices/sensors/ntc_thermistor/NtcThermistorTemperatureSensorDevice.h"
 #include "devices/switch/expander/PortExpanderSwitchDevice.h"
 #include "devices/switch/gpio/GpioSwitchDevice.h"
+#include "integrations/mqtt/analog_input/AnalogInputHaEntityAdapter.h"
 #include "integrations/mqtt/analog_output/AnalogOutputGroupModeHaEntityAdapter.h"
 #include "integrations/mqtt/analog_output/AnalogOutputHaEntityAdapter.h"
 #include "integrations/mqtt/analog_output/ScheduledAnalogOutputModeHaEntityAdapter.h"
@@ -92,6 +95,13 @@ HaEntityAdapterRegistry HaEntityAdapterRegistry::withDefaults() {
                                                                          "binary_sensor", "Container empty", "mdi:cup-off-outline"});
     static const DosingPumpHaEntityAdapter kDosingAutoModeAdapter(
         {DosingPumpHaEntityKind::AutoMode, "dosing_pump_auto_mode", "dosing_auto_mode", "switch", "Auto mode", "mdi:calendar-sync"});
+    // One universal adapter for every AnalogInput leaf, registered once per typeId - the same
+    // pattern as the temperature/humidity/analog-output adapters above. Hubs (ads1115_hub,
+    // cd74hc4067_hub) are not registered: they provide channels, not a reading of their own.
+    static const AnalogInputHaEntityAdapter kAnalogPortInputAdapter(
+        {AnalogPortInputDevice::descriptor().typeId, "analog_port_input", "mdi:flash-outline"});
+    static const AnalogInputHaEntityAdapter kAnalogInputChannelAdapter(
+        {AnalogInputChannelDevice::descriptor().typeId, "analog_input_channel", "mdi:flash-outline"});
 
     HaEntityAdapterRegistry registry;
     (void)registry.registerAdapter(kGpioSwitchAdapter);
@@ -112,6 +122,8 @@ HaEntityAdapterRegistry HaEntityAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(kDosingContainerLevelAdapter);
     (void)registry.registerAdapter(kDosingContainerEmptyAdapter);
     (void)registry.registerAdapter(kDosingAutoModeAdapter);
+    (void)registry.registerAdapter(kAnalogPortInputAdapter);
+    (void)registry.registerAdapter(kAnalogInputChannelAdapter);
     return registry;
 }
 

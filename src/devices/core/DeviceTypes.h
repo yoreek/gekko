@@ -41,6 +41,7 @@ constexpr size_t kMaxDeviceIdGenerationAttempts = 8;
 constexpr size_t kMaxDeviceDependencies = 16;
 constexpr size_t kMaxProvidedRoles = 3;
 constexpr uint16_t kAnalogOutputLevelMax = 4095U;
+constexpr uint16_t kAnalogInputResolutionMax = 4095U;
 
 enum class DeviceRole : uint8_t {
     Unknown = 0,
@@ -57,6 +58,8 @@ enum class DeviceRole : uint8_t {
     Condition = 11,
     AnalogOutput = 12,
     AnalogOutputGroup = 13,
+    AnalogInput = 14,
+    AnalogInputHub = 15,
 };
 
 struct DeviceDependencyLink {
@@ -244,6 +247,71 @@ public:
 
     virtual AnalogOutputMode analogOutputGroupMode() const = 0;
     virtual bool requestAnalogOutputGroupMode(AnalogOutputMode mode, uint32_t now) = 0;
+};
+
+// One physical or logical analog input reading, normalized the same way as analog output: a
+// `uint16_t` code in `0..kAnalogInputResolutionMax` alongside the physical value the code was
+// derived from. `milliVolts` is the authoritative value consumers should compute from (e.g. a
+// resistive-divider sensor); `rawCode` exists for UI/diagnostics and is only a best-effort
+// normalization of whatever native resolution the backend ADC actually has.
+struct AnalogInputReading {
+    uint16_t rawCode{0};
+    int32_t milliVolts{0};
+    uint32_t measuredAtMs{0};
+    bool valid{false};
+};
+
+// A source of one analog reading: the ESP32's own ADC on a pin, or one channel of an
+// AnalogInputHub (ADS1115, CD74HC4067, ...). Consumers (e.g. an NTC thermistor sensor) depend on
+// this role without caring which concrete backend produced the reading.
+class IAnalogInputRuntime {
+public:
+    static constexpr DeviceRole kProvidedRole = DeviceRole::AnalogInput;
+
+    IAnalogInputRuntime() = default;
+    IAnalogInputRuntime(const IAnalogInputRuntime&) = delete;
+    IAnalogInputRuntime& operator=(const IAnalogInputRuntime&) = delete;
+    IAnalogInputRuntime(IAnalogInputRuntime&&) = delete;
+    IAnalogInputRuntime& operator=(IAnalogInputRuntime&&) = delete;
+    virtual ~IAnalogInputRuntime() = default;
+
+    virtual bool latestAnalogInputReading(AnalogInputReading& reading) const = 0;
+    virtual const char* latestAnalogInputStatus() const = 0;
+};
+
+enum class AnalogInputHubPollResult : uint8_t {
+    Busy = 0,
+    Pending = 1,
+    Ready = 2,
+    Fault = 3,
+};
+
+// A multi-channel analog source (ADS1115, CD74HC4067) shared by several AnalogInput-role leaf
+// devices, one per physical channel. Only one (channel, requester) pair can be in flight at a
+// time -- the hub arbitrates instead of blocking, so a channel leaf polls this every tick until it
+// gets Ready/Fault instead of the hub ever calling delay(). `requester` is the calling leaf's own
+// DeviceId, used to tell "my request is still being served" apart from "someone else has the hub
+// busy right now".
+class IAnalogInputHubRuntime {
+public:
+    static constexpr DeviceRole kProvidedRole = DeviceRole::AnalogInputHub;
+
+    IAnalogInputHubRuntime() = default;
+    IAnalogInputHubRuntime(const IAnalogInputHubRuntime&) = delete;
+    IAnalogInputHubRuntime& operator=(const IAnalogInputHubRuntime&) = delete;
+    IAnalogInputHubRuntime(IAnalogInputHubRuntime&&) = delete;
+    IAnalogInputHubRuntime& operator=(IAnalogInputHubRuntime&&) = delete;
+    virtual ~IAnalogInputHubRuntime() = default;
+
+    virtual uint8_t channelCount() const = 0;
+    // Bumped whenever the hub itself is reconfigured (address/gain/pins), so a dependent channel
+    // leaf can tell its in-flight request was invalidated out from under it.
+    virtual uint32_t generation() const = 0;
+    virtual AnalogInputHubPollResult pollChannelReading(uint8_t channel, DeviceId requester, uint32_t now, AnalogInputReading& outReading,
+                                                        const char*& outStatus) = 0;
+    // Releases a channel's claim on the hub (disable/delete/reconfigure of the requesting leaf), so
+    // a stuck in-flight request can't wedge the hub against every other channel forever.
+    virtual void releaseChannelRequest(uint8_t channel, DeviceId requester) = 0;
 };
 
 // A hardware RTC (e.g. DS3231) that can be read for its current time, written to keep it aligned
@@ -750,6 +818,12 @@ public:
         return nullptr;
     }
     virtual const IAnalogOutputGroupRuntime* analogOutputGroupRuntime() const {
+        return nullptr;
+    }
+    virtual const IAnalogInputRuntime* analogInputRuntime() const {
+        return nullptr;
+    }
+    virtual const IAnalogInputHubRuntime* analogInputHubRuntime() const {
         return nullptr;
     }
     virtual const IRealTimeClockRuntime* realTimeClockRuntime() const {
