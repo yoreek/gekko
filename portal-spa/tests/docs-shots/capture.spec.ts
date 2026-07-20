@@ -17,6 +17,9 @@ const shots: Array<{ name: string; path: string; fullPage?: boolean }> = [
   { name: 'device-schedule', path: '/devices/670845764' },
   { name: 'device-dosing-pump', path: '/devices/670845772' },
   { name: 'device-analog-composer', path: '/devices/670845792' },
+  { name: 'device-i2c-bus', path: '/devices/670845754' },
+  { name: 'device-spi-bus', path: '/devices/670845757' },
+  { name: 'portal-mqtt', path: '/mqtt' },
   { name: 'portal-display-designer', path: '/devices/670845755/design' },
   { name: 'portal-wifi', path: '/wifi' },
 ]
@@ -45,14 +48,31 @@ test('capture ds18b20 history dialog', async ({ page }) => {
   await dialog.screenshot({ path: resolve(outputDir, 'device-ds18b20-history.png') })
 })
 
+test('capture device home assistant card', async ({ page }) => {
+  test.setTimeout(120000)
+  mkdirSync(outputDir, { recursive: true })
+  await page.addInitScript(() => {
+    window.localStorage.setItem('gekko.locale', 'en')
+  })
+  await openMockPage(page, '/devices/670845750', true)
+  const haCard = page.locator('.v-card').filter({ hasText: 'Home Assistant' }).last()
+  await haCard.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(800)
+  await haCard.screenshot({ path: resolve(outputDir, 'device-ha-card.png') })
+})
+
 test('capture docs screenshots', async ({ page }) => {
   mkdirSync(outputDir, { recursive: true })
   await page.addInitScript(() => {
     window.localStorage.setItem('gekko.locale', 'en')
   })
 
+  // SHOTS=name1,name2 captures only the listed shots (avoids churning the rest).
+  const only = process.env.SHOTS?.split(',').map(s => s.trim()).filter(Boolean)
+  const selected = only?.length ? shots.filter(shot => only.includes(shot.name)) : shots
+
   let first = true
-  for (const shot of shots) {
+  for (const shot of selected) {
     await openMockPage(page, shot.path, first)
     first = false
     await page.screenshot({

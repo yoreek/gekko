@@ -2,7 +2,7 @@
 title: Analog outputs & light composer
 description: Dimmable PWM outputs in Gekko — smooth fades, daily brightness curves, and multi-channel fixtures like a five-channel aquarium light.
 sidebar:
-  order: 8
+  order: 10
 ---
 
 ## Why dimmable outputs?

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 360" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <rect x="1" y="1" width="918" height="358" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+
+  <text x="35" y="42" font-size="19" font-weight="700" fill="#0f172a">Placeholders: widget text in, live values out</text>
+
+  <!-- template panel -->
+  <g>
+    <rect x="50" y="80" width="400" height="200" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2.5"/>
+    <text x="74" y="112" font-size="13" font-weight="600" fill="#64748b">WIDGET TEXT</text>
+    <g font-size="14.5" font-family="ui-monospace, 'Cascadia Code', monospace">
+      <text x="74" y="148" fill="#0f172a">Room <tspan fill="#7c3aed">{{dev.42.temperature</tspan></text>
+      <text x="110" y="168" fill="#7c3aed">| fixed:1}}</text>
+      <text x="74" y="200" fill="#7c3aed">{{system.time | format:HH:mm}}</text>
+      <text x="74" y="232" fill="#0f172a">IP <tspan fill="#7c3aed">{{system.wifi.station_ip}}</tspan></text>
+    </g>
+    <text x="74" y="264" font-size="12" fill="#94a3b8">picked from the placeholder builder, or typed by hand</text>
+  </g>
+
+  <!-- arrow -->
+  <path d="M450 180 H 510" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M510 172 l 16 8 -16 8 z" fill="#94a3b8"/>
+  <text x="488" y="162" font-size="12.5" fill="#64748b" text-anchor="middle">resolved at</text>
+  <text x="488" y="208" font-size="12.5" fill="#64748b" text-anchor="middle">render time</text>
+
+  <!-- OLED screen -->
+  <g>
+    <rect x="540" y="86" width="330" height="188" rx="10" fill="#1e293b" stroke="#475569" stroke-width="3"/>
+    <rect x="556" y="100" width="298" height="160" rx="4" fill="#020617"/>
+    <g font-size="24" font-family="ui-monospace, 'Cascadia Code', monospace" fill="#67e8f9">
+      <text x="576" y="146">Room 24.7</text>
+      <text x="576" y="188">14:05</text>
+      <text x="576" y="230">IP 192.168.1.240</text>
+    </g>
+    <text x="705" y="298" font-size="13" fill="#64748b" text-anchor="middle">SSD1306 / ST7735 — same syntax on both</text>
+  </g>
+
+  <text x="35" y="336" font-size="14" fill="#475569">Values refresh live; a temporarily missing metric renders as empty text instead of breaking the widget, and the</text>
+  <text x="35" y="354" font-size="14" fill="#475569">referenced device becomes a real dependency — the registry warns before deleting a sensor a screen still shows.</text>
+</svg>

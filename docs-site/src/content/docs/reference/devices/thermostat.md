@@ -2,7 +2,7 @@
 title: Thermostat
 description: How Gekko's thermostat keeps temperature at a setpoint — the control loop, hysteresis explained, and the safety rails around it.
 sidebar:
-  order: 5
+  order: 7
 ---
 
 ## What it does

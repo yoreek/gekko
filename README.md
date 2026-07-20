@@ -19,13 +19,13 @@ Everything runs standalone on the ESP32 itself:
 - **Backup and restore** — export/import the full device configuration as a single bundle.
 - **Multi-language portal** — English, Ukrainian, Russian, German, Spanish, French, Italian, with automatic browser-language detection.
 
-## How this compares to ESPHome and Tasmota
+## What makes Gekko different
 
-**ESPHome** compiles your YAML configuration into a dedicated firmware image per device — adding a sensor means editing YAML, recompiling, and reflashing (or OTA-pushing a freshly built binary). Gekko ships one firmware image with every supported device type already built in; adding, removing, or rewiring a device is a web portal action against the running device, never a rebuild.
+**No firmware image per setup.** Adding a sensor never means editing a config file, recompiling, and reflashing — Gekko ships one firmware image with every supported device type already built in, and adding, removing, or rewiring a device is a web portal action against the running device.
 
-**Tasmota** also configures at runtime through its web UI, so the "no recompiling" part isn't unique to Gekko — but it does so as a flat set of GPIO templates and console rules. Gekko instead models devices as a typed registry with declared dependencies between them (a switch behind a port expander, a sensor behind an I2C bus, a pump gated by a schedule), each with its own versioned, migratable config, a REST API and realtime WebSocket state, a device event journal, a visual OLED/TFT page/widget designer built into the portal, and dashboard panels rather than a single console/rule screen.
+**Structure instead of pin templates.** Rather than a flat set of GPIO assignments and console rules, Gekko models devices as a typed registry with declared dependencies between them (a switch behind a port expander, a sensor behind an I2C bus, a pump gated by a schedule), each with its own versioned, migratable config, a REST API and realtime WebSocket state, a device event journal, a visual OLED/TFT page/widget designer built into the portal, and dashboard panels rather than a single console/rule screen.
 
-The trade-off: Gekko's device-type catalog is fixed at compile time (whatever's registered in `DeviceTypeRegistry::withDefaults()`), so it doesn't yet match Tasmota's or ESPHome's breadth of supported hardware — it's a smaller, more structured base to build on, not a drop-in replacement for either.
+The trade-off: Gekko's device-type catalog is fixed at compile time (whatever's registered in `DeviceTypeRegistry::withDefaults()`), so it's deliberately a smaller, more structured base to build on rather than a catalog of every sensor ever made.
 
 Firmware and SPA are versioned from `git describe` at build time, not from a hand-maintained version file or a release tag. The exact running version is always visible at runtime:
 - Firmware: `GET /api/system/version` on the device, or the boot log line `Gekko booting version=... build=...`.

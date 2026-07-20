@@ -11,8 +11,9 @@ shows from pages and widgets, live in the browser, with a preview.
 
 ## Setting up a display
 
-1. Create the bus device first: an **I2C bus** (SDA/SCL pins) for SSD1306, or
-   an **SPI bus** for ST7735.
+1. Create the bus device first: an
+   [**I2C bus**](/gekko/reference/devices/i2c-bus/) (SDA/SCL pins) for
+   SSD1306, or an [**SPI bus**](/gekko/reference/devices/spi-bus/) for ST7735.
 2. Create the display device and select that bus as its dependency (plus the
    I2C address or the TFT's control pins).
 3. Open the device and click **Design** to enter the layout designer.
@@ -29,7 +30,15 @@ saved on the device and are included in
 
 ## Live values: metric placeholders
 
-Text widgets can mix static text with **placeholders** resolved at render time:
+Text widgets can mix static text with **placeholders** resolved at render
+time. Building a status screen is just writing a few lines of template text:
+
+![Widget text with placeholders on the left, the rendered OLED output with live values on the right](../../../assets/diagrams/display-placeholders.svg)
+
+You don't have to memorize the syntax — the designer's **placeholder builder**
+lists every available metric of every device with a live preview value, and
+inserts the placeholder for you. Typed placeholders are validated on every
+keystroke. More examples:
 
 ```text
 Room {{dev.670845748.temperature | fixed:1}}

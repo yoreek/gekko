@@ -1,59 +1,72 @@
 ---
 title: MQTT & Home Assistant
-description: Connect Gekko to an MQTT broker and let Home Assistant discover your devices automatically.
+description: Flip one toggle per device and it appears in Home Assistant — switches, sensors, and thermostats, controllable from the HA UI.
 sidebar:
   order: 4
 ---
 
-Gekko can connect to an MQTT broker and publish **Home Assistant MQTT
-discovery**, so your Gekko devices appear in Home Assistant automatically —
-switches as toggles, sensors as readings, thermostats as climate entities.
+Gekko speaks **Home Assistant MQTT discovery**: connect it to your MQTT broker
+once, then publish any device with a single toggle — and it appears in Home
+Assistant on its own, with the right entity type, name, and icon. No YAML, no
+manual entity configuration.
 
-## An optional, compile-time feature
+## What you get
 
-MQTT support is **off by default** and is a build-time option: firmware
-compiled without it contains no MQTT code at all (smaller flash — a real
-concern on 4 MB boards). To enable it, build from source with
-`-DWITH_HOME_ASSISTANT` uncommented in `platformio.ini`.
+![Gekko devices appearing in Home Assistant as switch, sensors, and climate entities](../../../assets/diagrams/ha-entities.svg)
 
-There are two independent "on" switches — don't confuse them:
+Each published Gekko device becomes a native HA entity, and control flows both
+ways in real time:
 
-1. **Compiled in** — whether this firmware build has the feature at all. The
-   portal's MQTT page shows an "Available"/"Not available" chip for this; on
-   builds without the feature the page shows an explanatory note instead of the
-   settings form.
-2. **Runtime toggle** — the "Enable MQTT" switch in the settings form: whether
-   the device should actually connect to your broker right now. Settings
-   changes (host, credentials, TLS) apply with a clean reconnect, no reboot.
+| Gekko device | In Home Assistant | You can |
+| --- | --- | --- |
+| GPIO / port-expander / auto switch | `switch` | toggle it from any HA dashboard, use it in automations |
+| DS18B20, NTC thermistor | `sensor` | chart history, trigger automations on temperature |
+| HTU21 | two `sensor`s (temperature + humidity) | same, independently |
+| Binary sensor | `binary_sensor` | leak/door alerts through HA notifications |
+| Thermostat | `climate` | change mode and setpoint from HA's thermostat card |
 
-MQTT only connects once the device has a real station connection to your
-network — never while in the setup-AP provisioning state.
-
-## What Home Assistant sees
-
-Each Gekko device maps to one or more HA entities via discovery:
-
-| Gekko device | Home Assistant entity |
-| --- | --- |
-| GPIO switch / port-expander switch / auto switch | `switch` (controllable) |
-| DS18B20, NTC thermistor | `sensor` (temperature, read-only) |
-| HTU21 | two `sensor`s — temperature and humidity |
-| Binary sensor | `binary_sensor` |
-| Thermostat | `climate` — mode, setpoint, current temperature, action |
-
-Commands flow back too: toggling the HA switch flips the real output, and
-changing the climate setpoint updates the thermostat's validated config. Each
-entity ships with a sensible `mdi:*` icon.
+So your aquarium light can join HA scenes, the leak sensor can push a phone
+notification, and the thermostat shows up next to your home's climate
+controls — while everything still runs locally on the ESP32 even if HA is
+down.
 
 ## Setup
 
-1. On the portal's **MQTT / Home Assistant** page, enter your broker host,
-   port, and credentials, and switch **Enable MQTT** on.
-2. Make sure Home Assistant's MQTT integration is connected to the same
-   broker with discovery enabled (the default).
-3. Your devices appear under **Settings → Devices & services → MQTT** within a
-   few seconds, grouped under the Gekko controller.
+1. **Connect the broker (once).** On the portal's **MQTT / Home Assistant**
+   page enter your broker host, port, and credentials (TLS supported), and
+   switch **Enable MQTT** on. Settings changes apply with a clean reconnect —
+   no reboot. MQTT only connects once the device is on your WiFi as a station,
+   never in setup-AP mode.
 
-For the full architecture (topic scheme, adapters, TLS notes), see
+   ![MQTT broker settings page](../../../assets/screenshots/portal-mqtt.png)
+
+2. **Make sure HA is on the same broker** with its MQTT integration's
+   discovery enabled (the default).
+
+3. **Publish devices.** Every supported device's page has a **Home Assistant**
+   card — flip **Publish to Home Assistant**, optionally give it an HA-specific
+   name, save:
+
+   ![Per-device Home Assistant card with the publish toggle](../../../assets/screenshots/device-ha-card.png)
+
+   Seconds later the device is in HA under **Settings → Devices & services →
+   MQTT**, grouped under your Gekko controller. Unpublishing removes it just
+   as cleanly.
+
+## A build-time option
+
+MQTT support is compiled into the firmware on demand (`-DWITH_HOME_ASSISTANT`
+in `platformio.ini`) — firmware without it carries no MQTT code at all, which
+matters on 4 MB boards. The portal is explicit about the difference:
+
+- the **Available / Not available** chip on the MQTT page tells you whether
+  this *build* has the feature;
+- the **Enable MQTT** switch tells the firmware whether to actually connect
+  right now.
+
+On builds without the feature, the MQTT page shows an explanatory note and the
+per-device HA cards don't render.
+
+For the full architecture (topic scheme, adapters, TLS certificates), see
 [`docs/mqtt-home-assistant.md`](https://github.com/yoreek/gekko/blob/master/docs/mqtt-home-assistant.md)
 in the repository.

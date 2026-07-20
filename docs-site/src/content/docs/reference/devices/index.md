@@ -16,8 +16,8 @@ detailed pages coming iteratively.
 | Type | Purpose |
 | --- | --- |
 | [`onewire_bus`](/gekko/reference/devices/onewire-bus/) | 1-Wire bus on a GPIO; parent for DS18B20 probes, with device scan |
-| `i2c_bus` | I2C bus (SDA/SCL); parent for displays, HTU21, RTC, port expanders |
-| `spi_bus` | SPI bus; parent for the ST7735 TFT |
+| [`i2c_bus`](/gekko/reference/devices/i2c-bus/) | I2C bus (SDA/SCL); parent for displays, HTU21, RTC, port expanders |
+| [`spi_bus`](/gekko/reference/devices/spi-bus/) | SPI bus; parent for the ST7735 TFT |
 | `rtc_ds3231` | DS3231 real-time clock — keeps schedules running without NTP |
 | `dummy` | Placeholder/test device |
 

@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 380" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <rect x="1" y="1" width="918" height="378" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+
+  <text x="35" y="42" font-size="19" font-weight="700" fill="#0f172a">SPI: shared clock and data, a chip-select per device</text>
+
+  <!-- ESP32 -->
+  <g>
+    <rect x="50" y="80" width="160" height="220" rx="10" fill="#1e293b" stroke="#475569" stroke-width="3"/>
+    <text x="130" y="110" font-size="15" font-weight="700" fill="#e2e8f0" text-anchor="middle">ESP32</text>
+    <g font-size="13.5" fill="#e2e8f0" text-anchor="end">
+      <text x="196" y="145">SCK 18</text>
+      <text x="196" y="185">MOSI 23</text>
+      <text x="196" y="225">CS 5</text>
+      <text x="196" y="265">DC 2</text>
+    </g>
+    <circle cx="210" cy="140" r="5" fill="#3b82f6"/>
+    <circle cx="210" cy="180" r="5" fill="#f59e0b"/>
+    <circle cx="210" cy="220" r="5" fill="#22c55e"/>
+    <circle cx="210" cy="260" r="5" fill="#a855f7"/>
+    <text x="130" y="326" text-anchor="middle" font-size="14" font-weight="600" fill="#334155">Gekko controller</text>
+    <text x="130" y="344" text-anchor="middle" font-size="13" fill="#64748b">spi_bus device</text>
+  </g>
+
+  <!-- display -->
+  <g>
+    <rect x="640" y="100" width="230" height="180" rx="12" fill="#ffffff" stroke="#475569" stroke-width="3"/>
+    <rect x="658" y="118" width="194" height="112" rx="4" fill="#0f172a"/>
+    <text x="755" y="160" font-size="15" fill="#f472b6" text-anchor="middle" font-family="ui-monospace, monospace">Gekko 24.7°C</text>
+    <path d="M672 210 C 700 190 730 202 756 194 C 786 185 812 196 838 190" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round"/>
+    <text x="755" y="256" font-size="14" font-weight="600" fill="#334155" text-anchor="middle">ST7735 TFT</text>
+    <text x="755" y="304" text-anchor="middle" font-size="13" fill="#64748b">CS + DC pins are set in the</text>
+    <text x="755" y="322" text-anchor="middle" font-size="13" fill="#64748b">display device, not the bus</text>
+  </g>
+
+  <!-- wires -->
+  <path d="M210 140 H 500 C 560 140 580 132 640 132" fill="none" stroke="#3b82f6" stroke-width="4" stroke-linecap="round"/>
+  <path d="M210 180 H 500 C 560 180 580 172 640 172" fill="none" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/>
+  <path d="M210 220 H 500 C 560 220 580 212 640 212" fill="none" stroke="#22c55e" stroke-width="4" stroke-linecap="round"/>
+  <path d="M210 260 H 500 C 570 260 590 252 640 252" fill="none" stroke="#a855f7" stroke-width="4" stroke-linecap="round"/>
+
+  <g font-size="12.5" fill="#64748b">
+    <text x="300" y="130">clock — shared by every SPI device</text>
+    <text x="300" y="170">data out — shared</text>
+    <text x="300" y="210" fill="#15803d">chip select — one per device</text>
+    <text x="300" y="250" fill="#7c3aed">data/command — display-specific</text>
+  </g>
+
+  <text x="280" y="348" font-size="14" fill="#475569">MISO (data back in) is unused for displays — Gekko leaves it at −1.</text>
+  <text x="280" y="368" font-size="14" fill="#475569">A second SPI device would share SCK/MOSI and get its own CS pin.</text>
+</svg>

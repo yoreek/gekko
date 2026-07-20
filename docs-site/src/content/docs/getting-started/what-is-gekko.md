@@ -37,23 +37,34 @@ enforces, and persists that graph. See
 [Devices and dependencies](/gekko/guides/devices-and-dependencies/) for the
 concept.
 
-## How it compares to ESPHome and Tasmota
+## What makes Gekko different
 
-**ESPHome** compiles your YAML configuration into a dedicated firmware image per
-device — adding a sensor means editing YAML, recompiling, and reflashing.
-Gekko ships one firmware image with every supported device type built in;
-changing your setup is a portal action, never a rebuild.
+**No firmware image per setup.** Many controller firmwares turn your
+configuration into a dedicated build — adding a sensor means editing a config
+file, recompiling, and reflashing. Gekko ships one image with every supported
+device type built in; changing your setup is always a portal action against
+the running device, never a rebuild.
 
-**Tasmota** also configures at runtime through its web UI, but as a flat set of
-GPIO templates and console rules. Gekko models devices as a typed registry with
-declared dependencies, versioned migratable configs, a REST API and realtime
-WebSocket state, a device event journal, a visual display designer, and
-dashboard panels.
+**Structure instead of pin templates.** Configuring at runtime usually means a
+flat list of GPIO assignments and console rules. Gekko instead models your
+hardware the way it is actually wired: a typed registry of devices with
+declared dependencies, each with its own versioned config that migrates
+automatically across firmware upgrades.
 
-The trade-off: Gekko's device-type catalog is fixed at compile time, so it does
-not yet match Tasmota's or ESPHome's breadth of supported hardware. It is a
-smaller, more structured base to build on — not a drop-in replacement for
-either.
+**Everything is observable and scriptable.** Live state streams over a
+WebSocket, every device speaks the same REST API, notable events land in a
+journal, displays get a visual designer, and the dashboard is composed from
+panels — not a single console screen.
+
+**One-toggle Home Assistant.** On MQTT-enabled builds, publishing a device to
+Home Assistant is a single switch on its page — it appears there as a native
+entity (switch, sensor, climate) you can control from HA, while everything
+keeps running locally. See
+[MQTT & Home Assistant](/gekko/guides/mqtt-home-assistant/).
+
+The honest trade-off: the device-type catalog is fixed at compile time, so it
+is deliberately a smaller, more structured base to build on rather than a
+catalog of every sensor ever made.
 
 ## Everything runs on the device
 

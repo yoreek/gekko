@@ -2,7 +2,7 @@
 title: Schedule
 description: Reference for Gekko's schedule device type — minute-precision time-of-day and weekday rules.
 sidebar:
-  order: 6
+  order: 8
 ---
 
 `schedule` holds a set of time rules and answers one question: *is this

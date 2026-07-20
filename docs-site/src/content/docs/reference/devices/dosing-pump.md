@@ -2,7 +2,7 @@
 title: Dosing pump
 description: What a dosing pump is, why aquarists automate dosing, and how Gekko's dosing_pump device schedules, calibrates, and tracks every millilitre.
 sidebar:
-  order: 7
+  order: 9
 ---
 
 ## What is a dosing pump?
