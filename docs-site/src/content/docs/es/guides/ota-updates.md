@@ -1,6 +1,6 @@
 ---
 title: Actualizaciones OTA
-description: Actualizaciones de firmware over-the-air en Gekko: qué funciona en placas de 4 MB y qué necesita más flash.
+description: "Actualizaciones de firmware over-the-air en Gekko: qué funciona en placas de 4 MB y qué necesita más flash."
 sidebar:
   order: 6
 ---

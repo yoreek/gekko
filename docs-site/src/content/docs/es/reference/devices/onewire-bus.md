@@ -1,6 +1,6 @@
 ---
 title: Bus 1-Wire
-description: Cómo funciona el bus 1-Wire: cableado, resistencia pull-up, direcciones ROM de 64 bits y cuántos sensores comparten un solo pin del ESP32.
+description: "Cómo funciona el bus 1-Wire: cableado, resistencia pull-up, direcciones ROM de 64 bits y cuántos sensores comparten un solo pin del ESP32."
 sidebar:
   order: 3
   label: Bus 1-Wire

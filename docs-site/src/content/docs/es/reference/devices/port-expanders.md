@@ -1,6 +1,6 @@
 ---
 title: Expansores de puertos (PCF8574 / PCF8575)
-description: Añadir más salidas de conmutación por I2C en Gekko: los expansores PCF8574 y PCF8575 y el port_expander_switch que controla uno de sus pines.
+description: "Añadir más salidas de conmutación por I2C en Gekko: los expansores PCF8574 y PCF8575 y el port_expander_switch que controla uno de sus pines."
 sidebar:
   order: 2.5
 ---

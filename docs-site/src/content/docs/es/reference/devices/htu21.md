@@ -1,6 +1,6 @@
 ---
 title: Sensor HTU21 de temperatura y humedad
-description: El sensor I2C HTU21 de temperatura y humedad en Gekko: una pequeña placa que informa tanto de la temperatura del aire como de la humedad relativa.
+description: "El sensor I2C HTU21 de temperatura y humedad en Gekko: una pequeña placa que informa tanto de la temperatura del aire como de la humedad relativa."
 sidebar:
   order: 6.5
 ---

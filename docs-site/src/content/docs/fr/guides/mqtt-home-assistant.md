@@ -13,7 +13,7 @@ configuration manuelle d'entité.
 
 ## Ce que vous obtenez
 
-![Périphériques Gekko apparaissant dans Home Assistant comme entités switch, sensor et climate](../../../assets/diagrams/ha-entities.svg)
+![Périphériques Gekko apparaissant dans Home Assistant comme entités switch, sensor et climate](../../../../assets/diagrams/ha-entities.svg)
 
 Chaque périphérique Gekko publié devient une entité HA native, et le contrôle
 fonctionne dans les deux sens en temps réel :
@@ -40,7 +40,7 @@ continue à fonctionner localement sur l'ESP32 même si HA est hors ligne.
    MQTT ne se connecte qu'une fois l'appareil passé en mode station sur votre
    WiFi, jamais en mode AP de configuration.
 
-   ![Page des réglages du broker MQTT](../../../assets/screenshots/portal-mqtt.png)
+   ![Page des réglages du broker MQTT](../../../../assets/screenshots/portal-mqtt.png)
 
 2. **Assurez-vous que HA utilise le même broker** avec la découverte activée
    dans son intégration MQTT (le défaut).
@@ -49,7 +49,7 @@ continue à fonctionner localement sur l'ESP32 même si HA est hors ligne.
    a une carte **Home Assistant** — activez **Publish to Home Assistant**,
    donnez éventuellement un nom spécifique à HA, puis enregistrez :
 
-   ![Carte Home Assistant par périphérique avec le toggle de publication](../../../assets/screenshots/device-ha-card.png)
+   ![Carte Home Assistant par périphérique avec le toggle de publication](../../../../assets/screenshots/device-ha-card.png)
 
    Quelques secondes plus tard, le périphérique apparaît dans HA sous
    **Settings → Devices & services → MQTT**, groupé sous votre contrôleur

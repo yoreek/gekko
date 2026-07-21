@@ -9,7 +9,7 @@ sidebar:
 ## Qu'est-ce que le SPI ?
 
 Le SPI (Serial Peripheral Interface) est le bus série rapide — là où
-l'[I2C](/gekko/reference/devices/i2c-bus/) plafonne à 400 kHz, le SPI
+l'[I2C](/gekko/fr/reference/devices/i2c-bus/) plafonne à 400 kHz, le SPI
 cadence volontiers à des dizaines de MHz, ce qui explique son usage pour les
 écrans couleur. Le compromis : davantage de fils — une **horloge** partagée
 (SCK) et des lignes de **données** (MOSI, éventuellement MISO pour les données
@@ -23,7 +23,7 @@ l'écran appartiennent au périphérique écran, pas au bus.
 
 ## Câblage
 
-![Câblage SPI : SCK et MOSI partagés vers le ST7735, chip-select et pins data/command par écran](../../../../assets/diagrams/spi-wiring.svg)
+![Câblage SPI : SCK et MOSI partagés vers le ST7735, chip-select et pins data/command par écran](../../../../../assets/diagrams/spi-wiring.svg)
 
 Un module ST7735 typique se mappe ainsi (les noms sérigraphiés sur le module
 varient) :
@@ -47,7 +47,7 @@ Comme les autres bus, `spi_bus` affiche des diagnostics en direct — compteurs
 d'erreurs et état de transaction — et le désactiver bloque l'écran avec
 `dependency_blocked` au lieu de laisser des pixels obsolètes.
 
-![Réglages du bus SPI avec diagnostics](../../../../assets/screenshots/device-spi-bus.png)
+![Réglages du bus SPI avec diagnostics](../../../../../assets/screenshots/device-spi-bus.png)
 
 ## Configuration
 
@@ -61,6 +61,6 @@ d'erreurs et état de transaction — et le désactiver bloque l'écran avec
 
 ## Étape suivante
 
-Créez le bus, puis ajoutez-y un [écran ST7735](/gekko/guides/displays/) et
+Créez le bus, puis ajoutez-y un [écran ST7735](/gekko/fr/guides/displays/) et
 ouvrez le concepteur de mise en page visuel — pages, widgets et espaces
 réservés de métriques en direct fonctionnent comme sur l'OLED.

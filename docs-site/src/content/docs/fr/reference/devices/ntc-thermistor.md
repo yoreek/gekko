@@ -11,7 +11,7 @@ Une thermistance NTC est une résistance dont la résistance **baisse quand elle
 chauffe** (NTC = Negative Temperature Coefficient). C'est le capteur de
 température le moins cher qui existe — quelques centimes — et il existe en
 forme de pastille de verre, d'époxy ou de sonde étanche. La différence avec un
-[DS18B20](/gekko/reference/devices/ds18b20/) est qu'une thermistance est
+[DS18B20](/gekko/fr/reference/devices/ds18b20/) est qu'une thermistance est
 *analogique* : elle ne fait que changer de résistance, il faut donc mesurer
 cette résistance et la convertir en température. Gekko fait les deux.
 
@@ -20,7 +20,7 @@ très petite ou très rapide, mais elle est moins précise dès la sortie de
 boîte, a besoin d'une résistance et d'un ADC, et la résistance du câble peut
 influencer la lecture. Utilisez un DS18B20 pour la précision plug-and-play ;
 utilisez une NTC quand vous voulez du pas cher, petit ou rapide — ou si vous
-avez déjà un [ADS1115](/gekko/reference/devices/analog-inputs/) avec un canal
+avez déjà un [ADS1115](/gekko/fr/reference/devices/analog-inputs/) avec un canal
 libre.
 
 ## Câblage : le pont diviseur
@@ -30,7 +30,7 @@ est donc mise en série avec une **résistance série** fixe pour former un
 diviseur entre l'alimentation et la masse, et Gekko mesure la tension au
 point milieu :
 
-![Pont diviseur NTC alimentant une entrée analogique, puis le capteur NTC convertissant les millivolts en température](../../../../assets/diagrams/ntc-divider.svg)
+![Pont diviseur NTC alimentant une entrée analogique, puis le capteur NTC convertissant les millivolts en température](../../../../../assets/diagrams/ntc-divider.svg)
 
 Quand la résistance de la NTC change avec la température, la tension
 milieu change ; Gekko reconvertit cette tension en résistance de la NTC (il
@@ -40,7 +40,7 @@ température. Une résistance série de **10 kΩ** associée à une thermistance
 
 Ce point milieu n'est qu'une tension analogique — donc le capteur NTC ne
 possède pas de broche ADC à lui seul. Il dépend d'une
-**[entrée analogique](/gekko/reference/devices/analog-inputs/)**, ce qui
+**[entrée analogique](/gekko/fr/reference/devices/analog-inputs/)**, ce qui
 signifie que vous pouvez câbler le diviseur vers :
 
 - la **broche ADC native de l'ESP32** (`analog_port_input`) — la plus simple,
@@ -53,14 +53,14 @@ signifie que vous pouvez câbler le diviseur vers :
 ## Mise en route
 
 1. Créez l'entrée analogique à laquelle le milieu du diviseur est câblé —
-   voir [Entrées analogiques](/gekko/reference/devices/analog-inputs/).
+   voir [Entrées analogiques](/gekko/fr/reference/devices/analog-inputs/).
    Un canal ADS1115 est le choix recommandé pour une lecture stable.
 2. Créez un **`ntc_thermistor_temperature_sensor`** et sélectionnez cette
    entrée analogique comme dépendance.
 3. Choisissez un **preset** correspondant à votre thermistance, ou entrez les
    valeurs à la main.
 
-![Réglages de la NTC : sélecteur d'entrée analogique, preset, valeurs de diviseur, mode de formule et reporting](../../../../assets/screenshots/device-ntc-thermistor.png)
+![Réglages de la NTC : sélecteur d'entrée analogique, preset, valeurs de diviseur, mode de formule et reporting](../../../../../assets/screenshots/device-ntc-thermistor.png)
 
 ### Les presets ne sont qu'un raccourci
 
@@ -122,11 +122,11 @@ direct et un graphique d'historique, exactement comme pour le DS18B20.
 La température alimente tout le reste dans Gekko comme n'importe quel autre
 capteur de température :
 
-- un [thermostat](/gekko/reference/devices/thermostat/) qui pilote un chauffage
+- un [thermostat](/gekko/fr/reference/devices/thermostat/) qui pilote un chauffage
   ou un refroidisseur ;
-- des [espaces réservés d'affichage](/gekko/guides/displays/) sur un OLED/TFT ;
+- des [espaces réservés d'affichage](/gekko/fr/guides/displays/) sur un OLED/TFT ;
 - Home Assistant comme entité `sensor` en lecture seule sur les
-  [builds MQTT](/gekko/guides/mqtt-home-assistant/).
+  [builds MQTT](/gekko/fr/guides/mqtt-home-assistant/).
 
 ## Configuration
 

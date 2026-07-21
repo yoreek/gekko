@@ -15,14 +15,14 @@ référence pour **l'air** autour d'une installation plutôt que pour l'eau
 qu'elle contient : climat de la pièce au-dessus d'un aquarium, humidité dans
 un terrarium ou un vivarium, air dans une tente de culture ou un incubateur.
 
-Là où un [DS18B20](/gekko/reference/devices/ds18b20/) est une sonde étanche
+Là où un [DS18B20](/gekko/fr/reference/devices/ds18b20/) est une sonde étanche
 sur câble pour la température de **l'eau**, le HTU21 est un capteur monté sur
 carte pour l'**air** — et il ajoute l'humidité, ce que le DS18B20 ne peut pas
 mesurer du tout.
 
 ## Câblage : c'est un périphérique I2C
 
-Le HTU21 vit sur le [bus I2C](/gekko/reference/devices/i2c-bus/) comme
+Le HTU21 vit sur le [bus I2C](/gekko/fr/reference/devices/i2c-bus/) comme
 n'importe quel autre périphérique I2C — SDA, SCL, 3,3 V, GND, avec les
 pull-ups généralement déjà présents sur la carte breakout. Son adresse est
 fixée à **`0x40`** (pas de cavaliers), donc vous ne pouvez avoir **qu'un seul**
@@ -31,12 +31,12 @@ broches.
 
 ## Mise en route
 
-1. Créez un **[bus I2C](/gekko/reference/devices/i2c-bus/)** sur vos broches
+1. Créez un **[bus I2C](/gekko/fr/reference/devices/i2c-bus/)** sur vos broches
    SDA/SCL (si vous n'en avez pas), et utilisez **Scan bus** pour confirmer que
    le capteur répond à `0x40`.
 2. Créez un périphérique **`htu21`** et sélectionnez ce bus comme dépendance.
 
-![Réglages HTU21 : sélecteur de bus I2C, adresse, unité et deltas de reporting](../../../../assets/screenshots/device-htu21.png)
+![Réglages HTU21 : sélecteur de bus I2C, adresse, unité et deltas de reporting](../../../../../assets/screenshots/device-htu21.png)
 
 C'est tout — il n'y a rien à calibrer pour commencer. Le périphérique rapporte
 immédiatement température et humidité, chacun avec son propre indicateur de
@@ -49,14 +49,14 @@ Contrairement à la plupart des capteurs, un HTU21 produit deux valeurs en
 direct :
 
 - **Température** — fournit le rôle `temperature_sensor`, donc il peut piloter
-  un [thermostat](/gekko/reference/devices/thermostat/) (par ex. un tapis
+  un [thermostat](/gekko/fr/reference/devices/thermostat/) (par ex. un tapis
   chauffant de terrarium), alimenter les
-  [espaces réservés d'affichage](/gekko/guides/displays/), et apparaître dans
+  [espaces réservés d'affichage](/gekko/fr/guides/displays/), et apparaître dans
   Home Assistant.
 - **Humidité** — rapportée en pourcentage pour le tableau de bord, les
   affichages et Home Assistant.
 
-Sur les [builds MQTT](/gekko/guides/mqtt-home-assistant/), les deux apparaissent
+Sur les [builds MQTT](/gekko/fr/guides/mqtt-home-assistant/), les deux apparaissent
 dans Home Assistant — un capteur `temperature` et un capteur `humidity` —
 depuis le même périphérique.
 

@@ -313,6 +313,13 @@ This file tracks the translation workflow for `docs-site/`.
 1. Translate all files in the locale.
 2. Run link check.
 
+### Current state
+
+- Supported translated locales: `uk`, `ru`, `de`, `es`, `fr`, `it`
+- Files per locale: 29
+- Remaining untranslated supported locales: none
+- Next new locale, if added later, should use the 29-file checklist pattern from this plan
+
 ### Automated verification
 
 - [x] Link fixer/checker has isolated positive and negative tests

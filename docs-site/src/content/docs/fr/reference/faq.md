@@ -12,7 +12,7 @@ sidebar:
 Web Serial n'existe que dans les navigateurs Chromium — utilisez **Chrome,
 Edge ou Opera sur ordinateur**. Firefox, Safari et tous les navigateurs
 mobiles ne peuvent pas flasher. Vous pouvez aussi utiliser les
-[scripts esptool](/gekko/getting-started/flashing/), qui fonctionnent partout.
+[scripts esptool](/gekko/fr/getting-started/flashing/), qui fonctionnent partout.
 
 ### L'installateur ne liste pas le port série de ma carte
 
@@ -75,8 +75,8 @@ ignore les conditions, et un interrupteur automatique sans condition reste
 
 Ces pages n'apparaissent que sur les builds firmware compilés avec la
 fonctionnalité correspondante — voir
-[Mises à jour OTA](/gekko/guides/ota-updates/) et
-[MQTT et Home Assistant](/gekko/guides/mqtt-home-assistant/).
+[Mises à jour OTA](/gekko/fr/guides/ota-updates/) et
+[MQTT et Home Assistant](/gekko/fr/guides/mqtt-home-assistant/).
 
 ## Récupération
 
@@ -85,7 +85,7 @@ fonctionnalité correspondante — voir
 Reflashez avec un effacement complet (option erase de l'installateur web, ou
 `esptool erase_flash` + reflash). Cela efface les identifiants WiFi et tout le
 registre de périphériques — exportez d'abord une
-[sauvegarde](/gekko/guides/backup-restore/) si vous voulez restaurer ensuite.
+[sauvegarde](/gekko/fr/guides/backup-restore/) si vous voulez restaurer ensuite.
 
 ### Quelle version de firmware est-ce que j'exécute ?
 

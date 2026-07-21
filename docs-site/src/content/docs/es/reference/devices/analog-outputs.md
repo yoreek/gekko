@@ -1,6 +1,6 @@
 ---
 title: Salidas analógicas y compositor de luces
-description: Salidas PWM regulables en Gekko: transiciones suaves, curvas diarias de brillo y luminarias multicanal como una luz de acuario de cinco canales.
+description: "Salidas PWM regulables en Gekko: transiciones suaves, curvas diarias de brillo y luminarias multicanal como una luz de acuario de cinco canales."
 sidebar:
   order: 10
 ---

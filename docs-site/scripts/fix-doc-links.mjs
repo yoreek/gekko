@@ -40,6 +40,7 @@ const summary = {
   linksChecked: 0,
   linksIgnored: 0,
   linksRewritten: 0,
+  rewrites: [],
   unresolved: [],
   ambiguous: [],
 };
@@ -78,7 +79,19 @@ for (const target of defaultTargets) {
   }
 }
 
-if (summary.unresolved.length > 0 || summary.ambiguous.length > 0) {
+if (args.write === false && summary.rewrites.length > 0) {
+  for (const item of summary.rewrites) {
+    console.error(
+      `NEEDS_REWRITE: ${relativeForOutput(item.file)}:${item.line} -> ${item.target} => ${item.rewritten}`,
+    );
+  }
+}
+
+if (
+  summary.unresolved.length > 0 ||
+  summary.ambiguous.length > 0 ||
+  (args.write === false && summary.rewrites.length > 0)
+) {
   for (const item of summary.unresolved) {
     console.error(`UNRESOLVED[${item.reason}]: ${relativeForOutput(item.file)}:${item.line} -> ${item.target}`);
   }
@@ -209,6 +222,12 @@ function rewriteFile(text, file, context) {
     if (result.rewritten !== target) {
       changed = true;
       context.summary.linksRewritten += 1;
+      context.summary.rewrites.push({
+        file,
+        line: lineNumber,
+        target,
+        rewritten: result.rewritten,
+      });
     }
     return result.rewritten;
   };

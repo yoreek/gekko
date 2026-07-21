@@ -16,12 +16,12 @@ est adressé individuellement. C'est pourquoi tout un aquarium de sondes de
 température ne consomme exactement **qu'une broche GPIO**.
 
 Dans Gekko, le bus lui-même est un périphérique : `onewire_bus`. Il possède la
-broche, lance le scan, et chaque [capteur DS18B20](/gekko/reference/devices/ds18b20/)
+broche, lance le scan, et chaque [capteur DS18B20](/gekko/fr/reference/devices/ds18b20/)
 créé en dépend.
 
 ## Câblage : trois fils et une résistance
 
-![Câblage 1-Wire : 3V3, GND, DATA avec une pull-up de 4,7 kΩ entre DATA et 3V3](../../../../assets/diagrams/onewire-wiring.svg)
+![Câblage 1-Wire : 3V3, GND, DATA avec une pull-up de 4,7 kΩ entre DATA et 3V3](../../../../../assets/diagrams/onewire-wiring.svg)
 
 Une sonde DS18B20 étanche typique a trois fils :
 
@@ -51,7 +51,7 @@ sur la petite carte — n'en ajoutez pas une seconde.
 
 ## Plusieurs périphériques sur un même fil
 
-![Topologie du bus : ESP32 avec pull-up et trois sondes sur une seule ligne de données, chacune avec sa propre adresse ROM](../../../../assets/diagrams/onewire-bus.svg)
+![Topologie du bus : ESP32 avec pull-up et trois sondes sur une seule ligne de données, chacune avec sa propre adresse ROM](../../../../../assets/diagrams/onewire-bus.svg)
 
 Les nouvelles sondes se câblent **en parallèle** sur les trois mêmes lignes —
 prenez DATA, 3,3 V et GND là où c'est pratique. Un chaînage en ligne
@@ -64,7 +64,7 @@ longueurs de plusieurs mètres sont courantes avec la pull-up 4,7 kΩ.
 Chaque périphérique 1-Wire est identifié par une **adresse ROM 64 bits**
 unique :
 
-![Anatomie d'une adresse ROM 64 bits : code famille 8 bits, série unique 48 bits, CRC 8 bits ; le scan découvre, les adresses matchent un périphérique à la fois](../../../../assets/diagrams/onewire-rom.svg)
+![Anatomie d'une adresse ROM 64 bits : code famille 8 bits, série unique 48 bits, CRC 8 bits ; le scan découvre, les adresses matchent un périphérique à la fois](../../../../../assets/diagrams/onewire-rom.svg)
 
 Deux opérations rendent le fil partagé utilisable :
 

@@ -1,6 +1,6 @@
 ---
 title: Bus I2C
-description: Cómo funciona el bus I2C: dos cables, direcciones de 7 bits, qué corre sobre él en Gekko y el diagnóstico integrado del bus.
+description: "Cómo funciona el bus I2C: dos cables, direcciones de 7 bits, qué corre sobre él en Gekko y el diagnóstico integrado del bus."
 sidebar:
   order: 4
   label: Bus I2C

@@ -1,6 +1,6 @@
 ---
 title: Interruptor GPIO
-description: Referencia del tipo de dispositivo gpio_switch de Gekko: una salida on/off en un pin GPIO del ESP32.
+description: "Referencia del tipo de dispositivo gpio_switch de Gekko: una salida on/off en un pin GPIO del ESP32."
 sidebar:
   order: 2
 ---

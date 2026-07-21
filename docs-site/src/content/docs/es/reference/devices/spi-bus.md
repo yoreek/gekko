@@ -1,6 +1,6 @@
 ---
 title: Bus SPI
-description: Cómo funciona el bus SPI: líneas compartidas de reloj y datos, chip-select por dispositivo y el control del TFT ST7735 en Gekko.
+description: "Cómo funciona el bus SPI: líneas compartidas de reloj y datos, chip-select por dispositivo y el control del TFT ST7735 en Gekko."
 sidebar:
   order: 5
   label: Bus SPI

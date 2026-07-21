@@ -18,7 +18,7 @@ Gekko sépare *d'où vient la tension* (le matériel ADC) de *ce que le nombre
 signifie* (une température, un pH, un niveau). Cette page traite de la
 première moitié — les quatre types de périphériques qui produisent une lecture
 de tension brute. Les capteurs qui interprètent cette lecture, comme la
-[thermistance NTC](/gekko/reference/devices/ntc-thermistor/), dépendent de
+[thermistance NTC](/gekko/fr/reference/devices/ntc-thermistor/), dépendent de
 l'un d'eux et ajoutent le calcul.
 
 Chaque périphérique d'entrée analogique rapporte la même chose : une lecture en
@@ -31,7 +31,7 @@ service apparaît comme *invalid*, jamais comme un faux zéro.
 | Type | Hardware | Channels | Depends on |
 | --- | --- | --- | --- |
 | `analog_port_input` | L'ADC natif de l'ESP32 | 1 (sa broche) | — |
-| `ads1115_hub` | ADC I2C 16 bits ADS1115 | 4 | un [bus I2C](/gekko/reference/devices/i2c-bus/) |
+| `ads1115_hub` | ADC I2C 16 bits ADS1115 | 4 | un [bus I2C](/gekko/fr/reference/devices/i2c-bus/) |
 | `cd74hc4067_hub` | Multiplexeur analogique CD74HC4067 | 16 | — (possède les broches GPIO) |
 
 Lequel convient :
@@ -60,12 +60,12 @@ L'entrée de port ESP32 est autonome — elle *est* une lecture, donc il suffit 
 la créer et d'y raccorder un capteur.
 
 Les deux puces multi-canaux fonctionnent différemment et reprennent le
-[pattern de l'expanseur de ports](/gekko/guides/devices-and-dependencies/) :
+[pattern de l'expanseur de ports](/gekko/fr/guides/devices-and-dependencies/) :
 le périphérique **hub** possède la puce et ses broches, et chaque canal
 réellement utilisé est un périphérique **`analog_input_channel`** séparé qui
 dépend du hub.
 
-![Un hub ADS1115 avec quatre canaux ; deux périphériques canal en dépendent et sont lus par des capteurs, le hub dépend d'un bus I2C](../../../../assets/diagrams/analog-input-hub.svg)
+![Un hub ADS1115 avec quatre canaux ; deux périphériques canal en dépendent et sont lus par des capteurs, le hub dépend d'un bus I2C](../../../../../assets/diagrams/analog-input-hub.svg)
 
 Donc une config ADS1115 à deux sondes = trois périphériques : le
 `ads1115_hub`, et deux périphériques `analog_input_channel` (canal 0 et canal
@@ -80,7 +80,7 @@ le numéro de canal à ce que vous avez réellement sélectionné.
 Un périphérique canal est volontairement petit — il nomme juste son hub et son
 numéro de canal, puis échantillonne et rapporte des millivolts :
 
-![Réglages d'une entrée analogique : sélecteur de hub, numéro de canal, oversampling et tension en direct](../../../../assets/screenshots/device-analog-input-channel.png)
+![Réglages d'une entrée analogique : sélecteur de hub, numéro de canal, oversampling et tension en direct](../../../../../assets/screenshots/device-analog-input-channel.png)
 
 Deux canaux ne peuvent pas revendiquer le même numéro sur un même hub —
 Gekko refuse le second, comme il refuse deux switches d'expanseur sur la même
@@ -88,7 +88,7 @@ broche.
 
 ## Mise en place d'un ADS1115
 
-1. Créez un **[bus I2C](/gekko/reference/devices/i2c-bus/)** sur vos broches
+1. Créez un **[bus I2C](/gekko/fr/reference/devices/i2c-bus/)** sur vos broches
    SDA/SCL (si vous n'en avez pas déjà un) et utilisez **Scan bus** pour
    confirmer que l'ADS1115 répond — généralement à `0x48`.
 2. Créez un **`ads1115_hub`**, sélectionnez ce bus et réglez son adresse et son
@@ -98,7 +98,7 @@ broche.
 4. Raccrochez un capteur (ou regardez simplement les millivolts du canal) à
    chaque canal.
 
-![Réglages du hub ADS1115 : bus I2C, adresse avec scan, gain et débit de données](../../../../assets/screenshots/device-ads1115-hub.png)
+![Réglages du hub ADS1115 : bus I2C, adresse avec scan, gain et débit de données](../../../../../assets/screenshots/device-ads1115-hub.png)
 
 Le **gain** fixe la plage d'entrée et donc la résolution. Choisissez la plus
 petite plage qui couvre confortablement votre signal — une plage plus petite
@@ -134,7 +134,7 @@ ESP32, par défaut) :
 3. Créez un **`analog_input_channel`** par entrée, en sélectionnant le hub et le
    canal 0–15.
 
-![Réglages du hub CD74HC4067 : les quatre broches de sélection S0–S3, la broche d'activation, la broche signal et son atténuation](../../../../assets/screenshots/device-cd74hc4067-hub.png)
+![Réglages du hub CD74HC4067 : les quatre broches de sélection S0–S3, la broche d'activation, la broche signal et son atténuation](../../../../../assets/screenshots/device-cd74hc4067-hub.png)
 
 Comme les 16 canaux passent tous par une seule broche ADC ESP32, ils partagent
 la précision de cet ADC et la restriction de broche Wi-Fi ci-dessous — le
@@ -223,12 +223,12 @@ Une entrée analogique seule n'est qu'une tension sur le tableau de bord —
 utile pour un contrôle rapide, mais le but est généralement d'alimenter un
 capteur :
 
-- une **[thermistance NTC](/gekko/reference/devices/ntc-thermistor/)**
+- une **[thermistance NTC](/gekko/fr/reference/devices/ntc-thermistor/)**
   transforme la lecture en température, qui peut ensuite piloter un
-  [thermostat](/gekko/reference/devices/thermostat/) ;
+  [thermostat](/gekko/fr/reference/devices/thermostat/) ;
 - les millivolts apparaissent dans les
-  [espaces réservés d'affichage](/gekko/guides/displays/) pour un OLED/TFT ;
-- sur les [builds MQTT](/gekko/guides/mqtt-home-assistant/) chaque entrée
+  [espaces réservés d'affichage](/gekko/fr/guides/displays/) pour un OLED/TFT ;
+- sur les [builds MQTT](/gekko/fr/guides/mqtt-home-assistant/) chaque entrée
   feuille (l'entrée port et chaque canal) est découvrable dans Home Assistant
   comme capteur `voltage`. Les hubs ne le sont pas — ils fournissent des
   canaux, pas une lecture propre.

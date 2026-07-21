@@ -7,10 +7,10 @@ sidebar:
 
 `gpio_switch` pilote une broche GPIO comme sortie on/off — cartes relais,
 modules MOSFET, LED d'état. C'est généralement le premier périphérique que
-vous créez ; le [parcours du premier périphérique](/gekko/getting-started/first-device/)
+vous créez ; le [parcours du premier périphérique](/gekko/fr/getting-started/first-device/)
 l'utilise.
 
-![Réglages de l'interrupteur GPIO](../../../../assets/screenshots/device-gpio-switch.png)
+![Réglages de l'interrupteur GPIO](../../../../../assets/screenshots/device-gpio-switch.png)
 
 ## Dépendances
 
@@ -34,7 +34,7 @@ derrière un expanseur PCF8574/PCF8575, utilisez plutôt
 Le périphérique rapporte son état on/off en direct ; basculez-le depuis la
 liste des périphériques, un widget switch du tableau de bord, l'API REST ou
 Home Assistant (comme entité `switch` sur les
-[builds MQTT](/gekko/guides/mqtt-home-assistant/)).
+[builds MQTT](/gekko/fr/guides/mqtt-home-assistant/)).
 
 ## Fournit
 

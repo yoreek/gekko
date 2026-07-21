@@ -7,10 +7,10 @@ sidebar:
 
 `schedule` contient un ensemble de règles temporelles et répond à une seule
 question : *ce programme est-il actif maintenant ?* Il n'a pas de sortie
-propre — attachez-le comme condition à un [interrupteur automatique](/gekko/guides/schedules-and-automation/)
+propre — attachez-le comme condition à un [interrupteur automatique](/gekko/fr/guides/schedules-and-automation/)
 (ou au scheduling d'une pompe de dosage) pour déclencher une action.
 
-![Éditeur de règles du programme](../../../../assets/screenshots/device-schedule.png)
+![Éditeur de règles du programme](../../../../../assets/screenshots/device-schedule.png)
 
 ## Dépendances
 

@@ -1,46 +1,66 @@
 ---
 title: Recorrido por el portal
-description: Un breve recorrido por el portal web de Gekko - panel, dispositivos, eventos y ajustes.
+description: Un recorrido rápido por el portal web de Gekko — panel, dispositivos, eventos y ajustes.
 sidebar:
   order: 5
 ---
 
-import { LinkButton } from '@astrojs/starlight/components';
+Todo en Gekko se gestiona desde el portal web que el dispositivo sirve desde su
+propia memoria flash. Abre la dirección IP del dispositivo en cualquier
+navegador conectado a la misma red.
 
-Gekko está pensado para ir al grano: lo importante está visible en el portal,
-no escondido tras varios menús. Después del primer arranque, este recorrido
-rápido te ayuda a ubicarte.
+## Panel
 
-## Las áreas principales
+Es la página de inicio. Créala con paneles y widgets vinculados a tus
+dispositivos — interruptores, lecturas de sensores y estado del termostato — y
+ordénalos como prefieras. Los valores se actualizan en vivo mediante una
+conexión WebSocket, sin necesidad de recargar la página.
 
-- **Panel** - tu pantalla de inicio. Aquí fijas interruptores, sensores y
-  tarjetas que quieres ver o controlar a menudo. El panel es una colección de
-  tarjetas, no una simple pantalla de estado vacía.
-- **Dispositivos** - el lugar real de configuración. Aquí creas nuevos
-  dispositivos, editas los existentes, revisas su estado y abres sus páginas
-  de detalle.
-- **Diario** - la línea temporal de eventos. Ahí encuentras acciones de
-  inicio/parada, cambios de estado, errores y otros eventos relevantes.
-- **Ajustes** - opciones globales como WiFi, MQTT, OTA, idioma y otros detalles
-  de configuración del portal o de los dispositivos.
+![Panel de Gekko](../../../../assets/screenshots/portal-dashboard.png)
 
-## Cómo están organizadas las páginas de dispositivo
+## Dispositivos
 
-Casi cualquier dispositivo sigue el mismo patrón:
+El corazón del portal: la lista de todas las instancias de dispositivos que has
+creado, con su tipo, estado y salida en vivo.
 
-- arriba, el nombre, el estado y la acción principal;
-- debajo, la configuración y las dependencias;
-- a la derecha o debajo, los valores vivos, el historial y los textos de ayuda;
-- en dispositivos más complejos, además, un editor visual.
+![Lista de dispositivos](../../../../assets/screenshots/portal-devices.png)
 
-La idea es que no tengas que adivinar dónde está una opción: ves el control
-justo donde el dispositivo vive de verdad.
+Desde aquí puedes:
 
-## Un primer objetivo razonable
+- **Añadir un dispositivo** — elige un tipo del catálogo, completa sus ajustes
+  y conecta sus dependencias, como el bus en el que se encuentra o el
+  interruptor que controla.
+- **Abrir un dispositivo** — su página de detalle contiene la configuración,
+  el estado de ejecución en vivo y los controles específicos del tipo, como la
+  calibración de bombas dosificadoras, el editor de reglas para horarios o el
+  diseñador de layouts para pantallas.
+- **Activar, desactivar o eliminar** un dispositivo. La eliminación tiene en
+  cuenta las dependencias: el registro no permite borrar un bus I2C del que
+  todavía depende una pantalla.
 
-Si todavía no tienes una meta clara, empieza por
-[añadir tu primer dispositivo](/gekko/es/getting-started/first-device/). Un
-`gpio_switch` sencillo suele ser la forma más rápida de probar el flujo
-completo del portal, el panel y el manejo del interruptor.
+## Eventos de dispositivos
 
-<LinkButton href="/gekko/es/getting-started/first-device/">Añadir tu primer dispositivo</LinkButton>
+Un diario de eventos importantes — cambios de estado, errores y problemas de
+dependencias — para saber qué ocurrió mientras estabas ausente.
+
+## Paneles
+
+Aquí se administran los paneles del dashboard y los widgets fijados en ellos.
+
+## Páginas de ajustes
+
+- **WiFi** — búsqueda de redes, credenciales y opciones de aprovisionamiento.
+- **Hora** — zona horaria, NTP y el reloj RTC DS3231 si has añadido uno.
+- **MQTT / Home Assistant** — ajustes del broker y descubrimiento en las
+  compilaciones que [incluyen esta función](/gekko/es/guides/mqtt-home-assistant/).
+- **OTA** — carga de firmware en compilaciones
+  [creadas con Web OTA](/gekko/es/guides/ota-updates/).
+- **Sistema** — información de versión,
+  [copia de seguridad y restauración](/gekko/es/guides/backup-restore/) y
+  acciones de mantenimiento.
+
+## Idioma
+
+El portal detecta automáticamente el idioma del navegador y permite cambiar
+manualmente entre inglés, ucraniano, ruso, alemán, español, francés e italiano.
+La elección se recuerda en cada navegador.

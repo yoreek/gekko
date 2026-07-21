@@ -34,6 +34,76 @@ test('accepts verified English pages, assets, anchors, public files, external UR
   assert.match(result.output, /"linksIgnored": 2/);
 });
 
+test('check fails for a resolvable image path that needs another parent level', (t) => {
+  const fixture = createFixture(t);
+  fixture.write('src/assets/diagrams/analog-chain.svg', '<svg/>');
+  fixture.write('src/content/docs/fr/index.md', '# Accueil\n');
+  fixture.write(
+    'src/content/docs/fr/reference/devices/analog-outputs.md',
+    '![Chaîne](../../../../assets/diagrams/analog-chain.svg)\n',
+  );
+
+  const wrongPath = '../../../../assets/diagrams/analog-chain.svg';
+  const correctPath = '../../../../../assets/diagrams/analog-chain.svg';
+  const original = fixture.read('src/content/docs/fr/reference/devices/analog-outputs.md');
+
+  const check = fixture.run('--check', 'src/content/docs/fr');
+  assert.equal(check.status, 1, check.output);
+  assert.match(check.output, /NEEDS_REWRITE:/);
+  assert.match(check.output, /analog-outputs\.md:1/);
+  assert.ok(check.output.includes(`${wrongPath} => ${correctPath}`), check.output);
+  assert.match(check.output, /"changedFiles": 1/);
+  assert.match(check.output, /"linksRewritten": 1/);
+  assert.equal(fixture.read('src/content/docs/fr/reference/devices/analog-outputs.md'), original);
+
+  const write = fixture.run('--write', 'src/content/docs/fr');
+  assert.equal(write.status, 0, write.output);
+  assert.equal(
+    fixture.read('src/content/docs/fr/reference/devices/analog-outputs.md'),
+    `![Chaîne](${correctPath})\n`,
+  );
+
+  const finalCheck = fixture.run('--check', 'src/content/docs/fr');
+  assert.equal(finalCheck.status, 0, finalCheck.output);
+  assert.match(finalCheck.output, /"changedFiles": 0/);
+  assert.match(finalCheck.output, /"linksRewritten": 0/);
+});
+
+test('check fails for a resolvable image path with one excess parent level', (t) => {
+  const fixture = createFixture(t);
+  fixture.write('src/assets/diagrams/analog-chain.svg', '<svg/>');
+  fixture.write(
+    'src/content/docs/reference/devices/analog-outputs.md',
+    '![Chain](../../../../../assets/diagrams/analog-chain.svg)\n',
+  );
+
+  const check = fixture.run('--check', 'src/content/docs/reference/devices/analog-outputs.md');
+
+  assert.equal(check.status, 1, check.output);
+  assert.match(check.output, /NEEDS_REWRITE:/);
+  assert.match(
+    check.output,
+    /\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/assets\/diagrams\/analog-chain\.svg => \.\.\/\.\.\/\.\.\/\.\.\/assets\/diagrams\/analog-chain\.svg/,
+  );
+});
+
+test('check fails when a localized document still links to the English page', (t) => {
+  const fixture = createFixture(t);
+  fixture.write('src/content/docs/guides/target.md', '# Target\n');
+  fixture.write('src/content/docs/fr/index.md', '# Accueil\n');
+  fixture.write('src/content/docs/fr/guides/target.md', '# Cible\n');
+  fixture.write(
+    'src/content/docs/fr/guides/source.md',
+    '[Cible](/gekko/guides/target/)\n',
+  );
+
+  const check = fixture.run('--check', 'src/content/docs/fr');
+
+  assert.equal(check.status, 1, check.output);
+  assert.match(check.output, /NEEDS_REWRITE:/);
+  assert.match(check.output, /\/gekko\/guides\/target\/ => \/gekko\/fr\/guides\/target\//);
+});
+
 test('rewrites a page, translated anchor, image, reference definition, and static MDX href only after resolving targets', (t) => {
   const fixture = createFixture(t);
   fixture.write('src/assets/images/example.svg', '<svg/>');
@@ -60,8 +130,12 @@ file: ../../../assets/images/example.svg
 
   const original = fixture.read('src/content/docs/ru/getting-started/source.mdx');
   const dryRun = fixture.run('--check', 'src/content/docs/ru');
-  assert.equal(dryRun.status, 0, dryRun.output);
+  assert.equal(dryRun.status, 1, dryRun.output);
   assert.match(dryRun.output, /"linksRewritten": 7/);
+  assert.match(
+    dryRun.output,
+    /NEEDS_REWRITE: src\/content\/docs\/ru\/getting-started\/source\.mdx:\d+ -> \.\.\/\.\.\/\.\.\/assets\/images\/example\.svg => \.\.\/\.\.\/\.\.\/\.\.\/assets\/images\/example\.svg/,
+  );
   assert.equal(fixture.read('src/content/docs/ru/getting-started/source.mdx'), original);
 
   const writeRun = fixture.run('--write', 'src/content/docs/ru');

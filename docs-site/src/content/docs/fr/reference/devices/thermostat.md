@@ -12,7 +12,7 @@ interrupteur : *si l'eau est trop froide, on allume le chauffage ; une fois
 qu'elle est assez chaude, on l'éteint*. Dans Gekko, cela correspond à un
 périphérique `thermostat` relié à deux autres :
 
-![Boucle de contrôle : DS18B20 mesure, le thermostat décide, le relais pilote le chauffage, l'eau chauffe, puis recommence](../../../../assets/diagrams/thermostat-loop.svg)
+![Boucle de contrôle : DS18B20 mesure, le thermostat décide, le relais pilote le chauffage, l'eau chauffe, puis recommence](../../../../../assets/diagrams/thermostat-loop.svg)
 
 Cela fonctionne aussi pour le refroidissement — le mode **cool** pilote un
 refroidisseur ou un ventilateur avec la même logique inversée, et **off**
@@ -24,7 +24,7 @@ Un naïf « on en dessous de 25,0, off au-dessus de 25,0 » ferait vibrer le
 relais des dizaines de fois par minute quand la mesure oscille autour du
 point de consigne. La solution est une **bande morte** — l'hystérésis :
 
-![Graphique d'hystérésis : chauffage on sous 24,5, off à 25,0, rien ne bascule dans la bande](../../../../assets/diagrams/thermostat-hysteresis.svg)
+![Graphique d'hystérésis : chauffage on sous 24,5, off à 25,0, rien ne bascule dans la bande](../../../../../assets/diagrams/thermostat-hysteresis.svg)
 
 Avec une cible à 25,0 °C et une hystérésis de 0,5 °C en mode chauffage :
 
@@ -58,19 +58,19 @@ Le thermostat suppose que des choses vont parfois mal se passer et échoue vers
   cassé chaque seconde.
 - Le **safe state** du propre interrupteur couvre la panne inverse — si le
   thermostat lui-même est désactivé ou supprimé, l'
-  [interrupteur revient](/gekko/reference/devices/gpio-switch/) à l'état que
+  [interrupteur revient](/gekko/fr/reference/devices/gpio-switch/) à l'état que
   vous avez configuré là-bas.
 
 ## Mise en place
 
-1. Créez le [capteur DS18B20](/gekko/reference/devices/ds18b20/) (ou NTC/HTU21).
-2. Créez l'[interrupteur](/gekko/reference/devices/gpio-switch/) qui pilote le
+1. Créez le [capteur DS18B20](/gekko/fr/reference/devices/ds18b20/) (ou NTC/HTU21).
+2. Créez l'[interrupteur](/gekko/fr/reference/devices/gpio-switch/) qui pilote le
    relais du chauffage. Les chauffages sont un cas où il faut penser à
    `safeState: off` et `startupState: off`.
 3. Créez le **thermostat** : choisissez le capteur et l'interrupteur, puis
    définissez le mode, la cible et l'hystérésis.
 
-![Réglages du thermostat dans le portail](../../../../assets/screenshots/device-thermostat.png)
+![Réglages du thermostat dans le portail](../../../../../assets/screenshots/device-thermostat.png)
 
 ## Configuration
 
@@ -91,7 +91,7 @@ Le runtime rapporte la température courante, l'état de sortie et un statut —
 `heating`, `cooling`, `idle`, `sensor_timeout`, `out_of_range`,
 `dependency_blocked` — affichés avec des icônes dans le portail et enregistrés
 dans le journal des événements de périphériques. Sur les
-[builds MQTT](/gekko/guides/mqtt-home-assistant/), le thermostat apparaît dans
+[builds MQTT](/gekko/fr/guides/mqtt-home-assistant/), le thermostat apparaît dans
 Home Assistant comme une entité `climate` complète (mode, consigne,
 température actuelle, action), et les changements de consigne depuis HA sont
 validés par rapport à la plage sûre.

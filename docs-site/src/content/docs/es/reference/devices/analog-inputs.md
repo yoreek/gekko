@@ -1,6 +1,6 @@
 ---
 title: Entradas analógicas y multiplexores
-description: Leer voltajes analógicos en Gekko: el ADC propio del ESP32, el preciso ADS1115 y el multiplexor CD74HC4067 de 16 canales, todo detrás de un único tipo de canal.
+description: "Leer voltajes analógicos en Gekko: el ADC propio del ESP32, el preciso ADS1115 y el multiplexor CD74HC4067 de 16 canales, todo detrás de un único tipo de canal."
 sidebar:
   order: 11
 ---

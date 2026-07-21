@@ -53,5 +53,5 @@ disponible.
 ## Suite
 
 Une fois l'appareil sur votre réseau, faites le
-[tour du portail](/gekko/getting-started/portal-tour/) ou passez directement à
-[l'ajout de votre premier périphérique](/gekko/getting-started/first-device/).
+[tour du portail](/gekko/fr/getting-started/portal-tour/) ou passez directement à
+[l'ajout de votre premier périphérique](/gekko/fr/getting-started/first-device/).

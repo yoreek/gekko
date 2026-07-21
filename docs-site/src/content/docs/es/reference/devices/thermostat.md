@@ -1,6 +1,6 @@
 ---
 title: Termostato
-description: Cómo el termostato de Gekko mantiene la temperatura en un punto de consigna: el lazo de control, la histéresis y las barreras de seguridad.
+description: "Cómo el termostato de Gekko mantiene la temperatura en un punto de consigna: el lazo de control, la histéresis y las barreras de seguridad."
 sidebar:
   order: 7
 ---

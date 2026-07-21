@@ -13,10 +13,10 @@ côté du firmware, du portail web et de votre configuration.
 ## Build par défaut : mise à jour par série
 
 Sur la disposition standard à une seule application, les mises à jour sont un
-[reflash USB](/gekko/getting-started/flashing/). Votre configuration
+[reflash USB](/gekko/fr/getting-started/flashing/). Votre configuration
 d'appareil est stockée dans NVS et survit à un reflash firmware — pensez tout
 de même à garder un
-[lot de sauvegarde](/gekko/guides/backup-restore/) avant de mettre à jour.
+[lot de sauvegarde](/gekko/fr/guides/backup-restore/) avant de mettre à jour.
 
 ## Upload OTA via PlatformIO (développeurs)
 

@@ -12,7 +12,7 @@ interrupteur à partir du ET logique de ses conditions attachées.
 
 ## Programme
 
-Un [périphérique programme](/gekko/reference/devices/schedule/) contient
+Un [périphérique programme](/gekko/fr/reference/devices/schedule/) contient
 jusqu'à 4 règles. Chaque règle a :
 
 - un **masque de jours de semaine** — quels jours elle s'applique ;
@@ -79,10 +79,10 @@ automatiques via leurs emplacements de condition inversée.
 
 ## Périphériques liés
 
-- **[Thermostat](/gekko/reference/devices/thermostat/)** — contrôle de
+- **[Thermostat](/gekko/fr/reference/devices/thermostat/)** — contrôle de
   température à hystérésis pilotant un interrupteur.
-- **[Dosing pump](/gekko/reference/devices/dosing-pump/)** — dosage planifié
+- **[Dosing pump](/gekko/fr/reference/devices/dosing-pump/)** — dosage planifié
   avec calibration, suivi de conteneur et journal des doses.
-- **[Scheduled analog output](/gekko/reference/devices/analog-outputs/)** —
+- **[Scheduled analog output](/gekko/fr/reference/devices/analog-outputs/)** —
   courbe quotidienne de luminosité/niveau pour sorties PWM, composable en
   ensembles multi-canaux.

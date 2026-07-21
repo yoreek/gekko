@@ -1,6 +1,6 @@
 ---
 title: Sensor de temperatura con termistor NTC
-description: Leer temperatura con un termistor NTC barato en Gekko: el divisor de tensión, presets, las curvas Beta y Steinhart-Hart, y la calibración.
+description: "Leer temperatura con un termistor NTC barato en Gekko: el divisor de tensión, presets, las curvas Beta y Steinhart-Hart, y la calibración."
 sidebar:
   order: 12
 ---

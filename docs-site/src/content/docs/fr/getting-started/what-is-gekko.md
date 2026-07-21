@@ -38,7 +38,7 @@ sur l'appareil en cours d'exécution, jamais une recompilation.
 Les périphériques déclarent des **dépendances** les uns aux autres — un
 interrupteur sur un expanseur de ports, un capteur sur un bus I2C, une pompe
 autorisée par un programme — et le registre valide, applique et persiste ce
-graphe. Voir [Périphériques et dépendances](/gekko/guides/devices-and-dependencies/)
+graphe. Voir [Périphériques et dépendances](/gekko/fr/guides/devices-and-dependencies/)
 pour le concept.
 
 ## Ce qui distingue Gekko
@@ -66,7 +66,7 @@ de bord est composé de panneaux — pas d'un unique écran console.
 périphérique vers Home Assistant n'est qu'un interrupteur sur sa page — il y
 apparaît comme une entité native (switch, sensor, climate) contrôlable depuis
 HA, pendant que tout continue à fonctionner localement. Voir
-[MQTT & Home Assistant](/gekko/guides/mqtt-home-assistant/).
+[MQTT & Home Assistant](/gekko/fr/guides/mqtt-home-assistant/).
 
 Le compromis honnête : le catalogue des types de périphériques est figé à la
 compilation, donc la base est volontairement plus petite et plus structurée
@@ -89,8 +89,8 @@ qu'un catalogue de tous les capteurs existants.
 
 ## Étapes suivantes
 
-1. [Vérifier les prérequis matériels](/gekko/getting-started/hardware/)
-2. [Flasher le firmware](/gekko/getting-started/flashing/) — depuis votre
+1. [Vérifier les prérequis matériels](/gekko/fr/getting-started/hardware/)
+2. [Flasher le firmware](/gekko/fr/getting-started/flashing/) — depuis votre
    navigateur, ou avec esptool/PlatformIO
-3. [Connecter l'appareil au WiFi](/gekko/getting-started/first-boot-wifi/)
-4. [Ajouter votre premier périphérique](/gekko/getting-started/first-device/)
+3. [Connecter l'appareil au WiFi](/gekko/fr/getting-started/first-boot-wifi/)
+4. [Ajouter votre premier périphérique](/gekko/fr/getting-started/first-device/)

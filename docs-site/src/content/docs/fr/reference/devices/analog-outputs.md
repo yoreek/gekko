@@ -38,7 +38,7 @@ Une sortie fade ou scheduled prend exactement une dépendance de rôle
 `analog_output` et *fournit le même rôle elle-même*, donc elles se
 superposent :
 
-![Chaîne de décorateurs : la sortie programmée calcule le niveau, le fade le lisse, la sortie analogique écrit le PWM](../../../../assets/diagrams/analog-chain.svg)
+![Chaîne de décorateurs : la sortie programmée calcule le niveau, le fade le lisse, la sortie analogique écrit le PWM](../../../../../assets/diagrams/analog-chain.svg)
 
 - **Fade** — `maxStep` (pourcentage par pas) et `stepIntervalMs` définissent la
   vitesse de rampe ; le défaut ≈1 % toutes les 200 ms transforme tout
@@ -55,7 +55,7 @@ ne peut pas câbler accidentellement deux programmes sur le même canal.
 
 L'objectif — une journée qui ressemble à ceci :
 
-![Courbes journalières de cinq canaux : les bleus montent d'abord et restent plus longtemps, le blanc culmine à midi, le violet ajoute du relief, le clair de lune reste faible la nuit](../../../../assets/diagrams/aquarium-light-day.svg)
+![Courbes journalières de cinq canaux : les bleus montent d'abord et restent plus longtemps, le blanc culmine à midi, le violet ajoute du relief, le clair de lune reste faible la nuit](../../../../../assets/diagrams/aquarium-light-day.svg)
 
 Les bleus montent d'abord et retombent en dernier (les coraux photosynthétisent
 principalement en bleu), le blanc chaud remplit les heures de midi, le violet
@@ -74,7 +74,7 @@ Pour le construire :
 4. Créez un seul **`analog_output_composer`** "Aquarium light" et ajoutez les
    cinq sorties programmées comme ses canaux.
 
-![Compositeur d'éclairage d'aquarium dans le portail](../../../../assets/screenshots/device-analog-composer.png)
+![Compositeur d'éclairage d'aquarium dans le portail](../../../../../assets/screenshots/device-analog-composer.png)
 
 Le compositeur se comporte alors comme *l*'éclairage :
 
@@ -98,6 +98,6 @@ Les quatre types rapportent leur niveau en direct (les fades rapportent aussi
 la cible et indiquent s'ils sont encore en transition). Un curseur du tableau
 de bord ou la commande `setOutput` pilote directement un canal ; les
 changements de mode passent par `setMode`. Sur les
-[builds MQTT](/gekko/guides/mqtt-home-assistant/), les canaux sont
+[builds MQTT](/gekko/fr/guides/mqtt-home-assistant/), les canaux sont
 découvrables dans Home Assistant. Internals :
 [`docs/analog-output.md`](https://github.com/yoreek/gekko/blob/master/docs/analog-output.md).

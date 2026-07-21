@@ -11,7 +11,7 @@ sidebar:
 L'I2C (Inter-Integrated Circuit, « i-squared-C ») est le bus à deux fils de
 référence en électronique amateur : une ligne de **données** (SDA) et une
 ligne d'**horloge** (SCL), partagées par tous les périphériques. Comme le
-[1-Wire](/gekko/reference/devices/onewire-bus/), plusieurs périphériques
+[1-Wire](/gekko/fr/reference/devices/onewire-bus/), plusieurs périphériques
 cohabitent sur les mêmes fils — mais ici chaque puce a une courte **adresse
 7 bits**, généralement indiquée dans sa fiche technique (et souvent
 sélectionnable avec des cavaliers à souder).
@@ -22,7 +22,7 @@ déclare une dépendance sur lui.
 
 ## Câblage
 
-![Câblage I2C : SDA et SCL avec pull-ups, OLED, HTU21, DS3231 et PCF8574 en parallèle, chacun avec son adresse](../../../../assets/diagrams/i2c-wiring.svg)
+![Câblage I2C : SDA et SCL avec pull-ups, OLED, HTU21, DS3231 et PCF8574 en parallèle, chacun avec son adresse](../../../../../assets/diagrams/i2c-wiring.svg)
 
 Les deux lignes sont open-drain et nécessitent des résistances pull-up vers
 3,3 V. En pratique vous en ajoutez rarement vous-même : **presque chaque
@@ -61,7 +61,7 @@ consécutives, dernier code d'erreur et état de transaction, avec un bouton de
 réinitialisation. Un problème de câblage apparaît d'abord ici — les capteurs
 sur un bus malade affichent `dependency_blocked` au lieu de fausses valeurs.
 
-![Réglages du bus I2C avec scan et diagnostics](../../../../assets/screenshots/device-i2c-bus.png)
+![Réglages du bus I2C avec scan et diagnostics](../../../../../assets/screenshots/device-i2c-bus.png)
 
 ## Configuration
 

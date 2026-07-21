@@ -1,46 +1,67 @@
 ---
-title: Portal-Rundgang
-description: Ein kurzer Rundgang durch das Gekko-Webportal - Dashboard, Geraete, Ereignisse und Einstellungen.
+title: Rundgang durch das Portal
+description: Ein kurzer Rundgang durch das Gekko-Webportal — Dashboard, Geräte, Ereignisse und Einstellungen.
 sidebar:
   order: 5
 ---
 
-import { LinkButton } from '@astrojs/starlight/components';
+Alles in Gekko wird über das Webportal verwaltet, das das Gerät aus seinem
+eigenen Flash-Speicher bereitstellt. Öffne die IP-Adresse des Geräts in einem
+beliebigen Browser im selben Netzwerk.
 
-Gekko ist absichtlich dicht gepackt: die wichtigsten Dinge sind direkt im
-Portal sichtbar, nicht hinter mehreren Menues versteckt. Nach dem ersten Start
-lohnt sich dieser kurze Rundgang, damit du weisst, wo du was findest.
+## Dashboard
 
-## Die Hauptbereiche
+Die Startseite. Stelle sie aus Panels und Widgets zusammen, die mit deinen
+Geräten verbunden sind — Schalter, Sensorwerte und Thermostatstatus — und
+ordne sie nach deinen Wünschen an. Die Werte werden live über eine
+WebSocket-Verbindung aktualisiert; ein Neuladen ist nicht erforderlich.
 
-- **Dashboard** - deine Startseite. Hier pinnst du Schalter, Sensoren und
-  Karten, die du oft anschauen oder bedienen willst. Das Dashboard ist eine
-  Sammlung von Panels, nicht nur ein leerer Statusbildschirm.
-- **Geraete** - der eigentliche Konfigurationsort. Hier legst du neue Geraete
-  an, bearbeitest bestehende, pruefst deren Zustand und oeffnest ihre
-  Detailseiten.
-- **Journal** - die Ereigniszeitleiste. Dort findest du Start/Stop-Aktionen,
-  Statuswechsel, Fehler und andere bemerkenswerte Ereignisse.
-- **Einstellungen** - globale Optionen wie WiFi, MQTT, OTA, Sprache und
-  weitere Portal- oder Geraetekonfigurationsdetails.
+![Gekko-Dashboard](../../../../assets/screenshots/portal-dashboard.png)
 
-## Wie die Geraeteseiten aufgebaut sind
+## Geräte
 
-Fast jedes Geraeteteil folgt dem gleichen Muster:
+Das Herzstück des Portals: die Liste aller erstellten Geräteinstanzen mit Typ,
+Status und aktuellem Ausgangswert.
 
-- oben der Name, der Status und die Hauptaktion;
-- darunter die Konfiguration und die Abhaengigkeiten;
-- rechts oder unterhalb die Livewerte, Historie und Hilfetexte;
-- bei komplexeren Geraeten zusaetzlich ein visueller Editor.
+![Geräteliste](../../../../assets/screenshots/portal-devices.png)
 
-So sollst du nicht raten muessen, wo sich eine Einstellung versteckt - du
-siehst die Steuerung dort, wo das Geraet auch tatsaechlich lebt.
+Von hier aus kannst du:
 
-## Ein sinnvolles erstes Ziel
+- **Ein Gerät hinzufügen** — wähle einen Typ aus dem Katalog, fülle die
+  Einstellungen aus und verbinde seine Abhängigkeiten, etwa den Bus, an dem es
+  angeschlossen ist, oder den Schalter, den es steuert.
+- **Ein Gerät öffnen** — die Detailseite zeigt Konfiguration, aktuellen
+  Laufzeitstatus und gerätespezifische Bedienelemente, beispielsweise die
+  Kalibrierung einer Dosierpumpe, den Regeleditor für Zeitpläne oder den
+  Layout-Designer für Displays.
+- Ein Gerät **aktivieren, deaktivieren oder löschen**. Beim Löschen werden
+  Abhängigkeiten berücksichtigt: Die Registrierung lässt nicht zu, dass du
+  einen I2C-Bus entfernst, von dem noch ein Display abhängt.
 
-Wenn du noch kein Ziel hast, beginne mit dem
-[ersten Geraet hinzufuegen](/gekko/de/getting-started/first-device/). Ein
-einfacher `gpio_switch` ist meist der schnellste Weg, um Portal, Dashboard und
-Schalterfluss einmal komplett durchzuspielen.
+## Geräteereignisse
 
-<LinkButton href="/gekko/de/getting-started/first-device/">Erstes Geraet hinzufuegen</LinkButton>
+Ein Journal wichtiger Geräteereignisse — Zustandsänderungen, Fehler und
+Abhängigkeitsprobleme — zeigt dir, was während deiner Abwesenheit passiert ist.
+
+## Panels
+
+Hier verwaltest du die Dashboard-Panels und die daran angehefteten Widgets.
+
+## Einstellungsseiten
+
+- **WiFi** — Netzwerksuche, Zugangsdaten und Bereitstellungsoptionen.
+- **Zeit** — Zeitzone, NTP und die DS3231-Echtzeituhr, falls du eine hinzugefügt
+  hast.
+- **MQTT / Home Assistant** — Broker-Einstellungen und Discovery für Builds,
+  in denen [diese Funktion aktiviert ist](/gekko/de/guides/mqtt-home-assistant/).
+- **OTA** — Firmware-Upload für Builds, die
+  [mit Web OTA erstellt wurden](/gekko/de/guides/ota-updates/).
+- **System** — Versionsinformationen,
+  [Sicherung und Wiederherstellung](/gekko/de/guides/backup-restore/) sowie
+  Wartungsaktionen.
+
+## Sprache
+
+Das Portal erkennt die Browsersprache automatisch und lässt sich manuell
+zwischen Englisch, Ukrainisch, Russisch, Deutsch, Spanisch, Französisch und
+Italienisch umschalten. Die Auswahl wird für jeden Browser gespeichert.

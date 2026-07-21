@@ -1,6 +1,6 @@
 ---
 title: Schedule
-description: Referencia del tipo de dispositivo schedule de Gekko: reglas horarias por minuto y día de la semana.
+description: "Referencia del tipo de dispositivo schedule de Gekko: reglas horarias por minuto y día de la semana."
 sidebar:
   order: 8
 ---

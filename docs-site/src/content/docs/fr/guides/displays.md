@@ -13,15 +13,15 @@ navigateur, avec un aperçu.
 ## Configuration d'un affichage
 
 1. Créez d'abord le périphérique bus : un
-   [**bus I2C**](/gekko/reference/devices/i2c-bus/) (broches SDA/SCL) pour le
-   SSD1306, ou un [**bus SPI**](/gekko/reference/devices/spi-bus/) pour le
+   [**bus I2C**](/gekko/fr/reference/devices/i2c-bus/) (broches SDA/SCL) pour le
+   SSD1306, ou un [**bus SPI**](/gekko/fr/reference/devices/spi-bus/) pour le
    ST7735.
 2. Créez le périphérique d'affichage et sélectionnez ce bus comme dépendance
    (plus l'adresse I2C ou les broches de contrôle du TFT).
 3. Ouvrez le périphérique et cliquez sur **Design** pour entrer dans le
    concepteur de mise en page.
 
-![Concepteur de mise en page d'affichage](../../../assets/screenshots/portal-display-designer.png)
+![Concepteur de mise en page d'affichage](../../../../assets/screenshots/portal-display-designer.png)
 
 ## Pages et widgets
 
@@ -30,7 +30,7 @@ Une mise en page est un ensemble de **pages** ; chaque page contient des
 direct rendu avec les mêmes polices et métriques que le firmware, donc ce que
 vous voyez est ce que le panneau dessine. Les mises en page sont enregistrées
 sur l'appareil et incluses dans les
-[lots de sauvegarde](/gekko/guides/backup-restore/).
+[lots de sauvegarde](/gekko/fr/guides/backup-restore/).
 
 ## Valeurs en direct : espaces réservés de métriques
 
@@ -38,7 +38,7 @@ Les widgets texte peuvent mélanger du texte statique avec des
 **espaces réservés** résolus au moment du rendu. Construire un écran d'état, ce
 n'est qu'écrire quelques lignes de texte modèle :
 
-![Texte du widget avec espaces réservés à gauche, sortie OLED rendue avec valeurs en direct à droite](../../../assets/diagrams/display-placeholders.svg)
+![Texte du widget avec espaces réservés à gauche, sortie OLED rendue avec valeurs en direct à droite](../../../../assets/diagrams/display-placeholders.svg)
 
 Vous n'avez pas besoin de mémoriser la syntaxe — le **générateur d'espaces
 réservés** du concepteur liste toutes les métriques disponibles de chaque

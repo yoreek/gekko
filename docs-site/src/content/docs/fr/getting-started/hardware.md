@@ -23,7 +23,7 @@ La compilation par défaut utilise une disposition à une seule application,
 sans emplacement OTA, afin de faire tenir le firmware, le portail web et votre
 configuration d'appareil dans 4 Mo. Les cartes avec davantage de flash
 fonctionnent aussi et laissent de la marge pour la
-[compilation Web OTA](/gekko/guides/ota-updates/).
+[compilation Web OTA](/gekko/fr/guides/ota-updates/).
 
 Vous aurez aussi besoin d'un **câble USB de données** et, sur certaines
 cartes, du pilote USB-série CP210x/CH340 habituel pour votre système
@@ -51,7 +51,7 @@ web lorsque vous le câblez réellement :
 - Entrées numériques : flotteurs, contacts de porte, détecteurs de fuite
   (`binary_sensor`)
 
-Voir le [catalogue des périphériques](/gekko/reference/devices/) pour la liste
+Voir le [catalogue des périphériques](/gekko/fr/reference/devices/) pour la liste
 complète des 27 types de périphériques intégrés.
 
 :::tip

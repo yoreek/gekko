@@ -29,7 +29,7 @@ minute — c'est cette régularité qui est le but.
 
 ## Les pièces, et comment Gekko les relie
 
-![Installation de pompe de dosage : réservoir avec capteur de niveau, pompe péristaltique pilotée via relais, ESP32, aquarium](../../../../assets/diagrams/dosing-setup.svg)
+![Installation de pompe de dosage : réservoir avec capteur de niveau, pompe péristaltique pilotée via relais, ESP32, aquarium](../../../../../assets/diagrams/dosing-setup.svg)
 
 Vous avez besoin de quatre pièces bon marché, et chacune correspond à un
 périphérique Gekko :
@@ -48,7 +48,7 @@ chacun avec sa propre bouteille et son propre planning.
 ## Mise en route
 
 1. Créez un **interrupteur GPIO** sur la broche qui pilote le relais de la
-   pompe (voir [votre premier périphérique](/gekko/getting-started/first-device/) —
+   pompe (voir [votre premier périphérique](/gekko/fr/getting-started/first-device/) —
    c'est le même flux).
 2. Créez éventuellement un **capteur binaire** pour le flotteur.
 3. Créez le périphérique **pompe de dosage** : choisissez l'interrupteur comme
@@ -56,7 +56,7 @@ chacun avec sa propre bouteille et son propre planning.
    réglez la capacité du conteneur et le seuil d'avertissement, puis ajoutez
    des créneaux de dose au planning.
 
-![Réglages de la pompe de dosage dans le portail](../../../../assets/screenshots/device-dosing-pump.png)
+![Réglages de la pompe de dosage dans le portail](../../../../../assets/screenshots/device-dosing-pump.png)
 
 ## Calibrez avant de lui faire confiance
 
@@ -65,7 +65,7 @@ nombre — le débit de la pompe (`ml/s`). La longueur du tube, son diamètre et
 hauteur de refoulement le modifient tous, donc mesurez-le une fois avec votre
 vrai montage :
 
-![Calibration : lancer une dose, mesurer le volume réel, saisir la valeur](../../../../assets/diagrams/dosing-calibration.svg)
+![Calibration : lancer une dose, mesurer le volume réel, saisir la valeur](../../../../../assets/diagrams/dosing-calibration.svg)
 
 Les sessions de calibration sont exclues des statistiques et de l'historique,
 mais le liquide distribué **est** retiré du conteneur — il a bien quitté la
@@ -77,11 +77,11 @@ tel quel.
 Le planning contient les créneaux de dose (heure + quantité) et un motif de
 jours — tous les N jours, ou des jours de semaine spécifiques. Le périphérique
 l'évalue avec sa propre horloge, donc
-[donnez-lui une source de temps fiable](/gekko/reference/devices/schedule/#time--clock).
+[donnez-lui une source de temps fiable](/gekko/fr/reference/devices/schedule/#heure-et-horloge).
 Le total journalier est volontairement découpé en plusieurs petites doses — la
 stabilité, encore.
 
-![Chronologie des doses : dose à l'heure, dose dans la fenêtre de grâce de 5 minutes, dose manquée sautée](../../../../assets/diagrams/dosing-timeline.svg)
+![Chronologie des doses : dose à l'heure, dose dans la fenêtre de grâce de 5 minutes, dose manquée sautée](../../../../../assets/diagrams/dosing-timeline.svg)
 
 Deux politiques sont importantes :
 
@@ -109,7 +109,7 @@ met l'appareil hors service coupe de force le moteur.
 
 Indiquez à Gekko la capacité de la bouteille et il compte chaque millilitre :
 
-![Suivi du conteneur : le compteur baisse, alerte de niveau bas, vide bloque le dosage auto](../../../../assets/diagrams/dosing-container.svg)
+![Suivi du conteneur : le compteur baisse, alerte de niveau bas, vide bloque le dosage auto](../../../../../assets/diagrams/dosing-container.svg)
 
 - Sous le **seuil d'avertissement**, le portail affiche une alerte (cloche +
   toast) — il est temps de préparer un nouveau lot.

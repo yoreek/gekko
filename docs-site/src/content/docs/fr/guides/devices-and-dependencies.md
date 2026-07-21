@@ -7,7 +7,7 @@ sidebar:
 
 L'idée centrale de Gekko est un **registre de périphériques** : une liste
 persistée d'instances de périphériques, chacune créée à partir d'un des
-[types de périphériques](/gekko/reference/devices/) intégrés, avec sa propre
+[types de périphériques](/gekko/fr/reference/devices/) intégrés, avec sa propre
 configuration et son état d'exécution en direct.
 
 ## Les périphériques sont composés, pas configurés isolément
@@ -48,7 +48,7 @@ Chaque périphérique sépare :
 - **Config** — réglages persistés (nom, broches, règles, dépendances). Stockés
   sur l'appareil en forme binaire versionnée et migrés automatiquement lors
   des mises à jour du firmware. C'est ce que contiennent les
-  [lots de sauvegarde](/gekko/guides/backup-restore/).
+  [lots de sauvegarde](/gekko/fr/guides/backup-restore/).
 - **Runtime** — état en direct (on/off, température, statut comme `ready` ou
   `dependency_blocked`). Jamais persisté dans la config ; diffusé au portail en
   temps réel via WebSocket.

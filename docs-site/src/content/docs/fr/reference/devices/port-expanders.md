@@ -23,13 +23,13 @@ Gekko prend en charge les deux plus courants :
 | `pcf8575_expander` | PCF8575 | 16 | `0x20`–`0x27` |
 
 Les deux sont des hubs au rôle `port_expander` sur un
-[bus I2C](/gekko/reference/devices/i2c-bus/) ; la seule différence est 8 vs 16
+[bus I2C](/gekko/fr/reference/devices/i2c-bus/) ; la seule différence est 8 vs 16
 broches. Jusqu'à huit de chaque peuvent partager un bus, leurs adresses étant
 définies par les cavaliers de soudure A0/A1/A2.
 
 ## Hub et canaux
 
-Comme pour les [hubs ADS1115 / multiplexeur](/gekko/reference/devices/analog-inputs/),
+Comme pour les [hubs ADS1115 / multiplexeur](/gekko/fr/reference/devices/analog-inputs/),
 un expanseur est un **hub** : le périphérique expander possède la puce, et
 chaque broche de sortie réellement utilisée est un périphérique
 **`port_expander_switch`** séparé qui en dépend.
@@ -38,19 +38,19 @@ Donc une config PCF8574 à deux relais = trois périphériques : le
 `pcf8574_expander`, et deux périphériques `port_expander_switch` (pin 0 et pin
 1) qui le ciblent. Chaque switch est nommé, activé et contrôlable
 indépendamment — et se comporte exactement comme un
-[interrupteur GPIO](/gekko/reference/devices/gpio-switch/), juste sur une
+[interrupteur GPIO](/gekko/fr/reference/devices/gpio-switch/), juste sur une
 broche d'expanseur au lieu d'une broche ESP32. Deux switches ne peuvent pas
 revendiquer la même broche sur un même expanseur ; Gekko refuse le second.
 
 Comme un `port_expander_switch` **fournit le rôle `switch`**, tout ce qui
 pilote un switch le pilote aussi — un
-[thermostat](/gekko/reference/devices/thermostat/), un `auto_switch`, une
-[dosing pump](/gekko/reference/devices/dosing-pump/). Rien dans ces
+[thermostat](/gekko/fr/reference/devices/thermostat/), un `auto_switch`, une
+[dosing pump](/gekko/fr/reference/devices/dosing-pump/). Rien dans ces
 contrôleurs ne sait ni ne se soucie que la sortie soit derrière un expanseur.
 
 ## Mise en route
 
-1. Créez un **[bus I2C](/gekko/reference/devices/i2c-bus/)** (si vous n'en
+1. Créez un **[bus I2C](/gekko/fr/reference/devices/i2c-bus/)** (si vous n'en
    avez pas) et utilisez **Scan bus** pour confirmer que l'expanseur répond —
    généralement à `0x20`.
 2. Créez un **`pcf8574_expander`** (ou `pcf8575_expander`), sélectionnez ce
@@ -59,11 +59,11 @@ contrôleurs ne sait ni ne se soucie que la sortie soit derrière un expanseur.
    l'expanseur et choisissez le numéro de broche (0–7 sur un PCF8574, 0–15 sur
    un PCF8575).
 
-![Réglages PCF8574 : bus I2C, adresse avec scan et option de polarité](../../../../assets/screenshots/device-pcf8574-expander.png)
+![Réglages PCF8574 : bus I2C, adresse avec scan et option de polarité](../../../../../assets/screenshots/device-pcf8574-expander.png)
 
 Puis le switch lui-même, avec les mêmes options qu'un switch GPIO :
 
-![Réglages du switch sur expanseur : sélecteur d'expanseur, numéro de broche et options du switch](../../../../assets/screenshots/device-port-expander-switch.png)
+![Réglages du switch sur expanseur : sélecteur d'expanseur, numéro de broche et options du switch](../../../../../assets/screenshots/device-port-expander-switch.png)
 
 ## Cartes relais actives bas
 
@@ -107,6 +107,6 @@ Un `port_expander_switch` fournit les mêmes rôles qu'un interrupteur GPIO :
 - **switch** — peut être piloté par un thermostat, un auto switch ou une dosing pump ;
 - **condition** — son état on/off peut bloquer un auto switch.
 
-Sur les [builds MQTT](/gekko/guides/mqtt-home-assistant/), chaque switch est
+Sur les [builds MQTT](/gekko/fr/guides/mqtt-home-assistant/), chaque switch est
 découvrable dans Home Assistant comme entité `switch`. L'expanseur lui-même
 ne l'est pas — il fournit des broches, pas un contrôle propre.

@@ -1,48 +1,60 @@
 ---
-title: Añadir tu primer dispositivo
-description: Añade en el portal de Gekko un interruptor GPIO, actívalo y fíjalo en el panel.
+title: Tu primer dispositivo
+description: Añade un interruptor GPIO en el portal de Gekko, actívalo y fíjalo en el panel.
 sidebar:
   order: 6
 ---
 
-import { LinkButton } from '@astrojs/starlight/components';
+import { Steps } from '@astrojs/starlight/components';
 
-La forma más rápida de probar Gekko por primera vez es un interruptor simple.
-Con él compruebas el flujo completo: crear el dispositivo, elegir un GPIO,
-conmutarlo, ver el panel y entender cómo se muestra el estado.
+Vamos a añadir el dispositivo más sencillo posible — un **interruptor GPIO** —
+y a controlarlo desde el panel. Un interruptor GPIO gobierna un pin de salida:
+una placa de relés, un módulo MOSFET o simplemente el LED de la placa para una
+primera prueba.
 
-## Qué necesitas
+<Steps>
 
-- un dispositivo Gekko flasheado en red;
-- cualquier GPIO libre que pueda emitir una señal real;
-- en caso de duda, una placa de pruebas o un LED para la primera pasada.
+1. Abre **Dispositivos** en el portal y pulsa el botón para añadir un
+   dispositivo.
 
-## Crear el interruptor
+   ![Selección del tipo de dispositivo](../../../../assets/screenshots/portal-device-create.png)
 
-1. Abre la página **Devices** en el portal.
-2. Haz clic en **Add device** y elige **GPIO switch**.
-3. Dale un nombre, elige el GPIO y deja el resto de opciones en sus valores
-   por defecto al principio.
-4. Guarda el dispositivo.
+2. Elige **Interruptor GPIO** en el catálogo.
 
-## Probar el interruptor
+3. Completa los ajustes:
 
-1. Abre la página de detalle del nuevo interruptor.
-2. Enciéndelo y apágalo.
-3. Si has conectado un LED o un relé, la salida física debería cambiar al
-   instante.
-4. Fija el dispositivo en el panel para poder acceder a él rápidamente más
-   adelante.
+   ![Ajustes del interruptor GPIO](../../../../assets/screenshots/device-gpio-switch.png)
 
-La configuración sigue funcionando localmente en el dispositivo. Si cierras el
-navegador, el estado permanece.
+   - **Nombre** — el que prefieras, por ejemplo `LED de prueba`.
+   - **Pin GPIO** — el pin al que está conectada la carga (en muchas placas de
+     desarrollo, GPIO 2 controla el LED integrado).
+   - **Invertido** — actívalo si tu placa de relés funciona con nivel bajo,
+     algo muy habitual.
+   - **Estado inicial** y **Restaurar el estado anterior** — determina qué debe
+     hacer la salida justo después de reiniciar: usar un estado fijo o recuperar
+     el que tenía antes de perder la alimentación.
+   - **Estado seguro** — el estado al que vuelve la salida si el dispositivo
+     que la controla deja de estar disponible.
 
-## Qué tiene sentido hacer después
+4. Guarda. El dispositivo aparecerá en la lista, alcanzará el estado
+   **listo** y mostrará un interruptor en vivo; púlsalo y el relé conmutará.
 
-Si el primer interruptor funciona, los siguientes pasos más útiles suelen ser:
+5. Fíjalo en el panel: abre **Paneles**, añade un widget de interruptor para el
+   nuevo dispositivo y colócalo donde quieras. A partir de entonces estará a un
+   toque de la página de inicio.
 
-- un [sensor de temperatura](/gekko/es/reference/devices/ds18b20/)
-- un [termostato](/gekko/es/reference/devices/thermostat/)
-- una [pantalla](/gekko/es/guides/displays/)
+</Steps>
 
-<LinkButton href="/gekko/es/getting-started/hardware/">Volver al hardware</LinkButton>
+## Adónde ir desde aquí
+
+- Conecta una **sonda de temperatura DS18B20**: crea un
+  [bus 1-Wire](/gekko/es/reference/devices/onewire-bus/) en un GPIO libre,
+  escanéalo y añade la [sonda](/gekko/es/reference/devices/ds18b20/) encontrada.
+- Coloca el interruptor en un
+  [horario](/gekko/es/reference/devices/schedule/) mediante un
+  [interruptor automático](/gekko/es/guides/schedules-and-automation/).
+- Mantén estable la temperatura con un
+  [termostato](/gekko/es/reference/devices/thermostat/) que controle el
+  interruptor.
+- Muéstralo todo en una pantalla OLED con el
+  [diseñador de pantallas](/gekko/es/guides/displays/).

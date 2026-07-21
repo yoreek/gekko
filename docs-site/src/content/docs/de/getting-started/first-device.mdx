@@ -1,47 +1,60 @@
 ---
-title: Erstes Geraet hinzufuegen
-description: Fuege im Gekko-Portal einen GPIO-Schalter hinzu, schalte ihn und pinne ihn auf das Dashboard.
+title: Dein erstes Gerät
+description: Füge im Gekko-Portal einen GPIO-Schalter hinzu, schalte ihn und hefte ihn an das Dashboard.
 sidebar:
   order: 6
 ---
 
-import { LinkButton } from '@astrojs/starlight/components';
+import { Steps } from '@astrojs/starlight/components';
 
-Der schnellste erste Test fuer Gekko ist ein einfacher Schalter. Damit
-ueberpruefst du den kompletten Ablauf: Geraet anlegen, einen GPIO waehlen,
-schalten, das Dashboard sehen und verstehen, wie die Zustandsanzeige aussieht.
+Fügen wir das einfachste mögliche Gerät hinzu — einen **GPIO-Schalter** — und
+steuern ihn über das Dashboard. Ein GPIO-Schalter steuert einen Ausgangspin:
+eine Relaisplatine, ein MOSFET-Modul oder für den ersten Test einfach die LED
+des Boards.
 
-## Was du brauchst
+<Steps>
 
-- ein geflashtes Gekko-Geraet im Netz;
-- irgendeinen freien GPIO, der ein echtes Signal ausgeben darf;
-- im Zweifel nur ein Dummy-Board oder eine LED fuer den ersten Lauf.
+1. Öffne im Portal **Geräte** und klicke auf die Schaltfläche zum Hinzufügen
+   eines Geräts.
 
-## Den Schalter anlegen
+   ![Auswahl des Gerätetyps](../../../../assets/screenshots/portal-device-create.png)
 
-1. Oeffne im Portal die **Devices**-Seite.
-2. Klicke auf **Add device** und waehle **GPIO switch**.
-3. Gib ihm einen Namen, waehle den GPIO und lasse die restlichen Optionen
-   zunaechst auf Standard.
-4. Speichere das Geraet.
+2. Wähle **GPIO-Schalter** aus dem Katalog.
 
-## Den Schalter testen
+3. Fülle die Einstellungen aus:
 
-1. Oeffne die Detailseite des neuen Schalter-Geraets.
-2. Schalte ihn ein und aus.
-3. Wenn du eine LED oder ein Relais angeschlossen hast, sollte sich der
-   physische Ausgang sofort aendern.
-4. Pinne das Geraet auf das Dashboard, damit du es spaeter sofort erreichst.
+   ![Einstellungen des GPIO-Schalters](../../../../assets/screenshots/device-gpio-switch.png)
 
-Die Konfiguration laeuft lokal auf dem Geraet weiter. Wenn du den Browser
-schliesst, bleibt der Zustand erhalten.
+   - **Name** — frei wählbar, zum Beispiel `Test-LED`.
+   - **GPIO-Pin** — der Pin, an den die Last angeschlossen ist (bei vielen
+     Entwicklungsboards steuert GPIO 2 die integrierte LED).
+   - **Invertiert** — aktiviere diese Option, wenn deine Relaisplatine
+     aktiv-low arbeitet, was sehr häufig der Fall ist.
+   - **Startzustand** und **Vorherigen Zustand wiederherstellen** — legt fest,
+     was der Ausgang direkt nach einem Neustart tut: einen festen Zustand
+     verwenden oder den Zustand vor dem Stromausfall wiederherstellen.
+   - **Sicherer Zustand** — der Zustand, auf den der Ausgang zurückfällt, wenn
+     das steuernde Gerät nicht verfügbar ist.
 
-## Was als Nächstes sinnvoll ist
+4. Speichere. Das Gerät erscheint in der Liste, erreicht den Status **bereit**
+   und zeigt einen Live-Schalter — betätige ihn und das Relais schaltet.
 
-Wenn der erste Schalter funktioniert, sind gute naechste Schritte:
+5. Hefte es an das Dashboard: Öffne **Panels**, füge ein Schalter-Widget für
+   dein neues Gerät hinzu und platziere es an der gewünschten Stelle. Von nun
+   an ist es mit einem Fingertipp von der Startseite erreichbar.
 
-- ein [Temperatursensor](/gekko/de/reference/devices/ds18b20/)
-- ein [Thermostat](/gekko/de/reference/devices/thermostat/)
-- ein [Display](/gekko/de/guides/displays/)
+</Steps>
 
-<LinkButton href="/gekko/de/getting-started/hardware/">Zur Hardware zurück</LinkButton>
+## Wie geht es weiter?
+
+- Schließe einen **DS18B20-Temperaturfühler** an: Erstelle einen
+  [1-Wire-Bus](/gekko/de/reference/devices/onewire-bus/) an einem freien GPIO,
+  scanne ihn und füge den gefundenen [Fühler](/gekko/de/reference/devices/ds18b20/) hinzu.
+- Lege den Schalter über einen
+  [Auto-Schalter](/gekko/de/guides/schedules-and-automation/) auf einen
+  [Zeitplan](/gekko/de/reference/devices/schedule/).
+- Halte die Temperatur mit einem
+  [Thermostat](/gekko/de/reference/devices/thermostat/) stabil, der deinen
+  Schalter steuert.
+- Zeige alles mit dem [Display-Designer](/gekko/de/guides/displays/) auf einem
+  OLED an.
