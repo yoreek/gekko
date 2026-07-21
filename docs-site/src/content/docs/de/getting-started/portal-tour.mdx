@@ -1,0 +1,46 @@
+---
+title: Portal-Rundgang
+description: Ein kurzer Rundgang durch das Gekko-Webportal - Dashboard, Geraete, Ereignisse und Einstellungen.
+sidebar:
+  order: 5
+---
+
+import { LinkButton } from '@astrojs/starlight/components';
+
+Gekko ist absichtlich dicht gepackt: die wichtigsten Dinge sind direkt im
+Portal sichtbar, nicht hinter mehreren Menues versteckt. Nach dem ersten Start
+lohnt sich dieser kurze Rundgang, damit du weisst, wo du was findest.
+
+## Die Hauptbereiche
+
+- **Dashboard** - deine Startseite. Hier pinnst du Schalter, Sensoren und
+  Karten, die du oft anschauen oder bedienen willst. Das Dashboard ist eine
+  Sammlung von Panels, nicht nur ein leerer Statusbildschirm.
+- **Geraete** - der eigentliche Konfigurationsort. Hier legst du neue Geraete
+  an, bearbeitest bestehende, pruefst deren Zustand und oeffnest ihre
+  Detailseiten.
+- **Journal** - die Ereigniszeitleiste. Dort findest du Start/Stop-Aktionen,
+  Statuswechsel, Fehler und andere bemerkenswerte Ereignisse.
+- **Einstellungen** - globale Optionen wie WiFi, MQTT, OTA, Sprache und
+  weitere Portal- oder Geraetekonfigurationsdetails.
+
+## Wie die Geraeteseiten aufgebaut sind
+
+Fast jedes Geraeteteil folgt dem gleichen Muster:
+
+- oben der Name, der Status und die Hauptaktion;
+- darunter die Konfiguration und die Abhaengigkeiten;
+- rechts oder unterhalb die Livewerte, Historie und Hilfetexte;
+- bei komplexeren Geraeten zusaetzlich ein visueller Editor.
+
+So sollst du nicht raten muessen, wo sich eine Einstellung versteckt - du
+siehst die Steuerung dort, wo das Geraet auch tatsaechlich lebt.
+
+## Ein sinnvolles erstes Ziel
+
+Wenn du noch kein Ziel hast, beginne mit dem
+[ersten Geraet hinzufuegen](/gekko/de/getting-started/first-device/). Ein
+einfacher `gpio_switch` ist meist der schnellste Weg, um Portal, Dashboard und
+Schalterfluss einmal komplett durchzuspielen.
+
+<LinkButton href="/gekko/de/getting-started/first-device/">Erstes Geraet hinzufuegen</LinkButton>
