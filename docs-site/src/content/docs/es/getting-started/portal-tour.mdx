@@ -1,0 +1,46 @@
+---
+title: Recorrido por el portal
+description: Un breve recorrido por el portal web de Gekko - panel, dispositivos, eventos y ajustes.
+sidebar:
+  order: 5
+---
+
+import { LinkButton } from '@astrojs/starlight/components';
+
+Gekko está pensado para ir al grano: lo importante está visible en el portal,
+no escondido tras varios menús. Después del primer arranque, este recorrido
+rápido te ayuda a ubicarte.
+
+## Las áreas principales
+
+- **Panel** - tu pantalla de inicio. Aquí fijas interruptores, sensores y
+  tarjetas que quieres ver o controlar a menudo. El panel es una colección de
+  tarjetas, no una simple pantalla de estado vacía.
+- **Dispositivos** - el lugar real de configuración. Aquí creas nuevos
+  dispositivos, editas los existentes, revisas su estado y abres sus páginas
+  de detalle.
+- **Diario** - la línea temporal de eventos. Ahí encuentras acciones de
+  inicio/parada, cambios de estado, errores y otros eventos relevantes.
+- **Ajustes** - opciones globales como WiFi, MQTT, OTA, idioma y otros detalles
+  de configuración del portal o de los dispositivos.
+
+## Cómo están organizadas las páginas de dispositivo
+
+Casi cualquier dispositivo sigue el mismo patrón:
+
+- arriba, el nombre, el estado y la acción principal;
+- debajo, la configuración y las dependencias;
+- a la derecha o debajo, los valores vivos, el historial y los textos de ayuda;
+- en dispositivos más complejos, además, un editor visual.
+
+La idea es que no tengas que adivinar dónde está una opción: ves el control
+justo donde el dispositivo vive de verdad.
+
+## Un primer objetivo razonable
+
+Si todavía no tienes una meta clara, empieza por
+[añadir tu primer dispositivo](/gekko/es/getting-started/first-device/). Un
+`gpio_switch` sencillo suele ser la forma más rápida de probar el flujo
+completo del portal, el panel y el manejo del interruptor.
+
+<LinkButton href="/gekko/es/getting-started/first-device/">Añadir tu primer dispositivo</LinkButton>

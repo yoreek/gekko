@@ -1,0 +1,48 @@
+---
+title: Añadir tu primer dispositivo
+description: Añade en el portal de Gekko un interruptor GPIO, actívalo y fíjalo en el panel.
+sidebar:
+  order: 6
+---
+
+import { LinkButton } from '@astrojs/starlight/components';
+
+La forma más rápida de probar Gekko por primera vez es un interruptor simple.
+Con él compruebas el flujo completo: crear el dispositivo, elegir un GPIO,
+conmutarlo, ver el panel y entender cómo se muestra el estado.
+
+## Qué necesitas
+
+- un dispositivo Gekko flasheado en red;
+- cualquier GPIO libre que pueda emitir una señal real;
+- en caso de duda, una placa de pruebas o un LED para la primera pasada.
+
+## Crear el interruptor
+
+1. Abre la página **Devices** en el portal.
+2. Haz clic en **Add device** y elige **GPIO switch**.
+3. Dale un nombre, elige el GPIO y deja el resto de opciones en sus valores
+   por defecto al principio.
+4. Guarda el dispositivo.
+
+## Probar el interruptor
+
+1. Abre la página de detalle del nuevo interruptor.
+2. Enciéndelo y apágalo.
+3. Si has conectado un LED o un relé, la salida física debería cambiar al
+   instante.
+4. Fija el dispositivo en el panel para poder acceder a él rápidamente más
+   adelante.
+
+La configuración sigue funcionando localmente en el dispositivo. Si cierras el
+navegador, el estado permanece.
+
+## Qué tiene sentido hacer después
+
+Si el primer interruptor funciona, los siguientes pasos más útiles suelen ser:
+
+- un [sensor de temperatura](/gekko/es/reference/devices/ds18b20/)
+- un [termostato](/gekko/es/reference/devices/thermostat/)
+- una [pantalla](/gekko/es/guides/displays/)
+
+<LinkButton href="/gekko/es/getting-started/hardware/">Volver al hardware</LinkButton>

@@ -163,6 +163,55 @@ This file tracks the translation workflow for `docs-site/`.
 - [x] German page, image, locale, and anchor links pass `pnpm check:links`
 - [x] German file count and file-name set match the English source 1:1
 
+### Spanish locale
+
+#### Batch 1
+
+- [x] `docs-site/src/content/docs/es/index.mdx`
+- [x] `docs-site/src/content/docs/es/getting-started/what-is-gekko.md`
+- [x] `docs-site/src/content/docs/es/getting-started/hardware.md`
+- [x] `docs-site/src/content/docs/es/getting-started/flashing.mdx`
+- [x] `docs-site/src/content/docs/es/getting-started/first-boot-wifi.md`
+- [x] `docs-site/src/content/docs/es/getting-started/portal-tour.mdx`
+- [x] `docs-site/src/content/docs/es/getting-started/first-device.mdx`
+
+#### Batch 2
+
+- [x] `docs-site/src/content/docs/es/guides/backup-restore.md`
+- [x] `docs-site/src/content/docs/es/guides/devices-and-dependencies.md`
+- [x] `docs-site/src/content/docs/es/guides/displays.md`
+- [x] `docs-site/src/content/docs/es/guides/mqtt-home-assistant.md`
+- [x] `docs-site/src/content/docs/es/guides/ota-updates.md`
+- [x] `docs-site/src/content/docs/es/guides/schedules-and-automation.md`
+
+#### Batch 3
+
+- [x] `docs-site/src/content/docs/es/reference/devices/index.md`
+- [x] `docs-site/src/content/docs/es/reference/faq.md`
+- [x] `docs-site/src/content/docs/es/reference/rest-api.md`
+- [x] `docs-site/src/content/docs/es/reference/devices/gpio-switch.md`
+- [x] `docs-site/src/content/docs/es/reference/devices/ds18b20.md`
+- [x] `docs-site/src/content/docs/es/reference/devices/thermostat.md`
+- [x] `docs-site/src/content/docs/es/reference/devices/spi-bus.md`
+- [x] `docs-site/src/content/docs/es/reference/devices/onewire-bus.md`
+- [x] `docs-site/src/content/docs/es/reference/devices/port-expanders.md`
+- [x] `docs-site/src/content/docs/es/reference/devices/schedule.md`
+
+#### Batch 4
+
+- [x] `docs-site/src/content/docs/es/reference/devices/analog-inputs.md`
+- [x] `docs-site/src/content/docs/es/reference/devices/analog-outputs.md`
+- [x] `docs-site/src/content/docs/es/reference/devices/dosing-pump.md`
+- [x] `docs-site/src/content/docs/es/reference/devices/htu21.md`
+- [x] `docs-site/src/content/docs/es/reference/devices/i2c-bus.md`
+- [x] `docs-site/src/content/docs/es/reference/devices/ntc-thermistor.md`
+
+#### Status
+
+- [x] Spanish locale completed
+- [x] Spanish page, image, locale, and anchor links pass `pnpm check:links`
+- [x] Spanish file count and file-name set match the English source 1:1
+
 ### Automated verification
 
 - [x] Link fixer/checker has isolated positive and negative tests
