@@ -23,13 +23,13 @@ Gekko підтримує два найпоширеніші:
 | `pcf8575_expander` | PCF8575 | 16 | `0x20`–`0x27` |
 
 Обидва є hub’ами з роллю `port_expander` на
-[шіні I2C](/gekko/reference/devices/i2c-bus/); єдина різниця — 8 проти 16
+[шіні I2C](/gekko/uk/reference/devices/i2c-bus/); єдина різниця — 8 проти 16
 пінів. До восьми кожного типу можуть ділити одну шину, а їхні адреси
 задаються джамперами A0/A1/A2.
 
 ## Hub і канали
 
-Як і [hub’и ADS1115/мультиплексора](/gekko/reference/devices/analog-inputs/),
+Як і [hub’и ADS1115/мультиплексора](/gekko/uk/reference/devices/analog-inputs/),
 експандер — це **hub**: пристрій-експандер володіє чипом, а кожен вихідний
 пін, який ви реально використовуєте, — це окремий пристрій
 **`port_expander_switch`**, що залежить від нього.
@@ -37,19 +37,19 @@ Gekko підтримує два найпоширеніші:
 Отже, схема з двома реле на PCF8574 — це три пристрої: `pcf8574_expander`
 та два `port_expander_switch` (пін 0 і пін 1), що на нього вказують. Кожен
 вимикач незалежно називається, вмикається/вимикається та керується — і
-поводиться точно як [GPIO switch](/gekko/reference/devices/gpio-switch/),
+поводиться точно як [GPIO switch](/gekko/uk/reference/devices/gpio-switch/),
 тільки на піні експандера, а не на піні ESP32. Два вимикачі не можуть
 зайняти один і той самий пін одного експандера; Gekko відхилить другий.
 
 Оскільки `port_expander_switch` **надає роль `switch`**, будь-що, що вміє
-керувати вимикачем, керує ним і тут — [термостат](/gekko/reference/devices/thermostat/),
-`auto_switch`, [дозувальний насос](/gekko/reference/devices/dosing-pump/).
+керувати вимикачем, керує ним і тут — [термостат](/gekko/uk/reference/devices/thermostat/),
+`auto_switch`, [дозувальний насос](/gekko/uk/reference/devices/dosing-pump/).
 Усі ці контролери не знають і не цікавляться, що вихід стоїть за
 експандером.
 
 ## Налаштування
 
-1. Створіть **[I2C bus](/gekko/reference/devices/i2c-bus/)** (якщо його ще
+1. Створіть **[I2C bus](/gekko/uk/reference/devices/i2c-bus/)** (якщо його ще
    немає) і використайте **Scan bus**, щоб переконатися, що експандер
    відповідає — зазвичай на `0x20`.
 2. Створіть **`pcf8574_expander`** (або `pcf8575_expander`), виберіть цю
@@ -57,11 +57,11 @@ Gekko підтримує два найпоширеніші:
 3. Для кожного виходу створіть **`port_expander_switch`**, виберіть
    експандер і задайте номер піну (0–7 для PCF8574, 0–15 для PCF8575).
 
-![PCF8574 expander settings: I2C bus, address with scan, and the polarity option](../../../../assets/screenshots/device-pcf8574-expander.png)
+![PCF8574 expander settings: I2C bus, address with scan, and the polarity option](../../../../../assets/screenshots/device-pcf8574-expander.png)
 
 Потім сам вимикач, з тими самими опціями, що й будь-який GPIO switch:
 
-![Port expander switch settings: expander picker, pin number, and switch options](../../../../assets/screenshots/device-port-expander-switch.png)
+![Port expander switch settings: expander picker, pin number, and switch options](../../../../../assets/screenshots/device-port-expander-switch.png)
 
 ## Релейні плати з активним нулем
 
@@ -104,6 +104,6 @@ Gekko підтримує два найпоширеніші:
 - **switch** — ним може керувати термостат, auto switch або дозувальний насос;
 - **condition** — його стан on/off може бути умовою для auto switch.
 
-На [MQTT-збірках](/gekko/guides/mqtt-home-assistant/) кожен вимикач
+На [MQTT-збірках](/gekko/uk/guides/mqtt-home-assistant/) кожен вимикач
 виявляється в Home Assistant як сутність `switch`. Сам експандер — ні: він
 надає піни, а не власний керований стан.

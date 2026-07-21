@@ -62,7 +62,7 @@ Gekko розділяє *звідки походить напруга* (апар�
 пристрій володіє чипом і його пінами, а кожен фактично використовуваний
 канал — це окремий пристрій **`analog_input_channel`**, що залежить від hub-а.
 
-![One ADS1115 hub with four channels; two channel devices depend on it and are read by sensors, the hub depends on an I2C bus](../../../../assets/diagrams/analog-input-hub.svg)
+![One ADS1115 hub with four channels; two channel devices depend on it and are read by sensors, the hub depends on an I2C bus](../../../../../assets/diagrams/analog-input-hub.svg)
 
 Тож setup з двома зондами на ADS1115 — це три пристрої: `ads1115_hub` і два
 `analog_input_channel` (канал 0 і канал 1), що вказують на нього. Кожен канал
@@ -76,14 +76,14 @@ CD74HC4067 (канали 0–15). Форма створення обмежує �
 Канал зроблений навмисно маленьким — він лише називає свій hub і номер
 каналу, потім читає й віддає мілівольти:
 
-![Analog input channel settings: hub picker, channel number, oversampling, and the live voltage](../../../../assets/screenshots/device-analog-input-channel.png)
+![Analog input channel settings: hub picker, channel number, oversampling, and the live voltage](../../../../../assets/screenshots/device-analog-input-channel.png)
 
 Два канали не можуть претендувати на один і той самий номер на одному hub-і —
 Gekko відхиляє другий, так само як і два port-expander switch на одному піні.
 
 ## Налаштування ADS1115
 
-1. Створіть **[I2C bus](/gekko/reference/devices/i2c-bus/)** на пінах SDA/SCL
+1. Створіть **[I2C bus](/gekko/uk/reference/devices/i2c-bus/)** на пінах SDA/SCL
    (якщо ще немає), і використайте **Scan bus**, щоб переконатися, що ADS1115
    відповідає — зазвичай на `0x48`.
 2. Створіть **`ads1115_hub`**, виберіть цю шину і задайте адресу та gain.
@@ -91,7 +91,7 @@ Gekko відхиляє другий, так само як і два port-expande
    hub і номер каналу (0–3 = A0–A3 ADS1115).
 4. Подавайте на кожен канал сенсор (або просто дивіться живі мілівольти каналу).
 
-![ADS1115 hub settings: I2C bus, address with scan, gain and data rate](../../../../assets/screenshots/device-ads1115-hub.png)
+![ADS1115 hub settings: I2C bus, address with scan, gain and data rate](../../../../../assets/screenshots/device-ads1115-hub.png)
 
 **Gain** задає діапазон входу і, відповідно, роздільну здатність. Обирайте
 найменший діапазон, який все ще впевнено покриває ваш сигнал — менший діапазон
@@ -126,7 +126,7 @@ Gekko обирає, який із 16 входів під’єднаний до �
 3. Для кожного входу створіть **`analog_input_channel`**, вибравши hub і
    канал 0–15.
 
-![CD74HC4067 hub settings: the four S0–S3 select pins, enable pin, signal pin and its attenuation](../../../../assets/screenshots/device-cd74hc4067-hub.png)
+![CD74HC4067 hub settings: the four S0–S3 select pins, enable pin, signal pin and its attenuation](../../../../../assets/screenshots/device-cd74hc4067-hub.png)
 
 Оскільки всі 16 каналів проходять через один ADC-пін ESP32, вони ділять
 точність цього ADC та обмеження на Wi-Fi-піни — мультиплексор дає вам
@@ -217,7 +217,7 @@ ADC зручний, але не точний.
   [термостатом](/gekko/uk/reference/devices/thermostat/);
 - мілівольти з’являються в
   [display placeholders](/gekko/uk/guides/displays/) для OLED/TFT;
-- на [MQTT builds](/gekko/guides/mqtt-home-assistant/) кожен leaf input
+- на [MQTT builds](/gekko/uk/guides/mqtt-home-assistant/) кожен leaf input
   (портовий вхід і кожен канал) виявляється в Home Assistant як `voltage`
   sensor. Hub-и — ні: вони надають канали, а не власне читання.
 

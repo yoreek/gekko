@@ -12,7 +12,7 @@ sidebar:
 
 ## Розклад
 
-[Schedule device](/gekko/reference/devices/schedule/) зберігає до 4 правил.
+[Schedule device](/gekko/uk/reference/devices/schedule/) зберігає до 4 правил.
 Кожне правило має:
 
 - **маску днів тижня** — у які дні воно діє;
@@ -72,10 +72,10 @@ AND: вихід увімкнений лише тоді, коли виконую�
 
 ## Пов’язані пристрої
 
-- **[Thermostat](/gekko/reference/devices/thermostat/)** — гістерезисне
+- **[Thermostat](/gekko/uk/reference/devices/thermostat/)** — гістерезисне
   температурне керування вимикачем.
-- **[Dosing pump](/gekko/reference/devices/dosing-pump/)** — дозування за
+- **[Dosing pump](/gekko/uk/reference/devices/dosing-pump/)** — дозування за
   розкладом з калібруванням, обліком контейнера та журналом доз.
-- **[Scheduled analog output](/gekko/reference/devices/analog-outputs/)** —
+- **[Scheduled analog output](/gekko/uk/reference/devices/analog-outputs/)** —
   добова крива яскравості/рівня для PWM-виходів, яку можна комбінувати в
   багатоканальні світильники.

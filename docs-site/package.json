@@ -9,13 +9,20 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "fix:links": "node scripts/fix-doc-links.mjs --write",
+    "check:links": "node scripts/fix-doc-links.mjs --check",
+    "test:links": "node --test scripts/fix-doc-links.test.mjs"
   },
   "dependencies": {
     "@astrojs/starlight": "^0.41.3",
     "astro": "^7.1.1",
     "sharp": "^0.35.3",
     "starlight-llms-txt": "^0.11.0"
+  },
+  "devDependencies": {
+    "github-slugger": "^2.0.0",
+    "starlight-links-validator": "^0.25.2"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

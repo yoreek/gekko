@@ -10,7 +10,7 @@ MOSFET-модулі, статусні світлодіоди. Зазвичай �
 створюють; [інструкція з першого пристрою](/gekko/uk/getting-started/first-device/)
 використовує саме його.
 
-![GPIO switch settings](../../../../assets/screenshots/device-gpio-switch.png)
+![GPIO switch settings](../../../../../assets/screenshots/device-gpio-switch.png)
 
 ## Залежності
 

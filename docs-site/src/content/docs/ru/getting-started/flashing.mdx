@@ -1,0 +1,76 @@
+---
+title: Прошивка
+description: Прошейте Gekko на ESP32 из браузера, через esptool или через PlatformIO.
+sidebar:
+  order: 3
+---
+
+import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Готовые к прошивке бинарники (`bootloader.bin`, `partitions.bin`,
+`firmware.bin`, `littlefs.bin`) собираются на каждый commit и содержат и
+прошивку, и ресурсы веб-портала.
+
+## Вариант 1 — веб-установщик (проще всего)
+
+Прошивка прямо из браузера, без установки дополнительного ПО:
+
+<LinkButton href="/gekko/install/" icon="rocket">Открыть веб-установщик Gekko</LinkButton>
+
+<Steps>
+
+1. Подключите плату ESP32 к компьютеру USB-кабелем **для передачи данных**.
+
+2. Откройте установщик в **Chrome**, **Edge** или **Opera** на рабочем столе
+   (Web Serial недоступен в Firefox/Safari и на мобильных браузерах).
+
+3. Нажмите **Install Gekko**, выберите serial port платы в диалоге браузера
+   и подтвердите. При первой установке предлагается стереть устройство.
+
+4. Дождитесь завершения прогресс-бара, затем перейдите к
+   [Первому запуску и WiFi-setup](/gekko/ru/getting-started/first-boot-wifi/).
+
+</Steps>
+
+:::caution
+Прошивка через браузер зависит от поддержки serial со стороны ОС и USB-чипа,
+и на некоторых сочетаниях Linux + USB-serial chip есть известные проблемы. Если
+не получилось, используйте один из вариантов ниже — они прошивают ровно те же
+бинарники.
+:::
+
+## Вариант 2 — esptool
+
+<Tabs syncKey="os">
+  <TabItem label="Windows / macOS / Linux (без Python)">
+
+    1. Скачайте standalone-бинарник `esptool` для своей ОС со
+       [esptool releases page](https://github.com/espressif/esptool/releases).
+    2. Положите его рядом со скриптами в папке репозитория `webflash/`
+       (переименуйте в `esptool` на macOS/Linux, в `esptool.exe` на Windows).
+    3. Запустите `webflash/flash.sh [PORT]` (macOS/Linux) или
+       `webflash/flash.bat [PORT]` (Windows). Если порт не указан, esptool
+       попытается найти его сам.
+
+  </TabItem>
+  <TabItem label="Python">
+
+    ```sh
+    pip install esptool
+    python3 webflash/flash.py [PORT]
+    ```
+
+  </TabItem>
+</Tabs>
+
+## Вариант 3 — PlatformIO (для разработки)
+
+Если вы собираете из исходников:
+
+```sh
+pio run -e esp32dev -t upload       # прошивка, через serial
+pio run -e esp32dev -t uploadfs     # LittleFS ресурсы портала, через serial
+```
+
+Смотрите `CLAUDE.md` и `docs/platformio-environments.md` в репозитории для
+полного рабочего процесса разработки.

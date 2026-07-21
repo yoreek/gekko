@@ -12,9 +12,9 @@ sidebar:
 ## Стандартна збірка: оновлення через serial
 
 У стандартній схемі з одним застосунком оновлення — це [перепрошивання через
-USB](/gekko/getting-started/flashing/). Конфігурація пристрою зберігається в
+USB](/gekko/uk/getting-started/flashing/). Конфігурація пристрою зберігається в
 NVS і переживає перепрошивання — але все одно варто мати
-[резервний bundle](/gekko/guides/backup-restore/) перед оновленням.
+[резервний bundle](/gekko/uk/guides/backup-restore/) перед оновленням.
 
 ## PlatformIO OTA upload (для розробників)
 

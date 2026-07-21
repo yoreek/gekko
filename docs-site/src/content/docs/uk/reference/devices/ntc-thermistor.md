@@ -11,7 +11,7 @@ NTC-терморезистор — це резистор, чий опір **зм
 температури** (NTC = Negative Temperature Coefficient). Це найдешевший
 температурний сенсор, який взагалі існує — буквально кілька центів — і він
 буває у вигляді скляних крапель, епоксидних капсул і водонепроникних зондів.
-Порівняно з [DS18B20](/gekko/reference/devices/ds18b20/) його особливість у
+Порівняно з [DS18B20](/gekko/uk/reference/devices/ds18b20/) його особливість у
 тому, що терморезистор є *аналоговим*: він просто змінює опір, тож треба
 виміряти цей опір і перетворити його на температуру. Gekko робить обидві
 речі.
@@ -20,7 +20,7 @@ NTC-терморезистор — це резистор, чий опір **зм
 швидким у відгуку, але він менш точний «з коробки», потребує резистора й ADC,
 а опір кабелю може трохи зміщувати покази. DS18B20 обирайте, коли потрібна
 готова точність; NTC — коли потрібні дешевизна, компактність або швидкість —
-або коли у вас уже є [ADS1115](/gekko/reference/devices/analog-inputs/) із
+або коли у вас уже є [ADS1115](/gekko/uk/reference/devices/analog-inputs/) із
 вільним каналом.
 
 ## Підключення: дільник напруги
@@ -29,7 +29,7 @@ NTC-терморезистор — це резистор, чий опір **зм
 послідовно з фіксованим **серійним резистором**, утворюючи дільник між
 живленням і землею, а Gekko вимірює напругу в середній точці:
 
-![NTC voltage divider feeding an analog input, then the NTC sensor converting millivolts to a temperature](../../../../assets/diagrams/ntc-divider.svg)
+![NTC voltage divider feeding an analog input, then the NTC sensor converting millivolts to a temperature](../../../../../assets/diagrams/ntc-divider.svg)
 
 Коли опір NTC змінюється з температурою, середня напруга теж змінюється;
 Gekko перетворює цю напругу назад у опір NTC (він знає серійний резистор і
@@ -38,7 +38,7 @@ Gekko перетворює цю напругу назад у опір NTC (ві�
 значення Gekko.
 
 Ця середня точка — просто аналогова напруга, тож NTC-сенсор не володіє
-власним ADC-піном. Він залежить від **[аналогового входу](/gekko/reference/devices/analog-inputs/)**,
+власним ADC-піном. Він залежить від **[аналогового входу](/gekko/uk/reference/devices/analog-inputs/)**,
 а це означає, що дільник можна підключити до:
 
 - **вбудованого ADC ESP32** (`analog_port_input`) — найпростіший, але
@@ -51,14 +51,14 @@ Gekko перетворює цю напругу назад у опір NTC (ві�
 ## Налаштування
 
 1. Створіть аналоговий вхід, до якого під’єднано середину дільника — див.
-   [Analog inputs](/gekko/reference/devices/analog-inputs/). Для стабільного
+   [Analog inputs](/gekko/uk/reference/devices/analog-inputs/). Для стабільного
    читання рекомендовано канал ADS1115.
 2. Створіть **`ntc_thermistor_temperature_sensor`** і виберіть цей аналоговий
    вхід як залежність.
 3. Виберіть **preset**, що відповідає вашому терморезистору, або введіть
    параметри вручну.
 
-![NTC sensor settings: analog input picker, preset, divider values, formula mode and reporting](../../../../assets/screenshots/device-ntc-thermistor.png)
+![NTC sensor settings: analog input picker, preset, divider values, formula mode and reporting](../../../../../assets/screenshots/device-ntc-thermistor.png)
 
 ### Preset — це лише швидкий старт
 
@@ -120,10 +120,10 @@ offset, доки вони не збігаються — такий одното�
 Температура далі використовується в Gekko так само, як і будь-який
 температурний сенсор:
 
-- [термостат](/gekko/reference/devices/thermostat/) для керування нагрівачем
+- [термостат](/gekko/uk/reference/devices/thermostat/) для керування нагрівачем
   або охолоджувачем;
-- [display placeholders](/gekko/guides/displays/) на OLED/TFT;
-- Home Assistant як read-only `sensor` на [MQTT-збірках](/gekko/guides/mqtt-home-assistant/).
+- [display placeholders](/gekko/uk/guides/displays/) на OLED/TFT;
+- Home Assistant як read-only `sensor` на [MQTT-збірках](/gekko/uk/guides/mqtt-home-assistant/).
 
 ## Конфігурація
 

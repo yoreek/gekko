@@ -11,7 +11,7 @@ sidebar:
 
 Web Serial існує лише в Chromium-браузерах — використовуйте **Chrome, Edge
 або Opera на десктопі**. Firefox, Safari та всі мобільні браузери не
-вміють прошивати. Або використайте [esptool scripts](/gekko/getting-started/flashing/),
+вміють прошивати. Або використайте [esptool scripts](/gekko/uk/getting-started/flashing/),
 які працюють всюди.
 
 ### Інсталятор не показує serial port моєї плати
@@ -71,8 +71,8 @@ setup AP лишається доступною паралельно з ними.
 ### Куди поділася сторінка OTA / MQTT?
 
 Ці сторінки з’являються лише в збірках прошивки, скомпільованих із
-відповідною функцією — див. [OTA updates](/gekko/guides/ota-updates/) і
-[MQTT & Home Assistant](/gekko/guides/mqtt-home-assistant/).
+відповідною функцією — див. [OTA updates](/gekko/uk/guides/ota-updates/) і
+[MQTT & Home Assistant](/gekko/uk/guides/mqtt-home-assistant/).
 
 ## Відновлення
 
@@ -80,7 +80,7 @@ setup AP лишається доступною паралельно з ними.
 
 Перепрошийте з повним стиранням (опція erase у вебінсталяторі або
 `esptool erase_flash` + reflash). Це очищає WiFi-облікові дані та весь
-реєстр пристроїв — спочатку експортуйте [backup](/gekko/guides/backup-restore/),
+реєстр пристроїв — спочатку експортуйте [backup](/gekko/uk/guides/backup-restore/),
 якщо хочете потім відновити налаштування.
 
 ### Яку версію прошивки я зараз використовую?

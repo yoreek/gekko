@@ -21,7 +21,7 @@ I2C (Inter-Integrated Circuit, «ай-скверед-сі») — це робоч
 
 ## Підключення
 
-![I2C wiring: SDA and SCL with pull-ups, OLED, HTU21, DS3231 and PCF8574 in parallel, each with its address](../../../../assets/diagrams/i2c-wiring.svg)
+![I2C wiring: SDA and SCL with pull-ups, OLED, HTU21, DS3231 and PCF8574 in parallel, each with its address](../../../../../assets/diagrams/i2c-wiring.svg)
 
 Обидві лінії є open-drain і потребують pull-up резисторів до 3.3 V. На
 практиці ви рідко додаєте їх вручну: **майже кожен breakout-модуль (OLED,
@@ -56,7 +56,7 @@ Gekko не дозволяє створити два пристрої з одна
 Проблема з проводкою тут з’являється першою — датчики на несправній шині
 показують `dependency_blocked`, а не фальшиві значення.
 
-![I2C bus settings with scan and diagnostics](../../../../assets/screenshots/device-i2c-bus.png)
+![I2C bus settings with scan and diagnostics](../../../../../assets/screenshots/device-i2c-bus.png)
 
 ## Конфігурація
 

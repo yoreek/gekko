@@ -11,7 +11,7 @@ sidebar:
 занадто холодна, увімкнути нагрівач; коли стане достатньо тепло, вимкнути
 його*. У Gekko це один пристрій `thermostat`, під’єднаний до двох інших:
 
-![Control loop: DS18B20 measures, thermostat decides, relay drives the heater, water warms up, repeat](../../../../assets/diagrams/thermostat-loop.svg)
+![Control loop: DS18B20 measures, thermostat decides, relay drives the heater, water warms up, repeat](../../../../../assets/diagrams/thermostat-loop.svg)
 
 Він працює і для охолодження — режим **cool** керує чилером або вентилятором
 з тією самою логікою, але дзеркально, а **off** просто ставить вихід на
@@ -23,7 +23,7 @@ sidebar:
 хвилину, коли значення коливається навколо setpoint. Рішення — **мертва
 зона**, тобто гістерезис:
 
-![Hysteresis chart: heater on below 24.5, off at 25.0, nothing switches inside the band](../../../../assets/diagrams/thermostat-hysteresis.svg)
+![Hysteresis chart: heater on below 24.5, off at 25.0, nothing switches inside the band](../../../../../assets/diagrams/thermostat-hysteresis.svg)
 
 За цільової температури 25.0 °C і гістерезису 0.5 °C у режимі heat:
 
@@ -67,7 +67,7 @@ sidebar:
 3. Створіть **thermostat**: виберіть сенсор і вимикач, задайте режим,
    цільову температуру та гістерезис.
 
-![Thermostat settings in the portal](../../../../assets/screenshots/device-thermostat.png)
+![Thermostat settings in the portal](../../../../../assets/screenshots/device-thermostat.png)
 
 ## Конфігурація
 
@@ -87,7 +87,7 @@ sidebar:
 Runtime повідомляє поточну температуру, стан виходу та статус —
 `heating`, `cooling`, `idle`, `sensor_timeout`, `out_of_range`,
 `dependency_blocked` — показані з іконками в порталі й записані в журнал
-подій пристрою. На [MQTT-збірках](/gekko/guides/mqtt-home-assistant/)
+подій пристрою. На [MQTT-збірках](/gekko/uk/guides/mqtt-home-assistant/)
 термостат з’являється в Home Assistant як повноцінна `climate`-сутність
 (mode, setpoint, current temperature, action), а зміни setpoint з HA
 перевіряються на відповідність safe range.

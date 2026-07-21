@@ -15,14 +15,14 @@ breakout-плата розміром з ніготь, тому найкраще 
 акваріумом, вологість у тераріумі чи віварії, повітря в теплиці або
 інкубаторі.
 
-На відміну від [DS18B20](/gekko/reference/devices/ds18b20/), який є
+На відміну від [DS18B20](/gekko/uk/reference/devices/ds18b20/), який є
 водонепроникним зондом на кабелі для *температури води*, HTU21 — це сенсор
 на платі для *повітря* — і він ще й вимірює вологість, чого DS18B20 не вміє
 взагалі.
 
 ## Підключення: це I2C-пристрій
 
-HTU21 живе на [шіні I2C](/gekko/reference/devices/i2c-bus/) як і будь-яка
+HTU21 живе на [шіні I2C](/gekko/uk/reference/devices/i2c-bus/) як і будь-яка
 інша I2C-периферія — SDA, SCL, 3.3 V, GND, а pull-up зазвичай уже є на самій
 breakout-платі. Його адреса фіксована: **`0x40`** (без джамперів), тож на
 одній шині можна мати лише **один** HTU21; для другого повітряного датчика
@@ -30,12 +30,12 @@ breakout-платі. Його адреса фіксована: **`0x40`** (бе�
 
 ## Налаштування
 
-1. Створіть **[I2C bus](/gekko/reference/devices/i2c-bus/)** на пінах SDA/SCL
+1. Створіть **[I2C bus](/gekko/uk/reference/devices/i2c-bus/)** на пінах SDA/SCL
    (якщо ще не маєте його) і використайте **Scan bus**, щоб переконатися, що
    датчик відповідає на `0x40`.
 2. Створіть пристрій **`htu21`** і виберіть цю шину як його залежність.
 
-![HTU21 settings: I2C bus picker, address, unit, and reporting deltas](../../../../assets/screenshots/device-htu21.png)
+![HTU21 settings: I2C bus picker, address, unit, and reporting deltas](../../../../../assets/screenshots/device-htu21.png)
 
 Ось і все — на старті нічого калібрувати не потрібно. Пристрій одразу
 повідомляє температуру та вологість, кожна зі своїм прапорцем валідності:
@@ -47,14 +47,14 @@ breakout-платі. Його адреса фіксована: **`0x40`** (бе�
 На відміну від більшості датчиків, HTU21 віддає два живі значення:
 
 - **Температура** — надає роль `temperature_sensor`, тож може керувати
-  [термостатом](/gekko/reference/devices/thermostat/) (наприклад, нагрівальним
+  [термостатом](/gekko/uk/reference/devices/thermostat/) (наприклад, нагрівальним
   килимком для тераріуму), потрапляти в
-  [display placeholders](/gekko/guides/displays/) і з’являтися в Home
+  [display placeholders](/gekko/uk/guides/displays/) і з’являтися в Home
   Assistant.
 - **Вологість** — повідомляється у відсотках для дашборду, дисплеїв і Home
   Assistant.
 
-На [MQTT-збірках](/gekko/guides/mqtt-home-assistant/) обидва значення
+На [MQTT-збірках](/gekko/uk/guides/mqtt-home-assistant/) обидва значення
 з’являються в Home Assistant — як `temperature` sensor і `humidity` sensor —
 з одного пристрою.
 

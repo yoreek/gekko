@@ -20,7 +20,7 @@ sidebar:
 
 ## Підключення: три дроти і один резистор
 
-![1-Wire wiring: 3V3, GND, DATA with a 4.7 kΩ pull-up between DATA and 3V3](../../../../assets/diagrams/onewire-wiring.svg)
+![1-Wire wiring: 3V3, GND, DATA with a 4.7 kΩ pull-up between DATA and 3V3](../../../../../assets/diagrams/onewire-wiring.svg)
 
 Типовий водонепроникний зонд DS18B20 має три виводи:
 
@@ -49,7 +49,7 @@ sidebar:
 
 ## Багато пристроїв на одному дроті
 
-![Bus topology: ESP32 with a pull-up and three probes on one data line, each with its own ROM address](../../../../assets/diagrams/onewire-bus.svg)
+![Bus topology: ESP32 with a pull-up and three probes on one data line, each with its own ROM address](../../../../../assets/diagrams/onewire-bus.svg)
 
 Нові зонди підключаються **паралельно** до тих самих трьох ліній — під’єднуйте
 DATA, 3.3 V та GND там, де зручно. Ланцюжок "зонд до зонда" є електрично
@@ -60,7 +60,7 @@ DATA, 3.3 V та GND там, де зручно. Ланцюжок "зонд до 
 
 Кожен пристрій 1-Wire ідентифікується унікальною **64-бітною ROM-адресою**:
 
-![64-bit ROM address anatomy: 8-bit family code, 48-bit unique serial, 8-bit CRC; scan discovers, match addresses one device](../../../../assets/diagrams/onewire-rom.svg)
+![64-bit ROM address anatomy: 8-bit family code, 48-bit unique serial, 8-bit CRC; scan discovers, match addresses one device](../../../../../assets/diagrams/onewire-rom.svg)
 
 Для роботи спільного дроту є дві операції:
 

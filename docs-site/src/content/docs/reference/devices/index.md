@@ -31,7 +31,7 @@ detailed pages coming iteratively.
 | [`analog_output`](/gekko/reference/devices/analog-outputs/) | LEDC PWM output channel (dimmable light, fan, …) |
 | [`fade_analog_output`](/gekko/reference/devices/analog-outputs/) | Smooth fade transitions for an analog output |
 | [`scheduled_analog_output`](/gekko/reference/devices/analog-outputs/) | Daily level curve driving an analog output |
-| [`analog_output_composer`](/gekko/reference/devices/analog-outputs/) | Groups analog channels into one fixture — see the [aquarium light example](/gekko/reference/devices/analog-outputs/#worked-example-an-aquarium-light) |
+| [`analog_output_composer`](/gekko/reference/devices/analog-outputs/) | Groups analog channels into one fixture — see the [aquarium light example](/gekko/reference/devices/analog-outputs/#worked-example-a-five-channel-aquarium-light) |
 
 ## Analog inputs
 

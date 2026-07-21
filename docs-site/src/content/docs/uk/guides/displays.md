@@ -12,8 +12,8 @@ Gekko керує **SSD1306** I2C OLED-дисплеями та **ST7735** SPI TFT
 
 ## Налаштування дисплея
 
-1. Спершу створіть пристрій шини: [**I2C bus**](/gekko/reference/devices/i2c-bus/)
-   (піни SDA/SCL) для SSD1306 або [**SPI bus**](/gekko/reference/devices/spi-bus/)
+1. Спершу створіть пристрій шини: [**I2C bus**](/gekko/uk/reference/devices/i2c-bus/)
+   (піни SDA/SCL) для SSD1306 або [**SPI bus**](/gekko/uk/reference/devices/spi-bus/)
    для ST7735.
 2. Створіть пристрій дисплея та виберіть цю шину як його залежність (плюс
    I2C-адресу або керуючі піни TFT).

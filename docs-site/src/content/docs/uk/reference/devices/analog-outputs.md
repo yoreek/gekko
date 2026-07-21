@@ -35,7 +35,7 @@ Gekko моделює це чотирма типами пристроїв, які
 Fade або scheduled output бере рівно одну залежність з роллю `analog_output`
 і *сам надає ту саму роль*, тож вони складаються:
 
-![Decorator chain: scheduled output computes the level, fade smooths it, analog output writes PWM](../../../../assets/diagrams/analog-chain.svg)
+![Decorator chain: scheduled output computes the level, fade smooths it, analog output writes PWM](../../../../../assets/diagrams/analog-chain.svg)
 
 - **Fade** — `maxStep` (відсотків за крок) і `stepIntervalMs` задають
   швидкість переходу; типове ≈1% кожні 200 ms перетворює будь-яку зміну,
@@ -52,7 +52,7 @@ Fade або scheduled output бере рівно одну залежність �
 
 Мета — день, що виглядає ось так:
 
-![Daily curves of five channels: blues ramp first and linger, white peaks midday, violet accents, moonlight at night](../../../../assets/diagrams/aquarium-light-day.svg)
+![Daily curves of five channels: blues ramp first and linger, white peaks midday, violet accents, moonlight at night](../../../../../assets/diagrams/aquarium-light-day.svg)
 
 Сині канали піднімаються першими і спадають останніми (корали фотосинтезують
 переважно в синьому), теплий white заповнює полуденні години, violet додає
@@ -68,7 +68,7 @@ Fade або scheduled output бере рівно одну залежність �
 4. Створіть один **`analog_output_composer`** "Aquarium light" і додайте
    п’ять scheduled output як його канали.
 
-![Aquarium light composer in the portal](../../../../assets/screenshots/device-analog-composer.png)
+![Aquarium light composer in the portal](../../../../../assets/screenshots/device-analog-composer.png)
 
 Тепер composer поводиться як *саме* це світло:
 
@@ -91,6 +91,6 @@ Fade-шар можна пропустити, якщо вас не хвилюют
 Усі чотири типи повідомляють свій живий рівень (fade ще й target та те, чи
 він усе ще в переході). Слайдер дашборду або команда `setOutput` керує
 каналом напряму; зміни режиму йдуть через `setMode`. На
-[MQTT builds](/gekko/guides/mqtt-home-assistant/) канали виявляються в Home
+[MQTT builds](/gekko/uk/guides/mqtt-home-assistant/) канали виявляються в Home
 Assistant. Внутрішні деталі:
 [`docs/analog-output.md`](https://github.com/yoreek/gekko/blob/master/docs/analog-output.md).

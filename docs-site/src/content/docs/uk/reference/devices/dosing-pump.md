@@ -28,7 +28,7 @@ sidebar:
 
 ## Деталі та як Gekko їх поєднує
 
-![Dosing pump setup: container with float sensor, peristaltic pump driven through a relay, ESP32, aquarium](../../../../assets/diagrams/dosing-setup.svg)
+![Dosing pump setup: container with float sensor, peristaltic pump driven through a relay, ESP32, aquarium](../../../../../assets/diagrams/dosing-setup.svg)
 
 Вам потрібно чотири недорогі деталі, і кожна з них мапиться на пристрій Gekko:
 
@@ -46,7 +46,7 @@ sidebar:
 ## Налаштування
 
 1. Створіть **GPIO switch** на піні, який керує реле насоса (див.
-   [your first device](/gekko/getting-started/first-device/) — це той самий
+   [your first device](/gekko/uk/getting-started/first-device/) — це той самий
    потік).
 2. За потреби створіть **binary sensor** для поплавкового вимикача.
 3. Створіть пристрій **dosing pump**: виберіть switch як його *pump switch*,
@@ -54,7 +54,7 @@ sidebar:
    задайте ємність контейнера і поріг попередження, а також додайте dose slots
    до розкладу.
 
-![Dosing pump settings in the portal](../../../../assets/screenshots/device-dosing-pump.png)
+![Dosing pump settings in the portal](../../../../../assets/screenshots/device-dosing-pump.png)
 
 ## Калібруйте, перш ніж довіряти
 
@@ -62,7 +62,7 @@ Gekko перетворює мілілітри на секунди роботи �
 насоса (`ml/s`). Довжина трубки, діаметр і висота підйому змінюють його, тож
 один раз виміряйте на вашій реальній схемі:
 
-![Calibration: run a dose, measure the real volume, enter it](../../../../assets/diagrams/dosing-calibration.svg)
+![Calibration: run a dose, measure the real volume, enter it](../../../../../assets/diagrams/dosing-calibration.svg)
 
 Калібрувальні прогони виключаються зі статистики та історії, але фактично
 дозована рідина **списується** з контейнера — вона справді вийшла з пляшки.
@@ -72,11 +72,11 @@ Gekko перетворює мілілітри на секунди роботи �
 
 Розклад зберігає dose slots (час доби + кількість) і шаблон дня — кожні N днів
 або конкретні дні тижня. Пристрій оцінює це за своїм годинником, тож
-[дайте йому надійне джерело часу](/gekko/reference/devices/schedule/#time--clock).
+[дайте йому надійне джерело часу](/gekko/uk/reference/devices/schedule/#час-і-годинник).
 Добовий обсяг навмисно розбивається на кілька малих доз — знову ж таки для
 стабільності.
 
-![Dose timeline: on-time dose, dose within the 5-minute grace window, missed dose skipped](../../../../assets/diagrams/dosing-timeline.svg)
+![Dose timeline: on-time dose, dose within the 5-minute grace window, missed dose skipped](../../../../../assets/diagrams/dosing-timeline.svg)
 
 Дві політики важливо зрозуміти:
 
@@ -104,7 +104,7 @@ Gekko перетворює мілілітри на секунди роботи �
 
 Скажіть Gekko ємність пляшки, і він рахуватиме кожен мілілітр:
 
-![Container tracking: counter decreases, low-level alert, empty blocks auto dosing](../../../../assets/diagrams/dosing-container.svg)
+![Container tracking: counter decreases, low-level alert, empty blocks auto dosing](../../../../../assets/diagrams/dosing-container.svg)
 
 - Нижче **warning threshold** портал піднімає alert (дзвіночок + toast) —
   час готувати нову партію.

@@ -17,7 +17,7 @@ sidebar:
 | --- | --- |
 | [`onewire_bus`](/gekko/uk/reference/devices/onewire-bus/) | Шина 1-Wire на GPIO; батьківський пристрій для DS18B20, зі скануванням пристроїв |
 | [`i2c_bus`](/gekko/uk/reference/devices/i2c-bus/) | Шина I2C (SDA/SCL); батьківський пристрій для дисплеїв, HTU21, RTC і port-експандерів |
-| [`spi_bus`](/gekko/reference/devices/spi-bus/) | Шина SPI; батьківський пристрій для TFT ST7735 |
+| [`spi_bus`](/gekko/uk/reference/devices/spi-bus/) | Шина SPI; батьківський пристрій для TFT ST7735 |
 | `rtc_ds3231` | Годинник реального часу DS3231 — тримає розклади без NTP |
 | `dummy` | Плейсхолдер/тестовий пристрій |
 
@@ -28,10 +28,10 @@ sidebar:
 | [`gpio_switch`](/gekko/uk/reference/devices/gpio-switch/) | Вихід on/off на GPIO — реле, MOSFET, світлодіоди |
 | [`pcf8574_expander`](/gekko/uk/reference/devices/port-expanders/) / [`pcf8575_expander`](/gekko/uk/reference/devices/port-expanders/) | 8-/16-бітні I2C port-експандери |
 | [`port_expander_switch`](/gekko/uk/reference/devices/port-expanders/) | Вимикач на одному піні експандера — ті самі опції, що й GPIO switch |
-| [`analog_output`](/gekko/reference/devices/analog-outputs/) | PWM-вихід LEDC (димований світильник, вентилятор, …) |
-| [`fade_analog_output`](/gekko/reference/devices/analog-outputs/) | Плавні переходи для аналогового виходу |
-| [`scheduled_analog_output`](/gekko/reference/devices/analog-outputs/) | Добова крива рівня для аналогового виходу |
-| [`analog_output_composer`](/gekko/reference/devices/analog-outputs/) | Об’єднує аналогові канали в одну люстру — див. [приклад з акваріумним світлом](/gekko/reference/devices/analog-outputs/#worked-example-an-aquarium-light) |
+| [`analog_output`](/gekko/uk/reference/devices/analog-outputs/) | PWM-вихід LEDC (димований світильник, вентилятор, …) |
+| [`fade_analog_output`](/gekko/uk/reference/devices/analog-outputs/) | Плавні переходи для аналогового виходу |
+| [`scheduled_analog_output`](/gekko/uk/reference/devices/analog-outputs/) | Добова крива рівня для аналогового виходу |
+| [`analog_output_composer`](/gekko/uk/reference/devices/analog-outputs/) | Об’єднує аналогові канали в одну люстру — див. [приклад з акваріумним світлом](/gekko/uk/reference/devices/analog-outputs/#робочий-приклад-пятиканальне-акваріумне-світло) |
 
 ## Аналогові входи
 
@@ -58,7 +58,7 @@ sidebar:
 | [`thermostat`](/gekko/uk/reference/devices/thermostat/) | Гістерезисне керування нагрівом/охолодженням: датчик на вході, вимикач на виході |
 | [`schedule`](/gekko/uk/reference/devices/schedule/) | Розклади з точністю до хвилини за часом доби/днем тижня |
 | `auto_switch` | Керує вимикачем з AND-умов, з ручним override і паузою — див. [Розклади та автоматика](/gekko/uk/guides/schedules-and-automation/) |
-| [`dosing_pump`](/gekko/reference/devices/dosing-pump/) | Дозування з калібруванням, розкладом і журналом доз |
+| [`dosing_pump`](/gekko/uk/reference/devices/dosing-pump/) | Дозування з калібруванням, розкладом і журналом доз |
 
 ## Дисплеї
 

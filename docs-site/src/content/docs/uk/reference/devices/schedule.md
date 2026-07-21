@@ -10,7 +10,7 @@ sidebar:
 додавайте його як умову до [auto switch](/gekko/uk/guides/schedules-and-automation/)
 (або до розкладу дозувального насоса), щоб щось почало відбуватись.
 
-![Schedule rule editor](../../../../assets/screenshots/device-schedule.png)
+![Schedule rule editor](../../../../../assets/screenshots/device-schedule.png)
 
 ## Залежності
 

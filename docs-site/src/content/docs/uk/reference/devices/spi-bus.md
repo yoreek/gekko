@@ -9,7 +9,7 @@ sidebar:
 ## Що таке SPI?
 
 SPI (Serial Peripheral Interface) — це швидка послідовна шина: якщо
-[I2C](/gekko/reference/devices/i2c-bus/) зупиняється на 400 kHz, SPI охоче
+[I2C](/gekko/uk/reference/devices/i2c-bus/) зупиняється на 400 kHz, SPI охоче
 розганяється до десятків MHz, саме тому кольорові дисплеї використовують її.
 Компроміс — більше дротів: спільний **clock** (SCK) і **data** (MOSI,
 опційно MISO для зворотних даних), плюс окрема лінія **chip-select** (CS)
@@ -22,7 +22,7 @@ MISO та апаратним SPI-host ESP32. Сьогодні його єдин�
 
 ## Підключення
 
-![SPI wiring: shared SCK and MOSI to the ST7735, chip-select and data/command pins per display](../../../../assets/diagrams/spi-wiring.svg)
+![SPI wiring: shared SCK and MOSI to the ST7735, chip-select and data/command pins per display](../../../../../assets/diagrams/spi-wiring.svg)
 
 Типовий модуль ST7735 мапиться так (назви на шовкографії можуть відрізнятися):
 
@@ -44,7 +44,7 @@ MISO та апаратним SPI-host ESP32. Сьогодні його єдин�
 стан транзакції — а його вимкнення блокує дисплей через `dependency_blocked`
 замість того, щоб лишати старі пікселі.
 
-![SPI bus settings with diagnostics](../../../../assets/screenshots/device-spi-bus.png)
+![SPI bus settings with diagnostics](../../../../../assets/screenshots/device-spi-bus.png)
 
 ## Конфігурація
 

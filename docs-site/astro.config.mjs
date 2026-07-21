@@ -2,6 +2,7 @@
 import { defineConfig } from 'astro/config'
 import starlight from '@astrojs/starlight'
 import starlightLlmsTxt from 'starlight-llms-txt'
+import starlightLinksValidator from 'starlight-links-validator'
 
 export default defineConfig({
   site: 'https://yoreek.github.io',
@@ -14,6 +15,11 @@ export default defineConfig({
       logo: { src: './src/assets/logo.svg' },
       favicon: '/favicon.svg',
       plugins: [
+        starlightLinksValidator({
+          errorOnInconsistentLocale: true,
+          errorOnRelativeLinks: false,
+          exclude: ['/gekko/install/'],
+        }),
         starlightLlmsTxt({
           projectName: 'Gekko',
           description:
