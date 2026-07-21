@@ -1,0 +1,55 @@
+---
+title: Gekko
+description: Un controllore modulare di dispositivi per ESP32 — una sola immagine firmware, un catalogo di tipi di dispositivi, configurato interamente dal portale web integrato.
+template: splash
+hero:
+  tagline: Un controllore modulare di dispositivi per ESP32. Una sola immagine firmware, 27 tipi di dispositivi componibili, nessuna ricompilazione per progetto — tutto viene collegato dal portale web integrato.
+  image:
+    file: ../../../assets/logo.svg
+  actions:
+    - text: Inizia
+      link: /gekko/it/getting-started/what-is-gekko/
+      icon: right-arrow
+    - text: Flash dal browser
+      link: /gekko/install/
+      icon: rocket
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid stagger>
+  <Card title="Nessun reflash per progetto" icon="setting">
+    Aggiungi switch, sensori, display, programmi e pompe dal portale web a
+    runtime. Il registro dei dispositivi, il grafo delle dipendenze e il layout
+    della dashboard vivono tutti sul dispositivo — mai in un file YAML da
+    ricompilare.
+  </Card>
+  <Card title="Local-first" icon="laptop">
+    Il portale è servito dalla flash dell'ESP32 via WiFi. MQTT + Home Assistant
+    Discovery e gli aggiornamenti OTA sono opzionali e disattivati di default.
+  </Card>
+  <Card title="Registro dispositivi tipizzato" icon="puzzle">
+    I dispositivi dichiarano dipendenze tra loro — uno switch dietro un
+    espansore di porte, un sensore dietro un bus I2C, una pompa controllata da
+    un programma — e il registro applica e persiste quel grafo.
+  </Card>
+  <Card title="Display, programmi, dosaggio" icon="rocket">
+    Display OLED/TFT con designer visuale del layout, programmi a precisione al
+    minuto, automazione basata su condizioni, termostati e pompe di dosaggio
+    con calibrazione e storico.
+  </Card>
+  <Card title="Home Assistant con un interruttore" icon="heart">
+    Attiva uno switch nella pagina di un dispositivo e appare in Home Assistant
+    come entità nativa — controllabile da HA, ma ancora in esecuzione
+    localmente.
+  </Card>
+  <Card title="Backup e ripristino" icon="document">
+    Esporta tutta la configurazione del dispositivo in un unico bundle
+    modificabile a mano e ripristinala su qualunque controller Gekko.
+  </Card>
+  <Card title="Parla la tua lingua" icon="translate">
+    Il portale è fornito in inglese, ucraino, russo, tedesco, spagnolo,
+    francese e italiano con rilevamento automatico della lingua del browser.
+  </Card>
+</CardGrid>

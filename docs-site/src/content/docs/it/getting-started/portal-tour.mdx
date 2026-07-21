@@ -1,0 +1,63 @@
+---
+title: Tour del portale
+description: Un rapido tour del portale web Gekko — dashboard, dispositivi, eventi e impostazioni.
+sidebar:
+  order: 5
+---
+
+Tutto in Gekko si gestisce dal portale web che il dispositivo serve dalla sua
+flash. Apri l'indirizzo IP del dispositivo in qualunque browser sulla stessa
+rete.
+
+## Dashboard
+
+La pagina iniziale. Componila con pannelli e widget collegati ai tuoi
+dispositivi — toggle switch, letture sensori, stato del termostato — disposti
+come vuoi. I valori si aggiornano live via WebSocket, senza refresh.
+
+![Gekko dashboard](../../../../assets/screenshots/portal-dashboard.png)
+
+## Dispositivi
+
+Il cuore del portale: la lista di ogni istanza di dispositivo che hai creato,
+con tipo, stato e output live.
+
+![Devices list](../../../../assets/screenshots/portal-devices.png)
+
+Da qui puoi:
+
+- **Aggiungere un dispositivo** — scegli un tipo dal catalogo, compila le
+  impostazioni e collega le sue dipendenze (su quale bus si trova, quale switch
+  pilota).
+- **Aprire un dispositivo** — una pagina di dettaglio con configurazione,
+  stato runtime live e controlli specifici del tipo (calibrazione per le pompe
+  di dosaggio, editor regole per i programmi, designer layout per i display).
+- **Abilitare/disabilitare o eliminare** un dispositivo. La cancellazione è
+  consapevole delle dipendenze: il registro non ti lascia rimuovere un bus I2C
+  da cui dipende ancora un display.
+
+## Eventi dispositivo
+
+Un registro degli eventi rilevanti — cambi di stato, errori, problemi di
+dipendenza — così puoi vedere cosa è successo mentre eri via.
+
+## Pannelli
+
+Gestisci i pannelli della dashboard e i widget appuntati su di essi.
+
+## Pagine impostazioni
+
+- **WiFi** — scansione rete, credenziali e opzioni di provisioning.
+- **Time** — timezone, NTP e l'RTC DS3231 se ne hai aggiunto uno.
+- **MQTT / Home Assistant** — impostazioni broker e discovery, sulle build
+  [compilate con la funzionalità](/gekko/it/guides/mqtt-home-assistant/).
+- **OTA** — upload firmware, sulle build
+  [compilate con Web OTA](/gekko/it/guides/ota-updates/).
+- **System** — info versione, [backup e restore](/gekko/it/guides/backup-restore/)
+  e azioni di manutenzione.
+
+## Lingua
+
+Il portale rileva automaticamente la lingua del browser e può essere
+impostato manualmente tra inglese, ucraino, russo, tedesco, spagnolo,
+francese e italiano — la scelta viene ricordata per browser.

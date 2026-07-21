@@ -9,11 +9,13 @@ This file tracks the translation workflow for `docs-site/`.
 - Before marking a file done, verify:
   - frontmatter still matches the source structure;
   - headings are present and in the same order;
-  - links still point to valid targets;
+  - links are not checked or fixed yet;
   - image and diagram paths are correct for the localized nesting level;
   - code blocks, commands, and technical names were not altered accidentally.
 - Commit in batches of 10 files unless the user changes the batch size.
-- Do not advance to the next locale or batch until the current batch is complete and checked.
+- Do not check links until the whole locale is translated.
+- Do not start the next locale until the current locale is fully translated and
+  link-checked.
 
 ## Workflow
 
@@ -21,10 +23,12 @@ This file tracks the translation workflow for `docs-site/`.
 2. Create the localized copy under the target locale.
 3. Translate only prose; keep technical tokens stable.
 4. Fix any path depth changes for images and diagrams.
-5. Verify the file against the English original.
+5. Verify the file against the English original, but do not check or fix links.
 6. Mark the file as done in this checklist.
 7. When the batch limit is reached, commit the batch.
-8. Before closing a locale, verify the file count and file-name set match the English source 1:1.
+8. After the whole locale is translated, run the locale-wide link checker once
+   and fix only the reported issues.
+9. Verify the file count and file-name set match the English source 1:1.
 
 ## Progress
 
@@ -258,6 +262,57 @@ This file tracks the translation workflow for `docs-site/`.
 - [x] French page, image, locale, and anchor links pass `pnpm check:links`
 - [x] French file count and file-name set match the English source 1:1
 
+### Italian locale
+
+#### Batch 1
+
+- [x] `docs-site/src/content/docs/it/index.mdx`
+- [x] `docs-site/src/content/docs/it/getting-started/what-is-gekko.md`
+- [x] `docs-site/src/content/docs/it/getting-started/hardware.md`
+- [x] `docs-site/src/content/docs/it/getting-started/flashing.mdx`
+- [x] `docs-site/src/content/docs/it/getting-started/first-boot-wifi.md`
+- [x] `docs-site/src/content/docs/it/getting-started/portal-tour.mdx`
+- [x] `docs-site/src/content/docs/it/getting-started/first-device.mdx`
+- [x] `docs-site/src/content/docs/it/guides/backup-restore.md`
+- [x] `docs-site/src/content/docs/it/guides/devices-and-dependencies.md`
+- [x] `docs-site/src/content/docs/it/guides/displays.md`
+
+#### Batch 2
+
+- [x] `docs-site/src/content/docs/it/reference/devices/index.md`
+- [x] `docs-site/src/content/docs/it/reference/devices/onewire-bus.md`
+- [x] `docs-site/src/content/docs/it/reference/devices/i2c-bus.md`
+- [x] `docs-site/src/content/docs/it/reference/devices/spi-bus.md`
+- [x] `docs-site/src/content/docs/it/reference/devices/ds18b20.md`
+- [x] `docs-site/src/content/docs/it/reference/devices/schedule.md`
+- [x] `docs-site/src/content/docs/it/reference/devices/thermostat.md`
+- [x] `docs-site/src/content/docs/it/guides/mqtt-home-assistant.md`
+- [x] `docs-site/src/content/docs/it/guides/ota-updates.md`
+- [x] `docs-site/src/content/docs/it/guides/schedules-and-automation.md`
+
+#### Batch 3
+
+- [x] `docs-site/src/content/docs/it/reference/devices/gpio-switch.md`
+- [x] `docs-site/src/content/docs/it/reference/devices/port-expanders.md`
+- [x] `docs-site/src/content/docs/it/reference/devices/analog-outputs.md`
+- [x] `docs-site/src/content/docs/it/reference/devices/analog-inputs.md`
+- [x] `docs-site/src/content/docs/it/reference/devices/ntc-thermistor.md`
+- [x] `docs-site/src/content/docs/it/reference/devices/htu21.md`
+- [x] `docs-site/src/content/docs/it/reference/devices/dosing-pump.md`
+- [x] `docs-site/src/content/docs/it/reference/faq.md`
+- [x] `docs-site/src/content/docs/it/reference/rest-api.md`
+
+#### Status
+
+- [x] Italian locale files translated
+- [x] Italian page, image, locale, and anchor links pass `pnpm check:links`
+- [x] Italian file count and file-name set match the English source 1:1
+
+### Short version
+
+1. Translate all files in the locale.
+2. Run link check.
+
 ### Automated verification
 
 - [x] Link fixer/checker has isolated positive and negative tests
@@ -290,7 +345,7 @@ This file tracks the translation workflow for `docs-site/`.
 
 ## Link Check Script
 
-Use the link checker before marking a translated file done.
+Use the link checker after the whole locale is translated.
 
 ### Commands
 
@@ -331,10 +386,11 @@ Use the link checker before marking a translated file done.
 ### Expected workflow
 
 1. Translate one file.
-2. Run `pnpm check:links` on that file or locale subtree.
-3. Fix any reported page, image, or anchor issue.
-4. Run the checker again.
-5. Mark the file done only after the check is clean.
+2. Continue until the whole locale is translated.
+3. Run `pnpm check:links` on the locale subtree.
+4. Fix any reported page, image, or anchor issue.
+5. Run the checker again.
+6. Mark the locale done only after the final check is clean.
 
 ### Russian status
 
