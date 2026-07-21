@@ -1,0 +1,65 @@
+---
+title: Tour du portail
+description: Un aperçu rapide du portail web Gekko — tableau de bord, périphériques, événements et réglages.
+sidebar:
+  order: 5
+---
+
+Tout dans Gekko se gère depuis le portail web servi par l'appareil depuis sa
+propre flash. Ouvrez l'adresse IP de l'appareil dans n'importe quel navigateur
+sur le même réseau.
+
+## Tableau de bord
+
+La page d'accueil. Composez-la à partir de panneaux et de widgets liés à vos
+périphériques — interrupteurs, lectures de capteurs, état du thermostat —
+disposés comme vous le souhaitez. Les valeurs se mettent à jour en direct via
+une connexion WebSocket, sans actualisation.
+
+![Tableau de bord Gekko](../../../assets/screenshots/portal-dashboard.png)
+
+## Périphériques
+
+Le cœur du portail : la liste de chaque instance de périphérique que vous avez
+créée, avec son type, son état et sa sortie en direct.
+
+![Liste des périphériques](../../../assets/screenshots/portal-devices.png)
+
+Depuis ici, vous pouvez :
+
+- **Ajouter un périphérique** — choisissez un type dans le catalogue, complétez
+  ses réglages et câblez ses dépendances (sur quel bus il se trouve, quel
+  interrupteur il pilote).
+- **Ouvrir un périphérique** — une page de détail avec sa configuration, son
+  état d'exécution en direct et ses commandes spécifiques (calibration pour
+  les pompes de dosage, éditeur de règles pour les programmes, concepteur de
+  mise en page pour les affichages).
+- **Activer/désactiver ou supprimer** un périphérique. La suppression tient
+  compte des dépendances : le registre ne vous laissera pas supprimer un bus I2C
+  dont dépend encore un affichage.
+
+## Événements des périphériques
+
+Un journal des événements notables — changements d'état, erreurs, problèmes de
+dépendance — pour voir ce qui s'est passé pendant votre absence.
+
+## Panneaux
+
+Gérez les panneaux du tableau de bord et les widgets qui y sont épinglés.
+
+## Pages de réglages
+
+- **WiFi** — recherche réseau, identifiants et options de provisioning.
+- **Heure** — fuseau horaire, NTP et l'RTC DS3231 si vous en avez ajouté une.
+- **MQTT / Home Assistant** — paramètres du broker et découverte, sur les
+  builds [compilés avec la fonctionnalité](/gekko/guides/mqtt-home-assistant/).
+- **OTA** — mise à jour du firmware, sur les builds
+  [compilés avec le Web OTA](/gekko/guides/ota-updates/).
+- **Système** — informations de version, [sauvegarde et restauration](/gekko/guides/backup-restore/)
+  et actions de maintenance.
+
+## Langue
+
+Le portail détecte automatiquement la langue de votre navigateur et peut être
+basculé manuellement entre l'anglais, l'ukrainien, le russe, l'allemand,
+l'espagnol, le français et l'italien — le choix est mémorisé par navigateur.

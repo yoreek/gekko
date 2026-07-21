@@ -1,0 +1,78 @@
+---
+title: Flashage du firmware
+description: Flashez Gekko sur un ESP32 depuis votre navigateur, avec esptool ou avec PlatformIO.
+sidebar:
+  order: 3
+---
+
+import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Les binaires prêts à flasher (`bootloader.bin`, `partitions.bin`,
+`firmware.bin`, `littlefs.bin`) sont produits à chaque commit et incluent à la
+fois le firmware et les ressources du portail web.
+
+## Option 1 — Installateur web (le plus simple)
+
+Flashez directement depuis le navigateur, sans logiciel à installer :
+
+<LinkButton href="/gekko/install/" icon="rocket">Ouvrir l'installateur web Gekko</LinkButton>
+
+<Steps>
+
+1. Connectez la carte ESP32 à votre ordinateur avec un câble USB **de
+   données**.
+
+2. Ouvrez l'installateur dans **Chrome**, **Edge** ou **Opera** sur ordinateur
+   (Web Serial n'est pas disponible dans Firefox/Safari ni sur mobile).
+
+3. Cliquez sur **Installer Gekko**, choisissez le port série de la carte dans
+   la boîte de dialogue du navigateur, puis confirmez. Une première
+   installation propose d'effacer l'appareil.
+
+4. Attendez la fin de la barre de progression, puis continuez avec
+   [Premier démarrage et configuration WiFi](/gekko/getting-started/first-boot-wifi/).
+
+</Steps>
+
+:::caution
+Le flashage depuis le navigateur dépend du support série de l'OS et de la
+puce USB, et présente des problèmes connus sur certaines combinaisons Linux +
+puce USB-série. En cas d'échec, utilisez l'une des options ci-dessous —
+elles flashent exactement les mêmes binaires.
+:::
+
+## Option 2 — esptool
+
+<Tabs syncKey="os">
+  <TabItem label="Windows / macOS / Linux (sans Python)">
+
+    1. Téléchargez le binaire autonome `esptool` pour votre OS depuis la
+       [page des versions d'esptool](https://github.com/espressif/esptool/releases).
+    2. Placez-le à côté des scripts dans le dossier `webflash/` du dépôt
+       (renommez-le en `esptool` sur macOS/Linux, `esptool.exe` sur Windows).
+    3. Exécutez `webflash/flash.sh [PORT]` (macOS/Linux) ou `webflash/flash.bat
+       [PORT]` (Windows). Sans argument de port, esptool le détecte
+       automatiquement.
+
+  </TabItem>
+  <TabItem label="Python">
+
+    ```sh
+    pip install esptool
+    python3 webflash/flash.py [PORT]
+    ```
+
+  </TabItem>
+</Tabs>
+
+## Option 3 — PlatformIO (pour le développement)
+
+Si vous compilez depuis les sources :
+
+```sh
+pio run -e esp32dev -t upload       # firmware, via série
+pio run -e esp32dev -t uploadfs     # ressources LittleFS du portail, via série
+```
+
+Voir `CLAUDE.md` et `docs/platformio-environments.md` dans le dépôt pour le
+flux de développement complet.

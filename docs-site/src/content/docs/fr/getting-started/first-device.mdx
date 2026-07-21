@@ -1,0 +1,61 @@
+---
+title: Votre premier périphérique
+description: Ajoutez un interrupteur GPIO dans le portail Gekko, basculez-le et épinglez-le au tableau de bord.
+sidebar:
+  order: 6
+---
+
+import { Steps } from '@astrojs/starlight/components';
+
+Ajoutons le périphérique le plus simple possible — un **interrupteur GPIO** —
+et pilotons-le depuis le tableau de bord. Un interrupteur GPIO pilote une
+seule broche de sortie : une carte relais, un module MOSFET, ou simplement la
+LED de la carte pour un premier test.
+
+<Steps>
+
+1. Ouvrez **Périphériques** dans le portail et cliquez sur le bouton
+   d'ajout de périphérique.
+
+   ![Sélection du type de périphérique](../../../assets/screenshots/portal-device-create.png)
+
+2. Choisissez **GPIO Switch** dans le catalogue.
+
+3. Renseignez les réglages :
+
+   ![Réglages de l'interrupteur GPIO](../../../assets/screenshots/device-gpio-switch.png)
+
+   - **Name** — comme vous voulez, par ex. `Test LED`.
+   - **GPIO pin** — la broche sur laquelle votre charge est câblée (GPIO 2
+     pilote la LED intégrée sur de nombreuses cartes de développement).
+   - **Inverted** — cochez cette option si votre carte relais est à niveau
+     actif bas (très courant).
+   - **Startup state** et **Restore previous state** — ce que la sortie doit
+     faire juste après un redémarrage : un état fixe, ou l'état précédent avant
+     la coupure d'alimentation.
+   - **Safe state** — l'état de repli de la sortie si l'appareil qui la
+     contrôle devient indisponible.
+
+4. Enregistrez. Le périphérique apparaît dans la liste, passe à l'état
+   **ready** et affiche un basculeur on/off en direct — cliquez dessus et votre
+   relais claque.
+
+5. Épinglez-le au tableau de bord : ouvrez **Panneaux**, ajoutez un widget
+   d'interrupteur pour votre nouveau périphérique et placez-le où vous voulez.
+   À partir de là, il suffit d'un tap depuis la page d'accueil.
+
+</Steps>
+
+## Et ensuite ?
+
+- Câblez une **sonde de température DS18B20** : créez un
+  [bus 1-Wire](/gekko/reference/devices/onewire-bus/) sur un GPIO libre,
+  scannez-le, puis ajoutez la [sonde](/gekko/reference/devices/ds18b20/)
+  trouvée.
+- Placez l'interrupteur sur un [programme](/gekko/reference/devices/schedule/)
+  avec un [interrupteur automatique](/gekko/guides/schedules-and-automation/).
+- Gardez la température stable avec un
+  [thermostat](/gekko/reference/devices/thermostat/) qui pilote votre
+  interrupteur.
+- Affichez le tout sur un OLED avec le
+  [concepteur d'affichage](/gekko/guides/displays/).

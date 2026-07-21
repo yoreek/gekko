@@ -212,6 +212,52 @@ This file tracks the translation workflow for `docs-site/`.
 - [x] Spanish page, image, locale, and anchor links pass `pnpm check:links`
 - [x] Spanish file count and file-name set match the English source 1:1
 
+### French locale
+
+#### Batch 1
+
+- [x] `docs-site/src/content/docs/fr/index.mdx`
+- [x] `docs-site/src/content/docs/fr/getting-started/what-is-gekko.md`
+- [x] `docs-site/src/content/docs/fr/getting-started/hardware.md`
+- [x] `docs-site/src/content/docs/fr/getting-started/flashing.mdx`
+- [x] `docs-site/src/content/docs/fr/getting-started/first-boot-wifi.md`
+- [x] `docs-site/src/content/docs/fr/getting-started/portal-tour.mdx`
+- [x] `docs-site/src/content/docs/fr/getting-started/first-device.mdx`
+- [x] `docs-site/src/content/docs/fr/guides/backup-restore.md`
+- [x] `docs-site/src/content/docs/fr/guides/devices-and-dependencies.md`
+- [x] `docs-site/src/content/docs/fr/guides/displays.md`
+
+#### Batch 2
+
+- [x] `docs-site/src/content/docs/fr/reference/devices/index.md`
+- [x] `docs-site/src/content/docs/fr/reference/devices/onewire-bus.md`
+- [x] `docs-site/src/content/docs/fr/reference/devices/i2c-bus.md`
+- [x] `docs-site/src/content/docs/fr/reference/devices/spi-bus.md`
+- [x] `docs-site/src/content/docs/fr/reference/devices/ds18b20.md`
+- [x] `docs-site/src/content/docs/fr/reference/devices/schedule.md`
+- [x] `docs-site/src/content/docs/fr/reference/devices/thermostat.md`
+- [x] `docs-site/src/content/docs/fr/guides/mqtt-home-assistant.md`
+- [x] `docs-site/src/content/docs/fr/guides/ota-updates.md`
+- [x] `docs-site/src/content/docs/fr/guides/schedules-and-automation.md`
+
+#### Batch 3
+
+- [x] `docs-site/src/content/docs/fr/reference/devices/gpio-switch.md`
+- [x] `docs-site/src/content/docs/fr/reference/devices/port-expanders.md`
+- [x] `docs-site/src/content/docs/fr/reference/devices/analog-outputs.md`
+- [x] `docs-site/src/content/docs/fr/reference/devices/analog-inputs.md`
+- [x] `docs-site/src/content/docs/fr/reference/devices/ntc-thermistor.md`
+- [x] `docs-site/src/content/docs/fr/reference/devices/htu21.md`
+- [x] `docs-site/src/content/docs/fr/reference/devices/dosing-pump.md`
+- [x] `docs-site/src/content/docs/fr/reference/faq.md`
+- [x] `docs-site/src/content/docs/fr/reference/rest-api.md`
+
+#### Status
+
+- [x] French locale completed
+- [x] French page, image, locale, and anchor links pass `pnpm check:links`
+- [x] French file count and file-name set match the English source 1:1
+
 ### Automated verification
 
 - [x] Link fixer/checker has isolated positive and negative tests

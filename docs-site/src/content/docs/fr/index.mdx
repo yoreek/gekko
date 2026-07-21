@@ -1,0 +1,56 @@
+---
+title: Gekko
+description: Un contrôleur modulaire de périphériques pour ESP32 — une seule image firmware, un catalogue de types de périphériques, configuré entièrement depuis le portail web intégré.
+template: splash
+hero:
+  tagline: Un contrôleur modulaire de périphériques pour ESP32. Une seule image firmware, 27 types de périphériques composables, aucune recompilation par projet — tout s'assemble depuis le portail web intégré.
+  image:
+    file: ../../assets/logo.svg
+  actions:
+    - text: Commencer
+      link: /gekko/getting-started/what-is-gekko/
+      icon: right-arrow
+    - text: Flasher depuis le navigateur
+      link: /gekko/install/
+      icon: rocket
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid stagger>
+  <Card title="Pas de reflash par projet" icon="setting">
+    Ajoutez des interrupteurs, capteurs, affichages, programmes et pompes depuis
+    le portail web à l'exécution. Le registre des périphériques, le graphe des
+    dépendances et la disposition du tableau de bord résident tous sur l'appareil
+    — jamais dans un fichier YAML qu'il faudrait recompiler.
+  </Card>
+  <Card title="Local d'abord" icon="laptop">
+    Le portail est servi depuis la propre flash de l'ESP32 via WiFi. MQTT +
+    Home Assistant Discovery et les mises à jour OTA sont optionnels et
+    désactivés par défaut.
+  </Card>
+  <Card title="Registre de périphériques typé" icon="puzzle">
+    Les périphériques déclarent leurs dépendances entre eux — un interrupteur
+    derrière un expanseur de ports, un capteur derrière un bus I2C, une pompe
+    pilotée par un programme — et le registre applique et persiste ce graphe.
+  </Card>
+  <Card title="Affichages, programmes, dosage" icon="rocket">
+    Affichages OLED/TFT avec un concepteur visuel de mise en page, programmes à
+    précision minute, automatisation conditionnelle, thermostats et pompes de
+    dosage avec calibration et historique.
+  </Card>
+  <Card title="Home Assistant en un bascule" icon="heart">
+    Activez un interrupteur sur la page d'un appareil et il apparaît dans Home
+    Assistant comme une entité native — pilotable depuis HA, tout en restant
+    exécuté localement.
+  </Card>
+  <Card title="Sauvegarde et restauration" icon="document">
+    Exportez toute la configuration de l'appareil dans un seul lot éditable à la
+    main, puis restaurez-le sur n'importe quel contrôleur Gekko.
+  </Card>
+  <Card title="Parle votre langue" icon="translate">
+    Le portail est livré en anglais, ukrainien, russe, allemand, espagnol,
+    français et italien avec détection automatique de la langue du navigateur.
+  </Card>
+</CardGrid>
