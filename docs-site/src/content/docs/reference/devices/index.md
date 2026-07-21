@@ -1,6 +1,6 @@
 ---
 title: Device catalog
-description: All 23 device types built into every Gekko firmware image.
+description: All 27 device types built into every Gekko firmware image.
 sidebar:
   order: 1
   label: Device catalog
@@ -26,20 +26,29 @@ detailed pages coming iteratively.
 | Type | Purpose |
 | --- | --- |
 | [`gpio_switch`](/gekko/reference/devices/gpio-switch/) | On/off output on a GPIO — relays, MOSFETs, LEDs |
-| `pcf8574_expander` / `pcf8575_expander` | 8-/16-bit I2C port expanders |
-| `port_expander_switch` | A switch on one expander pin — same options as a GPIO switch |
+| [`pcf8574_expander`](/gekko/reference/devices/port-expanders/) / [`pcf8575_expander`](/gekko/reference/devices/port-expanders/) | 8-/16-bit I2C port expanders |
+| [`port_expander_switch`](/gekko/reference/devices/port-expanders/) | A switch on one expander pin — same options as a GPIO switch |
 | [`analog_output`](/gekko/reference/devices/analog-outputs/) | LEDC PWM output channel (dimmable light, fan, …) |
 | [`fade_analog_output`](/gekko/reference/devices/analog-outputs/) | Smooth fade transitions for an analog output |
 | [`scheduled_analog_output`](/gekko/reference/devices/analog-outputs/) | Daily level curve driving an analog output |
 | [`analog_output_composer`](/gekko/reference/devices/analog-outputs/) | Groups analog channels into one fixture — see the [aquarium light example](/gekko/reference/devices/analog-outputs/#worked-example-an-aquarium-light) |
+
+## Analog inputs
+
+| Type | Purpose |
+| --- | --- |
+| [`analog_port_input`](/gekko/reference/devices/analog-inputs/) | A voltage reading straight off one ESP32 ADC pin, no extra hardware |
+| [`ads1115_hub`](/gekko/reference/devices/analog-inputs/) | ADS1115 16-bit I2C ADC — 4 precise channels |
+| [`cd74hc4067_hub`](/gekko/reference/devices/analog-inputs/) | CD74HC4067 16-channel analog multiplexer on one ADC pin |
+| [`analog_input_channel`](/gekko/reference/devices/analog-inputs/) | One channel of an ADS1115 or CD74HC4067 hub |
 
 ## Sensors
 
 | Type | Purpose |
 | --- | --- |
 | [`ds18b20_temperature_sensor`](/gekko/reference/devices/ds18b20/) | DS18B20 1-Wire temperature probe |
-| `ntc_thermistor_temperature_sensor` | NTC thermistor on an ADC pin |
-| `htu21` | HTU21 I2C temperature + humidity sensor |
+| [`ntc_thermistor_temperature_sensor`](/gekko/reference/devices/ntc-thermistor/) | NTC thermistor on any analog input |
+| [`htu21`](/gekko/reference/devices/htu21/) | HTU21 I2C temperature + humidity sensor |
 | `binary_sensor` | Digital input — float switch, door contact, leak sensor |
 
 ## Control & automation

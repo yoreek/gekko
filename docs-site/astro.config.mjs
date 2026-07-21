@@ -17,7 +17,7 @@ export default defineConfig({
         starlightLlmsTxt({
           projectName: 'Gekko',
           description:
-            'Modular ESP32 device controller firmware with a built-in web portal. One firmware image, 23 composable device types, no per-project recompilation.',
+            'Modular ESP32 device controller firmware with a built-in web portal. One firmware image, 27 composable device types, no per-project recompilation.',
         }),
       ],
       defaultLocale: 'root',

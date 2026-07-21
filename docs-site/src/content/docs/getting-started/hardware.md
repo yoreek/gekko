@@ -35,7 +35,8 @@ actually wire it up:
 - **PCF8574 / PCF8575** I2C port expanders for more switch outputs
 - **DS18B20** waterproof temperature probes on a 1-Wire bus (one GPIO, many
   probes)
-- **NTC thermistors** on an ADC pin
+- **NTC thermistors** and other analog sensors on an ADC pin, an **ADS1115**
+  16-bit I2C ADC, or a **CD74HC4067** 16-channel multiplexer
 - **HTU21** I2C temperature + humidity sensor
 - **SSD1306** I2C OLED displays and **ST7735** SPI TFT displays
 - **DS3231** I2C real-time clock — recommended if you use schedules and the
@@ -45,7 +46,7 @@ actually wire it up:
 - Digital inputs: float switches, door contacts, leak sensors
   (`binary_sensor`)
 
-See the [device catalog](/gekko/reference/devices/) for the full list of the 23
+See the [device catalog](/gekko/reference/devices/) for the full list of the 27
 built-in device types.
 
 :::tip

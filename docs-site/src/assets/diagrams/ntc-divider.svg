@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 350" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <rect x="1" y="1" width="918" height="348" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+
+  <text x="35" y="42" font-size="19" font-weight="700" fill="#0f172a">NTC divider: resistance &#8594; voltage &#8594; temperature</text>
+
+  <!-- ==== Voltage divider ==== -->
+  <!-- 3.3 V rail -->
+  <line x1="120" y1="90" x2="200" y2="90" stroke="#dc2626" stroke-width="3" stroke-linecap="round"/>
+  <text x="160" y="80" text-anchor="middle" font-size="13.5" font-weight="600" fill="#dc2626">3.3 V</text>
+
+  <!-- wire down to series resistor -->
+  <line x1="160" y1="90" x2="160" y2="112" stroke="#475569" stroke-width="3"/>
+
+  <!-- series resistor (IEC box) -->
+  <rect x="142" y="112" width="36" height="62" rx="4" fill="#ffffff" stroke="#475569" stroke-width="3"/>
+  <text x="196" y="138" font-size="13.5" font-weight="600" fill="#334155">series R</text>
+  <text x="196" y="156" font-size="12.5" fill="#64748b">10 k&#8486; (fixed)</text>
+
+  <!-- wire to tap node -->
+  <line x1="160" y1="174" x2="160" y2="205" stroke="#475569" stroke-width="3"/>
+  <circle cx="160" cy="205" r="5.5" fill="#0ea5e9"/>
+
+  <!-- tap wire to the right -->
+  <line x1="160" y1="205" x2="372" y2="205" stroke="#0ea5e9" stroke-width="3" stroke-linecap="round"/>
+  <path d="M372 198 l 15 7 -15 7 z" fill="#0ea5e9"/>
+  <text x="250" y="196" font-size="12.5" font-weight="600" fill="#0369a1">midpoint voltage</text>
+
+  <!-- wire down to NTC -->
+  <line x1="160" y1="205" x2="160" y2="236" stroke="#475569" stroke-width="3"/>
+
+  <!-- NTC (resistor box with diagonal arrow = thermistor) -->
+  <rect x="142" y="236" width="36" height="62" rx="4" fill="#ffffff" stroke="#dc2626" stroke-width="3"/>
+  <line x1="132" y1="308" x2="188" y2="226" stroke="#dc2626" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M188 226 l -12 1 l 6 10 z" fill="#dc2626"/>
+  <text x="196" y="262" font-size="13.5" font-weight="600" fill="#334155">NTC</text>
+  <text x="196" y="280" font-size="12.5" fill="#64748b">10 k&#8486; @ 25 &#176;C</text>
+
+  <!-- wire to ground -->
+  <line x1="160" y1="298" x2="160" y2="320" stroke="#475569" stroke-width="3"/>
+  <line x1="140" y1="320" x2="180" y2="320" stroke="#475569" stroke-width="3" stroke-linecap="round"/>
+  <line x1="147" y1="327" x2="173" y2="327" stroke="#475569" stroke-width="3" stroke-linecap="round"/>
+  <line x1="154" y1="334" x2="166" y2="334" stroke="#475569" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- ==== analog input device ==== -->
+  <g>
+    <rect x="392" y="165" width="190" height="90" rx="12" fill="#ffffff" stroke="#0ea5e9" stroke-width="3"/>
+    <text x="487" y="197" text-anchor="middle" font-size="15" font-weight="700" fill="#0369a1">analog input</text>
+    <text x="487" y="219" text-anchor="middle" font-size="12.5" fill="#64748b">reads the voltage,</text>
+    <text x="487" y="236" text-anchor="middle" font-size="12.5" fill="#64748b">reports millivolts</text>
+  </g>
+
+  <path d="M582 210 h 40" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M622 203 l 15 7 -15 7 z" fill="#94a3b8"/>
+  <text x="602" y="196" text-anchor="middle" font-size="12.5" font-weight="600" fill="#475569">mV</text>
+
+  <!-- ==== NTC sensor device ==== -->
+  <g>
+    <rect x="642" y="165" width="230" height="90" rx="12" fill="#ffffff" stroke="#dc2626" stroke-width="3"/>
+    <text x="757" y="197" text-anchor="middle" font-size="15" font-weight="700" fill="#b91c1c">NTC sensor</text>
+    <text x="757" y="219" text-anchor="middle" font-size="12.5" fill="#64748b">Beta / Steinhart-Hart curve:</text>
+    <text x="757" y="236" text-anchor="middle" font-size="12.5" fill="#64748b">millivolts &#8594; &#176;C</text>
+  </g>
+
+  <text x="35" y="330" font-size="14" fill="#475569">The divider turns the thermistor's resistance into a voltage; the analog input reads it, the NTC sensor converts it to a temperature.</text>
+</svg>

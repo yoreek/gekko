@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 360" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <rect x="1" y="1" width="918" height="358" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+
+  <text x="35" y="42" font-size="19" font-weight="700" fill="#0f172a">Hub and channels: one chip, many independent inputs</text>
+
+  <!-- ==== Sensors (consumers) ==== -->
+  <g>
+    <rect x="40" y="78" width="150" height="66" rx="12" fill="#ffffff" stroke="#dc2626" stroke-width="3"/>
+    <text x="115" y="108" text-anchor="middle" font-size="14.5" font-weight="700" fill="#b91c1c">NTC sensor</text>
+    <text x="115" y="128" text-anchor="middle" font-size="12.5" fill="#64748b">tank temperature</text>
+  </g>
+  <g>
+    <rect x="40" y="210" width="150" height="66" rx="12" fill="#ffffff" stroke="#7c3aed" stroke-width="3"/>
+    <text x="115" y="240" text-anchor="middle" font-size="14.5" font-weight="700" fill="#6d28d9">pH board</text>
+    <text x="115" y="260" text-anchor="middle" font-size="12.5" fill="#64748b">reads a voltage</text>
+  </g>
+
+  <!-- sensor -> channel arrows -->
+  <path d="M190 111 h 40" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M230 104 l 15 7 -15 7 z" fill="#94a3b8"/>
+  <path d="M190 243 h 40" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M230 236 l 15 7 -15 7 z" fill="#94a3b8"/>
+
+  <!-- ==== Channels ==== -->
+  <g>
+    <rect x="250" y="78" width="190" height="66" rx="12" fill="#ffffff" stroke="#0ea5e9" stroke-width="3"/>
+    <text x="345" y="106" text-anchor="middle" font-size="14.5" font-weight="700" fill="#0369a1">analog_input_channel</text>
+    <text x="345" y="127" text-anchor="middle" font-size="12.5" fill="#64748b">channel 0</text>
+  </g>
+  <g>
+    <rect x="250" y="210" width="190" height="66" rx="12" fill="#ffffff" stroke="#0ea5e9" stroke-width="3"/>
+    <text x="345" y="238" text-anchor="middle" font-size="14.5" font-weight="700" fill="#0369a1">analog_input_channel</text>
+    <text x="345" y="259" text-anchor="middle" font-size="12.5" fill="#64748b">channel 1</text>
+  </g>
+
+  <!-- channel -> hub arrows -->
+  <path d="M440 111 C 480 111 480 150 518 158" stroke="#94a3b8" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M518 158 l -16 -1 l 6 -12 z" fill="#94a3b8"/>
+  <path d="M440 243 C 480 243 480 204 518 196" stroke="#94a3b8" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M518 196 l -16 1 l 6 12 z" fill="#94a3b8"/>
+
+  <!-- ==== Hub ==== -->
+  <g>
+    <rect x="520" y="92" width="200" height="170" rx="12" fill="#ffffff" stroke="#f59e0b" stroke-width="3"/>
+    <text x="620" y="126" text-anchor="middle" font-size="16" font-weight="700" fill="#b45309">ads1115_hub</text>
+    <text x="620" y="147" text-anchor="middle" font-size="12.5" fill="#64748b">one ADS1115 chip</text>
+    <!-- channel pills -->
+    <rect x="545" y="164" width="66" height="26" rx="7" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"/>
+    <text x="578" y="182" text-anchor="middle" font-size="12.5" font-weight="600" fill="#0369a1">A0</text>
+    <rect x="629" y="164" width="66" height="26" rx="7" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"/>
+    <text x="662" y="182" text-anchor="middle" font-size="12.5" font-weight="600" fill="#0369a1">A1</text>
+    <rect x="545" y="200" width="66" height="26" rx="7" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="578" y="218" text-anchor="middle" font-size="12.5" font-weight="600" fill="#94a3b8">A2</text>
+    <rect x="629" y="200" width="66" height="26" rx="7" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="662" y="218" text-anchor="middle" font-size="12.5" font-weight="600" fill="#94a3b8">A3</text>
+    <text x="620" y="250" text-anchor="middle" font-size="12" fill="#94a3b8">unused channels cost nothing</text>
+  </g>
+
+  <!-- hub -> bus arrow -->
+  <path d="M720 177 h 40" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M760 170 l 15 7 -15 7 z" fill="#94a3b8"/>
+
+  <!-- ==== I2C bus ==== -->
+  <g>
+    <rect x="778" y="140" width="106" height="74" rx="10" fill="#1e293b" stroke="#475569" stroke-width="3"/>
+    <text x="831" y="172" text-anchor="middle" font-size="14.5" font-weight="700" fill="#e2e8f0">i2c_bus</text>
+    <text x="831" y="192" text-anchor="middle" font-size="12" fill="#94a3b8">SDA / SCL</text>
+  </g>
+
+  <text x="35" y="318" font-size="14" fill="#475569">Arrows are registry dependencies: a sensor depends on a channel, the channel on the hub, the hub on its bus.</text>
+  <text x="35" y="340" font-size="14" fill="#475569">A CD74HC4067 hub is the same shape with 16 channels and no bus &#8212; it owns its GPIO select pins directly.</text>
+</svg>
