@@ -1,12 +1,14 @@
-# OLED Display Layout Persistence
+# Display Layout Persistence
 
-This document fixes the current OLED layout contract in the firmware.
+This document describes the current display-layout contract in the firmware.
+It applies to the display device family (`ssd1306`, `st7735`) and the shared
+display-layout runtime/codec/store path.
 
 ## Scope
 
-- `layout` is part of the public OLED device API payload.
+- `layout` is accepted on create/update requests for display devices.
 - JSON is used only at the REST boundary.
-- The runtime keeps layout as `OledDisplayLayoutRecordV1`.
+- The runtime keeps layout as `DisplayLayoutRecordV1`.
 - Persistence uses the device-scoped `display_layout` binary payload.
 - Text-rendering notes live in [oled-text-rendering-notes.md](./oled-text-rendering-notes.md).
 - Placeholder behavior lives in [display-text-placeholders.md](./display-text-placeholders.md).
@@ -16,28 +18,28 @@ This document fixes the current OLED layout contract in the firmware.
 
 ### Create
 
-1. The client sends `config.layout` as JSON in the OLED create payload.
-2. `OledDisplayDeviceApiAdapter` parses the JSON layout and encodes it into a binary sidecar blob.
+1. The client sends `config.layout` as JSON in the display-device create payload.
+2. `TypedDisplayDeviceApiAdapter` parses the JSON layout and encodes it into a binary sidecar blob.
 3. `DeviceRegistryController` creates the device through the normal device create flow.
 4. After the device gets a real `deviceId`, the controller calls `DeviceRegistry::applyPersistedStateUpdate(...)`.
-5. `OledDisplayDevice` decodes the binary blob into `layout_` and normalizes `layout.deviceId` to its own runtime `deviceId()`.
+5. `DisplayDeviceBase` decodes the binary blob into `layout_` and normalizes `layout.deviceId` to its own runtime `deviceId()`.
 6. `DeviceRegistry::flushNow()` calls the generic persisted-state save hook and the runtime stores `layout_` under `display_layout`.
 
 ### Update
 
 1. The client sends `config.layout` as JSON in the standard `updateConfig` command payload.
-2. `OledDisplayDeviceApiAdapter` parses that JSON and encodes a binary sidecar blob into `DeviceConfigUpdateRequest`.
+2. `TypedDisplayDeviceApiAdapter` parses that JSON and encodes a binary sidecar blob into `DeviceConfigUpdateRequest`.
 3. `DeviceRegistryController` runs the normal `updateConfigAndDeps(...)` path for the main device config blob.
 4. After config update succeeds, the controller calls `DeviceRegistry::applyPersistedStateUpdate(...)`.
-5. `OledDisplayDevice` decodes the binary blob into `layout_`.
+5. `DisplayDeviceBase` decodes the binary blob into `layout_`.
 6. `DeviceRegistry::flushNow()` persists the updated `layout_` as binary.
 
 ### Boot Reload
 
 1. `DeviceRegistry::begin(...)` recreates runtimes from registry records.
 2. If a runtime implements `IDevicePersistedState`, the registry calls `loadPersistedState(...)`.
-3. `OledDisplayDevice` loads `display_layout` from `OledDisplayLayoutStore`.
-4. The store returns binary data, the codec decodes it into `OledDisplayLayoutRecordV1`, and the runtime keeps that struct in `layout_`.
+3. `DisplayDeviceBase` loads `display_layout` from `DisplayLayoutStore`.
+4. The store returns binary data, the codec decodes it into `DisplayLayoutRecordV1`, and the runtime keeps that struct in `layout_`.
 
 ### Delete
 
@@ -46,7 +48,7 @@ This document fixes the current OLED layout contract in the firmware.
 
 ## Ownership
 
-- `OledDisplayDeviceApiAdapter`
+- `TypedDisplayDeviceApiAdapter`
   - owns `JSON <-> binary sidecar` conversion
   - does not write to storage
   - does not own runtime state
@@ -54,20 +56,20 @@ This document fixes the current OLED layout contract in the firmware.
 - `DeviceRegistryController`
   - runs the standard create/update device command flow
   - applies opaque persisted-state sidecar through generic registry API
-  - does not know OLED layout schema
+  - does not know display layout schema
 
 - `DeviceRegistry`
   - owns generic persisted-state lifecycle
   - calls `loadPersistedState(...)`, `savePersistedState(...)`, and `clearPersistedState(...)`
-  - does not know OLED-specific fields
+  - does not know display-specific fields
 
-- `OledDisplayDevice`
-  - owns runtime `layout_` as `OledDisplayLayoutRecordV1`
+- `DisplayDeviceBase`
+  - owns runtime `layout_` as `DisplayLayoutRecordV1`
   - decodes binary into struct
-  - encodes struct to binary through `OledDisplayLayoutStore`
+  - encodes struct to binary through `DisplayLayoutStore`
   - binds display placeholder AST state at runtime without persisting it
 
-- `OledDisplayLayoutStore`
+- `DisplayLayoutStore`
   - owns only typed binary persistence under `display_layout`
   - does not parse API JSON
 
@@ -91,12 +93,12 @@ The persisted payload is a compact binary blob with:
 The runtime struct is:
 
 ```cpp
-struct OledDisplayLayoutRecordV1 {
+struct DisplayLayoutRecordV1 {
     DeviceId deviceId{0};
     uint16_t recordVersion{1};
-    uint8_t schemaVersion{kOledDisplayLayoutSchemaVersion};
+    uint8_t schemaVersion{kDisplayLayoutSchemaVersion};
     uint8_t activePageIndex{0};
-    std::vector<OledDisplayLayoutPageV1> pages{};
+    std::vector<DisplayLayoutPageV1> pages{};
 };
 ```
 
@@ -104,16 +106,16 @@ struct OledDisplayLayoutRecordV1 {
 
 ## Rules
 
-- No dedicated public `/layout` endpoint.
+- There is a dedicated public `GET /api/devices/:id/layout` endpoint for reading layouts.
 - No JSON persistence in NVS.
-- No OLED-specific load/save loop in `App`.
-- No direct storage writes from the OLED API adapter.
-- Layout schema knowledge stays inside OLED codec/store/runtime code.
+- No display-specific load/save loop in `App`.
+- No direct storage writes from the display API adapter.
+- Layout schema knowledge stays inside the display codec/store/runtime code.
 - Generic persisted-state lifecycle stays in `DeviceRegistry`.
 
 ## Current API Contract
 
-The OLED API continues to expose layout under:
+Create and update requests continue to accept layout under:
 
 ```json
 {
@@ -132,7 +134,7 @@ The OLED API continues to expose layout under:
     "height": 64,
     "layout": {
       "schemaVersion": 1,
-      "activePageIndex": 0,
+      "activePageId": "main",
       "pages": [
         {
           "id": "main",
@@ -155,4 +157,5 @@ The OLED API continues to expose layout under:
 }
 ```
 
-The same shape is returned back from the runtime, but the stored form is binary.
+The device detail response does not embed `layout`; the layout is exposed by
+`GET /api/devices/:id/layout` and persisted as the binary sidecar blob.

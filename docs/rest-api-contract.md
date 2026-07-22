@@ -848,7 +848,8 @@ interface DeviceDetailResponse {
 > Display devices (`ssd1306`, `st7735`): the `config` object does **not** include `layout`. The
 > layout can be large (bitmap data) and is only needed by the designer, so it is served separately
 > by `GET /api/devices/:id/layout` and is still saved through `updateConfig` with `config.layout`.
-> SSD1306 bus identity is carried only by `config.deps` using role `i2c_bus`; the removed
+> See [Display Layout Persistence](./oled-display-layout.md) for the write/read flow and storage
+> model. SSD1306 bus identity is carried only by `config.deps` using role `i2c_bus`; the removed
 > `config.i2cBusDeviceId` field is rejected by the current API.
 
 ### `GET /api/devices/:id/layout`
