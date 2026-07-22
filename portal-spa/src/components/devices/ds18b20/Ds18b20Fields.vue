@@ -117,6 +117,8 @@
       :model-value="modelValue.filter"
       :mode="mode"
       :busy="busy"
+      :current-reading="temperature?.valid ? temperature.value : undefined"
+      :reading-unit="temperature?.unitSymbol"
       @update:model-value="update('filter', $event)"
     />
 

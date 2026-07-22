@@ -83,6 +83,8 @@
       :mode="mode"
       :busy="busy"
       title-key="device.dialog.htu21.temperatureFilterTitle"
+      :current-reading="temperature?.valid ? temperature.value : undefined"
+      :reading-unit="temperature?.unitSymbol"
       @update:model-value="update('temperatureFilter', $event)"
     />
 
@@ -91,6 +93,8 @@
       :mode="mode"
       :busy="busy"
       title-key="device.dialog.htu21.humidityFilterTitle"
+      :current-reading="humidity?.valid ? humidity.value : undefined"
+      :reading-unit="humidity?.unitSymbol"
       @update:model-value="update('humidityFilter', $event)"
     />
 
@@ -137,6 +141,8 @@ const temperatureUnitItems = computed(() =>
 )
 
 const output = computed(() => (props.device?.runtime as { output?: Htu21SensorOutputSnapshot } | undefined)?.output)
+const temperature = computed(() => output.value?.temperature)
+const humidity = computed(() => output.value?.humidity)
 const temperatureText = computed(() =>
   output.value?.temperature?.valid
     ? Htu21Device.formatTemperature(output.value.temperature)
