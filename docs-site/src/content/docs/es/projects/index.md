@@ -10,8 +10,9 @@ una incluye hardware, grafo de Gekko, orden de creación y una comprobación seg
 
 | Proyecto | Resultado | Conceptos principales |
 | --- | --- | --- |
+| [Monitor de temperatura](/gekko/es/projects/temperature-monitor/) | Lectura actual e historial con DS18B20 | 1-Wire, escaneo, dirección ROM, comprobación |
 | [Termostato con relé](/gekko/es/projects/thermostat-with-relay/) | Calentador o enfriador controlado por DS18B20 | 1-Wire, sensor, interruptor, dos dependencias, estado seguro |
 
-Después se añadirán monitor de temperatura, relé programado, pantalla de
-sensores, bomba dosificadora e iluminación de acuario. Si ya conoce el tipo,
+Después se añadirán relé programado, pantalla de sensores, bomba dosificadora e
+iluminación de acuario. Si ya conoce el tipo,
 use el [catálogo de dispositivos](/gekko/es/reference/devices/).

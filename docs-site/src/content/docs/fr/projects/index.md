@@ -7,6 +7,7 @@ sidebar:
 
 | Projet | Résultat | Concepts |
 | --- | --- | --- |
+| [Moniteur de température](/gekko/fr/projects/temperature-monitor/) | Température en direct et historique avec DS18B20 | 1-Wire, scan, adresse ROM, vérification |
 | [Thermostat avec relais](/gekko/fr/projects/thermostat-with-relay/) | Chauffage ou refroidisseur piloté par DS18B20 | 1-Wire, capteur, interrupteur, dépendances, état sûr |
 
 Utilisez le [catalogue](/gekko/fr/reference/devices/) si vous connaissez déjà le type technique.

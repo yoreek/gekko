@@ -45,6 +45,22 @@ and the working tree would never come clean. Rules:
   build, renaming `assets/i-[hash].js` and churning `index.html`. Keep any new
   build-time constant tied to committed state (git), never to the clock.
 
+### Do not run the pre-commit hook manually
+
+The hook is designed to run as part of `git commit`: it rebuilds `data/` and
+`webflash/`, then stages those artifacts for that commit. A manual run happens
+against the current `HEAD`, while the normal hook runs before Git creates the
+next commit. If either build embeds commit metadata, the manual run can therefore
+produce a different hashed SPA asset and leave `data/` or `webflash/` dirty even
+though the prior commit was correct.
+
+Use the hook through `git commit`, not as a standalone verification command.
+For diagnostics, run the narrow underlying command instead (for example,
+`scripts/test.sh`, `pnpm deploy:data`, or `pio run`). If a manual hook run has
+already dirtied only generated artifacts, discard or reset only those generated
+changes after confirming they do not belong to the task; do not treat them as a
+new source change.
+
 ### If a commit aborts partway
 
 The hook stages the rebuilt artifacts before the checks that can fail (e.g.

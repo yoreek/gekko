@@ -11,6 +11,7 @@ safe way to verify the result.
 
 | Project | What you build | Main concepts |
 | --- | --- | --- |
+| [Temperature monitor](/gekko/projects/temperature-monitor/) | A verified DS18B20 temperature reading and history | 1-Wire, scan, sensor address, live reading |
 | [Thermostat with relay](/gekko/projects/thermostat-with-relay/) | A DS18B20-controlled heater or cooler | 1-Wire, sensor, switch, two dependencies, safe state |
 
 More project guides will cover a temperature monitor, scheduled relay, display

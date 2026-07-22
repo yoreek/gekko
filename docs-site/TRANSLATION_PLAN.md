@@ -34,6 +34,20 @@ This file tracks the translation workflow for `docs-site/`.
 
 ### Scenario documentation extension
 
+- [x] English: `projects/temperature-monitor.md`
+- [x] English: `assets/diagrams/temperature-monitor-flow.svg`
+- [x] Russian: `projects/temperature-monitor.md`
+- [x] Russian: `assets/diagrams/ru/temperature-monitor-flow.svg`
+- [x] Ukrainian: `projects/temperature-monitor.md`
+- [x] Ukrainian: `assets/diagrams/uk/temperature-monitor-flow.svg`
+- [x] German: `projects/temperature-monitor.md`
+- [x] German: `assets/diagrams/de/temperature-monitor-flow.svg`
+- [x] Spanish: `projects/temperature-monitor.md`
+- [x] Spanish: `assets/diagrams/es/temperature-monitor-flow.svg`
+- [x] French: `projects/temperature-monitor.md`
+- [x] French: `assets/diagrams/fr/temperature-monitor-flow.svg`
+- [x] Italian: `projects/temperature-monitor.md`
+- [x] Italian: `assets/diagrams/it/temperature-monitor-flow.svg`
 - [x] English: `guides/how-gekko-works.md`
 - [x] English: `projects/index.md`
 - [x] English: `projects/thermostat-with-relay.md`

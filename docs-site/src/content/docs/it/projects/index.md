@@ -7,6 +7,7 @@ sidebar:
 
 | Progetto | Risultato | Concetti |
 | --- | --- | --- |
+| [Monitor della temperatura](/gekko/it/projects/temperature-monitor/) | Temperatura in tempo reale e storico con DS18B20 | 1-Wire, scansione, indirizzo ROM, verifica |
 | [Termostato con relè](/gekko/it/projects/thermostat-with-relay/) | Riscaldatore o raffreddatore controllato da DS18B20 | 1-Wire, sensore, interruttore, dipendenze, stato sicuro |
 
 Se il tipo tecnico è già noto, usare il [catalogo dispositivi](/gekko/it/reference/devices/).
