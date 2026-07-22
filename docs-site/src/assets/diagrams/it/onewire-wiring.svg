@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 360" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <rect x="1" y="1" width="918" height="358" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+
+  <text x="35" y="42" font-size="19" font-weight="700" fill="#0f172a">Tre fili e una resistenza</text>
+
+  <!-- ESP32 -->
+  <g>
+    <rect x="60" y="90" width="150" height="180" rx="10" fill="#1e293b" stroke="#475569" stroke-width="3"/>
+    <text x="135" y="122" font-size="15" font-weight="700" fill="#e2e8f0" text-anchor="middle">ESP32</text>
+    <!-- pin labels -->
+    <g font-size="13.5" fill="#e2e8f0" text-anchor="end">
+      <text x="196" y="160">3V3</text>
+      <text x="196" y="205">GPIO 4</text>
+      <text x="196" y="250">GND</text>
+    </g>
+    <g>
+      <circle cx="210" cy="155" r="5" fill="#dc2626"/>
+      <circle cx="210" cy="200" r="5" fill="#eab308"/>
+      <circle cx="210" cy="245" r="5" fill="#334155" stroke="#94a3b8" stroke-width="2"/>
+    </g>
+  </g>
+
+  <!-- probe -->
+  <g>
+    <rect x="740" y="120" width="34" height="120" rx="14" fill="#cbd5e1" stroke="#64748b" stroke-width="3"/>
+    <path d="M700 150 h 40 M700 200 h 40 M700 250 h 40" stroke="#64748b" stroke-width="0"/>
+    <text x="757" y="278" text-anchor="middle" font-size="14" font-weight="600" fill="#334155">DS18B20</text>
+    <text x="757" y="297" text-anchor="middle" font-size="12.5" fill="#64748b">sonda impermeabile</text>
+    <!-- probe pin labels -->
+    <g font-size="13" fill="#64748b">
+      <text x="700" y="133" text-anchor="end">VDD (red)</text>
+      <text x="700" y="183" text-anchor="end">DATA (yellow)</text>
+      <text x="700" y="233" text-anchor="end">GND (black)</text>
+    </g>
+  </g>
+
+  <!-- wires -->
+  <path d="M210 155 H 500 C 560 155 600 143 740 143" fill="none" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>
+  <path d="M210 200 H 500 C 560 200 600 193 740 193" fill="none" stroke="#eab308" stroke-width="4" stroke-linecap="round"/>
+  <path d="M210 245 H 500 C 560 245 600 243 740 243" fill="none" stroke="#475569" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- pull-up between 3V3 and DATA -->
+  <g>
+    <line x1="330" y1="155" x2="330" y2="166" stroke="#b45309" stroke-width="3"/>
+    <path d="M330 166 l 7 5 l -14 7 l 14 7 l -14 7 l 14 7 l -7 5" fill="none" stroke="#b45309" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="330" y1="194" x2="330" y2="200" stroke="#b45309" stroke-width="3"/>
+    <text x="348" y="185" font-size="13.5" fill="#b45309" font-weight="600">4.7 kΩ pull-up</text>
+  </g>
+
+  <text x="60" y="322" font-size="14" fill="#475569">The DATA line is open-drain: nothing ever drives it high, devices only pull it low. The resistor keeps it</text>
+  <text x="60" y="342" font-size="14" fill="#475569">at 3.3 V when idle — without it the bus reads garbage. One resistor per bus, near any point of it.</text>
+</svg>

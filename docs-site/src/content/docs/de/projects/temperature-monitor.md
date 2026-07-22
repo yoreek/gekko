@@ -23,7 +23,7 @@ DS18B20-Fühler → 1-Wire-Bus → aktueller Temperaturwert und Verlauf
 - DS18B20-Temperaturfühler.
 - 4,7-kΩ-Pull-up-Widerstand zwischen der DATA-Leitung des Fühlers und 3V3.
 
-![1-Wire-Verdrahtung: ESP32, DS18B20, 3V3, GND, DATA und Pull-up-Widerstand.](../../../../assets/diagrams/onewire-wiring.svg)
+![1-Wire-Verdrahtung: ESP32, DS18B20, 3V3, GND, DATA und Pull-up-Widerstand.](../../../../assets/diagrams/de/onewire-wiring.svg)
 
 Lassen Sie DATA nicht offen: Ohne Pull-up kann der Bus Fühler nur
 unzuverlässig finden oder ungültige Werte melden.

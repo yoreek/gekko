@@ -14,6 +14,7 @@ una incluye hardware, grafo de Gekko, orden de creación y una comprobación seg
 | [Termostato con relé](/gekko/es/projects/thermostat-with-relay/) | Calentador o enfriador controlado por DS18B20 | 1-Wire, sensor, interruptor, dos dependencias, estado seguro |
 | [Relé programado](/gekko/es/projects/scheduled-relay/) | Relé por hora y día de la semana | reloj, schedule, Auto Switch, salida segura |
 | [Pantalla de sensores](/gekko/es/projects/sensor-display/) | Valor DS18B20 en directo en un OLED SSD1306 | 1-Wire, I2C, diseño de pantalla, placeholder de métrica |
+| [Bomba dosificadora](/gekko/es/projects/dosing-pump/) | Dosis medida de líquido con horario | interruptor GPIO, calibración, franjas de dosis, recipiente |
 
-Después se añadirán bomba dosificadora e iluminación de acuario. Si ya conoce el tipo,
+Después se añadirá iluminación de acuario. Si ya conoce el tipo,
 use el [catálogo de dispositivos](/gekko/es/reference/devices/).

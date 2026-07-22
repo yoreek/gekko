@@ -113,8 +113,8 @@ This file tracks the translation workflow for `docs-site/`.
 - [x] Spanish: `projects/index.md`
 - [x] Spanish: `projects/thermostat-with-relay.md`
 - [x] Spanish: `assets/diagrams/es/thermostat-project-flow.svg`
-- [ ] French scenario pages and localized diagram
-- [ ] Italian scenario pages and localized diagram
+- [x] French scenario pages and localized diagram
+- [x] Italian scenario pages and localized diagram
 
 ### Ukrainian locale
 

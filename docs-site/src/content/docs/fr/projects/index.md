@@ -11,5 +11,6 @@ sidebar:
 | [Thermostat avec relais](/gekko/fr/projects/thermostat-with-relay/) | Chauffage ou refroidisseur piloté par DS18B20 | 1-Wire, capteur, interrupteur, dépendances, état sûr |
 | [Relais programmé](/gekko/fr/projects/scheduled-relay/) | Relais selon l’heure et les jours | horloge, schedule, Auto Switch, sortie sûre |
 | [Écran de capteur](/gekko/fr/projects/sensor-display/) | Valeur DS18B20 en direct sur un OLED SSD1306 | 1-Wire, I2C, mise en page d’écran, placeholder de métrique |
+| [Pompe doseuse](/gekko/fr/projects/dosing-pump/) | Dose de liquide mesurée selon un horaire | interrupteur GPIO, étalonnage, créneaux, réservoir |
 
 Utilisez le [catalogue](/gekko/fr/reference/devices/) si vous connaissez déjà le type technique.

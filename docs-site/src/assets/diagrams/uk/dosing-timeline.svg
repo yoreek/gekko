@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 300" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <rect x="1" y="1" width="918" height="298" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+
+  <!-- axis -->
+  <line x1="70" y1="170" x2="860" y2="170" stroke="#94a3b8" stroke-width="3"/>
+  <path d="M860 170 l -14 -6 v 12 z" fill="#94a3b8"/>
+
+  <!-- grace band at 12:00 -->
+  <rect x="350" y="140" width="48" height="60" rx="6" fill="#fde68a" opacity="0.7"/>
+  <text x="408" y="134" font-size="13" fill="#a16207">вікно 5 хв</text>
+
+  <!-- ticks -->
+  <g stroke="#64748b" stroke-width="3">
+    <line x1="150" y1="158" x2="150" y2="182"/>
+    <line x1="350" y1="158" x2="350" y2="182"/>
+    <line x1="550" y1="158" x2="550" y2="182"/>
+    <line x1="750" y1="158" x2="750" y2="182"/>
+  </g>
+  <g font-size="15" fill="#475569" text-anchor="middle" font-weight="600">
+    <text x="150" y="205">08:00</text>
+    <text x="350" y="205">12:00</text>
+    <text x="550" y="205">16:00</text>
+    <text x="750" y="205">20:00</text>
+  </g>
+
+  <!-- droplet template via path reuse -->
+  <!-- 08:00 dosed on time -->
+  <g transform="translate(150,95)">
+    <path d="M0,-16 C9,-3 12,4 12,9 a12,12 0 1,1 -24,0 C-12,4 -9,-3 0,-16 Z" fill="#38bdf8"/>
+    <path d="M-7,10 l 5 5 l 10 -11" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="150" y="238" text-anchor="middle" font-size="14" fill="#0f766e">доза вчасно</text>
+
+  <!-- 12:03 late but within grace -->
+  <g transform="translate(374,95)">
+    <path d="M0,-16 C9,-3 12,4 12,9 a12,12 0 1,1 -24,0 C-12,4 -9,-3 0,-16 Z" fill="#38bdf8"/>
+    <path d="M-7,10 l 5 5 l 10 -11" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <line x1="374" y1="120" x2="374" y2="140" stroke="#0ea5e9" stroke-width="2.5" stroke-dasharray="4 4"/>
+  <text x="374" y="238" text-anchor="middle" font-size="14" fill="#0f766e">12:03 — насос був зайнятий,</text>
+  <text x="374" y="257" text-anchor="middle" font-size="14" fill="#0f766e">запуск у вікні допуску</text>
+
+  <!-- 16:00 missed -->
+  <g transform="translate(550,95)">
+    <path d="M0,-16 C9,-3 12,4 12,9 a12,12 0 1,1 -24,0 C-12,4 -9,-3 0,-16 Z" fill="none" stroke="#f87171" stroke-width="3"/>
+    <path d="M-8,2 L8,16 M8,2 L-8,16" stroke="#ef4444" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+  <text x="550" y="238" text-anchor="middle" font-size="14" fill="#b91c1c">пропуск понад 5 хв —</text>
+  <text x="550" y="257" text-anchor="middle" font-size="14" fill="#b91c1c">доза пропущена, не пізно</text>
+
+  <!-- 20:00 upcoming -->
+  <g transform="translate(750,95)">
+    <path d="M0,-16 C9,-3 12,4 12,9 a12,12 0 1,1 -24,0 C-12,4 -9,-3 0,-16 Z" fill="none" stroke="#94a3b8" stroke-width="3" stroke-dasharray="5 4"/>
+  </g>
+  <text x="750" y="238" text-anchor="middle" font-size="14" fill="#64748b">наступна</text>
+
+  <text x="35" y="46" font-size="19" font-weight="700" fill="#0f172a">Дози за розкладом: вікно допуску, без пізньої подачі</text>
+</svg>

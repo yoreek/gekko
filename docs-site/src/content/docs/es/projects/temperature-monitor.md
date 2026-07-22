@@ -23,7 +23,7 @@ Sonda DS18B20 → bus 1-Wire → lectura de temperatura e historial
 - Sonda DS18B20.
 - Resistencia pull-up de 4,7 kΩ entre la línea DATA de la sonda y 3V3.
 
-![Cableado 1-Wire: ESP32, DS18B20, 3V3, GND, DATA y la resistencia pull-up.](../../../../assets/diagrams/onewire-wiring.svg)
+![Cableado 1-Wire: ESP32, DS18B20, 3V3, GND, DATA y la resistencia pull-up.](../../../../assets/diagrams/es/onewire-wiring.svg)
 
 No deje DATA flotante: sin la resistencia pull-up el bus puede detectar la
 sonda de forma intermitente o informar valores no válidos.

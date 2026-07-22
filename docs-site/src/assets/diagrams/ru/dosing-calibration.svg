@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 260" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <rect x="1" y="1" width="918" height="258" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+
+  <!-- Step 1 -->
+  <g>
+    <rect x="40" y="50" width="250" height="150" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2.5"/>
+    <circle cx="110" cy="110" r="30" fill="#ffffff" stroke="#475569" stroke-width="3"/>
+    <circle cx="110" cy="110" r="17" fill="#e2e8f0" stroke="#64748b" stroke-width="2"/>
+    <circle cx="110" cy="93" r="6" fill="#94a3b8"/>
+    <circle cx="96" cy="119" r="6" fill="#94a3b8"/>
+    <circle cx="124" cy="119" r="6" fill="#94a3b8"/>
+    <path d="M150 110 h 52" stroke="#38bdf8" stroke-width="6" stroke-linecap="round"/>
+    <path d="M202 103 l 14 7 -14 7 z" fill="#0284c7"/>
+    <text x="238" y="117" font-size="15" font-weight="700" fill="#0369a1">10 ml</text>
+    <text x="165" y="170" text-anchor="middle" font-size="15" font-weight="600" fill="#334155">1. Запустите калибровочную дозу</text>
+    <text x="165" y="189" text-anchor="middle" font-size="13" fill="#64748b">с текущей скоростью насоса</text>
+  </g>
+
+  <path d="M300 125 h 28" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M328 118 l 14 7 -14 7 z" fill="#94a3b8"/>
+
+  <!-- Step 2 -->
+  <g>
+    <rect x="345" y="50" width="250" height="150" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2.5"/>
+    <!-- measuring cup -->
+    <path d="M430 75 L 442 155 h 36 L 490 75" fill="none" stroke="#475569" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M436 118 L 484 118 L 479 155 h -38 z" fill="#bef264" opacity="0.8"/>
+    <g stroke="#94a3b8" stroke-width="2">
+      <line x1="478" y1="95" x2="488" y2="95"/>
+      <line x1="480" y1="115" x2="490" y2="115"/>
+      <line x1="482" y1="135" x2="492" y2="135"/>
+    </g>
+    <text x="530" y="124" font-size="15" font-weight="700" fill="#4d7c0f">8.6 ml</text>
+    <text x="470" y="182" text-anchor="middle" font-size="15" font-weight="600" fill="#334155">2. Измерьте реальный объём</text>
+  </g>
+
+  <path d="M605 125 h 28" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M633 118 l 14 7 -14 7 z" fill="#94a3b8"/>
+
+  <!-- Step 3 -->
+  <g>
+    <rect x="650" y="50" width="230" height="150" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2.5"/>
+    <rect x="680" y="80" width="170" height="34" rx="8" fill="#eff6ff" stroke="#60a5fa" stroke-width="2.5"/>
+    <text x="694" y="103" font-size="15" fill="#1d4ed8" font-weight="600">8.6</text>
+    <text x="836" y="103" font-size="13" fill="#64748b" text-anchor="end">ml</text>
+    <text x="765" y="146" text-anchor="middle" font-size="14" fill="#334155">Gekko рассчитает</text>
+    <text x="765" y="164" text-anchor="middle" font-size="14" fill="#334155">реальную подачу</text>
+    <text x="765" y="188" text-anchor="middle" font-size="15" font-weight="600" fill="#334155">3. Введите измеренный объём</text>
+  </g>
+
+  <text x="35" y="34" font-size="19" font-weight="700" fill="#0f172a">Калибровка</text>
+</svg>

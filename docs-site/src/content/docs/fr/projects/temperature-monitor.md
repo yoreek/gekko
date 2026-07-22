@@ -23,7 +23,7 @@ Sonde DS18B20 → bus 1-Wire → température en direct et historique
 - Sonde DS18B20.
 - Résistance de tirage de 4,7 kΩ entre DATA de la sonde et 3V3.
 
-![Câblage 1-Wire : ESP32, DS18B20, 3V3, GND, DATA et résistance de tirage.](../../../../assets/diagrams/onewire-wiring.svg)
+![Câblage 1-Wire : ESP32, DS18B20, 3V3, GND, DATA et résistance de tirage.](../../../../assets/diagrams/fr/onewire-wiring.svg)
 
 Ne laissez pas DATA flottante : sans résistance de tirage, le bus peut détecter
 la sonde de façon intermittente ou produire des valeurs non valides.
