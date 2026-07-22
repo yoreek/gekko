@@ -19,3 +19,6 @@ easy-iot-manager/
 src/generated/
 certs/
 webflash/esptool
+
+# devicegen scaffolder review output (move files into the tree, do not commit as-is)
+tools/devicegen/scaffold-out/

@@ -213,6 +213,38 @@ This is the cheap, always-valuable half — it does not depend on any field bein
 trivial, so it covers every type including the bespoke ones. It does **not** check
 field-level defaults; that needs a per-type manifest (below).
 
+### `check_config_versions.py` — legacy config guard (in CI)
+
+Also runs in `scripts/test.sh`. Enforces the rule from
+[device-config-versioning.md](device-config-versioning.md): an old `*ConfigV<n>`
+struct is a persisted format kept only for decode/migration, so it must never be a
+runtime's or adapter's *active* config type. For each family the latest version is the
+highest defined; a reference to a lower one is allowed only in migration/decode
+plumbing (`migrateFrom`, `decode*`, `static_assert`, version-scoped access, const-ref
+parameters, `legacy*` locals) and in tests. Anywhere else — a member, a return type, an
+adapter template argument, an encode target — is flagged.
+
+```sh
+python3 tools/devicegen/check_config_versions.py .
+```
+
+### `scaffold.py` — new-type scaffolder
+
+Stamps the touchpoint files for a new device type from a manifest and prints the exact
+registration lines for the five registries — removing the "create ~10 files + remember
+five registration lines" toil. The frontend model, Vue stubs and registry snippets are
+generated in full; the C++ config parse/validate and runtime hooks are stubbed with
+`// TODO`. Output goes to a review directory, not straight into the tree.
+
+```sh
+python3 tools/devicegen/scaffold.py <manifest.device.yaml> --out tools/devicegen/scaffold-out
+# review, move files into src/ and portal-spa/, paste the printed registration lines, then:
+python3 tools/devicegen/check_registry.py .
+```
+
+Manifest fields carry a `kind` (`pin`/`uint32`/`bool`/…); see the header of
+`scaffold.py` for the format. `tools/devicegen/scaffold-out/` is git-ignored.
+
 ### `generate.py` — field-surface pilot (manifest-driven, `gpio_switch` only)
 
 ```sh
@@ -229,10 +261,11 @@ Requires `pyyaml`. Only `gpio_switch` has a manifest today.
 
 ## Roadmap
 
-1. **Consistency guard — done.** `check_registry.py` covers all types and gates
+1. **Consistency guards — done.** `check_registry.py` (registration completeness) and
+   `check_config_versions.py` (no legacy config in runtime/adapter) gate
    `scripts/test.sh`.
-2. **Scaffolder — next.** Stamp the checklist's files and registration lines from a
-   manifest so a new type starts wired-up. Field-kind independent.
+2. **Scaffolder — done (v1).** `scaffold.py` stamps the touchpoint files and prints the
+   registration lines from a manifest (see below). Family logic is stubbed with TODOs.
 3. **Field-kind codegen.** Generate the field surface for regular types from the
    manifest so C++ and TS cannot drift. Worth building once the flow of regular types
    justifies it; bespoke types stay hand-written via the escape hatch.
