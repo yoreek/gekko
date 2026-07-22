@@ -43,13 +43,6 @@ Ds3231RtcDevice::Ds3231RtcDevice(const DeviceRegistryEntry& record, const Device
 Ds3231RtcDevice::Ds3231RtcDevice(const Ds3231RtcDeviceConfigV2& config)
     : Ds3231RtcDeviceBase((PState)&Ds3231RtcDevice::Idle), config_(config) {}
 
-Ds3231RtcDevice::Ds3231RtcDevice(const Ds3231RtcDeviceConfigV1& config)
-    : Ds3231RtcDevice([&config]() {
-          Ds3231RtcDeviceConfigV2 migrated{};
-          migrated.migrateFrom(config);
-          return migrated;
-      }()) {}
-
 const Ds3231RtcDeviceConfigV2& Ds3231RtcDevice::config() const {
     return config_;
 }

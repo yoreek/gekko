@@ -160,8 +160,8 @@ I2cBusDeviceConfigV1 makeBusConfig() {
     return config;
 }
 
-Ds3231RtcDeviceConfigV1 makeRtcConfig(bool useForSystemTimeSync = false, uint8_t i2cAddress = 0x68U) {
-    Ds3231RtcDeviceConfigV1 config{};
+Ds3231RtcDeviceConfigV2 makeRtcConfig(bool useForSystemTimeSync = false, uint8_t i2cAddress = 0x68U) {
+    Ds3231RtcDeviceConfigV2 config{};
     config.enabled = 1U;
     std::snprintf(config.name, sizeof(config.name), "%s", "rtc");
     config.useForSystemTimeSync = useForSystemTimeSync ? 1U : 0U;
@@ -220,7 +220,7 @@ DeviceCreateRequest makeBusCreateRequest(const char* name) {
     return request;
 }
 
-DeviceCreateRequest makeRtcCreateRequest(const char* name, DeviceId busId, const Ds3231RtcDeviceConfigV1& config) {
+DeviceCreateRequest makeRtcCreateRequest(const char* name, DeviceId busId, const Ds3231RtcDeviceConfigV2& config) {
     DeviceCreateRequest request{};
     request.typeId = kDs3231RtcTypeId;
     TEST_ASSERT_TRUE(request.assignName(name));
@@ -235,11 +235,11 @@ DeviceCreateRequest makeRtcCreateRequest(const char* name, DeviceId busId, const
 } // namespace
 
 void test_ds3231_config_codec_json_and_validation() {
-    const Ds3231RtcDeviceConfigV1 config = makeRtcConfig(true, 0x57U);
+    const Ds3231RtcDeviceConfigV2 config = makeRtcConfig(true, 0x57U);
     const BoundedBlob<kMaxDeviceConfigBytes> payload = encodeRtcPayload(config);
 
-    Ds3231RtcDeviceConfigV1 decoded{};
-    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(Ds3231RtcDeviceConfigV1::kMagic, payload.data(), payload.size(), decoded));
+    Ds3231RtcDeviceConfigV2 decoded{};
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(Ds3231RtcDeviceConfigV2::kMagic, payload.data(), payload.size(), decoded));
     TEST_ASSERT_TRUE(decoded.useForSystemTimeSync != 0U);
     TEST_ASSERT_EQUAL_UINT8(0x57U, decoded.i2cAddress);
     TEST_ASSERT_EQUAL_STRING("rtc", decoded.name);
@@ -250,18 +250,39 @@ void test_ds3231_config_codec_json_and_validation() {
     TEST_ASSERT_TRUE(json["useForSystemTimeSync"].as<bool>());
     TEST_ASSERT_EQUAL_UINT8(0x57U, json["i2cAddress"].as<uint8_t>());
 
-    Ds3231RtcDeviceConfigV1 parsed{};
+    Ds3231RtcDeviceConfigV2 parsed{};
     const char* error = nullptr;
     TEST_ASSERT_TRUE(parseDs3231RtcDeviceConfigJson(json, parsed, error));
     TEST_ASSERT_TRUE(parsed.useForSystemTimeSync != 0U);
     TEST_ASSERT_EQUAL_UINT8(0x57U, parsed.i2cAddress);
     TEST_ASSERT_TRUE(parsed.validate().ok());
 
-    Ds3231RtcDeviceConfigV1 defaults{};
+    Ds3231RtcDeviceConfigV2 defaults{};
     TEST_ASSERT_EQUAL_UINT8(0x68U, defaults.i2cAddress);
 
-    Ds3231RtcDeviceConfigV1 outOfRange = makeRtcConfig(false, 0x80U);
+    Ds3231RtcDeviceConfigV2 outOfRange = makeRtcConfig(false, 0x80U);
     TEST_ASSERT_FALSE(outOfRange.validate().ok());
+}
+
+void test_ds3231_config_migrates_v1_to_v2() {
+    // A legacy "DS3231-1" blob must decode and migrate to V2, preserving its fields.
+    EWFM_LEGACY_CONFIG_USE_BEGIN
+    Ds3231RtcDeviceConfigV1 legacy{};
+    legacy.enabled = 1U;
+    std::snprintf(legacy.name, sizeof(legacy.name), "%s", "rtc-legacy");
+    legacy.useForSystemTimeSync = 1U;
+    legacy.i2cAddress = 0x57U;
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = ds3231RtcDeviceConfigSize(legacy);
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ds3231RtcDeviceConfigV1::kMagic, legacy, buffer, size));
+    EWFM_LEGACY_CONFIG_USE_END
+
+    Ds3231RtcDeviceConfigV2 migrated{};
+    TEST_ASSERT_TRUE(decodeDs3231RtcDeviceConfig(buffer, size, migrated));
+    TEST_ASSERT_EQUAL_STRING("rtc-legacy", migrated.name);
+    TEST_ASSERT_TRUE(migrated.enabled != 0U);
+    TEST_ASSERT_TRUE(migrated.useForSystemTimeSync != 0U);
+    TEST_ASSERT_EQUAL_UINT8(0x57U, migrated.i2cAddress);
 }
 
 void test_ds3231_type_and_api_adapter_are_registered() {
@@ -331,11 +352,11 @@ void test_ds3231_runtime_reconfigures_on_address_change() {
     rtc.setDependencyRuntime(DeviceRole::I2CBus, &bus);
     driveRtcUntilReading(rtc);
 
-    const Ds3231RtcDeviceConfigV1 sameAddress = makeRtcConfig();
+    const Ds3231RtcDeviceConfigV2 sameAddress = makeRtcConfig();
     const DeviceConfigUpdatePlan samePlan = rtc.planConfigUpdate(encodeRtcPayload(sameAddress));
     TEST_ASSERT_FALSE(samePlan.resetStateMachine);
 
-    const Ds3231RtcDeviceConfigV1 newAddress = makeRtcConfig(false, 0x57U);
+    const Ds3231RtcDeviceConfigV2 newAddress = makeRtcConfig(false, 0x57U);
     const DeviceConfigUpdatePlan changedPlan = rtc.planConfigUpdate(encodeRtcPayload(newAddress));
     TEST_ASSERT_TRUE(changedPlan.resetStateMachine);
     TEST_ASSERT_TRUE(changedPlan.endOldConfig);
@@ -454,7 +475,7 @@ void test_ds3231_adapter_rejects_second_active_sync_device() {
     DeviceCreateResult busBResult = registry.create(makeBusCreateRequest("i2c-b"), 11);
     TEST_ASSERT_TRUE_MESSAGE(busBResult.ok(), busBResult.validation.message);
 
-    const Ds3231RtcDeviceConfigV1 activeConfig = makeRtcConfig(true);
+    const Ds3231RtcDeviceConfigV2 activeConfig = makeRtcConfig(true);
     DeviceCreateResult first = registry.create(makeRtcCreateRequest("rtc-a", busAResult.deviceId, activeConfig), 20);
     TEST_ASSERT_TRUE_MESSAGE(first.ok(), first.validation.message);
 
@@ -464,7 +485,7 @@ void test_ds3231_adapter_rejects_second_active_sync_device() {
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceError::InvalidConfig), static_cast<int>(validation.error));
 
     // A second device that does NOT request the sync flag is unaffected.
-    const Ds3231RtcDeviceConfigV1 inactiveConfig = makeRtcConfig(false);
+    const Ds3231RtcDeviceConfigV2 inactiveConfig = makeRtcConfig(false);
     const DeviceCreateRequest third = makeRtcCreateRequest("rtc-c", busBResult.deviceId, inactiveConfig);
     const DeviceValidationResult thirdValidation = Ds3231RtcDeviceApiAdapter::instance().validateCreateRequest(third, registry);
     TEST_ASSERT_TRUE_MESSAGE(thirdValidation.ok(), thirdValidation.message);

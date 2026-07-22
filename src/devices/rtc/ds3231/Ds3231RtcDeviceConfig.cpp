@@ -8,9 +8,11 @@
 
 namespace ewfm {
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 static_assert(std::is_trivially_copyable<Ds3231RtcDeviceConfigV1>::value, "Ds3231RtcDeviceConfigV1 must be POD");
 static_assert(sizeof(Ds3231RtcDeviceConfigV1::kMagic) - 1U + sizeof(Ds3231RtcDeviceConfigV1) <= kMaxDeviceConfigBytes,
               "Ds3231RtcDeviceConfigV1 exceeds device config bound");
+EWFM_LEGACY_CONFIG_USE_END
 static_assert(std::is_trivially_copyable<Ds3231RtcDeviceConfigV2>::value, "Ds3231RtcDeviceConfigV2 must be POD");
 static_assert(std::is_base_of<I2cDeviceConfigV1, Ds3231RtcDeviceConfigV2>::value, "Ds3231RtcDeviceConfigV2 must use the shared I2C config");
 static_assert(sizeof(Ds3231RtcDeviceConfigV2::kMagic) - 1U + sizeof(Ds3231RtcDeviceConfigV2) <= kMaxDeviceConfigBytes,
@@ -20,20 +22,14 @@ bool decodeDs3231RtcDeviceConfig(const uint8_t* blob, const size_t size, Ds3231R
     if (decodeFixedConfigBlob(Ds3231RtcDeviceConfigV2::kMagic, blob, size, config) && config.validate().ok()) {
         return true;
     }
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     Ds3231RtcDeviceConfigV1 legacy{};
     if (!decodeFixedConfigBlob(Ds3231RtcDeviceConfigV1::kMagic, blob, size, legacy) || !legacy.validate().ok()) {
         return false;
     }
+    EWFM_LEGACY_CONFIG_USE_END
     config.migrateFrom(legacy);
     return config.validate().ok();
-}
-
-bool parseDs3231RtcDeviceConfigJson(const JsonObjectConst& input, Ds3231RtcDeviceConfigV1& config, const char*& error) {
-    return config.parseJson(input, error);
-}
-
-void writeDs3231RtcDeviceConfigJson(const Ds3231RtcDeviceConfigV1& config, JsonObject output) {
-    config.writeJson(output);
 }
 
 bool parseDs3231RtcDeviceConfigJson(const JsonObjectConst& input, Ds3231RtcDeviceConfigV2& config, const char*& error) {
@@ -44,6 +40,7 @@ void writeDs3231RtcDeviceConfigJson(const Ds3231RtcDeviceConfigV2& config, JsonO
     config.writeJson(output);
 }
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 DeviceValidationResult Ds3231RtcDeviceConfigV1::validate() const {
     const DeviceValidationResult baseValidation = DeviceBaseConfigV1::validate();
     if (!baseValidation.ok()) {
@@ -54,21 +51,7 @@ DeviceValidationResult Ds3231RtcDeviceConfigV1::validate() const {
     }
     return validateI2cAddress(i2cAddress);
 }
-
-bool Ds3231RtcDeviceConfigV1::parseJson(const JsonObjectConst& input, const char*& error) {
-    if (!DeviceBaseConfigV1::parseJson(input, error)) {
-        return false;
-    }
-    useForSystemTimeSync = (input["useForSystemTimeSync"] | (useForSystemTimeSync != 0U)) ? 1U : 0U;
-
-    return parseI2cAddressJson(input["i2cAddress"], i2cAddress, error);
-}
-
-void Ds3231RtcDeviceConfigV1::writeJson(JsonObject output) const {
-    DeviceBaseConfigV1::writeJson(output);
-    output["useForSystemTimeSync"] = useForSystemTimeSync != 0U;
-    writeI2cAddressJson(i2cAddress, output);
-}
+EWFM_LEGACY_CONFIG_USE_END
 
 DeviceValidationResult Ds3231RtcDeviceConfigV2::validate() const {
     const DeviceValidationResult i2cValidation = I2cDeviceConfigV1::validate();
@@ -94,11 +77,13 @@ void Ds3231RtcDeviceConfigV2::writeJson(JsonObject output) const {
     output["useForSystemTimeSync"] = useForSystemTimeSync != 0U;
 }
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 void Ds3231RtcDeviceConfigV2::migrateFrom(const Ds3231RtcDeviceConfigV1& legacy) {
     enabled = legacy.enabled;
     std::memcpy(name, legacy.name, sizeof(name));
     i2cAddress = legacy.i2cAddress;
     useForSystemTimeSync = legacy.useForSystemTimeSync;
 }
+EWFM_LEGACY_CONFIG_USE_END
 
 } // namespace ewfm

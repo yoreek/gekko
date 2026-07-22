@@ -19,7 +19,6 @@ using Ds3231RtcDeviceBase = I2cDeviceRuntimeBase<Ds3231RtcDevice, BusDependentDe
 class Ds3231RtcDevice final : public Ds3231RtcDeviceBase, public IRealTimeClockRuntime {
 public:
     Ds3231RtcDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
-    explicit Ds3231RtcDevice(const Ds3231RtcDeviceConfigV1& config);
     explicit Ds3231RtcDevice(const Ds3231RtcDeviceConfigV2& config);
 
     const Ds3231RtcDeviceConfigV2& config() const;

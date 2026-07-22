@@ -600,7 +600,7 @@ void test_htu21_adapter_rejects_duplicate_0x40_dependent_on_same_bus() {
 
     // Cross-type collision: any other device configured at 0x40 on the HTU21's bus is rejected
     // through the same bus-wide duplicate-address walk.
-    Ds3231RtcDeviceConfigV1 rtcConfig{};
+    Ds3231RtcDeviceConfigV2 rtcConfig{};
     rtcConfig.enabled = 1U;
     std::snprintf(rtcConfig.name, sizeof(rtcConfig.name), "%s", "rtc");
     rtcConfig.i2cAddress = kHtu21DefaultI2cAddress;
@@ -612,7 +612,7 @@ void test_htu21_adapter_rejects_duplicate_0x40_dependent_on_same_bus() {
     rtcRequest.deps[0] = {DeviceRole::I2CBus, busAResult.deviceId};
     rtcRequest.configVersion = kDs3231RtcConfigVersion;
     uint8_t buffer[kMaxDeviceConfigBytes]{};
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ds3231RtcDeviceConfigV1::kMagic, rtcConfig, buffer, ds3231RtcDeviceConfigSize(rtcConfig)));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ds3231RtcDeviceConfigV2::kMagic, rtcConfig, buffer, ds3231RtcDeviceConfigSize(rtcConfig)));
     TEST_ASSERT_TRUE(rtcRequest.configBlob.assign(buffer, ds3231RtcDeviceConfigSize(rtcConfig)));
     const DeviceValidationResult rtcValidation = Ds3231RtcDeviceApiAdapter::instance().validateCreateRequest(rtcRequest, registry);
     TEST_ASSERT_FALSE(rtcValidation.ok());

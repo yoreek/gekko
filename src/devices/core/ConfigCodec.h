@@ -5,6 +5,13 @@
 #include <cstring>
 #include <type_traits>
 
+// Legacy `*ConfigV<n>` structs are marked [[deprecated]] so that -Werror=deprecated-declarations
+// turns any *active* use (a runtime member, an adapter's Config, an encode target) into a build
+// error. Migration/decode code legitimately names old versions -- wrap those regions in this
+// pair to opt out. This is the "exception for migrations" from docs/device-config-versioning.md.
+#define EWFM_LEGACY_CONFIG_USE_BEGIN _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+#define EWFM_LEGACY_CONFIG_USE_END _Pragma("GCC diagnostic pop")
+
 namespace ewfm {
 
 template <size_t kMagicSize, typename T> constexpr size_t fixedConfigBlobSize(const char (&)[kMagicSize], const T&) {

@@ -314,6 +314,7 @@ void test_ds18b20_config_codec_json_and_validation() {
 void test_ds18b20_config_migrates_v1_to_v2() {
     // A legacy "DS18B20-1" blob (no filter field) must decode and migrate to V2 with a
     // pass-through filter, preserving every V1 field.
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     Ds18b20TemperatureSensorConfigV1 legacy{};
     legacy.enabled = 1;
     std::snprintf(legacy.name, sizeof(legacy.name), "%s", "legacy");
@@ -327,6 +328,7 @@ void test_ds18b20_config_migrates_v1_to_v2() {
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = ds18b20TemperatureSensorConfigSize(legacy);
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic, legacy, buffer, size));
+    EWFM_LEGACY_CONFIG_USE_END
 
     Ds18b20TemperatureSensorConfigV2 migrated{};
     TEST_ASSERT_TRUE(decodeDs18b20TemperatureSensorConfig(buffer, size, migrated));

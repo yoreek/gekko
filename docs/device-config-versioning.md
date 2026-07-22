@@ -2,6 +2,25 @@
 
 Device config structs are persisted binary formats. Treat every released `*DeviceConfigV*` struct as immutable once it can exist in NVS or an imported setup bundle.
 
+## Compiler-Enforced Legacy Guard
+
+Old `*ConfigV<n>` structs must never be a runtime's or adapter's *active* config — only
+decode/migration may name them. This is enforced two ways:
+
+- **Compiler (authoritative):** mark each superseded struct `[[deprecated("...")]]`. The
+  esp32dev build passes `-Werror=deprecated-declarations` via `build_src_flags` (scoped
+  to `src/`, so third-party libraries are unaffected), so any active use is a hard build
+  error. Legitimate migration/decode/`static_assert`/ctor code opts out by wrapping the
+  region in `EWFM_LEGACY_CONFIG_USE_BEGIN` … `EWFM_LEGACY_CONFIG_USE_END` (defined in
+  `devices/core/ConfigCodec.h`). `ds18b20` is the reference (`Ds18b20TemperatureSensorConfigV1`).
+- **Fast pre-check:** `tools/devicegen/check_config_versions.py` runs in `scripts/test.sh`
+  and flags the same misuse by static scan (covers every family without needing the
+  attribute). See `docs/device-scaffolding.md`.
+
+When you add a new config version, mark the previous one `[[deprecated]]` and wrap the
+migration/decode sites; deleting now-dead `parseJson`/`writeJson` on the old struct
+(only `validate` is needed for decode) keeps the guarded surface small.
+
 ## Core Rules
 
 - Never edit, rename, reorder, remove, or reinterpret fields in an existing `*DeviceConfigV*` struct.

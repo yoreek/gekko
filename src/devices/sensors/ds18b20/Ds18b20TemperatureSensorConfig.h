@@ -19,7 +19,7 @@ constexpr uint32_t kDs18b20MaxPollMs = 86400000UL;
 constexpr uint16_t kDs18b20DefaultReportDeltaCentiCelsius = 1;
 
 #pragma pack(push, 1)
-struct Ds18b20TemperatureSensorConfigV1 : DeviceBaseConfigV1 {
+struct [[deprecated("legacy persisted DS18B20 config; decode/migration only")]] Ds18b20TemperatureSensorConfigV1 : DeviceBaseConfigV1 {
     static constexpr char kMagic[] = "DS18B20-1";
     OneWireRomAddress address{};
     uint8_t resolution{12};
@@ -28,9 +28,7 @@ struct Ds18b20TemperatureSensorConfigV1 : DeviceBaseConfigV1 {
     uint16_t reportDeltaCentiCelsius{kDs18b20DefaultReportDeltaCentiCelsius};
     uint32_t pollMs{kDs18b20DefaultPollMs};
 
-    bool parseJson(const JsonObjectConst& input, const char*& error);
-    DeviceValidationResult validate() const;
-    void writeJson(JsonObject output) const;
+    DeviceValidationResult validate() const; // kept for decode/migration only
 };
 
 // V2 adds a smoothing/calibration filter, bringing DS18B20 in line with the NTC and HTU21
@@ -49,13 +47,17 @@ struct Ds18b20TemperatureSensorConfigV2 : DeviceBaseConfigV1 {
     bool parseJson(const JsonObjectConst& input, const char*& error);
     DeviceValidationResult validate() const;
     void writeJson(JsonObject output) const;
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     void migrateFrom(const Ds18b20TemperatureSensorConfigV1& legacy);
+    EWFM_LEGACY_CONFIG_USE_END
 };
 #pragma pack(pop)
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 constexpr size_t ds18b20TemperatureSensorConfigSize(const Ds18b20TemperatureSensorConfigV1&) {
     return sizeof(Ds18b20TemperatureSensorConfigV1::kMagic) - 1U + sizeof(Ds18b20TemperatureSensorConfigV1);
 }
+EWFM_LEGACY_CONFIG_USE_END
 
 constexpr size_t ds18b20TemperatureSensorConfigSize(const Ds18b20TemperatureSensorConfigV2&) {
     return sizeof(Ds18b20TemperatureSensorConfigV2::kMagic) - 1U + sizeof(Ds18b20TemperatureSensorConfigV2);

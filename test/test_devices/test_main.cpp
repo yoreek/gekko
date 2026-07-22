@@ -82,6 +82,7 @@ void test_htu21_runtime_reinitializes_on_dependency_generation_change();
 void test_htu21_adapter_partial_update_preserves_unit_and_deltas();
 void test_htu21_adapter_rejects_duplicate_0x40_dependent_on_same_bus();
 void test_ds3231_config_codec_json_and_validation();
+void test_ds3231_config_migrates_v1_to_v2();
 void test_ds3231_type_and_api_adapter_are_registered();
 void test_ds3231_runtime_reads_time_from_registers();
 void test_ds3231_runtime_uses_configured_i2c_address();
@@ -367,6 +368,7 @@ int main(int, char**) {
     RUN_TEST(test_htu21_adapter_partial_update_preserves_unit_and_deltas);
     RUN_TEST(test_htu21_adapter_rejects_duplicate_0x40_dependent_on_same_bus);
     RUN_TEST(test_ds3231_config_codec_json_and_validation);
+    RUN_TEST(test_ds3231_config_migrates_v1_to_v2);
     RUN_TEST(test_ds3231_type_and_api_adapter_are_registered);
     RUN_TEST(test_ds3231_runtime_reads_time_from_registers);
     RUN_TEST(test_ds3231_runtime_uses_configured_i2c_address);
