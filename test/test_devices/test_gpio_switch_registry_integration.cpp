@@ -20,6 +20,7 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeGpioPayload(const GpioSwitchDeviceConfi
     return payload;
 }
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 BoundedBlob<kMaxDeviceConfigBytes> encodeLegacyGpioPayload(const GpioSwitchDevicePersistedConfigV1& config) {
     BoundedBlob<kMaxDeviceConfigBytes> payload{};
     uint8_t buffer[kMaxDeviceConfigBytes]{};
@@ -29,6 +30,7 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeLegacyGpioPayload(const GpioSwitchDevic
     TEST_ASSERT_TRUE(payload.assign(buffer, pos));
     return payload;
 }
+EWFM_LEGACY_CONFIG_USE_END
 
 DeviceCreateRequest makeGpioSwitchCreateRequest() {
     GpioSwitchDeviceConfigV3 config{};
@@ -107,7 +109,9 @@ void test_gpio_switch_registry_migrates_v1_blob_on_begin() {
     current.inverted = true;
     current.gpioPin = 21U;
 
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     GpioSwitchDevicePersistedConfigV1 legacy{};
+    EWFM_LEGACY_CONFIG_USE_END
     legacy.switchConfig.enabled = current.enabled;
     std::snprintf(legacy.switchConfig.name, sizeof(legacy.switchConfig.name), "%s", current.name);
     legacy.switchConfig.restorePreviousState = current.restorePreviousState;

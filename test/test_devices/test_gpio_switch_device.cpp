@@ -63,6 +63,7 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeGpioPayload(const GpioSwitchDeviceConfi
     return payload;
 }
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 BoundedBlob<kMaxDeviceConfigBytes> encodeLegacyGpioPayload(const GpioSwitchDevicePersistedConfigV1& config) {
     BoundedBlob<kMaxDeviceConfigBytes> payload{};
     uint8_t buffer[kMaxDeviceConfigBytes]{};
@@ -72,6 +73,7 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeLegacyGpioPayload(const GpioSwitchDevic
     TEST_ASSERT_TRUE(payload.assign(buffer, pos));
     return payload;
 }
+EWFM_LEGACY_CONFIG_USE_END
 
 void startToReady(GpioSwitchDevice& device) {
     device.begin(10);
@@ -99,7 +101,9 @@ void test_gpio_switch_config_round_trip() {
 
 void test_gpio_switch_config_migrates_v1_blob() {
     const GpioSwitchDeviceConfigV3 config = makeGpioConfig(kSwitchOutputOn, kSwitchOutputOff);
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     GpioSwitchDevicePersistedConfigV1 legacy{};
+    EWFM_LEGACY_CONFIG_USE_END
     static_cast<DeviceBaseConfigV1&>(legacy.switchConfig) = config;
     legacy.switchConfig.restorePreviousState = config.restorePreviousState;
     legacy.switchConfig.startupState = 1U;
