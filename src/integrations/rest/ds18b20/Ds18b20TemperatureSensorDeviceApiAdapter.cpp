@@ -34,7 +34,7 @@ DeviceValidationResult validateUniqueDependencyAddress(const DeviceRegistry& reg
 } // namespace
 
 bool Ds18b20TemperatureSensorDeviceApiAdapter::parseCreateExtras(const JsonObjectConst& input, const JsonObjectConst& configInput,
-                                                                 Ds18b20TemperatureSensorConfigV1& config, DeviceCreateRequest& request,
+                                                                 Ds18b20TemperatureSensorConfigV2& config, DeviceCreateRequest& request,
                                                                  const char*& error) const {
     (void)input;
     (void)config;
@@ -42,7 +42,7 @@ bool Ds18b20TemperatureSensorDeviceApiAdapter::parseCreateExtras(const JsonObjec
 }
 
 bool Ds18b20TemperatureSensorDeviceApiAdapter::parseUpdateExtras(const JsonObjectConst& input, const JsonObjectConst& configInput,
-                                                                 Ds18b20TemperatureSensorConfigV1& config,
+                                                                 Ds18b20TemperatureSensorConfigV2& config,
                                                                  DeviceConfigUpdateRequest& request, const char*& error) const {
     (void)configInput;
     (void)config;
@@ -60,8 +60,8 @@ DeviceValidationResult Ds18b20TemperatureSensorDeviceApiAdapter::validateCreateR
         return {DeviceError::InvalidRelationship, "ds18b20 requires a onewire dependency"};
     }
 
-    Ds18b20TemperatureSensorConfigV1 config{};
-    if (!decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic,
+    Ds18b20TemperatureSensorConfigV2 config{};
+    if (!decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV2::kMagic,
                                         reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, kInvalidConfigError};
     }
@@ -72,8 +72,8 @@ DeviceValidationResult Ds18b20TemperatureSensorDeviceApiAdapter::validateCreateR
 DeviceValidationResult Ds18b20TemperatureSensorDeviceApiAdapter::validateUpdateConfigRequest(const IDeviceRuntime& runtime,
                                                                                              const DeviceConfigUpdateRequest& request,
                                                                                              const DeviceRegistry& registry) const {
-    Ds18b20TemperatureSensorConfigV1 config{};
-    if (!decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic,
+    Ds18b20TemperatureSensorConfigV2 config{};
+    if (!decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV2::kMagic,
                                         reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, kInvalidConfigError};
     }

@@ -1,17 +1,13 @@
 #include "devices/sensors/ntc_thermistor/NtcThermistorTemperatureSensorDevice.h"
 
+#include "devices/core/ConfigCodec.h"
+
 #include <cmath>
 #include <cstdint>
 
 namespace ewfm {
 
-#undef SM_CLASS
-#define SM_CLASS NtcThermistorTemperatureSensorDevice
-
 namespace {
-const char* kOutputNotReady = "not_ready";
-const char* kOutputDisabled = "disabled";
-const char* kOutputDependencyUnavailable = "dependency_unavailable";
 const char* kOutputOutOfRange = "out_of_range";
 } // namespace
 
@@ -27,8 +23,8 @@ NtcThermistorTemperatureSensorDevice::NtcThermistorTemperatureSensorDevice(const
 }
 
 NtcThermistorTemperatureSensorDevice::NtcThermistorTemperatureSensorDevice(const NtcThermistorTemperatureSensorConfigV1& config)
-    : DeviceRuntimeBase((PState)&NtcThermistorTemperatureSensorDevice::Idle), config_(config) {
-    filter_.configure(config_.filter);
+    : PolledTemperatureSensorDeviceBase(), config_(config) {
+    applyFilterConfig();
 }
 
 const NtcThermistorTemperatureSensorConfigV1& NtcThermistorTemperatureSensorDevice::config() const {
@@ -39,25 +35,20 @@ const DeviceBaseConfigV1& NtcThermistorTemperatureSensorDevice::baseConfig() con
     return config_;
 }
 
-const TemperatureReading& NtcThermistorTemperatureSensorDevice::reading() const {
-    return publisher_.reading();
+uint32_t NtcThermistorTemperatureSensorDevice::pollIntervalMs() const {
+    return config_.pollMs;
 }
 
-const char* NtcThermistorTemperatureSensorDevice::outputStatus() const {
-    return publisher_.status();
+const SensorFilterConfigV1& NtcThermistorTemperatureSensorDevice::filterConfig() const {
+    return config_.filter;
 }
 
-const ITemperatureReadingRuntime* NtcThermistorTemperatureSensorDevice::temperatureReadingRuntime() const {
-    return this;
+bool NtcThermistorTemperatureSensorDevice::reportAlways() const {
+    return config_.reportAlways != 0U;
 }
 
-bool NtcThermistorTemperatureSensorDevice::latestTemperatureReading(TemperatureReading& reading) const {
-    reading = publisher_.reading();
-    return true;
-}
-
-const char* NtcThermistorTemperatureSensorDevice::latestTemperatureStatus() const {
-    return publisher_.status();
+uint16_t NtcThermistorTemperatureSensorDevice::reportDeltaCentiCelsius() const {
+    return config_.reportDeltaCentiCelsius;
 }
 
 void NtcThermistorTemperatureSensorDevice::setDependencyRuntime(DeviceRole role, IDeviceRuntime* dependencyRuntime) {
@@ -88,9 +79,9 @@ bool NtcThermistorTemperatureSensorDevice::applyConfig(const DeviceConfigBlob& c
     }
     const bool pollChanged = config.pollMs != config_.pollMs;
     config_ = config;
-    filter_.configure(config_.filter);
+    applyFilterConfig();
     if (pollChanged) {
-        nextPollAt_ = now + config_.pollMs;
+        reschedulePoll(now);
     }
     return true;
 }
@@ -139,31 +130,22 @@ void NtcThermistorTemperatureSensorDevice::refreshCapabilityCache() {
     }
 }
 
-bool NtcThermistorTemperatureSensorDevice::dependencyAnalogInputReady() const {
+bool NtcThermistorTemperatureSensorDevice::sensorReady() const {
     return dependencyReady(DeviceRole::AnalogInput) && analogInput_ != nullptr;
 }
 
-TemperatureUnit NtcThermistorTemperatureSensorDevice::outputUnit() const {
-    TemperatureUnit unit{TemperatureUnit::Celsius};
-    (void)temperatureUnitFromByte(config_.outputUnit, unit);
-    return unit;
-}
-
-void NtcThermistorTemperatureSensorDevice::performReading(uint32_t now) {
+bool NtcThermistorTemperatureSensorDevice::sampleReading(uint32_t now, int32_t& milliCelsius, const char*& invalidStatus) {
+    (void)now;
     AnalogInputReading input{};
     if (analogInput_ == nullptr || !analogInput_->latestAnalogInputReading(input) || !input.valid) {
-        if (publisher_.invalidate(kOutputOutOfRange)) {
-            markRuntimeStateDirty();
-        }
-        return;
+        invalidStatus = kOutputOutOfRange;
+        return false;
     }
 
     double resistanceOhms = 0.0;
     if (!ntcDividerResistanceOhms(input.milliVolts, config_.seriesResistorOhms, config_.supplyMilliVolts, resistanceOhms)) {
-        if (publisher_.invalidate(kOutputOutOfRange)) {
-            markRuntimeStateDirty();
-        }
-        return;
+        invalidStatus = kOutputOutOfRange;
+        return false;
     }
 
     NtcFormulaMode mode{};
@@ -173,174 +155,12 @@ void NtcThermistorTemperatureSensorDevice::performReading(uint32_t now) {
             ? ntcBetaMilliCelsius(resistanceOhms, config_.nominalResistanceOhms, config_.nominalTempCentiCelsius, config_.betaCoefficient)
             : ntcSteinhartHartMilliCelsius(resistanceOhms, config_.steinhartA, config_.steinhartB, config_.steinhartC);
     if (rawMilliCelsius == INT32_MIN) {
-        if (publisher_.invalidate(kOutputOutOfRange)) {
-            markRuntimeStateDirty();
-        }
-        return;
+        invalidStatus = kOutputOutOfRange;
+        return false;
     }
 
-    const float filtered = filter_.apply(static_cast<float>(rawMilliCelsius));
-    publisher_.configure(config_.reportAlways != 0U, config_.reportDeltaCentiCelsius);
-    if (publisher_.publish(static_cast<int32_t>(std::lround(filtered)), now)) {
-        markRuntimeStateDirty();
-    }
-}
-
-SM_STATE(NtcThermistorTemperatureSensorDevice::Idle) {
-    status_ = DeviceStatus::Creating;
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        if (publisher_.invalidate(kOutputNotReady)) {
-            markRuntimeStateDirty();
-        }
-        SM_GOTO(Deleting);
-    }
-    if (disableRequested_ || config_.enabled == 0U) {
-        status_ = DeviceStatus::Disabled;
-        if (publisher_.invalidate(kOutputDisabled)) {
-            markRuntimeStateDirty();
-        }
-        SM_GOTO(Disabled);
-    }
-    if (startRequested_) {
-        if (publisher_.invalidate(kOutputNotReady)) {
-            markRuntimeStateDirty();
-        }
-        SM_GOTO(Starting);
-    }
-}
-
-SM_STATE(NtcThermistorTemperatureSensorDevice::Starting) {
-    status_ = DeviceStatus::Starting;
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        if (publisher_.invalidate(kOutputNotReady)) {
-            markRuntimeStateDirty();
-        }
-        SM_GOTO(Deleting);
-    }
-    if (disableRequested_ || config_.enabled == 0U) {
-        status_ = DeviceStatus::Disabled;
-        if (publisher_.invalidate(kOutputDisabled)) {
-            markRuntimeStateDirty();
-        }
-        SM_GOTO(Disabled);
-    }
-    if (!dependencyAnalogInputReady()) {
-        status_ = DeviceStatus::DependencyBlocked;
-        if (publisher_.invalidate(kOutputDependencyUnavailable)) {
-            markRuntimeStateDirty();
-        }
-        SM_GOTO(DependencyBlocked);
-    }
-
-    clearStartRequested();
-    filter_.reset();
-    nextPollAt_ = uptime();
-    status_ = DeviceStatus::Ready;
-    SM_GOTO(Ready);
-}
-
-SM_STATE(NtcThermistorTemperatureSensorDevice::Ready) {
-    status_ = DeviceStatus::Ready;
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        if (publisher_.invalidate(kOutputNotReady)) {
-            markRuntimeStateDirty();
-        }
-        SM_GOTO(Deleting);
-    }
-    if (disableRequested_ || config_.enabled == 0U) {
-        status_ = DeviceStatus::Disabled;
-        if (publisher_.invalidate(kOutputDisabled)) {
-            markRuntimeStateDirty();
-        }
-        SM_GOTO(Disabled);
-    }
-    if (!dependencyAnalogInputReady()) {
-        status_ = DeviceStatus::DependencyBlocked;
-        if (publisher_.invalidate(kOutputDependencyUnavailable)) {
-            markRuntimeStateDirty();
-        }
-        SM_GOTO(DependencyBlocked);
-    }
-    if (reconfigureRequested_) {
-        status_ = DeviceStatus::Reconfiguring;
-        SM_GOTO(Reconfiguring);
-    }
-    if (!EWFM_SM_TIME_REACHED(uptime(), nextPollAt_)) {
-        return;
-    }
-    nextPollAt_ = uptime() + config_.pollMs;
-    performReading(uptime());
-}
-
-SM_STATE(NtcThermistorTemperatureSensorDevice::DependencyBlocked) {
-    status_ = DeviceStatus::DependencyBlocked;
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        if (publisher_.invalidate(kOutputNotReady)) {
-            markRuntimeStateDirty();
-        }
-        SM_GOTO(Deleting);
-    }
-    if (disableRequested_ || config_.enabled == 0U) {
-        status_ = DeviceStatus::Disabled;
-        if (publisher_.invalidate(kOutputDisabled)) {
-            markRuntimeStateDirty();
-        }
-        SM_GOTO(Disabled);
-    }
-    if (dependencyAnalogInputReady() && (reconfigureRequested_ || startRequested_)) {
-        status_ = DeviceStatus::Reconfiguring;
-        SM_GOTO(Reconfiguring);
-    }
-}
-
-SM_STATE(NtcThermistorTemperatureSensorDevice::Reconfiguring) {
-    status_ = DeviceStatus::Reconfiguring;
-    clearReconfigureRequested();
-    if (publisher_.invalidate(kOutputNotReady)) {
-        markRuntimeStateDirty();
-    }
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        SM_GOTO(Deleting);
-    }
-    if (disableRequested_ || config_.enabled == 0U) {
-        status_ = DeviceStatus::Disabled;
-        SM_GOTO(Disabled);
-    }
-    SM_GOTO(Starting);
-}
-
-SM_STATE(NtcThermistorTemperatureSensorDevice::Disabled) {
-    status_ = DeviceStatus::Disabled;
-    if (publisher_.invalidate(kOutputDisabled)) {
-        markRuntimeStateDirty();
-    }
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        SM_GOTO(Deleting);
-    }
-    if (reconfigureRequested_ && config_.enabled != 0U) {
-        status_ = DeviceStatus::Reconfiguring;
-        SM_GOTO(Reconfiguring);
-    }
-}
-
-SM_STATE(NtcThermistorTemperatureSensorDevice::Deleting) {
-    status_ = DeviceStatus::Deleting;
-    if (publisher_.invalidate(kOutputNotReady)) {
-        markRuntimeStateDirty();
-    }
-    setDeleted();
+    milliCelsius = rawMilliCelsius;
+    return true;
 }
 
 } // namespace ewfm

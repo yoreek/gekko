@@ -53,6 +53,8 @@ void test_sensor_reading_filter_smooths_step_input_toward_target();
 void test_sensor_reading_filter_reset_reseeds_instead_of_blending();
 void test_temperature_helpers_convert_units_and_dirty_threshold();
 void test_ds18b20_config_codec_json_and_validation();
+void test_ds18b20_config_migrates_v1_to_v2();
+void test_ds18b20_config_filter_json_round_trips();
 void test_ds18b20_protocol_helpers_parse_scratchpad();
 void test_ds18b20_type_and_api_adapter_are_registered();
 void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input();
@@ -336,6 +338,8 @@ int main(int, char**) {
     RUN_TEST(test_sensor_reading_filter_reset_reseeds_instead_of_blending);
     RUN_TEST(test_temperature_helpers_convert_units_and_dirty_threshold);
     RUN_TEST(test_ds18b20_config_codec_json_and_validation);
+    RUN_TEST(test_ds18b20_config_migrates_v1_to_v2);
+    RUN_TEST(test_ds18b20_config_filter_json_round_trips);
     RUN_TEST(test_ds18b20_protocol_helpers_parse_scratchpad);
     RUN_TEST(test_ds18b20_type_and_api_adapter_are_registered);
     RUN_TEST(test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input);

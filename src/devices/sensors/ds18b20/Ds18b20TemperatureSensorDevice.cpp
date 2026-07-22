@@ -3,6 +3,7 @@
 #include "debug/Debug.h"
 #include "devices/sensors/ds18b20/Ds18b20OneWireProtocol.h"
 
+#include <cmath>
 #include <cstring>
 
 namespace ewfm {
@@ -28,17 +29,19 @@ const char* kOutputDuplicateAddress = "duplicate_address";
 
 Ds18b20TemperatureSensorDevice::Ds18b20TemperatureSensorDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob)
     : Ds18b20TemperatureSensorDevice([&configBlob]() {
-          Ds18b20TemperatureSensorConfigV1 config{};
-          (void)decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic, configBlob.data(), configBlob.size(), config);
+          Ds18b20TemperatureSensorConfigV2 config{};
+          (void)decodeDs18b20TemperatureSensorConfig(configBlob.data(), configBlob.size(), config);
           return config;
       }()) {
     bindDeviceIdentity(record, configBlob);
 }
 
-Ds18b20TemperatureSensorDevice::Ds18b20TemperatureSensorDevice(const Ds18b20TemperatureSensorConfigV1& config)
-    : BusDependentDeviceBase((PState)&Ds18b20TemperatureSensorDevice::Idle), config_(config) {}
+Ds18b20TemperatureSensorDevice::Ds18b20TemperatureSensorDevice(const Ds18b20TemperatureSensorConfigV2& config)
+    : BusDependentDeviceBase((PState)&Ds18b20TemperatureSensorDevice::Idle), config_(config) {
+    filter_.configure(config_.filter);
+}
 
-const Ds18b20TemperatureSensorConfigV1& Ds18b20TemperatureSensorDevice::config() const {
+const Ds18b20TemperatureSensorConfigV2& Ds18b20TemperatureSensorDevice::config() const {
     return config_;
 }
 
@@ -82,12 +85,12 @@ void Ds18b20TemperatureSensorDevice::bindDeviceIdentity(const DeviceRegistryEntr
 bool Ds18b20TemperatureSensorDevice::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = ds18b20TemperatureSensorConfigSize(config_);
-    return encodeFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic, config_, buffer, size) && configBlob.assign(buffer, size);
+    return encodeFixedConfigBlob(Ds18b20TemperatureSensorConfigV2::kMagic, config_, buffer, size) && configBlob.assign(buffer, size);
 }
 
 DeviceConfigUpdatePlan Ds18b20TemperatureSensorDevice::planConfigUpdate(const DeviceConfigBlob& configBlob) const {
-    Ds18b20TemperatureSensorConfigV1 config{};
-    if (!decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic, configBlob.data(), configBlob.size(), config)) {
+    Ds18b20TemperatureSensorConfigV2 config{};
+    if (!decodeDs18b20TemperatureSensorConfig(configBlob.data(), configBlob.size(), config)) {
         return {};
     }
 
@@ -101,12 +104,13 @@ DeviceConfigUpdatePlan Ds18b20TemperatureSensorDevice::planConfigUpdate(const De
 }
 
 bool Ds18b20TemperatureSensorDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
-    Ds18b20TemperatureSensorConfigV1 config{};
-    if (!decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic, configBlob.data(), configBlob.size(), config)) {
+    Ds18b20TemperatureSensorConfigV2 config{};
+    if (!decodeDs18b20TemperatureSensorConfig(configBlob.data(), configBlob.size(), config)) {
         return false;
     }
     const bool pollChanged = config.pollMs != config_.pollMs;
     config_ = config;
+    filter_.configure(config_.filter);
     if (pollChanged) {
         nextPollAt_ = now + config_.pollMs;
     }
@@ -142,8 +146,8 @@ DeviceValidationResult Ds18b20TemperatureSensorDevice::validateConfig(const Devi
     if (configBlob.size() > kMaxDeviceConfigBytes) {
         return {DeviceError::BoundsExceeded, "ds18b20 config exceeds supported size"};
     }
-    Ds18b20TemperatureSensorConfigV1 config{};
-    if (!decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic, configBlob.data(), configBlob.size(), config)) {
+    Ds18b20TemperatureSensorConfigV2 config{};
+    if (!decodeDs18b20TemperatureSensorConfig(configBlob.data(), configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "ds18b20 config is invalid"};
     }
     return config.validate();
@@ -223,9 +227,10 @@ bool Ds18b20TemperatureSensorDevice::readTemperature(IOneWireBusDriver& driver, 
 }
 
 void Ds18b20TemperatureSensorDevice::publishReading(int32_t milliCelsius, uint32_t now) {
+    const int32_t filtered = static_cast<int32_t>(std::lround(filter_.apply(static_cast<float>(milliCelsius))));
     publisher_.configure(config_.reportAlways != 0U, config_.reportDeltaCentiCelsius);
     consecutiveErrors_ = 0;
-    if (publisher_.publish(milliCelsius, now)) {
+    if (publisher_.publish(filtered, now)) {
         markRuntimeStateDirty();
     }
 }
@@ -299,6 +304,7 @@ SM_STATE(Ds18b20TemperatureSensorDevice::Starting) {
     }
 
     clearStartRequested();
+    filter_.reset();
     invalidateReading(kOutputNotReady);
     SM_GOTO(PowerUpDelay);
 }

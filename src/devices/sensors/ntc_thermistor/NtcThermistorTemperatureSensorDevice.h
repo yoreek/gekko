@@ -1,10 +1,7 @@
 #pragma once
 
-#include "devices/core/DeviceRuntimeBase.h"
-#include "devices/sensors/filter/SensorReadingFilter.h"
+#include "devices/sensors/common/PolledTemperatureSensorDeviceBase.h"
 #include "devices/sensors/ntc_thermistor/NtcThermistorTemperatureSensorConfig.h"
-#include "devices/sensors/temperature/TemperatureReadingPublisher.h"
-#include "devices/sensors/temperature/TemperatureSensorTypes.h"
 
 #include <ArduinoJson.h>
 
@@ -14,18 +11,15 @@ namespace ewfm {
 // hardware itself (see AnalogPortInputDevice/AnalogInputChannelDevice for that), only the
 // voltage-divider geometry and the Beta/Steinhart-Hart curve. The AnalogInput dependency
 // is resolved once per change (setDependencyRuntime/bindDeviceIdentity) rather than re-looked-up
-// every tick, mirroring ThermostatDevice's capability cache.
-class NtcThermistorTemperatureSensorDevice final : public DeviceRuntimeBase, public ITemperatureReadingRuntime {
+// every tick, mirroring ThermostatDevice's capability cache. The poll loop, smoothing filter,
+// reading publisher, and lifecycle state machine all live in PolledTemperatureSensorDeviceBase;
+// this class supplies only the divider read and the config accessors.
+class NtcThermistorTemperatureSensorDevice final : public PolledTemperatureSensorDeviceBase {
 public:
     NtcThermistorTemperatureSensorDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
     explicit NtcThermistorTemperatureSensorDevice(const NtcThermistorTemperatureSensorConfigV1& config);
 
     const NtcThermistorTemperatureSensorConfigV1& config() const;
-    const TemperatureReading& reading() const;
-    const char* outputStatus() const;
-    bool latestTemperatureReading(TemperatureReading& reading) const override;
-    const char* latestTemperatureStatus() const override;
-    const ITemperatureReadingRuntime* temperatureReadingRuntime() const override;
     void setDependencyRuntime(DeviceRole role, IDeviceRuntime* dependencyRuntime) override;
     void setDependencyRuntimeAt(uint8_t index, IDeviceRuntime* dependencyRuntime) override;
     void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
@@ -39,24 +33,18 @@ public:
 private:
     const DeviceBaseConfigV1& baseConfig() const override;
 
-    State Idle();
-    State Starting();
-    State Ready();
-    State DependencyBlocked();
-    State Reconfiguring();
-    State Disabled();
-    State Deleting();
+    // PolledTemperatureSensorDeviceBase hooks
+    bool sensorReady() const override;
+    bool sampleReading(uint32_t now, int32_t& milliCelsius, const char*& invalidStatus) override;
+    uint32_t pollIntervalMs() const override;
+    const SensorFilterConfigV1& filterConfig() const override;
+    bool reportAlways() const override;
+    uint16_t reportDeltaCentiCelsius() const override;
 
     void refreshCapabilityCache();
-    bool dependencyAnalogInputReady() const;
-    void performReading(uint32_t now);
-    TemperatureUnit outputUnit() const;
 
     NtcThermistorTemperatureSensorConfigV1 config_{};
-    SensorReadingFilter filter_{};
-    TemperatureReadingPublisher publisher_{};
     const IAnalogInputRuntime* analogInput_{nullptr};
-    uint32_t nextPollAt_{0};
 };
 
 } // namespace ewfm

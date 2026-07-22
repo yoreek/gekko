@@ -113,6 +113,13 @@
       </v-col>
     </v-row>
 
+    <SensorFilterFields
+      :model-value="modelValue.filter"
+      :mode="mode"
+      :busy="busy"
+      @update:model-value="update('filter', $event)"
+    />
+
     <v-row v-if="device">
       <v-col cols="12" sm="6">
         <v-text-field :label="t('device.fields.temperature')" :model-value="temperatureText" readonly />
@@ -133,6 +140,7 @@ import type { DeviceCommandRequest, DeviceRecord, Ds18b20TemperatureSensorOutput
 import { Ds18b20Device, type Ds18b20ConfigDraft } from '@/models/devices/ds18b20'
 import { devicesForDependencyRole, dependencyOptionsForRole } from '@/models/devices/device-model-factory'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
+import SensorFilterFields from '@/components/devices/common/SensorFilterFields.vue'
 import { useDraftModel } from '@/composables/useDraftModel'
 
 const props = defineProps<{

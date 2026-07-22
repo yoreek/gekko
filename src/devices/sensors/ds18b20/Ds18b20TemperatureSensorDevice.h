@@ -4,6 +4,7 @@
 #include "devices/bus/onewire/OneWireBusDevice.h"
 #include "devices/sensors/ds18b20/Ds18b20OneWireProtocol.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorConfig.h"
+#include "devices/sensors/filter/SensorReadingFilter.h"
 #include "devices/sensors/temperature/TemperatureReadingPublisher.h"
 #include "devices/sensors/temperature/TemperatureSensorTypes.h"
 
@@ -15,9 +16,9 @@ class Ds18b20TemperatureSensorDevice final : public BusDependentDeviceBase<OneWi
                                              public ITemperatureReadingRuntime {
 public:
     Ds18b20TemperatureSensorDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
-    explicit Ds18b20TemperatureSensorDevice(const Ds18b20TemperatureSensorConfigV1& config);
+    explicit Ds18b20TemperatureSensorDevice(const Ds18b20TemperatureSensorConfigV2& config);
 
-    const Ds18b20TemperatureSensorConfigV1& config() const;
+    const Ds18b20TemperatureSensorConfigV2& config() const;
     const TemperatureReading& reading() const;
     const char* outputStatus() const;
     uint8_t consecutiveErrors() const;
@@ -65,7 +66,8 @@ private:
     void deferRetry(uint32_t now);
     TemperatureUnit outputUnit() const;
 
-    Ds18b20TemperatureSensorConfigV1 config_{};
+    Ds18b20TemperatureSensorConfigV2 config_{};
+    SensorReadingFilter filter_{};
     TemperatureReadingPublisher publisher_{};
     uint32_t lastDependencyGeneration_{0};
     uint32_t conversionDeadline_{0};

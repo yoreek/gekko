@@ -667,6 +667,9 @@ const seedDatabase: SeedDatabase = {
       pollMs: 5000,
       reportDeltaCelsius: 0.25,
       reportAlways: false,
+      smoothingWeight: 1,
+      calibrationFactor: 1,
+      calibrationOffset: 0,
     }, {
       status: 'ready',
       lifecycleStatus: 'ready',

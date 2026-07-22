@@ -7,13 +7,13 @@ namespace ewfm {
 
 class Ds18b20TemperatureSensorDeviceApiAdapter final
     : public TypedDeviceApiAdapter<Ds18b20TemperatureSensorDeviceApiAdapter, Ds18b20TemperatureSensorDevice,
-                                   Ds18b20TemperatureSensorConfigV1> {
+                                   Ds18b20TemperatureSensorConfigV2> {
 public:
     static constexpr const char* kTypeName = "ds18b20_temperature_sensor";
 
-    bool parseCreateExtras(const JsonObjectConst& input, const JsonObjectConst& configInput, Ds18b20TemperatureSensorConfigV1& config,
+    bool parseCreateExtras(const JsonObjectConst& input, const JsonObjectConst& configInput, Ds18b20TemperatureSensorConfigV2& config,
                            DeviceCreateRequest& request, const char*& error) const;
-    bool parseUpdateExtras(const JsonObjectConst& input, const JsonObjectConst& configInput, Ds18b20TemperatureSensorConfigV1& config,
+    bool parseUpdateExtras(const JsonObjectConst& input, const JsonObjectConst& configInput, Ds18b20TemperatureSensorConfigV2& config,
                            DeviceConfigUpdateRequest& request, const char*& error) const;
     void writeRuntimeJson(const Ds18b20TemperatureSensorDevice& device, JsonObject runtimeJson) const;
 

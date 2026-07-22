@@ -1,6 +1,7 @@
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import { defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
 import { TemperatureSensorDevice } from './temperature-sensor-device.ts'
+import { defaultSensorFilterConfig, normalizeSensorFilterConfig, type SensorFilterConfig } from './sensor-filter.ts'
 import type {
   BaseDeviceConfig,
   DeviceDependencyLink,
@@ -20,6 +21,7 @@ export interface Ds18b20ConfigDraft extends BaseDeviceConfig {
   pollMs: number
   reportDeltaCelsius: number
   reportAlways: boolean
+  filter: SensorFilterConfig
 }
 
 export interface Ds18b20CreateDraft extends DeviceCreateDraftBase, Ds18b20ConfigDraft {}
@@ -55,6 +57,7 @@ export class Ds18b20Device extends TemperatureSensorDevice<
       pollMs: 5000,
       reportDeltaCelsius: 0.01,
       reportAlways: false,
+      filter: defaultSensorFilterConfig(),
     }
   }
 
@@ -90,6 +93,7 @@ export class Ds18b20Device extends TemperatureSensorDevice<
         ? value.reportDeltaCelsius
         : reportDeltaCenti ?? defaults.reportDeltaCelsius,
       reportAlways: typeof value.reportAlways === 'boolean' ? value.reportAlways : defaults.reportAlways,
+      filter: normalizeSensorFilterConfig(value, defaults.filter),
     }
   }
 
@@ -102,6 +106,9 @@ export class Ds18b20Device extends TemperatureSensorDevice<
       pollMs: config.pollMs,
       reportDeltaCelsius: config.reportDeltaCelsius,
       reportAlways: config.reportAlways,
+      smoothingWeight: config.filter.smoothingWeight,
+      calibrationFactor: config.filter.calibrationFactor,
+      calibrationOffset: config.filter.calibrationOffset,
     }
   }
 

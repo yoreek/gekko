@@ -143,11 +143,11 @@ public:
     std::vector<OneWireRomAddress> candidates{};
 };
 
-BoundedBlob<kMaxDeviceConfigBytes> encodeDs18b20Payload(const Ds18b20TemperatureSensorConfigV1& config) {
+BoundedBlob<kMaxDeviceConfigBytes> encodeDs18b20Payload(const Ds18b20TemperatureSensorConfigV2& config) {
     BoundedBlob<kMaxDeviceConfigBytes> payload{};
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     TEST_ASSERT_TRUE(
-        encodeFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic, config, buffer, ds18b20TemperatureSensorConfigSize(config)));
+        encodeFixedConfigBlob(Ds18b20TemperatureSensorConfigV2::kMagic, config, buffer, ds18b20TemperatureSensorConfigSize(config)));
     TEST_ASSERT_TRUE(payload.assign(buffer, ds18b20TemperatureSensorConfigSize(config)));
     return payload;
 }
@@ -182,8 +182,8 @@ OneWireBusDeviceConfigV1 makeBusConfig() {
     return config;
 }
 
-Ds18b20TemperatureSensorConfigV1 makeSensorConfig(uint8_t serial0 = 0xFF) {
-    Ds18b20TemperatureSensorConfigV1 config{};
+Ds18b20TemperatureSensorConfigV2 makeSensorConfig(uint8_t serial0 = 0xFF) {
+    Ds18b20TemperatureSensorConfigV2 config{};
     config.enabled = 1;
     std::snprintf(config.name, sizeof(config.name), "%s", "temperature");
     config.address = makeRom(serial0);
@@ -227,7 +227,7 @@ void tickSensorUntilMeasuredAtChanges(Ds18b20TemperatureSensorDevice& sensor, ui
     }
 }
 
-DeviceRegistryEntry makeSensorRecord(DeviceId id, DeviceId dependencyId, const Ds18b20TemperatureSensorConfigV1& config) {
+DeviceRegistryEntry makeSensorRecord(DeviceId id, DeviceId dependencyId, const Ds18b20TemperatureSensorConfigV2& config) {
     const BoundedBlob<kMaxDeviceConfigBytes> configBlob = encodeDs18b20Payload(config);
     DeviceRegistryEntry record{};
     record.header.deviceId = id;
@@ -251,7 +251,7 @@ DeviceCreateRequest makeBusCreateRequest(const char* name) {
     return request;
 }
 
-DeviceCreateRequest makeSensorCreateRequest(const char* name, DeviceId dependencyId, const Ds18b20TemperatureSensorConfigV1& config) {
+DeviceCreateRequest makeSensorCreateRequest(const char* name, DeviceId dependencyId, const Ds18b20TemperatureSensorConfigV2& config) {
     DeviceCreateRequest request{};
     request.typeId = kDs18b20TemperatureSensorTypeId;
     TEST_ASSERT_TRUE(request.assignName(name));
@@ -282,14 +282,14 @@ void test_temperature_helpers_convert_units_and_dirty_threshold() {
 }
 
 void test_ds18b20_config_codec_json_and_validation() {
-    Ds18b20TemperatureSensorConfigV1 config = makeSensorConfig();
+    Ds18b20TemperatureSensorConfigV2 config = makeSensorConfig();
     config.outputUnit = temperatureUnitToByte(TemperatureUnit::Fahrenheit);
     config.reportAlways = 1;
     config.reportDeltaCentiCelsius = 25;
     const BoundedBlob<kMaxDeviceConfigBytes> blob = encodeDs18b20Payload(config);
 
-    Ds18b20TemperatureSensorConfigV1 decoded{};
-    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic, reinterpret_cast<const uint8_t*>(blob.data()),
+    Ds18b20TemperatureSensorConfigV2 decoded{};
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV2::kMagic, reinterpret_cast<const uint8_t*>(blob.data()),
                                                     blob.size(), decoded));
     TEST_ASSERT_EQUAL_MEMORY(config.address.bytes, decoded.address.bytes, sizeof(config.address.bytes));
     TEST_ASSERT_EQUAL_UINT8(12, decoded.resolution);
@@ -301,7 +301,7 @@ void test_ds18b20_config_codec_json_and_validation() {
     TEST_ASSERT_EQUAL_STRING("fahrenheit", json["unit"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("28FF641D621603AD", json["address"].as<const char*>());
 
-    Ds18b20TemperatureSensorConfigV1 parsed{};
+    Ds18b20TemperatureSensorConfigV2 parsed{};
     const char* error = nullptr;
     TEST_ASSERT_TRUE(parseDs18b20TemperatureSensorConfigJson(json, parsed, error));
     TEST_ASSERT_EQUAL_UINT16(25, parsed.reportDeltaCentiCelsius);
@@ -309,6 +309,60 @@ void test_ds18b20_config_codec_json_and_validation() {
     json["resolution"] = 8;
     TEST_ASSERT_FALSE(parseDs18b20TemperatureSensorConfigJson(json, parsed, error));
     TEST_ASSERT_NOT_NULL(error);
+}
+
+void test_ds18b20_config_migrates_v1_to_v2() {
+    // A legacy "DS18B20-1" blob (no filter field) must decode and migrate to V2 with a
+    // pass-through filter, preserving every V1 field.
+    Ds18b20TemperatureSensorConfigV1 legacy{};
+    legacy.enabled = 1;
+    std::snprintf(legacy.name, sizeof(legacy.name), "%s", "legacy");
+    TEST_ASSERT_TRUE(parseOneWireRomAddress("28FF641D621603AD", legacy.address));
+    legacy.resolution = 11;
+    legacy.outputUnit = temperatureUnitToByte(TemperatureUnit::Fahrenheit);
+    legacy.reportAlways = 1;
+    legacy.reportDeltaCentiCelsius = 25;
+    legacy.pollMs = 2000;
+
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = ds18b20TemperatureSensorConfigSize(legacy);
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic, legacy, buffer, size));
+
+    Ds18b20TemperatureSensorConfigV2 migrated{};
+    TEST_ASSERT_TRUE(decodeDs18b20TemperatureSensorConfig(buffer, size, migrated));
+    TEST_ASSERT_EQUAL_STRING("legacy", migrated.name);
+    TEST_ASSERT_TRUE(migrated.enabled != 0U);
+    TEST_ASSERT_EQUAL_MEMORY(legacy.address.bytes, migrated.address.bytes, sizeof(legacy.address.bytes));
+    TEST_ASSERT_EQUAL_UINT8(11, migrated.resolution);
+    TEST_ASSERT_EQUAL_UINT8(temperatureUnitToByte(TemperatureUnit::Fahrenheit), migrated.outputUnit);
+    TEST_ASSERT_TRUE(migrated.reportAlways != 0U);
+    TEST_ASSERT_EQUAL_UINT16(25, migrated.reportDeltaCentiCelsius);
+    TEST_ASSERT_EQUAL_UINT32(2000, migrated.pollMs);
+    TEST_ASSERT_EQUAL_FLOAT(1.0F, migrated.filter.smoothingWeight);
+    TEST_ASSERT_EQUAL_FLOAT(1.0F, migrated.filter.calibrationFactor);
+    TEST_ASSERT_EQUAL_FLOAT(0.0F, migrated.filter.calibrationOffset);
+}
+
+void test_ds18b20_config_filter_json_round_trips() {
+    Ds18b20TemperatureSensorConfigV2 config = makeSensorConfig();
+    config.filter.smoothingWeight = 0.25F;
+    config.filter.calibrationFactor = 1.5F;
+    config.filter.calibrationOffset = -100.0F;
+    TEST_ASSERT_TRUE_MESSAGE(config.validate().ok(), config.validate().message);
+
+    StaticJsonDocument<512> doc;
+    JsonObject json = doc.to<JsonObject>();
+    writeDs18b20TemperatureSensorConfigJson(config, json);
+    TEST_ASSERT_EQUAL_FLOAT(0.25F, json["smoothingWeight"].as<float>());
+    TEST_ASSERT_EQUAL_FLOAT(1.5F, json["calibrationFactor"].as<float>());
+    TEST_ASSERT_EQUAL_FLOAT(-100.0F, json["calibrationOffset"].as<float>());
+
+    Ds18b20TemperatureSensorConfigV2 parsed{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(parseDs18b20TemperatureSensorConfigJson(json, parsed, error), error);
+    TEST_ASSERT_EQUAL_FLOAT(0.25F, parsed.filter.smoothingWeight);
+    TEST_ASSERT_EQUAL_FLOAT(1.5F, parsed.filter.calibrationFactor);
+    TEST_ASSERT_EQUAL_FLOAT(-100.0F, parsed.filter.calibrationOffset);
 }
 
 void test_ds18b20_protocol_helpers_parse_scratchpad() {
@@ -367,8 +421,8 @@ void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input() {
     TEST_ASSERT_EQUAL_UINT32(kDs18b20TemperatureSensorTypeId, request.typeId);
     TEST_ASSERT_EQUAL_UINT8(1, request.depCount);
     TEST_ASSERT_EQUAL_UINT32(44, request.deps[0].deviceId);
-    Ds18b20TemperatureSensorConfigV1 parsed{};
-    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic,
+    Ds18b20TemperatureSensorConfigV2 parsed{};
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV2::kMagic,
                                                     reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(),
                                                     parsed));
     TEST_ASSERT_EQUAL_UINT8(11, parsed.resolution);
@@ -405,7 +459,7 @@ void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input() {
     TEST_ASSERT_TRUE(updateRequest.depsProvided);
     TEST_ASSERT_EQUAL_UINT8(1, updateRequest.depCount);
     TEST_ASSERT_EQUAL_UINT32(45, updateRequest.deps[0].deviceId);
-    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic,
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV2::kMagic,
                                                     reinterpret_cast<const uint8_t*>(updateRequest.configBlob.data()),
                                                     updateRequest.configBlob.size(), parsed));
     TEST_ASSERT_EQUAL_UINT8(12, parsed.resolution);
@@ -442,7 +496,7 @@ void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input() {
 }
 
 void test_ds18b20_api_adapter_partial_update_preserves_address_unit_and_report_always() {
-    Ds18b20TemperatureSensorConfigV1 config{};
+    Ds18b20TemperatureSensorConfigV2 config{};
     config.enabled = true;
     std::snprintf(config.name, sizeof(config.name), "%s", "temperature");
     TEST_ASSERT_TRUE(parseOneWireRomAddress("28FF641D621603AD", config.address));
@@ -467,8 +521,8 @@ void test_ds18b20_api_adapter_partial_update_preserves_address_unit_and_report_a
     TEST_ASSERT_FALSE_MESSAGE(updateRequest.depsProvided,
                               "deps must not be marked as provided when the request omits the top-level deps field");
 
-    Ds18b20TemperatureSensorConfigV1 parsed{};
-    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV1::kMagic,
+    Ds18b20TemperatureSensorConfigV2 parsed{};
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV2::kMagic,
                                                     reinterpret_cast<const uint8_t*>(updateRequest.configBlob.data()),
                                                     updateRequest.configBlob.size(), parsed));
     TEST_ASSERT_EQUAL_UINT8(9, parsed.resolution);
@@ -493,7 +547,7 @@ void test_ds18b20_runtime_reads_addressed_temperature_and_configures_resolution(
     TEST_ASSERT_EQUAL_INT32(23500, sensor.reading().milliCelsius);
     TEST_ASSERT_EQUAL_UINT32(bus.generation(), sensor.lastDependencyGeneration());
     TEST_ASSERT_TRUE(driver.selectedSeen);
-    const Ds18b20TemperatureSensorConfigV1 expectedConfig = makeSensorConfig();
+    const Ds18b20TemperatureSensorConfigV2 expectedConfig = makeSensorConfig();
     TEST_ASSERT_EQUAL_MEMORY(expectedConfig.address.bytes, driver.selected.bytes, sizeof(driver.selected.bytes));
     TEST_ASSERT_TRUE(std::find(driver.writes.begin(), driver.writes.end(), kDs18b20CommandWriteScratchpad) != driver.writes.end());
     TEST_ASSERT_TRUE(std::find(driver.writes.begin(), driver.writes.end(), kDs18b20CommandConvertT) != driver.writes.end());
@@ -506,7 +560,7 @@ void test_ds18b20_runtime_serializes_fahrenheit_output_and_quiet_delta() {
     OneWireBusDevice bus(makeBusConfig(), driver);
     driveDependencyReady(bus);
 
-    Ds18b20TemperatureSensorConfigV1 config = makeSensorConfig();
+    Ds18b20TemperatureSensorConfigV2 config = makeSensorConfig();
     config.outputUnit = temperatureUnitToByte(TemperatureUnit::Fahrenheit);
     config.reportDeltaCentiCelsius = 50;
     Ds18b20TemperatureSensorDevice sensor(config);
@@ -548,7 +602,7 @@ void test_ds18b20_runtime_report_always_marks_repeated_reading_dirty() {
     OneWireBusDevice bus(makeBusConfig(), driver);
     driveDependencyReady(bus);
 
-    Ds18b20TemperatureSensorConfigV1 config = makeSensorConfig();
+    Ds18b20TemperatureSensorConfigV2 config = makeSensorConfig();
     config.reportAlways = 1;
     Ds18b20TemperatureSensorDevice sensor(config);
     bindSensorDependency(sensor, 1003, bus.deviceId());
@@ -736,7 +790,7 @@ void test_ds18b20_adapter_rejects_duplicate_address_on_same_dependency() {
     DeviceCreateResult busResult = registry.create(makeBusCreateRequest("onewire"), 10);
     TEST_ASSERT_TRUE_MESSAGE(busResult.ok(), busResult.validation.message);
 
-    Ds18b20TemperatureSensorConfigV1 config = makeSensorConfig();
+    Ds18b20TemperatureSensorConfigV2 config = makeSensorConfig();
     DeviceCreateResult first = registry.create(makeSensorCreateRequest("temp-a", busResult.deviceId, config), 20);
     TEST_ASSERT_TRUE_MESSAGE(first.ok(), first.validation.message);
 
@@ -761,8 +815,8 @@ void test_ds18b20_adapter_rejects_duplicate_address_on_dependency_change() {
     TEST_ASSERT_TRUE_MESSAGE(busA.ok(), busA.validation.message);
     TEST_ASSERT_TRUE_MESSAGE(busB.ok(), busB.validation.message);
 
-    Ds18b20TemperatureSensorConfigV1 addressA = makeSensorConfig(0xA1);
-    Ds18b20TemperatureSensorConfigV1 addressB = makeSensorConfig(0xA2);
+    Ds18b20TemperatureSensorConfigV2 addressA = makeSensorConfig(0xA1);
+    Ds18b20TemperatureSensorConfigV2 addressB = makeSensorConfig(0xA2);
     DeviceCreateResult first = registry.create(makeSensorCreateRequest("temp-a", busA.deviceId, addressA), 30);
     DeviceCreateResult second = registry.create(makeSensorCreateRequest("temp-b", busB.deviceId, addressA), 40);
     TEST_ASSERT_TRUE_MESSAGE(first.ok(), first.validation.message);
