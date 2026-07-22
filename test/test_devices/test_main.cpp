@@ -94,6 +94,7 @@ void test_ds3231_api_adapter_writes_runtime_json();
 void test_ds3231_adapter_rejects_second_active_sync_device();
 void test_ds3231_adapter_rejects_duplicate_address_on_same_bus_but_allows_distinct_addresses();
 void test_pcf857x_expander_config_codec_json_and_validation();
+void test_pcf857x_expander_config_migrates_v1_to_v2();
 void test_port_expander_switch_config_codec_json_and_validation();
 void test_port_expander_switch_config_migrates_v1_blob();
 void test_port_expander_types_and_api_adapters_are_registered();
@@ -380,6 +381,7 @@ int main(int, char**) {
     RUN_TEST(test_ds3231_adapter_rejects_second_active_sync_device);
     RUN_TEST(test_ds3231_adapter_rejects_duplicate_address_on_same_bus_but_allows_distinct_addresses);
     RUN_TEST(test_pcf857x_expander_config_codec_json_and_validation);
+    RUN_TEST(test_pcf857x_expander_config_migrates_v1_to_v2);
     RUN_TEST(test_port_expander_switch_config_codec_json_and_validation);
     RUN_TEST(test_port_expander_switch_config_migrates_v1_blob);
     RUN_TEST(test_port_expander_types_and_api_adapters_are_registered);

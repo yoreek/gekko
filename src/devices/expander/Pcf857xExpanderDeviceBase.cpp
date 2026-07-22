@@ -21,13 +21,6 @@ constexpr uint32_t kDiagnosticsDebounceMs = 1000;
 Pcf857xExpanderDeviceBase::Pcf857xExpanderDeviceBase(const Pcf857xExpanderConfigV2& config)
     : Pcf857xExpanderRuntimeBase((PState)&Pcf857xExpanderDeviceBase::Idle), config_(config) {}
 
-Pcf857xExpanderDeviceBase::Pcf857xExpanderDeviceBase(const Pcf857xExpanderConfigV1& config)
-    : Pcf857xExpanderDeviceBase([&config]() {
-          Pcf857xExpanderConfigV2 migrated{};
-          migrated.migrateFrom(config);
-          return migrated;
-      }()) {}
-
 const Pcf857xExpanderConfigV2& Pcf857xExpanderDeviceBase::config() const {
     return config_;
 }

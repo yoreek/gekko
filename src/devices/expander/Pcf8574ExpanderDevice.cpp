@@ -18,8 +18,6 @@ Pcf8574ExpanderDevice::Pcf8574ExpanderDevice(const DeviceRegistryEntry& record, 
 
 Pcf8574ExpanderDevice::Pcf8574ExpanderDevice(const Pcf857xExpanderConfigV2& config) : Pcf857xExpanderDeviceBase(config) {}
 
-Pcf8574ExpanderDevice::Pcf8574ExpanderDevice(const Pcf857xExpanderConfigV1& config) : Pcf857xExpanderDeviceBase(config) {}
-
 DeviceTypeDescriptor Pcf8574ExpanderDevice::descriptor() {
     DeviceTypeDescriptor descriptor;
     descriptor.typeId = kPcf8574ExpanderTypeId;

@@ -8,7 +8,6 @@ namespace ewfm {
 class Pcf8574ExpanderDevice final : public Pcf857xExpanderDeviceBase {
 public:
     Pcf8574ExpanderDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
-    explicit Pcf8574ExpanderDevice(const Pcf857xExpanderConfigV1& config);
     explicit Pcf8574ExpanderDevice(const Pcf857xExpanderConfigV2& config);
 
     static DeviceTypeDescriptor descriptor();

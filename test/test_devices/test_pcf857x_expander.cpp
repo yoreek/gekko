@@ -104,8 +104,8 @@ I2cBusDeviceConfigV1 makeBusConfig() {
     return config;
 }
 
-Pcf857xExpanderConfigV1 makeExpanderConfig(uint8_t i2cAddress = 0x20U, bool inverted = false) {
-    Pcf857xExpanderConfigV1 config{};
+Pcf857xExpanderConfigV2 makeExpanderConfig(uint8_t i2cAddress = 0x20U, bool inverted = false) {
+    Pcf857xExpanderConfigV2 config{};
     config.enabled = 1U;
     std::snprintf(config.name, sizeof(config.name), "%s", "expander");
     config.i2cAddress = i2cAddress;
@@ -204,7 +204,7 @@ DeviceCreateRequest makeBusCreateRequest(const char* name) {
 }
 
 DeviceCreateRequest makeExpanderCreateRequest(DeviceTypeId typeId, uint32_t configVersion, const char* name, DeviceId busId,
-                                              const Pcf857xExpanderConfigV1& config) {
+                                              const Pcf857xExpanderConfigV2& config) {
     DeviceCreateRequest request{};
     request.typeId = typeId;
     TEST_ASSERT_TRUE(request.assignName(name));
@@ -235,11 +235,11 @@ DeviceCreateRequest makeSwitchCreateRequest(const char* name, DeviceId expanderI
 } // namespace
 
 void test_pcf857x_expander_config_codec_json_and_validation() {
-    const Pcf857xExpanderConfigV1 config = makeExpanderConfig(0x21U, true);
+    const Pcf857xExpanderConfigV2 config = makeExpanderConfig(0x21U, true);
     const BoundedBlob<kMaxDeviceConfigBytes> payload = encodeExpanderPayload(config);
 
-    Pcf857xExpanderConfigV1 decoded{};
-    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(Pcf857xExpanderConfigV1::kMagic, payload.data(), payload.size(), decoded));
+    Pcf857xExpanderConfigV2 decoded{};
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(Pcf857xExpanderConfigV2::kMagic, payload.data(), payload.size(), decoded));
     TEST_ASSERT_EQUAL_UINT8(0x21U, decoded.i2cAddress);
     TEST_ASSERT_TRUE(decoded.inverted != 0U);
     TEST_ASSERT_EQUAL_STRING("expander", decoded.name);
@@ -250,17 +250,38 @@ void test_pcf857x_expander_config_codec_json_and_validation() {
     TEST_ASSERT_EQUAL_UINT8(0x21U, json["i2cAddress"].as<uint8_t>());
     TEST_ASSERT_TRUE(json["inverted"].as<bool>());
 
-    Pcf857xExpanderConfigV1 parsed{};
+    Pcf857xExpanderConfigV2 parsed{};
     const char* error = nullptr;
     TEST_ASSERT_TRUE(parsePcf857xExpanderConfigJson(json, parsed, error));
     TEST_ASSERT_EQUAL_UINT8(0x21U, parsed.i2cAddress);
     TEST_ASSERT_TRUE(parsed.validate().ok());
 
-    const Pcf857xExpanderConfigV1 defaults{};
+    const Pcf857xExpanderConfigV2 defaults{};
     TEST_ASSERT_EQUAL_UINT8(0x20U, defaults.i2cAddress);
 
-    const Pcf857xExpanderConfigV1 outOfRange = makeExpanderConfig(0x80U);
+    const Pcf857xExpanderConfigV2 outOfRange = makeExpanderConfig(0x80U);
     TEST_ASSERT_FALSE(outOfRange.validate().ok());
+}
+
+void test_pcf857x_expander_config_migrates_v1_to_v2() {
+    // A legacy "PX857X1" blob must decode and migrate to V2, preserving its fields.
+    EWFM_LEGACY_CONFIG_USE_BEGIN
+    Pcf857xExpanderConfigV1 legacy{};
+    legacy.enabled = 1U;
+    std::snprintf(legacy.name, sizeof(legacy.name), "%s", "expander-legacy");
+    legacy.i2cAddress = 0x21U;
+    legacy.inverted = 1U;
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = pcf857xExpanderConfigSize(legacy);
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Pcf857xExpanderConfigV1::kMagic, legacy, buffer, size));
+    EWFM_LEGACY_CONFIG_USE_END
+
+    Pcf857xExpanderConfigV2 migrated{};
+    TEST_ASSERT_TRUE(decodePcf857xExpanderConfig(buffer, size, migrated));
+    TEST_ASSERT_EQUAL_STRING("expander-legacy", migrated.name);
+    TEST_ASSERT_TRUE(migrated.enabled != 0U);
+    TEST_ASSERT_EQUAL_UINT8(0x21U, migrated.i2cAddress);
+    TEST_ASSERT_TRUE(migrated.inverted != 0U);
 }
 
 void test_port_expander_switch_config_codec_json_and_validation() {
@@ -349,7 +370,7 @@ void test_port_expander_switch_registry_migrates_v1_blob_on_begin() {
     TEST_ASSERT_TRUE(store.begin(false));
 
     I2cBusDeviceConfigV1 busConfig = makeBusConfig();
-    Pcf857xExpanderConfigV1 expanderConfig = makeExpanderConfig();
+    Pcf857xExpanderConfigV2 expanderConfig = makeExpanderConfig();
     PortExpanderSwitchDeviceConfigV3 current{};
     current.enabled = 1U;
     std::snprintf(current.name, sizeof(current.name), "%s", "legacy-channel");

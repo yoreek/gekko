@@ -47,7 +47,6 @@ protected:
     const DeviceBaseConfigV1& baseConfig() const override;
 
     explicit Pcf857xExpanderDeviceBase(const Pcf857xExpanderConfigV2& config);
-    explicit Pcf857xExpanderDeviceBase(const Pcf857xExpanderConfigV1& config);
 
     virtual uint8_t channelCountImpl() const = 0;
     // Writes `states` to the chip. `driver.beginTransmission(config().i2cAddress)` has already been
