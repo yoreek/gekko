@@ -148,12 +148,14 @@ void test_composable_analog_output_configs_round_trip_json_and_validate() {
     TEST_ASSERT_FALSE(rejectedEmptySchedule.parseJson(emptyScheduleJson.as<JsonObjectConst>(), error));
     TEST_ASSERT_EQUAL_STRING("analog schedule requires at least one point", error);
 
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     ScheduledAnalogOutputDeviceConfigV1 legacyEmptySchedule{};
     legacyEmptySchedule.enabled = 1U;
     std::snprintf(legacyEmptySchedule.name, sizeof(legacyEmptySchedule.name), "%s", "legacy schedule");
     uint8_t legacyBlob[kMaxDeviceConfigBytes]{};
     const size_t legacySize = scheduledAnalogOutputDeviceConfigSize(legacyEmptySchedule);
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(ScheduledAnalogOutputDeviceConfigV1::kMagic, legacyEmptySchedule, legacyBlob, legacySize));
+    EWFM_LEGACY_CONFIG_USE_END
     ScheduledAnalogOutputDeviceConfigV2 migratedSchedule{};
     TEST_ASSERT_TRUE(decodeScheduledAnalogOutputDeviceConfig(legacyBlob, legacySize, migratedSchedule));
     TEST_ASSERT_EQUAL_UINT8(0U, migratedSchedule.points[0].deleted);

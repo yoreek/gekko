@@ -8,11 +8,13 @@
 
 namespace ewfm {
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 static_assert(std::is_trivially_copyable<ScheduledAnalogOutputDeviceConfigV1>::value, "ScheduledAnalogOutputDeviceConfigV1 must be POD");
 static_assert(sizeof(ScheduledAnalogOutputDeviceConfigV1) == 84U, "ScheduledAnalogOutputDeviceConfigV1 layout changed");
 static_assert(sizeof(ScheduledAnalogOutputDeviceConfigV1::kMagic) - 1U + sizeof(ScheduledAnalogOutputDeviceConfigV1) <=
                   kMaxDeviceConfigBytes,
               "ScheduledAnalogOutputDeviceConfigV1 exceeds device config bound");
+EWFM_LEGACY_CONFIG_USE_END
 static_assert(std::is_trivially_copyable<ScheduledAnalogOutputDeviceConfigV2>::value, "ScheduledAnalogOutputDeviceConfigV2 must be POD");
 static_assert(sizeof(ScheduledAnalogOutputDeviceConfigV2) == 84U, "ScheduledAnalogOutputDeviceConfigV2 layout changed");
 static_assert(sizeof(ScheduledAnalogOutputDeviceConfigV2::kMagic) - 1U + sizeof(ScheduledAnalogOutputDeviceConfigV2) <=
@@ -39,43 +41,7 @@ bool parsePoint(const JsonObjectConst& input, ScheduledAnalogOutputPointV1& poin
 }
 } // namespace
 
-bool ScheduledAnalogOutputDeviceConfigV1::parseJson(const JsonObjectConst& input, const char*& error) {
-    if (!DeviceBaseConfigV1::parseJson(input, error)) {
-        return false;
-    }
-    const JsonVariantConst pointsInput = input["points"];
-    if (pointsInput.isNull()) {
-        return true;
-    }
-    if (!pointsInput.is<JsonArrayConst>()) {
-        error = "analog schedule points must be an array";
-        return false;
-    }
-    const JsonArrayConst array = pointsInput.as<JsonArrayConst>();
-    if (array.size() > kMaxScheduledAnalogOutputPoints) {
-        error = "analog schedule has too many points";
-        return false;
-    }
-    ScheduledAnalogOutputPointV1 parsed[kMaxScheduledAnalogOutputPoints]{};
-    for (ScheduledAnalogOutputPointV1& point : parsed) {
-        point.deleted = 1U;
-    }
-    uint8_t count = 0U;
-    for (JsonVariantConst item : array) {
-        if (!item.is<JsonObjectConst>()) {
-            error = "analog schedule point must be an object";
-            return false;
-        }
-        parsed[count].deleted = 0U;
-        if (!parsePoint(item.as<JsonObjectConst>(), parsed[count], error)) {
-            return false;
-        }
-        ++count;
-    }
-    std::memcpy(points, parsed, sizeof(points));
-    return true;
-}
-
+EWFM_LEGACY_CONFIG_USE_BEGIN
 DeviceValidationResult ScheduledAnalogOutputDeviceConfigV1::validate() const {
     const DeviceValidationResult baseValidation = DeviceBaseConfigV1::validate();
     if (!baseValidation.ok()) {
@@ -100,20 +66,7 @@ DeviceValidationResult ScheduledAnalogOutputDeviceConfigV1::validate() const {
     }
     return {};
 }
-
-void ScheduledAnalogOutputDeviceConfigV1::writeJson(JsonObject output) const {
-    DeviceBaseConfigV1::writeJson(output);
-    JsonArray array = output.createNestedArray("points");
-    for (uint8_t index = 0U; index < kMaxScheduledAnalogOutputPoints; ++index) {
-        if (points[index].deleted != 0U) {
-            continue;
-        }
-        JsonObject point = array.createNestedObject();
-        point["deleted"] = false;
-        point["minuteOfDay"] = points[index].minuteOfDay;
-        OutputDeviceValueCodec<uint16_t>::writeJson(point, "state", points[index].state);
-    }
-}
+EWFM_LEGACY_CONFIG_USE_END
 
 bool ScheduledAnalogOutputDeviceConfigV2::parseJson(const JsonObjectConst& input, const char*& error) {
     if (!DeviceBaseConfigV1::parseJson(input, error)) {
@@ -198,6 +151,7 @@ void ScheduledAnalogOutputDeviceConfigV2::writeJson(JsonObject output) const {
     }
 }
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 void ScheduledAnalogOutputDeviceConfigV2::migrateFrom(const ScheduledAnalogOutputDeviceConfigV1& legacy) {
     enabled = legacy.enabled;
     std::memcpy(name, legacy.name, sizeof(name));
@@ -209,15 +163,18 @@ void ScheduledAnalogOutputDeviceConfigV2::migrateFrom(const ScheduledAnalogOutpu
     }
     points[0] = {0U, 0U, kAnalogOutputLevelMax};
 }
+EWFM_LEGACY_CONFIG_USE_END
 
 bool decodeScheduledAnalogOutputDeviceConfig(const uint8_t* blob, const size_t size, ScheduledAnalogOutputDeviceConfigV2& config) {
     if (decodeFixedConfigBlob(ScheduledAnalogOutputDeviceConfigV2::kMagic, blob, size, config) && config.validate().ok()) {
         return true;
     }
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     ScheduledAnalogOutputDeviceConfigV1 legacy{};
     if (!decodeFixedConfigBlob(ScheduledAnalogOutputDeviceConfigV1::kMagic, blob, size, legacy) || !legacy.validate().ok()) {
         return false;
     }
+    EWFM_LEGACY_CONFIG_USE_END
     config.migrateFrom(legacy);
     return config.validate().ok();
 }
