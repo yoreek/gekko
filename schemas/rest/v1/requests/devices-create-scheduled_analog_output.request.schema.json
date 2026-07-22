@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-create-scheduled_analog_output.request.schema.json",
+  "title": "Create scheduled_analog_output request",
+  "type": "object",
+  "properties": {
+    "typeName": { "const": "scheduled_analog_output" },
+    "config": { "$ref": "../devices/scheduled_analog_output.config.schema.json" }
+  },
+  "required": ["typeName", "config"],
+  "additionalProperties": true
+}

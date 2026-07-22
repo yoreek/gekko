@@ -2,36 +2,74 @@
 // error strings, partial-update semantics) before the adapters migrate onto the shared
 // TypedDeviceApiAdapter base. Any assertion change here means the refactor changed behavior.
 #include "../test_devices/JsonSchemaSmokeValidator.h"
+#include "devices/analog/AnalogOutputDeviceBase.h"
+#include "devices/analog/adc/IAdcInputDriver.h"
 #include "devices/analog/composer/AnalogOutputComposerDevice.h"
+#include "devices/analog/fade/FadeAnalogOutputDevice.h"
+#include "devices/analog/input/AnalogInputJson.h"
 #include "devices/analog/input/ads1115/Ads1115HubDevice.h"
 #include "devices/analog/input/cd74hc4067/Cd74hc4067HubDevice.h"
+#include "devices/analog/input/channel/AnalogInputChannelDevice.h"
+#include "devices/analog/input/channel/AnalogInputChannelDeviceConfig.h"
+#include "devices/analog/input/port/AnalogPortInputDevice.h"
+#include "devices/analog/input/port/AnalogPortInputDeviceConfig.h"
 #include "devices/analog/ledc/LedcAnalogOutputDevice.h"
+#include "devices/analog/scheduled/ScheduledAnalogOutputDevice.h"
+#include "devices/analog/scheduled/ScheduledAnalogOutputDeviceConfig.h"
+#include "devices/bus/i2c/I2cBusConfig.h"
+#include "devices/bus/i2c/I2cBusDevice.h"
+#include "devices/bus/onewire/OneWireRomAddress.h"
+#include "devices/bus/spi/ISpiBusDriver.h"
+#include "devices/bus/spi/ISpiCsProbeDriver.h"
+#include "devices/bus/spi/SpiBusConfig.h"
+#include "devices/bus/spi/SpiBusDevice.h"
+#include "devices/display/st7735/St7735Device.h"
+#include "devices/display/st7735/St7735DeviceConfig.h"
 #include "devices/dosing/DosingPumpDevice.h"
 #include "devices/expander/Pcf8574ExpanderDevice.h"
 #include "devices/expander/Pcf8575ExpanderDevice.h"
+#include "devices/rtc/ds3231/Ds3231RtcDevice.h"
+#include "devices/rtc/ds3231/Ds3231RtcDeviceConfig.h"
 #include "devices/schedule/ScheduleDevice.h"
 #include "devices/sensors/binary/BinarySensorDevice.h"
+#include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
 #include "devices/sensors/ntc_thermistor/NtcThermistorTemperatureSensorDevice.h"
+#include "devices/switch/SwitchOutputState.h"
 #include "devices/switch/auto/AutoSwitchDevice.h"
 #include "devices/switch/expander/PortExpanderSwitchDevice.h"
+#include "devices/switch/gpio/GpioSwitchDevice.h"
+#include "devices/switch/gpio/GpioSwitchDeviceConfig.h"
+#include "devices/switch/gpio/IGpioOutputDriver.h"
 #include "devices/thermostat/ThermostatDevice.h"
 #include "integrations/common/DeviceApiAdapter.h"
 #include "integrations/rest/analog_input/Ads1115HubDeviceApiAdapter.h"
+#include "integrations/rest/analog_input/AnalogInputChannelDeviceApiAdapter.h"
+#include "integrations/rest/analog_input/AnalogPortInputDeviceApiAdapter.h"
 #include "integrations/rest/analog_input/Cd74hc4067HubDeviceApiAdapter.h"
 #include "integrations/rest/analog_output/AnalogOutputComposerDeviceApiAdapter.h"
+#include "integrations/rest/analog_output/FadeAnalogOutputDeviceApiAdapter.h"
 #include "integrations/rest/analog_output/LedcAnalogOutputDeviceApiAdapter.h"
+#include "integrations/rest/analog_output/ScheduledAnalogOutputDeviceApiAdapter.h"
 #include "integrations/rest/auto_switch/AutoSwitchDeviceApiAdapter.h"
 #include "integrations/rest/binary_sensor/BinarySensorDeviceApiAdapter.h"
 #include "integrations/rest/dosing_pump/DosingPumpDeviceApiAdapter.h"
+#include "integrations/rest/ds18b20/Ds18b20TemperatureSensorDeviceApiAdapter.h"
 #include "integrations/rest/expander/Pcf8574ExpanderDeviceApiAdapter.h"
 #include "integrations/rest/expander/Pcf8575ExpanderDeviceApiAdapter.h"
 #include "integrations/rest/expander/PortExpanderSwitchDeviceApiAdapter.h"
+#include "integrations/rest/gpio_switch/GpioSwitchDeviceApiAdapter.h"
+#include "integrations/rest/htu21/Htu21SensorDeviceApiAdapter.h"
+#include "integrations/rest/i2c_bus/I2cBusDeviceApiAdapter.h"
 #include "integrations/rest/ntc_thermistor/NtcThermistorTemperatureSensorDeviceApiAdapter.h"
+#include "integrations/rest/rtc_ds3231/Ds3231RtcDeviceApiAdapter.h"
 #include "integrations/rest/schedule/ScheduleDeviceApiAdapter.h"
+#include "integrations/rest/spi_bus/SpiBusDeviceApiAdapter.h"
+#include "integrations/rest/st7735/St7735DeviceApiAdapter.h"
 #include "integrations/rest/thermostat/ThermostatDeviceApiAdapter.h"
 
 #include <ArduinoJson.h>
 #include <cstdio>
+#include <memory>
 #include <string>
 #include <unity.h>
 
@@ -55,6 +93,68 @@ public:
     void release(uint8_t) override {}
 
     bool level{false};
+};
+
+class FakeAnalogOutputDevice final : public AnalogOutputDeviceBase, public IScheduledAnalogOutputRuntime {
+public:
+    explicit FakeAnalogOutputDevice(const char* name) : AnalogOutputDeviceBase(config_) {
+        config_.enabled = 1U;
+        std::snprintf(config_.name, sizeof(config_.name), "%s", name);
+    }
+
+    const IScheduledAnalogOutputRuntime* scheduledAnalogOutputRuntime() const override {
+        return this;
+    }
+
+    AnalogOutputMode analogOutputMode() const override {
+        return mode_;
+    }
+
+    bool requestAnalogOutputMode(const AnalogOutputMode mode, uint32_t now) override {
+        if (status() != DeviceStatus::Ready) {
+            return false;
+        }
+        mode_ = mode;
+        return mode != AnalogOutputMode::Off || requestOutputState(0U, now);
+    }
+
+    uint16_t requestedAnalogOutputState() const override {
+        return currentOutputState();
+    }
+
+    bool analogOutputTimeValid() const override {
+        return true;
+    }
+
+private:
+    const AnalogOutputDeviceConfigV1& config() const override {
+        return config_;
+    }
+
+    uint16_t invertedState(uint16_t state) const override {
+        return state;
+    }
+
+    bool parseOutputCommand(const DeviceCommand&, uint16_t&) const override {
+        return false;
+    }
+
+    bool stateIsValid(uint16_t state) const override {
+        return state <= kAnalogOutputLevelMax;
+    }
+
+    DeviceValidationResult configureHardware(uint32_t) override {
+        return {};
+    }
+
+    DeviceValidationResult applyHardwareOutput(uint16_t, uint32_t) override {
+        return {};
+    }
+
+    void releaseHardware(uint32_t) override {}
+
+    AnalogOutputDeviceConfigV1 config_{};
+    AnalogOutputMode mode_{AnalogOutputMode::Scheduled};
 };
 
 BinarySensorDeviceConfigV1 makeBinarySensorConfig() {
@@ -250,6 +350,737 @@ DeviceConfigBlob encodePortExpanderSwitchBlob(const PortExpanderSwitchDeviceConf
     TEST_ASSERT_TRUE(blob.assign(buffer, portExpanderSwitchDeviceConfigSize(config)));
     return blob;
 }
+
+DeviceRegistryEntry dependentRecord(const DeviceTypeId typeId, const std::initializer_list<DeviceId> dependencies) {
+    DeviceRegistryEntry record{};
+    record.header.deviceId = typeId + 100U;
+    record.header.typeId = typeId;
+    for (const DeviceId dependency : dependencies) {
+        record.deps[record.depCount++] = DeviceDependencyLink{DeviceRole::AnalogOutput, dependency};
+    }
+    return record;
+}
+
+FadeAnalogOutputDeviceConfigV1 makeFadeAnalogOutputConfig() {
+    FadeAnalogOutputDeviceConfigV1 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "fade");
+    config.maxStep = percentToAnalogOutputState(10U);
+    config.stepIntervalMs = 200U;
+    return config;
+}
+
+DeviceConfigBlob encodeFadeAnalogOutputBlob(const FadeAnalogOutputDeviceConfigV1& config) {
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(
+        encodeFixedConfigBlob(FadeAnalogOutputDeviceConfigV1::kMagic, config, buffer, fadeAnalogOutputDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(blob.assign(buffer, fadeAnalogOutputDeviceConfigSize(config)));
+    return blob;
+}
+
+ScheduledAnalogOutputDeviceConfigV2 makeScheduledAnalogOutputConfig() {
+    ScheduledAnalogOutputDeviceConfigV2 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "schedule");
+    config.points[0] = ScheduledAnalogOutputPointV1{0U, 480U, percentToAnalogOutputState(100U)};
+    config.points[1] = ScheduledAnalogOutputPointV1{0U, 1200U, percentToAnalogOutputState(25U)};
+    return config;
+}
+
+DeviceConfigBlob encodeScheduledAnalogOutputBlob(const ScheduledAnalogOutputDeviceConfigV2& config) {
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(
+        encodeFixedConfigBlob(ScheduledAnalogOutputDeviceConfigV2::kMagic, config, buffer, scheduledAnalogOutputDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(blob.assign(buffer, scheduledAnalogOutputDeviceConfigSize(config)));
+    return blob;
+}
+
+Ds18b20TemperatureSensorConfigV2 makeDs18b20Config() {
+    Ds18b20TemperatureSensorConfigV2 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "temperature");
+    TEST_ASSERT_TRUE(parseOneWireRomAddress("28FF641D621603AD", config.address));
+    config.resolution = 11U;
+    config.outputUnit = temperatureUnitToByte(TemperatureUnit::Fahrenheit);
+    config.reportAlways = 1U;
+    config.reportDeltaCentiCelsius = 25U;
+    config.pollMs = 2000U;
+    return config;
+}
+
+DeviceConfigBlob encodeDs18b20Blob(const Ds18b20TemperatureSensorConfigV2& config) {
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(
+        encodeFixedConfigBlob(Ds18b20TemperatureSensorConfigV2::kMagic, config, buffer, ds18b20TemperatureSensorConfigSize(config)));
+    TEST_ASSERT_TRUE(blob.assign(buffer, ds18b20TemperatureSensorConfigSize(config)));
+    return blob;
+}
+
+Htu21SensorConfigV3 makeHtu21Config(uint8_t i2cAddress = kHtu21DefaultI2cAddress) {
+    Htu21SensorConfigV3 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "climate");
+    config.i2cAddress = i2cAddress;
+    return config;
+}
+
+DeviceConfigBlob encodeHtu21Blob(const Htu21SensorConfigV3& config) {
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Htu21SensorConfigV3::kMagic, config, buffer, htu21SensorConfigSize(config)));
+    TEST_ASSERT_TRUE(blob.assign(buffer, htu21SensorConfigSize(config)));
+    return blob;
+}
+
+class FakeGpioOutputDriver final : public IGpioOutputDriver {
+public:
+    bool configureOutput(uint8_t pin, bool level) override {
+        lastPin = pin;
+        lastLevel = level;
+        return true;
+    }
+
+    bool write(uint8_t pin, bool level) override {
+        lastPin = pin;
+        lastLevel = level;
+        return true;
+    }
+
+    void release(uint8_t pin) override {
+        lastPin = pin;
+    }
+
+    uint8_t lastPin{0};
+    bool lastLevel{false};
+};
+
+GpioSwitchDeviceConfigV3 makeGpioSwitchConfig() {
+    GpioSwitchDeviceConfigV3 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "relay");
+    config.restorePreviousState = true;
+    config.startupState = kSwitchOutputOn;
+    config.safeState = kSwitchOutputOff;
+    config.inverted = true;
+    config.gpioPin = 21U;
+    return config;
+}
+
+DeviceConfigBlob encodeGpioSwitchBlob(const GpioSwitchDeviceConfigV3& config) {
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(GpioSwitchDeviceConfigV3::kMagic, config, buffer, gpioSwitchDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(blob.assign(buffer, gpioSwitchDeviceConfigSize(config)));
+    return blob;
+}
+
+std::unique_ptr<GpioSwitchDevice> makeGpioSwitchRuntime(FakeGpioOutputDriver& driver) {
+    const DeviceRegistryEntry record = [] {
+        DeviceRegistryEntry record{};
+        record.header.deviceId = 7U;
+        record.header.typeId = GpioSwitchDevice::descriptor().typeId;
+        record.header.configVersion = GpioSwitchDevice::descriptor().currentConfigVersion;
+        record.header.configRevision = 3U;
+        record.header.payloadLength = static_cast<uint32_t>(gpioSwitchDeviceConfigSize(makeGpioSwitchConfig()));
+        record.status = DeviceStatus::Ready;
+        return record;
+    }();
+    const DeviceConfigBlob configBlob = encodeGpioSwitchBlob(makeGpioSwitchConfig());
+    auto runtime = std::unique_ptr<GpioSwitchDevice>(new GpioSwitchDevice(makeGpioSwitchConfig(), driver));
+    runtime->bindDeviceIdentity(record, configBlob);
+    runtime->begin(0U);
+    runtime->tickFastLoop(1U);
+    return runtime;
+}
+
+class FakeAdcInputDriver final : public IAdcInputDriver {
+public:
+    bool configurePin(uint8_t pin, AdcAttenuation attenuation) override {
+        lastPin = pin;
+        lastAttenuation = attenuation;
+        ++configureCalls;
+        return configureOk;
+    }
+
+    uint32_t readMilliVolts(uint8_t) override {
+        return milliVolts;
+    }
+
+    void release(uint8_t) override {
+        released = true;
+    }
+
+    bool configureOk{true};
+    uint8_t lastPin{0};
+    AdcAttenuation lastAttenuation{AdcAttenuation::Db11};
+    int configureCalls{0};
+    uint32_t milliVolts{1650U};
+    bool released{false};
+};
+
+class FakeAnalogInputHubRuntime final : public IDeviceRuntime, public IAnalogInputHubRuntime {
+public:
+    FakeAnalogInputHubRuntime() {
+        reading.rawCode = 1234U;
+        reading.milliVolts = 1660;
+        reading.measuredAtMs = 77U;
+        reading.valid = true;
+    }
+
+    void begin(uint32_t) override {}
+    void tickFastLoop(uint32_t) override {}
+    void tick100ms(uint32_t) override {}
+    void tick1s(uint32_t) override {}
+    void requestReconfigure() override {}
+    void requestDisable() override {}
+    void requestDelete() override {}
+    DeviceStatus status() const override {
+        return DeviceStatus::Ready;
+    }
+    bool handleCommand(const DeviceCommand&) override {
+        return false;
+    }
+    DeviceId deviceId() const override {
+        return deviceId_;
+    }
+    DeviceTypeId typeId() const override {
+        return typeId_;
+    }
+    const char* name() const override {
+        return name_;
+    }
+    const IAnalogInputHubRuntime* analogInputHubRuntime() const override {
+        return this;
+    }
+
+    uint8_t channelCount() const override {
+        return 16U;
+    }
+    uint32_t generation() const override {
+        return generation_;
+    }
+    AnalogInputHubPollResult pollChannelReading(uint8_t channel, DeviceId requester, uint32_t now, AnalogInputReading& outReading,
+                                                const char*& outStatus) override {
+        lastChannel = channel;
+        lastRequester = requester;
+        lastNow = now;
+        outReading = reading;
+        outReading.valid = true;
+        outStatus = "ok";
+        return AnalogInputHubPollResult::Ready;
+    }
+    void releaseChannelRequest(uint8_t, DeviceId) override {}
+
+    DeviceId deviceId_{0};
+    DeviceTypeId typeId_{0};
+    const char* name_{"analog hub"};
+    uint32_t generation_{1U};
+    uint8_t lastChannel{0};
+    DeviceId lastRequester{0};
+    uint32_t lastNow{0};
+    AnalogInputReading reading{};
+};
+
+class FakeI2cBusDriver final : public II2cBusDriver {
+public:
+    bool begin(uint8_t sdaPin, uint8_t sclPin, uint32_t frequencyHz, bool internalPullup) override {
+        lastSdaPin = sdaPin;
+        lastSclPin = sclPin;
+        lastFrequencyHz = frequencyHz;
+        lastInternalPullup = internalPullup;
+        ++beginCalls;
+        return beginOk;
+    }
+
+    bool end() override {
+        ended = true;
+        return true;
+    }
+
+    bool setClock(uint32_t frequencyHz) override {
+        lastClockHz = frequencyHz;
+        ++setClockCalls;
+        return setClockOk;
+    }
+
+    uint32_t getClock() const override {
+        return lastClockHz;
+    }
+
+    void beginTransmission(uint8_t address) override {
+        lastAddress = address;
+    }
+
+    uint8_t endTransmission(bool) override {
+        return 0U;
+    }
+
+    size_t requestFrom(uint8_t, size_t size, bool) override {
+        return size;
+    }
+
+    size_t write(uint8_t) override {
+        return 1U;
+    }
+
+    size_t write(const uint8_t*, size_t quantity) override {
+        return quantity;
+    }
+
+    int available() override {
+        return 0;
+    }
+
+    int read() override {
+        return 0;
+    }
+
+    void flush() override {}
+
+    bool beginOk{true};
+    bool setClockOk{true};
+    bool ended{false};
+    uint8_t lastSdaPin{0};
+    uint8_t lastSclPin{0};
+    uint32_t lastFrequencyHz{0};
+    bool lastInternalPullup{false};
+    uint32_t lastClockHz{0};
+    uint8_t lastAddress{0};
+    int beginCalls{0};
+    int setClockCalls{0};
+};
+
+class FakeDs3231I2cBusDriver final : public II2cBusDriver {
+public:
+    bool begin(uint8_t, uint8_t, uint32_t, bool) override {
+        return true;
+    }
+
+    bool end() override {
+        return true;
+    }
+
+    bool setClock(uint32_t) override {
+        return true;
+    }
+
+    uint32_t getClock() const override {
+        return 0U;
+    }
+
+    void beginTransmission(uint8_t address) override {
+        currentAddress = address;
+        txCount = 0;
+    }
+
+    uint8_t endTransmission(bool) override {
+        if (txCount == 1) {
+            selectedRegister = txBytes[0];
+        }
+        return 0U;
+    }
+
+    size_t requestFrom(uint8_t, size_t size, bool) override {
+        rxCount = 0;
+        rxIndex = 0;
+        if (selectedRegister == 0x00U && size == 7U) {
+            rxBytes[0] = 0x05U; // 05s
+            rxBytes[1] = 0x04U; // 04m
+            rxBytes[2] = 0x03U; // 03h
+            rxBytes[3] = 0x02U; // weekday
+            rxBytes[4] = 0x02U; // day
+            rxBytes[5] = 0x01U; // month
+            rxBytes[6] = 0x24U; // 2024
+            rxCount = 7U;
+            return size;
+        }
+        if (selectedRegister == 0x0FU && size == 1U) {
+            rxBytes[0] = 0x00U;
+            rxCount = 1U;
+            return size;
+        }
+        return 0U;
+    }
+
+    size_t write(uint8_t data) override {
+        if (txCount < sizeof(txBytes)) {
+            txBytes[txCount++] = data;
+        }
+        return 1U;
+    }
+
+    size_t write(const uint8_t* data, size_t quantity) override {
+        for (size_t index = 0; index < quantity && txCount < sizeof(txBytes); ++index) {
+            txBytes[txCount++] = data[index];
+        }
+        return quantity;
+    }
+
+    int available() override {
+        return static_cast<int>(rxCount - rxIndex);
+    }
+
+    int read() override {
+        if (rxIndex >= rxCount) {
+            return 0;
+        }
+        return rxBytes[rxIndex++];
+    }
+
+    void flush() override {}
+
+private:
+    uint8_t currentAddress{0};
+    uint8_t selectedRegister{0};
+    uint8_t txBytes[8]{};
+    size_t txCount{0};
+    uint8_t rxBytes[8]{};
+    size_t rxCount{0};
+    size_t rxIndex{0};
+};
+
+class FakeSpiBusDriver final : public ISpiBusDriver {
+public:
+    bool begin(uint8_t host, uint8_t sckPin, uint8_t mosiPin, int16_t misoPin) override {
+        lastHost = host;
+        lastSckPin = sckPin;
+        lastMosiPin = mosiPin;
+        lastMisoPin = misoPin;
+        ++beginCalls;
+        return beginOk;
+    }
+
+    bool end() override {
+        ended = true;
+        return true;
+    }
+
+    bool beginTransaction(uint32_t clockHz, uint8_t dataMode, uint8_t bitOrder) override {
+        lastClockHz = clockHz;
+        lastDataMode = dataMode;
+        lastBitOrder = bitOrder;
+        transactionActive = true;
+        return transactionOk;
+    }
+
+    void endTransaction() override {
+        transactionActive = false;
+    }
+
+    uint8_t transfer(uint8_t data) override {
+        return data;
+    }
+
+    size_t transferBytes(const uint8_t*, uint8_t* rxData, size_t length) override {
+        if (rxData != nullptr) {
+            for (size_t index = 0; index < length; ++index) {
+                rxData[index] = 0xFFU;
+            }
+        }
+        return length;
+    }
+
+    bool beginOk{true};
+    bool transactionOk{true};
+    bool ended{false};
+    bool transactionActive{false};
+    uint8_t lastHost{0};
+    uint8_t lastSckPin{0};
+    uint8_t lastMosiPin{0};
+    int16_t lastMisoPin{0};
+    uint32_t lastClockHz{0};
+    uint8_t lastDataMode{0};
+    uint8_t lastBitOrder{0};
+    int beginCalls{0};
+};
+
+class FakeSpiCsProbeDriver final : public ISpiCsProbeDriver {
+public:
+    bool readCurrentState(uint8_t pin, GpioMode& mode, bool& level) override {
+        lastPin = pin;
+        mode = GpioMode::Input;
+        level = false;
+        return true;
+    }
+
+    bool configureOutput(uint8_t pin, bool initialLevel) override {
+        lastPin = pin;
+        lastLevel = initialLevel;
+        return true;
+    }
+
+    bool configureInputPullup(uint8_t pin, bool& level) override {
+        lastPin = pin;
+        level = true;
+        return true;
+    }
+
+    bool configureInputPulldown(uint8_t pin, bool& level) override {
+        lastPin = pin;
+        level = false;
+        return true;
+    }
+
+    bool writeLevel(uint8_t pin, bool high) override {
+        lastPin = pin;
+        lastLevel = high;
+        return true;
+    }
+
+    bool readLevel(uint8_t pin, bool& level) override {
+        lastPin = pin;
+        level = lastLevel;
+        return true;
+    }
+
+    bool restoreState(uint8_t pin, GpioMode mode, bool level) override {
+        lastPin = pin;
+        lastMode = mode;
+        lastLevel = level;
+        return true;
+    }
+
+    bool release(uint8_t pin) override {
+        lastPin = pin;
+        return true;
+    }
+
+    uint8_t lastPin{0};
+    GpioMode lastMode{GpioMode::Input};
+    bool lastLevel{false};
+};
+
+AnalogPortInputDeviceConfigV1 makeAnalogPortInputConfig() {
+    AnalogPortInputDeviceConfigV1 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "analog port");
+    config.gpioPin = 34U;
+    config.attenuation = static_cast<uint8_t>(AdcAttenuation::Db11);
+    config.poll.adcSamples = 4U;
+    config.poll.reportAlways = 0U;
+    config.poll.reportDeltaMilliVolts = 10U;
+    config.poll.pollMs = 100U;
+    return config;
+}
+
+DeviceConfigBlob encodeAnalogPortInputBlob(const AnalogPortInputDeviceConfigV1& config) {
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(AnalogPortInputDeviceConfigV1::kMagic, config, buffer, analogPortInputDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(blob.assign(buffer, analogPortInputDeviceConfigSize(config)));
+    return blob;
+}
+
+void bindAnalogPortInputIdentity(AnalogPortInputDevice& device, DeviceId deviceId) {
+    DeviceRegistryEntry record{};
+    record.header.deviceId = deviceId;
+    record.header.typeId = AnalogPortInputDevice::descriptor().typeId;
+    record.header.configVersion = AnalogPortInputDevice::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(encodeAnalogPortInputBlob(device.config()).size());
+    record.status = DeviceStatus::Ready;
+    device.bindDeviceIdentity(record, encodeAnalogPortInputBlob(device.config()));
+}
+
+void driveAnalogPortInputUntilReading(AnalogPortInputDevice& device, uint32_t startNow = 10U) {
+    device.begin(startNow);
+    for (uint32_t now = startNow + 1U; now < startNow + 40U && !device.reading().valid; ++now) {
+        device.tick100ms(now);
+    }
+}
+
+AnalogInputChannelDeviceConfigV1 makeAnalogInputChannelConfig() {
+    AnalogInputChannelDeviceConfigV1 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "analog channel");
+    config.channel = 3U;
+    config.poll.adcSamples = 4U;
+    config.poll.reportAlways = 0U;
+    config.poll.reportDeltaMilliVolts = 15U;
+    config.poll.pollMs = 500U;
+    return config;
+}
+
+DeviceConfigBlob encodeAnalogInputChannelBlob(const AnalogInputChannelDeviceConfigV1& config) {
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(
+        encodeFixedConfigBlob(AnalogInputChannelDeviceConfigV1::kMagic, config, buffer, analogInputChannelDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(blob.assign(buffer, analogInputChannelDeviceConfigSize(config)));
+    return blob;
+}
+
+void bindAnalogInputChannelIdentity(AnalogInputChannelDevice& device, DeviceId deviceId, DeviceId hubDeviceId) {
+    DeviceRegistryEntry record{};
+    record.header.deviceId = deviceId;
+    record.header.typeId = AnalogInputChannelDevice::descriptor().typeId;
+    record.header.configVersion = AnalogInputChannelDevice::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(encodeAnalogInputChannelBlob(device.config()).size());
+    record.depCount = 1U;
+    record.deps[0] = {DeviceRole::AnalogInputHub, hubDeviceId};
+    record.status = DeviceStatus::Ready;
+    device.bindDeviceIdentity(record, encodeAnalogInputChannelBlob(device.config()));
+}
+
+void driveAnalogInputChannelUntilReading(AnalogInputChannelDevice& device, FakeAnalogInputHubRuntime& hub, uint32_t startNow = 10U) {
+    device.setDependencyRuntime(DeviceRole::AnalogInputHub, &hub);
+    device.begin(startNow);
+    for (uint32_t now = startNow + 1U; now < startNow + 20U && !device.reading().valid; ++now) {
+        device.tick100ms(now);
+    }
+}
+
+I2cBusDeviceConfigV1 makeI2cBusConfig() {
+    I2cBusDeviceConfigV1 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "i2c bus");
+    config.sdaPin = 21U;
+    config.sclPin = 22U;
+    config.internalPullup = 1U;
+    config.frequencyHz = 400000U;
+    return config;
+}
+
+DeviceConfigBlob encodeI2cBusBlob(const I2cBusDeviceConfigV1& config) {
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(I2cBusDeviceConfigV1::kMagic, config, buffer, i2cBusDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(blob.assign(buffer, i2cBusDeviceConfigSize(config)));
+    return blob;
+}
+
+void bindI2cBusIdentity(I2cBusDevice& device, DeviceId deviceId) {
+    DeviceRegistryEntry record{};
+    record.header.deviceId = deviceId;
+    record.header.typeId = I2cBusDevice::descriptor().typeId;
+    record.header.configVersion = I2cBusDevice::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(encodeI2cBusBlob(device.config()).size());
+    record.status = DeviceStatus::Ready;
+    device.bindDeviceIdentity(record, encodeI2cBusBlob(device.config()));
+}
+
+void driveI2cBusToReady(I2cBusDevice& device, uint32_t startNow = 10U) {
+    device.begin(startNow);
+    for (uint32_t now = startNow + 1U; now < startNow + 20U && device.status() != DeviceStatus::Ready; ++now) {
+        device.tick100ms(now);
+    }
+}
+
+Ds3231RtcDeviceConfigV2 makeRtcConfig() {
+    Ds3231RtcDeviceConfigV2 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "rtc");
+    config.i2cAddress = 0x68U;
+    config.useForSystemTimeSync = 1U;
+    return config;
+}
+
+DeviceConfigBlob encodeRtcBlob(const Ds3231RtcDeviceConfigV2& config) {
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ds3231RtcDeviceConfigV2::kMagic, config, buffer, ds3231RtcDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(blob.assign(buffer, ds3231RtcDeviceConfigSize(config)));
+    return blob;
+}
+
+void bindRtcIdentity(Ds3231RtcDevice& device, DeviceId deviceId, DeviceId busDeviceId) {
+    DeviceRegistryEntry record{};
+    record.header.deviceId = deviceId;
+    record.header.typeId = Ds3231RtcDevice::descriptor().typeId;
+    record.header.configVersion = Ds3231RtcDevice::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(encodeRtcBlob(device.config()).size());
+    record.depCount = 1U;
+    record.deps[0] = {DeviceRole::I2CBus, busDeviceId};
+    record.status = DeviceStatus::Ready;
+    device.bindDeviceIdentity(record, encodeRtcBlob(device.config()));
+}
+
+void driveRtcUntilReading(Ds3231RtcDevice& device, I2cBusDevice& bus, uint32_t startNow = 10U) {
+    device.setDependencyRuntime(DeviceRole::I2CBus, &bus);
+    device.begin(startNow);
+    for (uint32_t now = startNow + 1U; now < startNow + 30U && !device.lastReadOk(); ++now) {
+        device.tick100ms(now);
+    }
+}
+
+SpiBusDeviceConfigV1 makeSpiBusConfig() {
+    SpiBusDeviceConfigV1 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "spi bus");
+    config.host = kSpiBusHostVspi;
+    config.sckPin = 18U;
+    config.mosiPin = 23U;
+    config.misoPin = -1;
+    return config;
+}
+
+DeviceConfigBlob encodeSpiBusBlob(const SpiBusDeviceConfigV1& config) {
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(SpiBusDeviceConfigV1::kMagic, config, buffer, spiBusDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(blob.assign(buffer, spiBusDeviceConfigSize(config)));
+    return blob;
+}
+
+void bindSpiBusIdentity(SpiBusDevice& device, DeviceId deviceId) {
+    DeviceRegistryEntry record{};
+    record.header.deviceId = deviceId;
+    record.header.typeId = SpiBusDevice::descriptor().typeId;
+    record.header.configVersion = SpiBusDevice::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(encodeSpiBusBlob(device.config()).size());
+    record.status = DeviceStatus::Ready;
+    device.bindDeviceIdentity(record, encodeSpiBusBlob(device.config()));
+}
+
+void driveSpiBusToReady(SpiBusDevice& device, uint32_t startNow = 10U) {
+    device.begin(startNow);
+    for (uint32_t now = startNow + 1U; now < startNow + 20U && device.status() != DeviceStatus::Ready; ++now) {
+        device.tick100ms(now);
+    }
+}
+
+St7735DeviceConfigV4 makeSt7735Config() {
+    St7735DeviceConfigV4 config{};
+    config.enabled = true;
+    std::snprintf(config.name, sizeof(config.name), "%s", "display");
+    config.spiBusDeviceId = 11U;
+    config.chipSelectPin = 5U;
+    config.dcPin = 2U;
+    config.resetPin = -1;
+    config.rotation = 0U;
+    config.width = 128U;
+    config.height = 160U;
+    return config;
+}
+
+DeviceConfigBlob encodeSt7735Blob(const St7735DeviceConfigV4& config) {
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    DeviceConfigBlob blob{};
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV4::kMagic, config, buffer, st7735DeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(blob.assign(buffer, st7735DeviceConfigSize(config)));
+    return blob;
+}
+
+DeviceRegistryEntry makeSt7735Record(DeviceId deviceId, DeviceId busDeviceId, const St7735DeviceConfigV4& config) {
+    DeviceRegistryEntry record{};
+    record.header.deviceId = deviceId;
+    record.header.typeId = St7735Device::descriptor().typeId;
+    record.header.configVersion = St7735Device::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(encodeSt7735Blob(config).size());
+    record.depCount = 1U;
+    record.deps[0] = {DeviceRole::SpiBus, busDeviceId};
+    record.status = DeviceStatus::Ready;
+    return record;
+}
+
 } // namespace
 
 void test_ledc_analog_output_api_adapter_parses_single_output_config() {
@@ -363,7 +1194,7 @@ void test_analog_output_composer_api_adapter_serializes_record() {
     AnalogOutputComposerDevice device(config);
     device.bindDeviceIdentity(record, blob);
 
-    StaticJsonDocument<1024> doc;
+    StaticJsonDocument<4096> doc;
     JsonObject output = doc.to<JsonObject>();
     AnalogOutputComposerDeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
 
@@ -373,6 +1204,1007 @@ void test_analog_output_composer_api_adapter_serializes_record() {
     TEST_ASSERT_EQUAL_STRING("analog_output_composer", output["record"]["typeName"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("group mode", output["config"]["name"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("scheduled", output["runtime"]["output"]["mode"].as<const char*>());
+}
+
+void test_fade_analog_output_api_adapter_parses_create_request() {
+    StaticJsonDocument<512> doc;
+    doc["typeName"] = "fade_analog_output";
+    JsonObject config = doc.createNestedObject("config");
+    config["name"] = "fade";
+    config["enabled"] = true;
+    config["maxStep"] = 10;
+    config["stepIntervalMs"] = 200;
+    JsonArray deps = config.createNestedArray("deps");
+    JsonObject outputDep = deps.createNestedObject();
+    outputDep["role"] = "analog_output";
+    outputDep["deviceId"] = 51;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-fade_analog_output.request.schema.json", doc.as<JsonVariantConst>());
+
+    DeviceCreateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(FadeAnalogOutputDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error));
+    TEST_ASSERT_EQUAL_UINT32(kFadeAnalogOutputDeviceTypeId, request.typeId);
+    TEST_ASSERT_EQUAL_UINT32(kFadeAnalogOutputDeviceConfigVersion, request.configVersion);
+    TEST_ASSERT_EQUAL_STRING("fade", request.baseConfig.name);
+    TEST_ASSERT_TRUE(request.isEnabled());
+    TEST_ASSERT_EQUAL_UINT8(1U, request.dependencyCount());
+    TEST_ASSERT_EQUAL_UINT32(51U, request.dependencyLinks()[0].deviceId);
+
+    FadeAnalogOutputDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeFadeAnalogOutputDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT16(percentToAnalogOutputState(10U), parsed.maxStep);
+    TEST_ASSERT_EQUAL_UINT32(200U, parsed.stepIntervalMs);
+}
+
+void test_fade_analog_output_api_adapter_partial_update_preserves_step_interval() {
+    FadeAnalogOutputDeviceConfigV1 current = makeFadeAnalogOutputConfig();
+    FadeAnalogOutputDevice runtime(current);
+
+    StaticJsonDocument<256> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["maxStep"] = 20;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-fade_analog_output.request.schema.json", doc.as<JsonVariantConst>());
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(
+        FadeAnalogOutputDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error));
+    TEST_ASSERT_EQUAL_UINT32(kFadeAnalogOutputDeviceConfigVersion, request.configVersion);
+    TEST_ASSERT_FALSE(request.depsProvided);
+
+    FadeAnalogOutputDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeFadeAnalogOutputDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT16(percentToAnalogOutputState(20U), parsed.maxStep);
+    TEST_ASSERT_EQUAL_UINT32(current.stepIntervalMs, parsed.stepIntervalMs);
+}
+
+void test_fade_analog_output_api_adapter_serializes_record() {
+    FakeAnalogOutputDevice target("target");
+    target.begin(1U);
+    target.tickFastLoop(2U);
+
+    FadeAnalogOutputDeviceConfigV1 config = makeFadeAnalogOutputConfig();
+    const DeviceConfigBlob blob = encodeFadeAnalogOutputBlob(config);
+    DeviceRegistryEntry record = dependentRecord(kFadeAnalogOutputDeviceTypeId, {501U});
+    record.header.configVersion = kFadeAnalogOutputDeviceConfigVersion;
+    record.header.payloadLength = static_cast<uint32_t>(blob.size());
+
+    FadeAnalogOutputDevice fade(config);
+    fade.bindDeviceIdentity(record, blob);
+    fade.setDependencyRuntimeAt(0U, &target);
+    fade.begin(10U);
+    for (uint32_t now = 11U; now < 20U && fade.status() != DeviceStatus::Ready; ++now) {
+        fade.tick100ms(now);
+    }
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(fade.status()));
+    TEST_ASSERT_TRUE(fade.requestOutputState(kAnalogOutputLevelMax, 20U));
+    fade.tick100ms(212U);
+
+    StaticJsonDocument<4096> doc;
+    JsonObject output = doc.to<JsonObject>();
+    FadeAnalogOutputDeviceApiAdapter::instance().writeDeviceJson(fade, fade.status(), output);
+
+    TEST_ASSERT_FALSE(doc.overflowed());
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-fade_analog_output.response.schema.json", doc.as<JsonVariantConst>());
+    TEST_ASSERT_EQUAL_UINT32(121U, output["record"]["id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("fade_analog_output", output["record"]["typeName"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("fade", output["config"]["name"].as<const char*>());
+    TEST_ASSERT_EQUAL_UINT8(10U, output["runtime"]["output"]["state"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_UINT8(100U, output["runtime"]["output"]["targetState"].as<uint8_t>());
+    TEST_ASSERT_TRUE(output["runtime"]["output"]["transitioning"].as<bool>());
+}
+
+void test_scheduled_analog_output_api_adapter_parses_create_request() {
+    StaticJsonDocument<4096> doc;
+    doc["typeName"] = "scheduled_analog_output";
+    JsonObject config = doc.createNestedObject("config");
+    config["name"] = "schedule";
+    config["enabled"] = true;
+    JsonArray deps = config.createNestedArray("deps");
+    JsonObject outputDep = deps.createNestedObject();
+    outputDep["role"] = "analog_output";
+    outputDep["deviceId"] = 61;
+    JsonArray points = config.createNestedArray("points");
+    JsonObject point0 = points.createNestedObject();
+    point0["minuteOfDay"] = 480;
+    point0["state"] = 100;
+    JsonObject point1 = points.createNestedObject();
+    point1["minuteOfDay"] = 1200;
+    point1["state"] = 25;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-scheduled_analog_output.request.schema.json",
+                            doc.as<JsonVariantConst>());
+
+    DeviceCreateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        ScheduledAnalogOutputDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error), error);
+    TEST_ASSERT_EQUAL_UINT32(kScheduledAnalogOutputDeviceTypeId, request.typeId);
+    TEST_ASSERT_EQUAL_UINT32(kScheduledAnalogOutputDeviceConfigVersion, request.configVersion);
+    TEST_ASSERT_EQUAL_STRING("schedule", request.baseConfig.name);
+    TEST_ASSERT_TRUE(request.isEnabled());
+    TEST_ASSERT_EQUAL_UINT8(1U, request.dependencyCount());
+    TEST_ASSERT_EQUAL_UINT32(61U, request.dependencyLinks()[0].deviceId);
+
+    ScheduledAnalogOutputDeviceConfigV2 parsed{};
+    TEST_ASSERT_TRUE(decodeScheduledAnalogOutputDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()),
+                                                             request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT8(0U, parsed.points[0].deleted);
+    TEST_ASSERT_EQUAL_UINT16(480U, parsed.points[0].minuteOfDay);
+    TEST_ASSERT_EQUAL_UINT16(percentToAnalogOutputState(100U), parsed.points[0].state);
+    TEST_ASSERT_EQUAL_UINT8(0U, parsed.points[1].deleted);
+    TEST_ASSERT_EQUAL_UINT16(1200U, parsed.points[1].minuteOfDay);
+    TEST_ASSERT_EQUAL_UINT16(percentToAnalogOutputState(25U), parsed.points[1].state);
+}
+
+void test_scheduled_analog_output_api_adapter_partial_update_preserves_points() {
+    ScheduledAnalogOutputDeviceConfigV2 current = makeScheduledAnalogOutputConfig();
+    ScheduledAnalogOutputDevice runtime(current);
+
+    StaticJsonDocument<512> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["enabled"] = false;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-scheduled_analog_output.request.schema.json",
+                            doc.as<JsonVariantConst>());
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(
+        ScheduledAnalogOutputDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error));
+    TEST_ASSERT_EQUAL_UINT32(kScheduledAnalogOutputDeviceConfigVersion, request.configVersion);
+    TEST_ASSERT_FALSE(request.depsProvided);
+
+    ScheduledAnalogOutputDeviceConfigV2 parsed{};
+    TEST_ASSERT_TRUE(decodeScheduledAnalogOutputDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()),
+                                                             request.configBlob.size(), parsed));
+    TEST_ASSERT_FALSE(parsed.enabled);
+    TEST_ASSERT_EQUAL_UINT16(current.points[0].minuteOfDay, parsed.points[0].minuteOfDay);
+    TEST_ASSERT_EQUAL_UINT16(current.points[0].state, parsed.points[0].state);
+    TEST_ASSERT_EQUAL_UINT16(current.points[1].minuteOfDay, parsed.points[1].minuteOfDay);
+    TEST_ASSERT_EQUAL_UINT16(current.points[1].state, parsed.points[1].state);
+}
+
+void test_scheduled_analog_output_api_adapter_serializes_record() {
+    FakeAnalogOutputDevice target("target");
+    target.begin(1U);
+    target.tickFastLoop(2U);
+
+    ScheduledAnalogOutputDeviceConfigV2 config = makeScheduledAnalogOutputConfig();
+    const DeviceConfigBlob blob = encodeScheduledAnalogOutputBlob(config);
+    DeviceRegistryEntry record = dependentRecord(kScheduledAnalogOutputDeviceTypeId, {601U});
+    record.header.configVersion = kScheduledAnalogOutputDeviceConfigVersion;
+    record.header.payloadLength = static_cast<uint32_t>(blob.size());
+
+    ScheduledAnalogOutputDevice device(config);
+    device.bindDeviceIdentity(record, blob);
+    device.setDependencyRuntimeAt(0U, &target);
+    device.begin(10U);
+    for (uint32_t now = 11U; now < 20U && device.status() != DeviceStatus::Ready; ++now) {
+        device.tickFastLoop(now);
+    }
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(device.status()));
+    device.tickFastLoop(21U);
+
+    StaticJsonDocument<4096> doc;
+    JsonObject output = doc.to<JsonObject>();
+    ScheduledAnalogOutputDeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
+
+    TEST_ASSERT_FALSE(doc.overflowed());
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-scheduled_analog_output.response.schema.json", doc.as<JsonVariantConst>());
+    TEST_ASSERT_EQUAL_UINT32(122U, output["record"]["id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("scheduled_analog_output", output["record"]["typeName"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("schedule", output["config"]["name"].as<const char*>());
+    TEST_ASSERT_EQUAL_UINT8(0U, output["runtime"]["output"]["state"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_UINT8(0U, output["runtime"]["output"]["requestedState"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_STRING("scheduled", output["runtime"]["output"]["mode"].as<const char*>());
+    TEST_ASSERT_FALSE(output["runtime"]["output"]["timeValid"].as<bool>());
+}
+
+void test_ds18b20_api_adapter_parses_create_request() {
+    StaticJsonDocument<512> doc;
+    doc["typeName"] = "ds18b20_temperature_sensor";
+    JsonObject config = doc.createNestedObject("config");
+    config["name"] = "temperature";
+    config["enabled"] = true;
+    JsonArray deps = config.createNestedArray("deps");
+    JsonObject dep = deps.createNestedObject();
+    dep["role"] = "onewire_bus";
+    dep["deviceId"] = 44;
+    config["address"] = "28FF641D621603AD";
+    config["resolution"] = 11;
+    config["unit"] = "fahrenheit";
+    config["pollMs"] = 2000;
+    config["reportDeltaCelsius"] = 0.25;
+    config["reportAlways"] = true;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-ds18b20_temperature_sensor.request.schema.json",
+                            doc.as<JsonVariantConst>());
+
+    DeviceCreateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        Ds18b20TemperatureSensorDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error), error);
+    TEST_ASSERT_EQUAL_UINT32(kDs18b20TemperatureSensorTypeId, request.typeId);
+    TEST_ASSERT_EQUAL_UINT32(kDs18b20TemperatureSensorConfigVersion, request.configVersion);
+    TEST_ASSERT_EQUAL_STRING("temperature", request.baseConfig.name);
+    TEST_ASSERT_TRUE(request.isEnabled());
+    TEST_ASSERT_EQUAL_UINT8(1U, request.dependencyCount());
+    TEST_ASSERT_EQUAL_UINT32(44U, request.dependencyLinks()[0].deviceId);
+
+    Ds18b20TemperatureSensorConfigV2 parsed{};
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV2::kMagic,
+                                                    reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(),
+                                                    parsed));
+    TEST_ASSERT_EQUAL_UINT8(11U, parsed.resolution);
+    TEST_ASSERT_EQUAL_UINT8(temperatureUnitToByte(TemperatureUnit::Fahrenheit), parsed.outputUnit);
+    TEST_ASSERT_EQUAL_UINT16(25U, parsed.reportDeltaCentiCelsius);
+    TEST_ASSERT_TRUE(parsed.reportAlways != 0U);
+    TEST_ASSERT_EQUAL_UINT32(2000U, parsed.pollMs);
+}
+
+void test_ds18b20_api_adapter_partial_update_preserves_address_unit_and_report_always() {
+    Ds18b20TemperatureSensorConfigV2 current = makeDs18b20Config();
+    Ds18b20TemperatureSensorDevice runtime(current);
+
+    StaticJsonDocument<256> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["pollMs"] = 3000;
+    config["reportAlways"] = false;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-ds18b20_temperature_sensor.request.schema.json",
+                            doc.as<JsonVariantConst>());
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        Ds18b20TemperatureSensorDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error),
+        error);
+    TEST_ASSERT_FALSE(request.depsProvided);
+
+    Ds18b20TemperatureSensorConfigV2 parsed{};
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(Ds18b20TemperatureSensorConfigV2::kMagic,
+                                                    reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(),
+                                                    parsed));
+    TEST_ASSERT_EQUAL_UINT32(3000U, parsed.pollMs);
+    TEST_ASSERT_FALSE(parsed.reportAlways != 0U);
+    TEST_ASSERT_EQUAL_UINT8(current.resolution, parsed.resolution);
+    TEST_ASSERT_EQUAL_MEMORY(&current.address, &parsed.address, sizeof(current.address));
+    TEST_ASSERT_EQUAL_UINT8(current.outputUnit, parsed.outputUnit);
+}
+
+void test_ds18b20_api_adapter_serializes_record() {
+    Ds18b20TemperatureSensorConfigV2 config = makeDs18b20Config();
+    const DeviceConfigBlob blob = encodeDs18b20Blob(config);
+    DeviceRegistryEntry record{};
+    record.header.deviceId = 73U;
+    record.header.typeId = kDs18b20TemperatureSensorTypeId;
+    record.header.configVersion = kDs18b20TemperatureSensorConfigVersion;
+    record.header.payloadLength = static_cast<uint32_t>(blob.size());
+    record.depCount = 1U;
+    record.deps[0] = {DeviceRole::OneWireBus, 44U};
+
+    Ds18b20TemperatureSensorDevice sensor(config);
+    sensor.bindDeviceIdentity(record, blob);
+    sensor.begin(10U);
+    sensor.tick100ms(11U);
+
+    StaticJsonDocument<2048> doc;
+    JsonObject output = doc.to<JsonObject>();
+    Ds18b20TemperatureSensorDeviceApiAdapter::instance().writeDeviceJson(sensor, sensor.status(), output);
+
+    TEST_ASSERT_FALSE(doc.overflowed());
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-ds18b20_temperature_sensor.response.schema.json",
+                            doc.as<JsonVariantConst>());
+    TEST_ASSERT_EQUAL_UINT32(73U, output["record"]["id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("ds18b20_temperature_sensor", output["record"]["typeName"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("temperature", output["config"]["name"].as<const char*>());
+    TEST_ASSERT_TRUE(output["runtime"]["output"]["temperature"].is<JsonObjectConst>());
+    TEST_ASSERT_FALSE(output["runtime"]["output"]["temperature"]["valid"].as<bool>());
+}
+
+void test_htu21_api_adapter_parses_create_request() {
+    StaticJsonDocument<512> doc;
+    doc["typeName"] = "htu21";
+    JsonObject config = doc.createNestedObject("config");
+    config["name"] = "climate";
+    config["enabled"] = true;
+    JsonArray deps = config.createNestedArray("deps");
+    JsonObject dep = deps.createNestedObject();
+    dep["role"] = "i2c_bus";
+    dep["deviceId"] = 44;
+    config["i2cAddress"] = 0x41;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-htu21.request.schema.json", doc.as<JsonVariantConst>());
+
+    DeviceCreateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(Htu21SensorDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error), error);
+    TEST_ASSERT_EQUAL_UINT32(kHtu21SensorTypeId, request.typeId);
+    TEST_ASSERT_EQUAL_UINT32(kHtu21SensorConfigVersion, request.configVersion);
+    TEST_ASSERT_EQUAL_STRING("climate", request.baseConfig.name);
+    TEST_ASSERT_TRUE(request.isEnabled());
+    TEST_ASSERT_EQUAL_UINT8(1U, request.dependencyCount());
+    TEST_ASSERT_EQUAL_UINT32(44U, request.dependencyLinks()[0].deviceId);
+
+    Htu21SensorConfigV3 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeHtu21SensorConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT8(0x41U, parsed.i2cAddress);
+}
+
+void test_htu21_api_adapter_partial_update_preserves_i2c_address() {
+    Htu21SensorConfigV3 current = makeHtu21Config(0x41U);
+    current.outputUnit = temperatureUnitToByte(TemperatureUnit::Fahrenheit);
+    current.reportDeltaCentiCelsius = 25U;
+    current.reportDeltaCentiPercent = 50U;
+    current.temperatureFilter.smoothingWeight = 0.5F;
+    Htu21SensorDevice runtime(current);
+
+    StaticJsonDocument<256> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["name"] = "climate";
+    config["pollMs"] = 60000U;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-htu21.request.schema.json", doc.as<JsonVariantConst>());
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        Htu21SensorDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error), error);
+    TEST_ASSERT_FALSE(request.depsProvided);
+
+    Htu21SensorConfigV3 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeHtu21SensorConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT32(60000U, parsed.pollMs);
+    TEST_ASSERT_EQUAL_UINT8(temperatureUnitToByte(TemperatureUnit::Fahrenheit), parsed.outputUnit);
+    TEST_ASSERT_EQUAL_UINT16(25U, parsed.reportDeltaCentiCelsius);
+    TEST_ASSERT_EQUAL_UINT16(50U, parsed.reportDeltaCentiPercent);
+    TEST_ASSERT_EQUAL_FLOAT(0.5F, parsed.temperatureFilter.smoothingWeight);
+    TEST_ASSERT_EQUAL_UINT8(0x41U, parsed.i2cAddress);
+}
+
+void test_htu21_api_adapter_serializes_record() {
+    Htu21SensorConfigV3 config = makeHtu21Config(0x41U);
+    const DeviceConfigBlob blob = encodeHtu21Blob(config);
+    DeviceRegistryEntry record{};
+    record.header.deviceId = 93U;
+    record.header.typeId = kHtu21SensorTypeId;
+    record.header.configVersion = kHtu21SensorConfigVersion;
+    record.header.payloadLength = static_cast<uint32_t>(blob.size());
+    record.depCount = 1U;
+    record.deps[0] = {DeviceRole::I2CBus, 44U};
+
+    Htu21SensorDevice device(config);
+    device.bindDeviceIdentity(record, blob);
+
+    StaticJsonDocument<4096> doc;
+    JsonObject output = doc.to<JsonObject>();
+    Htu21SensorDeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
+
+    TEST_ASSERT_FALSE(doc.overflowed());
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-htu21.response.schema.json", doc.as<JsonVariantConst>());
+    TEST_ASSERT_EQUAL_UINT32(93U, output["record"]["id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("htu21", output["record"]["typeName"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("climate", output["config"]["name"].as<const char*>());
+    TEST_ASSERT_TRUE(output["runtime"]["output"]["temperature"].is<JsonObjectConst>());
+    TEST_ASSERT_TRUE(output["runtime"]["output"]["humidity"].is<JsonObjectConst>());
+}
+
+void test_analog_input_channel_api_adapter_schema_smoke() {
+    StaticJsonDocument<512> createDoc;
+    createDoc["typeName"] = "analog_input_channel";
+    JsonObject createConfig = createDoc.createNestedObject("config");
+    makeAnalogInputChannelConfig().writeJson(createConfig);
+    JsonArray deps = createConfig.createNestedArray("deps");
+    JsonObject dep = deps.createNestedObject();
+    dep["role"] = "analog_input_hub";
+    dep["deviceId"] = 44;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-analog_input_channel.request.schema.json",
+                            createDoc.as<JsonVariantConst>());
+
+    StaticJsonDocument<512> updateDoc;
+    JsonObject updateConfig = updateDoc.createNestedObject("config");
+    updateConfig["channel"] = 5;
+    updateConfig["pollMs"] = 250U;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-analog_input_channel.request.schema.json",
+                            updateDoc.as<JsonVariantConst>());
+}
+
+void test_analog_input_channel_api_adapter_parses_create_request() {
+    StaticJsonDocument<512> doc;
+    doc["typeName"] = "analog_input_channel";
+    JsonObject config = doc.createNestedObject("config");
+    makeAnalogInputChannelConfig().writeJson(config);
+    JsonArray deps = config.createNestedArray("deps");
+    JsonObject dep = deps.createNestedObject();
+    dep["role"] = "analog_input_hub";
+    dep["deviceId"] = 44;
+
+    DeviceCreateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(AnalogInputChannelDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error),
+                             error);
+    TEST_ASSERT_EQUAL_UINT32(kAnalogInputChannelTypeId, request.typeId);
+    TEST_ASSERT_EQUAL_STRING("analog channel", request.baseConfig.name);
+    TEST_ASSERT_EQUAL_UINT8(1U, request.dependencyCount());
+    TEST_ASSERT_EQUAL_UINT32(44U, request.dependencyLinks()[0].deviceId);
+
+    AnalogInputChannelDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(AnalogInputChannelDeviceConfigV1::kMagic,
+                                                    reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(),
+                                                    parsed));
+    TEST_ASSERT_EQUAL_UINT8(3U, parsed.channel);
+    TEST_ASSERT_EQUAL_UINT8(4U, parsed.poll.adcSamples);
+    TEST_ASSERT_EQUAL_UINT32(500U, parsed.poll.pollMs);
+}
+
+void test_analog_input_channel_api_adapter_partial_update_preserves_other_fields() {
+    FakeAnalogInputHubRuntime hub;
+    AnalogInputChannelDevice runtime(makeAnalogInputChannelConfig());
+    bindAnalogInputChannelIdentity(runtime, 8022U, 44U);
+    driveAnalogInputChannelUntilReading(runtime, hub);
+
+    StaticJsonDocument<256> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["channel"] = 5;
+    config["pollMs"] = 250U;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-analog_input_channel.request.schema.json", doc.as<JsonVariantConst>());
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        AnalogInputChannelDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error), error);
+    TEST_ASSERT_FALSE(request.depsProvided);
+
+    AnalogInputChannelDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(AnalogInputChannelDeviceConfigV1::kMagic,
+                                                    reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(),
+                                                    parsed));
+    TEST_ASSERT_EQUAL_UINT8(5U, parsed.channel);
+    TEST_ASSERT_EQUAL_UINT8(4U, parsed.poll.adcSamples);
+    TEST_ASSERT_EQUAL_UINT32(250U, parsed.poll.pollMs);
+    TEST_ASSERT_EQUAL_STRING("analog channel", parsed.name);
+}
+
+void test_analog_input_channel_api_adapter_serializes_record() {
+    FakeAnalogInputHubRuntime hub;
+    AnalogInputChannelDevice device(makeAnalogInputChannelConfig());
+    bindAnalogInputChannelIdentity(device, 8023U, 44U);
+    driveAnalogInputChannelUntilReading(device, hub);
+
+    StaticJsonDocument<1024> doc;
+    JsonObject output = doc.to<JsonObject>();
+    AnalogInputChannelDeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
+
+    TEST_ASSERT_FALSE(doc.overflowed());
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-analog_input_channel.response.schema.json", doc.as<JsonVariantConst>());
+    TEST_ASSERT_EQUAL_UINT32(8023U, output["record"]["id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("analog_input_channel", output["record"]["typeName"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("analog channel", output["config"]["name"].as<const char*>());
+    TEST_ASSERT_TRUE(output["runtime"]["output"]["analogInput"]["valid"].as<bool>());
+    TEST_ASSERT_EQUAL_UINT32(1660U, output["runtime"]["output"]["analogInput"]["milliVolts"].as<uint32_t>());
+}
+
+void test_i2c_bus_api_adapter_schema_smoke() {
+    StaticJsonDocument<512> createDoc;
+    createDoc["typeName"] = "i2c_bus";
+    JsonObject createConfig = createDoc.createNestedObject("config");
+    makeI2cBusConfig().writeJson(createConfig);
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-i2c_bus.request.schema.json", createDoc.as<JsonVariantConst>());
+
+    StaticJsonDocument<512> updateDoc;
+    JsonObject updateConfig = updateDoc.createNestedObject("config");
+    updateConfig["sdaPin"] = 19;
+    updateConfig["frequencyHz"] = 100000U;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-i2c_bus.request.schema.json", updateDoc.as<JsonVariantConst>());
+}
+
+void test_i2c_bus_api_adapter_parses_create_request() {
+    StaticJsonDocument<512> doc;
+    doc["typeName"] = "i2c_bus";
+    JsonObject config = doc.createNestedObject("config");
+    makeI2cBusConfig().writeJson(config);
+
+    DeviceCreateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(I2cBusDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error), error);
+    TEST_ASSERT_EQUAL_UINT32(I2cBusDevice::descriptor().typeId, request.typeId);
+    TEST_ASSERT_EQUAL_STRING("i2c bus", request.baseConfig.name);
+    TEST_ASSERT_EQUAL_UINT8(0U, request.dependencyCount());
+
+    I2cBusDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(
+        I2cBusDeviceConfigV1::kMagic, reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT8(21U, parsed.sdaPin);
+    TEST_ASSERT_EQUAL_UINT8(22U, parsed.sclPin);
+    TEST_ASSERT_EQUAL_UINT8(1U, parsed.internalPullup);
+    TEST_ASSERT_EQUAL_UINT32(400000U, parsed.frequencyHz);
+}
+
+void test_i2c_bus_api_adapter_partial_update_preserves_other_fields() {
+    FakeI2cBusDriver driver;
+    I2cBusDevice runtime(makeI2cBusConfig(), driver);
+    bindI2cBusIdentity(runtime, 8024U);
+    driveI2cBusToReady(runtime);
+
+    StaticJsonDocument<256> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["sdaPin"] = 19U;
+    config["frequencyHz"] = 100000U;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-i2c_bus.request.schema.json", doc.as<JsonVariantConst>());
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        I2cBusDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error), error);
+    TEST_ASSERT_FALSE(request.depsProvided);
+
+    I2cBusDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(
+        I2cBusDeviceConfigV1::kMagic, reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT8(19U, parsed.sdaPin);
+    TEST_ASSERT_EQUAL_UINT8(22U, parsed.sclPin);
+    TEST_ASSERT_EQUAL_UINT8(1U, parsed.internalPullup);
+    TEST_ASSERT_EQUAL_UINT32(100000U, parsed.frequencyHz);
+}
+
+void test_i2c_bus_api_adapter_serializes_record() {
+    FakeI2cBusDriver driver;
+    I2cBusDevice device(makeI2cBusConfig(), driver);
+    bindI2cBusIdentity(device, 8025U);
+    driveI2cBusToReady(device);
+
+    StaticJsonDocument<2048> doc;
+    JsonObject output = doc.to<JsonObject>();
+    I2cBusDeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
+
+    TEST_ASSERT_FALSE(doc.overflowed());
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-i2c_bus.response.schema.json", doc.as<JsonVariantConst>());
+    TEST_ASSERT_EQUAL_UINT32(8025U, output["record"]["id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("i2c_bus", output["record"]["typeName"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("i2c bus", output["config"]["name"].as<const char*>());
+    TEST_ASSERT_FALSE(output["runtime"]["transactionActive"].as<bool>());
+}
+
+void test_rtc_ds3231_api_adapter_schema_smoke() {
+    StaticJsonDocument<512> createDoc;
+    createDoc["typeName"] = "rtc_ds3231";
+    JsonObject createConfig = createDoc.createNestedObject("config");
+    makeRtcConfig().writeJson(createConfig);
+    JsonArray deps = createConfig.createNestedArray("deps");
+    JsonObject dep = deps.createNestedObject();
+    dep["role"] = "i2c_bus";
+    dep["deviceId"] = 44;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-rtc_ds3231.request.schema.json", createDoc.as<JsonVariantConst>());
+
+    StaticJsonDocument<512> updateDoc;
+    JsonObject updateConfig = updateDoc.createNestedObject("config");
+    updateConfig["i2cAddress"] = 0x69;
+    updateConfig["useForSystemTimeSync"] = false;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-rtc_ds3231.request.schema.json", updateDoc.as<JsonVariantConst>());
+}
+
+void test_rtc_ds3231_api_adapter_parses_create_request() {
+    StaticJsonDocument<512> doc;
+    doc["typeName"] = "rtc_ds3231";
+    JsonObject config = doc.createNestedObject("config");
+    makeRtcConfig().writeJson(config);
+    JsonArray deps = config.createNestedArray("deps");
+    JsonObject dep = deps.createNestedObject();
+    dep["role"] = "i2c_bus";
+    dep["deviceId"] = 44;
+
+    DeviceCreateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(Ds3231RtcDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error), error);
+    TEST_ASSERT_EQUAL_UINT32(Ds3231RtcDevice::descriptor().typeId, request.typeId);
+    TEST_ASSERT_EQUAL_STRING("rtc", request.baseConfig.name);
+    TEST_ASSERT_EQUAL_UINT8(1U, request.dependencyCount());
+    TEST_ASSERT_EQUAL_UINT32(44U, request.dependencyLinks()[0].deviceId);
+
+    Ds3231RtcDeviceConfigV2 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeDs3231RtcDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT8(0x68U, parsed.i2cAddress);
+    TEST_ASSERT_TRUE(parsed.useForSystemTimeSync != 0U);
+}
+
+void test_rtc_ds3231_api_adapter_partial_update_preserves_other_fields() {
+    FakeDs3231I2cBusDriver busDriver;
+    I2cBusDevice bus(makeI2cBusConfig(), busDriver);
+    bindI2cBusIdentity(bus, 9010U);
+    driveI2cBusToReady(bus);
+
+    Ds3231RtcDevice runtime(makeRtcConfig());
+    bindRtcIdentity(runtime, 9011U, 9010U);
+    driveRtcUntilReading(runtime, bus);
+
+    StaticJsonDocument<256> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["i2cAddress"] = 0x69U;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-rtc_ds3231.request.schema.json", doc.as<JsonVariantConst>());
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        Ds3231RtcDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error), error);
+    TEST_ASSERT_FALSE(request.depsProvided);
+
+    Ds3231RtcDeviceConfigV2 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeDs3231RtcDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT8(0x69U, parsed.i2cAddress);
+    TEST_ASSERT_TRUE(parsed.useForSystemTimeSync != 0U);
+}
+
+void test_rtc_ds3231_api_adapter_serializes_record() {
+    FakeDs3231I2cBusDriver busDriver;
+    I2cBusDevice bus(makeI2cBusConfig(), busDriver);
+    bindI2cBusIdentity(bus, 9012U);
+    driveI2cBusToReady(bus);
+
+    Ds3231RtcDevice device(makeRtcConfig());
+    bindRtcIdentity(device, 9013U, 9012U);
+    driveRtcUntilReading(device, bus);
+
+    StaticJsonDocument<1024> doc;
+    JsonObject output = doc.to<JsonObject>();
+    Ds3231RtcDeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
+
+    TEST_ASSERT_FALSE(doc.overflowed());
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-rtc_ds3231.response.schema.json", doc.as<JsonVariantConst>());
+    TEST_ASSERT_EQUAL_UINT32(9013U, output["record"]["id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("rtc_ds3231", output["record"]["typeName"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("rtc", output["config"]["name"].as<const char*>());
+    TEST_ASSERT_TRUE(output["runtime"]["lastReadOk"].as<bool>());
+    TEST_ASSERT_EQUAL_UINT32(0U, output["runtime"]["oscillatorStopped"].as<uint32_t>());
+    TEST_ASSERT_TRUE(output["runtime"]["currentEpochUtc"].as<uint32_t>() > 0U);
+}
+
+void test_spi_bus_api_adapter_schema_smoke() {
+    StaticJsonDocument<512> createDoc;
+    createDoc["typeName"] = "spi_bus";
+    JsonObject createConfig = createDoc.createNestedObject("config");
+    makeSpiBusConfig().writeJson(createConfig);
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-spi_bus.request.schema.json", createDoc.as<JsonVariantConst>());
+
+    StaticJsonDocument<512> updateDoc;
+    JsonObject updateConfig = updateDoc.createNestedObject("config");
+    updateConfig["sckPin"] = 19;
+    updateConfig["misoPin"] = 33;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-spi_bus.request.schema.json", updateDoc.as<JsonVariantConst>());
+}
+
+void test_spi_bus_api_adapter_parses_create_request() {
+    StaticJsonDocument<512> doc;
+    doc["typeName"] = "spi_bus";
+    JsonObject config = doc.createNestedObject("config");
+    makeSpiBusConfig().writeJson(config);
+
+    DeviceCreateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(SpiBusDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error), error);
+    TEST_ASSERT_EQUAL_UINT32(SpiBusDevice::descriptor().typeId, request.typeId);
+    TEST_ASSERT_EQUAL_STRING("spi bus", request.baseConfig.name);
+
+    SpiBusDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(
+        SpiBusDeviceConfigV1::kMagic, reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT8(kSpiBusHostVspi, parsed.host);
+    TEST_ASSERT_EQUAL_UINT8(18U, parsed.sckPin);
+    TEST_ASSERT_EQUAL_UINT8(23U, parsed.mosiPin);
+    TEST_ASSERT_EQUAL_INT16(-1, parsed.misoPin);
+}
+
+void test_spi_bus_api_adapter_partial_update_preserves_other_fields() {
+    FakeSpiBusDriver busDriver;
+    FakeSpiCsProbeDriver csProbeDriver;
+    SpiBusDevice runtime(makeSpiBusConfig(), busDriver, csProbeDriver);
+    bindSpiBusIdentity(runtime, 9020U);
+    driveSpiBusToReady(runtime);
+
+    StaticJsonDocument<256> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["sckPin"] = 19U;
+    config["misoPin"] = 33U;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-spi_bus.request.schema.json", doc.as<JsonVariantConst>());
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        SpiBusDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error), error);
+    TEST_ASSERT_FALSE(request.depsProvided);
+
+    SpiBusDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(
+        SpiBusDeviceConfigV1::kMagic, reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT8(kSpiBusHostVspi, parsed.host);
+    TEST_ASSERT_EQUAL_UINT8(19U, parsed.sckPin);
+    TEST_ASSERT_EQUAL_UINT8(23U, parsed.mosiPin);
+    TEST_ASSERT_EQUAL_INT16(33, parsed.misoPin);
+}
+
+void test_spi_bus_api_adapter_serializes_record() {
+    FakeSpiBusDriver busDriver;
+    FakeSpiCsProbeDriver csProbeDriver;
+    SpiBusDevice device(makeSpiBusConfig(), busDriver, csProbeDriver);
+    bindSpiBusIdentity(device, 9021U);
+    driveSpiBusToReady(device);
+    TEST_ASSERT_TRUE(device.probeChipSelect(5U));
+
+    StaticJsonDocument<2048> doc;
+    JsonObject output = doc.to<JsonObject>();
+    SpiBusDeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
+
+    TEST_ASSERT_FALSE(doc.overflowed());
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-spi_bus.response.schema.json", doc.as<JsonVariantConst>());
+    TEST_ASSERT_EQUAL_UINT32(9021U, output["record"]["id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("spi_bus", output["record"]["typeName"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("spi bus", output["config"]["name"].as<const char*>());
+    TEST_ASSERT_TRUE(output["runtime"]["transactionActive"].as<bool>() == false);
+    TEST_ASSERT_TRUE(output["runtime"]["probe"]["ready"].as<bool>());
+    TEST_ASSERT_EQUAL_STRING("inconclusive", output["runtime"]["probe"]["outcome"].as<const char*>());
+}
+
+void test_st7735_api_adapter_schema_smoke() {
+    StaticJsonDocument<512> createDoc;
+    createDoc["typeName"] = "st7735";
+    JsonObject createConfig = createDoc.createNestedObject("config");
+    makeSt7735Config().writeJson(createConfig);
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-st7735.request.schema.json", createDoc.as<JsonVariantConst>());
+
+    StaticJsonDocument<512> updateDoc;
+    JsonObject updateConfig = updateDoc.createNestedObject("config");
+    updateConfig["spiBusDeviceId"] = 11;
+    updateConfig["chipSelectPin"] = 6;
+    updateConfig["rotation"] = 1;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-st7735.request.schema.json", updateDoc.as<JsonVariantConst>());
+}
+
+void test_st7735_api_adapter_parses_create_request() {
+    StaticJsonDocument<512> doc;
+    doc["typeName"] = "st7735";
+    JsonObject config = doc.createNestedObject("config");
+    makeSt7735Config().writeJson(config);
+
+    DeviceCreateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(St7735DeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error), error);
+    TEST_ASSERT_EQUAL_UINT32(St7735Device::descriptor().typeId, request.typeId);
+    TEST_ASSERT_EQUAL_STRING("display", request.baseConfig.name);
+    TEST_ASSERT_EQUAL_UINT8(1U, request.dependencyCount());
+    TEST_ASSERT_EQUAL_UINT32(11U, request.dependencyLinks()[0].deviceId);
+
+    St7735DeviceConfigV4 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeSt7735DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT32(11U, parsed.spiBusDeviceId);
+    TEST_ASSERT_EQUAL_UINT8(5U, parsed.chipSelectPin);
+    TEST_ASSERT_EQUAL_UINT8(2U, parsed.dcPin);
+    TEST_ASSERT_EQUAL_INT8(-1, parsed.resetPin);
+    TEST_ASSERT_EQUAL_UINT8(128U, parsed.width);
+    TEST_ASSERT_EQUAL_UINT8(160U, parsed.height);
+}
+
+void test_st7735_api_adapter_partial_update_preserves_other_fields() {
+    const St7735DeviceConfigV4 current = makeSt7735Config();
+    const DeviceConfigBlob blob = encodeSt7735Blob(current);
+    const DeviceRegistryEntry record = makeSt7735Record(9030U, 11U, current);
+    St7735Device runtime(record, blob);
+
+    StaticJsonDocument<256> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["chipSelectPin"] = 6U;
+    config["rotation"] = 1U;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-st7735.request.schema.json", doc.as<JsonVariantConst>());
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        St7735DeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error), error);
+    TEST_ASSERT_FALSE(request.depsProvided);
+
+    St7735DeviceConfigV4 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeSt7735DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT32(11U, parsed.spiBusDeviceId);
+    TEST_ASSERT_EQUAL_UINT8(6U, parsed.chipSelectPin);
+    TEST_ASSERT_EQUAL_UINT8(2U, parsed.dcPin);
+    TEST_ASSERT_EQUAL_INT8(-1, parsed.resetPin);
+    TEST_ASSERT_EQUAL_UINT8(1U, parsed.rotation);
+    TEST_ASSERT_EQUAL_UINT16(128U, parsed.width);
+    TEST_ASSERT_EQUAL_UINT16(160U, parsed.height);
+}
+
+void test_st7735_api_adapter_serializes_record() {
+    const St7735DeviceConfigV4 config = makeSt7735Config();
+    const DeviceConfigBlob blob = encodeSt7735Blob(config);
+    const DeviceRegistryEntry record = makeSt7735Record(9031U, 11U, config);
+    St7735Device device(record, blob);
+
+    StaticJsonDocument<1024> doc;
+    JsonObject output = doc.to<JsonObject>();
+    St7735DeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
+
+    TEST_ASSERT_FALSE(doc.overflowed());
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-st7735.response.schema.json", doc.as<JsonVariantConst>());
+    TEST_ASSERT_EQUAL_UINT32(9031U, output["record"]["id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("st7735", output["record"]["typeName"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("display", output["config"]["name"].as<const char*>());
+    TEST_ASSERT_EQUAL_UINT32(11U, output["config"]["spiBusDeviceId"].as<uint32_t>());
+}
+
+void test_gpio_switch_api_adapter_parses_create_request() {
+    StaticJsonDocument<512> doc;
+    doc["typeName"] = "gpio_switch";
+    JsonObject config = doc.createNestedObject("config");
+    config["name"] = "relay";
+    config["enabled"] = true;
+    config["restorePreviousState"] = true;
+    config["startupState"] = true;
+    config["safeState"] = false;
+    config["inverted"] = true;
+    config["gpioPin"] = 21;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-gpio_switch.request.schema.json", doc.as<JsonVariantConst>());
+
+    DeviceCreateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(GpioSwitchDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error), error);
+    TEST_ASSERT_EQUAL_UINT32(GpioSwitchDevice::descriptor().typeId, request.typeId);
+    TEST_ASSERT_EQUAL_STRING("relay", request.baseConfig.name);
+    TEST_ASSERT_TRUE(request.isEnabled());
+
+    GpioSwitchDeviceConfigV3 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeGpioSwitchDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_TRUE(parsed.enabled);
+    TEST_ASSERT_EQUAL_STRING("relay", parsed.name);
+    TEST_ASSERT_TRUE(parsed.restorePreviousState);
+    TEST_ASSERT_TRUE(parsed.startupState == kSwitchOutputOn);
+    TEST_ASSERT_TRUE(parsed.safeState == kSwitchOutputOff);
+    TEST_ASSERT_TRUE(parsed.inverted);
+    TEST_ASSERT_EQUAL_UINT8(21U, parsed.gpioPin);
+}
+
+void test_gpio_switch_api_adapter_partial_update_preserves_other_fields() {
+    FakeGpioOutputDriver driver;
+    auto runtime = makeGpioSwitchRuntime(driver);
+
+    StaticJsonDocument<128> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["gpioPin"] = 19;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-gpio_switch.request.schema.json", doc.as<JsonVariantConst>());
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        GpioSwitchDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), *runtime, request, error), error);
+    TEST_ASSERT_FALSE(request.depsProvided);
+
+    GpioSwitchDeviceConfigV3 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeGpioSwitchDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT8(19U, parsed.gpioPin);
+    TEST_ASSERT_TRUE(parsed.restorePreviousState);
+    TEST_ASSERT_TRUE(parsed.inverted);
+    TEST_ASSERT_TRUE(parsed.startupState == kSwitchOutputOn);
+    TEST_ASSERT_TRUE(parsed.safeState == kSwitchOutputOff);
+}
+
+void test_gpio_switch_api_adapter_serializes_record() {
+    FakeGpioOutputDriver driver;
+    auto runtime = makeGpioSwitchRuntime(driver);
+
+    StaticJsonDocument<1024> doc;
+    JsonObject output = doc.to<JsonObject>();
+    GpioSwitchDeviceApiAdapter::instance().writeDeviceJson(*runtime, runtime->status(), output);
+
+    TEST_ASSERT_FALSE(doc.overflowed());
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-gpio_switch.response.schema.json", doc.as<JsonVariantConst>());
+    TEST_ASSERT_EQUAL_UINT32(7U, output["record"]["id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("gpio_switch", output["record"]["typeName"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("relay", output["config"]["name"].as<const char*>());
+    TEST_ASSERT_TRUE(output["runtime"]["output"]["state"].as<bool>());
+    TEST_ASSERT_FALSE(output["runtime"]["output"]["physicalLevel"].as<bool>());
+}
+
+void test_analog_port_input_api_adapter_schema_smoke() {
+    StaticJsonDocument<512> createDoc;
+    createDoc["typeName"] = "analog_port_input";
+    JsonObject createConfig = createDoc.createNestedObject("config");
+    makeAnalogPortInputConfig().writeJson(createConfig);
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-analog_port_input.request.schema.json",
+                            createDoc.as<JsonVariantConst>());
+
+    StaticJsonDocument<512> updateDoc;
+    JsonObject updateConfig = updateDoc.createNestedObject("config");
+    updateConfig["gpioPin"] = 35;
+    updateConfig["pollMs"] = 250;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-analog_port_input.request.schema.json",
+                            updateDoc.as<JsonVariantConst>());
+}
+
+void test_analog_port_input_api_adapter_parses_create_request() {
+    StaticJsonDocument<512> doc;
+    doc["typeName"] = "analog_port_input";
+    JsonObject config = doc.createNestedObject("config");
+    makeAnalogPortInputConfig().writeJson(config);
+
+    DeviceCreateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(AnalogPortInputDeviceApiAdapter::instance().parseCreateRequest(doc.as<JsonObjectConst>(), request, error),
+                             error);
+    TEST_ASSERT_EQUAL_UINT32(kAnalogPortInputTypeId, request.typeId);
+    TEST_ASSERT_EQUAL_STRING("analog port", request.baseConfig.name);
+
+    AnalogPortInputDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(AnalogPortInputDeviceConfigV1::kMagic,
+                                                    reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(),
+                                                    parsed));
+    TEST_ASSERT_EQUAL_UINT8(34U, parsed.gpioPin);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(AdcAttenuation::Db11), parsed.attenuation);
+    TEST_ASSERT_EQUAL_UINT8(4U, parsed.poll.adcSamples);
+}
+
+void test_analog_port_input_api_adapter_partial_update_preserves_other_fields() {
+    FakeAdcInputDriver driver;
+    AnalogPortInputDevice runtime(makeAnalogPortInputConfig(), driver);
+    bindAnalogPortInputIdentity(runtime, 8020U);
+
+    StaticJsonDocument<256> doc;
+    JsonObject config = doc.createNestedObject("config");
+    config["gpioPin"] = 35;
+    config["pollMs"] = 250;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-analog_port_input.request.schema.json", doc.as<JsonVariantConst>());
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        AnalogPortInputDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error), error);
+    TEST_ASSERT_FALSE(request.depsProvided);
+
+    AnalogPortInputDeviceConfigV1 parsed{};
+    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(AnalogPortInputDeviceConfigV1::kMagic,
+                                                    reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(),
+                                                    parsed));
+    TEST_ASSERT_EQUAL_UINT8(35U, parsed.gpioPin);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(AdcAttenuation::Db11), parsed.attenuation);
+    TEST_ASSERT_EQUAL_UINT8(4U, parsed.poll.adcSamples);
+    TEST_ASSERT_EQUAL_UINT32(250U, parsed.poll.pollMs);
+}
+
+void test_analog_port_input_api_adapter_serializes_record() {
+    FakeAdcInputDriver driver;
+    driver.milliVolts = 1650U;
+    AnalogPortInputDevice device(makeAnalogPortInputConfig(), driver);
+    bindAnalogPortInputIdentity(device, 8021U);
+    driveAnalogPortInputUntilReading(device);
+
+    StaticJsonDocument<1024> doc;
+    JsonObject output = doc.to<JsonObject>();
+    AnalogPortInputDeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
+
+    TEST_ASSERT_FALSE(doc.overflowed());
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-analog_port_input.response.schema.json", doc.as<JsonVariantConst>());
+    TEST_ASSERT_EQUAL_UINT32(8021U, output["record"]["id"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_STRING("analog_port_input", output["record"]["typeName"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("analog port", output["config"]["name"].as<const char*>());
+    TEST_ASSERT_TRUE(output["runtime"]["output"]["analogInput"]["valid"].as<bool>());
+    TEST_ASSERT_EQUAL_UINT32(1650U, output["runtime"]["output"]["analogInput"]["milliVolts"].as<uint32_t>());
 }
 
 void test_schedule_api_adapter_parses_create_request() {

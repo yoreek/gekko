@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/scheduled_analog_output.config.schema.json",
+  "title": "scheduled_analog_output configuration",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean", "default": true },
+    "deps": {
+      "type": "array",
+      "items": { "$ref": "../common/dependency.schema.json" },
+      "default": [],
+      "minItems": 1
+    },
+    "points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "deleted": { "type": "boolean", "default": false },
+          "minuteOfDay": { "type": "integer", "minimum": 0, "maximum": 1439 },
+          "state": { "type": "integer", "minimum": 0, "maximum": 100 }
+        },
+        "required": [],
+        "additionalProperties": true
+      },
+      "default": [],
+      "minItems": 1
+    }
+  },
+  "required": ["name", "deps", "points"],
+  "additionalProperties": true
+}
