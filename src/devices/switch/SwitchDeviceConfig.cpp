@@ -6,10 +6,12 @@
 
 namespace ewfm {
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 static_assert(std::is_trivially_copyable<SwitchDeviceConfigV1>::value, "SwitchDeviceConfigV1 must be POD");
 static_assert(sizeof(SwitchDeviceConfigV1) == 38, "SwitchDeviceConfigV1 layout changed");
 static_assert(sizeof(SwitchDeviceConfigV1::kMagic) - 1U + sizeof(SwitchDeviceConfigV1) <= kMaxDeviceConfigBytes,
               "SwitchDeviceConfigV1 exceeds device config bound");
+EWFM_LEGACY_CONFIG_USE_END
 static_assert(std::is_trivially_copyable<SwitchDeviceConfigV2>::value, "SwitchDeviceConfigV2 must be POD");
 static_assert(sizeof(SwitchDeviceConfigV2) == 38, "SwitchDeviceConfigV2 layout changed");
 
@@ -31,6 +33,7 @@ void OutputDeviceValueCodec<bool>::writeJson(JsonObject output, const char* key,
     output[key] = state;
 }
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 DeviceValidationResult SwitchDeviceConfigV1::validate() const {
     const DeviceValidationResult baseValidation = DeviceBaseConfigV1::validate();
     if (!baseValidation.ok()) {
@@ -52,5 +55,6 @@ void SwitchDeviceConfigV2::migrateFrom(const SwitchDeviceConfigV1& legacy) {
     safeState = legacy.safeState == 1U;
     inverted = legacy.inverted;
 }
+EWFM_LEGACY_CONFIG_USE_END
 
 } // namespace ewfm

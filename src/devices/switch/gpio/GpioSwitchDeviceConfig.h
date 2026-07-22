@@ -16,16 +16,18 @@ struct [[deprecated("legacy persisted gpio-switch config; decode/migration only"
 };
 
 struct [[deprecated("legacy persisted gpio-switch config; decode/migration only")]] GpioSwitchDevicePersistedConfigV1 {
-    SwitchDeviceConfigV1 switchConfig{};
     EWFM_LEGACY_CONFIG_USE_BEGIN
+    SwitchDeviceConfigV1 switchConfig{};
     GpioSwitchDeviceConfigV1 gpioConfig{};
     EWFM_LEGACY_CONFIG_USE_END
 };
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 struct [[deprecated("legacy persisted gpio-switch config; decode/migration only")]] GpioSwitchDeviceConfigV2 : SwitchDeviceConfigV1 {
     static constexpr char kMagic[] = "GSW2";
     uint8_t gpioPin{2};
 };
+EWFM_LEGACY_CONFIG_USE_END
 
 struct GpioSwitchDeviceConfigV3 : SwitchDeviceConfigV2 {
     static constexpr char kMagic[] = "GSW3";

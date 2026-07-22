@@ -21,17 +21,19 @@ struct [[deprecated("legacy persisted port-expander-switch config; decode/migrat
 };
 
 struct [[deprecated("legacy persisted port-expander-switch config; decode/migration only")]] PortExpanderSwitchDevicePersistedConfigV1 {
-    SwitchDeviceConfigV1 switchConfig{};
     EWFM_LEGACY_CONFIG_USE_BEGIN
+    SwitchDeviceConfigV1 switchConfig{};
     PortExpanderSwitchDeviceConfigV1 expanderConfig{};
     EWFM_LEGACY_CONFIG_USE_END
 };
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 struct [[deprecated("legacy persisted port-expander-switch config; decode/migration only")]] PortExpanderSwitchDeviceConfigV2
     : SwitchDeviceConfigV1 {
     static constexpr char kMagic[] = "PXSW2";
     uint8_t channel{0};
 };
+EWFM_LEGACY_CONFIG_USE_END
 
 struct PortExpanderSwitchDeviceConfigV3 : SwitchDeviceConfigV2 {
     static constexpr char kMagic[] = "PXSW3";
