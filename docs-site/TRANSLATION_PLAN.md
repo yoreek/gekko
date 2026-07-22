@@ -34,6 +34,20 @@ This file tracks the translation workflow for `docs-site/`.
 
 ### Scenario documentation extension
 
+- [x] English: `projects/scheduled-relay.md`
+- [x] English: `assets/diagrams/scheduled-relay-flow.svg`
+- [x] Russian: `projects/scheduled-relay.md`
+- [x] Russian: `assets/diagrams/ru/scheduled-relay-flow.svg`
+- [x] Ukrainian: `projects/scheduled-relay.md`
+- [x] Ukrainian: `assets/diagrams/uk/scheduled-relay-flow.svg`
+- [x] German: `projects/scheduled-relay.md`
+- [x] German: `assets/diagrams/de/scheduled-relay-flow.svg`
+- [x] Spanish: `projects/scheduled-relay.md`
+- [x] Spanish: `assets/diagrams/es/scheduled-relay-flow.svg`
+- [x] French: `projects/scheduled-relay.md`
+- [x] French: `assets/diagrams/fr/scheduled-relay-flow.svg`
+- [x] Italian: `projects/scheduled-relay.md`
+- [x] Italian: `assets/diagrams/it/scheduled-relay-flow.svg`
 - [x] English: `projects/temperature-monitor.md`
 - [x] English: `assets/diagrams/temperature-monitor-flow.svg`
 - [x] Russian: `projects/temperature-monitor.md`
