@@ -743,6 +743,16 @@ export default {
         selectPinsTitle: 'Pin di selezione indirizzo (S0-S3)',
         enablePinHint: '255 = non collegato (a massa sul modulo)',
       },
+      schedulePresets: {
+        title: 'Preset di programmazione',
+        emptySlot: 'Slot {slot}',
+        save: 'Salva',
+        overwrite: 'Sovrascrivi',
+        delete: 'Elimina',
+        apply: 'Applica',
+        saveTitle: 'Salva preset',
+        name: 'Nome preset',
+      },
       sensorFilter: {
         title: 'Filtro lettura',
         smoothingWeightHint: '1.0 disabilita lo smoothing (pass-through)',

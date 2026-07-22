@@ -148,6 +148,27 @@ export interface DoseJournalResponse {
   success?: boolean
 }
 
+// One schedule point as carried by a preset: state is a percentage (0-100), matching the
+// scheduled_analog_output config JSON. `deleted` is always false for the points a preset emits.
+export interface SchedulePresetPoint {
+  deleted?: boolean
+  minuteOfDay: number
+  state: number
+}
+
+export interface SchedulePresetSlot {
+  slot: number
+  filled: boolean
+  name?: string
+  points?: SchedulePresetPoint[]
+}
+
+export interface SchedulePresetsResponse {
+  deviceId: number
+  presets: SchedulePresetSlot[]
+  success?: boolean
+}
+
 export type DeviceOutputSnapshot =
   | GpioSwitchOutputSnapshot
   | Ds18b20TemperatureSensorOutputSnapshot

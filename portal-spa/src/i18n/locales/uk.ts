@@ -743,6 +743,16 @@ export default {
         selectPinsTitle: 'Піни вибору адреси (S0-S3)',
         enablePinHint: '255 = не підключено (замкнено на GND на модулі)',
       },
+      schedulePresets: {
+        title: 'Пресети розкладу',
+        emptySlot: 'Слот {slot}',
+        save: 'Зберегти',
+        overwrite: 'Перезаписати',
+        delete: 'Видалити',
+        apply: 'Застосувати',
+        saveTitle: 'Зберегти пресет',
+        name: 'Назва пресету',
+      },
       sensorFilter: {
         title: 'Фільтр показань',
         smoothingWeightHint: '1.0 вимикає згладжування (наскрізний режим)',

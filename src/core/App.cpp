@@ -66,6 +66,12 @@ bool App::begin() {
     setDefaultDoseJournal(&doseJournal_);
     (void)deviceEventDispatcher_.registerSink(doseJournalCleanupSink_);
 
+    // Schedule presets share the same devdata partition (already mounted above); a failed mount
+    // must never block boot - preset save/list simply become unavailable.
+    (void)schedulePresetStorage_.begin();
+    setDefaultSchedulePresetStorage(&schedulePresetStorage_);
+    (void)deviceEventDispatcher_.registerSink(schedulePresetCleanupSink_);
+
     EWFM_BOOT_PRINTF("BOOT App::begin configStore\n");
     if (!configStore_.begin()) {
         EWFM_BOOT_PRINTF("BOOT App::begin ConfigStore failed\n");

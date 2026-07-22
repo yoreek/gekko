@@ -743,6 +743,16 @@ export default {
         selectPinsTitle: 'Pines de selección de dirección (S0-S3)',
         enablePinHint: '255 = no conectado (unido a GND en el módulo)',
       },
+      schedulePresets: {
+        title: 'Preajustes de horario',
+        emptySlot: 'Ranura {slot}',
+        save: 'Guardar',
+        overwrite: 'Sobrescribir',
+        delete: 'Eliminar',
+        apply: 'Aplicar',
+        saveTitle: 'Guardar preajuste',
+        name: 'Nombre del preajuste',
+      },
       sensorFilter: {
         title: 'Filtro de lectura',
         smoothingWeightHint: '1.0 desactiva el suavizado (paso directo)',

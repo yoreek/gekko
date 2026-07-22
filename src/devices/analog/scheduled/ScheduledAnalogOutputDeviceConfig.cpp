@@ -41,6 +41,72 @@ bool parsePoint(const JsonObjectConst& input, ScheduledAnalogOutputPointV1& poin
 }
 } // namespace
 
+bool parseAnalogSchedulePoints(const JsonArrayConst& array, ScheduledAnalogOutputPointV1 (&out)[kMaxScheduledAnalogOutputPoints],
+                               const char*& error) {
+    if (array.size() == 0U) {
+        error = "analog schedule requires at least one point";
+        return false;
+    }
+    if (array.size() > kMaxScheduledAnalogOutputPoints) {
+        error = "analog schedule has too many points";
+        return false;
+    }
+    ScheduledAnalogOutputPointV1 parsed[kMaxScheduledAnalogOutputPoints]{};
+    for (ScheduledAnalogOutputPointV1& point : parsed) {
+        point.deleted = 1U;
+    }
+    uint8_t count = 0U;
+    for (JsonVariantConst item : array) {
+        if (!item.is<JsonObjectConst>()) {
+            error = "analog schedule point must be an object";
+            return false;
+        }
+        parsed[count].deleted = 0U;
+        if (!parsePoint(item.as<JsonObjectConst>(), parsed[count], error)) {
+            return false;
+        }
+        ++count;
+    }
+    std::memcpy(out, parsed, sizeof(parsed));
+    return true;
+}
+
+DeviceValidationResult validateAnalogSchedulePoints(const ScheduledAnalogOutputPointV1 (&points)[kMaxScheduledAnalogOutputPoints]) {
+    uint8_t activeCount = 0U;
+    for (uint8_t index = 0U; index < kMaxScheduledAnalogOutputPoints; ++index) {
+        const ScheduledAnalogOutputPointV1& point = points[index];
+        if (point.deleted > 1U) {
+            return {DeviceError::InvalidConfig, "analog schedule point is invalid"};
+        }
+        if (point.deleted != 0U) {
+            continue;
+        }
+        ++activeCount;
+        if (point.minuteOfDay >= kAnalogScheduleMinutesPerDay || point.state > kAnalogOutputLevelMax) {
+            return {DeviceError::InvalidConfig, "analog schedule point is invalid"};
+        }
+        for (uint8_t other = static_cast<uint8_t>(index + 1U); other < kMaxScheduledAnalogOutputPoints; ++other) {
+            if (points[other].deleted == 0U && points[other].minuteOfDay == point.minuteOfDay) {
+                return {DeviceError::InvalidConfig, "analog schedule contains duplicate active times"};
+            }
+        }
+    }
+    return activeCount == 0U ? DeviceValidationResult{DeviceError::InvalidConfig, "analog schedule requires at least one point"}
+                             : DeviceValidationResult{};
+}
+
+void writeAnalogSchedulePoints(JsonArray array, const ScheduledAnalogOutputPointV1 (&points)[kMaxScheduledAnalogOutputPoints]) {
+    for (uint8_t index = 0U; index < kMaxScheduledAnalogOutputPoints; ++index) {
+        if (points[index].deleted != 0U) {
+            continue;
+        }
+        JsonObject point = array.createNestedObject();
+        point["deleted"] = false;
+        point["minuteOfDay"] = points[index].minuteOfDay;
+        OutputDeviceValueCodec<uint16_t>::writeJson(point, "state", points[index].state);
+    }
+}
+
 EWFM_LEGACY_CONFIG_USE_BEGIN
 DeviceValidationResult ScheduledAnalogOutputDeviceConfigV1::validate() const {
     const DeviceValidationResult baseValidation = DeviceBaseConfigV1::validate();
@@ -80,33 +146,7 @@ bool ScheduledAnalogOutputDeviceConfigV2::parseJson(const JsonObjectConst& input
         error = "analog schedule points must be an array";
         return false;
     }
-    const JsonArrayConst array = pointsInput.as<JsonArrayConst>();
-    if (array.size() == 0U) {
-        error = "analog schedule requires at least one point";
-        return false;
-    }
-    if (array.size() > kMaxScheduledAnalogOutputPoints) {
-        error = "analog schedule has too many points";
-        return false;
-    }
-    ScheduledAnalogOutputPointV1 parsed[kMaxScheduledAnalogOutputPoints]{};
-    for (ScheduledAnalogOutputPointV1& point : parsed) {
-        point.deleted = 1U;
-    }
-    uint8_t count = 0U;
-    for (JsonVariantConst item : array) {
-        if (!item.is<JsonObjectConst>()) {
-            error = "analog schedule point must be an object";
-            return false;
-        }
-        parsed[count].deleted = 0U;
-        if (!parsePoint(item.as<JsonObjectConst>(), parsed[count], error)) {
-            return false;
-        }
-        ++count;
-    }
-    std::memcpy(points, parsed, sizeof(points));
-    return true;
+    return parseAnalogSchedulePoints(pointsInput.as<JsonArrayConst>(), points, error);
 }
 
 DeviceValidationResult ScheduledAnalogOutputDeviceConfigV2::validate() const {
@@ -114,41 +154,12 @@ DeviceValidationResult ScheduledAnalogOutputDeviceConfigV2::validate() const {
     if (!baseValidation.ok()) {
         return baseValidation;
     }
-    uint8_t activeCount = 0U;
-    for (uint8_t index = 0U; index < kMaxScheduledAnalogOutputPoints; ++index) {
-        const ScheduledAnalogOutputPointV1& point = points[index];
-        if (point.deleted > 1U) {
-            return {DeviceError::InvalidConfig, "analog schedule point is invalid"};
-        }
-        if (point.deleted != 0U) {
-            continue;
-        }
-        ++activeCount;
-        if (point.minuteOfDay >= kAnalogScheduleMinutesPerDay || point.state > kAnalogOutputLevelMax) {
-            return {DeviceError::InvalidConfig, "analog schedule point is invalid"};
-        }
-        for (uint8_t other = static_cast<uint8_t>(index + 1U); other < kMaxScheduledAnalogOutputPoints; ++other) {
-            if (points[other].deleted == 0U && points[other].minuteOfDay == point.minuteOfDay) {
-                return {DeviceError::InvalidConfig, "analog schedule contains duplicate active times"};
-            }
-        }
-    }
-    return activeCount == 0U ? DeviceValidationResult{DeviceError::InvalidConfig, "analog schedule requires at least one point"}
-                             : DeviceValidationResult{};
+    return validateAnalogSchedulePoints(points);
 }
 
 void ScheduledAnalogOutputDeviceConfigV2::writeJson(JsonObject output) const {
     DeviceBaseConfigV1::writeJson(output);
-    JsonArray array = output.createNestedArray("points");
-    for (uint8_t index = 0U; index < kMaxScheduledAnalogOutputPoints; ++index) {
-        if (points[index].deleted != 0U) {
-            continue;
-        }
-        JsonObject point = array.createNestedObject();
-        point["deleted"] = false;
-        point["minuteOfDay"] = points[index].minuteOfDay;
-        OutputDeviceValueCodec<uint16_t>::writeJson(point, "state", points[index].state);
-    }
+    writeAnalogSchedulePoints(output.createNestedArray("points"), points);
 }
 
 EWFM_LEGACY_CONFIG_USE_BEGIN

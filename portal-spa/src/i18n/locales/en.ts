@@ -743,6 +743,16 @@ export default {
         selectPinsTitle: 'Address select pins (S0-S3)',
         enablePinHint: '255 = not wired (tied to GND on the module)',
       },
+      schedulePresets: {
+        title: 'Schedule presets',
+        emptySlot: 'Slot {slot}',
+        save: 'Save',
+        overwrite: 'Overwrite',
+        delete: 'Delete',
+        apply: 'Apply',
+        saveTitle: 'Save preset',
+        name: 'Preset name',
+      },
       sensorFilter: {
         title: 'Reading filter',
         smoothingWeightHint: '1.0 disables smoothing (pass-through)',

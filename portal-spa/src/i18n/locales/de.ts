@@ -743,6 +743,16 @@ export default {
         selectPinsTitle: 'Adress-Auswahlpins (S0-S3)',
         enablePinHint: '255 = nicht angeschlossen (auf dem Modul mit GND verbunden)',
       },
+      schedulePresets: {
+        title: 'Zeitplan-Presets',
+        emptySlot: 'Slot {slot}',
+        save: 'Speichern',
+        overwrite: 'Überschreiben',
+        delete: 'Löschen',
+        apply: 'Anwenden',
+        saveTitle: 'Preset speichern',
+        name: 'Preset-Name',
+      },
       sensorFilter: {
         title: 'Messwertfilter',
         smoothingWeightHint: '1.0 deaktiviert die Glättung (Durchreichen)',

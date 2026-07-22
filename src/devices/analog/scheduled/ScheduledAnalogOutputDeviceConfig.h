@@ -62,6 +62,13 @@ constexpr size_t scheduledAnalogOutputDeviceConfigSize(const ScheduledAnalogOutp
     return sizeof(ScheduledAnalogOutputDeviceConfigV2::kMagic) - 1U + sizeof(ScheduledAnalogOutputDeviceConfigV2);
 }
 
+// Reusable schedule-point helpers, shared by the config codec and the schedule-preset controller
+// so point JSON parsing, validation, and serialization live in exactly one place.
+bool parseAnalogSchedulePoints(const JsonArrayConst& array, ScheduledAnalogOutputPointV1 (&out)[kMaxScheduledAnalogOutputPoints],
+                               const char*& error);
+DeviceValidationResult validateAnalogSchedulePoints(const ScheduledAnalogOutputPointV1 (&points)[kMaxScheduledAnalogOutputPoints]);
+void writeAnalogSchedulePoints(JsonArray array, const ScheduledAnalogOutputPointV1 (&points)[kMaxScheduledAnalogOutputPoints]);
+
 bool decodeScheduledAnalogOutputDeviceConfig(const uint8_t* blob, size_t size, ScheduledAnalogOutputDeviceConfigV2& config);
 
 } // namespace ewfm

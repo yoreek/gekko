@@ -743,6 +743,16 @@ export default {
         selectPinsTitle: "Broches de sélection d'adresse (S0-S3)",
         enablePinHint: '255 = non câblée (reliée à la masse sur le module)',
       },
+      schedulePresets: {
+        title: 'Préréglages d’horaire',
+        emptySlot: 'Emplacement {slot}',
+        save: 'Enregistrer',
+        overwrite: 'Remplacer',
+        delete: 'Supprimer',
+        apply: 'Appliquer',
+        saveTitle: 'Enregistrer le préréglage',
+        name: 'Nom du préréglage',
+      },
       sensorFilter: {
         title: 'Filtre de lecture',
         smoothingWeightHint: '1.0 désactive le lissage (passage direct)',

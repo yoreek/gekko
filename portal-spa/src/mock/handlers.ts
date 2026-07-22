@@ -27,6 +27,8 @@ import type {
   DoseJournalResponse,
   DosingPumpContainerSnapshot,
   DosingPumpOutputSnapshot,
+  SchedulePresetPoint,
+  SchedulePresetsResponse,
 } from '@/api/contracts'
 import type { DeviceDependencyLink, TemperatureOutputSnapshot } from '@/api/contracts'
 import {
@@ -47,6 +49,7 @@ import {
   saveMockDatabase,
   type MockDeviceRecord,
   type MockDoseJournalEntry,
+  type MockSchedulePreset,
 } from './database'
 import {
   createGpioSwitchDevice,
@@ -2611,4 +2614,31 @@ export function mockFetchDoseJournal(deviceId: number, periodDays: number): Dose
     .slice(0, 1000)
     .map((entry: MockDoseJournalEntry) => ({ at: entry.at, type: entry.type, amountMl: entry.amountMl }))
   return { entries, success: true }
+}
+
+const MOCK_MAX_SCHEDULE_PRESETS = 3
+
+export function mockFetchSchedulePresets(deviceId: number): SchedulePresetsResponse {
+  const db = loadMockDatabase()
+  const presets = Array.from({ length: MOCK_MAX_SCHEDULE_PRESETS }, (_unused, slot) => {
+    const saved = db.schedulePresets.find((preset: MockSchedulePreset) => preset.deviceId === deviceId && preset.slot === slot)
+    return saved ? { slot, filled: true, name: saved.name, points: saved.points } : { slot, filled: false }
+  })
+  return { deviceId, presets, success: true }
+}
+
+export function mockSaveSchedulePreset(deviceId: number, slot: number, name: string, points: SchedulePresetPoint[]): void {
+  const db = loadMockDatabase()
+  const record: MockSchedulePreset = { deviceId, slot, name, points: points.map(point => ({ ...point })) }
+  db.schedulePresets = [
+    ...db.schedulePresets.filter((preset: MockSchedulePreset) => !(preset.deviceId === deviceId && preset.slot === slot)),
+    record,
+  ]
+  saveMockDatabase(db)
+}
+
+export function mockDeleteSchedulePreset(deviceId: number, slot: number): void {
+  const db = loadMockDatabase()
+  db.schedulePresets = db.schedulePresets.filter((preset: MockSchedulePreset) => !(preset.deviceId === deviceId && preset.slot === slot))
+  saveMockDatabase(db)
 }

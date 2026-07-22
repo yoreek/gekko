@@ -11,6 +11,7 @@
 #include "portal/controllers/MqttController.h"
 #include "portal/controllers/OtaController.h"
 #include "portal/controllers/PortalAssetController.h"
+#include "portal/controllers/SchedulePresetController.h"
 #include "portal/controllers/SystemController.h"
 #include "portal/controllers/TimeController.h"
 #include "portal/controllers/WifiController.h"
@@ -122,6 +123,7 @@ private:
         MqttController::registerRoutes(*server_, mqttConfigStore_, mqttManager_, haDiscoveryBridge_);
         TimeController::registerRoutes(*server_, ntpManager_);
         DoseJournalController::registerRoutes(*server_, defaultDoseJournal());
+        SchedulePresetController::registerRoutes(*server_, defaultSchedulePresetStorage());
         if (!webSocketManager_) {
             webSocketManager_ = std::make_unique<PortalWebSocketManager>(deviceEventDispatcher_, deviceRegistry_);
         }

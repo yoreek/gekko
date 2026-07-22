@@ -33,6 +33,16 @@
         />
       </v-col>
     </v-row>
+    <v-row v-if="device && mode !== 'view'">
+      <v-col cols="12">
+        <SchedulePresetsBar
+          :device-id="device.record.id"
+          :points="modelValue.points"
+          :disabled="busy"
+          @apply="applyPreset"
+        />
+      </v-col>
+    </v-row>
     <v-row v-if="device">
       <v-col cols="12">
         <AnalogOutputLevelControl
@@ -62,6 +72,7 @@ import type { ScheduledAnalogOutputConfigDraft, ScheduledAnalogOutputPointDraft 
 import AnalogScheduleChart from './AnalogScheduleChart.vue'
 import AnalogOutputLevelControl from './AnalogOutputLevelControl.vue'
 import AnalogOutputTargetSelect from './AnalogOutputTargetSelect.vue'
+import SchedulePresetsBar from './SchedulePresetsBar.vue'
 import { useDraftModel } from '@/composables/useDraftModel'
 
 interface ScheduledAnalogOutputRuntime extends BaseDeviceRuntime {
@@ -79,6 +90,9 @@ const chartChannels = computed<AnalogScheduleChartChannel[]>(() => [{
   editable: true,
 }])
 function updateChartPoints(_channelId: number, points: ScheduledAnalogOutputPointDraft[]): void {
+  update('points', points)
+}
+function applyPreset(points: ScheduledAnalogOutputPointDraft[]): void {
   update('points', points)
 }
 </script>

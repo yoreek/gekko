@@ -7,6 +7,7 @@ import type {
   DeviceRecord,
   DeviceOutputSnapshot,
   DoseJournalEntry,
+  SchedulePresetPoint,
   I2cBusScanSnapshot,
   OneWireScanSnapshot,
   OtaStatusResponse,
@@ -72,12 +73,22 @@ export interface MockDoseJournalEntry extends DoseJournalEntry {
   deviceId: number
 }
 
+// One saved schedule preset, mirroring the firmware's devdata slot files plus the deviceId/slot
+// the REST endpoint addresses it by.
+export interface MockSchedulePreset {
+  deviceId: number
+  slot: number
+  name: string
+  points: SchedulePresetPoint[]
+}
+
 export interface MockDatabase {
   registryRevision: number
   dashboardLayoutRevision: number
   dashboardLayout: DashboardLayoutRecord
   devices: MockDeviceRecord[]
   doseJournal: MockDoseJournalEntry[]
+  schedulePresets: MockSchedulePreset[]
   wifi: {
     status: WifiStatusResponse['wifiStatus']
     stationIp: string
@@ -1495,6 +1506,20 @@ const seedDatabase: SeedDatabase = {
     ...seedComposableAnalogOutputDevices(),
   ],
   doseJournal: seedDoseJournalEntries(),
+  // One ready-made preset on the first seeded scheduled_analog_output channel (id from
+  // scheduledIds above), so ?mockMode=1 shows the presets UI populated without saving first.
+  schedulePresets: [
+    {
+      deviceId: 670845787,
+      slot: 0,
+      name: 'Summer',
+      points: [
+        { deleted: false, minuteOfDay: 360, state: 0 },
+        { deleted: false, minuteOfDay: 720, state: 90 },
+        { deleted: false, minuteOfDay: 1200, state: 0 },
+      ],
+    },
+  ],
   wifi: {
     status: 'connected',
     stationIp: '192.168.1.240',
@@ -1756,6 +1781,7 @@ export function normalizeStoredDatabase(stored: unknown): MockDatabase {
       ? stored.devices.map(device => canonicalizeDeviceRecord(device))
       : seed.devices,
     doseJournal: Array.isArray(stored.doseJournal) ? (stored.doseJournal as MockDoseJournalEntry[]) : seed.doseJournal,
+    schedulePresets: Array.isArray(stored.schedulePresets) ? (stored.schedulePresets as MockSchedulePreset[]) : seed.schedulePresets,
     wifi: {
       ...seed.wifi,
       ...wifi,

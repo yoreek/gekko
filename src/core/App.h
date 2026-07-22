@@ -8,6 +8,8 @@
 #include "platform/ArduinoSystemStats.h"
 #include "platform/MqttManager.h"
 #endif
+#include "devices/analog/scheduled/presets/LittleFsSchedulePresetStorage.h"
+#include "devices/analog/scheduled/presets/SchedulePresetCleanupSink.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/core/DeviceTypes.h"
 #include "devices/display/DisplayLayoutStore.h"
@@ -73,6 +75,8 @@ private:
     LittleFsDoseJournalStorage doseJournalStorage_;
     SegmentedDoseJournal doseJournal_{doseJournalStorage_, kDoseJournalRecordsPerSegment};
     DoseJournalCleanupSink doseJournalCleanupSink_{doseJournal_};
+    LittleFsSchedulePresetStorage schedulePresetStorage_;
+    SchedulePresetCleanupSink schedulePresetCleanupSink_{schedulePresetStorage_};
     PortalServer portalServer_;
     uint32_t lastTick100ms_{0};
     uint32_t lastTick1s_{0};
