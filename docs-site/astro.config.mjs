@@ -45,18 +45,50 @@ export default defineConfig({
       sidebar: [
         {
           label: 'Getting Started',
+          translations: {
+            uk: 'Початок роботи',
+            ru: 'Начало работы',
+            de: 'Erste Schritte',
+            es: 'Primeros pasos',
+            fr: 'Premiers pas',
+            it: 'Primi passi',
+          },
           items: [{ autogenerate: { directory: 'getting-started' } }],
         },
         {
           label: 'Projects',
+          translations: {
+            uk: 'Проєкти',
+            ru: 'Проекты',
+            de: 'Projekte',
+            es: 'Proyectos',
+            fr: 'Projets',
+            it: 'Progetti',
+          },
           items: [{ autogenerate: { directory: 'projects' } }],
         },
         {
           label: 'Guides',
+          translations: {
+            uk: 'Посібники',
+            ru: 'Руководства',
+            de: 'Anleitungen',
+            es: 'Guías',
+            fr: 'Guides',
+            it: 'Guide',
+          },
           items: [{ autogenerate: { directory: 'guides' } }],
         },
         {
           label: 'Reference',
+          translations: {
+            uk: 'Довідка',
+            ru: 'Справочник',
+            de: 'Referenz',
+            es: 'Referencia',
+            fr: 'Référence',
+            it: 'Riferimento',
+          },
           items: [{ autogenerate: { directory: 'reference' } }],
         },
       ],
