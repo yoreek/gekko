@@ -8,6 +8,7 @@
 
 namespace ewfm {
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 static_assert(std::is_trivially_copyable<Ssd1306DeviceConfigV1>::value, "Ssd1306DeviceConfigV1 must be POD");
 static_assert(sizeof(Ssd1306DeviceConfigV1::kMagic) - 1U + sizeof(Ssd1306DeviceConfigV1) == ssd1306DeviceConfigV1Size(),
               "Ssd1306DeviceConfigV1 size mismatch");
@@ -20,6 +21,7 @@ static_assert(sizeof(Ssd1306DeviceConfigV3::kMagic) - 1U + sizeof(Ssd1306DeviceC
 static_assert(std::is_trivially_copyable<Ssd1306DeviceConfigV4>::value, "Ssd1306DeviceConfigV4 must be POD");
 static_assert(sizeof(Ssd1306DeviceConfigV4::kMagic) - 1U + sizeof(Ssd1306DeviceConfigV4) <= kMaxDeviceConfigBytes,
               "Ssd1306DeviceConfigV4 exceeds device config bound");
+EWFM_LEGACY_CONFIG_USE_END
 static_assert(std::is_trivially_copyable<Ssd1306DeviceConfigV5>::value, "Ssd1306DeviceConfigV5 must be POD");
 static_assert(std::is_base_of<I2cDeviceConfigV1, Ssd1306DeviceConfigV5>::value, "Ssd1306DeviceConfigV5 must use the shared I2C config");
 static_assert(sizeof(Ssd1306DeviceConfigV5::kMagic) - 1U + sizeof(Ssd1306DeviceConfigV5) <= kMaxDeviceConfigBytes,
@@ -41,6 +43,7 @@ template <typename Config> DeviceValidationResult validateSsd1306CommonConfig(co
     return {};
 }
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 DeviceValidationResult validateSsd1306LegacyConfig(const Ssd1306DeviceConfigV1& config) {
     if (config.i2cBusDeviceId == 0U) {
         return {DeviceError::InvalidConfig, "ssd1306 i2c bus device id is required"};
@@ -68,6 +71,7 @@ DeviceValidationResult validateSsd1306LegacyConfig(const Ssd1306DeviceConfigV3& 
     }
     return {};
 }
+EWFM_LEGACY_CONFIG_USE_END
 
 template <typename Config> bool parseSsd1306FieldsJson(const JsonObjectConst& input, Config& config, const char*& error) {
     if (!input["layoutWidth"].isNull() || !input["layoutHeight"].isNull()) {
@@ -116,6 +120,7 @@ bool decodeSsd1306DeviceConfig(const uint8_t* blob, size_t size, Ssd1306DeviceCo
     if (decodeFixedConfigBlob(Ssd1306DeviceConfigV5::kMagic, blob, size, config) && config.validate().ok()) {
         return true;
     }
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     Ssd1306DeviceConfigV4 legacyV4{};
     if (decodeFixedConfigBlob(Ssd1306DeviceConfigV4::kMagic, blob, size, legacyV4) && legacyV4.validate().ok()) {
         config.migrateFrom(legacyV4);
@@ -137,40 +142,10 @@ bool decodeSsd1306DeviceConfig(const uint8_t* blob, size_t size, Ssd1306DeviceCo
     }
     config.migrateFrom(legacy);
     return config.validate().ok();
+    EWFM_LEGACY_CONFIG_USE_END
 }
 
-bool decodeSsd1306DeviceConfig(const uint8_t* blob, const size_t size, Ssd1306DeviceConfigV4& config) {
-    if (decodeFixedConfigBlob(Ssd1306DeviceConfigV4::kMagic, blob, size, config) && config.validate().ok()) {
-        return true;
-    }
-    Ssd1306DeviceConfigV5 current{};
-    if (decodeFixedConfigBlob(Ssd1306DeviceConfigV5::kMagic, blob, size, current) && current.validate().ok()) {
-        config.enabled = current.enabled;
-        std::memcpy(config.name, current.name, sizeof(config.name));
-        config.i2cAddress = current.i2cAddress;
-        config.rotation = current.rotation;
-        config.width = current.width;
-        config.height = current.height;
-        return true;
-    }
-    Ssd1306DeviceConfigV3 legacyV3{};
-    if (decodeFixedConfigBlob(Ssd1306DeviceConfigV3::kMagic, blob, size, legacyV3) && validateSsd1306LegacyConfig(legacyV3).ok()) {
-        config.migrateFrom(legacyV3);
-        return config.validate().ok();
-    }
-    Ssd1306DeviceConfigV2 legacyV2{};
-    if (decodeFixedConfigBlob(Ssd1306DeviceConfigV2::kMagic, blob, size, legacyV2) && validateSsd1306LegacyConfig(legacyV2).ok()) {
-        config.migrateFrom(legacyV2);
-        return config.validate().ok();
-    }
-    Ssd1306DeviceConfigV1 legacy{};
-    if (!decodeFixedConfigBlob(Ssd1306DeviceConfigV1::kMagic, blob, size, legacy) || !validateSsd1306LegacyConfig(legacy).ok()) {
-        return false;
-    }
-    config.migrateFrom(legacy);
-    return config.validate().ok();
-}
-
+EWFM_LEGACY_CONFIG_USE_BEGIN
 void Ssd1306DeviceConfigV4::migrateFrom(const Ssd1306DeviceConfigV1& origState) {
     enabled = origState.enabled;
     std::memcpy(name, origState.name, sizeof(name));
@@ -198,22 +173,6 @@ void Ssd1306DeviceConfigV4::migrateFrom(const Ssd1306DeviceConfigV3& origState) 
     height = origState.height;
 }
 
-bool Ssd1306DeviceConfigV4::parseJson(const JsonObjectConst& input, const char*& error) {
-    if (!input["i2cBusDeviceId"].isNull()) {
-        error = "ssd1306 i2cBusDeviceId must be provided through deps";
-        return false;
-    }
-    if (!DeviceBaseConfigV1::parseJson(input, error)) {
-        return false;
-    }
-
-    if (!parseI2cAddressJson(input["i2cAddress"], i2cAddress, error)) {
-        return false;
-    }
-
-    return parseSsd1306FieldsJson(input, *this, error);
-}
-
 DeviceValidationResult Ssd1306DeviceConfigV4::validate() const {
     const DeviceValidationResult commonValidation = validateSsd1306CommonConfig(*this, width, height);
     if (!commonValidation.ok()) {
@@ -223,14 +182,6 @@ DeviceValidationResult Ssd1306DeviceConfigV4::validate() const {
         return {DeviceError::InvalidConfig, "ssd1306 rotation is out of bounds"};
     }
     return {};
-}
-
-void Ssd1306DeviceConfigV4::writeJson(JsonObject output) const {
-    DeviceBaseConfigV1::writeJson(output);
-    writeI2cAddressJson(i2cAddress, output);
-    output["rotation"] = rotation;
-    output["width"] = width;
-    output["height"] = height;
 }
 
 void Ssd1306DeviceConfigV5::migrateFrom(const Ssd1306DeviceConfigV1& origState) {
@@ -259,6 +210,7 @@ void Ssd1306DeviceConfigV5::migrateFrom(const Ssd1306DeviceConfigV4& origState) 
     width = origState.width;
     height = origState.height;
 }
+EWFM_LEGACY_CONFIG_USE_END
 
 bool Ssd1306DeviceConfigV5::parseJson(const JsonObjectConst& input, const char*& error) {
     if (!input["i2cBusDeviceId"].isNull()) {

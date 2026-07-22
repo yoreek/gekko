@@ -1,3 +1,4 @@
+#include "../test_devices/JsonSchemaSmokeValidator.h"
 #include "config/MemoryConfigStorage.h"
 #include "devices/display/DisplayLayoutCodec.h"
 #include "devices/display/DisplayLayoutStore.h"
@@ -9,6 +10,7 @@
 
 #include <ArduinoJson.h>
 #include <cstdio>
+#include <string>
 #include <unity.h>
 
 using namespace ewfm;
@@ -29,6 +31,11 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeDummyPayload(const DummyDeviceConfigV1&
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(DeviceBaseConfigV1::kMagic, config, buffer, dummyDeviceConfigSize(config)));
     TEST_ASSERT_TRUE(payload.assign(buffer, dummyDeviceConfigSize(config)));
     return payload;
+}
+
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
 }
 
 DeviceRegistryEntry makeDummyRecord() {
@@ -63,7 +70,7 @@ DeviceRegistryEntry makeSsd1306Record() {
 }
 
 BoundedBlob<kMaxDeviceConfigBytes> encodeSsd1306Config() {
-    Ssd1306DeviceConfigV4 config{};
+    Ssd1306DeviceConfigV5 config{};
     config.enabled = true;
     std::snprintf(config.name, sizeof(config.name), "%s", "ssd1306");
     config.i2cAddress = 0x3C;
@@ -73,7 +80,7 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeSsd1306Config() {
 
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     BoundedBlob<kMaxDeviceConfigBytes> blob{};
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV4::kMagic, config, buffer, ssd1306DeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV5::kMagic, config, buffer, ssd1306DeviceConfigSize(config)));
     TEST_ASSERT_TRUE(blob.assign(buffer, ssd1306DeviceConfigSize(config)));
     return blob;
 }
@@ -93,6 +100,8 @@ void test_dummy_device_api_adapter_parses_create_request() {
     JsonObject config = doc.createNestedObject("config");
     config["name"] = "api-dummy";
     config["enabled"] = true;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-dummy.request.schema.json", doc.as<JsonVariantConst>());
 
     DeviceCreateRequest request;
     const char* error = nullptr;
@@ -132,6 +141,8 @@ void test_dummy_device_api_adapter_parses_update_request() {
     config["name"] = "updated-dummy";
     config["enabled"] = false;
 
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-dummy.request.schema.json", doc.as<JsonVariantConst>());
+
     DeviceConfigUpdateRequest request{};
     const char* error = nullptr;
     TEST_ASSERT_TRUE(DummyDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error));
@@ -157,6 +168,7 @@ void test_dummy_device_api_adapter_serializes_record() {
 
     DummyDeviceApiAdapter::instance().writeDeviceJson(runtime, runtime.status(), output);
 
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-dummy.response.schema.json", doc.as<JsonVariantConst>());
     TEST_ASSERT_EQUAL_UINT32(42, output["record"]["id"].as<uint32_t>());
     TEST_ASSERT_EQUAL_STRING("dummy", output["record"]["typeName"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT32(3, output["record"]["configRevision"].as<uint32_t>());

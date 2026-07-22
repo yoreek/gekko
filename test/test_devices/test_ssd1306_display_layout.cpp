@@ -233,6 +233,7 @@ void test_ssd1306_layout_codec_emits_single_page_when_filtered() {
 }
 
 void test_ssd1306_config_migrates_v1_v2_v3_without_bus_id() {
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     Ssd1306DeviceConfigV1 v1{};
     TEST_ASSERT_TRUE(assignDeviceBaseConfig(v1, "OLED V1", true));
     v1.i2cBusDeviceId = 11;
@@ -256,7 +257,7 @@ void test_ssd1306_config_migrates_v1_v2_v3_without_bus_id() {
     v3.height = 64;
 
     uint8_t buffer[kMaxDeviceConfigBytes]{};
-    Ssd1306DeviceConfigV4 migrated{};
+    Ssd1306DeviceConfigV5 migrated{};
 
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV1::kMagic, v1, buffer, ssd1306DeviceConfigV1Size()));
     TEST_ASSERT_TRUE(decodeSsd1306DeviceConfig(buffer, ssd1306DeviceConfigV1Size(), migrated));
@@ -281,6 +282,7 @@ void test_ssd1306_config_migrates_v1_v2_v3_without_bus_id() {
     TEST_ASSERT_EQUAL_UINT8(2, migrated.rotation);
     TEST_ASSERT_EQUAL_UINT16(128, migrated.width);
     TEST_ASSERT_EQUAL_UINT16(64, migrated.height);
+    EWFM_LEGACY_CONFIG_USE_END
 }
 
 void test_ssd1306_registry_migrates_v3_blob_and_preserves_bus_dependency() {
@@ -315,6 +317,7 @@ void test_ssd1306_registry_migrates_v3_blob_and_preserves_bus_dependency() {
     DeviceConfigBlob busBlob{};
     TEST_ASSERT_TRUE(busBlob.assign(busBuffer, i2cBusDeviceConfigSize(busConfig)));
 
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     Ssd1306DeviceConfigV3 legacy{};
     TEST_ASSERT_TRUE(assignDeviceBaseConfig(legacy, "legacy-oled", true));
     legacy.i2cBusDeviceId = 9999U;
@@ -324,6 +327,7 @@ void test_ssd1306_registry_migrates_v3_blob_and_preserves_bus_dependency() {
     legacy.height = 32U;
     uint8_t legacyBuffer[kMaxDeviceConfigBytes]{};
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV3::kMagic, legacy, legacyBuffer, ssd1306DeviceConfigSize(legacy)));
+    EWFM_LEGACY_CONFIG_USE_END
     DeviceConfigBlob legacyBlob{};
     TEST_ASSERT_TRUE(legacyBlob.assign(legacyBuffer, ssd1306DeviceConfigSize(legacy)));
 
@@ -351,7 +355,7 @@ void test_ssd1306_registry_migrates_v3_blob_and_preserves_bus_dependency() {
 }
 
 void test_ssd1306_api_adapter_streams_layout_and_setup_extension() {
-    Ssd1306DeviceConfigV4 config{};
+    Ssd1306DeviceConfigV5 config{};
     TEST_ASSERT_TRUE(assignDeviceBaseConfig(config, "OLED", true));
     config.i2cAddress = 0x3C;
     config.width = 128;
@@ -359,7 +363,7 @@ void test_ssd1306_api_adapter_streams_layout_and_setup_extension() {
 
     uint8_t configBuffer[kMaxDeviceConfigBytes]{};
     DeviceConfigBlob configBlob{};
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV4::kMagic, config, configBuffer, ssd1306DeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV5::kMagic, config, configBuffer, ssd1306DeviceConfigSize(config)));
     TEST_ASSERT_TRUE(configBlob.assign(configBuffer, ssd1306DeviceConfigSize(config)));
     DeviceRegistryEntry record{};
     record.header.deviceId = 42;
@@ -561,7 +565,7 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
 }
 
 void test_ssd1306_api_adapter_partial_update_preserves_bus_and_dimensions() {
-    Ssd1306DeviceConfigV4 config{};
+    Ssd1306DeviceConfigV5 config{};
     config.enabled = 1U;
     std::snprintf(config.name, sizeof(config.name), "%s", "ssd1306");
     // i2cAddress/width/height are deliberately non-default (compiled defaults are 0x3C/128/64) so
@@ -574,7 +578,7 @@ void test_ssd1306_api_adapter_partial_update_preserves_bus_and_dimensions() {
 
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = ssd1306DeviceConfigSize(config);
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV4::kMagic, config, buffer, size));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV5::kMagic, config, buffer, size));
     DeviceConfigBlob configBlob{};
     TEST_ASSERT_TRUE(configBlob.assign(buffer, size));
 
@@ -602,7 +606,7 @@ void test_ssd1306_api_adapter_partial_update_preserves_bus_and_dimensions() {
     TEST_ASSERT_EQUAL_UINT8(1U, request.depCount);
     TEST_ASSERT_EQUAL_UINT32(12U, request.deps[0].deviceId);
 
-    Ssd1306DeviceConfigV4 parsed{};
+    Ssd1306DeviceConfigV5 parsed{};
     TEST_ASSERT_TRUE(
         decodeSsd1306DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
     TEST_ASSERT_EQUAL_UINT8(2, parsed.rotation);
