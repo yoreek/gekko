@@ -146,17 +146,17 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeBusPayload(const I2cBusDeviceConfigV1& 
     return payload;
 }
 
-Htu21SensorConfigV2 makeHtu21Config() {
-    Htu21SensorConfigV2 config{};
+Htu21SensorConfigV3 makeHtu21Config() {
+    Htu21SensorConfigV3 config{};
     config.enabled = 1U;
     std::snprintf(config.name, sizeof(config.name), "%s", "climate");
     return config;
 }
 
-BoundedBlob<kMaxDeviceConfigBytes> encodeHtu21Payload(const Htu21SensorConfigV2& config) {
+BoundedBlob<kMaxDeviceConfigBytes> encodeHtu21Payload(const Htu21SensorConfigV3& config) {
     BoundedBlob<kMaxDeviceConfigBytes> payload{};
     uint8_t buffer[kMaxDeviceConfigBytes]{};
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Htu21SensorConfigV2::kMagic, config, buffer, htu21SensorConfigSize(config)));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Htu21SensorConfigV3::kMagic, config, buffer, htu21SensorConfigSize(config)));
     TEST_ASSERT_TRUE(payload.assign(buffer, htu21SensorConfigSize(config)));
     return payload;
 }

@@ -39,13 +39,6 @@ Htu21SensorDevice::Htu21SensorDevice(const Htu21SensorConfigV3& config)
     humidityFilter_.configure(config_.humidityFilter);
 }
 
-Htu21SensorDevice::Htu21SensorDevice(const Htu21SensorConfigV2& config)
-    : Htu21SensorDevice([&config]() {
-          Htu21SensorConfigV3 migrated{};
-          migrated.migrateFrom(config);
-          return migrated;
-      }()) {}
-
 const Htu21SensorConfigV3& Htu21SensorDevice::config() const {
     return config_;
 }

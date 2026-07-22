@@ -24,7 +24,6 @@ using Htu21SensorDeviceBase = I2cDeviceRuntimeBase<Htu21SensorDevice, BusDepende
 class Htu21SensorDevice final : public Htu21SensorDeviceBase, public ITemperatureReadingRuntime, public IHumidityReadingRuntime {
 public:
     Htu21SensorDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
-    explicit Htu21SensorDevice(const Htu21SensorConfigV2& config);
     explicit Htu21SensorDevice(const Htu21SensorConfigV3& config);
 
     const Htu21SensorConfigV3& config() const;

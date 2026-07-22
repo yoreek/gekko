@@ -133,8 +133,8 @@ I2cBusDeviceConfigV1 makeBusConfig() {
     return config;
 }
 
-Htu21SensorConfigV2 makeHtu21Config(uint8_t i2cAddress = kHtu21DefaultI2cAddress) {
-    Htu21SensorConfigV2 config{};
+Htu21SensorConfigV3 makeHtu21Config(uint8_t i2cAddress = kHtu21DefaultI2cAddress) {
+    Htu21SensorConfigV3 config{};
     config.enabled = 1U;
     std::snprintf(config.name, sizeof(config.name), "%s", "climate");
     config.i2cAddress = i2cAddress;
@@ -234,7 +234,7 @@ void test_htu21_protocol_crc_and_conversions() {
 }
 
 void test_htu21_config_codec_json_and_validation() {
-    Htu21SensorConfigV2 config = makeHtu21Config(0x41U);
+    Htu21SensorConfigV3 config = makeHtu21Config(0x41U);
     config.outputUnit = temperatureUnitToByte(TemperatureUnit::Fahrenheit);
     config.pollMs = 30000U;
     config.reportDeltaCentiCelsius = 25U;
@@ -243,7 +243,7 @@ void test_htu21_config_codec_json_and_validation() {
     config.humidityFilter.calibrationOffset = -1500.0F;
     const BoundedBlob<kMaxDeviceConfigBytes> payload = encodeHtu21Payload(config);
 
-    Htu21SensorConfigV2 decoded{};
+    Htu21SensorConfigV3 decoded{};
     TEST_ASSERT_TRUE(decodeHtu21SensorConfig(payload.data(), payload.size(), decoded));
     TEST_ASSERT_EQUAL_UINT8(0x41U, decoded.i2cAddress);
     TEST_ASSERT_EQUAL_UINT32(30000U, decoded.pollMs);
@@ -263,7 +263,7 @@ void test_htu21_config_codec_json_and_validation() {
     TEST_ASSERT_EQUAL_FLOAT(-1500.0F, json["humidityFilter"]["calibrationOffset"].as<float>());
     TEST_ASSERT_EQUAL_UINT8(0x41U, json["i2cAddress"].as<uint8_t>());
 
-    Htu21SensorConfigV2 parsed{};
+    Htu21SensorConfigV3 parsed{};
     const char* error = nullptr;
     TEST_ASSERT_TRUE(parseHtu21SensorConfigJson(json, parsed, error));
     TEST_ASSERT_EQUAL_UINT32(30000U, parsed.pollMs);
@@ -274,21 +274,22 @@ void test_htu21_config_codec_json_and_validation() {
     TEST_ASSERT_EQUAL_UINT8(0x41U, parsed.i2cAddress);
     TEST_ASSERT_TRUE(parsed.validate().ok());
 
-    Htu21SensorConfigV2 badPoll = makeHtu21Config();
+    Htu21SensorConfigV3 badPoll = makeHtu21Config();
     badPoll.pollMs = 100U;
     TEST_ASSERT_FALSE(badPoll.validate().ok());
 
-    Htu21SensorConfigV2 badDelta = makeHtu21Config();
+    Htu21SensorConfigV3 badDelta = makeHtu21Config();
     badDelta.reportDeltaCentiPercent = 0U;
     TEST_ASSERT_FALSE(badDelta.validate().ok());
 
-    Htu21SensorConfigV2 badFilter = makeHtu21Config();
+    Htu21SensorConfigV3 badFilter = makeHtu21Config();
     badFilter.humidityFilter.smoothingWeight = 0.0F;
     TEST_ASSERT_FALSE(badFilter.validate().ok());
 
-    Htu21SensorConfigV2 badAddress = makeHtu21Config(0x80U);
+    Htu21SensorConfigV3 badAddress = makeHtu21Config(0x80U);
     TEST_ASSERT_FALSE(badAddress.validate().ok());
 
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     Htu21SensorConfigV1 legacy{};
     legacy.enabled = config.enabled;
     std::snprintf(legacy.name, sizeof(legacy.name), "%s", config.name);
@@ -301,7 +302,8 @@ void test_htu21_config_codec_json_and_validation() {
     legacy.humidityFilter = config.humidityFilter;
     uint8_t legacyBuffer[kMaxDeviceConfigBytes]{};
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(Htu21SensorConfigV1::kMagic, legacy, legacyBuffer, htu21SensorConfigSize(legacy)));
-    Htu21SensorConfigV2 migrated{};
+    EWFM_LEGACY_CONFIG_USE_END
+    Htu21SensorConfigV3 migrated{};
     TEST_ASSERT_TRUE(decodeHtu21SensorConfig(legacyBuffer, htu21SensorConfigSize(legacy), migrated));
     TEST_ASSERT_EQUAL_UINT8(kHtu21DefaultI2cAddress, migrated.i2cAddress);
 }
@@ -329,11 +331,13 @@ void test_htu21_registry_migrates_v1_blob_on_begin() {
     sensorRecord.deps[0] = {DeviceRole::I2CBus, busRecord.header.deviceId};
     sensorRecord.status = DeviceStatus::Ready;
 
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     Htu21SensorConfigV1 legacy{};
     legacy.enabled = 1U;
     std::snprintf(legacy.name, sizeof(legacy.name), "%s", "legacy-climate");
     uint8_t legacyBuffer[kMaxDeviceConfigBytes]{};
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(Htu21SensorConfigV1::kMagic, legacy, legacyBuffer, htu21SensorConfigSize(legacy)));
+    EWFM_LEGACY_CONFIG_USE_END
     DeviceConfigBlob legacyBlob{};
     TEST_ASSERT_TRUE(legacyBlob.assign(legacyBuffer, htu21SensorConfigSize(legacy)));
 
@@ -425,7 +429,7 @@ void test_htu21_runtime_applies_channel_filters() {
     I2cBusDevice bus(makeBusConfig(), driver);
     driveBusReady(bus);
 
-    Htu21SensorConfigV2 config = makeHtu21Config();
+    Htu21SensorConfigV3 config = makeHtu21Config();
     config.temperatureFilter.calibrationOffset = 1000.0F; // +1 degC in milli units
     config.humidityFilter.calibrationFactor = 0.5F;
     Htu21SensorDevice sensor(config);
@@ -536,7 +540,7 @@ void test_htu21_runtime_reinitializes_on_dependency_generation_change() {
 }
 
 void test_htu21_adapter_partial_update_preserves_unit_and_deltas() {
-    Htu21SensorConfigV2 config = makeHtu21Config(0x41U);
+    Htu21SensorConfigV3 config = makeHtu21Config(0x41U);
     config.outputUnit = temperatureUnitToByte(TemperatureUnit::Fahrenheit);
     config.reportDeltaCentiCelsius = 25U;
     config.reportDeltaCentiPercent = 50U;
@@ -553,7 +557,7 @@ void test_htu21_adapter_partial_update_preserves_unit_and_deltas() {
     const char* error = nullptr;
     TEST_ASSERT_TRUE(Htu21SensorDeviceApiAdapter::instance().parseUpdateConfigRequest(input, sensor, request, error));
 
-    Htu21SensorConfigV2 updated{};
+    Htu21SensorConfigV3 updated{};
     TEST_ASSERT_TRUE(decodeHtu21SensorConfig(request.configBlob.data(), request.configBlob.size(), updated));
     TEST_ASSERT_EQUAL_UINT32(60000U, updated.pollMs);
     TEST_ASSERT_EQUAL_UINT8(temperatureUnitToByte(TemperatureUnit::Fahrenheit), updated.outputUnit);
@@ -562,7 +566,7 @@ void test_htu21_adapter_partial_update_preserves_unit_and_deltas() {
     TEST_ASSERT_EQUAL_FLOAT(0.5F, updated.temperatureFilter.smoothingWeight);
     TEST_ASSERT_EQUAL_UINT8(0x41U, updated.i2cAddress);
 
-    Htu21SensorConfigV2 addressUpdate = config;
+    Htu21SensorConfigV3 addressUpdate = config;
     addressUpdate.i2cAddress = 0x42U;
     const BoundedBlob<kMaxDeviceConfigBytes> addressPayload = encodeHtu21Payload(addressUpdate);
     const DeviceConfigUpdatePlan addressPlan = sensor.planConfigUpdate(addressPayload);

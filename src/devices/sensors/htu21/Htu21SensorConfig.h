@@ -20,7 +20,9 @@ constexpr uint16_t kHtu21DefaultReportDeltaCentiCelsius = 10;
 constexpr uint16_t kHtu21DefaultReportDeltaCentiPercent = 10;
 
 #pragma pack(push, 1)
-struct Htu21SensorConfigV1 : DeviceBaseConfigV1 {
+// Legacy persisted layouts (V1, V2): kept only so old "HTU21-1"/"HTU21-2" blobs can be decoded
+// and migrated to V3. Only the data + validate() survive; JSON handling lives on V3.
+struct [[deprecated("legacy persisted HTU21 config; decode/migration only")]] Htu21SensorConfigV1 : DeviceBaseConfigV1 {
     static constexpr char kMagic[] = "HTU21-1";
 
     uint8_t outputUnit{static_cast<uint8_t>(TemperatureUnit::Celsius)};
@@ -31,12 +33,10 @@ struct Htu21SensorConfigV1 : DeviceBaseConfigV1 {
     SensorFilterConfigV1 temperatureFilter{};
     SensorFilterConfigV1 humidityFilter{};
 
-    bool parseJson(const JsonObjectConst& input, const char*& error);
     DeviceValidationResult validate() const;
-    void writeJson(JsonObject output) const;
 };
 
-struct Htu21SensorConfigV2 : DeviceBaseConfigV1 {
+struct [[deprecated("legacy persisted HTU21 config; decode/migration only")]] Htu21SensorConfigV2 : DeviceBaseConfigV1 {
     static constexpr char kMagic[] = "HTU21-2";
 
     uint8_t outputUnit{static_cast<uint8_t>(TemperatureUnit::Celsius)};
@@ -48,10 +48,7 @@ struct Htu21SensorConfigV2 : DeviceBaseConfigV1 {
     SensorFilterConfigV1 humidityFilter{};
     uint8_t i2cAddress{kHtu21DefaultI2cAddress};
 
-    bool parseJson(const JsonObjectConst& input, const char*& error);
     DeviceValidationResult validate() const;
-    void writeJson(JsonObject output) const;
-    void migrateFrom(const Htu21SensorConfigV1& legacy);
 };
 
 struct Htu21SensorConfigV3 : I2cDeviceConfigV1 {
@@ -70,11 +67,14 @@ struct Htu21SensorConfigV3 : I2cDeviceConfigV1 {
     bool parseJson(const JsonObjectConst& input, const char*& error);
     DeviceValidationResult validate() const;
     void writeJson(JsonObject output) const;
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     void migrateFrom(const Htu21SensorConfigV1& legacy);
     void migrateFrom(const Htu21SensorConfigV2& legacy);
+    EWFM_LEGACY_CONFIG_USE_END
 };
 #pragma pack(pop)
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 constexpr size_t htu21SensorConfigSize(const Htu21SensorConfigV1&) {
     return sizeof(Htu21SensorConfigV1::kMagic) - 1U + sizeof(Htu21SensorConfigV1);
 }
@@ -82,15 +82,13 @@ constexpr size_t htu21SensorConfigSize(const Htu21SensorConfigV1&) {
 constexpr size_t htu21SensorConfigSize(const Htu21SensorConfigV2&) {
     return sizeof(Htu21SensorConfigV2::kMagic) - 1U + sizeof(Htu21SensorConfigV2);
 }
+EWFM_LEGACY_CONFIG_USE_END
 
 constexpr size_t htu21SensorConfigSize(const Htu21SensorConfigV3&) {
     return sizeof(Htu21SensorConfigV3::kMagic) - 1U + sizeof(Htu21SensorConfigV3);
 }
 
 bool decodeHtu21SensorConfig(const uint8_t* blob, size_t size, Htu21SensorConfigV3& config);
-bool decodeHtu21SensorConfig(const uint8_t* blob, size_t size, Htu21SensorConfigV2& config);
-bool parseHtu21SensorConfigJson(const JsonObjectConst& input, Htu21SensorConfigV2& config, const char*& error);
-void writeHtu21SensorConfigJson(const Htu21SensorConfigV2& config, JsonObject output);
 bool parseHtu21SensorConfigJson(const JsonObjectConst& input, Htu21SensorConfigV3& config, const char*& error);
 void writeHtu21SensorConfigJson(const Htu21SensorConfigV3& config, JsonObject output);
 

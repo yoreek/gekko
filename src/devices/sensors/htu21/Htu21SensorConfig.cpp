@@ -136,12 +136,14 @@ template <typename Config> void writeHtu21FieldsJson(const Config& config, JsonO
 
 } // namespace
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 static_assert(std::is_trivially_copyable<Htu21SensorConfigV1>::value, "Htu21SensorConfigV1 must be POD");
 static_assert(sizeof(Htu21SensorConfigV1::kMagic) - 1U + sizeof(Htu21SensorConfigV1) <= kMaxDeviceConfigBytes,
               "Htu21SensorConfigV1 exceeds device config bound");
 static_assert(std::is_trivially_copyable<Htu21SensorConfigV2>::value, "Htu21SensorConfigV2 must be POD");
 static_assert(sizeof(Htu21SensorConfigV2::kMagic) - 1U + sizeof(Htu21SensorConfigV2) <= kMaxDeviceConfigBytes,
               "Htu21SensorConfigV2 exceeds device config bound");
+EWFM_LEGACY_CONFIG_USE_END
 static_assert(std::is_trivially_copyable<Htu21SensorConfigV3>::value, "Htu21SensorConfigV3 must be POD");
 static_assert(std::is_base_of<I2cDeviceConfigV1, Htu21SensorConfigV3>::value, "Htu21SensorConfigV3 must use the shared I2C config");
 static_assert(sizeof(Htu21SensorConfigV3::kMagic) - 1U + sizeof(Htu21SensorConfigV3) <= kMaxDeviceConfigBytes,
@@ -151,6 +153,7 @@ bool decodeHtu21SensorConfig(const uint8_t* blob, size_t size, Htu21SensorConfig
     if (decodeFixedConfigBlob(Htu21SensorConfigV3::kMagic, blob, size, config) && config.validate().ok()) {
         return true;
     }
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     Htu21SensorConfigV2 legacyV2{};
     if (decodeFixedConfigBlob(Htu21SensorConfigV2::kMagic, blob, size, legacyV2) && legacyV2.validate().ok()) {
         config.migrateFrom(legacyV2);
@@ -162,40 +165,7 @@ bool decodeHtu21SensorConfig(const uint8_t* blob, size_t size, Htu21SensorConfig
     }
     config.migrateFrom(legacy);
     return config.validate().ok();
-}
-
-bool decodeHtu21SensorConfig(const uint8_t* blob, const size_t size, Htu21SensorConfigV2& config) {
-    if (decodeFixedConfigBlob(Htu21SensorConfigV2::kMagic, blob, size, config) && config.validate().ok()) {
-        return true;
-    }
-    Htu21SensorConfigV3 current{};
-    if (decodeFixedConfigBlob(Htu21SensorConfigV3::kMagic, blob, size, current) && current.validate().ok()) {
-        config.enabled = current.enabled;
-        std::memcpy(config.name, current.name, sizeof(config.name));
-        config.outputUnit = current.outputUnit;
-        config.reportAlways = current.reportAlways;
-        config.reportDeltaCentiCelsius = current.reportDeltaCentiCelsius;
-        config.reportDeltaCentiPercent = current.reportDeltaCentiPercent;
-        config.pollMs = current.pollMs;
-        config.temperatureFilter = current.temperatureFilter;
-        config.humidityFilter = current.humidityFilter;
-        config.i2cAddress = current.i2cAddress;
-        return true;
-    }
-    Htu21SensorConfigV1 legacy{};
-    if (!decodeFixedConfigBlob(Htu21SensorConfigV1::kMagic, blob, size, legacy) || !legacy.validate().ok()) {
-        return false;
-    }
-    config.migrateFrom(legacy);
-    return config.validate().ok();
-}
-
-bool parseHtu21SensorConfigJson(const JsonObjectConst& input, Htu21SensorConfigV2& config, const char*& error) {
-    return config.parseJson(input, error);
-}
-
-void writeHtu21SensorConfigJson(const Htu21SensorConfigV2& config, JsonObject output) {
-    config.writeJson(output);
+    EWFM_LEGACY_CONFIG_USE_END
 }
 
 bool parseHtu21SensorConfigJson(const JsonObjectConst& input, Htu21SensorConfigV3& config, const char*& error) {
@@ -206,29 +176,13 @@ void writeHtu21SensorConfigJson(const Htu21SensorConfigV3& config, JsonObject ou
     config.writeJson(output);
 }
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 DeviceValidationResult Htu21SensorConfigV1::validate() const {
     const DeviceValidationResult baseValidation = DeviceBaseConfigV1::validate();
     if (!baseValidation.ok()) {
         return baseValidation;
     }
     return validateHtu21CommonConfig(*this);
-}
-
-bool Htu21SensorConfigV1::parseJson(const JsonObjectConst& input, const char*& error) {
-    if (!DeviceBaseConfigV1::parseJson(input, error) || !parseHtu21FieldsJson(input, *this, error)) {
-        return false;
-    }
-    const DeviceValidationResult result = validate();
-    if (!result.ok()) {
-        error = result.message;
-        return false;
-    }
-    return true;
-}
-
-void Htu21SensorConfigV1::writeJson(JsonObject output) const {
-    DeviceBaseConfigV1::writeJson(output);
-    writeHtu21FieldsJson(*this, output);
 }
 
 DeviceValidationResult Htu21SensorConfigV2::validate() const {
@@ -242,38 +196,7 @@ DeviceValidationResult Htu21SensorConfigV2::validate() const {
     }
     return validateI2cAddress(i2cAddress);
 }
-
-bool Htu21SensorConfigV2::parseJson(const JsonObjectConst& input, const char*& error) {
-    if (!DeviceBaseConfigV1::parseJson(input, error) || !parseHtu21FieldsJson(input, *this, error) ||
-        !parseI2cAddressJson(input["i2cAddress"], i2cAddress, error)) {
-        return false;
-    }
-    const DeviceValidationResult result = validate();
-    if (!result.ok()) {
-        error = result.message;
-        return false;
-    }
-    return true;
-}
-
-void Htu21SensorConfigV2::writeJson(JsonObject output) const {
-    DeviceBaseConfigV1::writeJson(output);
-    writeHtu21FieldsJson(*this, output);
-    writeI2cAddressJson(i2cAddress, output);
-}
-
-void Htu21SensorConfigV2::migrateFrom(const Htu21SensorConfigV1& legacy) {
-    enabled = legacy.enabled;
-    std::memcpy(name, legacy.name, sizeof(name));
-    outputUnit = legacy.outputUnit;
-    reportAlways = legacy.reportAlways;
-    reportDeltaCentiCelsius = legacy.reportDeltaCentiCelsius;
-    reportDeltaCentiPercent = legacy.reportDeltaCentiPercent;
-    pollMs = legacy.pollMs;
-    temperatureFilter = legacy.temperatureFilter;
-    humidityFilter = legacy.humidityFilter;
-    i2cAddress = kHtu21DefaultI2cAddress;
-}
+EWFM_LEGACY_CONFIG_USE_END
 
 DeviceValidationResult Htu21SensorConfigV3::validate() const {
     const DeviceValidationResult i2cValidation = I2cDeviceConfigV1::validate();
@@ -300,6 +223,7 @@ void Htu21SensorConfigV3::writeJson(JsonObject output) const {
     writeHtu21FieldsJson(*this, output);
 }
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 void Htu21SensorConfigV3::migrateFrom(const Htu21SensorConfigV1& legacy) {
     enabled = legacy.enabled;
     std::memcpy(name, legacy.name, sizeof(name));
@@ -325,5 +249,6 @@ void Htu21SensorConfigV3::migrateFrom(const Htu21SensorConfigV2& legacy) {
     temperatureFilter = legacy.temperatureFilter;
     humidityFilter = legacy.humidityFilter;
 }
+EWFM_LEGACY_CONFIG_USE_END
 
 } // namespace ewfm
