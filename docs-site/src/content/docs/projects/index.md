@@ -14,9 +14,9 @@ safe way to verify the result.
 | [Temperature monitor](/gekko/projects/temperature-monitor/) | A verified DS18B20 temperature reading and history | 1-Wire, scan, sensor address, live reading |
 | [Thermostat with relay](/gekko/projects/thermostat-with-relay/) | A DS18B20-controlled heater or cooler | 1-Wire, sensor, switch, two dependencies, safe state |
 | [Scheduled relay](/gekko/projects/scheduled-relay/) | A relay controlled by time and weekday rules | clock, schedule, Auto Switch, safe output |
+| [Sensor display](/gekko/projects/sensor-display/) | A live DS18B20 value on an SSD1306 OLED | 1-Wire, I2C, display layout, metric placeholder |
 
-More project guides will cover a display with sensor readings, dosing pump, and
-multichannel aquarium light.
+More project guides will cover a dosing pump and multichannel aquarium light.
 
 If you already know the technical type you need, use the
 [device catalog](/gekko/reference/devices/). Otherwise, choose a project first

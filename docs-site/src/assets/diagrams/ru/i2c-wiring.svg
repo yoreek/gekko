@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 400" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <rect x="1" y="1" width="918" height="398" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+
+  <text x="35" y="42" font-size="19" font-weight="700" fill="#0f172a">I2C: две линии, у каждого устройства свой адрес</text>
+
+  <!-- ESP32 -->
+  <g>
+    <rect x="50" y="90" width="150" height="140" rx="10" fill="#1e293b" stroke="#475569" stroke-width="3"/>
+    <text x="125" y="120" font-size="15" font-weight="700" fill="#e2e8f0" text-anchor="middle">ESP32</text>
+    <g font-size="13.5" fill="#e2e8f0" text-anchor="end">
+      <text x="186" y="160">SDA 21</text>
+      <text x="186" y="205">SCL 22</text>
+    </g>
+    <circle cx="200" cy="155" r="5" fill="#f59e0b"/>
+    <circle cx="200" cy="200" r="5" fill="#3b82f6"/>
+    <text x="125" y="255" text-anchor="middle" font-size="14" font-weight="600" fill="#334155">Контроллер Gekko</text>
+    <text x="125" y="274" text-anchor="middle" font-size="13" fill="#64748b">Устройство i2c_bus</text>
+  </g>
+
+  <!-- bus lines -->
+  <line x1="200" y1="155" x2="880" y2="155" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/>
+  <line x1="200" y1="200" x2="880" y2="200" stroke="#3b82f6" stroke-width="4" stroke-linecap="round"/>
+  <text x="866" y="143" font-size="13" fill="#b45309" text-anchor="end">SDA (данные)</text>
+  <text x="866" y="222" font-size="13" fill="#1d4ed8" text-anchor="end">SCL (такты)</text>
+
+  <!-- pull-ups -->
+  <g>
+    <line x1="250" y1="155" x2="250" y2="120" stroke="#b45309" stroke-width="2.6"/>
+    <path d="M250 120 l 6 -5 l -12 -7 l 12 -7 l -12 -7 l 12 -7 l -6 -5" fill="none" stroke="#b45309" stroke-width="2.6" stroke-linejoin="round"/>
+    <line x1="286" y1="200" x2="286" y2="120" stroke="#1d4ed8" stroke-width="2.6"/>
+    <path d="M286 120 l 6 -5 l -12 -7 l 12 -7 l -12 -7 l 12 -7 l -6 -5" fill="none" stroke="#1d4ed8" stroke-width="2.6" stroke-linejoin="round"/>
+    <line x1="250" y1="82" x2="250" y2="74" stroke="#b45309" stroke-width="2.6"/>
+    <line x1="286" y1="82" x2="286" y2="74" stroke="#1d4ed8" stroke-width="2.6"/>
+    <text x="304" y="80" font-size="13" fill="#dc2626" font-weight="600">3.3 V</text>
+    <text x="304" y="98" font-size="12.5" fill="#64748b">подтяжки (часто на модуле)</text>
+  </g>
+
+  <!-- devices -->
+  <g>
+    <!-- OLED -->
+    <line x1="390" y1="155" x2="390" y2="252" stroke="#f59e0b" stroke-width="3"/>
+    <line x1="414" y1="200" x2="414" y2="252" stroke="#3b82f6" stroke-width="3"/>
+    <rect x="350" y="252" width="110" height="66" rx="10" fill="#ffffff" stroke="#475569" stroke-width="2.5"/>
+    <rect x="362" y="264" width="86" height="26" rx="3" fill="#0f172a"/>
+    <text x="405" y="282" font-size="11" fill="#67e8f9" text-anchor="middle" font-family="ui-monospace, monospace">24.7°C</text>
+    <text x="405" y="308" font-size="13" font-weight="600" fill="#334155" text-anchor="middle">SSD1306</text>
+    <rect x="371" y="322" width="68" height="22" rx="11" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"/>
+    <text x="405" y="337" font-size="12.5" fill="#0369a1" text-anchor="middle" font-weight="600">0x3C</text>
+  </g>
+  <g>
+    <!-- HTU21 -->
+    <line x1="540" y1="155" x2="540" y2="252" stroke="#f59e0b" stroke-width="3"/>
+    <line x1="564" y1="200" x2="564" y2="252" stroke="#3b82f6" stroke-width="3"/>
+    <rect x="505" y="252" width="100" height="66" rx="10" fill="#ffffff" stroke="#475569" stroke-width="2.5"/>
+    <rect x="550" y="264" width="8" height="18" rx="4" fill="#cbd5e1" stroke="#64748b" stroke-width="2"/>
+    <circle cx="554" cy="286" r="6" fill="#ef4444"/>
+    <text x="555" y="308" font-size="13" font-weight="600" fill="#334155" text-anchor="middle">HTU21</text>
+    <rect x="521" y="322" width="68" height="22" rx="11" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"/>
+    <text x="555" y="337" font-size="12.5" fill="#0369a1" text-anchor="middle" font-weight="600">0x40</text>
+  </g>
+  <g>
+    <!-- DS3231 -->
+    <line x1="680" y1="155" x2="680" y2="252" stroke="#f59e0b" stroke-width="3"/>
+    <line x1="704" y1="200" x2="704" y2="252" stroke="#3b82f6" stroke-width="3"/>
+    <rect x="645" y="252" width="100" height="66" rx="10" fill="#ffffff" stroke="#475569" stroke-width="2.5"/>
+    <circle cx="695" cy="278" r="14" fill="none" stroke="#64748b" stroke-width="2.5"/>
+    <line x1="695" y1="278" x2="695" y2="269" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="695" y1="278" x2="702" y2="281" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="695" y="308" font-size="13" font-weight="600" fill="#334155" text-anchor="middle">DS3231</text>
+    <rect x="661" y="322" width="68" height="22" rx="11" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"/>
+    <text x="695" y="337" font-size="12.5" fill="#0369a1" text-anchor="middle" font-weight="600">0x68</text>
+  </g>
+  <g>
+    <!-- PCF8574 -->
+    <line x1="810" y1="155" x2="810" y2="252" stroke="#f59e0b" stroke-width="3"/>
+    <line x1="834" y1="200" x2="834" y2="252" stroke="#3b82f6" stroke-width="3"/>
+    <rect x="778" y="252" width="96" height="66" rx="10" fill="#ffffff" stroke="#475569" stroke-width="2.5"/>
+    <g fill="#94a3b8">
+      <rect x="792" y="266" width="9" height="16" rx="2"/>
+      <rect x="806" y="266" width="9" height="16" rx="2"/>
+      <rect x="820" y="266" width="9" height="16" rx="2"/>
+      <rect x="834" y="266" width="9" height="16" rx="2"/>
+    </g>
+    <text x="826" y="308" font-size="13" font-weight="600" fill="#334155" text-anchor="middle">PCF8574</text>
+    <rect x="792" y="322" width="68" height="22" rx="11" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"/>
+    <text x="826" y="337" font-size="12.5" fill="#0369a1" text-anchor="middle" font-weight="600">0x20</text>
+  </g>
+
+  <text x="35" y="382" font-size="14" fill="#475569">Все устройства используют те же две линии; 7-битный адрес определяет, кто отвечает.</text>
+</svg>

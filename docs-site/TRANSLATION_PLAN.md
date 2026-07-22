@@ -34,6 +34,22 @@ This file tracks the translation workflow for `docs-site/`.
 
 ### Scenario documentation extension
 
+- [x] English: `projects/sensor-display.md`
+- [x] English: `assets/diagrams/sensor-display-flow.svg`
+- [x] English: `assets/diagrams/sensor-display-oled-preview.svg`
+- [x] Russian: `projects/sensor-display.md`
+- [x] Russian: `assets/diagrams/ru/i2c-wiring.svg`
+- [x] Russian: `assets/diagrams/ru/sensor-display-flow.svg`
+- [x] Russian: `assets/diagrams/ru/sensor-display-oled-preview.svg`
+- [x] Ukrainian: `projects/sensor-display.md`
+- [x] Ukrainian: `assets/diagrams/uk/i2c-wiring.svg`
+- [x] Ukrainian: `assets/diagrams/uk/sensor-display-flow.svg`
+- [x] Ukrainian: `assets/diagrams/uk/sensor-display-oled-preview.svg`
+- [x] German: `projects/sensor-display.md`
+- [x] German: `assets/diagrams/de/i2c-wiring.svg`
+- [x] German: `assets/diagrams/de/sensor-display-flow.svg`
+- [x] German: `assets/diagrams/de/sensor-display-oled-preview.svg`
+- [x] German: `assets/screenshots/de/sensor-display-placeholder-builder.svg`
 - [x] English: `projects/scheduled-relay.md`
 - [x] English: `assets/diagrams/scheduled-relay-flow.svg`
 - [x] Russian: `projects/scheduled-relay.md`
