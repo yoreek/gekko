@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/bundle/device-port_expander_switch.schema.json",
+  "title": "port_expander_switch device-setup record",
+  "type": "object",
+  "properties": {
+    "kind": { "const": "device" },
+    "record": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "typeName": { "const": "port_expander_switch" },
+        "configVersion": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["id", "typeName"],
+      "additionalProperties": true
+    },
+    "config": { "$ref": "../devices/port_expander_switch.config.schema.json" }
+  },
+  "required": ["kind", "record", "config"],
+  "additionalProperties": false
+}

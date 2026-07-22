@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/dosing_pump.config-update.schema.json",
+  "title": "Partial dosing_pump configuration update",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean" },
+    "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" } },
+    "dosingSpeedMlPerSec": { "type": "number", "exclusiveMinimum": 0, "maximum": 65.535 },
+    "container": {
+      "type": "object",
+      "properties": {
+        "capacityMl": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "thresholdPercent": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "blockAutoWhenEmpty": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "schedule": {
+      "type": "object",
+      "properties": {
+        "mode": { "enum": ["daily", "weekly"] },
+        "everyDays": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "daysOfWeek": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0, "maximum": 6 }
+        },
+        "anchorDay": { "type": "integer", "minimum": 0, "maximum": 65535 },
+        "doses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "time": { "type": "string", "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$" },
+              "amountMl": { "type": "number", "exclusiveMinimum": 0, "maximum": 655.35 }
+            },
+            "required": ["time", "amountMl"],
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

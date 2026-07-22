@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/thermostat.config.schema.json",
+  "title": "thermostat configuration",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean", "default": true },
+    "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" }, "default": [] },
+    "mode": { "enum": ["off", "cool", "heat"], "default": "off" },
+    "algorithm": { "enum": ["hysteresis"], "default": "hysteresis" },
+    "targetCelsius": { "type": "number", "minimum": -327.68, "maximum": 327.67, "default": 25.0 },
+    "targetMilliCelsius": { "type": "integer", "minimum": -327680, "maximum": 327670, "default": 25000 },
+    "minSafeCelsius": { "type": "number", "minimum": -327.68, "maximum": 327.67, "default": 0.0 },
+    "minSafeMilliCelsius": { "type": "integer", "minimum": -327680, "maximum": 327670, "default": 0 },
+    "maxSafeCelsius": { "type": "number", "minimum": -327.68, "maximum": 327.67, "default": 50.0 },
+    "maxSafeMilliCelsius": { "type": "integer", "minimum": -327680, "maximum": 327670, "default": 50000 },
+    "hysteresisCelsius": { "type": "number", "minimum": 0.01, "maximum": 100.0, "default": 0.5 },
+    "hysteresisCentiCelsius": { "type": "integer", "minimum": 1, "maximum": 10000, "default": 50 },
+    "checkIntervalMs": { "type": "integer", "minimum": 100, "maximum": 86400000, "default": 1000 },
+    "sensorTimeoutMs": { "type": "integer", "minimum": 100, "maximum": 86400000, "default": 3000 },
+    "retryAfterErrorMs": { "type": "integer", "minimum": 100, "maximum": 86400000, "default": 30000 },
+    "minSwitchIntervalMs": { "type": "integer", "minimum": 0, "maximum": 86400000, "default": 5000 }
+  },
+  "required": ["name"],
+  "additionalProperties": true
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/pcf8574_expander.config-update.schema.json",
+  "title": "pcf8574_expander configuration update",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean" },
+    "i2cAddress": { "type": "integer", "minimum": 0, "maximum": 127 },
+    "inverted": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

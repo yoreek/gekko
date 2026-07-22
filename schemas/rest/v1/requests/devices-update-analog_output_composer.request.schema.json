@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-update-analog_output_composer.request.schema.json",
+  "title": "Update analog_output_composer request",
+  "type": "object",
+  "properties": {
+    "config": { "$ref": "../devices/analog_output_composer.config-update.schema.json" },
+    "deps": {
+      "type": "array",
+      "items": { "$ref": "../common/dependency.schema.json" }
+    }
+  },
+  "required": ["config"],
+  "additionalProperties": true
+}

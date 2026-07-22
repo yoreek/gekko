@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-create-port_expander_switch.request.schema.json",
+  "title": "Create port_expander_switch request",
+  "type": "object",
+  "properties": {
+    "typeName": { "const": "port_expander_switch" },
+    "config": { "$ref": "../devices/port_expander_switch.config.schema.json" }
+  },
+  "required": ["typeName", "config"],
+  "additionalProperties": true
+}

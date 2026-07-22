@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-create-pcf8575_expander.request.schema.json",
+  "title": "Create pcf8575_expander request",
+  "type": "object",
+  "properties": {
+    "typeName": { "const": "pcf8575_expander" },
+    "config": { "$ref": "../devices/pcf8575_expander.config.schema.json" }
+  },
+  "required": ["typeName", "config"],
+  "additionalProperties": true
+}

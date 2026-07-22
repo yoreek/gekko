@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-update-ads1115_hub.request.schema.json",
+  "title": "Update ads1115_hub request",
+  "type": "object",
+  "properties": {
+    "config": { "$ref": "../devices/ads1115_hub.config-update.schema.json" },
+    "deps": {
+      "type": "array",
+      "items": { "$ref": "../common/dependency.schema.json" }
+    }
+  },
+  "required": ["config"],
+  "additionalProperties": true
+}

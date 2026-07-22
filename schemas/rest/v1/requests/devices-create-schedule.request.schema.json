@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-create-schedule.request.schema.json",
+  "title": "Create schedule request",
+  "type": "object",
+  "properties": {
+    "typeName": { "const": "schedule" },
+    "config": { "$ref": "../devices/schedule.config.schema.json" }
+  },
+  "required": ["typeName", "config"],
+  "additionalProperties": true
+}

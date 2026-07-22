@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-update-cd74hc4067_hub.request.schema.json",
+  "title": "Update cd74hc4067_hub request",
+  "type": "object",
+  "properties": {
+    "config": { "$ref": "../devices/cd74hc4067_hub.config-update.schema.json" }
+  },
+  "required": ["config"],
+  "additionalProperties": true
+}

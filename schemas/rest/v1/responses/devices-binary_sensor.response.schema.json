@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/devices-binary_sensor.response.schema.json",
+  "title": "binary_sensor device response",
+  "type": "object",
+  "properties": {
+    "record": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "typeName": { "const": "binary_sensor" },
+        "configRevision": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["id", "typeName", "configRevision"],
+      "additionalProperties": false
+    },
+    "config": { "$ref": "../devices/binary_sensor.config.schema.json" },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": ["creating", "starting", "ready", "disabled", "faulted", "dependency_blocked", "reconfiguring", "stopping", "deleting", "unknown"]
+        },
+        "effectiveStatus": {
+          "enum": ["creating", "starting", "ready", "disabled", "faulted", "dependency_blocked", "reconfiguring", "stopping", "deleting", "unknown"]
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "active": { "type": "boolean" },
+            "rawLevel": { "type": "boolean" },
+            "hasReading": { "type": "boolean" }
+          },
+          "required": ["active", "rawLevel", "hasReading"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["status", "effectiveStatus", "output"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["record", "config", "runtime"],
+  "additionalProperties": false
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/analog_output_composer.config.schema.json",
+  "title": "analog_output_composer configuration",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean", "default": true },
+    "deps": {
+      "type": "array",
+      "items": { "$ref": "../common/dependency.schema.json" },
+      "default": [],
+      "minItems": 1
+    }
+  },
+  "required": ["name", "deps"],
+  "additionalProperties": true
+}

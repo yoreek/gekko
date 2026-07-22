@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/auto_switch.config-update.schema.json",
+  "title": "Partial auto_switch configuration update",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean" },
+    "deps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": { "enum": ["switch", "condition"] },
+          "deviceId": { "type": "integer", "minimum": 1 },
+          "invert": { "type": "boolean" }
+        },
+        "required": ["role", "deviceId"],
+        "additionalProperties": false
+      }
+    },
+    "pauseDurationSeconds": { "type": "integer", "minimum": 1, "maximum": 2592000 }
+  },
+  "additionalProperties": true
+}

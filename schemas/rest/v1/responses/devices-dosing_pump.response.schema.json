@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/devices-dosing_pump.response.schema.json",
+  "title": "dosing_pump device response",
+  "type": "object",
+  "properties": {
+    "record": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "typeName": { "const": "dosing_pump" },
+        "configRevision": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["id", "typeName", "configRevision"],
+      "additionalProperties": false
+    },
+    "config": { "$ref": "../devices/dosing_pump.config.schema.json" },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": ["creating", "starting", "ready", "disabled", "faulted", "dependency_blocked", "reconfiguring", "stopping", "deleting", "unknown"]
+        },
+        "effectiveStatus": {
+          "enum": ["creating", "starting", "ready", "disabled", "faulted", "dependency_blocked", "reconfiguring", "stopping", "deleting", "unknown"]
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "state": { "enum": ["dosing", "idle"] },
+            "autoMode": { "type": "boolean" },
+            "timeValid": { "type": "boolean" },
+            "doseType": { "enum": ["schedule", "manual", "calibration"] },
+            "dosingTargetMl": { "type": "number" },
+            "dosedMl": { "type": "number" },
+            "dosingRemainingSec": { "type": "integer", "minimum": 0 },
+            "dosingTotalSec": { "type": "integer", "minimum": 0 },
+            "lastRunDosedMl": { "type": "number" },
+            "todayDosedMl": { "type": "number" },
+            "todayTargetMl": { "type": "number" },
+            "nextDoseAt": { "type": "integer", "minimum": 0 },
+            "nextDoseAmountMl": { "type": "number" },
+            "lastDose": {
+              "type": "object",
+              "properties": {
+                "at": { "type": "integer", "minimum": 0 },
+                "type": { "enum": ["schedule", "manual"] },
+                "amountMl": { "type": "number" }
+              },
+              "required": ["at", "type", "amountMl"],
+              "additionalProperties": false
+            },
+            "daysLeft": { "type": "integer", "minimum": 0 },
+            "container": {
+              "type": "object",
+              "properties": {
+                "capacityMl": { "type": "integer", "minimum": 1 },
+                "currentMl": { "type": "number" },
+                "percent": { "type": "integer", "minimum": 0 },
+                "empty": { "type": "boolean" },
+                "sensorPresent": { "type": "boolean" },
+                "status": { "enum": ["normal", "warning", "critical"] }
+              },
+              "required": ["capacityMl", "currentMl", "percent", "empty", "sensorPresent", "status"],
+              "additionalProperties": false
+            },
+            "skipNext": {
+              "type": "array",
+              "items": { "type": "boolean" }
+            }
+          },
+          "required": ["state", "autoMode", "timeValid", "lastRunDosedMl", "todayDosedMl", "todayTargetMl", "container", "skipNext"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["status", "effectiveStatus", "output"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["record", "config", "runtime"],
+  "additionalProperties": false
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-create-analog_output_composer.request.schema.json",
+  "title": "Create analog_output_composer request",
+  "type": "object",
+  "properties": {
+    "typeName": { "const": "analog_output_composer" },
+    "config": { "$ref": "../devices/analog_output_composer.config.schema.json" }
+  },
+  "required": ["typeName", "config"],
+  "additionalProperties": true
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/binary_sensor.config.schema.json",
+  "title": "binary_sensor configuration",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean", "default": true },
+    "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" }, "default": [] },
+    "gpioPin": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 39,
+      "not": { "minimum": 6, "maximum": 11 },
+      "default": 4,
+      "description": "ESP32 input GPIO; flash pins 6 through 11 are invalid."
+    },
+    "pullMode": { "enum": ["none", "pullup", "pulldown"], "default": "pullup" },
+    "inverted": { "type": "boolean", "default": false },
+    "debounceMs": { "type": "integer", "minimum": 0, "maximum": 60000, "default": 50 }
+  },
+  "required": ["name"],
+  "additionalProperties": true
+}

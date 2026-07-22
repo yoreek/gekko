@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/ads1115_hub.config-update.schema.json",
+  "title": "ads1115_hub configuration update",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean" },
+    "i2cAddress": { "type": "integer", "minimum": 0, "maximum": 127 },
+    "gain": { "enum": ["fsr6144", "fsr4096", "fsr2048", "fsr1024", "fsr0512", "fsr0256"] },
+    "dataRateSps": { "enum": ["8", "16", "32", "64", "128", "250", "475", "860"] }
+  },
+  "additionalProperties": true
+}

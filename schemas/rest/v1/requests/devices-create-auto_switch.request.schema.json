@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-create-auto_switch.request.schema.json",
+  "title": "Create auto_switch request",
+  "type": "object",
+  "properties": {
+    "typeName": { "const": "auto_switch" },
+    "config": { "$ref": "../devices/auto_switch.config.schema.json" }
+  },
+  "required": ["typeName", "config"],
+  "additionalProperties": true
+}
