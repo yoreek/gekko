@@ -90,6 +90,9 @@ Der Komposer ist nur noetig, wenn mehrere Kanaele als eine Leuchte wirken
 sollen - ein Ein-Kanal-Licht ist einfach Schritt 1-3 mit nur einer Kette. Lass
 die Fade-Ebene weg, wenn dir Rampen egal sind.
 
+Eine vollständige Anleitung für Anschluss, Einrichtung und Prüfung bietet das
+[Projekt Mehrkanal-Leuchte](/gekko/de/projects/multichannel-light/).
+
 ## Laufzeit & Steuerung
 
 Alle vier Typen melden ihren Live-Level (Fades melden ausserdem das Ziel und

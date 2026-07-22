@@ -28,6 +28,7 @@ Before every `git commit`:
 5. Never start another commit while the previous commit process has an unknown or non-terminal status.
 6. Never use `--no-verify`, and never use `--amend` to bypass or repair a pre-commit hook run.
 7. If the hook aborts, follow the recovery procedure in [Frontend Deployment](docs/frontend-deployment.md) while preserving the user's index ownership rules above.
+8. The hook produces more output than the command interface can display reliably. Run commit output through a log file, for example `git commit -m "..." > /tmp/gekko-commit.log 2>&1`, then inspect the terminal status and `tail -n 80 /tmp/gekko-commit.log`. Redirecting output must not change or bypass the hook.
 
 ## Device Config Versioning
 

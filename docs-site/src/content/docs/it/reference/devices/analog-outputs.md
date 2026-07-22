@@ -91,6 +91,9 @@ Il composer serve solo quando più canali devono agire come un unico fixture —
 una luce a singolo canale è solo gli step 1–3 con una sola catena. Salta il
 layer fade se non ti interessano le rampe.
 
+Per cablaggio, configurazione e verifica, consulta il progetto
+[Lampada multicanale](/gekko/it/projects/multichannel-light/).
+
 ## Runtime e controllo
 
 Tutti e quattro i tipi riportano il loro livello live (i fade riportano anche

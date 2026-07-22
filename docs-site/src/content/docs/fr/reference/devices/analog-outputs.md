@@ -92,6 +92,9 @@ Le compositeur n'est utile que lorsque plusieurs canaux doivent agir comme un
 seul luminaire — une lampe à canal unique se contente des étapes 1–3 avec une
 seule chaîne. Sautez la couche fade si les rampes ne vous importent pas.
 
+Pour le câblage, la configuration et la vérification, consultez le projet
+[Luminaire multicanal](/gekko/fr/projects/multichannel-light/).
+
 ## Runtime et contrôle
 
 Les quatre types rapportent leur niveau en direct (les fades rapportent aussi

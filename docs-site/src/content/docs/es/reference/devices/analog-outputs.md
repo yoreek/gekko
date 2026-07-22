@@ -91,6 +91,9 @@ El compositor solo hace falta cuando varios canales deben actuar como una
 sola luminaria: una luz de un solo canal es simplemente los pasos 1-3 con una
 sola cadena. Omite la capa de fade si no te importan las rampas.
 
+Para una guía completa de cableado, configuración y comprobación, consulta el
+[proyecto de luminaria multicanal](/gekko/es/projects/multichannel-light/).
+
 ## Runtime y control
 
 Los cuatro tipos reportan su nivel en vivo (los fades también reportan el

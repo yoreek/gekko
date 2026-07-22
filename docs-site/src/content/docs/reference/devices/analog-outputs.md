@@ -86,6 +86,9 @@ The composer is only needed when several channels should act as one fixture —
 a single-channel light is just steps 1–3 with one chain. Skip the fade layer if
 you don't care about ramps.
 
+For a complete wiring, setup, and verification walkthrough, see the
+[multichannel light project](/gekko/projects/multichannel-light/).
+
 ## Runtime & control
 
 All four types report their live level (fades also report the target and
