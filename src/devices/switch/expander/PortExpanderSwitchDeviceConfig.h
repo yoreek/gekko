@@ -14,17 +14,21 @@ namespace ewfm {
 constexpr uint8_t kMaxPortExpanderChannel = 15;
 
 #pragma pack(push, 1)
-struct PortExpanderSwitchDeviceConfigV1 {
+// Legacy persisted layouts: kept only so old blobs can be decoded and migrated to V3.
+struct [[deprecated("legacy persisted port-expander-switch config; decode/migration only")]] PortExpanderSwitchDeviceConfigV1 {
     static constexpr char kMagic[] = "PXSW-CHILD-1";
     uint8_t channel{0};
 };
 
-struct PortExpanderSwitchDevicePersistedConfigV1 {
+struct [[deprecated("legacy persisted port-expander-switch config; decode/migration only")]] PortExpanderSwitchDevicePersistedConfigV1 {
     SwitchDeviceConfigV1 switchConfig{};
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     PortExpanderSwitchDeviceConfigV1 expanderConfig{};
+    EWFM_LEGACY_CONFIG_USE_END
 };
 
-struct PortExpanderSwitchDeviceConfigV2 : SwitchDeviceConfigV1 {
+struct [[deprecated("legacy persisted port-expander-switch config; decode/migration only")]] PortExpanderSwitchDeviceConfigV2
+    : SwitchDeviceConfigV1 {
     static constexpr char kMagic[] = "PXSW2";
     uint8_t channel{0};
 };
@@ -36,10 +40,13 @@ struct PortExpanderSwitchDeviceConfigV3 : SwitchDeviceConfigV2 {
     bool parseJson(const JsonObjectConst& input, const char*& error);
     DeviceValidationResult validate() const;
     void writeJson(JsonObject output) const;
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     void migrateFrom(const PortExpanderSwitchDeviceConfigV2& legacy);
+    EWFM_LEGACY_CONFIG_USE_END
 };
 #pragma pack(pop)
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 constexpr size_t portExpanderSwitchDeviceConfigSize(const PortExpanderSwitchDevicePersistedConfigV1&) {
     return sizeof(SwitchDeviceConfigV1::kMagic) - 1U + sizeof(SwitchDeviceConfigV1) + sizeof(PortExpanderSwitchDeviceConfigV1::kMagic) -
            1U + sizeof(PortExpanderSwitchDeviceConfigV1);
@@ -48,6 +55,7 @@ constexpr size_t portExpanderSwitchDeviceConfigSize(const PortExpanderSwitchDevi
 constexpr size_t portExpanderSwitchDeviceConfigSize(const PortExpanderSwitchDeviceConfigV2&) {
     return sizeof(PortExpanderSwitchDeviceConfigV2::kMagic) - 1U + sizeof(PortExpanderSwitchDeviceConfigV2);
 }
+EWFM_LEGACY_CONFIG_USE_END
 
 constexpr size_t portExpanderSwitchDeviceConfigSize(const PortExpanderSwitchDeviceConfigV3&) {
     return sizeof(PortExpanderSwitchDeviceConfigV3::kMagic) - 1U + sizeof(PortExpanderSwitchDeviceConfigV3);

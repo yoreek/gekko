@@ -138,6 +138,7 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeSwitchPayload(const PortExpanderSwitchD
     return payload;
 }
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 BoundedBlob<kMaxDeviceConfigBytes> encodeLegacySwitchPayload(const PortExpanderSwitchDevicePersistedConfigV1& config) {
     BoundedBlob<kMaxDeviceConfigBytes> payload{};
     uint8_t buffer[kMaxDeviceConfigBytes]{};
@@ -148,6 +149,7 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeLegacySwitchPayload(const PortExpanderS
     TEST_ASSERT_TRUE(payload.assign(buffer, pos));
     return payload;
 }
+EWFM_LEGACY_CONFIG_USE_END
 
 void driveBusReady(I2cBusDevice& bus, uint32_t startNow = 1U) {
     bus.begin(startNow);
@@ -320,7 +322,9 @@ void test_port_expander_switch_config_migrates_v1_blob() {
     current.inverted = 1U;
     current.channel = 12U;
 
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     PortExpanderSwitchDevicePersistedConfigV1 legacy{};
+    EWFM_LEGACY_CONFIG_USE_END
     legacy.switchConfig.enabled = current.enabled;
     std::snprintf(legacy.switchConfig.name, sizeof(legacy.switchConfig.name), "%s", current.name);
     legacy.switchConfig.restorePreviousState = current.restorePreviousState;
@@ -380,7 +384,9 @@ void test_port_expander_switch_registry_migrates_v1_blob_on_begin() {
     current.inverted = 1U;
     current.channel = 3U;
 
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     PortExpanderSwitchDevicePersistedConfigV1 legacy{};
+    EWFM_LEGACY_CONFIG_USE_END
     legacy.switchConfig.enabled = current.enabled;
     std::snprintf(legacy.switchConfig.name, sizeof(legacy.switchConfig.name), "%s", current.name);
     legacy.switchConfig.restorePreviousState = current.restorePreviousState;
