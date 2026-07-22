@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 500" role="img" aria-labelledby="title desc">
+  <title id="title">Проект термостата: подключение, зависимости устройств и поток управления</title>
+  <desc id="desc">Три отдельные панели показывают подключение DS18B20 и реле к ESP32, граф зависимостей устройств Gekko и поток от температуры к нагревателю.</desc>
+  <style>
+    text { font-family: system-ui, sans-serif; fill: #1f2937; }
+    .title { font-size: 20px; font-weight: 700; }
+    .label { font-size: 15px; font-weight: 600; }
+    .small { font-size: 13px; }
+    .panel { fill: #f8fafc; stroke: #94a3b8; stroke-width: 2; rx: 14; }
+    .node { fill: #fff; stroke: #475569; stroke-width: 2; rx: 9; }
+    .wire { fill: none; stroke: #0f766e; stroke-width: 3; marker-end: url(#arrow); }
+    .dependency { fill: none; stroke: #7c3aed; stroke-width: 3; stroke-dasharray: 8 6; marker-end: url(#arrow); }
+    .flow { fill: none; stroke: #dc2626; stroke-width: 3; marker-end: url(#arrow); }
+  </style>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="context-stroke"/></marker></defs>
+  <rect class="panel" x="20" y="45" width="280" height="420"/><text class="title" x="40" y="78">1. Подключение</text>
+  <rect class="node" x="100" y="125" width="120" height="58"/><text class="label" x="134" y="159">ESP32</text>
+  <rect class="node" x="55" y="275" width="105" height="55"/><text class="label" x="73" y="307">DS18B20</text>
+  <rect class="node" x="190" y="275" width="90" height="55"/><text class="label" x="211" y="307">Реле</text>
+  <rect class="node" x="182" y="370" width="105" height="55"/><text class="label" x="193" y="402">Нагреватель</text>
+  <path class="wire" d="M130 183 V245 H108 V275"/><text class="small" x="43" y="243">DATA 1-Wire</text>
+  <path class="wire" d="M190 183 V245 H235 V275"/><text class="small" x="202" y="243">GPIO-выход</text>
+  <path class="wire" d="M235 330 V370"/><text class="small" x="242" y="355">включает</text>
+  <rect class="panel" x="340" y="45" width="280" height="420"/><text class="title" x="360" y="78">2. Граф устройств</text>
+  <rect class="node" x="395" y="120" width="170" height="50"/><text class="label" x="426" y="150">Шина 1-Wire</text>
+  <rect class="node" x="380" y="225" width="115" height="50"/><text class="label" x="397" y="255">DS18B20</text>
+  <rect class="node" x="510" y="225" width="85" height="50"/><text class="label" x="519" y="255">Выход</text>
+  <rect class="node" x="430" y="350" width="105" height="50"/><text class="label" x="446" y="380">Термостат</text>
+  <path class="dependency" d="M455 170 V225"/><text class="small" x="460" y="205">зависит от</text>
+  <path class="dependency" d="M438 275 V320 H467 V350"/><text class="small" x="365" y="312">датчик температуры</text>
+  <path class="dependency" d="M552 275 V320 H500 V350"/><text class="small" x="506" y="312">выключатель</text>
+  <rect class="panel" x="660" y="45" width="280" height="420"/><text class="title" x="680" y="78">3. Поток управления</text>
+  <rect class="node" x="718" y="125" width="160" height="48"/><text class="label" x="739" y="155">Температура</text>
+  <rect class="node" x="718" y="220" width="160" height="48"/><text class="label" x="746" y="250">Термостат</text>
+  <rect class="node" x="718" y="315" width="160" height="48"/><text class="label" x="742" y="345">Реле / нагрев</text>
+  <path class="flow" d="M798 173 V220"/><text class="small" x="810" y="200">значение</text>
+  <path class="flow" d="M798 268 V315"/><text class="small" x="810" y="295">Вкл. / Выкл.</text>
+  <text class="small" x="690" y="415">Сплошные стрелки: сигнал или команда</text><text class="small" x="690" y="438">Пунктир: зависимость</text>
+</svg>

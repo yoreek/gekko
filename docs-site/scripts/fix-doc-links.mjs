@@ -18,7 +18,7 @@ const ASSET_EXTENSIONS = new Set([
   '.bmp',
   '.ico',
 ]);
-const ENGLISH_DOC_SECTIONS = new Set(['getting-started', 'guides', 'reference']);
+const ENGLISH_DOC_SECTIONS = new Set(['getting-started', 'guides', 'projects', 'reference']);
 const DOCS_BASE = '/gekko';
 
 // These routes are generated outside src/content/docs and therefore cannot be

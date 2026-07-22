@@ -48,6 +48,10 @@ export default defineConfig({
           items: [{ autogenerate: { directory: 'getting-started' } }],
         },
         {
+          label: 'Projects',
+          items: [{ autogenerate: { directory: 'projects' } }],
+        },
+        {
           label: 'Guides',
           items: [{ autogenerate: { directory: 'guides' } }],
         },

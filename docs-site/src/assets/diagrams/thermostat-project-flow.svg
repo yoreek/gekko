@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 500" role="img" aria-labelledby="title desc">
+  <title id="title">Thermostat project: wiring, device dependencies, and control flow</title>
+  <desc id="desc">Three separate panels show a DS18B20 and relay wired to an ESP32, the Gekko device dependency graph, and the runtime temperature-to-heater flow.</desc>
+  <style>
+    text { font-family: system-ui, sans-serif; fill: #1f2937; }
+    .title { font-size: 20px; font-weight: 700; }
+    .label { font-size: 15px; font-weight: 600; }
+    .small { font-size: 13px; }
+    .panel { fill: #f8fafc; stroke: #94a3b8; stroke-width: 2; rx: 14; }
+    .node { fill: #fff; stroke: #475569; stroke-width: 2; rx: 9; }
+    .wire { fill: none; stroke: #0f766e; stroke-width: 3; marker-end: url(#arrow); }
+    .dependency { fill: none; stroke: #7c3aed; stroke-width: 3; stroke-dasharray: 8 6; marker-end: url(#arrow); }
+    .flow { fill: none; stroke: #dc2626; stroke-width: 3; marker-end: url(#arrow); }
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="context-stroke"/></marker>
+  </defs>
+
+  <rect class="panel" x="20" y="45" width="280" height="420"/>
+  <text class="title" x="40" y="78">1. Physical wiring</text>
+  <rect class="node" x="100" y="125" width="120" height="58"/><text class="label" x="134" y="159">ESP32</text>
+  <rect class="node" x="55" y="275" width="105" height="55"/><text class="label" x="73" y="307">DS18B20</text>
+  <rect class="node" x="190" y="275" width="90" height="55"/><text class="label" x="211" y="307">Relay</text>
+  <rect class="node" x="182" y="370" width="105" height="55"/><text class="label" x="204" y="402">Heater</text>
+  <path class="wire" d="M130 183 V245 H108 V275"/><text class="small" x="43" y="243">1-Wire DATA</text>
+  <path class="wire" d="M190 183 V245 H235 V275"/><text class="small" x="202" y="243">GPIO output</text>
+  <path class="wire" d="M235 330 V370"/><text class="small" x="242" y="355">switches</text>
+
+  <rect class="panel" x="340" y="45" width="280" height="420"/>
+  <text class="title" x="360" y="78">2. Device graph</text>
+  <rect class="node" x="395" y="120" width="170" height="50"/><text class="label" x="426" y="150">1-Wire bus</text>
+  <rect class="node" x="380" y="225" width="115" height="50"/><text class="label" x="397" y="255">DS18B20</text>
+  <rect class="node" x="510" y="225" width="85" height="50"/><text class="label" x="519" y="255">Switch</text>
+  <rect class="node" x="430" y="350" width="105" height="50"/><text class="label" x="446" y="380">Thermostat</text>
+  <path class="dependency" d="M455 170 V225"/><text class="small" x="460" y="205">depends on</text>
+  <path class="dependency" d="M438 275 V320 H467 V350"/><text class="small" x="365" y="312">temperature sensor</text>
+  <path class="dependency" d="M552 275 V320 H500 V350"/><text class="small" x="506" y="312">switch</text>
+
+  <rect class="panel" x="660" y="45" width="280" height="420"/>
+  <text class="title" x="680" y="78">3. Runtime flow</text>
+  <rect class="node" x="718" y="125" width="160" height="48"/><text class="label" x="747" y="155">Temperature</text>
+  <rect class="node" x="718" y="220" width="160" height="48"/><text class="label" x="746" y="250">Thermostat</text>
+  <rect class="node" x="718" y="315" width="160" height="48"/><text class="label" x="743" y="345">Relay / heater</text>
+  <path class="flow" d="M798 173 V220"/><text class="small" x="810" y="200">reading</text>
+  <path class="flow" d="M798 268 V315"/><text class="small" x="810" y="295">On / Off</text>
+  <text class="small" x="690" y="415">Solid arrows: signal or command</text>
+  <text class="small" x="690" y="438">Dashed arrows: dependency</text>
+</svg>

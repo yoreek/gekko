@@ -34,6 +34,20 @@ test('accepts verified English pages, assets, anchors, public files, external UR
   assert.match(result.output, /"linksIgnored": 2/);
 });
 
+test('recognizes projects as an English documentation section', (t) => {
+  const fixture = createFixture(t);
+  fixture.write('src/content/docs/projects/thermostat.md', '# Thermostat\n');
+  fixture.write(
+    'src/content/docs/guides/source.md',
+    '[Thermostat](/gekko/projects/thermostat/)\n',
+  );
+
+  const result = fixture.run('--check', 'src/content/docs');
+
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /"unresolved": 0/);
+});
+
 test('check fails for a resolvable image path that needs another parent level', (t) => {
   const fixture = createFixture(t);
   fixture.write('src/assets/diagrams/analog-chain.svg', '<svg/>');

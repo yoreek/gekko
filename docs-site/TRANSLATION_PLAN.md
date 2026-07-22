@@ -32,6 +32,31 @@ This file tracks the translation workflow for `docs-site/`.
 
 ## Progress
 
+### Scenario documentation extension
+
+- [x] English: `guides/how-gekko-works.md`
+- [x] English: `projects/index.md`
+- [x] English: `projects/thermostat-with-relay.md`
+- [x] English: `assets/diagrams/thermostat-project-flow.svg`
+- [x] Russian: `guides/how-gekko-works.md`
+- [x] Russian: `projects/index.md`
+- [x] Russian: `projects/thermostat-with-relay.md`
+- [x] Russian: `assets/diagrams/ru/thermostat-project-flow.svg`
+- [x] Ukrainian: `guides/how-gekko-works.md`
+- [x] Ukrainian: `projects/index.md`
+- [x] Ukrainian: `projects/thermostat-with-relay.md`
+- [x] Ukrainian: `assets/diagrams/uk/thermostat-project-flow.svg`
+- [x] German: `guides/how-gekko-works.md`
+- [x] German: `projects/index.md`
+- [x] German: `projects/thermostat-with-relay.md`
+- [x] German: `assets/diagrams/de/thermostat-project-flow.svg`
+- [x] Spanish: `guides/how-gekko-works.md`
+- [x] Spanish: `projects/index.md`
+- [x] Spanish: `projects/thermostat-with-relay.md`
+- [x] Spanish: `assets/diagrams/es/thermostat-project-flow.svg`
+- [ ] French scenario pages and localized diagram
+- [ ] Italian scenario pages and localized diagram
+
 ### Ukrainian locale
 
 #### Batch 1
