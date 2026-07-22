@@ -1,3 +1,4 @@
+#include "JsonSchemaSmokeValidator.h"
 #include "devices/switch/SwitchOutputState.h"
 #include "devices/switch/gpio/GpioSwitchDevice.h"
 #include "integrations/common/DeviceApiAdapter.h"
@@ -6,6 +7,7 @@
 #include <ArduinoJson.h>
 #include <cstdio>
 #include <memory>
+#include <string>
 #include <unity.h>
 
 using namespace ewfm;
@@ -76,6 +78,11 @@ std::unique_ptr<GpioSwitchDevice> makeGpioSwitchRuntime(FakeGpioOutputDriver& dr
     return runtime;
 }
 
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
+
 } // namespace
 
 void test_device_api_adapter_registry_resolves_gpio_switch() {
@@ -95,6 +102,8 @@ void test_gpio_switch_api_adapter_parses_create_request() {
     config["safeState"] = false;
     config["inverted"] = true;
     config["gpioPin"] = 21;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-gpio_switch.request.schema.json", doc.as<JsonVariantConst>());
 
     DeviceCreateRequest request{};
     const char* error = nullptr;
@@ -137,6 +146,7 @@ void test_gpio_switch_api_adapter_serializes_record() {
     GpioSwitchDeviceApiAdapter::instance().writeDeviceJson(*runtime, runtime->status(), output);
 
     TEST_ASSERT_FALSE(doc.overflowed());
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-gpio_switch.response.schema.json", doc.as<JsonVariantConst>());
     TEST_ASSERT_EQUAL_UINT32(7, output["record"]["id"].as<uint32_t>());
     TEST_ASSERT_EQUAL_STRING("gpio_switch", output["record"]["typeName"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("relay", output["config"]["name"].as<const char*>());
@@ -175,6 +185,8 @@ void test_gpio_switch_api_adapter_parses_update_config_request() {
     config["safeState"] = false;
     config["inverted"] = true;
     config["gpioPin"] = 19;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-gpio_switch.request.schema.json", doc.as<JsonVariantConst>());
 
     FakeGpioOutputDriver driver;
     auto runtime = makeGpioSwitchRuntime(driver);

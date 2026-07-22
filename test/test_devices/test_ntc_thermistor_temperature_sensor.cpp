@@ -1,3 +1,4 @@
+#include "JsonSchemaSmokeValidator.h"
 #include "devices/analog/input/port/AnalogPortInputDevice.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/registry/DeviceRegistry.h"
@@ -5,14 +6,21 @@
 #include "devices/sensors/ntc_thermistor/NtcThermistorTemperatureSensorConfig.h"
 #include "devices/sensors/ntc_thermistor/NtcThermistorTemperatureSensorDevice.h"
 #include "integrations/common/DeviceApiAdapter.h"
+#include "integrations/rest/ntc_thermistor/NtcThermistorTemperatureSensorDeviceApiAdapter.h"
 
 #include <ArduinoJson.h>
 #include <cstdio>
+#include <string>
 #include <unity.h>
 
 using namespace ewfm;
 
 namespace {
+
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
 
 class FakeAdcInputDriver final : public IAdcInputDriver {
 public:
@@ -73,12 +81,31 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeNtcPayload(const NtcThermistorTemperatu
     return payload;
 }
 
+BoundedBlob<kMaxDeviceConfigBytes> encodeAnalogPortPayload(const AnalogPortInputDeviceConfigV1& config) {
+    BoundedBlob<kMaxDeviceConfigBytes> payload{};
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(AnalogPortInputDeviceConfigV1::kMagic, config, buffer, analogPortInputDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(payload.assign(buffer, analogPortInputDeviceConfigSize(config)));
+    return payload;
+}
+
 void driveAnalogPortReady(AnalogPortInputDevice& port, uint32_t startNow) {
     port.begin(startNow);
     for (uint32_t now = startNow + 1U; now < startNow + 20U && !port.reading().valid; ++now) {
         port.tick100ms(now);
     }
     TEST_ASSERT_TRUE(port.reading().valid);
+}
+
+void bindAnalogPortIdentity(AnalogPortInputDevice& port, const AnalogPortInputDeviceConfigV1& config, DeviceId id) {
+    DeviceRegistryEntry record{};
+    record.header.deviceId = id;
+    record.header.typeId = AnalogPortInputDevice::descriptor().typeId;
+    record.header.configVersion = AnalogPortInputDevice::descriptor().currentConfigVersion;
+    record.header.configRevision = 1;
+    record.header.payloadLength = static_cast<uint32_t>(encodeAnalogPortPayload(config).size());
+    record.status = DeviceStatus::Ready;
+    port.bindDeviceIdentity(record, encodeAnalogPortPayload(config));
 }
 
 void bindNtcDependency(NtcThermistorTemperatureSensorDevice& sensor, DeviceId sensorId, DeviceId analogInputId) {
@@ -235,7 +262,9 @@ void test_ntc_thermistor_curve_helpers_reject_invalid_inputs() {
 void test_ntc_thermistor_runtime_reads_through_analog_input_dependency() {
     FakeAdcInputDriver driver;
     driver.milliVolts = 3000; // Rntc == nominalResistanceOhms at this divider voltage
-    AnalogPortInputDevice port(makeAnalogPortConfig(), driver);
+    const AnalogPortInputDeviceConfigV1 portConfig = makeAnalogPortConfig();
+    AnalogPortInputDevice port(portConfig, driver);
+    bindAnalogPortIdentity(port, portConfig, 42);
     driveAnalogPortReady(port, 5);
 
     NtcThermistorTemperatureSensorDevice sensor(makeSensorConfig());
@@ -247,6 +276,12 @@ void test_ntc_thermistor_runtime_reads_through_analog_input_dependency() {
     TEST_ASSERT_INT32_WITHIN(5, 25000, sensor.reading().milliCelsius);
     TEST_ASSERT_EQUAL_STRING("ok", sensor.outputStatus());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(sensor.status()));
+
+    StaticJsonDocument<2048> response;
+    JsonObject output = response.to<JsonObject>();
+    NtcThermistorTemperatureSensorDeviceApiAdapter::instance().writeDeviceJson(sensor, sensor.status(), output);
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-ntc_thermistor_temperature_sensor.response.schema.json",
+                            response.as<JsonVariantConst>());
 }
 
 void test_ntc_thermistor_runtime_reports_out_of_range_at_divider_extreme() {

@@ -1,6 +1,7 @@
 // Characterization tests pinning the observable REST-adapter behavior (parsed fields, exact
 // error strings, partial-update semantics) before the adapters migrate onto the shared
 // TypedDeviceApiAdapter base. Any assertion change here means the refactor changed behavior.
+#include "../test_devices/JsonSchemaSmokeValidator.h"
 #include "devices/analog/ledc/LedcAnalogOutputDevice.h"
 #include "devices/dosing/DosingPumpDevice.h"
 #include "devices/schedule/ScheduleDevice.h"
@@ -15,9 +16,17 @@
 
 #include <ArduinoJson.h>
 #include <cstdio>
+#include <string>
 #include <unity.h>
 
 using namespace ewfm;
+
+namespace {
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
+} // namespace
 
 void test_ledc_analog_output_api_adapter_parses_single_output_config() {
     StaticJsonDocument<512> doc;
@@ -170,6 +179,9 @@ void test_ntc_thermistor_api_adapter_parses_create_request() {
     JsonObject analogInputDep = deps.createNestedObject();
     analogInputDep["role"] = "analog_input";
     analogInputDep["deviceId"] = 42;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-ntc_thermistor_temperature_sensor.request.schema.json",
+                            doc.as<JsonVariantConst>());
 
     DeviceCreateRequest request{};
     const char* error = nullptr;
@@ -407,6 +419,9 @@ void test_ntc_thermistor_api_adapter_partial_update_preserves_calibration() {
     StaticJsonDocument<256> doc;
     JsonObject config = doc.createNestedObject("config");
     config["pollMs"] = 2000;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-ntc_thermistor_temperature_sensor.request.schema.json",
+                            doc.as<JsonVariantConst>());
 
     DeviceConfigUpdateRequest request{};
     const char* error = nullptr;

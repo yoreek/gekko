@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-create-htu21.request.schema.json",
+  "title": "Create htu21 request",
+  "type": "object",
+  "properties": {
+    "typeName": { "const": "htu21" },
+    "config": { "$ref": "../devices/htu21.config.schema.json" }
+  },
+  "required": ["typeName", "config"],
+  "additionalProperties": true
+}

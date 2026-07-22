@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/devices-onewire_bus.response.schema.json",
+  "title": "onewire_bus device response",
+  "type": "object",
+  "properties": {
+    "record": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "typeName": { "const": "onewire_bus" },
+        "configRevision": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["id", "typeName", "configRevision"],
+      "additionalProperties": false
+    },
+    "config": { "$ref": "../devices/onewire_bus.config.schema.json" },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": ["creating", "starting", "ready", "disabled", "faulted", "dependency_blocked", "reconfiguring", "stopping", "deleting", "unknown"]
+        },
+        "effectiveStatus": {
+          "enum": ["creating", "starting", "ready", "disabled", "faulted", "dependency_blocked", "reconfiguring", "stopping", "deleting", "unknown"]
+        },
+        "scan": {
+          "type": "object",
+          "properties": {
+            "inProgress": { "type": "boolean" },
+            "ready": { "type": "boolean" },
+            "deviceCount": { "type": "integer", "minimum": 0, "maximum": 16 },
+            "truncated": { "type": "boolean" },
+            "invalidCrcSeen": { "type": "boolean" },
+            "devices": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "address": { "type": "string", "minLength": 16, "maxLength": 16 },
+                  "familyCode": { "type": "string", "minLength": 2, "maxLength": 2 }
+                },
+                "required": ["address", "familyCode"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["inProgress", "ready", "deviceCount", "truncated", "invalidCrcSeen", "devices"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["status", "effectiveStatus", "scan"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["record", "config", "runtime"],
+  "additionalProperties": false
+}

@@ -1,3 +1,4 @@
+#include "JsonSchemaSmokeValidator.h"
 #include "config/MemoryConfigStorage.h"
 #include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/core/DeviceIdGenerator.h"
@@ -12,12 +13,18 @@
 
 #include <ArduinoJson.h>
 #include <cstdio>
+#include <string>
 #include <unity.h>
 #include <vector>
 
 using namespace ewfm;
 
 namespace {
+
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
 
 // Same generator polynomial the device uses; producing the CRC the checker expects proves the
 // checker against ReefDuino's reference implementation by construction.
@@ -163,6 +170,17 @@ void driveBusReady(I2cBusDevice& bus, uint32_t startNow = 1U) {
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(bus.status()));
 }
 
+void bindBusIdentity(I2cBusDevice& bus, DeviceId busId) {
+    DeviceRegistryEntry record{};
+    record.header.deviceId = busId;
+    record.header.typeId = I2cBusDevice::descriptor().typeId;
+    record.header.configVersion = I2cBusDevice::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(encodeBusPayload(bus.config()).size());
+    record.status = DeviceStatus::Ready;
+    bus.bindDeviceIdentity(record, encodeBusPayload(bus.config()));
+}
+
 void bindHtu21Dependency(Htu21SensorDevice& sensor, DeviceId sensorId, DeviceId busId) {
     DeviceRegistryEntry record{};
     record.header.deviceId = sensorId;
@@ -262,6 +280,7 @@ void test_htu21_config_codec_json_and_validation() {
     TEST_ASSERT_EQUAL_FLOAT(0.5F, json["temperatureFilter"]["smoothingWeight"].as<float>());
     TEST_ASSERT_EQUAL_FLOAT(-1500.0F, json["humidityFilter"]["calibrationOffset"].as<float>());
     TEST_ASSERT_EQUAL_UINT8(0x41U, json["i2cAddress"].as<uint8_t>());
+    assertMatchesJsonSchema("schemas/rest/v1/devices/htu21.config.schema.json", doc.as<JsonVariantConst>());
 
     Htu21SensorConfigV3 parsed{};
     const char* error = nullptr;
@@ -379,6 +398,7 @@ void test_htu21_type_and_api_adapter_are_registered() {
 void test_htu21_runtime_measures_temperature_and_humidity() {
     FakeHtu21I2cDriver driver;
     I2cBusDevice bus(makeBusConfig(), driver);
+    bindBusIdentity(bus, 6001U);
     driveBusReady(bus);
 
     Htu21SensorDevice sensor(makeHtu21Config(0x41U));
@@ -414,6 +434,7 @@ void test_htu21_runtime_measures_temperature_and_humidity() {
     StaticJsonDocument<1536> outputDoc;
     JsonObject output = outputDoc.to<JsonObject>();
     Htu21SensorDeviceApiAdapter::instance().writeDeviceJson(sensor, sensor.status(), output);
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-htu21.response.schema.json", outputDoc.as<JsonVariantConst>());
     TEST_ASSERT_EQUAL_STRING("htu21", output["record"]["typeName"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT8(0x41U, output["config"]["i2cAddress"].as<uint8_t>());
     TEST_ASSERT_TRUE(output["runtime"]["output"]["temperature"]["valid"].as<bool>());
@@ -552,6 +573,7 @@ void test_htu21_adapter_partial_update_preserves_unit_and_deltas() {
     JsonObject configInput = input.createNestedObject("config");
     configInput["name"] = "climate";
     configInput["pollMs"] = 60000U;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-htu21.request.schema.json", inputDoc.as<JsonVariantConst>());
 
     DeviceConfigUpdateRequest request{};
     const char* error = nullptr;
@@ -588,7 +610,38 @@ void test_htu21_adapter_rejects_duplicate_0x40_dependent_on_same_bus() {
     DeviceCreateResult busBResult = registry.create(makeBusCreateRequest("i2c-b"), 11);
     TEST_ASSERT_TRUE_MESSAGE(busBResult.ok(), busBResult.validation.message);
 
-    const DeviceCreateResult first = registry.create(makeHtu21CreateRequest("climate-a", busAResult.deviceId), 20);
+    StaticJsonDocument<768> createDoc;
+    createDoc["typeName"] = "htu21";
+    JsonObject createConfig = createDoc.createNestedObject("config");
+    createConfig["name"] = "climate-a";
+    createConfig["enabled"] = true;
+    JsonArray deps = createConfig.createNestedArray("deps");
+    JsonObject dep = deps.createNestedObject();
+    dep["role"] = "i2c_bus";
+    dep["deviceId"] = busAResult.deviceId;
+    createConfig["i2cAddress"] = 0x40U;
+    createConfig["unit"] = "celsius";
+    createConfig["pollMs"] = 5000U;
+    createConfig["reportAlways"] = false;
+    createConfig["reportDeltaCelsius"] = 0.1F;
+    createConfig["reportDeltaHumidity"] = 0.1F;
+    JsonObject temperatureFilter = createConfig.createNestedObject("temperatureFilter");
+    temperatureFilter["smoothingWeight"] = 1.0F;
+    temperatureFilter["calibrationFactor"] = 1.0F;
+    temperatureFilter["calibrationOffset"] = 0.0F;
+    JsonObject humidityFilter = createConfig.createNestedObject("humidityFilter");
+    humidityFilter["smoothingWeight"] = 1.0F;
+    humidityFilter["calibrationFactor"] = 1.0F;
+    humidityFilter["calibrationOffset"] = 0.0F;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-htu21.request.schema.json", createDoc.as<JsonVariantConst>());
+
+    DeviceCreateRequest createRequest{};
+    const char* createError = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        Htu21SensorDeviceApiAdapter::instance().parseCreateRequest(createDoc.as<JsonObjectConst>(), createRequest, createError),
+        createError);
+
+    const DeviceCreateResult first = registry.create(createRequest, 20);
     TEST_ASSERT_TRUE_MESSAGE(first.ok(), first.validation.message);
 
     // The default address is 0x40, so a second default-configured HTU21 on the same bus collides.

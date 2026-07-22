@@ -1,3 +1,4 @@
+#include "JsonSchemaSmokeValidator.h"
 #include "config/MemoryConfigStorage.h"
 #include "devices/bus/onewire/OneWireBusDevice.h"
 #include "devices/core/DeviceIdGenerator.h"
@@ -11,6 +12,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <string>
 #include <unity.h>
 #include <vector>
 
@@ -263,6 +265,11 @@ DeviceCreateRequest makeSensorCreateRequest(const char* name, DeviceId dependenc
     return request;
 }
 
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
+
 } // namespace
 
 void test_temperature_helpers_convert_units_and_dirty_threshold() {
@@ -416,6 +423,9 @@ void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input() {
     config["reportDeltaCelsius"] = 0.25;
     config["reportAlways"] = true;
 
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-ds18b20_temperature_sensor.request.schema.json",
+                            doc.as<JsonVariantConst>());
+
     DeviceCreateRequest request{};
     const char* error = nullptr;
     TEST_ASSERT_TRUE_MESSAGE(
@@ -453,6 +463,8 @@ void test_ds18b20_api_adapter_parses_create_update_and_rejects_invalid_input() {
     updateConfig["pollMs"] = 3000;
     updateConfig["reportDeltaCelsius"] = 0.25;
     updateConfig["reportAlways"] = false;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-ds18b20_temperature_sensor.request.schema.json",
+                            updateDoc.as<JsonVariantConst>());
     DeviceConfigUpdateRequest updateRequest{};
     error = nullptr;
     TEST_ASSERT_TRUE_MESSAGE(Ds18b20TemperatureSensorDeviceApiAdapter::instance().parseUpdateConfigRequest(updateDoc.as<JsonObjectConst>(),
@@ -559,7 +571,16 @@ void test_ds18b20_runtime_reads_addressed_temperature_and_configures_resolution(
 void test_ds18b20_runtime_serializes_fahrenheit_output_and_quiet_delta() {
     FakeOneWireBusDriver driver;
     driver.setTemperatureRaw(0x0178, 12);
-    OneWireBusDevice bus(makeBusConfig(), driver);
+    const OneWireBusDeviceConfigV1 busConfig = makeBusConfig();
+    OneWireBusDevice bus(busConfig, driver);
+    DeviceRegistryEntry busRecord{};
+    busRecord.header.deviceId = 44;
+    busRecord.header.typeId = OneWireBusDevice::descriptor().typeId;
+    busRecord.header.configVersion = OneWireBusDevice::descriptor().currentConfigVersion;
+    busRecord.header.configRevision = 1;
+    busRecord.header.payloadLength = static_cast<uint32_t>(encodeOneWirePayload(busConfig).size());
+    busRecord.status = DeviceStatus::Ready;
+    bus.bindDeviceIdentity(busRecord, encodeOneWirePayload(busConfig));
     driveDependencyReady(bus);
 
     Ds18b20TemperatureSensorConfigV2 config = makeSensorConfig();
@@ -580,9 +601,11 @@ void test_ds18b20_runtime_serializes_fahrenheit_output_and_quiet_delta() {
     TEST_ASSERT_TRUE(sensor.reading().valid);
     TEST_ASSERT_FALSE(runtime->runtimeStateDirty());
 
-    StaticJsonDocument<1024> doc;
+    StaticJsonDocument<2048> doc;
     JsonObject output = doc.to<JsonObject>();
     Ds18b20TemperatureSensorDeviceApiAdapter::instance().writeDeviceJson(sensor, sensor.status(), output);
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-ds18b20_temperature_sensor.response.schema.json",
+                            doc.as<JsonVariantConst>());
     TEST_ASSERT_EQUAL_STRING("ds18b20_temperature_sensor", output["record"]["typeName"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("fahrenheit", output["runtime"]["output"]["temperature"]["unit"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("F", output["runtime"]["output"]["temperature"]["unitSymbol"].as<const char*>());

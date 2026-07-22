@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/dummy.config.schema.json",
+  "title": "dummy configuration",
+  "$ref": "../common/device-config.schema.json"
+}

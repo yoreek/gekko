@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/common/dependency.schema.json",
+  "title": "Device dependency link",
+  "type": "object",
+  "properties": {
+    "role": { "type": "string", "minLength": 1 },
+    "deviceId": { "type": "integer", "minimum": 1 },
+    "invert": { "type": "boolean", "default": false }
+  },
+  "required": ["role", "deviceId"],
+  "additionalProperties": false
+}

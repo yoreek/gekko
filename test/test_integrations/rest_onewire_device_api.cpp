@@ -1,3 +1,4 @@
+#include "../test_devices/JsonSchemaSmokeValidator.h"
 #include "devices/bus/onewire/OneWireBusDevice.h"
 #include "integrations/common/DeviceApiAdapter.h"
 #include "integrations/rest/onewire_bus/OneWireBusDeviceApiAdapter.h"
@@ -5,6 +6,7 @@
 #include <ArduinoJson.h>
 #include <array>
 #include <cstdio>
+#include <string>
 #include <unity.h>
 
 using namespace ewfm;
@@ -102,6 +104,11 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeOneWirePayload(const OneWireBusDeviceCo
     return payload;
 }
 
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
+
 } // namespace
 
 void test_device_api_adapter_registry_resolves_onewire() {
@@ -118,6 +125,8 @@ void test_onewire_api_adapter_parses_create_request() {
     config["enabled"] = true;
     config["gpioPin"] = 18;
     config["internalPullup"] = true;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-onewire_bus.request.schema.json", doc.as<JsonVariantConst>());
 
     DeviceCreateRequest request{};
     const char* error = nullptr;
@@ -168,6 +177,7 @@ void test_onewire_api_adapter_serializes_runtime_scan_snapshot() {
     JsonObject output = doc.to<JsonObject>();
     OneWireBusDeviceApiAdapter::instance().writeDeviceJson(runtime, runtime.status(), output);
 
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-onewire_bus.response.schema.json", doc.as<JsonVariantConst>());
     TEST_ASSERT_EQUAL_STRING("onewire_bus", output["record"]["typeName"].as<const char*>());
     TEST_ASSERT_FALSE(output["config"]["internalPullup"].as<bool>());
     TEST_ASSERT_TRUE(output["runtime"]["scan"]["ready"].as<bool>());
@@ -184,6 +194,8 @@ void test_onewire_api_adapter_parses_update_config_request() {
     config["enabled"] = false;
     config["gpioPin"] = 19;
     config["internalPullup"] = true;
+
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-onewire_bus.request.schema.json", doc.as<JsonVariantConst>());
 
     OneWireBusDeviceConfigV1 current{};
     current.enabled = true;

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/common/device-config.schema.json",
+  "title": "Common device configuration",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean", "default": true },
+    "deps": {
+      "type": "array",
+      "items": { "$ref": "dependency.schema.json" },
+      "default": []
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": true
+}
