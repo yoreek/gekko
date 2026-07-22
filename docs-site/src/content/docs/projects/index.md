@@ -16,8 +16,7 @@ safe way to verify the result.
 | [Scheduled relay](/gekko/projects/scheduled-relay/) | A relay controlled by time and weekday rules | clock, schedule, Auto Switch, safe output |
 | [Sensor display](/gekko/projects/sensor-display/) | A live DS18B20 value on an SSD1306 OLED | 1-Wire, I2C, display layout, metric placeholder |
 | [Dosing pump](/gekko/projects/dosing-pump/) | A calibrated liquid dose on a reliable schedule | GPIO switch, calibration, dose slots, container tracking |
-
-More project guides will cover a multichannel aquarium light.
+| [Multichannel light](/gekko/projects/multichannel-light/) | One dimmable fixture with coordinated PWM channels | PWM outputs, curves, fades, light composer |
 
 If you already know the technical type you need, use the
 [device catalog](/gekko/reference/devices/). Otherwise, choose a project first

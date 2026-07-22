@@ -16,6 +16,7 @@ der Einrichtung und eine sichere Prüfung.
 | [Zeitgesteuertes Relais](/gekko/de/projects/scheduled-relay/) | Relais nach Uhrzeit und Wochentag | Uhr, Schedule, Auto Switch, sicherer Ausgang |
 | [Sensoranzeige](/gekko/de/projects/sensor-display/) | DS18B20-Livewert auf SSD1306 OLED | 1-Wire, I2C, Display-Layout, Metrik-Platzhalter |
 | [Dosierpumpe](/gekko/de/projects/dosing-pump/) | Abgemessene Flüssigkeitsgabe nach Zeitplan | GPIO-Schalter, Kalibrierung, Dosis-Slots, Behälterüberwachung |
+| [Mehrkanal-Leuchte](/gekko/de/projects/multichannel-light/) | Eine dimmbare Leuchte mit abgestimmten PWM-Kanälen | PWM-Ausgänge, Kurven, Übergänge, Licht-Komponierer |
 
-Weitere Projekte folgen für mehrkanaliges Aquarienlicht. Ist der Typ bereits bekannt,
+Ist der Typ bereits bekannt,
 verwenden Sie den [Gerätekatalog](/gekko/de/reference/devices/).

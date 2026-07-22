@@ -12,5 +12,6 @@ sidebar:
 | [Relè programmato](/gekko/it/projects/scheduled-relay/) | Relè per ora e giorni della settimana | orologio, schedule, Auto Switch, uscita sicura |
 | [Schermo del sensore](/gekko/it/projects/sensor-display/) | Valore DS18B20 in tempo reale su OLED SSD1306 | 1-Wire, I2C, layout dello schermo, placeholder della metrica |
 | [Pompa dosatrice](/gekko/it/projects/dosing-pump/) | Dose di liquido misurata con programma | interruttore GPIO, calibrazione, slot, contenitore |
+| [Lampada multicanale](/gekko/it/projects/multichannel-light/) | Una lampada dimmerabile con canali PWM coordinati | uscite PWM, curve, transizioni, compositore |
 
 Se il tipo tecnico è già noto, usare il [catalogo dispositivi](/gekko/it/reference/devices/).

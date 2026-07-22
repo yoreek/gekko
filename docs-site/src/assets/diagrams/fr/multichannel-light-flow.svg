@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 360" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <rect x="1" y="1" width="918" height="358" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+  <text x="34" y="42" font-size="19" font-weight="700" fill="#0f172a">Un luminaire, trois canaux indépendants</text>
+  <g fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M145 118 H205"/><path d="M335 118 H395"/><path d="M525 118 H585"/><path d="M715 118 H770"/>
+    <path d="M145 200 H205"/><path d="M335 200 H395"/><path d="M525 200 H585"/><path d="M715 200 H770"/>
+    <path d="M145 282 H205"/><path d="M335 282 H395"/><path d="M525 282 H585"/><path d="M715 282 H770"/>
+    <path d="M625 318 V334 H820 V295"/>
+  </g>
+  <g fill="#e0f2fe" stroke="#0284c7" stroke-width="2"><rect x="35" y="88" width="110" height="60" rx="10"/><rect x="205" y="88" width="130" height="60" rx="10"/><rect x="395" y="88" width="130" height="60" rx="10"/><rect x="585" y="88" width="130" height="60" rx="10"/>
+  <rect x="35" y="170" width="110" height="60" rx="10"/><rect x="205" y="170" width="130" height="60" rx="10"/><rect x="395" y="170" width="130" height="60" rx="10"/><rect x="585" y="170" width="130" height="60" rx="10"/>
+  <rect x="35" y="252" width="110" height="60" rx="10"/><rect x="205" y="252" width="130" height="60" rx="10"/><rect x="395" y="252" width="130" height="60" rx="10"/><rect x="585" y="252" width="130" height="60" rx="10"/></g>
+  <g font-size="13" fill="#0f172a" text-anchor="middle"><text x="90" y="113">Horloge</text><text x="90" y="132">heure du jour</text><text x="270" y="113">Canal 1</text><text x="270" y="132">courbe</text><text x="460" y="113">Canal 1</text><text x="460" y="132">fondu</text><text x="650" y="113">Sortie PWM</text><text x="650" y="132">GPIO 1</text>
+  <text x="90" y="195">Horloge</text><text x="90" y="214">heure du jour</text><text x="270" y="195">Canal 2</text><text x="270" y="214">courbe</text><text x="460" y="195">Canal 2</text><text x="460" y="214">fondu</text><text x="650" y="195">Sortie PWM</text><text x="650" y="214">GPIO 2</text>
+  <text x="90" y="277">Horloge</text><text x="90" y="296">heure du jour</text><text x="270" y="277">Canal 3</text><text x="270" y="296">courbe</text><text x="460" y="277">Canal 3</text><text x="460" y="296">fondu</text><text x="650" y="277">Sortie PWM</text><text x="650" y="296">GPIO 3</text></g>
+  <g fill="#fef3c7" stroke="#d97706" stroke-width="2"><rect x="770" y="88" width="115" height="224" rx="10"/><rect x="750" y="318" width="140" height="28" rx="9"/></g>
+  <g font-size="13" fill="#78350f" text-anchor="middle"><text x="827" y="165">Drivers LED</text><text x="827" y="184">externes et</text><text x="827" y="204">luminaire</text><text x="820" y="338">Compositeur lumière</text></g>
+</svg>

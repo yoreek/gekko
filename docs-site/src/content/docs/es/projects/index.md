@@ -15,6 +15,7 @@ una incluye hardware, grafo de Gekko, orden de creación y una comprobación seg
 | [Relé programado](/gekko/es/projects/scheduled-relay/) | Relé por hora y día de la semana | reloj, schedule, Auto Switch, salida segura |
 | [Pantalla de sensores](/gekko/es/projects/sensor-display/) | Valor DS18B20 en directo en un OLED SSD1306 | 1-Wire, I2C, diseño de pantalla, placeholder de métrica |
 | [Bomba dosificadora](/gekko/es/projects/dosing-pump/) | Dosis medida de líquido con horario | interruptor GPIO, calibración, franjas de dosis, recipiente |
+| [Luminaria multicanal](/gekko/es/projects/multichannel-light/) | Una luminaria regulable con canales PWM coordinados | salidas PWM, curvas, transiciones, compositor de luz |
 
-Después se añadirá iluminación de acuario. Si ya conoce el tipo,
+Si ya conoce el tipo,
 use el [catálogo de dispositivos](/gekko/es/reference/devices/).

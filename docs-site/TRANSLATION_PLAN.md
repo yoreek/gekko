@@ -34,6 +34,14 @@ This file tracks the translation workflow for `docs-site/`.
 
 ### Scenario documentation extension
 
+#### Planned: aquarium-light profile support
+
+- [ ] Implement a reusable multichannel aquarium-light profile in the portal and firmware.
+- [ ] Support saved channel curves, a daily schedule, and gradual sunrise/sunset transitions.
+- [ ] Add an acclimation mode that starts below the target intensity and increases it over a configured period.
+- [ ] Keep the profile generic: users define their own channel names, curve values, and target intensity.
+- [ ] Create the practical multichannel aquarium-light project guide after the profile is available.
+
 - [x] English: `projects/sensor-display.md`
 - [x] English: `assets/diagrams/sensor-display-flow.svg`
 - [x] English: `assets/diagrams/sensor-display-oled-preview.svg`
