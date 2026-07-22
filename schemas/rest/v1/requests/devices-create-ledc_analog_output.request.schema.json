@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-create-ledc_analog_output.request.schema.json",
+  "title": "Create ledc_analog_output request",
+  "type": "object",
+  "properties": {
+    "typeName": { "const": "analog_output" },
+    "config": { "$ref": "../devices/ledc_analog_output.config.schema.json" }
+  },
+  "required": ["typeName", "config"],
+  "additionalProperties": true
+}

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/devices-spi_bus.response.schema.json",
+  "title": "spi_bus device response",
+  "type": "object",
+  "properties": {
+    "record": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "typeName": { "const": "spi_bus" },
+        "configRevision": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["id", "typeName", "configRevision"],
+      "additionalProperties": false
+    },
+    "config": { "$ref": "../devices/spi_bus.config.schema.json" },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": ["creating", "starting", "ready", "disabled", "faulted", "dependency_blocked", "reconfiguring", "stopping", "deleting", "unknown"]
+        },
+        "effectiveStatus": {
+          "enum": ["creating", "starting", "ready", "disabled", "faulted", "dependency_blocked", "reconfiguring", "stopping", "deleting", "unknown"]
+        },
+        "generation": { "type": "integer", "minimum": 0 },
+        "transactionActive": { "type": "boolean" },
+        "diagnostics": {
+          "type": "object",
+          "properties": {
+            "status": { "enum": ["ok", "degraded"] },
+            "consecutiveErrors": { "type": "integer", "minimum": 0 },
+            "lastErrorCode": { "type": "integer", "minimum": 0 },
+            "lastErrorAtMs": { "type": "integer", "minimum": 0 },
+            "errorOps": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["status", "consecutiveErrors", "lastErrorCode", "lastErrorAtMs", "errorOps"],
+          "additionalProperties": false
+        },
+        "probe": {
+          "type": "object",
+          "properties": {
+            "csPin": { "type": "integer", "minimum": 0, "maximum": 255 },
+            "outcome": { "enum": ["detected", "not_detected", "inconclusive", "unknown"] },
+            "method": { "enum": ["miso_activity", "cs_pull_heuristic", "none"] },
+            "checkedAtMs": { "type": "integer", "minimum": 0 },
+            "ready": { "type": "boolean" }
+          },
+          "required": ["csPin", "outcome", "method", "checkedAtMs", "ready"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["status", "effectiveStatus", "generation", "transactionActive", "diagnostics"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["record", "config", "runtime"],
+  "additionalProperties": false
+}

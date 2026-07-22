@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/devices-i2c_bus.response.schema.json",
+  "title": "i2c_bus device response",
+  "type": "object",
+  "properties": {
+    "record": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "typeName": { "const": "i2c_bus" },
+        "configRevision": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["id", "typeName", "configRevision"],
+      "additionalProperties": false
+    },
+    "config": { "$ref": "../devices/i2c_bus.config.schema.json" },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": ["creating", "starting", "ready", "disabled", "faulted", "dependency_blocked", "reconfiguring", "stopping", "deleting", "unknown"]
+        },
+        "effectiveStatus": {
+          "enum": ["creating", "starting", "ready", "disabled", "faulted", "dependency_blocked", "reconfiguring", "stopping", "deleting", "unknown"]
+        },
+        "generation": { "type": "integer", "minimum": 0 },
+        "transactionActive": { "type": "boolean" },
+        "diagnostics": {
+          "type": "object",
+          "properties": {
+            "status": { "enum": ["ok", "degraded"] },
+            "consecutiveErrors": { "type": "integer", "minimum": 0 },
+            "lastErrorCode": { "type": "integer", "minimum": 0 },
+            "lastErrorAtMs": { "type": "integer", "minimum": 0 },
+            "errorOps": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["status", "consecutiveErrors", "lastErrorCode", "lastErrorAtMs", "errorOps"],
+          "additionalProperties": false
+        },
+        "scan": {
+          "type": "object",
+          "properties": {
+            "inProgress": { "type": "boolean" },
+            "ready": { "type": "boolean" },
+            "deviceCount": { "type": "integer", "minimum": 0, "maximum": 16 },
+            "truncated": { "type": "boolean" },
+            "nextAddress": { "type": "integer", "minimum": 8, "maximum": 119 },
+            "devices": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "address": { "type": "integer", "minimum": 0, "maximum": 127 },
+                  "addressHex": { "type": "string", "pattern": "^0x[0-9A-F]{2}$" }
+                },
+                "required": ["address", "addressHex"],
+                "additionalProperties": false
+              },
+              "maxItems": 16
+            }
+          },
+          "required": ["inProgress", "ready", "deviceCount", "truncated", "nextAddress", "devices"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["status", "effectiveStatus", "generation", "transactionActive", "diagnostics", "scan"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["record", "config", "runtime"],
+  "additionalProperties": false
+}

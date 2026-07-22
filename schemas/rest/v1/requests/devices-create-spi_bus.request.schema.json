@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-create-spi_bus.request.schema.json",
+  "title": "Create spi_bus request",
+  "type": "object",
+  "properties": {
+    "typeName": { "const": "spi_bus" },
+    "config": { "$ref": "../devices/spi_bus.config.schema.json" }
+  },
+  "required": ["typeName", "config"],
+  "additionalProperties": true
+}

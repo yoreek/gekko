@@ -1,15 +1,23 @@
+#include "JsonSchemaSmokeValidator.h"
 #include "devices/analog/input/port/AnalogPortInputDevice.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/registry/DeviceRegistry.h"
 #include "integrations/common/DeviceApiAdapter.h"
+#include "integrations/rest/analog_input/AnalogPortInputDeviceApiAdapter.h"
 
 #include <ArduinoJson.h>
 #include <cstdio>
+#include <string>
 #include <unity.h>
 
 using namespace ewfm;
 
 namespace {
+
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
 
 class FakeAdcInputDriver final : public IAdcInputDriver {
 public:
@@ -49,6 +57,19 @@ AnalogPortInputDeviceConfigV1 makePortConfig() {
     config.poll.reportDeltaMilliVolts = 10;
     config.poll.pollMs = 100;
     return config;
+}
+
+BoundedBlob<kMaxDeviceConfigBytes> encodePortPayload(const AnalogPortInputDeviceConfigV1& config);
+
+void bindPortIdentity(AnalogPortInputDevice& device, DeviceId deviceId) {
+    DeviceRegistryEntry record{};
+    record.header.deviceId = deviceId;
+    record.header.typeId = AnalogPortInputDevice::descriptor().typeId;
+    record.header.configVersion = AnalogPortInputDevice::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(encodePortPayload(device.config()).size());
+    record.status = DeviceStatus::Ready;
+    device.bindDeviceIdentity(record, encodePortPayload(device.config()));
 }
 
 BoundedBlob<kMaxDeviceConfigBytes> encodePortPayload(const AnalogPortInputDeviceConfigV1& config) {
@@ -93,6 +114,11 @@ void test_analog_port_input_config_codec_json_and_validation() {
     json["gpioPin"] = 4; // not an ADC1 pin
     TEST_ASSERT_FALSE(parsed.parseJson(json, error));
     TEST_ASSERT_NOT_NULL(error);
+
+    StaticJsonDocument<512> configDoc;
+    JsonObject configJson = configDoc.to<JsonObject>();
+    config.writeJson(configJson);
+    assertMatchesJsonSchema("schemas/rest/v1/devices/analog_port_input.config.schema.json", configDoc.as<JsonVariantConst>());
 }
 
 void test_analog_port_input_config_rejects_invalid_fields() {
@@ -134,10 +160,27 @@ void test_analog_port_input_type_and_api_adapter_are_registered() {
     TEST_ASSERT_NOT_NULL(adapterRegistry.findByName("analog_port_input"));
 }
 
+void test_analog_port_input_api_adapter_schema_smoke() {
+    StaticJsonDocument<512> createDoc;
+    createDoc["typeName"] = "analog_port_input";
+    JsonObject createConfig = createDoc.createNestedObject("config");
+    makePortConfig().writeJson(createConfig);
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-analog_port_input.request.schema.json",
+                            createDoc.as<JsonVariantConst>());
+
+    StaticJsonDocument<512> updateDoc;
+    JsonObject updateConfig = updateDoc.createNestedObject("config");
+    updateConfig["gpioPin"] = 35;
+    updateConfig["pollMs"] = 250;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-analog_port_input.request.schema.json",
+                            updateDoc.as<JsonVariantConst>());
+}
+
 void test_analog_port_input_runtime_averages_samples_and_reports_reading() {
     FakeAdcInputDriver driver;
     driver.milliVolts = 1650; // roughly mid-scale for the 0..3300mV nominal reference
     AnalogPortInputDevice device(makePortConfig(), driver);
+    bindPortIdentity(device, 8010);
     driveUntilReading(device);
 
     TEST_ASSERT_EQUAL_UINT8(34, driver.lastPin);
@@ -147,12 +190,18 @@ void test_analog_port_input_runtime_averages_samples_and_reports_reading() {
     TEST_ASSERT_INT_WITHIN(2, 2047, device.reading().rawCode);
     TEST_ASSERT_EQUAL_STRING("ok", device.outputStatus());
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(device.status()));
+
+    StaticJsonDocument<1024> outputDoc;
+    JsonObject output = outputDoc.to<JsonObject>();
+    AnalogPortInputDeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-analog_port_input.response.schema.json", outputDoc.as<JsonVariantConst>());
 }
 
 void test_analog_port_input_runtime_faults_when_pin_cannot_be_configured() {
     FakeAdcInputDriver driver;
     driver.configureOk = false;
     AnalogPortInputDevice device(makePortConfig(), driver);
+    bindPortIdentity(device, 8011);
     device.begin(10);
     device.tick100ms(11);
 
@@ -165,6 +214,7 @@ void test_analog_port_input_runtime_disable_reconfigure_and_delete_lifecycle() {
     FakeAdcInputDriver driver;
     driver.milliVolts = 1650;
     AnalogPortInputDevice device(makePortConfig(), driver);
+    bindPortIdentity(device, 8012);
     driveUntilReading(device);
     TEST_ASSERT_TRUE(device.reading().valid);
 

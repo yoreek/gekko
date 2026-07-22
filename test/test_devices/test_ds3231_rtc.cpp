@@ -1,3 +1,4 @@
+#include "JsonSchemaSmokeValidator.h"
 #include "config/MemoryConfigStorage.h"
 #include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/core/DeviceIdGenerator.h"
@@ -9,12 +10,18 @@
 
 #include <ArduinoJson.h>
 #include <cstdio>
+#include <string>
 #include <unity.h>
 #include <vector>
 
 using namespace ewfm;
 
 namespace {
+
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
 
 constexpr uint8_t kDs3231Address = 0x68;
 constexpr uint8_t kRegStatus = 0x0F;
@@ -203,6 +210,17 @@ void bindRtcDependency(Ds3231RtcDevice& rtc, DeviceId rtcId, DeviceId busId) {
     rtc.bindDeviceIdentity(record, encodeRtcPayload(rtc.config()));
 }
 
+void bindBusIdentity(I2cBusDevice& bus, DeviceId busId) {
+    DeviceRegistryEntry record{};
+    record.header.deviceId = busId;
+    record.header.typeId = I2cBusDevice::descriptor().typeId;
+    record.header.configVersion = I2cBusDevice::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(encodeBusPayload(bus.config()).size());
+    record.status = DeviceStatus::Ready;
+    bus.bindDeviceIdentity(record, encodeBusPayload(bus.config()));
+}
+
 void driveRtcUntilReading(Ds3231RtcDevice& rtc, uint32_t startNow = 10U) {
     rtc.begin(startNow);
     for (uint32_t now = startNow + 1U; now < startNow + 5000U && !rtc.lastReadOk(); now += 100U) {
@@ -247,6 +265,7 @@ void test_ds3231_config_codec_json_and_validation() {
     StaticJsonDocument<256> doc;
     JsonObject json = doc.to<JsonObject>();
     writeDs3231RtcDeviceConfigJson(config, json);
+    assertMatchesJsonSchema("schemas/rest/v1/devices/rtc_ds3231.config.schema.json", doc.as<JsonVariantConst>());
     TEST_ASSERT_TRUE(json["useForSystemTimeSync"].as<bool>());
     TEST_ASSERT_EQUAL_UINT8(0x57U, json["i2cAddress"].as<uint8_t>());
 
@@ -302,6 +321,7 @@ void test_ds3231_runtime_reads_time_from_registers() {
     driver.setDateTime(known);
 
     I2cBusDevice bus(makeBusConfig(), driver);
+    bindBusIdentity(bus, 7001U);
     driveBusReady(bus);
 
     Ds3231RtcDevice rtc(makeRtcConfig());
@@ -439,6 +459,7 @@ void test_ds3231_api_adapter_writes_runtime_json() {
     driver.setDateTime(DateTime(2024, 3, 5, 12, 45, 30));
 
     I2cBusDevice bus(makeBusConfig(), driver);
+    bindBusIdentity(bus, 7002U);
     driveBusReady(bus);
 
     Ds3231RtcDevice rtc(makeRtcConfig(true));
@@ -449,6 +470,7 @@ void test_ds3231_api_adapter_writes_runtime_json() {
     StaticJsonDocument<1024> outputDoc;
     JsonObject output = outputDoc.to<JsonObject>();
     Ds3231RtcDeviceApiAdapter::instance().writeDeviceJson(rtc, rtc.status(), output);
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-rtc_ds3231.response.schema.json", outputDoc.as<JsonVariantConst>());
     TEST_ASSERT_EQUAL_STRING("rtc_ds3231", output["record"]["typeName"].as<const char*>());
     TEST_ASSERT_TRUE(output["config"]["useForSystemTimeSync"].as<bool>());
     TEST_ASSERT_EQUAL_UINT8(0x68U, output["config"]["i2cAddress"].as<uint8_t>());
@@ -475,10 +497,28 @@ void test_ds3231_adapter_rejects_second_active_sync_device() {
     DeviceCreateResult busBResult = registry.create(makeBusCreateRequest("i2c-b"), 11);
     TEST_ASSERT_TRUE_MESSAGE(busBResult.ok(), busBResult.validation.message);
 
-    const Ds3231RtcDeviceConfigV2 activeConfig = makeRtcConfig(true);
-    DeviceCreateResult first = registry.create(makeRtcCreateRequest("rtc-a", busAResult.deviceId, activeConfig), 20);
+    StaticJsonDocument<512> createDoc;
+    createDoc["typeName"] = "rtc_ds3231";
+    JsonObject createConfig = createDoc.createNestedObject("config");
+    createConfig["name"] = "rtc-a";
+    createConfig["enabled"] = true;
+    JsonArray deps = createConfig.createNestedArray("deps");
+    JsonObject dep = deps.createNestedObject();
+    dep["role"] = "i2c_bus";
+    dep["deviceId"] = busAResult.deviceId;
+    createConfig["i2cAddress"] = 0x68U;
+    createConfig["useForSystemTimeSync"] = true;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-rtc_ds3231.request.schema.json", createDoc.as<JsonVariantConst>());
+
+    DeviceCreateRequest parsedCreate{};
+    const char* createError = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(
+        Ds3231RtcDeviceApiAdapter::instance().parseCreateRequest(createDoc.as<JsonObjectConst>(), parsedCreate, createError), createError);
+
+    DeviceCreateResult first = registry.create(parsedCreate, 20);
     TEST_ASSERT_TRUE_MESSAGE(first.ok(), first.validation.message);
 
+    const Ds3231RtcDeviceConfigV2 activeConfig = makeRtcConfig(true);
     const DeviceCreateRequest second = makeRtcCreateRequest("rtc-b", busBResult.deviceId, activeConfig);
     const DeviceValidationResult validation = Ds3231RtcDeviceApiAdapter::instance().validateCreateRequest(second, registry);
     TEST_ASSERT_FALSE(validation.ok());
@@ -502,6 +542,11 @@ void test_ds3231_adapter_rejects_duplicate_address_on_same_bus_but_allows_distin
 
     DeviceCreateResult busResult = registry.create(makeBusCreateRequest("i2c"), 10);
     TEST_ASSERT_TRUE_MESSAGE(busResult.ok(), busResult.validation.message);
+
+    StaticJsonDocument<256> updateDoc;
+    JsonObject updateConfig = updateDoc.createNestedObject("config");
+    updateConfig["i2cAddress"] = 0x57U;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-rtc_ds3231.request.schema.json", updateDoc.as<JsonVariantConst>());
 
     const DeviceCreateResult first = registry.create(makeRtcCreateRequest("rtc-a", busResult.deviceId, makeRtcConfig(false, 0x68U)), 20);
     TEST_ASSERT_TRUE_MESSAGE(first.ok(), first.validation.message);

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/spi_bus.config-update.schema.json",
+  "title": "spi_bus configuration update",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean" },
+    "host": { "type": "integer", "minimum": 0, "maximum": 255 },
+    "sckPin": { "type": "integer", "minimum": 0, "maximum": 255 },
+    "mosiPin": { "type": "integer", "minimum": 0, "maximum": 255 },
+    "misoPin": { "type": "integer", "minimum": -1, "maximum": 255 }
+  },
+  "additionalProperties": true
+}

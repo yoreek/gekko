@@ -1,3 +1,4 @@
+#include "JsonSchemaSmokeValidator.h"
 #include "config/MemoryConfigStorage.h"
 #include "devices/bus/spi/SpiBusDevice.h"
 #include "devices/core/DeviceIdGenerator.h"
@@ -17,6 +18,11 @@
 using namespace ewfm;
 
 namespace {
+
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
 
 class FakeSpiBusDriver final : public ISpiBusDriver {
 public:
@@ -152,6 +158,19 @@ void driveBusToReady(SpiBusDevice& bus, uint32_t startNow = 10U) {
     bus.tick100ms(startNow + 1U);
 }
 
+BoundedBlob<kMaxDeviceConfigBytes> encodePayload(const SpiBusDeviceConfigV1& config);
+
+void bindBusIdentity(SpiBusDevice& bus, DeviceId busId) {
+    DeviceRegistryEntry record{};
+    record.header.deviceId = busId;
+    record.header.typeId = SpiBusDevice::descriptor().typeId;
+    record.header.configVersion = SpiBusDevice::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(encodePayload(bus.config()).size());
+    record.status = DeviceStatus::Ready;
+    bus.bindDeviceIdentity(record, encodePayload(bus.config()));
+}
+
 void writeTextFile(const char* path, const std::string& text) {
     std::ofstream file(path, std::ios::trunc);
     TEST_ASSERT_TRUE(file.is_open());
@@ -186,6 +205,7 @@ void test_spi_bus_config_codec_json_and_validation() {
     StaticJsonDocument<256> doc;
     JsonObject json = doc.to<JsonObject>();
     writeSpiBusDeviceConfigJson(config, json);
+    assertMatchesJsonSchema("schemas/rest/v1/devices/spi_bus.config.schema.json", doc.as<JsonVariantConst>());
 
     SpiBusDeviceConfigV1 parsed{};
     const char* error = nullptr;
@@ -199,6 +219,40 @@ void test_spi_bus_config_codec_json_and_validation() {
     SpiBusDeviceConfigV1 invalidPins = config;
     invalidPins.sckPin = invalidPins.mosiPin;
     TEST_ASSERT_FALSE(invalidPins.validate().ok());
+}
+
+void test_spi_bus_api_adapter_schema_smoke_and_runtime_serialization() {
+    FakeSpiBusDriver driver;
+    SpiBusDevice bus(makeConfig(), driver);
+    driveBusToReady(bus);
+    bindBusIdentity(bus, 2001);
+
+    StaticJsonDocument<512> createDoc;
+    JsonObject createJson = createDoc.to<JsonObject>();
+    createJson["typeName"] = "spi_bus";
+    JsonObject createConfig = createJson.createNestedObject("config");
+    writeSpiBusDeviceConfigJson(makeConfig(), createConfig);
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-spi_bus.request.schema.json", createDoc.as<JsonVariantConst>());
+
+    DeviceCreateRequest createRequest{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE_MESSAGE(SpiBusDeviceApiAdapter::instance().parseCreateRequest(createDoc.as<JsonObjectConst>(), createRequest, error),
+                             error);
+
+    StaticJsonDocument<256> updateDoc;
+    JsonObject updateJson = updateDoc.to<JsonObject>();
+    JsonObject updateConfig = updateJson.createNestedObject("config");
+    updateConfig["misoPin"] = 27;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-spi_bus.request.schema.json", updateDoc.as<JsonVariantConst>());
+
+    DeviceConfigUpdateRequest updateRequest{};
+    TEST_ASSERT_TRUE_MESSAGE(
+        SpiBusDeviceApiAdapter::instance().parseUpdateConfigRequest(updateDoc.as<JsonObjectConst>(), bus, updateRequest, error), error);
+
+    StaticJsonDocument<768> outputDoc;
+    JsonObject output = outputDoc.to<JsonObject>();
+    SpiBusDeviceApiAdapter::instance().writeDeviceJson(bus, bus.status(), output);
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-spi_bus.response.schema.json", outputDoc.as<JsonVariantConst>());
 }
 
 void test_spi_bus_api_adapter_partial_update_preserves_pins() {

@@ -1,3 +1,4 @@
+#include "JsonSchemaSmokeValidator.h"
 #include "devices/bus/i2c/I2cAddress.h"
 #include "devices/bus/i2c/I2cBusDevice.h"
 #include "integrations/common/DeviceApiAdapter.h"
@@ -5,11 +6,17 @@
 
 #include <ArduinoJson.h>
 #include <cstdio>
+#include <string>
 #include <unity.h>
 
 using namespace ewfm;
 
 namespace {
+
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
 
 class FakeI2cBusDriver final : public II2cBusDriver {
 public:
@@ -137,6 +144,17 @@ void driveBusToReady(I2cBusDevice& bus, uint32_t startNow = 10U) {
     bus.tick100ms(startNow + 1U);
 }
 
+void bindBusIdentity(I2cBusDevice& bus, DeviceId busId) {
+    DeviceRegistryEntry record{};
+    record.header.deviceId = busId;
+    record.header.typeId = I2cBusDevice::descriptor().typeId;
+    record.header.configVersion = I2cBusDevice::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(encodePayload(bus.config()).size());
+    record.status = DeviceStatus::Ready;
+    bus.bindDeviceIdentity(record, encodePayload(bus.config()));
+}
+
 } // namespace
 
 void test_i2c_address_helpers_format_parse_and_validate() {
@@ -190,6 +208,7 @@ void test_i2c_bus_config_codec_and_validation() {
     StaticJsonDocument<256> doc;
     JsonObject json = doc.to<JsonObject>();
     writeI2cBusDeviceConfigJson(config, json);
+    assertMatchesJsonSchema("schemas/rest/v1/devices/i2c_bus.config.schema.json", doc.as<JsonVariantConst>());
 
     I2cBusDeviceConfigV1 parsed{};
     const char* error = nullptr;
@@ -273,6 +292,7 @@ void test_i2c_bus_runtime_reconfigures_and_advances_generation() {
 void test_i2c_bus_scan_and_diagnostics_runtime_snapshot() {
     FakeI2cBusDriver driver;
     I2cBusDevice bus(makeConfig(), driver);
+    bindBusIdentity(bus, 9001U);
     driveBusToReady(bus);
 
     TEST_ASSERT_TRUE(bus.handleCommand(DeviceCommand{DeviceCommandType::Scan, 1001U, ""}));
@@ -296,6 +316,7 @@ void test_i2c_bus_scan_and_diagnostics_runtime_snapshot() {
     StaticJsonDocument<1024> outputDoc;
     JsonObject output = outputDoc.to<JsonObject>();
     I2cBusDeviceApiAdapter::instance().writeDeviceJson(bus, bus.status(), output);
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-i2c_bus.response.schema.json", outputDoc.as<JsonVariantConst>());
     TEST_ASSERT_TRUE(output["runtime"]["diagnostics"]["status"].is<const char*>());
     TEST_ASSERT_EQUAL_UINT8(0x3CU, output["runtime"]["scan"]["devices"][0]["address"].as<uint8_t>());
 }
@@ -304,6 +325,7 @@ void test_i2c_bus_api_adapter_partial_update_preserves_internal_pullup_and_pins(
     StaticJsonDocument<128> doc;
     JsonObject config = doc.createNestedObject("config");
     config["frequencyHz"] = 200000;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-i2c_bus.request.schema.json", doc.as<JsonVariantConst>());
 
     FakeI2cBusDriver driver;
     I2cBusDevice runtime(makeConfig(18U, 19U, true, 100000U), driver);
@@ -332,6 +354,7 @@ void test_i2c_bus_api_adapter_parses_and_serializes_runtime() {
     config["sclPin"] = 19;
     config["internalPullup"] = true;
     config["frequencyHz"] = 100000;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-i2c_bus.request.schema.json", doc.as<JsonVariantConst>());
 
     DeviceCreateRequest request{};
     const char* error = nullptr;
@@ -347,11 +370,13 @@ void test_i2c_bus_api_adapter_parses_and_serializes_runtime() {
 
     FakeI2cBusDriver driver;
     I2cBusDevice runtime(makeConfig(), driver);
+    bindBusIdentity(runtime, 9002U);
     runtime.begin(0U);
     runtime.tick100ms(1U);
     StaticJsonDocument<1024> outputDoc;
     JsonObject output = outputDoc.to<JsonObject>();
     I2cBusDeviceApiAdapter::instance().writeDeviceJson(runtime, runtime.status(), output);
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-i2c_bus.response.schema.json", outputDoc.as<JsonVariantConst>());
     TEST_ASSERT_EQUAL_STRING("i2c_bus", output["record"]["typeName"].as<const char*>());
     TEST_ASSERT_TRUE(output["config"]["internalPullup"].as<bool>());
     TEST_ASSERT_EQUAL_UINT32(1U, output["runtime"]["generation"].as<uint32_t>());

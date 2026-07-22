@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/ssd1306.config-update.schema.json",
+  "title": "ssd1306 configuration update",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean" },
+    "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" } },
+    "i2cAddress": { "type": "integer", "minimum": 0, "maximum": 255 },
+    "rotation": { "type": "integer", "minimum": 0, "maximum": 3 },
+    "width": { "type": "integer", "minimum": 1, "maximum": 255 },
+    "height": { "type": "integer", "minimum": 1, "maximum": 255 }
+  },
+  "additionalProperties": true
+}

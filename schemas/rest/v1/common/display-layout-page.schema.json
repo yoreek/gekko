@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/common/display-layout-page.schema.json",
+  "title": "Display layout page",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 16 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 16 },
+    "order": { "type": "integer", "minimum": 0, "maximum": 255 },
+    "widgets": {
+      "type": "array",
+      "items": { "$ref": "display-layout-widget.schema.json" }
+    }
+  },
+  "required": ["id", "widgets"],
+  "additionalProperties": false
+}

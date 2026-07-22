@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/common/analog-input-output.schema.json",
+  "title": "Analog input runtime output",
+  "type": "object",
+  "properties": {
+    "milliVolts": { "type": "integer" },
+    "rawCode": { "type": "integer", "minimum": 0 },
+    "measuredAtMs": { "type": "integer", "minimum": 0 },
+    "valid": { "type": "boolean" },
+    "status": {
+      "enum": ["ok", "not_ready", "disabled", "dependency_unavailable", "not_found"]
+    }
+  },
+  "required": ["milliVolts", "rawCode", "measuredAtMs", "valid", "status"],
+  "additionalProperties": false
+}

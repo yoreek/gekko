@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/rtc_ds3231.config-update.schema.json",
+  "title": "Partial rtc_ds3231 configuration update",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean" },
+    "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" } },
+    "i2cAddress": { "type": "integer", "minimum": 0, "maximum": 127 },
+    "useForSystemTimeSync": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

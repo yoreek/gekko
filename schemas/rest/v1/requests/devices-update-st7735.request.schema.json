@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-update-st7735.request.schema.json",
+  "title": "Update st7735 request",
+  "type": "object",
+  "properties": {
+    "config": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "enabled": { "type": "boolean" },
+        "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" } },
+        "spiBusDeviceId": { "type": "integer", "minimum": 1 },
+        "chipSelectPin": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "dcPin": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "resetPin": { "type": "integer", "minimum": -1, "maximum": 255 },
+        "rotation": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 255 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 255 },
+        "layout": { "$ref": "../common/display-layout.schema.json" }
+      },
+      "additionalProperties": true
+    },
+    "deps": {
+      "type": "array",
+      "items": { "$ref": "../common/dependency.schema.json" }
+    }
+  },
+  "required": ["config"],
+  "additionalProperties": true
+}

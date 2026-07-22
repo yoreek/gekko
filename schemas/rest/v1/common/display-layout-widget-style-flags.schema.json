@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/common/display-layout-widget-style-flags.schema.json",
+  "title": "Display layout widget style flags",
+  "type": "object",
+  "properties": {
+    "filled": { "type": "boolean", "default": false },
+    "inverted": { "type": "boolean", "default": false },
+    "wrap": { "type": "boolean", "default": false }
+  },
+  "additionalProperties": false
+}

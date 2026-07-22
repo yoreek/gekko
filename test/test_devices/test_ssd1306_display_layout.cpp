@@ -1,3 +1,4 @@
+#include "JsonSchemaSmokeValidator.h"
 #include "config/MemoryConfigStorage.h"
 #include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/core/DeviceIdGenerator.h"
@@ -21,6 +22,11 @@
 using namespace ewfm;
 
 namespace {
+
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
 
 class StringJsonChunkSink final : public IJsonChunkSink {
 public:
@@ -381,6 +387,11 @@ void test_ssd1306_api_adapter_streams_layout_and_setup_extension() {
     TEST_ASSERT_TRUE(encodeDisplayLayoutBinary(layout, layoutBlob));
     TEST_ASSERT_TRUE(device.applyPersistedStateUpdate(layoutBlob.data(), layoutBlob.size()).ok());
 
+    StaticJsonDocument<512> outputDoc;
+    JsonObject output = outputDoc.to<JsonObject>();
+    Ssd1306DeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-ssd1306.response.schema.json", outputDoc.as<JsonVariantConst>());
+
     std::unique_ptr<IJsonChunkProducer> layoutProducer = Ssd1306DeviceApiAdapter::instance().createLayoutJsonProducer(device, 1);
     TEST_ASSERT_NOT_NULL(layoutProducer.get());
     StringJsonChunkSink layoutSink;
@@ -513,6 +524,7 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     StaticJsonDocument<2048> createDoc;
     fillSsd1306DeviceDocument(createDoc, false);
     createDoc["config"]["deps"][0]["deviceId"] = busResult.deviceId;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-ssd1306.request.schema.json", createDoc.as<JsonVariantConst>());
     DeviceCreateRequest createRequest{};
     TEST_ASSERT_TRUE(Ssd1306DeviceApiAdapter::instance().parseCreateRequest(createDoc.as<JsonObjectConst>(), createRequest, error));
     TEST_ASSERT_NULL(error);
@@ -524,6 +536,7 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
 
     StaticJsonDocument<2048> updateDoc;
     fillSsd1306DeviceDocument(updateDoc, true);
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-ssd1306.request.schema.json", updateDoc.as<JsonVariantConst>());
     DeviceConfigUpdateRequest updateRequest{};
     TEST_ASSERT_TRUE(
         Ssd1306DeviceApiAdapter::instance().parseUpdateConfigRequest(updateDoc.as<JsonObjectConst>(), *runtime, updateRequest, error));
@@ -562,6 +575,11 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1),
                             reloadedRuntime->layout().pages[0].widgets[1].bitmapFormat);
     TEST_ASSERT_EQUAL_UINT8(4, reloadedRuntime->layout().pages[0].widgets[1].bitmapData.size());
+
+    StaticJsonDocument<512> outputDoc;
+    JsonObject output = outputDoc.to<JsonObject>();
+    Ssd1306DeviceApiAdapter::instance().writeDeviceJson(*reloadedRuntime, reloadedRuntime->status(), output);
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-ssd1306.response.schema.json", outputDoc.as<JsonVariantConst>());
 }
 
 void test_ssd1306_api_adapter_partial_update_preserves_bus_and_dimensions() {
@@ -622,6 +640,7 @@ void test_ssd1306_layout_create_request_accepts_empty_pages() {
     JsonObject layout = config.createNestedObject("layout");
     layout["activePageId"] = "main";
     layout.createNestedArray("pages");
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-ssd1306.request.schema.json", doc.as<JsonVariantConst>());
 
     DeviceCreateRequest request{};
     const char* error = nullptr;
@@ -646,6 +665,7 @@ void test_ssd1306_layout_create_request_keeps_text_placeholders() {
     fillSsd1306DeviceDocument(doc, true);
     JsonObject widget = doc["config"]["layout"]["pages"][0]["widgets"][0].as<JsonObject>();
     widget["text"] = "{{system.wifi.station_ip}} {{system.time}}";
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-ssd1306.request.schema.json", doc.as<JsonVariantConst>());
 
     DeviceCreateRequest request{};
     DeviceCreatePersistenceRequest persistedRequest{};

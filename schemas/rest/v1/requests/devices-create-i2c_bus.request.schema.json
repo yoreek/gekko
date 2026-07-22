@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-create-i2c_bus.request.schema.json",
+  "title": "Create i2c_bus request",
+  "type": "object",
+  "properties": {
+    "typeName": { "const": "i2c_bus" },
+    "config": { "$ref": "../devices/i2c_bus.config.schema.json" }
+  },
+  "required": ["typeName", "config"],
+  "additionalProperties": true
+}

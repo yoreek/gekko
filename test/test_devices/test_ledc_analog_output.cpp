@@ -1,3 +1,4 @@
+#include "JsonSchemaSmokeValidator.h"
 #include "config/MemoryConfigStorage.h"
 #include "devices/analog/ledc/LedcAnalogOutputDevice.h"
 #include "devices/analog/ledc/LedcAnalogOutputDeviceConfig.h"
@@ -6,14 +7,22 @@
 #include "devices/registry/DeviceRegistry.h"
 #include "devices/registry/DeviceRetainedDataStore.h"
 #include "integrations/common/DeviceApiAdapter.h"
+#include "integrations/rest/analog_output/LedcAnalogOutputDeviceApiAdapter.h"
 
+#include <ArduinoJson.h>
 #include <cstdio>
+#include <string>
 #include <unity.h>
 #include <vector>
 
 using namespace ewfm;
 
 namespace {
+
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
 
 LedcAnalogOutputDeviceConfigV1 makeConfig() {
     LedcAnalogOutputDeviceConfigV1 config{};
@@ -27,6 +36,20 @@ LedcAnalogOutputDeviceConfigV1 makeConfig() {
     config.dutyBits = 12U;
     config.inverted = false;
     return config;
+}
+
+DeviceConfigBlob encodeConfig(const LedcAnalogOutputDeviceConfigV1& config);
+
+void bindLedcIdentity(LedcAnalogOutputDevice& device, DeviceId deviceId) {
+    DeviceConfigBlob blob = encodeConfig(device.config());
+    DeviceRegistryEntry record{};
+    record.header.deviceId = deviceId;
+    record.header.typeId = LedcAnalogOutputDevice::descriptor().typeId;
+    record.header.configVersion = LedcAnalogOutputDevice::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(blob.size());
+    record.status = DeviceStatus::Ready;
+    device.bindDeviceIdentity(record, blob);
 }
 
 DeviceConfigBlob encodeConfig(const LedcAnalogOutputDeviceConfigV1& config) {
@@ -94,10 +117,12 @@ void test_ledc_analog_output_config_v1_round_trip_and_validation() {
     decoded.writeJson(json.to<JsonObject>());
     TEST_ASSERT_EQUAL_UINT8(25U, json["startupState"].as<uint8_t>());
     TEST_ASSERT_EQUAL_UINT8(0U, json["safeState"].as<uint8_t>());
+    assertMatchesJsonSchema("schemas/rest/v1/devices/ledc_analog_output.config.schema.json", json.as<JsonVariantConst>());
 }
 
 void test_ledc_analog_output_runtime_uses_single_state() {
     LedcAnalogOutputDevice device(makeConfig());
+    bindLedcIdentity(device, 9100);
     device.begin(10U);
     device.tickFastLoop(11U);
 
@@ -107,6 +132,11 @@ void test_ledc_analog_output_runtime_uses_single_state() {
     TEST_ASSERT_EQUAL_UINT16(percentToAnalogOutputState(75U), device.currentOutputState());
     TEST_ASSERT_TRUE(device.retainedStateDirty());
     TEST_ASSERT_FALSE(device.requestOutputState(static_cast<uint16_t>(kAnalogOutputLevelMax + 1U), 21U));
+
+    StaticJsonDocument<1024> outputDoc;
+    JsonObject output = outputDoc.to<JsonObject>();
+    LedcAnalogOutputDeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-ledc_analog_output.response.schema.json", outputDoc.as<JsonVariantConst>());
 }
 
 void test_analog_output_base_applies_inversion_and_safe_state() {
@@ -181,4 +211,20 @@ void test_ledc_analog_output_type_and_api_adapter_are_registered() {
     TEST_ASSERT_NOT_NULL(adapter);
     TEST_ASSERT_EQUAL_STRING("analog_output", adapter->typeName());
     TEST_ASSERT_EQUAL_PTR(adapter, adapters.findByName("analog_output"));
+}
+
+void test_ledc_analog_output_api_adapter_schema_smoke() {
+    StaticJsonDocument<512> createDoc;
+    createDoc["typeName"] = "analog_output";
+    JsonObject createConfig = createDoc.createNestedObject("config");
+    makeConfig().writeJson(createConfig);
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-ledc_analog_output.request.schema.json",
+                            createDoc.as<JsonVariantConst>());
+
+    StaticJsonDocument<256> updateDoc;
+    JsonObject updateConfig = updateDoc.createNestedObject("config");
+    updateConfig["startupState"] = 30;
+    updateConfig["pin"] = 12;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-ledc_analog_output.request.schema.json",
+                            updateDoc.as<JsonVariantConst>());
 }

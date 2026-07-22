@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/ledc_analog_output.config.schema.json",
+  "title": "ledc_analog_output configuration",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean", "default": true },
+    "restorePreviousState": { "type": "boolean", "default": false },
+    "startupState": { "type": "integer", "minimum": 0, "maximum": 100, "default": 0 },
+    "safeState": { "type": "integer", "minimum": 0, "maximum": 100, "default": 0 },
+    "inverted": { "type": "boolean", "default": false },
+    "pin": { "type": "integer", "minimum": 0, "maximum": 48, "default": 255 },
+    "ledcChannel": { "type": "integer", "minimum": 0, "maximum": 15, "default": 0 },
+    "frequencyHz": { "type": "integer", "minimum": 1, "maximum": 1000000, "default": 5000 },
+    "dutyBits": { "type": "integer", "minimum": 1, "maximum": 20, "default": 12 }
+  },
+  "required": ["name"],
+  "additionalProperties": true
+}

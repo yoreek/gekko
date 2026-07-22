@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/i2c_bus.config.schema.json",
+  "title": "i2c_bus configuration",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean", "default": true },
+    "sdaPin": { "type": "integer", "minimum": 0, "maximum": 255, "default": 21 },
+    "sclPin": { "type": "integer", "minimum": 0, "maximum": 255, "default": 22 },
+    "internalPullup": { "type": "boolean", "default": true },
+    "frequencyHz": { "type": "integer", "minimum": 1000, "maximum": 400000, "default": 100000 }
+  },
+  "required": ["name"],
+  "additionalProperties": true
+}

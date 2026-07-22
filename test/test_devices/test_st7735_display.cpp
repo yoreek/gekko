@@ -1,3 +1,4 @@
+#include "JsonSchemaSmokeValidator.h"
 #include "config/MemoryConfigStorage.h"
 #include "devices/bus/spi/SpiBusConfig.h"
 #include "devices/bus/spi/SpiBusDevice.h"
@@ -22,6 +23,11 @@
 using namespace ewfm;
 
 namespace {
+
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
 
 St7735DeviceConfigV4 makeConfig(uint32_t spiBusDeviceId = 12, uint8_t chipSelectPin = 5, uint8_t dcPin = 2, int8_t resetPin = -1,
                                 uint8_t rotation = 1U, uint16_t width = 128, uint16_t height = 160) {
@@ -323,6 +329,7 @@ void test_st7735_api_adapter_partial_update_preserves_bus_and_pins() {
     // Decoy value: the spi bus link is authoritatively taken from the runtime's current
     // dependency (12), never from this config-body field, even though it is present in the JSON.
     updateConfig["spiBusDeviceId"] = 99;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-st7735.request.schema.json", doc.as<JsonVariantConst>());
 
     DeviceConfigUpdateRequest request{};
     const char* error = nullptr;
@@ -416,6 +423,7 @@ void test_st7735_update_round_trip_includes_layout() {
 
     StaticJsonDocument<1024> createDoc;
     fillDisplayDocument(createDoc, busResult.deviceId, 5U, false);
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-st7735.request.schema.json", createDoc.as<JsonVariantConst>());
     DeviceCreateRequest createRequest{};
     TEST_ASSERT_TRUE(St7735DeviceApiAdapter::instance().parseCreateRequest(createDoc.as<JsonObjectConst>(), createRequest, error));
     TEST_ASSERT_NULL(error);
@@ -427,6 +435,7 @@ void test_st7735_update_round_trip_includes_layout() {
 
     StaticJsonDocument<1024> updateDoc;
     fillDisplayDocument(updateDoc, busResult.deviceId, 5U, true);
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-st7735.request.schema.json", updateDoc.as<JsonVariantConst>());
     DeviceConfigUpdateRequest updateRequest{};
     TEST_ASSERT_TRUE(
         St7735DeviceApiAdapter::instance().parseUpdateConfigRequest(updateDoc.as<JsonObjectConst>(), *runtime, updateRequest, error));
@@ -460,6 +469,7 @@ void test_st7735_update_round_trip_includes_layout() {
     StaticJsonDocument<2048> outputDoc;
     JsonObject output = outputDoc.to<JsonObject>();
     St7735DeviceApiAdapter::instance().writeDeviceJson(*reloadedRuntime, reloadedRuntime->status(), output);
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-st7735.response.schema.json", outputDoc.as<JsonVariantConst>());
     TEST_ASSERT_EQUAL_UINT16(128U, output["config"]["width"].as<uint16_t>());
     TEST_ASSERT_EQUAL_UINT16(160U, output["config"]["height"].as<uint16_t>());
     TEST_ASSERT_EQUAL_UINT8(2U, output["config"]["dcPin"].as<uint8_t>());

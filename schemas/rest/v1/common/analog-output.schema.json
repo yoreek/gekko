@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/common/analog-output.schema.json",
+  "title": "Analog output base configuration",
+  "type": "object",
+  "properties": {
+    "restorePreviousState": { "type": "boolean", "default": false },
+    "startupState": { "type": "integer", "minimum": 0, "maximum": 100, "default": 0 },
+    "safeState": { "type": "integer", "minimum": 0, "maximum": 100, "default": 0 },
+    "inverted": { "type": "boolean", "default": false }
+  },
+  "additionalProperties": true
+}

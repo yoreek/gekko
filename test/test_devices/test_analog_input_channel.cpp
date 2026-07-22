@@ -1,3 +1,4 @@
+#include "JsonSchemaSmokeValidator.h"
 #include "config/MemoryConfigStorage.h"
 #include "devices/analog/input/ads1115/Ads1115HubDevice.h"
 #include "devices/analog/input/cd74hc4067/Cd74hc4067HubDevice.h"
@@ -8,13 +9,20 @@
 #include "integrations/common/DeviceApiAdapter.h"
 #include "integrations/rest/analog_input/AnalogInputChannelDeviceApiAdapter.h"
 
+#include <ArduinoJson.h>
 #include <cstdio>
+#include <string>
 #include <unity.h>
 #include <vector>
 
 using namespace ewfm;
 
 namespace {
+
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
 
 class FakeAds1115I2cDriver final : public II2cBusDriver {
 public:
@@ -155,6 +163,32 @@ AnalogInputChannelDeviceConfigV1 makeChannelConfig(uint8_t channel = 3) {
     return config;
 }
 
+BoundedBlob<kMaxDeviceConfigBytes> encodeChannelPayload(const AnalogInputChannelDeviceConfigV1& config);
+
+void writeChannelConfigDoc(StaticJsonDocument<512>& doc, const AnalogInputChannelDeviceConfigV1& config, DeviceId hubId) {
+    doc.clear();
+    doc["typeName"] = "analog_input_channel";
+    JsonObject configJson = doc.createNestedObject("config");
+    config.writeJson(configJson);
+    JsonArray deps = configJson.createNestedArray("deps");
+    JsonObject dependency = deps.createNestedObject();
+    dependency["role"] = "analog_input_hub";
+    dependency["deviceId"] = hubId;
+}
+
+void bindLeafIdentity(AnalogInputChannelDevice& leaf, DeviceId leafId, DeviceId hubId) {
+    DeviceRegistryEntry record{};
+    record.header.deviceId = leafId;
+    record.header.typeId = AnalogInputChannelDevice::descriptor().typeId;
+    record.header.configVersion = AnalogInputChannelDevice::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(encodeChannelPayload(leaf.config()).size());
+    record.depCount = 1U;
+    record.deps[0] = {DeviceRole::AnalogInputHub, hubId, false};
+    record.status = DeviceStatus::Ready;
+    leaf.bindDeviceIdentity(record, encodeChannelPayload(leaf.config()));
+}
+
 BoundedBlob<kMaxDeviceConfigBytes> encodeChannelPayload(const AnalogInputChannelDeviceConfigV1& config) {
     BoundedBlob<kMaxDeviceConfigBytes> payload{};
     uint8_t buffer[kMaxDeviceConfigBytes]{};
@@ -250,6 +284,10 @@ void test_analog_input_channel_config_rejects_invalid_fields() {
 
     AnalogInputChannelDeviceConfigV1 good = makeChannelConfig();
     TEST_ASSERT_TRUE_MESSAGE(good.validate().ok(), good.validate().message);
+
+    StaticJsonDocument<512> doc;
+    writeChannelConfigDoc(doc, good, 5001);
+    assertMatchesJsonSchema("schemas/rest/v1/devices/analog_input_channel.config.schema.json", doc["config"].as<JsonVariantConst>());
 }
 
 void test_analog_input_channel_type_and_api_adapter_are_registered() {
@@ -280,6 +318,7 @@ void test_analog_input_channel_reads_through_ads1115_hub_and_averages_samples() 
 
     AnalogInputChannelDevice leaf(makeChannelConfig(1));
     bindDependency(leaf, 7002, hub.deviceId());
+    bindLeafIdentity(leaf, 7002, hub.deviceId());
     leaf.setDependencyRuntime(DeviceRole::AnalogInputHub, &hub);
 
     driveUntilReading(leaf, hub, 20, 200U);
@@ -287,6 +326,12 @@ void test_analog_input_channel_reads_through_ads1115_hub_and_averages_samples() 
     TEST_ASSERT_TRUE(leaf.reading().valid);
     TEST_ASSERT_EQUAL_INT32(1024, leaf.reading().milliVolts);
     TEST_ASSERT_EQUAL_STRING("ok", leaf.outputStatus());
+
+    StaticJsonDocument<1024> outputDoc;
+    JsonObject output = outputDoc.to<JsonObject>();
+    AnalogInputChannelDeviceApiAdapter::instance().writeDeviceJson(leaf, leaf.status(), output);
+    assertMatchesJsonSchema("schemas/rest/v1/responses/devices-analog_input_channel.response.schema.json",
+                            outputDoc.as<JsonVariantConst>());
 }
 
 void test_analog_input_channel_reads_through_cd74hc4067_hub_and_averages_samples() {
@@ -298,6 +343,7 @@ void test_analog_input_channel_reads_through_cd74hc4067_hub_and_averages_samples
 
     AnalogInputChannelDevice leaf(makeChannelConfig(3));
     bindDependency(leaf, 9001, 9000);
+    bindLeafIdentity(leaf, 9001, 9000);
     leaf.setDependencyRuntime(DeviceRole::AnalogInputHub, &hub);
 
     driveUntilReading(leaf, hub, 20, 40U);
@@ -334,6 +380,7 @@ void test_analog_input_channel_disabling_mid_request_frees_the_hub_for_other_req
 
     AnalogInputChannelDevice leaf(makeChannelConfig(2));
     bindDependency(leaf, 9101, 9100);
+    bindLeafIdentity(leaf, 9101, 9100);
     leaf.setDependencyRuntime(DeviceRole::AnalogInputHub, &hub);
 
     // Idle -> Starting -> Sampling's first pollChannelReading call, which switches the mux lines
@@ -355,6 +402,22 @@ void test_analog_input_channel_disabling_mid_request_frees_the_hub_for_other_req
     // The hub must be free again for a different requester now that the leaf released its claim.
     TEST_ASSERT_NOT_EQUAL(static_cast<int>(AnalogInputHubPollResult::Busy),
                           static_cast<int>(hub.pollChannelReading(9, 5555, 35, probe, probeStatus)));
+}
+
+void test_analog_input_channel_api_adapter_schema_smoke() {
+    StaticJsonDocument<512> createDoc;
+    writeChannelConfigDoc(createDoc, makeChannelConfig(4), 7000);
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-analog_input_channel.request.schema.json",
+                            createDoc.as<JsonVariantConst>());
+
+    StaticJsonDocument<512> updateDoc;
+    updateDoc["deps"] = updateDoc.createNestedArray("deps");
+    JsonObject config = updateDoc.createNestedObject("config");
+    config["channel"] = 4;
+    config["adcSamples"] = 2;
+    config["pollMs"] = 200;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-analog_input_channel.request.schema.json",
+                            updateDoc.as<JsonVariantConst>());
 }
 
 void test_analog_input_channel_registry_rejects_duplicate_channel_on_same_hub_but_allows_distinct_channels() {
