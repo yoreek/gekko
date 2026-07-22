@@ -9,7 +9,8 @@
 namespace ewfm {
 
 #pragma pack(push, 1)
-struct St7735DeviceConfigV1 : DeviceBaseConfigV1 {
+// Legacy persisted layouts (V1-V3): kept only so old blobs can be decoded and migrated to V4.
+struct [[deprecated("legacy persisted ST7735 config; decode/migration only")]] St7735DeviceConfigV1 : DeviceBaseConfigV1 {
     static constexpr char kMagic[] = "STV1";
     uint32_t spiBusDeviceId{0};
     uint8_t chipSelectPin{5};
@@ -17,7 +18,7 @@ struct St7735DeviceConfigV1 : DeviceBaseConfigV1 {
     uint16_t layoutHeight{160};
 };
 
-struct St7735DeviceConfigV2 : DeviceBaseConfigV1 {
+struct [[deprecated("legacy persisted ST7735 config; decode/migration only")]] St7735DeviceConfigV2 : DeviceBaseConfigV1 {
     static constexpr char kMagic[] = "STV2";
     uint32_t spiBusDeviceId{0};
     uint8_t chipSelectPin{5};
@@ -27,7 +28,7 @@ struct St7735DeviceConfigV2 : DeviceBaseConfigV1 {
     uint16_t layoutHeight{160};
 };
 
-struct St7735DeviceConfigV3 : DeviceBaseConfigV1 {
+struct [[deprecated("legacy persisted ST7735 config; decode/migration only")]] St7735DeviceConfigV3 : DeviceBaseConfigV1 {
     static constexpr char kMagic[] = "STV3";
     uint32_t spiBusDeviceId{0};
     uint8_t chipSelectPin{5};
@@ -50,12 +51,15 @@ struct St7735DeviceConfigV4 : DeviceBaseConfigV1 {
     bool parseJson(const JsonObjectConst& input, const char*& error);
     DeviceValidationResult validate() const;
     void writeJson(JsonObject output) const;
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     void migrateFrom(const St7735DeviceConfigV1& origState);
     void migrateFrom(const St7735DeviceConfigV2& origState);
     void migrateFrom(const St7735DeviceConfigV3& origState);
+    EWFM_LEGACY_CONFIG_USE_END
 };
 #pragma pack(pop)
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 constexpr size_t st7735DeviceConfigV1Size() {
     return sizeof(St7735DeviceConfigV1::kMagic) - 1U + sizeof(St7735DeviceConfigV1);
 }
@@ -67,6 +71,7 @@ constexpr size_t st7735DeviceConfigV2Size() {
 constexpr size_t st7735DeviceConfigSize(const St7735DeviceConfigV3&) {
     return sizeof(St7735DeviceConfigV3::kMagic) - 1U + sizeof(St7735DeviceConfigV3);
 }
+EWFM_LEGACY_CONFIG_USE_END
 
 constexpr size_t st7735DeviceConfigSize(const St7735DeviceConfigV4&) {
     return sizeof(St7735DeviceConfigV4::kMagic) - 1U + sizeof(St7735DeviceConfigV4);

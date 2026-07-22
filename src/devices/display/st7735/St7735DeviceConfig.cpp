@@ -8,6 +8,7 @@
 namespace ewfm {
 
 namespace {
+EWFM_LEGACY_CONFIG_USE_BEGIN
 DeviceValidationResult validateSt7735DeviceConfigV1(const St7735DeviceConfigV1& config) {
     const DeviceValidationResult baseValidation = config.DeviceBaseConfigV1::validate();
     if (!baseValidation.ok()) {
@@ -49,8 +50,10 @@ DeviceValidationResult validateSt7735DeviceConfigV3(const St7735DeviceConfigV3& 
     }
     return {};
 }
+EWFM_LEGACY_CONFIG_USE_END
 } // namespace
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 static_assert(std::is_trivially_copyable<St7735DeviceConfigV1>::value, "St7735DeviceConfigV1 must be POD");
 static_assert(sizeof(St7735DeviceConfigV1::kMagic) - 1U + sizeof(St7735DeviceConfigV1) == st7735DeviceConfigV1Size(),
               "St7735DeviceConfigV1 size mismatch");
@@ -60,6 +63,7 @@ static_assert(sizeof(St7735DeviceConfigV2::kMagic) - 1U + sizeof(St7735DeviceCon
 static_assert(std::is_trivially_copyable<St7735DeviceConfigV3>::value, "St7735DeviceConfigV3 must be POD");
 static_assert(sizeof(St7735DeviceConfigV3::kMagic) - 1U + sizeof(St7735DeviceConfigV3) <= kMaxDeviceConfigBytes,
               "St7735DeviceConfigV3 exceeds device config bound");
+EWFM_LEGACY_CONFIG_USE_END
 static_assert(std::is_trivially_copyable<St7735DeviceConfigV4>::value, "St7735DeviceConfigV4 must be POD");
 static_assert(sizeof(St7735DeviceConfigV4::kMagic) - 1U + sizeof(St7735DeviceConfigV4) <= kMaxDeviceConfigBytes,
               "St7735DeviceConfigV4 exceeds device config bound");
@@ -68,6 +72,7 @@ bool decodeSt7735DeviceConfig(const uint8_t* blob, size_t size, St7735DeviceConf
     if (decodeFixedConfigBlob(St7735DeviceConfigV4::kMagic, blob, size, config) && config.validate().ok()) {
         return true;
     }
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     St7735DeviceConfigV3 legacyV3{};
     if (decodeFixedConfigBlob(St7735DeviceConfigV3::kMagic, blob, size, legacyV3) && validateSt7735DeviceConfigV3(legacyV3).ok()) {
         config.migrateFrom(legacyV3);
@@ -83,9 +88,11 @@ bool decodeSt7735DeviceConfig(const uint8_t* blob, size_t size, St7735DeviceConf
         config.migrateFrom(v1);
         return config.validate().ok();
     }
+    EWFM_LEGACY_CONFIG_USE_END
     return false;
 }
 
+EWFM_LEGACY_CONFIG_USE_BEGIN
 void St7735DeviceConfigV4::migrateFrom(const St7735DeviceConfigV1& origState) {
     enabled = origState.enabled;
     std::memcpy(name, origState.name, sizeof(name));
@@ -121,6 +128,7 @@ void St7735DeviceConfigV4::migrateFrom(const St7735DeviceConfigV3& origState) {
     width = origState.width;
     height = origState.height;
 }
+EWFM_LEGACY_CONFIG_USE_END
 
 bool St7735DeviceConfigV4::parseJson(const JsonObjectConst& input, const char*& error) {
     if (!DeviceBaseConfigV1::parseJson(input, error)) {

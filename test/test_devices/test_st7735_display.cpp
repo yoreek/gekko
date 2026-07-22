@@ -116,6 +116,7 @@ void test_st7735_config_codec_round_trip() {
 
 void test_st7735_config_codec_accepts_legacy_blob() {
     const St7735DeviceConfigV4 config = makeConfig();
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     St7735DeviceConfigV3 legacyV3{};
     legacyV3.enabled = config.enabled;
     std::memcpy(legacyV3.name, config.name, sizeof(legacyV3.name));
@@ -128,11 +129,13 @@ void test_st7735_config_codec_accepts_legacy_blob() {
     uint8_t legacyV3Buffer[kMaxDeviceConfigBytes]{};
     const size_t legacyV3Size = sizeof(St7735DeviceConfigV3::kMagic) - 1U + sizeof(St7735DeviceConfigV3);
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV3::kMagic, legacyV3, legacyV3Buffer, legacyV3Size));
+    EWFM_LEGACY_CONFIG_USE_END
 
     St7735DeviceConfigV4 decodedV3{};
     TEST_ASSERT_TRUE(decodeSt7735DeviceConfig(legacyV3Buffer, legacyV3Size, decodedV3));
     TEST_ASSERT_EQUAL_UINT8(0U, decodedV3.rotation);
 
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     St7735DeviceConfigV1 legacy{};
     legacy.enabled = config.enabled;
     std::memcpy(legacy.name, config.name, sizeof(legacy.name));
@@ -143,6 +146,7 @@ void test_st7735_config_codec_accepts_legacy_blob() {
 
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV1::kMagic, legacy, buffer, st7735DeviceConfigV1Size()));
+    EWFM_LEGACY_CONFIG_USE_END
 
     St7735DeviceConfigV4 decoded{};
     TEST_ASSERT_TRUE(decodeSt7735DeviceConfig(buffer, st7735DeviceConfigV1Size(), decoded));
@@ -157,6 +161,7 @@ void test_st7735_config_codec_accepts_legacy_blob() {
 
 void test_st7735_config_codec_migrates_v2_blob() {
     const St7735DeviceConfigV4 config = makeConfig(12, 5, 4, 3, 1U, 128, 160);
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     St7735DeviceConfigV2 legacy{};
     legacy.enabled = config.enabled;
     std::memcpy(legacy.name, config.name, sizeof(legacy.name));
@@ -169,6 +174,7 @@ void test_st7735_config_codec_migrates_v2_blob() {
 
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV2::kMagic, legacy, buffer, st7735DeviceConfigV2Size()));
+    EWFM_LEGACY_CONFIG_USE_END
 
     St7735DeviceConfigV4 decoded{};
     TEST_ASSERT_TRUE(decodeSt7735DeviceConfig(buffer, st7735DeviceConfigV2Size(), decoded));
@@ -232,6 +238,7 @@ void test_st7735_registry_migrates_legacy_blob_on_begin() {
 
     St7735DeviceConfigV4 legacyDisplayConfig = makeConfig(spiRecord.header.deviceId);
     uint8_t legacyBuffer[kMaxDeviceConfigBytes]{};
+    EWFM_LEGACY_CONFIG_USE_BEGIN
     St7735DeviceConfigV1 legacy{};
     legacy.enabled = legacyDisplayConfig.enabled;
     std::memcpy(legacy.name, legacyDisplayConfig.name, sizeof(legacy.name));
@@ -240,6 +247,7 @@ void test_st7735_registry_migrates_legacy_blob_on_begin() {
     legacy.layoutWidth = legacyDisplayConfig.width;
     legacy.layoutHeight = legacyDisplayConfig.height;
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV1::kMagic, legacy, legacyBuffer, st7735DeviceConfigV1Size()));
+    EWFM_LEGACY_CONFIG_USE_END
 
     DeviceRegistryEntry displayRecord{};
     displayRecord.header.recordVersion = kDeviceRecordHeaderVersion;
