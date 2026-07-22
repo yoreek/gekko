@@ -1113,6 +1113,31 @@ void test_ledc_analog_output_api_adapter_parses_single_output_config() {
     TEST_ASSERT_TRUE(parsed.restorePreviousState);
 }
 
+void test_ledc_analog_output_api_adapter_schema_smoke() {
+    StaticJsonDocument<512> createDoc;
+    createDoc["typeName"] = "analog_output";
+    JsonObject createConfig = createDoc.createNestedObject("config");
+    createConfig["name"] = "dimmable output";
+    createConfig["enabled"] = true;
+    createConfig["restorePreviousState"] = true;
+    createConfig["startupState"] = 35;
+    createConfig["safeState"] = 10;
+    createConfig["pin"] = 13;
+    createConfig["ledcChannel"] = 2;
+    createConfig["frequencyHz"] = 5000;
+    createConfig["dutyBits"] = 12;
+    createConfig["inverted"] = false;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-ledc_analog_output.request.schema.json",
+                            createDoc.as<JsonVariantConst>());
+
+    StaticJsonDocument<256> updateDoc;
+    JsonObject updateConfig = updateDoc.createNestedObject("config");
+    updateConfig["startupState"] = 40;
+    updateConfig["pin"] = 12;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/devices-update-ledc_analog_output.request.schema.json",
+                            updateDoc.as<JsonVariantConst>());
+}
+
 void test_analog_output_composer_api_adapter_parses_create_request() {
     StaticJsonDocument<512> doc;
     doc["typeName"] = "analog_output_composer";

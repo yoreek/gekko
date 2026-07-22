@@ -1,3 +1,4 @@
+#include "../test_devices/JsonSchemaSmokeValidator.h"
 #include "config/MemoryConfigStorage.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/dummy/DummyDevice.h"
@@ -10,6 +11,11 @@
 using namespace ewfm;
 
 namespace {
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
+
 struct FixedDeviceIdSource final : public IDeviceIdSource {
     explicit FixedDeviceIdSource(std::initializer_list<DeviceId> ids) : ids_(ids) {}
 
@@ -203,9 +209,30 @@ void test_dashboard_layout_save_json_rejects_invalid_shape_and_schema() {
     DynamicJsonDocument roundTripDoc(512);
     JsonObject roundTripRoot = roundTripDoc.to<JsonObject>();
     store.writeLayoutJson(roundTripRoot, compactResult.layout);
+    assertMatchesJsonSchema("schemas/rest/v1/common/dashboard-layout.schema.json", roundTripDoc.as<JsonVariantConst>());
     TEST_ASSERT_TRUE(roundTripRoot["panels"][0]["widgets"][0].is<JsonArrayConst>());
     TEST_ASSERT_EQUAL_UINT32(101, roundTripRoot["panels"][0]["widgets"][0][0].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(1, roundTripRoot["panels"][0]["widgets"][0][3].as<uint32_t>());
+
+    DynamicJsonDocument responseDoc(1024);
+    JsonObject responseRoot = responseDoc.to<JsonObject>();
+    responseRoot["success"] = true;
+    responseRoot["revision"] = 7;
+    responseRoot["layoutDefaulted"] = false;
+    JsonObject responseLayout = responseRoot.createNestedObject("layout");
+    store.writeLayoutJson(responseLayout, compactResult.layout);
+    assertMatchesJsonSchema("schemas/rest/v1/responses/dashboard-layout.response.schema.json", responseDoc.as<JsonVariantConst>());
+
+    DynamicJsonDocument wrappedPutDoc(1024);
+    JsonObject wrappedPutRoot = wrappedPutDoc.to<JsonObject>();
+    JsonObject wrappedLayout = wrappedPutRoot.createNestedObject("layout");
+    store.writeLayoutJson(wrappedLayout, compactResult.layout);
+    assertMatchesJsonSchema("schemas/rest/v1/requests/dashboard-layout.request.schema.json", wrappedPutDoc.as<JsonVariantConst>());
+
+    DynamicJsonDocument rawPutDoc(1024);
+    JsonObject rawPutRoot = rawPutDoc.to<JsonObject>();
+    store.writeLayoutJson(rawPutRoot, compactResult.layout);
+    assertMatchesJsonSchema("schemas/rest/v1/requests/dashboard-layout.request.schema.json", rawPutDoc.as<JsonVariantConst>());
 }
 
 void test_dashboard_layout_prunes_stale_registry_devices() {

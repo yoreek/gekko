@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/dashboard-layout.response.schema.json",
+  "title": "Dashboard layout response",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "revision": { "type": "integer", "minimum": 0 },
+    "layoutDefaulted": { "type": "boolean" },
+    "layout": { "$ref": "../common/dashboard-layout.schema.json" }
+  },
+  "required": ["success", "revision", "layout", "layoutDefaulted"],
+  "additionalProperties": false
+}

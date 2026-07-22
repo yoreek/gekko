@@ -21,6 +21,8 @@ void test_fake_esp_async_web_server_header_is_available();
 void test_system_status_format_maps_reset_reasons();
 void test_system_status_format_maps_partition_types();
 void test_system_status_format_maps_partition_subtypes();
+void test_system_status_response_schema_smoke();
+void test_wifi_status_response_schema_smoke();
 void test_ws_message_builders_create_compact_envelopes();
 void test_ws_manager_attaches_and_detaches_from_dispatcher();
 void test_ws_manager_receives_device_events_when_attached();
@@ -54,6 +56,8 @@ int main(int, char**) {
     RUN_TEST(test_system_status_format_maps_reset_reasons);
     RUN_TEST(test_system_status_format_maps_partition_types);
     RUN_TEST(test_system_status_format_maps_partition_subtypes);
+    RUN_TEST(test_system_status_response_schema_smoke);
+    RUN_TEST(test_wifi_status_response_schema_smoke);
     RUN_TEST(test_ws_message_builders_create_compact_envelopes);
     RUN_TEST(test_ws_manager_attaches_and_detaches_from_dispatcher);
     RUN_TEST(test_ws_manager_receives_device_events_when_attached);

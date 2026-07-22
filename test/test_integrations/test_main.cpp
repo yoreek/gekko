@@ -15,6 +15,7 @@ void test_onewire_api_adapter_partial_update_preserves_internal_pullup();
 void test_onewire_api_adapter_rejects_missing_update_config();
 void test_ssd1306_device_api_adapter_encodes_layout_update_payload();
 void test_ledc_analog_output_api_adapter_parses_single_output_config();
+void test_ledc_analog_output_api_adapter_schema_smoke();
 void test_analog_output_composer_api_adapter_parses_create_request();
 void test_analog_output_composer_api_adapter_partial_update_preserves_deps();
 void test_analog_output_composer_api_adapter_serializes_record();
@@ -164,6 +165,7 @@ int main(int, char**) {
     RUN_TEST(test_onewire_api_adapter_rejects_missing_update_config);
     RUN_TEST(test_ssd1306_device_api_adapter_encodes_layout_update_payload);
     RUN_TEST(test_ledc_analog_output_api_adapter_parses_single_output_config);
+    RUN_TEST(test_ledc_analog_output_api_adapter_schema_smoke);
     RUN_TEST(test_analog_output_composer_api_adapter_parses_create_request);
     RUN_TEST(test_analog_output_composer_api_adapter_partial_update_preserves_deps);
     RUN_TEST(test_analog_output_composer_api_adapter_serializes_record);

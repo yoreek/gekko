@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/wifi-status.response.schema.json",
+  "title": "WiFi status response",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "wifiStatus": {
+      "enum": ["connected", "connecting", "disconnected", "failed", "idle", "ble_config"]
+    },
+    "stationIp": { "type": "string" },
+    "setupApIp": { "type": "string" }
+  },
+  "required": ["success", "wifiStatus", "stationIp", "setupApIp"],
+  "additionalProperties": false
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/common/dashboard-layout.schema.json",
+  "title": "Dashboard layout",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "active_panel_id": { "type": "string", "minLength": 1 },
+    "panels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "order": { "type": "integer", "minimum": 0, "maximum": 255 },
+          "widgets": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "prefixItems": [
+                { "type": "integer", "minimum": 0 },
+                { "type": "integer", "minimum": 0 },
+                { "type": "integer", "minimum": 0 },
+                { "type": "integer", "minimum": 1 },
+                { "type": "integer", "minimum": 1 }
+              ],
+              "minItems": 5,
+              "maxItems": 5
+            }
+          }
+        },
+        "required": ["id", "name", "order", "widgets"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["schema_version", "active_panel_id", "panels"],
+  "additionalProperties": false
+}

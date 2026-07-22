@@ -63,3 +63,33 @@ blob-module import; the command allow-list + confirmation policy.
 
 ### Originally raised, then set aside
 - Universal/multi-protocol devices and no-recompile plugins — judged low-value earlier; not pursued.
+
+## REST schema coverage gaps
+
+These API groups still do not have dedicated `schemas/rest/v1` coverage yet:
+
+- `GET /api/dosejournal`
+- `GET /api/devices/:id/layout` endpoint schema
+- `GET /api/wifi/status`
+- `GET /api/wifi/scan`
+- `POST /api/wifi/configure`
+- `DELETE /api/wifi/configure`
+- `POST /api/wifi/ble-config`
+- `GET /api/dashboard/layout`
+- `PUT /api/dashboard/layout`
+- `GET /api/ota/status`
+- `POST /api/ota`
+- `GET /api/mqtt/status`
+- `GET /api/mqtt/settings`
+- `PUT /api/mqtt/settings`
+- `POST /api/mqtt/ca-cert`
+- `DELETE /api/mqtt/ca-cert`
+- `POST /api/system/restart`
+- `GET /api/system/version`
+- `GET /api/system/status`
+- `GET /api/system/time`
+- `POST /api/system/time`
+- `GET /api/system/time/settings`
+- `PUT /api/system/time/settings`
+- `GET /api/device-setup/export`
+- `POST /api/device-setup/import`

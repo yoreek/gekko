@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/system-status.response.schema.json",
+  "title": "System status response",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "chip": {
+      "type": "object",
+      "properties": {
+        "model": { "type": "string", "minLength": 1 },
+        "revision": { "type": "integer", "minimum": 0 },
+        "cores": { "type": "integer", "minimum": 1 },
+        "cpuFreqMhz": { "type": "integer", "minimum": 1 },
+        "flashSizeBytes": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["model", "revision", "cores", "cpuFreqMhz", "flashSizeBytes"],
+      "additionalProperties": false
+    },
+    "uptimeSeconds": { "type": "integer", "minimum": 0 },
+    "resetReason": { "type": "string", "minLength": 1 },
+    "heap": {
+      "type": "object",
+      "properties": {
+        "totalBytes": { "type": "integer", "minimum": 0 },
+        "freeBytes": { "type": "integer", "minimum": 0 },
+        "minFreeBytes": { "type": "integer", "minimum": 0 },
+        "maxAllocBytes": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["totalBytes", "freeBytes", "minFreeBytes", "maxAllocBytes"],
+      "additionalProperties": false
+    },
+    "sketch": {
+      "type": "object",
+      "properties": {
+        "usedBytes": { "type": "integer", "minimum": 0 },
+        "partitionBytes": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["usedBytes", "partitionBytes"],
+      "additionalProperties": false
+    },
+    "partitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string", "minLength": 1 },
+          "type": { "type": "string", "minLength": 1 },
+          "subtype": { "type": "string", "minLength": 1 },
+          "offset": { "type": "integer", "minimum": 0 },
+          "sizeBytes": { "type": "integer", "minimum": 0 }
+        },
+        "required": ["label", "type", "subtype", "offset", "sizeBytes"],
+        "additionalProperties": false
+      }
+    },
+    "filesystems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string", "minLength": 1 },
+          "mounted": { "type": "boolean" },
+          "totalBytes": { "type": "integer", "minimum": 0 },
+          "usedBytes": { "type": "integer", "minimum": 0 }
+        },
+        "required": ["label", "mounted", "totalBytes", "usedBytes"],
+        "additionalProperties": false
+      }
+    },
+    "nvs": {
+      "type": "object",
+      "properties": {
+        "usedEntries": { "type": "integer", "minimum": 0 },
+        "freeEntries": { "type": "integer", "minimum": 0 },
+        "totalEntries": { "type": "integer", "minimum": 0 },
+        "namespaceCount": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["usedEntries", "freeEntries", "totalEntries", "namespaceCount"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["success", "chip", "uptimeSeconds", "resetReason", "heap", "sketch", "partitions", "filesystems", "nvs"],
+  "additionalProperties": false
+}
