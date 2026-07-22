@@ -95,6 +95,7 @@ Vue 3 + Vuetify 4 SPA. Uses `pnpm`. State is managed with Pinia. Real-time updat
 - `docs/device-config-versioning.md` — binary config migration rules (mandatory read before touching versioned structs)
 - `docs/rest-api-contract.md` — canonical REST contract; `portal-spa/src/api/contracts.ts` is the TypeScript mirror
 - `docs/device-model-structures.md` — C++ and TypeScript model hierarchy
+- `docs/device-scaffolding.md` — checklist of every touchpoint when adding a device type; manifest/field-kind codegen proposal + `tools/devicegen/` consistency check
 - `docs/state-machine-rules.md` — cooperative state machine patterns
 - `docs/controller-ruleschain.md` — HTTP controller and hook pattern
 - `docs/device-registry-persistence.md` — NVS storage layout and commit order

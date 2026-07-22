@@ -1,0 +1,29 @@
+# Пилот-манифест устройства. Один файл описывает field-слой типа; всё
+# нетривиальное (валидация пина, Vue, работа с железом) помечается как
+# handwritten/custom и генератором не трогается.
+typeName: gpio_switch
+typeId: 2
+configVersion: 3
+label: device.type.gpioSwitch
+icon: power
+
+# Базовый набор полей приходит от switch/output-базы (SwitchDeviceConfigV2 /
+# SwitchConfigDraft). Генератор эмитит только delta — собственные поля.
+extends: switch
+
+roles:
+  provides: [switch, condition]
+
+fields:
+  - name: gpioPin
+    type: u8
+    default: 2
+    # НЕ min/max: реальная проверка — gpioSwitchPinIsValid (flash-пины, max-пин).
+    # Аварийный люк: генерённый parseJson зовёт ручной хук, тело пишем сами.
+    validate: custom
+
+ui:
+  fields: handwritten     # GpioSwitchFields.vue — пикер пина со своими правилами
+  widget: handwritten     # GpioSwitchWidget.vue
+
+runtime: handwritten      # драйвер GPIO, тики

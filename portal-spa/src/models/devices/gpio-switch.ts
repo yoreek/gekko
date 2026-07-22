@@ -30,7 +30,7 @@ export class GpioSwitchDevice extends BaseDevice<GpioSwitchConfigDraft, GpioSwit
       startupState: false,
       safeState: false,
       inverted: false,
-      gpioPin: 4,
+      gpioPin: 2,
     }
   }
 

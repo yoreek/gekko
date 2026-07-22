@@ -6,6 +6,10 @@ cd "$ROOT_DIR"
 
 "$ROOT_DIR/scripts/lint.sh"
 
+# Device-type registry consistency: every type wired into REST adapter registration,
+# a TS model, the UI registry, and a mock seed. See docs/device-scaffolding.md.
+python3 "$ROOT_DIR/tools/devicegen/check_registry.py" "$ROOT_DIR"
+
 # `pio test` does not run platformio.ini's extra_scripts (unlike `pio run`), so
 # generated/Version.h would be missing on a fresh checkout without this.
 python3 "$ROOT_DIR/scripts/generate_version_header.py"
