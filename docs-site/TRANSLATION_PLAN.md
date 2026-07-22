@@ -60,6 +60,11 @@ This file tracks the translation workflow for `docs-site/`.
 - [x] French: `assets/diagrams/fr/sensor-display-flow.svg`
 - [x] French: `assets/diagrams/fr/sensor-display-oled-preview.svg`
 - [x] French: `assets/screenshots/fr/sensor-display-placeholder-builder.svg`
+- [x] Italian: `projects/sensor-display.md`
+- [x] Italian: `assets/diagrams/it/i2c-wiring.svg`
+- [x] Italian: `assets/diagrams/it/sensor-display-flow.svg`
+- [x] Italian: `assets/diagrams/it/sensor-display-oled-preview.svg`
+- [x] Italian: `assets/screenshots/it/sensor-display-placeholder-builder.svg`
 - [x] English: `projects/scheduled-relay.md`
 - [x] English: `assets/diagrams/scheduled-relay-flow.svg`
 - [x] Russian: `projects/scheduled-relay.md`
