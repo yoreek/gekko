@@ -746,6 +746,7 @@ export default {
       schedulePresets: {
         title: 'Préréglages d’horaire',
         emptySlot: 'Emplacement {slot}',
+        saveToSlot: 'Enregistrer dans l’emplacement…',
         save: 'Enregistrer',
         overwrite: 'Remplacer',
         delete: 'Supprimer',

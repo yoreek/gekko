@@ -3,7 +3,7 @@
     <div class="text-label-medium text-medium-emphasis mb-2">
       {{ t('device.fields.currentOutput') }}
     </div>
-    <v-row dense>
+    <v-row density="comfortable">
       <v-col
         v-for="channel in channels"
         :key="channel.id"

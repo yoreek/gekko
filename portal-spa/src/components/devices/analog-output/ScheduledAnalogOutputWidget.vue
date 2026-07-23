@@ -31,6 +31,16 @@
         />
       </v-col>
     </v-row>
+    <v-row v-if="!editable">
+      <v-col cols="12">
+        <SchedulePresetSelect
+          :device-id="device.record.id"
+          :points="schedulePoints"
+          :disabled="!isReady"
+          @apply="applyPreset"
+        />
+      </v-col>
+    </v-row>
     <v-row v-if="scheduleDirty">
       <v-col cols="12">
         <v-btn
@@ -78,6 +88,7 @@ import DeviceWidgetBase from '@/components/devices/common/DeviceWidgetBase.vue'
 import AnalogOutputComposerChannelControls from './AnalogOutputComposerChannelControls.vue'
 import AnalogOutputComposerChannelStatus from './AnalogOutputComposerChannelStatus.vue'
 import AnalogScheduleChart from './AnalogScheduleChart.vue'
+import SchedulePresetSelect from './SchedulePresetSelect.vue'
 
 interface ScheduledAnalogOutputRuntime extends BaseDeviceRuntime {
   output?: ScheduledAnalogOutputOutputSnapshot
@@ -134,6 +145,10 @@ function setSchedulePoints(
   _channelId: number,
   points: ScheduledAnalogOutputPointDraft[],
 ): void {
+  schedulePoints.value = points
+}
+
+function applyPreset(points: ScheduledAnalogOutputPointDraft[]): void {
   schedulePoints.value = points
 }
 

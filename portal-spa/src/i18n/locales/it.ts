@@ -746,6 +746,7 @@ export default {
       schedulePresets: {
         title: 'Preset di programmazione',
         emptySlot: 'Slot {slot}',
+        saveToSlot: 'Salva nello slot…',
         save: 'Salva',
         overwrite: 'Sovrascrivi',
         delete: 'Elimina',

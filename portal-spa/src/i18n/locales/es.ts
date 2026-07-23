@@ -746,6 +746,7 @@ export default {
       schedulePresets: {
         title: 'Preajustes de horario',
         emptySlot: 'Ranura {slot}',
+        saveToSlot: 'Guardar en ranura…',
         save: 'Guardar',
         overwrite: 'Sobrescribir',
         delete: 'Eliminar',

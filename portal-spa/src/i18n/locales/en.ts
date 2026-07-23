@@ -746,6 +746,7 @@ export default {
       schedulePresets: {
         title: 'Schedule presets',
         emptySlot: 'Slot {slot}',
+        saveToSlot: 'Save to slot…',
         save: 'Save',
         overwrite: 'Overwrite',
         delete: 'Delete',

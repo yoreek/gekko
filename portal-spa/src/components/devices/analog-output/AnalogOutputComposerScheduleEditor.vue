@@ -16,6 +16,15 @@
       </v-col>
     </v-row>
 
+    <v-row v-if="!readonly && scheduledChannels.length > 0">
+      <v-col cols="12">
+        <ComposerSchedulePresetSelect
+          :channel-ids="scheduledChannelIds"
+          :channel-points="drafts"
+          @apply="applyGroupPreset"
+        />
+      </v-col>
+    </v-row>
   </section>
 </template>
 
@@ -32,6 +41,7 @@ import {
   type ScheduledAnalogOutputPointDraft,
 } from '@/models/devices/composable-analog-output'
 import AnalogScheduleChart from './AnalogScheduleChart.vue'
+import ComposerSchedulePresetSelect from './ComposerSchedulePresetSelect.vue'
 
 const props = withDefaults(defineProps<{
   channelRecords: DeviceRecord[]
@@ -53,6 +63,12 @@ const scheduledChannels = computed(() =>
     device => device.record.typeName === ScheduledAnalogOutputDevice.TYPE_NAME,
   ),
 )
+const scheduledChannelIds = computed(() => scheduledChannels.value.map(channel => channel.record.id))
+
+function applyGroupPreset(pointsByChannel: Record<number, ScheduledAnalogOutputPointDraft[]>): void {
+  drafts.value = { ...drafts.value, ...pointsByChannel }
+  emitPendingCommands()
+}
 
 const channelRevisionKey = computed(() =>
   props.channelRecords

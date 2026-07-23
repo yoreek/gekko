@@ -746,6 +746,7 @@ export default {
       schedulePresets: {
         title: 'Zeitplan-Presets',
         emptySlot: 'Slot {slot}',
+        saveToSlot: 'In Slot speichern…',
         save: 'Speichern',
         overwrite: 'Überschreiben',
         delete: 'Löschen',

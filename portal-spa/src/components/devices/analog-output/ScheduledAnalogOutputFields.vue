@@ -35,7 +35,7 @@
     </v-row>
     <v-row v-if="device && mode !== 'view'">
       <v-col cols="12">
-        <SchedulePresetsBar
+        <SchedulePresetSelect
           :device-id="device.record.id"
           :points="modelValue.points"
           :disabled="busy"
@@ -72,7 +72,7 @@ import type { ScheduledAnalogOutputConfigDraft, ScheduledAnalogOutputPointDraft 
 import AnalogScheduleChart from './AnalogScheduleChart.vue'
 import AnalogOutputLevelControl from './AnalogOutputLevelControl.vue'
 import AnalogOutputTargetSelect from './AnalogOutputTargetSelect.vue'
-import SchedulePresetsBar from './SchedulePresetsBar.vue'
+import SchedulePresetSelect from './SchedulePresetSelect.vue'
 import { useDraftModel } from '@/composables/useDraftModel'
 
 interface ScheduledAnalogOutputRuntime extends BaseDeviceRuntime {

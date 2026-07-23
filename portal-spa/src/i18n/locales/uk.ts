@@ -746,6 +746,7 @@ export default {
       schedulePresets: {
         title: 'Пресети розкладу',
         emptySlot: 'Слот {slot}',
+        saveToSlot: 'Зберегти в слот…',
         save: 'Зберегти',
         overwrite: 'Перезаписати',
         delete: 'Видалити',
