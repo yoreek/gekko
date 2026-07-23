@@ -5,12 +5,13 @@
   "type": "object",
   "properties": {
     "success": { "const": true },
+    "status": { "const": "ok" },
     "wifiStatus": {
       "enum": ["connected", "connecting", "disconnected", "failed", "idle", "ble_config"]
     },
     "stationIp": { "type": "string" },
     "setupApIp": { "type": "string" }
   },
-  "required": ["success", "wifiStatus", "stationIp", "setupApIp"],
+  "required": ["success", "status", "wifiStatus", "stationIp", "setupApIp"],
   "additionalProperties": false
 }

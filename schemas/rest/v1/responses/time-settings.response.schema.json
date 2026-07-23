@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/time-settings.response.schema.json",
+  "title": "Time settings response",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "status": { "const": "ok" },
+    "enabled": { "type": "boolean" },
+    "ntpServer": { "type": "string" },
+    "timezoneId": { "type": "string" },
+    "syncIntervalSeconds": { "type": "integer", "minimum": 1 }
+  },
+  "required": ["success", "status", "enabled", "ntpServer", "timezoneId", "syncIntervalSeconds"],
+  "additionalProperties": false
+}

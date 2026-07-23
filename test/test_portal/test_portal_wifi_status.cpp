@@ -14,6 +14,7 @@ void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& val
 void test_wifi_status_response_schema_smoke() {
     StaticJsonDocument<256> doc;
     doc["success"] = true;
+    doc["status"] = "ok";
     doc["wifiStatus"] = "idle";
     doc["stationIp"] = "192.168.1.10";
     doc["setupApIp"] = "192.168.4.1";

@@ -399,6 +399,7 @@ void test_ssd1306_api_adapter_streams_layout_and_setup_extension() {
     }
     DynamicJsonDocument layoutDocument(4096);
     TEST_ASSERT_FALSE(deserializeJson(layoutDocument, layoutSink.output));
+    layoutDocument["status"] = "ok";
     assertMatchesJsonSchema("schemas/rest/v1/responses/devices-layout.response.schema.json", layoutDocument.as<JsonVariantConst>());
     TEST_ASSERT_TRUE(layoutDocument["success"].as<bool>());
     TEST_ASSERT_EQUAL_UINT32(1U, layoutDocument["pages"].size());

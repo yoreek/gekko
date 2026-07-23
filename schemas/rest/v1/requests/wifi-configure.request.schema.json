@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/wifi-configure.request.schema.json",
+  "title": "WiFi configure request",
+  "type": "object",
+  "properties": {
+    "ssid": { "type": "string", "minLength": 1 },
+    "password": { "type": "string" }
+  },
+  "required": ["ssid"],
+  "additionalProperties": false
+}

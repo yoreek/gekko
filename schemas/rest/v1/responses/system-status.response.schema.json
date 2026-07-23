@@ -5,6 +5,7 @@
   "type": "object",
   "properties": {
     "success": { "const": true },
+    "status": { "const": "ok" },
     "chip": {
       "type": "object",
       "properties": {
@@ -80,6 +81,6 @@
       "additionalProperties": false
     }
   },
-  "required": ["success", "chip", "uptimeSeconds", "resetReason", "heap", "sketch", "partitions", "filesystems", "nvs"],
+  "required": ["success", "status", "chip", "uptimeSeconds", "resetReason", "heap", "sketch", "partitions", "filesystems", "nvs"],
   "additionalProperties": false
 }

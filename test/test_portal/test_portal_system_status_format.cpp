@@ -62,6 +62,7 @@ void test_system_status_format_maps_partition_subtypes() {
 void test_system_status_response_schema_smoke() {
     StaticJsonDocument<2048> doc;
     doc["success"] = true;
+    doc["status"] = "ok";
     JsonObject chip = doc.createNestedObject("chip");
     chip["model"] = "ESP32";
     chip["revision"] = 1;

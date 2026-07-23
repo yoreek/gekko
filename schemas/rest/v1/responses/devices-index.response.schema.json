@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/devices-index.response.schema.json",
+  "title": "Device registry index response",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "registryRevision": { "type": "integer", "minimum": 0 },
+    "pendingPersistence": { "type": "boolean" },
+    "devices": {
+      "type": "array",
+      "items": { "$ref": "../common/device-summary.schema.json" }
+    }
+  },
+  "required": ["success", "registryRevision", "pendingPersistence", "devices"],
+  "additionalProperties": false
+}

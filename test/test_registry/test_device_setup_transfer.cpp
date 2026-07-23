@@ -1,3 +1,4 @@
+#include "../test_devices/JsonSchemaSmokeValidator.h"
 #include "config/MemoryConfigStorage.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/display/DisplayLayoutStore.h"
@@ -17,6 +18,11 @@
 using namespace ewfm;
 
 namespace {
+void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& value) {
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
+}
+
 struct FixedDeviceIdSource final : public IDeviceIdSource {
     explicit FixedDeviceIdSource(std::initializer_list<DeviceId> ids) : ids_(ids) {}
 
@@ -163,6 +169,11 @@ void test_device_setup_export_includes_metadata_and_redacts_secret_strings() {
 
     std::string bundle;
     TEST_ASSERT_TRUE(DeviceSetupTransferCodec::writeBundle(bundle, registry, transferAdapters(), registry.registryRevision()));
+    size_t firstLineEnd = bundle.find('\n');
+    TEST_ASSERT_TRUE(firstLineEnd != std::string::npos);
+    DynamicJsonDocument envelopeDoc(512);
+    TEST_ASSERT_FALSE(deserializeJson(envelopeDoc, bundle.substr(0, firstLineEnd)));
+    assertMatchesJsonSchema("schemas/rest/v1/bundle/transfer-envelope.schema.json", envelopeDoc.as<JsonVariantConst>());
     TEST_ASSERT_TRUE(bundle.find("transferSchemaVersion") != std::string::npos);
     TEST_ASSERT_TRUE(bundle.find("\"record\":{\"id\":") != std::string::npos);
     TEST_ASSERT_TRUE(bundle.find("\"typeName\":\"dummy\"") != std::string::npos);
@@ -470,15 +481,24 @@ void test_device_setup_transfer_accepts_legacy_v1_bundle() {
 
 void test_device_setup_transfer_captures_dashboard_layout_line() {
     const std::string bundle = "{\"kind\":\"transfer_envelope\",\"transferSchemaVersion\":2}\n"
-                               "{\"kind\":\"dashboard_layout\",\"revision\":3,\"layout\":{\"schemaVersion\":1,"
-                               "\"activePanelId\":\"main\",\"panels\":[]}}\n";
+                               "{\"kind\":\"dashboard_layout\",\"revision\":3,\"layout\":{\"schema_version\":1,"
+                               "\"active_panel_id\":\"main\",\"panels\":[]}}\n";
     const char* path = "/tmp/device_setup_transfer_dashboard.ndjson";
     writeTextFile(path, bundle);
 
     DeviceSetupTransferCodec::ParseResult parsed = DeviceSetupTransferCodec::parseFile(path, bundle.size(), transferAdapters());
     TEST_ASSERT_TRUE_MESSAGE(parsed.ok(), parsed.errorMessage());
     TEST_ASSERT_EQUAL_UINT32(0U, parsed.deviceCount);
-    TEST_ASSERT_TRUE(parsed.dashboardLayoutJson.find("\"activePanelId\":\"main\"") != std::string::npos);
+    TEST_ASSERT_TRUE(parsed.dashboardLayoutJson.find("\"active_panel_id\":\"main\"") != std::string::npos);
+
+    const size_t firstLineEnd = bundle.find('\n');
+    TEST_ASSERT_TRUE(firstLineEnd != std::string::npos);
+    const size_t dashboardLineStart = firstLineEnd + 1U;
+    const size_t dashboardLineEnd = bundle.find('\n', dashboardLineStart);
+    TEST_ASSERT_TRUE(dashboardLineEnd != std::string::npos);
+    DynamicJsonDocument dashboardDoc(512);
+    TEST_ASSERT_FALSE(deserializeJson(dashboardDoc, bundle.substr(dashboardLineStart, dashboardLineEnd - dashboardLineStart)));
+    assertMatchesJsonSchema("schemas/rest/v1/bundle/dashboard-layout.schema.json", dashboardDoc.as<JsonVariantConst>());
 
     const std::string duplicate = bundle + "{\"kind\":\"dashboard_layout\",\"layout\":{\"panels\":[]}}\n";
     writeTextFile(path, duplicate);

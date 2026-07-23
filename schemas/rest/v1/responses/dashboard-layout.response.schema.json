@@ -5,10 +5,11 @@
   "type": "object",
   "properties": {
     "success": { "const": true },
+    "status": { "const": "ok" },
     "revision": { "type": "integer", "minimum": 0 },
     "layoutDefaulted": { "type": "boolean" },
     "layout": { "$ref": "../common/dashboard-layout.schema.json" }
   },
-  "required": ["success", "revision", "layout", "layoutDefaulted"],
+  "required": ["success", "status", "revision", "layout", "layoutDefaulted"],
   "additionalProperties": false
 }

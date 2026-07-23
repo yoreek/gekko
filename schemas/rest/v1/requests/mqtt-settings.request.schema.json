@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/mqtt-settings.request.schema.json",
+  "title": "MQTT settings update request",
+  "type": "object",
+  "properties": {
+    "enabled": { "type": "boolean" },
+    "host": { "type": "string" },
+    "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+    "useTls": { "type": "boolean" },
+    "clientId": { "type": "string" },
+    "username": { "type": "string" },
+    "password": { "type": "string" },
+    "haDiscoveryPrefix": { "type": "string" },
+    "haNodeId": { "type": "string" },
+    "haNodeName": { "type": "string" }
+  },
+  "additionalProperties": false
+}

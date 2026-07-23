@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/schedulepresets.response.schema.json",
+  "title": "Schedule presets response",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "status": { "const": "ok" },
+    "deviceId": { "type": "integer", "minimum": 1 },
+    "presets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slot": { "type": "integer", "minimum": 0, "maximum": 2 },
+          "filled": { "type": "boolean" },
+          "name": { "type": "string", "minLength": 1 },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "minuteOfDay": { "type": "integer", "minimum": 0, "maximum": 1439 },
+                "state": { "type": "integer", "minimum": 0, "maximum": 4095 }
+              },
+              "required": ["minuteOfDay", "state"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["slot", "filled"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["success", "status", "deviceId", "presets"],
+  "additionalProperties": false
+}

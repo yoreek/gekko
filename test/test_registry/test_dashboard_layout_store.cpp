@@ -217,6 +217,7 @@ void test_dashboard_layout_save_json_rejects_invalid_shape_and_schema() {
     DynamicJsonDocument responseDoc(1024);
     JsonObject responseRoot = responseDoc.to<JsonObject>();
     responseRoot["success"] = true;
+    responseRoot["status"] = "ok";
     responseRoot["revision"] = 7;
     responseRoot["layoutDefaulted"] = false;
     JsonObject responseLayout = responseRoot.createNestedObject("layout");

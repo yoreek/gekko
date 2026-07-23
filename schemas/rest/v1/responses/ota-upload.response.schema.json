@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/ota-upload.response.schema.json",
+  "title": "OTA upload response",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "status": { "const": "ok" },
+    "rebooting": { "const": true }
+  },
+  "required": ["success", "status", "rebooting"],
+  "additionalProperties": false
+}

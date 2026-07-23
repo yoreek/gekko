@@ -68,22 +68,33 @@ blob-module import; the command allow-list + confirmation policy.
 
 These API groups still do not have dedicated `schemas/rest/v1` coverage yet:
 
+- multipart/file-upload transport bodies for:
+  - `POST /api/ota`
+  - `POST /api/mqtt/ca-cert`
+
+Already covered by dedicated schemas in `schemas/rest/v1`:
+
 - `GET /api/dosejournal`
-- `GET /api/devices/:id/layout` endpoint schema
+- `GET /api/devices/:id/layout`
+- `GET /api/devices`
+- `GET /api/devices/:id`
+- `POST /api/devices`
+- `POST /api/devices/:id`
+- `POST /api/devices/flush`
 - `GET /api/wifi/status`
 - `GET /api/wifi/scan`
 - `POST /api/wifi/configure`
 - `DELETE /api/wifi/configure`
-- `POST /api/wifi/ble-config`
+- `POST /api/wifi/ble-config` response envelope
 - `GET /api/dashboard/layout`
 - `PUT /api/dashboard/layout`
 - `GET /api/ota/status`
-- `POST /api/ota`
+- `POST /api/ota` response envelope
 - `GET /api/mqtt/status`
 - `GET /api/mqtt/settings`
 - `PUT /api/mqtt/settings`
-- `POST /api/mqtt/ca-cert`
-- `DELETE /api/mqtt/ca-cert`
+- `POST /api/mqtt/ca-cert` response envelope
+- `DELETE /api/mqtt/ca-cert` response envelope
 - `POST /api/system/restart`
 - `GET /api/system/version`
 - `GET /api/system/status`
@@ -91,5 +102,15 @@ These API groups still do not have dedicated `schemas/rest/v1` coverage yet:
 - `POST /api/system/time`
 - `GET /api/system/time/settings`
 - `PUT /api/system/time/settings`
-- `GET /api/device-setup/export`
-- `POST /api/device-setup/import`
+- `POST /api/device-setup/import` response envelope
+- `GET /api/metrics/placeholders`
+- `GET /api/metrics/values`
+- `GET /api/schedulepresets/<id>`
+- `PUT /api/schedulepresets/<id>/<slot>`
+- `DELETE /api/schedulepresets/<id>/<slot>`
+- `GET /api/device-setup/export` NDJSON envelope and dashboard-layout line
+- `GET /api/metrics/placeholders`
+- `GET /api/metrics/values`
+- `GET /api/schedulepresets/<id>`
+- `PUT /api/schedulepresets/<id>/<slot>`
+- `DELETE /api/schedulepresets/<id>/<slot>`

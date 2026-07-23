@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/wifi-configure.response.schema.json",
+  "title": "WiFi configure accepted response",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "status": { "const": "accepted" },
+    "action": { "type": "string" }
+  },
+  "required": ["success", "status"],
+  "additionalProperties": false
+}

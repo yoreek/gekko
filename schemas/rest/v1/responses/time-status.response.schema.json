@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/time-status.response.schema.json",
+  "title": "Time status response",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "status": { "const": "ok" },
+    "enabled": { "type": "boolean" },
+    "synced": { "type": "boolean" },
+    "waitingForStation": { "type": "boolean" },
+    "ntpServer": { "type": "string" },
+    "timezoneId": { "type": "string" },
+    "syncIntervalSeconds": { "type": "integer", "minimum": 1 },
+    "source": { "type": "string" },
+    "currentEpochUtc": { "type": "integer", "minimum": 0 },
+    "lastSyncEpochUtc": { "type": "integer", "minimum": 0 },
+    "localTimeIso8601": { "type": "string", "minLength": 1 },
+    "utcOffsetMinutes": { "type": "integer" },
+    "timezoneAbbrev": { "type": "string", "minLength": 1 }
+  },
+  "required": ["success", "status", "enabled", "synced", "waitingForStation", "ntpServer", "timezoneId", "syncIntervalSeconds", "source"],
+  "additionalProperties": false
+}

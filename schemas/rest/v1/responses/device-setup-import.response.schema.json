@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/device-setup-import.response.schema.json",
+  "title": "Device setup import response",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "status": { "const": "ok" },
+    "deviceCount": { "type": "integer", "minimum": 0 },
+    "registryRevision": { "type": "integer", "minimum": 0 },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["success", "status", "deviceCount", "registryRevision", "warnings"],
+  "additionalProperties": false
+}

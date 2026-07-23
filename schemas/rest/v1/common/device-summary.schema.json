@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/common/device-summary.schema.json",
+  "title": "Device registry summary",
+  "type": "object",
+  "properties": {
+    "record": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "typeName": { "type": "string", "minLength": 1 },
+        "configRevision": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["id", "typeName", "configRevision"],
+      "additionalProperties": true
+    },
+    "config": { "type": "object" },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "minLength": 1 },
+        "effectiveStatus": { "type": "string", "minLength": 1 }
+      },
+      "required": ["status", "effectiveStatus"],
+      "additionalProperties": true
+    },
+    "ha": {
+      "type": "object",
+      "properties": {
+        "supported": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "name": { "type": "string" },
+        "effectiveName": { "type": "string" }
+      },
+      "required": ["supported", "enabled", "name", "effectiveName"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["record", "config", "runtime"],
+  "additionalProperties": false
+}

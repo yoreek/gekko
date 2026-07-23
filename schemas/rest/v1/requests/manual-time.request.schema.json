@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/manual-time.request.schema.json",
+  "title": "Manual time set request",
+  "type": "object",
+  "properties": {
+    "iso8601": { "type": "string", "minLength": 1 }
+  },
+  "required": ["iso8601"],
+  "additionalProperties": false
+}

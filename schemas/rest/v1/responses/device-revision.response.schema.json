@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/device-revision.response.schema.json",
+  "title": "Device registry revision response",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "status": { "const": "ok" },
+    "registryRevision": { "type": "integer", "minimum": 0 },
+    "pendingPersistence": { "type": "boolean" }
+  },
+  "required": ["success", "status", "registryRevision", "pendingPersistence"],
+  "additionalProperties": false
+}

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/mqtt-settings.response.schema.json",
+  "title": "MQTT settings response",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "status": { "const": "ok" },
+    "enabled": { "type": "boolean" },
+    "host": { "type": "string" },
+    "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+    "useTls": { "type": "boolean" },
+    "clientId": { "type": "string" },
+    "username": { "type": "string" },
+    "passwordRedacted": { "type": "boolean" },
+    "haDiscoveryPrefix": { "type": "string" },
+    "haNodeId": { "type": "string" },
+    "haNodeName": { "type": "string" },
+    "hasCaCert": { "type": "boolean" }
+  },
+  "required": [
+    "success",
+    "status",
+    "enabled",
+    "host",
+    "port",
+    "useTls",
+    "clientId",
+    "username",
+    "passwordRedacted",
+    "haDiscoveryPrefix",
+    "haNodeId",
+    "haNodeName",
+    "hasCaCert"
+  ],
+  "additionalProperties": false
+}

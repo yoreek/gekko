@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/dosejournal.response.schema.json",
+  "title": "Dose journal response",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "status": { "const": "ok" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "at": { "type": "integer", "minimum": 0 },
+          "type": { "enum": ["schedule", "manual"] },
+          "amountMl": { "type": "number", "minimum": 0 }
+        },
+        "required": ["at", "type", "amountMl"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["success", "status", "entries"],
+  "additionalProperties": false
+}

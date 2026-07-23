@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/bundle/transfer-envelope.schema.json",
+  "title": "Device setup transfer envelope",
+  "type": "object",
+  "properties": {
+    "kind": { "const": "transfer_envelope" },
+    "transferSchemaVersion": { "type": "integer", "minimum": 1 },
+    "registrySchemaVersion": { "type": "integer", "minimum": 1 },
+    "registryRevision": { "type": "integer", "minimum": 0 },
+    "deviceCount": { "type": "integer", "minimum": 0 }
+  },
+  "required": ["kind", "transferSchemaVersion", "registrySchemaVersion", "registryRevision", "deviceCount"],
+  "additionalProperties": false
+}

@@ -5,6 +5,7 @@
   "type": "object",
   "properties": {
     "success": { "const": true },
+    "status": { "const": "ok" },
     "schemaVersion": { "type": "integer", "minimum": 1 },
     "activePageId": { "type": "string", "minLength": 1 },
     "pages": {
@@ -12,6 +13,6 @@
       "items": { "$ref": "../common/display-layout-page.schema.json" }
     }
   },
-  "required": ["success", "schemaVersion", "activePageId", "pages"],
+  "required": ["success", "status", "schemaVersion", "activePageId", "pages"],
   "additionalProperties": false
 }

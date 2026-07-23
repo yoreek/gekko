@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/metrics-values.response.schema.json",
+  "title": "Metrics values response",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "registryRevision": { "type": "integer", "minimum": 0 },
+    "values": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "namespace": { "enum": ["dev", "system", "wifi"] },
+          "sourceId": { "type": "integer", "minimum": 0 },
+          "sourceLabel": { "type": "string" },
+          "metricId": { "type": "integer" },
+          "metricKey": { "type": "string", "minLength": 1 },
+          "valueType": { "enum": ["null", "bool", "int", "float", "string", "datetime", "duration"] },
+          "available": { "type": "boolean" },
+          "value": { "type": "string" }
+        },
+        "required": ["namespace", "sourceId", "metricId", "metricKey", "valueType", "available", "value"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["success", "registryRevision", "values"],
+  "additionalProperties": false
+}
