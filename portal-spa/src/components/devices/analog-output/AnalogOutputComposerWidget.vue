@@ -32,7 +32,16 @@
         <AnalogOutputComposerScheduleEditor
           :channel-records="channelRecords"
           :readonly="editable || !isReady"
+          @update:pending-commands="pendingCommands = $event"
         />
+      </v-col>
+    </v-row>
+
+    <v-row v-if="pendingCommands.length > 0">
+      <v-col cols="12">
+        <v-btn color="primary" :disabled="editable || !isReady" @click="saveSchedule">
+          {{ t('actions.save') }}
+        </v-btn>
       </v-col>
     </v-row>
 
@@ -55,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type {
@@ -85,12 +94,20 @@ const props = withDefaults(defineProps<{
   dense: true,
 })
 
-defineEmits<{
+const emit = defineEmits<{
   command: [payload: DeviceCommandRequest]
 }>()
 
 const { t } = useI18n()
 const store = useDeviceRegistryStore()
+const pendingCommands = ref<DeviceCommandRequest[]>([])
+
+function saveSchedule(): void {
+  for (const command of pendingCommands.value) {
+    emit('command', command)
+  }
+  pendingCommands.value = []
+}
 const output = computed(() =>
   (props.device.runtime.output ?? {}) as AnalogOutputComposerOutputSnapshot,
 )
