@@ -764,6 +764,8 @@ export default {
           offsetMode: 'Offset',
           twoPointMode: 'Due punti',
           stableHint: 'Attendi una lettura stabile prima di calibrare: il valore è filtrato.',
+          offsetHint: 'Corregge un offset costante e mantiene il guadagno: sufficiente per un sensore che misura sempre in eccesso o in difetto (es. ds18b20, htu21).',
+          twoPointHint: 'Corregge offset e pendenza. Usa due punti quando l’errore cresce con la temperatura, es. un NTC dove le tolleranze del partitore/ADC alterano la scala.',
           currentReading: 'Lettura attuale: {value}',
           realTemperature: 'Valore reale',
           point: 'Punto {index}',

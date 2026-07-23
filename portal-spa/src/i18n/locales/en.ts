@@ -764,6 +764,8 @@ export default {
           offsetMode: 'Offset',
           twoPointMode: 'Two points',
           stableHint: 'Wait for a stable reading before calibrating — the value is smoothed.',
+          offsetHint: 'Corrects a constant offset and keeps the gain — enough for a sensor that reads consistently high or low (e.g. ds18b20, htu21).',
+          twoPointHint: 'Corrects both offset and slope. Use two points when the error grows with temperature, e.g. an NTC where divider/ADC tolerances skew the scale.',
           currentReading: 'Current reading: {value}',
           realTemperature: 'Actual value',
           point: 'Point {index}',

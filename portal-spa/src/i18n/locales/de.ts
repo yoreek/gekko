@@ -764,6 +764,8 @@ export default {
           offsetMode: 'Offset',
           twoPointMode: 'Zwei Punkte',
           stableHint: 'Vor dem Kalibrieren auf einen stabilen Messwert warten — der Wert wird geglättet.',
+          offsetHint: 'Korrigiert einen konstanten Offset und behält die Verstärkung — genügt für einen Sensor, der durchgehend zu hoch oder zu niedrig misst (z. B. ds18b20, htu21).',
+          twoPointHint: 'Korrigiert Offset und Steigung. Zwei Punkte verwenden, wenn der Fehler mit der Temperatur wächst, z. B. bei einem NTC, wo Teiler-/ADC-Toleranzen die Skala verzerren.',
           currentReading: 'Aktueller Messwert: {value}',
           realTemperature: 'Tatsächlicher Wert',
           point: 'Punkt {index}',

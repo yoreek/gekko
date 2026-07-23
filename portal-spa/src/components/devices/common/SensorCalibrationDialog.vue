@@ -16,6 +16,12 @@
           {{ t('device.dialog.sensorFilter.calibration.currentReading', { value: readingText }) }}
         </v-alert>
 
+        <div class="text-body-2 text-medium-emphasis">
+          {{ t(calibrationMode === 'offset'
+            ? 'device.dialog.sensorFilter.calibration.offsetHint'
+            : 'device.dialog.sensorFilter.calibration.twoPointHint') }}
+        </div>
+
         <template v-if="calibrationMode === 'offset'">
           <v-text-field
             type="number"

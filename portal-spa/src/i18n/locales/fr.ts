@@ -764,6 +764,8 @@ export default {
           offsetMode: 'Décalage',
           twoPointMode: 'Deux points',
           stableHint: 'Attendez une mesure stable avant de calibrer : la valeur est lissée.',
+          offsetHint: 'Corrige un décalage constant et conserve le gain — suffisant pour un capteur qui mesure toujours trop haut ou trop bas (p. ex. ds18b20, htu21).',
+          twoPointHint: 'Corrige le décalage et la pente. Utilisez deux points quand l’erreur augmente avec la température, p. ex. une CTN où les tolérances du diviseur/CAN faussent l’échelle.',
           currentReading: 'Mesure actuelle : {value}',
           realTemperature: 'Valeur réelle',
           point: 'Point {index}',

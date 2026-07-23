@@ -764,6 +764,8 @@ export default {
           offsetMode: 'Desplazamiento',
           twoPointMode: 'Dos puntos',
           stableHint: 'Espera una lectura estable antes de calibrar: el valor se suaviza.',
+          offsetHint: 'Corrige un desplazamiento constante y mantiene la ganancia: suficiente para un sensor que mide siempre de más o de menos (p. ej. ds18b20, htu21).',
+          twoPointHint: 'Corrige el desplazamiento y la pendiente. Usa dos puntos cuando el error crece con la temperatura, p. ej. un NTC donde las tolerancias del divisor/ADC desvían la escala.',
           currentReading: 'Lectura actual: {value}',
           realTemperature: 'Valor real',
           point: 'Punto {index}',
