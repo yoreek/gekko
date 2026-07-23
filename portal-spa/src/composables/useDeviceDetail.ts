@@ -47,10 +47,17 @@ export function useDeviceDetail(deviceId: Ref<number>): UseDeviceDetailReturn {
     return buildDeviceEditCommands(device.value, draft.value).length > 0
   })
 
+  // Reset the draft only when the device identity or its persisted config changes -- NOT on every
+  // device.value reference change. Live runtime pushes (device.upsert / command_result) replace the
+  // store object on each tick; keying the watch on the whole object would wipe unsaved edits (e.g.
+  // an applied-but-unsaved calibration) on the next runtime update.
   watch(
-    () => device.value,
-    current => {
-      if (current !== null) {
+    () => {
+      const record = device.value?.record
+      return record ? `${record.id}:${record.configRevision}` : null
+    },
+    key => {
+      if (key !== null) {
         resetDraft()
       }
     },
