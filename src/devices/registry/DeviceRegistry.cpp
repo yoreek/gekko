@@ -644,6 +644,7 @@ DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, cons
     if (enabledChanged) {
         currentRuntime->clearLifecycleRequests();
         if (enabled) {
+            currentRuntime->requestReconfigure();
             currentRuntime->begin(now);
         } else {
             currentRuntime->requestDisable();

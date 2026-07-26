@@ -9,6 +9,7 @@ void test_dashboard_layout_legacy_json_storage_resets_to_default();
 void test_registry_begin_loads_runtime_devices();
 void test_registry_create_rename_and_flush();
 void test_registry_disable_enable_and_delete();
+void test_registry_reenable_after_settled_disable_leaves_state_machine();
 void test_registry_rejects_duplicate_name_and_unsupported_type();
 void test_registry_update_config_rejects_duplicate_name();
 void test_registry_delayed_flushes_on_tick();
@@ -107,6 +108,7 @@ int main(int, char**) {
     RUN_TEST(test_registry_begin_loads_runtime_devices);
     RUN_TEST(test_registry_create_rename_and_flush);
     RUN_TEST(test_registry_disable_enable_and_delete);
+    RUN_TEST(test_registry_reenable_after_settled_disable_leaves_state_machine);
     RUN_TEST(test_registry_rejects_duplicate_name_and_unsupported_type);
     RUN_TEST(test_registry_update_config_rejects_duplicate_name);
     RUN_TEST(test_registry_delayed_flushes_on_tick);

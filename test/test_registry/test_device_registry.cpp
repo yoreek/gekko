@@ -823,6 +823,39 @@ void test_registry_disable_enable_and_delete() {
     TEST_ASSERT_NULL(registry.runtime(201));
 }
 
+void test_registry_reenable_after_settled_disable_leaves_state_machine() {
+    // Unlike test_registry_disable_enable_and_delete, this drives real tickFastLoop() calls between
+    // disable and enable so the DummyDevice state machine actually settles into its Disabled SM state
+    // (not just the status_ field forced synchronously by requestDisable()). This matches production,
+    // where App::tick() runs continuously between a user disabling and re-enabling a device.
+    MemoryConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    FixedDeviceIdSource idSource({301});
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(store, types, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+
+    TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("dummy"), 10).ok());
+    for (uint32_t now = 11; now <= 15; ++now) {
+        registry.tickFastLoop(now);
+    }
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(registry.runtime(301)->status()));
+
+    TEST_ASSERT_TRUE(setDeviceEnabled(registry, 301, false, 20, DevicePersistencePolicy::Immediate).ok());
+    for (uint32_t now = 21; now <= 25; ++now) {
+        registry.tickFastLoop(now);
+    }
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Disabled), static_cast<int>(registry.runtime(301)->status()));
+
+    TEST_ASSERT_TRUE(setDeviceEnabled(registry, 301, true, 30, DevicePersistencePolicy::Immediate).ok());
+    for (uint32_t now = 31; now <= 40; ++now) {
+        registry.tickFastLoop(now);
+    }
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(registry.runtime(301)->status()));
+}
+
 void test_registry_rejects_dependency_delete_with_dependents() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
