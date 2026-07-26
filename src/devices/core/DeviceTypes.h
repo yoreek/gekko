@@ -22,6 +22,7 @@ struct OneWireRomAddress;
 class DeviceRetainedDataStore;
 class DeviceScopedDataStore;
 class DisplayDeviceBase;
+class CharacterDisplayRuntimeBase;
 
 constexpr uint32_t kDeviceRegistrySchemaVersion = 1;
 constexpr uint16_t kDeviceRegistryIndexVersion = 2;
@@ -853,6 +854,9 @@ public:
     virtual const DisplayDeviceBase* displayRuntime() const {
         return nullptr;
     }
+    virtual CharacterDisplayRuntimeBase* characterDisplayRuntime() {
+        return nullptr;
+    }
     virtual IDevicePersistedState* persistedStateRuntime() {
         return nullptr;
     }
@@ -963,6 +967,14 @@ public:
     virtual bool expanderChannel(uint8_t& channel) const {
         (void)channel;
         return false;
+    }
+    // Multi-channel sibling of expanderChannel(), for a dependent that reserves several channels of
+    // one port expander at once (e.g. an HD44780 LCD's RS/E/D4-D7/backlight lines). Writes up to
+    // maxOut channel numbers into `out` and returns how many were written; default reports none.
+    virtual uint8_t expanderChannels(uint8_t* out, uint8_t maxOut) const {
+        (void)out;
+        (void)maxOut;
+        return 0;
     }
     virtual bool hasDuplicateDependentChannel(uint8_t channel, const IDeviceRuntime* ignoreDependent = nullptr) const {
         (void)channel;

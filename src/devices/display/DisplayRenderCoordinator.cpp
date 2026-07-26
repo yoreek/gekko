@@ -1,5 +1,6 @@
 #include "devices/display/DisplayRenderCoordinator.h"
 
+#include "devices/display/CharacterDisplayRuntimeBase.h"
 #include "metrics/MetricValueResolver.h"
 
 namespace ewfm {
@@ -19,11 +20,13 @@ void DisplayRenderCoordinator::tick(const uint32_t now) {
 #endif
     MetricValueResolver resolver(&registry_, wifiDriver_, now, localTime);
     registry_.forEachRuntime([&](IDeviceRuntime& runtime) {
-        DisplayDeviceBase* display = runtime.displayRuntime();
-        if (display == nullptr) {
+        if (DisplayDeviceBase* display = runtime.displayRuntime()) {
+            (void)display->renderDisplay(resolver, now);
             return;
         }
-        (void)display->renderDisplay(resolver, now);
+        if (CharacterDisplayRuntimeBase* charDisplay = runtime.characterDisplayRuntime()) {
+            (void)charDisplay->renderText(resolver, now);
+        }
     });
 }
 

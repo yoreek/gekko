@@ -30,16 +30,21 @@ const DeviceBaseConfigV1& Pcf857xExpanderDeviceBase::baseConfig() const {
 }
 
 bool Pcf857xExpanderDeviceBase::hasDuplicateDependentChannel(uint8_t channel, const IDeviceRuntime* ignoreDependent) const {
+    constexpr uint8_t kMaxChannelsPerDependent = 8U;
     for (const IDeviceRuntime* dependent : dependentRuntimes()) {
         if (dependent == nullptr || dependent == ignoreDependent) {
             continue;
         }
         uint8_t dependentChannel{0};
-        if (!dependent->expanderChannel(dependentChannel)) {
-            continue;
-        }
-        if (dependentChannel == channel) {
+        if (dependent->expanderChannel(dependentChannel) && dependentChannel == channel) {
             return true;
+        }
+        uint8_t channels[kMaxChannelsPerDependent]{};
+        const uint8_t count = dependent->expanderChannels(channels, kMaxChannelsPerDependent);
+        for (uint8_t i = 0; i < count; ++i) {
+            if (channels[i] == channel) {
+                return true;
+            }
         }
     }
     return false;

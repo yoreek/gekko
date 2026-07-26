@@ -412,37 +412,14 @@ bool DisplayDeviceApiAdapter::collectLayoutMetricSourceDependencies(const Displa
                                                                     std::array<DeviceDependencyLink, kMaxDeviceDependencies>& dependencies,
                                                                     uint8_t& dependencyCount, const char*& error,
                                                                     const char* invalidLayoutError, const char* dependencyCountError) {
-    const auto appendUnique = [&](const DeviceId sourceId) -> bool {
-        if (sourceId == 0U) {
-            return true;
-        }
-        for (uint8_t index = 0; index < dependencyCount; ++index) {
-            if (dependencies[index].role == DeviceRole::MetricSource && dependencies[index].deviceId == sourceId) {
-                return true;
-            }
-        }
-        if (dependencyCount >= kMaxDeviceDependencies) {
-            error = dependencyCountError;
-            return false;
-        }
-        dependencies[dependencyCount++] = DeviceDependencyLink{DeviceRole::MetricSource, sourceId};
-        return true;
-    };
-
     for (const DisplayLayoutPageV1& page : layout.pages) {
         for (const DisplayLayoutWidgetV1& widget : page.widgets) {
             if (static_cast<DisplayLayoutWidgetType>(widget.type) != DisplayLayoutWidgetType::Text) {
                 continue;
             }
-            const DisplayTextCompileResult compiled = compileDisplayTextWidget(widget.text);
-            if (!compiled.ok()) {
-                error = invalidLayoutError;
+            if (!collectTextPlaceholderDeviceIds(widget.text, dependencies, dependencyCount, error, invalidLayoutError,
+                                                 dependencyCountError)) {
                 return false;
-            }
-            for (const DisplayTextSegment& segment : compiled.compiled.segments) {
-                if (segment.placeholder && segment.reference.ns == MetricNamespace::Device && !appendUnique(segment.reference.sourceId)) {
-                    return false;
-                }
             }
         }
     }

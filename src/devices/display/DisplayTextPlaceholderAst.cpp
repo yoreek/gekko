@@ -589,6 +589,41 @@ DisplayTextCompileResult compileDisplayTextWidget(std::string_view text) {
     return result;
 }
 
+bool collectTextPlaceholderDeviceIds(std::string_view text, std::array<DeviceDependencyLink, kMaxDeviceDependencies>& dependencies,
+                                     uint8_t& dependencyCount, const char*& error, const char* invalidTextError,
+                                     const char* dependencyCountError) {
+    const DisplayTextCompileResult compiled = compileDisplayTextWidget(text);
+    if (!compiled.ok()) {
+        error = invalidTextError;
+        return false;
+    }
+    for (const DisplayTextSegment& segment : compiled.compiled.segments) {
+        if (!segment.placeholder || segment.reference.ns != MetricNamespace::Device) {
+            continue;
+        }
+        const DeviceId sourceId = segment.reference.sourceId;
+        if (sourceId == 0U) {
+            continue;
+        }
+        bool alreadyPresent = false;
+        for (uint8_t index = 0; index < dependencyCount; ++index) {
+            if (dependencies[index].role == DeviceRole::MetricSource && dependencies[index].deviceId == sourceId) {
+                alreadyPresent = true;
+                break;
+            }
+        }
+        if (alreadyPresent) {
+            continue;
+        }
+        if (dependencyCount >= kMaxDeviceDependencies) {
+            error = dependencyCountError;
+            return false;
+        }
+        dependencies[dependencyCount++] = DeviceDependencyLink{DeviceRole::MetricSource, sourceId};
+    }
+    return true;
+}
+
 bool ensureDisplayTextWidgetAst(const DisplayLayoutWidgetV1& widget, const DisplayTextCompiledWidget*& compiled,
                                 DisplayTextCompileStatus* status) {
     compiled = nullptr;

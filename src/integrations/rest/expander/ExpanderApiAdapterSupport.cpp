@@ -40,4 +40,26 @@ DeviceValidationResult validatePortExpanderDependency(const DeviceRegistry& regi
     return {};
 }
 
+DeviceValidationResult validatePortExpanderDependencyChannels(const DeviceRegistry& registry, DeviceId expanderDeviceId,
+                                                              const uint8_t* channels, uint8_t channelCount,
+                                                              const IDeviceRuntime* childRuntime) {
+    if (expanderDeviceId == 0U) {
+        return {DeviceError::InvalidRelationship, "port expander dependency is required"};
+    }
+    const IDeviceRuntime* expanderRuntime = registry.runtime(expanderDeviceId);
+    if (expanderRuntime == nullptr || expanderRuntime->portExpanderRuntime() == nullptr) {
+        return {DeviceError::InvalidRelationship, "port expander dependency is missing or invalid"};
+    }
+    const uint8_t available = expanderRuntime->portExpanderRuntime()->channelCount();
+    for (uint8_t index = 0; index < channelCount; ++index) {
+        if (channels[index] >= available) {
+            return {DeviceError::InvalidConfig, "port expander channel is out of range"};
+        }
+        if (expanderRuntime->hasDuplicateDependentChannel(channels[index], childRuntime)) {
+            return {DeviceError::InvalidRelationship, "duplicate port expander channel on dependency"};
+        }
+    }
+    return {};
+}
+
 } // namespace ewfm

@@ -18,5 +18,10 @@ DeviceId findDependencyIdForRole(const std::array<DeviceDependencyLink, kMaxDevi
 // PCF8575, or any future expander) -- never checks the dependency's concrete typeId.
 DeviceValidationResult validatePortExpanderDependency(const DeviceRegistry& registry, DeviceId expanderDeviceId, uint8_t channel,
                                                       const IDeviceRuntime* childRuntime);
+// Multi-channel sibling of validatePortExpanderDependency(), for a dependent that reserves several
+// channels of one expander at once (e.g. an HD44780 LCD's RS/E/D4-D7/backlight lines).
+DeviceValidationResult validatePortExpanderDependencyChannels(const DeviceRegistry& registry, DeviceId expanderDeviceId,
+                                                              const uint8_t* channels, uint8_t channelCount,
+                                                              const IDeviceRuntime* childRuntime);
 
 } // namespace ewfm
