@@ -1,12 +1,12 @@
 #pragma once
 
-#include "core/Clock.h"
+#include <cstdint>
 
 namespace ewfm {
 
-class ArduinoClock final : public IClock {
+class ArduinoClock final {
 public:
-    uint32_t millis() const override;
+    static uint32_t millis();
 };
 
 } // namespace ewfm

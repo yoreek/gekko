@@ -46,7 +46,6 @@ public:
 private:
     void tickDeviceCadence(uint32_t now);
 
-    ArduinoClock clock_;
     PreferencesConfigStorage storage_;
     PreferencesConfigStorage deviceStorage_;
     PreferencesConfigStorage retainedStateStorage_;

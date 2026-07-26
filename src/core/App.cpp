@@ -145,7 +145,7 @@ bool App::begin() {
         mqttConfigStore_.save(seeded);
     }
 #endif
-    const uint32_t now = clock_.millis();
+    const uint32_t now = ArduinoClock::millis();
     EWFM_BOOT_PRINTF("BOOT App::begin deviceRegistry begin\n");
     const DeviceValidationResult registryResult = deviceRegistry_.begin(now);
     if (!registryResult.ok()) {
@@ -201,7 +201,7 @@ void App::tick() {
     if (!begun_) {
         return;
     }
-    const uint32_t now = clock_.millis();
+    const uint32_t now = ArduinoClock::millis();
 
     wifiManager_.tick(now);
     ntpManager_.tick(now);

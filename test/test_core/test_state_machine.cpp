@@ -1,7 +1,6 @@
 #include "config/ConfigStore.h"
 #include "config/MemoryConfigStorage.h"
 #include "config/MqttConfig.h"
-#include "core/Clock.h"
 #include "core/StateMachine.h"
 #include "platform/ArduinoOtaService.h"
 #include "platform/MqttManager.h"
@@ -12,6 +11,22 @@
 #include <unity.h>
 
 using namespace ewfm;
+
+class ManualClock final {
+public:
+    uint32_t millis() const {
+        return now_;
+    }
+    void set(uint32_t now) {
+        now_ = now;
+    }
+    void advance(uint32_t delta) {
+        now_ += delta;
+    }
+
+private:
+    uint32_t now_{0};
+};
 
 class FakeWifiDriver final : public IWifiDriver {
 public:

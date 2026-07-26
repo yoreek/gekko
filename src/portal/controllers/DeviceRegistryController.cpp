@@ -9,6 +9,8 @@
 #include "integrations/mqtt/HaDiscoveryBridge.h"
 #endif
 
+#include "platform/ArduinoClock.h"
+
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -518,7 +520,7 @@ void DeviceRegistryController::create() {
         return;
     }
 
-    const DeviceCreateResult result = registry_.command(createRequest, 0);
+    const DeviceCreateResult result = registry_.command(createRequest, ArduinoClock::millis());
     if (!result.ok()) {
         renderError(400, errorCodeForDeviceError(result.validation.error), result.validation.message);
         return;
@@ -549,11 +551,13 @@ void DeviceRegistryController::create() {
 
 void DeviceRegistryController::destroy() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+    const uint32_t now = ArduinoClock::millis();
+
     if (registry_.runtime(deviceId_) == nullptr) {
         renderError(404, "NOT_FOUND", "device not found");
         return;
     }
-    const DeviceMutationResult result = registry_.command(DeviceCommand{DeviceCommandType::Delete, deviceId_, ""}, 0);
+    const DeviceMutationResult result = registry_.command(DeviceCommand{DeviceCommandType::Delete, deviceId_, ""}, now);
     if (!result.ok()) {
         StaticJsonDocument<384> doc;
         doc["success"] = false;
@@ -598,20 +602,21 @@ void DeviceRegistryController::cmd() {
     }
 
     DeviceMutationResult mutationResult{};
+    const uint32_t now = ArduinoClock::millis();
     if (std::strcmp(commandName, "delete") == 0) {
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Delete, deviceId_, ""}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Delete, deviceId_, ""}, now);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
     } else if (std::strcmp(commandName, "resetDiagnostics") == 0) {
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::ResetDiagnostics, deviceId_, ""}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::ResetDiagnostics, deviceId_, ""}, now);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
     } else if (std::strcmp(commandName, "scan") == 0) {
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Scan, deviceId_, ""}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Scan, deviceId_, ""}, now);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -624,7 +629,7 @@ void DeviceRegistryController::cmd() {
         }
         char csPinText[8]{};
         std::snprintf(csPinText, sizeof(csPinText), "%d", csPinRaw);
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::CheckDevice, deviceId_, csPinText}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::CheckDevice, deviceId_, csPinText}, now);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -649,7 +654,7 @@ void DeviceRegistryController::cmd() {
             renderError(400, "BAD_ARGS", "device does not provide an output");
             return;
         }
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetOutput, deviceId_, payloadText}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetOutput, deviceId_, payloadText}, now);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -675,7 +680,7 @@ void DeviceRegistryController::cmd() {
                 return;
             }
         }
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetDeps, deviceId_, depsPayload}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::SetDeps, deviceId_, depsPayload}, now);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -707,7 +712,7 @@ void DeviceRegistryController::cmd() {
         }
         mutationResult =
             registry_.updateConfigAndDeps(deviceId_, updateRequest->configBlob, updateRequest->configVersion, updateRequest->baseConfig,
-                                          updateRequest->depsProvided, updateRequest->deps, updateRequest->depCount, 0);
+                                          updateRequest->depsProvided, updateRequest->deps, updateRequest->depCount, now);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -758,13 +763,13 @@ void DeviceRegistryController::cmd() {
         }
         char payload[32]{};
         std::snprintf(payload, sizeof(payload), "startDose:%ld:%d", amountCentiMl, logging ? 1 : 0);
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Custom, deviceId_, payload}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Custom, deviceId_, payload}, now);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
         }
     } else if (std::strcmp(commandName, "stopDose") == 0) {
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Custom, deviceId_, "stopDose"}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Custom, deviceId_, "stopDose"}, now);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -779,7 +784,7 @@ void DeviceRegistryController::cmd() {
         }
         char payload[32]{};
         std::snprintf(payload, sizeof(payload), "setVolume:%ld", volumeCentiMl);
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Custom, deviceId_, payload}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Custom, deviceId_, payload}, now);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -793,7 +798,7 @@ void DeviceRegistryController::cmd() {
         }
         char payload[32]{};
         std::snprintf(payload, sizeof(payload), "skipNext:%d:%d", doseIndex, skip ? 1 : 0);
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Custom, deviceId_, payload}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Custom, deviceId_, payload}, now);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
@@ -807,7 +812,7 @@ void DeviceRegistryController::cmd() {
             renderError(400, "BAD_ARGS", "mode is required");
             return;
         }
-        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Custom, deviceId_, modeValue}, 0);
+        mutationResult = registry_.command(DeviceCommand{DeviceCommandType::Custom, deviceId_, modeValue}, now);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;

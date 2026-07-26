@@ -6,7 +6,7 @@
 
 namespace ewfm {
 
-uint32_t ArduinoClock::millis() const {
+uint32_t ArduinoClock::millis() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     return ::millis();
 #else

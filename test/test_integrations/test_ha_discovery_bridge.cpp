@@ -1,5 +1,4 @@
 #include "config/MemoryConfigStorage.h"
-#include "core/Clock.h"
 #include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/registry/DeviceRegistry.h"
