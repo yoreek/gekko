@@ -223,6 +223,9 @@ function statusColor(device: DeviceRecord): string {
 }
 
 function onRowClick(event: Event, { item }: { item: DeviceRecord }): void {
+  if (window.getSelection()?.isCollapsed === false) {
+    return
+  }
   void router.push({ name: 'device-detail', params: { id: item.record.id } })
 }
 

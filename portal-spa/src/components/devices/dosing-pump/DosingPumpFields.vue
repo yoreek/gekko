@@ -123,18 +123,29 @@
       />
     </div>
 
-    <v-chip-group
-      v-if="modelValue.schedule.mode === 'weekly'"
-      :model-value="modelValue.schedule.daysOfWeek"
-      multiple
-      column
-      :disabled="(busy && mode !== 'view') || mode === 'view'"
-      @update:model-value="updateSchedule({ daysOfWeek: ($event as number[]).sort((a, b) => a - b) })"
-    >
-      <v-chip v-for="day in 7" :key="day - 1" :value="day - 1" filter variant="tonal">
-        {{ t(`device.dialog.dosingPump.schedule.weekday.${day - 1}`) }}
-      </v-chip>
-    </v-chip-group>
+    <v-row v-if="modelValue.schedule.mode === 'weekly'">
+      <v-col v-for="day in 7" :key="day - 1" cols="auto">
+        <v-checkbox
+          :label="t(`device.dialog.dosingPump.schedule.weekday.${day - 1}`)"
+          :model-value="modelValue.schedule.daysOfWeek"
+          :value="day - 1"
+          :disabled="(busy && mode !== 'view') || mode === 'view'"
+          density="compact"
+          hide-details
+          @update:model-value="updateSchedule({ daysOfWeek: ($event as number[]).sort((a, b) => a - b) })"
+        />
+      </v-col>
+      <v-col cols="auto" class="d-flex align-center">
+        <v-btn
+          size="small"
+          variant="text"
+          :disabled="(busy && mode !== 'view') || mode === 'view'"
+          @click="toggleAllDoseDays"
+        >
+          {{ modelValue.schedule.daysOfWeek.length === 7 ? t('device.dialog.schedule.deselectAllDays') : t('device.dialog.schedule.selectAllDays') }}
+        </v-btn>
+      </v-col>
+    </v-row>
 
     <v-alert v-if="modelValue.schedule.doses.length === 0" type="info" variant="tonal" density="comfortable">
       {{ t('device.dialog.dosingPump.schedule.noDoses') }}
@@ -265,6 +276,10 @@ function updateContainer(patch: Partial<DosingPumpContainerDraft>): void {
 
 function updateSchedule(patch: Partial<DosingPumpScheduleDraft>): void {
   emit('update:modelValue', { ...props.modelValue, schedule: { ...props.modelValue.schedule, ...patch } })
+}
+
+function toggleAllDoseDays(): void {
+  updateSchedule({ daysOfWeek: props.modelValue.schedule.daysOfWeek.length === 7 ? [] : [0, 1, 2, 3, 4, 5, 6] })
 }
 
 // Changing the everyDays cycle re-anchors it to today (browser-local days-since-1970), so the

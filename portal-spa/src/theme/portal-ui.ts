@@ -30,6 +30,7 @@ const portalIconAliases: Partial<IconAliases> = {
   eye: 'eye',
   'eye-off': 'eye-off',
   info: 'info',
+  complete: 'check-circle',
   success: 'checkboxOn',
   warning: 'info',
   error: 'cancel',
