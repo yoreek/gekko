@@ -7,6 +7,8 @@ void test_dashboard_layout_prunes_stale_registry_devices();
 void test_dashboard_layout_full_prune_recovers_to_default();
 void test_dashboard_layout_legacy_json_storage_resets_to_default();
 void test_registry_begin_loads_runtime_devices();
+void test_registry_begin_discards_only_invalid_config_record();
+void test_registry_begin_keeps_dependent_when_dependency_record_is_missing();
 void test_registry_create_rename_and_flush();
 void test_registry_disable_enable_and_delete();
 void test_registry_reenable_after_settled_disable_leaves_state_machine();
@@ -107,6 +109,8 @@ int main(int, char**) {
     RUN_TEST(test_dashboard_layout_full_prune_recovers_to_default);
     RUN_TEST(test_dashboard_layout_legacy_json_storage_resets_to_default);
     RUN_TEST(test_registry_begin_loads_runtime_devices);
+    RUN_TEST(test_registry_begin_discards_only_invalid_config_record);
+    RUN_TEST(test_registry_begin_keeps_dependent_when_dependency_record_is_missing);
     RUN_TEST(test_registry_create_rename_and_flush);
     RUN_TEST(test_registry_disable_enable_and_delete);
     RUN_TEST(test_registry_reenable_after_settled_disable_leaves_state_machine);

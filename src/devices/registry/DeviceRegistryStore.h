@@ -15,8 +15,9 @@ public:
 
     bool begin(bool readOnly = false);
     DeviceValidationResult load(DeviceRegistrySnapshot& snapshot, DeviceConfigBlobMap& configBlobs,
-                                const DeviceTypeRegistry* typeRegistry = nullptr);
+                                const DeviceTypeRegistry* typeRegistry = nullptr, std::vector<DeviceId>* discardedDeviceIds = nullptr);
     DeviceValidationResult save(const DeviceRegistrySnapshot& snapshot, const DeviceConfigBlobMap& configBlobs);
+    DeviceValidationResult saveRecovered(const DeviceRegistrySnapshot& snapshot, const DeviceConfigBlobMap& configBlobs);
     DeviceValidationResult saveRecords(const DeviceRegistrySnapshot& snapshot, const DeviceConfigBlobMap& configBlobs,
                                        const std::vector<DeviceId>& dirtyRecordIds);
     DeviceValidationResult saveIndex(const DeviceRegistrySnapshot& snapshot);

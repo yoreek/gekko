@@ -134,26 +134,66 @@ DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
 
     DeviceRegistrySnapshot loadedSnapshot{};
     DeviceConfigBlobMap loadedConfigBlobs{};
-    const DeviceValidationResult loadResult = store_.load(loadedSnapshot, loadedConfigBlobs, &typeRegistry_);
+    std::vector<DeviceId> discardedDeviceIds{};
+    const DeviceValidationResult loadResult = store_.load(loadedSnapshot, loadedConfigBlobs, &typeRegistry_, &discardedDeviceIds);
     if (!loadResult.ok()) {
         EWFM_DEVICE_REGISTRY_LOG_WARN("registry load failed: %s", loadResult.message);
         return loadResult;
     }
     EWFM_DEVICE_REGISTRY_LOG_INFO("registry loaded: devices=%u", static_cast<unsigned>(loadedSnapshot.records.size()));
 
-    const DeviceValidationResult structureResult = validateSnapshot(loadedSnapshot, loadedConfigBlobs);
-    if (!structureResult.ok()) {
-        return structureResult;
+    std::vector<DeviceId> invalidConfigIds{};
+    for (const auto& record : loadedSnapshot.records) {
+        const DeviceTypeDescriptor* descriptor = typeRegistry_.find(record.header.typeId);
+        const auto configIt = loadedConfigBlobs.find(record.header.deviceId);
+        if (descriptor == nullptr || configIt == loadedConfigBlobs.end()) {
+            invalidConfigIds.push_back(record.header.deviceId);
+            continue;
+        }
+        DeviceRegistryEntry validationRecord = record;
+        if (validationRecord.header.configVersion < descriptor->currentConfigVersion) {
+            validationRecord.header.configVersion = descriptor->currentConfigVersion;
+        }
+        if (!validateRecord(validationRecord, *descriptor, configIt->second).ok()) {
+            invalidConfigIds.push_back(record.header.deviceId);
+        }
     }
+    if (!invalidConfigIds.empty()) {
+        std::sort(invalidConfigIds.begin(), invalidConfigIds.end());
+        invalidConfigIds.erase(std::unique(invalidConfigIds.begin(), invalidConfigIds.end()), invalidConfigIds.end());
+        for (const DeviceId deviceId : invalidConfigIds) {
+            EWFM_DEVICE_REGISTRY_LOG_WARN("registry load: discarding invalid config device=%u", static_cast<unsigned>(deviceId));
+            discardedDeviceIds.push_back(deviceId);
+            loadedConfigBlobs.erase(deviceId);
+        }
+        loadedSnapshot.records.erase(std::remove_if(loadedSnapshot.records.begin(), loadedSnapshot.records.end(),
+                                                    [&invalidConfigIds](const DeviceRegistryEntry& record) {
+                                                        return std::binary_search(invalidConfigIds.begin(), invalidConfigIds.end(),
+                                                                                  record.header.deviceId);
+                                                    }),
+                                     loadedSnapshot.records.end());
+        loadedSnapshot.indexEntries.erase(std::remove_if(loadedSnapshot.indexEntries.begin(), loadedSnapshot.indexEntries.end(),
+                                                         [&invalidConfigIds](const DeviceIndexEntry& entry) {
+                                                             return std::binary_search(invalidConfigIds.begin(), invalidConfigIds.end(),
+                                                                                       entry.deviceId);
+                                                         }),
+                                          loadedSnapshot.indexEntries.end());
+    }
+
+    discardInvalidLoadRelationships(loadedSnapshot, loadedConfigBlobs, discardedDeviceIds);
 
     for (const auto& record : loadedSnapshot.records) {
         const DeviceTypeDescriptor* descriptor = typeRegistry_.find(record.header.typeId);
         if (descriptor == nullptr) {
+            discardedDeviceIds.push_back(record.header.deviceId);
             continue;
         }
         const auto configIt = loadedConfigBlobs.find(record.header.deviceId);
         if (configIt == loadedConfigBlobs.end()) {
-            return {DeviceError::MissingRecord, "missing device config"};
+            EWFM_DEVICE_REGISTRY_LOG_WARN("registry load: discarding device=%u with missing config",
+                                          static_cast<unsigned>(record.header.deviceId));
+            discardedDeviceIds.push_back(record.header.deviceId);
+            continue;
         }
         DeviceRegistryEntry runtimeRecord = record;
         const bool configMigrated = runtimeRecord.header.configVersion < descriptor->currentConfigVersion;
@@ -162,14 +202,20 @@ DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
         }
         const DeviceValidationResult configResult = validateRecord(runtimeRecord, *descriptor, configIt->second);
         if (!configResult.ok()) {
-            return configResult;
+            EWFM_DEVICE_REGISTRY_LOG_WARN("registry load: discarding invalid config device=%u (%s)",
+                                          static_cast<unsigned>(record.header.deviceId), configResult.message);
+            discardedDeviceIds.push_back(record.header.deviceId);
+            continue;
         }
         if (configMigrated) {
             persistence_.markConfigDirty(runtimeRecord.header.deviceId, now);
         }
         const DeviceValidationResult runtimeResult = reloadRuntimeFor(runtimeRecord, configIt->second);
         if (!runtimeResult.ok()) {
-            return runtimeResult;
+            EWFM_DEVICE_REGISTRY_LOG_WARN("registry load: discarding runtime device=%u (%s)", static_cast<unsigned>(record.header.deviceId),
+                                          runtimeResult.message);
+            discardedDeviceIds.push_back(record.header.deviceId);
+            continue;
         }
         syncRuntimeDependencyLinks(runtimeRecord.header.deviceId);
         if (auto* runtime = this->runtime(runtimeRecord.header.deviceId); runtime != nullptr) {
@@ -188,6 +234,30 @@ DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
     }
 
     refreshDependentRuntimeStates(now);
+
+    if (!discardedDeviceIds.empty()) {
+        DeviceRegistrySnapshot recoveredSnapshot{};
+        DeviceConfigBlobMap recoveredConfigBlobs{};
+        const DeviceValidationResult snapshotResult = buildSnapshot(recoveredSnapshot, recoveredConfigBlobs);
+        if (!snapshotResult.ok()) {
+            return snapshotResult;
+        }
+        const DeviceValidationResult saveResult = store_.saveRecovered(recoveredSnapshot, recoveredConfigBlobs);
+        if (!saveResult.ok()) {
+            return saveResult;
+        }
+        std::sort(discardedDeviceIds.begin(), discardedDeviceIds.end());
+        discardedDeviceIds.erase(std::unique(discardedDeviceIds.begin(), discardedDeviceIds.end()), discardedDeviceIds.end());
+        for (const DeviceId deviceId : discardedDeviceIds) {
+            (void)store_.removeRecord(deviceId);
+            if (retainedStateStore_ != nullptr) {
+                (void)retainedStateStore_->clearDevice(deviceId);
+            }
+            if (persistedStateStore_ != nullptr) {
+                (void)persistedStateStore_->clearDevice(deviceId);
+            }
+        }
+    }
 
     return {};
 }
@@ -1393,6 +1463,137 @@ DeviceValidationResult DeviceRegistry::validateAcyclicDependencyGraph(const Devi
         }
     }
     return {};
+}
+
+void DeviceRegistry::discardInvalidLoadRelationships(DeviceRegistrySnapshot& snapshot, DeviceConfigBlobMap& configBlobs,
+                                                     std::vector<DeviceId>& discardedDeviceIds) const {
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        std::map<DeviceId, const DeviceRegistryEntry*> recordsById;
+        for (const auto& record : snapshot.records) {
+            recordsById.emplace(record.header.deviceId, &record);
+        }
+
+        std::vector<DeviceId> invalidIds;
+        std::map<DeviceId, size_t> dependentCounts;
+        std::map<std::pair<DeviceId, DeviceRole>, DeviceId> exclusiveOwners;
+        for (const auto& record : snapshot.records) {
+            const DeviceTypeDescriptor* descriptor = typeRegistry_.find(record.header.typeId);
+            if (descriptor == nullptr || record.dependencyCount() > kMaxDeviceDependencies) {
+                invalidIds.push_back(record.header.deviceId);
+                continue;
+            }
+
+            bool invalid = false;
+            for (const auto& requirement : descriptor->dependencyRequirements) {
+                if (!requirement.required) {
+                    continue;
+                }
+                const DeviceDependencyLink* links = record.dependencyLinks();
+                const uint8_t depCount = record.dependencyCount();
+                if (std::find_if(links, links + depCount, [&requirement](const DeviceDependencyLink& link) {
+                        return link.role == requirement.role;
+                    }) == links + depCount) {
+                    invalid = true;
+                    break;
+                }
+            }
+
+            const DeviceDependencyLink* links = record.dependencyLinks();
+            const uint8_t depCount = record.dependencyCount();
+            for (uint8_t index = 0; !invalid && index < depCount && links != nullptr; ++index) {
+                const DeviceDependencyLink& link = links[index];
+                if (link.role == DeviceRole::Unknown || link.deviceId == 0U || link.deviceId == record.header.deviceId) {
+                    invalid = true;
+                    break;
+                }
+                const auto requirement =
+                    std::find_if(descriptor->dependencyRequirements.begin(), descriptor->dependencyRequirements.end(),
+                                 [&link](const DeviceDependencyRequirement& candidate) { return candidate.role == link.role; });
+                if (requirement == descriptor->dependencyRequirements.end()) {
+                    invalid = true;
+                    break;
+                }
+
+                const auto dependencyIt = recordsById.find(link.deviceId);
+                if (dependencyIt == recordsById.end()) {
+                    continue;
+                }
+                const DeviceTypeDescriptor* dependencyDescriptor = typeRegistry_.find(dependencyIt->second->header.typeId);
+                if (dependencyDescriptor == nullptr ||
+                    (link.role != DeviceRole::MetricSource && !dependencyDescriptor->providedRoles.contains(link.role))) {
+                    invalid = true;
+                    break;
+                }
+                const size_t dependentCount = ++dependentCounts[link.deviceId];
+                if (dependencyDescriptor->maxDependents > 0U && dependentCount > dependencyDescriptor->maxDependents) {
+                    invalid = true;
+                    break;
+                }
+                if (descriptor->exclusiveDependencyRoles.contains(link.role)) {
+                    const auto key = std::make_pair(link.deviceId, link.role);
+                    const auto owner = exclusiveOwners.find(key);
+                    if (owner != exclusiveOwners.end() && owner->second != record.header.deviceId) {
+                        invalid = true;
+                        break;
+                    }
+                    exclusiveOwners[key] = record.header.deviceId;
+                }
+            }
+
+            if (invalid) {
+                invalidIds.push_back(record.header.deviceId);
+            }
+        }
+
+        for (const auto& record : snapshot.records) {
+            const DeviceId rootId = record.header.deviceId;
+            std::map<DeviceId, bool> visited;
+            const auto reachesRoot = [&](const auto& self, DeviceId currentId) -> bool {
+                const auto current = recordsById.find(currentId);
+                if (current == recordsById.end()) {
+                    return false;
+                }
+                const DeviceDependencyLink* links = current->second->dependencyLinks();
+                const uint8_t depCount = current->second->dependencyCount();
+                for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
+                    if (links[index].deviceId == rootId) {
+                        return true;
+                    }
+                    if (visited.emplace(links[index].deviceId, true).second && self(self, links[index].deviceId)) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+            if (reachesRoot(reachesRoot, rootId)) {
+                invalidIds.push_back(rootId);
+            }
+        }
+
+        if (invalidIds.empty()) {
+            continue;
+        }
+        std::sort(invalidIds.begin(), invalidIds.end());
+        invalidIds.erase(std::unique(invalidIds.begin(), invalidIds.end()), invalidIds.end());
+        for (const DeviceId deviceId : invalidIds) {
+            EWFM_DEVICE_REGISTRY_LOG_WARN("registry load: discarding invalid relationship device=%u", static_cast<unsigned>(deviceId));
+            discardedDeviceIds.push_back(deviceId);
+            configBlobs.erase(deviceId);
+        }
+        snapshot.records.erase(std::remove_if(snapshot.records.begin(), snapshot.records.end(),
+                                              [&invalidIds](const DeviceRegistryEntry& record) {
+                                                  return std::binary_search(invalidIds.begin(), invalidIds.end(), record.header.deviceId);
+                                              }),
+                               snapshot.records.end());
+        snapshot.indexEntries.erase(std::remove_if(snapshot.indexEntries.begin(), snapshot.indexEntries.end(),
+                                                   [&invalidIds](const DeviceIndexEntry& entry) {
+                                                       return std::binary_search(invalidIds.begin(), invalidIds.end(), entry.deviceId);
+                                                   }),
+                                    snapshot.indexEntries.end());
+        changed = true;
+    }
 }
 
 std::vector<DeviceId> DeviceRegistry::dependentDeviceIds(DeviceId deviceId) const {

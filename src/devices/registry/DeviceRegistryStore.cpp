@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <map>
 #include <type_traits>
 
 namespace ewfm {
@@ -143,9 +144,12 @@ bool DeviceRegistryStore::begin(bool readOnly) {
 }
 
 DeviceValidationResult DeviceRegistryStore::load(DeviceRegistrySnapshot& snapshot, DeviceConfigBlobMap& configBlobs,
-                                                 const DeviceTypeRegistry* typeRegistry) {
+                                                 const DeviceTypeRegistry* typeRegistry, std::vector<DeviceId>* discardedDeviceIds) {
     snapshot = {};
     configBlobs.clear();
+    if (discardedDeviceIds != nullptr) {
+        discardedDeviceIds->clear();
+    }
 
     uint32_t registryVersion{0};
     if (!storage_.getUInt(kRegistryVersionKey, registryVersion)) {
@@ -172,63 +176,68 @@ DeviceValidationResult DeviceRegistryStore::load(DeviceRegistrySnapshot& snapsho
         return {};
     }
 
+    std::map<DeviceId, bool> indexIds{};
+    for (const DeviceIndexEntry& entry : snapshot.indexEntries) {
+        if (entry.deviceId == 0U || entry.typeId == 0U || indexIds.find(entry.deviceId) != indexIds.end()) {
+            EWFM_DEVICE_REGISTRY_LOG_WARN("load: registry index contains an invalid entry, resetting storage");
+            snapshot = {};
+            resetRegistryStorage(storage_);
+            return {};
+        }
+        indexIds.emplace(entry.deviceId, true);
+    }
+
+    const std::vector<DeviceIndexEntry> storedEntries = snapshot.indexEntries;
+    snapshot.indexEntries.clear();
     snapshot.records.clear();
-    snapshot.records.reserve(snapshot.indexEntries.size());
-    for (const auto& entry : snapshot.indexEntries) {
+    snapshot.indexEntries.reserve(storedEntries.size());
+    snapshot.records.reserve(storedEntries.size());
+    std::vector<DeviceId> discarded{};
+    for (const auto& entry : storedEntries) {
         DeviceRegistryEntry record{};
         DeviceConfigBlob configBlob{};
         const DeviceValidationResult recordResult = readRecord(storage_, entry.deviceId, entry.typeId, record, configBlob);
         if (!recordResult.ok()) {
-            EWFM_DEVICE_REGISTRY_LOG_WARN("load: record read failed for device=%u type=%u (%s), resetting storage",
+            EWFM_DEVICE_REGISTRY_LOG_WARN("load: discarding unreadable record device=%u type=%u (%s)",
                                           static_cast<unsigned>(entry.deviceId), static_cast<unsigned>(entry.typeId), recordResult.message);
-            snapshot = {};
-            configBlobs.clear();
-            resetRegistryStorage(storage_);
-            return {};
+            discarded.push_back(entry.deviceId);
+            continue;
         }
 
         if (typeRegistry != nullptr) {
             const DeviceTypeDescriptor* descriptor = typeRegistry->find(record.header.typeId);
             if (descriptor == nullptr) {
-                EWFM_DEVICE_REGISTRY_LOG_WARN("load: unknown device type=%u for device=%u, resetting storage",
+                EWFM_DEVICE_REGISTRY_LOG_WARN("load: discarding unknown device type=%u for device=%u",
                                               static_cast<unsigned>(record.header.typeId), static_cast<unsigned>(record.header.deviceId));
-                snapshot = {};
-                configBlobs.clear();
-                resetRegistryStorage(storage_);
-                return {};
+                discarded.push_back(entry.deviceId);
+                continue;
             }
             if (record.header.configVersion > descriptor->currentConfigVersion) {
-                EWFM_DEVICE_REGISTRY_LOG_WARN(
-                    "load: config version too new for device=%u type=%u (stored=%u supported=%u), resetting storage",
-                    static_cast<unsigned>(record.header.deviceId), static_cast<unsigned>(record.header.typeId),
-                    static_cast<unsigned>(record.header.configVersion), static_cast<unsigned>(descriptor->currentConfigVersion));
-                snapshot = {};
-                configBlobs.clear();
-                resetRegistryStorage(storage_);
-                return {};
+                EWFM_DEVICE_REGISTRY_LOG_WARN("load: discarding too-new config for device=%u type=%u (stored=%u supported=%u)",
+                                              static_cast<unsigned>(record.header.deviceId), static_cast<unsigned>(record.header.typeId),
+                                              static_cast<unsigned>(record.header.configVersion),
+                                              static_cast<unsigned>(descriptor->currentConfigVersion));
+                discarded.push_back(entry.deviceId);
+                continue;
             }
         }
         configBlobs[record.header.deviceId] = configBlob;
+        snapshot.indexEntries.push_back(entry);
         snapshot.records.push_back(std::move(record));
     }
 
-    const DeviceValidationResult structureResult = DeviceRegistrySnapshotValidator::validateStructure(snapshot);
-    if (!structureResult.ok()) {
-        EWFM_DEVICE_REGISTRY_LOG_WARN("load: snapshot structure invalid (%s), resetting storage", structureResult.message);
-        snapshot = {};
-        configBlobs.clear();
-        resetRegistryStorage(storage_);
-        return {};
-    }
-
-    const DeviceValidationResult typedRelationshipResult =
-        DeviceRegistrySnapshotValidator::validateTypedRelationships(snapshot, typeRegistry);
-    if (!typedRelationshipResult.ok()) {
-        EWFM_DEVICE_REGISTRY_LOG_WARN("load: typed relationships invalid (%s), resetting storage", typedRelationshipResult.message);
-        snapshot = {};
-        configBlobs.clear();
-        resetRegistryStorage(storage_);
-        return {};
+    if (!discarded.empty()) {
+        const DeviceValidationResult indexSaveResult = saveIndex(snapshot);
+        if (!indexSaveResult.ok()) {
+            EWFM_DEVICE_REGISTRY_LOG_WARN("load: unable to persist cleaned index (%s)", indexSaveResult.message);
+        } else {
+            for (const DeviceId deviceId : discarded) {
+                (void)removeRecord(deviceId);
+            }
+        }
+        if (discardedDeviceIds != nullptr) {
+            *discardedDeviceIds = discarded;
+        }
     }
 
     return {};
@@ -249,6 +258,14 @@ DeviceValidationResult DeviceRegistryStore::save(const DeviceRegistrySnapshot& s
 
     const DeviceValidationResult indexResult = saveIndex(normalized);
     return indexResult;
+}
+
+DeviceValidationResult DeviceRegistryStore::saveRecovered(const DeviceRegistrySnapshot& snapshot, const DeviceConfigBlobMap& configBlobs) {
+    const DeviceValidationResult recordResult = saveRecords(snapshot, configBlobs, {});
+    if (!recordResult.ok()) {
+        return recordResult;
+    }
+    return saveIndex(snapshot);
 }
 
 DeviceValidationResult DeviceRegistryStore::saveRecords(const DeviceRegistrySnapshot& snapshot, const DeviceConfigBlobMap& configBlobs,

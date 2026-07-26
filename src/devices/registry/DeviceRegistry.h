@@ -153,6 +153,8 @@ private:
                                           const DeviceConfigBlob& configBlob) const;
     DeviceValidationResult validateDependencies(const DeviceRegistrySnapshot& snapshot, const DeviceRegistryEntry& record) const;
     DeviceValidationResult validateAcyclicDependencyGraph(const DeviceRegistrySnapshot& snapshot) const;
+    void discardInvalidLoadRelationships(DeviceRegistrySnapshot& snapshot, DeviceConfigBlobMap& configBlobs,
+                                         std::vector<DeviceId>& discardedDeviceIds) const;
     std::vector<DeviceId> dependentDeviceIds(DeviceId deviceId) const;
     void syncRuntimeDependencyLinks(DeviceId deviceId);
     DeviceStatus effectiveStatusForRuntime(const IDeviceRuntime& runtime) const;

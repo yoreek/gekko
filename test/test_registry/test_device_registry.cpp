@@ -622,6 +622,87 @@ void test_registry_begin_loads_runtime_devices() {
     TEST_ASSERT_FALSE(registry.hasPendingPersistence());
 }
 
+void test_registry_begin_discards_only_invalid_config_record() {
+    MemoryConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    DummyDeviceConfigV1 validConfig{};
+    validConfig.enabled = true;
+    std::snprintf(validConfig.name, sizeof(validConfig.name), "%s", "healthy");
+    DeviceConfigBlob invalidConfig{};
+    const uint8_t invalidPayload[] = {0x00};
+    TEST_ASSERT_TRUE(invalidConfig.assign(invalidPayload, sizeof(invalidPayload)));
+
+    DeviceRegistrySnapshot snapshot{};
+    DeviceRegistryEntry healthy{};
+    healthy.header.recordVersion = kDeviceRecordHeaderVersion;
+    healthy.header.deviceId = 41;
+    healthy.header.typeId = 1;
+    healthy.header.configVersion = DummyDevice::descriptor().currentConfigVersion;
+    healthy.header.configRevision = 1;
+    healthy.header.payloadLength = static_cast<uint32_t>(encodeDummyConfig(validConfig).size());
+    healthy.status = DeviceStatus::Ready;
+    DeviceRegistryEntry invalid = healthy;
+    invalid.header.deviceId = 42;
+    invalid.header.payloadLength = static_cast<uint32_t>(invalidConfig.size());
+    snapshot.indexEntries = {{41, 1}, {42, 1}};
+    snapshot.records = {healthy, invalid};
+    DeviceConfigBlobMap configBlobs{};
+    configBlobs[41] = encodeDummyConfig(validConfig);
+    configBlobs[42] = invalidConfig;
+    TEST_ASSERT_TRUE(store.save(snapshot, configBlobs).ok());
+
+    FixedDeviceIdSource idSource({99});
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(store, types, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+    TEST_ASSERT_NOT_NULL(registry.runtime(41));
+    TEST_ASSERT_NULL(registry.runtime(42));
+
+    DeviceRegistrySnapshot recovered{};
+    DeviceConfigBlobMap recoveredBlobs{};
+    TEST_ASSERT_TRUE(store.load(recovered, recoveredBlobs, &types).ok());
+    TEST_ASSERT_EQUAL_UINT32(1, recovered.records.size());
+    TEST_ASSERT_EQUAL_UINT32(41, recovered.records[0].header.deviceId);
+}
+
+void test_registry_begin_keeps_dependent_when_dependency_record_is_missing() {
+    MemoryConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    FixedDeviceIdSource idSource({51, 52});
+    DeviceTypeRegistry types = makeRegistryWithDummyProvidingOneWireBus();
+    DeviceTypeDescriptor dependentDescriptor = makeDependentDescriptor(61);
+    dependentDescriptor.createRuntime = &createCountingRuntime;
+    TEST_ASSERT_TRUE(types.registerDescriptor(dependentDescriptor));
+    DeviceRegistry firstRegistry(store, types, idSource);
+    TEST_ASSERT_TRUE(firstRegistry.begin(0).ok());
+
+    const DeviceCreateResult dependency = firstRegistry.create(makeDummyCreateRequest("dependency"), 1);
+    TEST_ASSERT_TRUE(dependency.ok());
+    DeviceCreateRequest dependentRequest = makeDummyCreateRequest("dependent");
+    dependentRequest.typeId = 61;
+    dependentRequest.configVersion = 1;
+    dependentRequest.depCount = 1;
+    dependentRequest.deps[0] = {DeviceRole::OneWireBus, dependency.deviceId};
+    const DeviceCreateResult dependent = firstRegistry.create(dependentRequest, 2);
+    TEST_ASSERT_TRUE(dependent.ok());
+
+    TEST_ASSERT_TRUE(store.removeRecord(dependency.deviceId));
+
+    FixedDeviceIdSource restartIds({53});
+    DeviceRegistry restartedRegistry(store, types, restartIds);
+    TEST_ASSERT_TRUE(restartedRegistry.begin(10).ok());
+    TEST_ASSERT_NULL(restartedRegistry.runtime(dependency.deviceId));
+    TEST_ASSERT_NOT_NULL(restartedRegistry.runtime(dependent.deviceId));
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked),
+                      static_cast<int>(restartedRegistry.effectiveStatus(dependent.deviceId)));
+    TEST_ASSERT_EQUAL_UINT32(dependency.deviceId,
+                             restartedRegistry.runtime(dependent.deviceId)->dependencyDeviceId(DeviceRole::OneWireBus));
+}
+
 void test_registry_create_rename_and_flush() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
