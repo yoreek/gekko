@@ -310,6 +310,7 @@ export default {
       st7735: 'Дисплей ST7735',
       ds18b20TemperatureSensor: 'Датчик температури DS18B20',
       ntcThermistorTemperatureSensor: 'Датчик температури NTC-термістор',
+      aht10: 'Датчик температури та вологості AHT10',
       htu21: 'Датчик температури та вологості HTU21',
       thermostat: 'Термостат',
       rtcDs3231: 'RTC DS3231',
@@ -328,6 +329,7 @@ export default {
       ads1115Hub: 'Хаб аналогового входу ADS1115',
       cd74hc4067Hub: 'Хаб аналогового входу CD74HC4067',
       analogInputChannel: 'Канал аналогового входу',
+      lcd1602: 'Текстовий дисплей LCD1602',
       unknown: 'Невідомий тип пристрою',
     },
     mode: {
@@ -494,6 +496,19 @@ export default {
       pumpSwitch: 'Вимикач помпи',
       dosingSpeed: 'Швидкість помпи (мл/с)',
       levelSensor: 'Датчик низького рівня',
+      lcd1602WiringPreset: 'Розпайка',
+      lcd1602WiringStandard: 'Стандартний перехідник PCF8574',
+      lcd1602WiringCustom: 'Своя розпайка',
+      lcd1602Line1: 'Рядок 1',
+      lcd1602Line2: 'Рядок 2',
+      lcd1602Wiring: 'Канали port-експандера',
+      lcd1602RsChannel: 'Канал RS',
+      lcd1602EChannel: 'Канал E',
+      lcd1602D4Channel: 'Канал D4',
+      lcd1602D5Channel: 'Канал D5',
+      lcd1602D6Channel: 'Канал D6',
+      lcd1602D7Channel: 'Канал D7',
+      lcd1602BacklightChannel: 'Канал підсвічування',
     },
     ha: {
       title: 'Home Assistant',
@@ -708,6 +723,12 @@ export default {
         temperatureFilterTitle: 'Фільтр показань температури',
         humidityFilterTitle: 'Фільтр показань вологості',
       },
+      aht10: {
+        noDependency: 'Створіть залежність шини I2C перед додаванням датчика AHT10.',
+        addressHint: '0x38 — стандартна апаратна адреса AHT10. Змінюйте лише для сумісного обладнання чи транслятора адрес.',
+        temperatureFilterTitle: 'Фільтр показань температури',
+        humidityFilterTitle: 'Фільтр показань вологості',
+      },
       portExpander: {
         noDependency: 'Створіть залежність шини I2C перед додаванням розширювача портів.',
         invertedHint: 'Інвертує електричний рівень кожного каналу перед записом у регістр (для плат з active-low, напр. багатьох модулів реле).',
@@ -716,6 +737,10 @@ export default {
       },
       portExpanderSwitch: {
         noDependency: 'Створіть залежність розширювача портів PCF8574 або PCF8575 перед додаванням цього вимикача.',
+      },
+      lcd1602: {
+        noDependency: 'Створіть залежність розширювача портів PCF8574 або PCF8575 перед додаванням цього дисплея.',
+        backlightChannelHint: 'Встановіть 255, якщо підсвічування не підключене до каналу port-експандера.',
       },
       ntcThermistor: {
         noDependency: 'Створіть залежність аналогового входу, перш ніж додавати NTC-термістор.',

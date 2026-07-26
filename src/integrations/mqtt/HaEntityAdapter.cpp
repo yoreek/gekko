@@ -6,6 +6,7 @@
 #include "devices/analog/input/port/AnalogPortInputDevice.h"
 #include "devices/analog/ledc/LedcAnalogOutputDevice.h"
 #include "devices/analog/scheduled/ScheduledAnalogOutputDevice.h"
+#include "devices/sensors/aht10/Aht10SensorDevice.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
 #include "devices/sensors/htu21/Htu21SensorDevice.h"
 #include "devices/sensors/ntc_thermistor/NtcThermistorTemperatureSensorDevice.h"
@@ -68,6 +69,9 @@ HaEntityAdapterRegistry HaEntityAdapterRegistry::withDefaults() {
         {Ds18b20TemperatureSensorDevice::descriptor().typeId, "ds18b20_temperature_sensor", "mdi:thermometer"});
     static const TemperatureSensorHaEntityAdapter kNtcThermistorAdapter(
         {NtcThermistorTemperatureSensorDevice::descriptor().typeId, "ntc_thermistor_temperature_sensor", "mdi:thermometer-lines"});
+    static const TemperatureSensorHaEntityAdapter kAht10Adapter({Aht10SensorDevice::descriptor().typeId, "aht10", "mdi:thermometer"});
+    static const HumiditySensorHaEntityAdapter kAht10HumidityAdapter(
+        {Aht10SensorDevice::descriptor().typeId, "aht10_humidity", "mdi:water-percent"});
     // HTU21 exposes two independent HA entities from one device: temperature reuses the generic
     // sensor adapter above, humidity gets its own generic adapter below - HaEntityAdapterRegistry
     // allows more than one adapter per typeId precisely for cases like this.
@@ -107,6 +111,8 @@ HaEntityAdapterRegistry HaEntityAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(kGpioSwitchAdapter);
     (void)registry.registerAdapter(kDs18b20Adapter);
     (void)registry.registerAdapter(kNtcThermistorAdapter);
+    (void)registry.registerAdapter(kAht10Adapter);
+    (void)registry.registerAdapter(kAht10HumidityAdapter);
     (void)registry.registerAdapter(kHtu21Adapter);
     (void)registry.registerAdapter(kHtu21HumidityAdapter);
     (void)registry.registerAdapter(kLedcAnalogOutputAdapter);

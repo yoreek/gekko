@@ -8,6 +8,7 @@ import { I2cBusDevice } from '@/models/devices/i2c-bus'
 import { SpiBusDevice } from '@/models/devices/spi-bus'
 import { Ds18b20Device } from '@/models/devices/ds18b20'
 import { NtcThermistorDevice } from '@/models/devices/ntc-thermistor'
+import { Aht10Device } from '@/models/devices/aht10'
 import { Htu21Device } from '@/models/devices/htu21'
 import { ThermostatDevice } from '@/models/devices/thermostat'
 import { Ssd1306Device } from '@/models/devices/ssd1306/device'
@@ -26,6 +27,7 @@ import { AnalogPortInputDevice } from '@/models/devices/analog-port-input'
 import { Ads1115HubDevice } from '@/models/devices/ads1115-hub'
 import { AnalogInputChannelDevice } from '@/models/devices/analog-input-channel'
 import { Cd74hc4067HubDevice } from '@/models/devices/cd74hc4067-hub'
+import { Lcd1602Device } from '@/models/devices/lcd1602'
 import DummyFields from '@/components/devices/dummy/DummyFields.vue'
 import DummyWidget from '@/components/devices/dummy/DummyWidget.vue'
 import GpioSwitchFields from '@/components/devices/gpio-switch/GpioSwitchFields.vue'
@@ -40,6 +42,8 @@ import Ds18b20Fields from '@/components/devices/ds18b20/Ds18b20Fields.vue'
 import Ds18b20Widget from '@/components/devices/ds18b20/Ds18b20Widget.vue'
 import NtcThermistorFields from '@/components/devices/ntc-thermistor/NtcThermistorFields.vue'
 import NtcThermistorWidget from '@/components/devices/ntc-thermistor/NtcThermistorWidget.vue'
+import Aht10Fields from '@/components/devices/aht10/Aht10Fields.vue'
+import Aht10Widget from '@/components/devices/aht10/Aht10Widget.vue'
 import Htu21Fields from '@/components/devices/htu21/Htu21Fields.vue'
 import Htu21Widget from '@/components/devices/htu21/Htu21Widget.vue'
 import ThermostatFields from '@/components/devices/thermostat/ThermostatFields.vue'
@@ -74,6 +78,8 @@ import Cd74hc4067HubFields from '@/components/devices/cd74hc4067-hub/Cd74hc4067H
 import AnalogInputHubWidget from '@/components/devices/analog-input/AnalogInputHubWidget.vue'
 import AnalogInputChannelFields from '@/components/devices/analog-input/AnalogInputChannelFields.vue'
 import AnalogInputChannelWidget from '@/components/devices/analog-input/AnalogInputChannelWidget.vue'
+import Lcd1602Fields from '@/components/devices/lcd1602/Lcd1602Fields.vue'
+import Lcd1602Widget from '@/components/devices/lcd1602/Lcd1602Widget.vue'
 
 const unknownUi: DeviceUi = {
   typeId: 0,
@@ -145,6 +151,15 @@ const ntcThermistorUi: DeviceUi = {
   icon: 'temperature',
   fieldsComponent: NtcThermistorFields,
   widgetComponent: NtcThermistorWidget,
+}
+
+const aht10Ui: DeviceUi = {
+  typeId: Aht10Device.TYPE_ID,
+  typeName: Aht10Device.TYPE_NAME,
+  labelKey: 'device.type.aht10',
+  icon: 'temperature',
+  fieldsComponent: Aht10Fields,
+  widgetComponent: Aht10Widget,
 }
 
 const htu21Ui: DeviceUi = {
@@ -347,6 +362,15 @@ const analogInputChannelUi: DeviceUi = {
   widgetComponent: AnalogInputChannelWidget,
 }
 
+const lcd1602Ui: DeviceUi = {
+  typeId: Lcd1602Device.TYPE_ID,
+  typeName: Lcd1602Device.TYPE_NAME,
+  labelKey: 'device.type.lcd1602',
+  icon: 'display',
+  fieldsComponent: Lcd1602Fields,
+  widgetComponent: Lcd1602Widget,
+}
+
 const deviceUiV2ByTypeId: Record<number, DeviceUi> = {
   [dummyUi.typeId]: dummyUi,
   [gpioSwitchUi.typeId]: gpioSwitchUi,
@@ -355,6 +379,7 @@ const deviceUiV2ByTypeId: Record<number, DeviceUi> = {
   [spiBusUi.typeId]: spiBusUi,
   [ds18b20Ui.typeId]: ds18b20Ui,
   [ntcThermistorUi.typeId]: ntcThermistorUi,
+  [aht10Ui.typeId]: aht10Ui,
   [htu21Ui.typeId]: htu21Ui,
   [thermostatUi.typeId]: thermostatUi,
   [ssd1306Ui.typeId]: ssd1306Ui,
@@ -375,6 +400,7 @@ const deviceUiV2ByTypeId: Record<number, DeviceUi> = {
   [ads1115HubUi.typeId]: ads1115HubUi,
   [cd74hc4067HubUi.typeId]: cd74hc4067HubUi,
   [analogInputChannelUi.typeId]: analogInputChannelUi,
+  [lcd1602Ui.typeId]: lcd1602Ui,
 }
 
 export const allDeviceUis: DeviceUi[] = Object.values(deviceUiV2ByTypeId)

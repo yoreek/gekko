@@ -3,6 +3,7 @@ import type {
   DeviceRecord,
   GpioSwitchOutputSnapshot,
   Ds18b20TemperatureSensorOutputSnapshot,
+  Aht10SensorOutputSnapshot,
   Htu21SensorOutputSnapshot,
   NtcThermistorTemperatureSensorOutputSnapshot,
   ThermostatOutputSnapshot,
@@ -26,6 +27,7 @@ function temperatureReading(
   snapshot:
     | Ds18b20TemperatureSensorOutputSnapshot
     | NtcThermistorTemperatureSensorOutputSnapshot
+    | Aht10SensorOutputSnapshot
     | Htu21SensorOutputSnapshot
     | ThermostatOutputSnapshot
     | undefined,
@@ -41,6 +43,17 @@ function temperatureReading(
 }
 
 function humidityReading(snapshot: Htu21SensorOutputSnapshot | undefined): HistorySeriesReading {
+  const humidity = snapshot?.humidity
+  return {
+    key: kHumiditySeries,
+    kind: 'numeric',
+    labelKey: 'device.card.history.humidity',
+    value: humidity?.valid ? humidity.value : null,
+    unitSymbol: humidity?.unitSymbol,
+  }
+}
+
+function humidityReadingFromAht10(snapshot: Aht10SensorOutputSnapshot | undefined): HistorySeriesReading {
   const humidity = snapshot?.humidity
   return {
     key: kHumiditySeries,
@@ -68,6 +81,10 @@ export function extractReadings(device: DeviceRecord): HistorySeriesReading[] {
       return [temperatureReading(output as Ds18b20TemperatureSensorOutputSnapshot | undefined)]
     case 'ntc_thermistor_temperature_sensor':
       return [temperatureReading(output as NtcThermistorTemperatureSensorOutputSnapshot | undefined)]
+    case 'aht10': {
+      const aht10Output = output as Aht10SensorOutputSnapshot | undefined
+      return [temperatureReading(aht10Output), humidityReadingFromAht10(aht10Output)]
+    }
     case 'htu21': {
       const htu21Output = output as Htu21SensorOutputSnapshot | undefined
       return [temperatureReading(htu21Output), humidityReading(htu21Output)]

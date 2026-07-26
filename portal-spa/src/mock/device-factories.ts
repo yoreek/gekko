@@ -537,7 +537,7 @@ function normalizeSpiBusConfigPayload(value: unknown, enabledFallback: boolean):
 // ssd1306-only `ensureUniqueI2cAddress` above, which is left untouched for its existing callers.
 // ============================================================================
 
-const I2C_ADDRESS_BEARING_TYPE_NAMES = new Set(['ssd1306', 'rtc_ds3231', 'pcf8574_expander', 'pcf8575_expander', 'htu21', 'ads1115_hub'])
+const I2C_ADDRESS_BEARING_TYPE_NAMES = new Set(['ssd1306', 'rtc_ds3231', 'pcf8574_expander', 'pcf8575_expander', 'aht10', 'htu21', 'ads1115_hub'])
 
 function deviceI2cAddress(device: DeviceRecord): number {
   return normalizeFiniteNumber((device.config as Record<string, unknown>).i2cAddress, -1)
@@ -1142,6 +1142,23 @@ export function normalizeHtu21ConfigPayload(value: unknown, enabledFallback: boo
   }
 }
 
+export function normalizeAht10ConfigPayload(value: unknown, enabledFallback: boolean): Record<string, unknown> & { enabled: boolean } {
+  if (!isRecordPayload(value)) {
+    throw new ApiClientError('invalid aht10 config', 'BAD_ARGS', 400, null)
+  }
+  return {
+    enabled: typeof value.enabled === 'boolean' ? value.enabled : enabledFallback,
+    i2cAddress: normalizeI2cAddress(value.i2cAddress, 0x38),
+    unit: normalizeDs18b20Unit(value.unit),
+    pollMs: Math.max(1000, normalizeFiniteNumber(value.pollMs, 5000)),
+    reportDeltaCelsius: Math.max(0.01, normalizeFiniteNumber(value.reportDeltaCelsius, 0.1)),
+    reportDeltaHumidity: Math.max(0.01, normalizeFiniteNumber(value.reportDeltaHumidity, 0.1)),
+    reportAlways: typeof value.reportAlways === 'boolean' ? value.reportAlways : false,
+    temperatureFilter: normalizeSensorFilterPayload(value.temperatureFilter),
+    humidityFilter: normalizeSensorFilterPayload(value.humidityFilter),
+  }
+}
+
 export function createHtu21Device(
   nextId: number,
   configSource: Record<string, unknown>,
@@ -1158,6 +1175,49 @@ export function createHtu21Device(
   const config = normalizeHtu21ConfigPayload(configSource, enabled)
   ensureUniqueI2cAddressAcrossTypes(db, dependencyDeviceId, config.i2cAddress as number, nextId)
   return createDeviceRecord(nextId, 'htu21', 1, {
+    ...config,
+    name,
+    deps: [{ role: 'i2c_bus', deviceId: dependencyDeviceId }],
+  }, {
+    status: 'ready',
+    lifecycleStatus: 'ready',
+    effectiveStatus: 'ready',
+    output: {
+      temperature: {
+        value: 23.4,
+        unit: config.unit === 'fahrenheit' ? 'fahrenheit' : 'celsius',
+        unitSymbol: config.unit === 'fahrenheit' ? 'F' : 'C',
+        measuredAtMs: Date.now(),
+        valid: true,
+        status: 'ok',
+      },
+      humidity: {
+        value: 45.3,
+        unitSymbol: '%',
+        measuredAtMs: Date.now(),
+        valid: true,
+        status: 'ok',
+      },
+    },
+  })
+}
+
+export function createAht10Device(
+  nextId: number,
+  configSource: Record<string, unknown>,
+  baseDeps: DeviceDependencyLink[],
+  enabled: boolean,
+  name: string,
+  db: Database,
+): DeviceRecord {
+  const dependencyDeviceId = dependencyDeviceIdForRole(baseDeps, 'i2c_bus') || normalizeDependencyDeviceId(configSource.dependencyDeviceId)
+  if (dependencyDeviceId <= 0) {
+    throw new ApiClientError('aht10 i2c dependency is required', 'BAD_ARGS', 400, null)
+  }
+  requireI2cDependency(db, dependencyDeviceId)
+  const config = normalizeAht10ConfigPayload(configSource, enabled)
+  ensureUniqueI2cAddressAcrossTypes(db, dependencyDeviceId, config.i2cAddress as number, nextId)
+  return createDeviceRecord(nextId, 'aht10', 1, {
     ...config,
     name,
     deps: [{ role: 'i2c_bus', deviceId: dependencyDeviceId }],

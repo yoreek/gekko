@@ -1,6 +1,7 @@
 #include "integrations/common/DeviceApiAdapter.h"
 
 #include "devices/core/DeviceBaseConfig.h"
+#include "integrations/rest/aht10/Aht10SensorDeviceApiAdapter.h"
 #include "integrations/rest/analog_input/Ads1115HubDeviceApiAdapter.h"
 #include "integrations/rest/analog_input/AnalogInputChannelDeviceApiAdapter.h"
 #include "integrations/rest/analog_input/AnalogPortInputDeviceApiAdapter.h"
@@ -20,6 +21,7 @@
 #include "integrations/rest/gpio_switch/GpioSwitchDeviceApiAdapter.h"
 #include "integrations/rest/htu21/Htu21SensorDeviceApiAdapter.h"
 #include "integrations/rest/i2c_bus/I2cBusDeviceApiAdapter.h"
+#include "integrations/rest/lcd1602/Lcd1602DeviceApiAdapter.h"
 #include "integrations/rest/ntc_thermistor/NtcThermistorTemperatureSensorDeviceApiAdapter.h"
 #include "integrations/rest/onewire_bus/OneWireBusDeviceApiAdapter.h"
 #include "integrations/rest/rtc_ds3231/Ds3231RtcDeviceApiAdapter.h"
@@ -263,6 +265,7 @@ DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(Ssd1306DeviceApiAdapter::instance());
     (void)registry.registerAdapter(St7735DeviceApiAdapter::instance());
     (void)registry.registerAdapter(Ds18b20TemperatureSensorDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(Aht10SensorDeviceApiAdapter::instance());
     (void)registry.registerAdapter(NtcThermistorTemperatureSensorDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Htu21SensorDeviceApiAdapter::instance());
     (void)registry.registerAdapter(ThermostatDeviceApiAdapter::instance());
@@ -282,6 +285,7 @@ DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(Cd74hc4067HubDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Ads1115HubDeviceApiAdapter::instance());
     (void)registry.registerAdapter(AnalogInputChannelDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(Lcd1602DeviceApiAdapter::instance());
     return registry;
 }
 

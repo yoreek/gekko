@@ -310,6 +310,7 @@ export default {
       st7735: 'Pantalla ST7735',
       ds18b20TemperatureSensor: 'Sensor de temperatura DS18B20',
       ntcThermistorTemperatureSensor: 'Sensor de temperatura NTC',
+      aht10: 'Sensor de temperatura y humedad AHT10',
       htu21: 'Sensor de temperatura y humedad HTU21',
       thermostat: 'Termostato',
       rtcDs3231: 'RTC DS3231',
@@ -328,6 +329,7 @@ export default {
       ads1115Hub: 'Concentrador de entrada analógica ADS1115',
       cd74hc4067Hub: 'Concentrador de entrada analógica CD74HC4067',
       analogInputChannel: 'Canal de entrada analógica',
+      lcd1602: 'Pantalla de texto LCD1602',
       unknown: 'Tipo de dispositivo desconocido',
     },
     mode: {
@@ -494,6 +496,19 @@ export default {
       pumpSwitch: 'Interruptor de la bomba',
       dosingSpeed: 'Velocidad de la bomba (ml/s)',
       levelSensor: 'Sensor de nivel bajo',
+      lcd1602WiringPreset: 'Cableado',
+      lcd1602WiringStandard: 'Adaptador PCF8574 estándar',
+      lcd1602WiringCustom: 'Cableado personalizado',
+      lcd1602Line1: 'Línea 1',
+      lcd1602Line2: 'Línea 2',
+      lcd1602Wiring: 'Canales del expansor de puertos',
+      lcd1602RsChannel: 'Canal RS',
+      lcd1602EChannel: 'Canal E',
+      lcd1602D4Channel: 'Canal D4',
+      lcd1602D5Channel: 'Canal D5',
+      lcd1602D6Channel: 'Canal D6',
+      lcd1602D7Channel: 'Canal D7',
+      lcd1602BacklightChannel: 'Canal de retroiluminación',
     },
     ha: {
       title: 'Home Assistant',
@@ -708,6 +723,12 @@ export default {
         temperatureFilterTitle: 'Filtro de lectura de temperatura',
         humidityFilterTitle: 'Filtro de lectura de humedad',
       },
+      aht10: {
+        noDependency: 'Cree una dependencia de bus I2C antes de añadir un sensor AHT10.',
+        addressHint: '0x38 es la dirección estándar de hardware del AHT10. Cámbiela solo para hardware compatible o un traductor de direcciones.',
+        temperatureFilterTitle: 'Filtro de lectura de temperatura',
+        humidityFilterTitle: 'Filtro de lectura de humedad',
+      },
       portExpander: {
         noDependency: 'Cree una dependencia de bus I2C antes de añadir un expansor de puertos.',
         invertedHint: 'Invierte el nivel eléctrico de cada canal antes de escribir el registro (para placas activo-bajo, p. ej. muchos módulos de relé).',
@@ -716,6 +737,10 @@ export default {
       },
       portExpanderSwitch: {
         noDependency: 'Cree una dependencia de expansor de puertos PCF8574 o PCF8575 antes de añadir este interruptor.',
+      },
+      lcd1602: {
+        noDependency: 'Cree una dependencia de expansor de puertos PCF8574 o PCF8575 antes de añadir esta pantalla.',
+        backlightChannelHint: 'Ponga 255 si la retroiluminación no está conectada a un canal del expansor de puertos.',
       },
       ntcThermistor: {
         noDependency: 'Crea una dependencia de entrada analógica antes de añadir un sensor termistor NTC.',

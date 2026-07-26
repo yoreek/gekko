@@ -310,6 +310,7 @@ export default {
       st7735: 'ST7735-Display',
       ds18b20TemperatureSensor: 'DS18B20-Temperatursensor',
       ntcThermistorTemperatureSensor: 'NTC-Thermistor-Temperatursensor',
+      aht10: 'AHT10-Temperatur- und Feuchtesensor',
       htu21: 'HTU21-Temperatur- & Feuchtesensor',
       thermostat: 'Thermostat',
       rtcDs3231: 'DS3231-RTC',
@@ -328,6 +329,7 @@ export default {
       ads1115Hub: 'ADS1115-Analogeingangs-Hub',
       cd74hc4067Hub: 'CD74HC4067-Analogeingangs-Hub',
       analogInputChannel: 'Analogeingangskanal',
+      lcd1602: 'LCD1602-Textdisplay',
       unknown: 'Unbekannter Gerätetyp',
     },
     mode: {
@@ -494,6 +496,19 @@ export default {
       pumpSwitch: 'Pumpenschalter',
       dosingSpeed: 'Pumpengeschwindigkeit (ml/s)',
       levelSensor: 'Füllstandsensor',
+      lcd1602WiringPreset: 'Verdrahtung',
+      lcd1602WiringStandard: 'Standard-PCF8574-Adapter',
+      lcd1602WiringCustom: 'Eigene Verdrahtung',
+      lcd1602Line1: 'Zeile 1',
+      lcd1602Line2: 'Zeile 2',
+      lcd1602Wiring: 'Port-Expander-Kanäle',
+      lcd1602RsChannel: 'RS-Kanal',
+      lcd1602EChannel: 'E-Kanal',
+      lcd1602D4Channel: 'D4-Kanal',
+      lcd1602D5Channel: 'D5-Kanal',
+      lcd1602D6Channel: 'D6-Kanal',
+      lcd1602D7Channel: 'D7-Kanal',
+      lcd1602BacklightChannel: 'Hintergrundbeleuchtungskanal',
     },
     ha: {
       title: 'Home Assistant',
@@ -708,6 +723,12 @@ export default {
         temperatureFilterTitle: 'Filter für Temperaturmessung',
         humidityFilterTitle: 'Filter für Feuchtemessung',
       },
+      aht10: {
+        noDependency: 'Erstellen Sie eine I2C-Bus-Abhängigkeit, bevor Sie einen AHT10-Sensor hinzufügen.',
+        addressHint: '0x38 ist die Standard-Hardwareadresse des AHT10. Nur für kompatible Hardware oder einen Adressübersetzer ändern.',
+        temperatureFilterTitle: 'Filter für Temperaturmessung',
+        humidityFilterTitle: 'Filter für Feuchtemessung',
+      },
       portExpander: {
         noDependency: 'Erstellen Sie eine I2C-Bus-Abhängigkeit, bevor Sie einen Portexpander hinzufügen.',
         invertedHint: 'Invertiert den elektrischen Pegel jedes Kanals vor dem Schreiben des Registers (für Active-Low-Boards, z. B. viele Relaismodule).',
@@ -716,6 +737,10 @@ export default {
       },
       portExpanderSwitch: {
         noDependency: 'Erstellen Sie eine PCF8574- oder PCF8575-Portexpander-Abhängigkeit, bevor Sie diesen Schalter hinzufügen.',
+      },
+      lcd1602: {
+        noDependency: 'Erstellen Sie eine PCF8574- oder PCF8575-Portexpander-Abhängigkeit, bevor Sie dieses Display hinzufügen.',
+        backlightChannelHint: 'Auf 255 setzen, wenn die Hintergrundbeleuchtung nicht an einen Port-Expander-Kanal angeschlossen ist.',
       },
       ntcThermistor: {
         noDependency: 'Erstellen Sie eine Analogeingang-Abhängigkeit, bevor Sie einen NTC-Thermistorsensor hinzufügen.',

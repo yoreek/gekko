@@ -18,6 +18,11 @@ export interface Htu21SensorOutputSnapshot {
   humidity?: HumidityOutputSnapshot
 }
 
+export interface Aht10SensorOutputSnapshot {
+  temperature?: TemperatureOutputSnapshot
+  humidity?: HumidityOutputSnapshot
+}
+
 export interface ThermostatOutputSnapshot {
   desiredSwitchState?: boolean
   actualSwitchState?: boolean
@@ -36,6 +41,11 @@ export interface PortExpanderOutputSnapshot {
   channelCount?: number
   channelStates?: number
   diagnostics?: BusRuntimeDiagnosticsSnapshot
+}
+
+export interface Lcd1602OutputSnapshot {
+  line1?: string
+  line2?: string
 }
 
 // Deliberately empty: the firmware never pushes a live "active"/"timeValid" value (ScheduleDevice
@@ -174,6 +184,7 @@ export type DeviceOutputSnapshot =
   | Ds18b20TemperatureSensorOutputSnapshot
   | NtcThermistorTemperatureSensorOutputSnapshot
   | Htu21SensorOutputSnapshot
+  | Aht10SensorOutputSnapshot
   | ThermostatOutputSnapshot
   | RtcDs3231OutputSnapshot
   | PortExpanderOutputSnapshot
@@ -187,6 +198,7 @@ export type DeviceOutputSnapshot =
   | AnalogOutputComposerOutputSnapshot
   | AnalogInputOutputSnapshot
   | AnalogInputHubOutputSnapshot
+  | Lcd1602OutputSnapshot
 
 export type TemperatureUnit = 'celsius' | 'fahrenheit'
 

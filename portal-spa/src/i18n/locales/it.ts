@@ -310,6 +310,7 @@ export default {
       st7735: 'Display ST7735',
       ds18b20TemperatureSensor: 'Sensore di temperatura DS18B20',
       ntcThermistorTemperatureSensor: 'Sensore di temperatura NTC',
+      aht10: 'Sensore di temperatura e umidità AHT10',
       htu21: 'Sensore di temperatura e umidità HTU21',
       thermostat: 'Termostato',
       rtcDs3231: 'RTC DS3231',
@@ -328,6 +329,7 @@ export default {
       ads1115Hub: 'Hub di ingresso analogico ADS1115',
       cd74hc4067Hub: 'Hub di ingresso analogico CD74HC4067',
       analogInputChannel: 'Canale di ingresso analogico',
+      lcd1602: 'Display di testo LCD1602',
       unknown: 'Tipo di dispositivo sconosciuto',
     },
     mode: {
@@ -494,6 +496,19 @@ export default {
       pumpSwitch: 'Interruttore della pompa',
       dosingSpeed: 'Velocità pompa (ml/s)',
       levelSensor: 'Sensore di livello basso',
+      lcd1602WiringPreset: 'Cablaggio',
+      lcd1602WiringStandard: 'Adattatore PCF8574 standard',
+      lcd1602WiringCustom: 'Cablaggio personalizzato',
+      lcd1602Line1: 'Riga 1',
+      lcd1602Line2: 'Riga 2',
+      lcd1602Wiring: "Canali dell'espansore di porte",
+      lcd1602RsChannel: 'Canale RS',
+      lcd1602EChannel: 'Canale E',
+      lcd1602D4Channel: 'Canale D4',
+      lcd1602D5Channel: 'Canale D5',
+      lcd1602D6Channel: 'Canale D6',
+      lcd1602D7Channel: 'Canale D7',
+      lcd1602BacklightChannel: 'Canale retroilluminazione',
     },
     ha: {
       title: 'Home Assistant',
@@ -708,6 +723,12 @@ export default {
         temperatureFilterTitle: 'Filtro lettura temperatura',
         humidityFilterTitle: 'Filtro lettura umidità',
       },
+      aht10: {
+        noDependency: 'Crea una dipendenza bus I2C prima di aggiungere un sensore AHT10.',
+        addressHint: "0x38 è l'indirizzo hardware standard dell'AHT10. Modificalo solo per hardware compatibile o un traduttore di indirizzi.",
+        temperatureFilterTitle: 'Filtro lettura temperatura',
+        humidityFilterTitle: 'Filtro lettura umidità',
+      },
       portExpander: {
         noDependency: "Crea una dipendenza bus I2C prima di aggiungere un espansore di porte.",
         invertedHint: "Inverte il livello elettrico di ogni canale prima di scrivere il registro (per schede active-low, es. molti moduli relè).",
@@ -716,6 +737,10 @@ export default {
       },
       portExpanderSwitch: {
         noDependency: "Crea una dipendenza espansore di porte PCF8574 o PCF8575 prima di aggiungere questo interruttore.",
+      },
+      lcd1602: {
+        noDependency: "Crea una dipendenza espansore di porte PCF8574 o PCF8575 prima di aggiungere questo display.",
+        backlightChannelHint: "Imposta 255 se la retroilluminazione non è collegata a un canale dell'espansore di porte.",
       },
       ntcThermistor: {
         noDependency: 'Crea una dipendenza di ingresso analogico prima di aggiungere un sensore termistore NTC.',

@@ -9,6 +9,7 @@ import { Ssd1306Device } from './ssd1306/device.ts'
 import { St7735Device } from './st7735/device.ts'
 import { SpiBusDevice } from './spi-bus.ts'
 import { NtcThermistorDevice } from './ntc-thermistor.ts'
+import { Aht10Device } from './aht10.ts'
 import { Htu21Device } from './htu21.ts'
 import { OneWireBusDevice } from './onewire-bus.ts'
 import { ThermostatDevice } from './thermostat.ts'
@@ -26,6 +27,7 @@ import { AnalogPortInputDevice } from './analog-port-input.ts'
 import { Ads1115HubDevice } from './ads1115-hub.ts'
 import { Cd74hc4067HubDevice } from './cd74hc4067-hub.ts'
 import { AnalogInputChannelDevice } from './analog-input-channel.ts'
+import { Lcd1602Device } from './lcd1602.ts'
 import { UnknownDevice } from './unknown-device.ts'
 
 const fallbackDevice = new UnknownDevice()
@@ -40,6 +42,7 @@ const allDeviceModels: BaseDevice<any, any, any>[] = [
   new St7735Device(),
   new Ds18b20Device(),
   new NtcThermistorDevice(),
+  new Aht10Device(),
   new Htu21Device(),
   new ThermostatDevice(),
   new RtcDs3231Device(),
@@ -58,6 +61,7 @@ const allDeviceModels: BaseDevice<any, any, any>[] = [
   new Ads1115HubDevice(),
   new Cd74hc4067HubDevice(),
   new AnalogInputChannelDevice(),
+  new Lcd1602Device(),
 ]
 
 const deviceModelsByTypeId: Record<number, BaseDevice<any, any, any>> = Object.fromEntries(

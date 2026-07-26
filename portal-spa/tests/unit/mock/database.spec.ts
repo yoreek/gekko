@@ -21,6 +21,10 @@ test('seed bitmap payloads match their declared dimensions', () => {
   assert.equal(htu21?.record.configRevision, 1)
   assert.equal(htu21?.config.i2cAddress, 0x40)
 
+  const aht10 = database.devices.find(device => device.record.typeName === 'aht10')
+  assert.equal(aht10?.record.configRevision, 1)
+  assert.equal(aht10?.config.i2cAddress, 0x38)
+
   const analogOutput = database.devices.find(device => device.record.typeName === 'analog_output')
   assert.ok(analogOutput)
   assert.equal(analogOutput.record.configRevision, 2)

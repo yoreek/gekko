@@ -11,6 +11,7 @@
 #include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/bus/onewire/OneWireBusDevice.h"
 #include "devices/bus/spi/SpiBusDevice.h"
+#include "devices/display/lcd1602/Lcd1602Device.h"
 #include "devices/display/ssd1306/Ssd1306Device.h"
 #include "devices/display/st7735/St7735Device.h"
 #include "devices/dosing/DosingPumpDevice.h"
@@ -19,6 +20,7 @@
 #include "devices/expander/Pcf8575ExpanderDevice.h"
 #include "devices/rtc/ds3231/Ds3231RtcDevice.h"
 #include "devices/schedule/ScheduleDevice.h"
+#include "devices/sensors/aht10/Aht10SensorDevice.h"
 #include "devices/sensors/binary/BinarySensorDevice.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
 #include "devices/sensors/htu21/Htu21SensorDevice.h"
@@ -179,6 +181,7 @@ DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     (void)registry.registerDescriptor(Ds18b20TemperatureSensorDevice::descriptor());
     (void)registry.registerDescriptor(NtcThermistorTemperatureSensorDevice::descriptor());
     (void)registry.registerDescriptor(Htu21SensorDevice::descriptor());
+    (void)registry.registerDescriptor(Aht10SensorDevice::descriptor());
     (void)registry.registerDescriptor(ThermostatDevice::descriptor());
     (void)registry.registerDescriptor(Ds3231RtcDevice::descriptor());
     (void)registry.registerDescriptor(Pcf8574ExpanderDevice::descriptor());
@@ -196,6 +199,7 @@ DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     (void)registry.registerDescriptor(Cd74hc4067HubDevice::descriptor());
     (void)registry.registerDescriptor(Ads1115HubDevice::descriptor());
     (void)registry.registerDescriptor(AnalogInputChannelDevice::descriptor());
+    (void)registry.registerDescriptor(Lcd1602Device::descriptor());
     return registry;
 }
 

@@ -4,6 +4,7 @@ import { OneWireBusDevice } from './devices/onewire-bus.ts'
 import { I2cBusDevice } from './devices/i2c-bus.ts'
 import { Ds18b20Device } from './devices/ds18b20.ts'
 import { NtcThermistorDevice } from './devices/ntc-thermistor.ts'
+import { Aht10Device } from './devices/aht10.ts'
 import { Htu21Device } from './devices/htu21.ts'
 import { ThermostatDevice } from './devices/thermostat.ts'
 import { SpiBusDevice } from './devices/spi-bus.ts'
@@ -23,6 +24,7 @@ import { AnalogPortInputDevice } from './devices/analog-port-input.ts'
 import { Ads1115HubDevice } from './devices/ads1115-hub.ts'
 import { Cd74hc4067HubDevice } from './devices/cd74hc4067-hub.ts'
 import { AnalogInputChannelDevice } from './devices/analog-input-channel.ts'
+import { Lcd1602Device } from './devices/lcd1602.ts'
 
 export const DUMMY_DEVICE_TYPE_ID = DummyDevice.TYPE_ID
 export const GPIO_SWITCH_DEVICE_TYPE_ID = GpioSwitchDevice.TYPE_ID
@@ -30,6 +32,7 @@ export const ONEWIRE_BUS_DEVICE_TYPE_ID = OneWireBusDevice.TYPE_ID
 export const I2C_BUS_DEVICE_TYPE_ID = I2cBusDevice.TYPE_ID
 export const DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID = Ds18b20Device.TYPE_ID
 export const NTC_THERMISTOR_TEMPERATURE_SENSOR_DEVICE_TYPE_ID = NtcThermistorDevice.TYPE_ID
+export const AHT10_DEVICE_TYPE_ID = Aht10Device.TYPE_ID
 export const HTU21_DEVICE_TYPE_ID = Htu21Device.TYPE_ID
 export const THERMOSTAT_DEVICE_TYPE_ID = ThermostatDevice.TYPE_ID
 export const SPI_BUS_DEVICE_TYPE_ID = SpiBusDevice.TYPE_ID
@@ -51,6 +54,7 @@ export const ANALOG_PORT_INPUT_DEVICE_TYPE_ID = AnalogPortInputDevice.TYPE_ID
 export const ADS1115_HUB_DEVICE_TYPE_ID = Ads1115HubDevice.TYPE_ID
 export const CD74HC4067_HUB_DEVICE_TYPE_ID = Cd74hc4067HubDevice.TYPE_ID
 export const ANALOG_INPUT_CHANNEL_DEVICE_TYPE_ID = AnalogInputChannelDevice.TYPE_ID
+export const LCD1602_DEVICE_TYPE_ID = Lcd1602Device.TYPE_ID
 
 export type DeviceTypeName =
   | typeof DummyDevice.TYPE_NAME
@@ -59,6 +63,7 @@ export type DeviceTypeName =
   | typeof I2cBusDevice.TYPE_NAME
   | typeof Ds18b20Device.TYPE_NAME
   | typeof NtcThermistorDevice.TYPE_NAME
+  | typeof Aht10Device.TYPE_NAME
   | typeof Htu21Device.TYPE_NAME
   | typeof ThermostatDevice.TYPE_NAME
   | typeof SpiBusDevice.TYPE_NAME
@@ -80,6 +85,7 @@ export type DeviceTypeName =
   | typeof Ads1115HubDevice.TYPE_NAME
   | typeof Cd74hc4067HubDevice.TYPE_NAME
   | typeof AnalogInputChannelDevice.TYPE_NAME
+  | typeof Lcd1602Device.TYPE_NAME
 export type DeviceTypeId = number
 
 const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
@@ -89,6 +95,7 @@ const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
   [I2cBusDevice.TYPE_NAME]: I2cBusDevice.TYPE_ID,
   [Ds18b20Device.TYPE_NAME]: Ds18b20Device.TYPE_ID,
   [NtcThermistorDevice.TYPE_NAME]: NtcThermistorDevice.TYPE_ID,
+  [Aht10Device.TYPE_NAME]: Aht10Device.TYPE_ID,
   [Htu21Device.TYPE_NAME]: Htu21Device.TYPE_ID,
   [ThermostatDevice.TYPE_NAME]: ThermostatDevice.TYPE_ID,
   [SpiBusDevice.TYPE_NAME]: SpiBusDevice.TYPE_ID,
@@ -110,6 +117,7 @@ const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
   [Ads1115HubDevice.TYPE_NAME]: Ads1115HubDevice.TYPE_ID,
   [Cd74hc4067HubDevice.TYPE_NAME]: Cd74hc4067HubDevice.TYPE_ID,
   [AnalogInputChannelDevice.TYPE_NAME]: AnalogInputChannelDevice.TYPE_ID,
+  [Lcd1602Device.TYPE_NAME]: Lcd1602Device.TYPE_ID,
 }
 
 const deviceTypeNames: Record<DeviceTypeId, DeviceTypeName> = {
@@ -119,6 +127,7 @@ const deviceTypeNames: Record<DeviceTypeId, DeviceTypeName> = {
   [I2cBusDevice.TYPE_ID]: I2cBusDevice.TYPE_NAME,
   [Ds18b20Device.TYPE_ID]: Ds18b20Device.TYPE_NAME,
   [NtcThermistorDevice.TYPE_ID]: NtcThermistorDevice.TYPE_NAME,
+  [Aht10Device.TYPE_ID]: Aht10Device.TYPE_NAME,
   [Htu21Device.TYPE_ID]: Htu21Device.TYPE_NAME,
   [ThermostatDevice.TYPE_ID]: ThermostatDevice.TYPE_NAME,
   [SpiBusDevice.TYPE_ID]: SpiBusDevice.TYPE_NAME,
@@ -140,6 +149,7 @@ const deviceTypeNames: Record<DeviceTypeId, DeviceTypeName> = {
   [Ads1115HubDevice.TYPE_ID]: Ads1115HubDevice.TYPE_NAME,
   [Cd74hc4067HubDevice.TYPE_ID]: Cd74hc4067HubDevice.TYPE_NAME,
   [AnalogInputChannelDevice.TYPE_ID]: AnalogInputChannelDevice.TYPE_NAME,
+  [Lcd1602Device.TYPE_ID]: Lcd1602Device.TYPE_NAME,
 }
 
 // Mirrors the firmware's DeviceDependencyRole wire names (kDeviceDependencyRoleNames in

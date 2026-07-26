@@ -37,6 +37,7 @@ const HA_SUPPORTED_TYPE_NAMES = new Set([
   'gpio_switch',
   'ds18b20_temperature_sensor',
   'ntc_thermistor_temperature_sensor',
+  'aht10',
   'htu21',
   'thermostat',
   'port_expander_switch',
@@ -49,7 +50,7 @@ export function isHaSupportedTypeName(typeName: string): boolean {
   return HA_SUPPORTED_TYPE_NAMES.has(typeName)
 }
 
-export const storageKey = 'gekko.mockDb.v11'
+export const storageKey = 'gekko.mockDb.v12'
 
 type MockDeviceConfig = BaseDeviceConfig & Record<string, unknown>
 type MockDeviceRuntime = BaseDeviceRuntime & {
@@ -925,6 +926,53 @@ const seedDatabase: SeedDatabase = {
         },
       },
     }),
+    createDeviceRecord(670845767, 'aht10', 1, {
+      enabled: true,
+      name: 'Greenhouse Climate',
+      i2cAddress: 0x38,
+      deps: [
+        {
+          role: 'i2c_bus',
+          deviceId: 670845754,
+        },
+      ],
+      unit: 'celsius',
+      pollMs: 5000,
+      reportDeltaCelsius: 0.1,
+      reportDeltaHumidity: 0.1,
+      reportAlways: false,
+      temperatureFilter: {
+        smoothingWeight: 1,
+        calibrationFactor: 1,
+        calibrationOffset: 0,
+      },
+      humidityFilter: {
+        smoothingWeight: 1,
+        calibrationFactor: 1,
+        calibrationOffset: 0,
+      },
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: {
+        temperature: {
+          value: 24.5,
+          unit: 'celsius',
+          unitSymbol: 'C',
+          measuredAtMs: 18500,
+          valid: true,
+          status: 'ok',
+        },
+        humidity: {
+          value: 47.8,
+          unitSymbol: '%',
+          measuredAtMs: 18500,
+          valid: true,
+          status: 'ok',
+        },
+      },
+    }),
     createDeviceRecord(670845753, 'thermostat', 1, {
       enabled: true,
       name: 'Grow Room Thermostat',
@@ -1084,6 +1132,35 @@ const seedDatabase: SeedDatabase = {
       effectiveStatus: 'ready',
       output: {
         state: false,
+      },
+    }),
+    createDeviceRecord(670845801, 'lcd1602', 1, {
+      enabled: true,
+      name: 'Status Display',
+      deps: [
+        {
+          role: 'port_expander',
+          deviceId: 670845760,
+        },
+      ],
+      // Channel 0 on this expander is already claimed by "Expander Channel 0" above -- the
+      // remaining channels 1-7 cover RS/E/D4-D7/backlight.
+      rsChannel: 1,
+      eChannel: 2,
+      d4Channel: 3,
+      d5Channel: 4,
+      d6Channel: 5,
+      d7Channel: 6,
+      backlightChannel: 7,
+      line1: 'Tank {{dev.670845752.temperature}}C',
+      line2: 'pH ok',
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: {
+        line1: 'Tank: 24.6C',
+        line2: 'pH ok',
       },
     }),
     createDeviceRecord(670845763, 'gpio_switch', 1, {

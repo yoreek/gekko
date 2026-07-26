@@ -310,6 +310,7 @@ export default {
       st7735: 'ST7735 display',
       ds18b20TemperatureSensor: 'DS18B20 temperature sensor',
       ntcThermistorTemperatureSensor: 'NTC thermistor temperature sensor',
+      aht10: 'AHT10 temperature & humidity sensor',
       htu21: 'HTU21 temperature & humidity sensor',
       thermostat: 'Thermostat',
       rtcDs3231: 'DS3231 RTC',
@@ -328,6 +329,7 @@ export default {
       ads1115Hub: 'ADS1115 analog input hub',
       cd74hc4067Hub: 'CD74HC4067 analog input hub',
       analogInputChannel: 'Analog input channel',
+      lcd1602: 'LCD1602 character display',
       unknown: 'Unknown device type',
     },
     mode: {
@@ -494,6 +496,19 @@ export default {
       pumpSwitch: 'Pump switch',
       dosingSpeed: 'Pump speed (ml/s)',
       levelSensor: 'Low-level sensor',
+      lcd1602WiringPreset: 'Wiring',
+      lcd1602WiringStandard: 'Standard PCF8574 backpack',
+      lcd1602WiringCustom: 'Custom wiring',
+      lcd1602Line1: 'Line 1',
+      lcd1602Line2: 'Line 2',
+      lcd1602Wiring: 'Port expander channels',
+      lcd1602RsChannel: 'RS channel',
+      lcd1602EChannel: 'E channel',
+      lcd1602D4Channel: 'D4 channel',
+      lcd1602D5Channel: 'D5 channel',
+      lcd1602D6Channel: 'D6 channel',
+      lcd1602D7Channel: 'D7 channel',
+      lcd1602BacklightChannel: 'Backlight channel',
     },
     ha: {
       title: 'Home Assistant',
@@ -708,6 +723,12 @@ export default {
         temperatureFilterTitle: 'Temperature reading filter',
         humidityFilterTitle: 'Humidity reading filter',
       },
+      aht10: {
+        noDependency: 'Create an I2C bus dependency before adding an AHT10 sensor.',
+        addressHint: '0x38 is the standard AHT10 hardware address. Change it only for compatible hardware or an address translator.',
+        temperatureFilterTitle: 'Temperature reading filter',
+        humidityFilterTitle: 'Humidity reading filter',
+      },
       portExpander: {
         noDependency: 'Create an I2C bus dependency before adding a port expander.',
         invertedHint: 'Flips every channel\'s electrical level before writing the register (for boards wired active-low, e.g. many relay modules).',
@@ -716,6 +737,10 @@ export default {
       },
       portExpanderSwitch: {
         noDependency: 'Create a PCF8574 or PCF8575 port expander dependency before adding this switch.',
+      },
+      lcd1602: {
+        noDependency: 'Create a PCF8574 or PCF8575 port expander dependency before adding this display.',
+        backlightChannelHint: 'Set to 255 if the backlight is not wired to a port expander channel.',
       },
       ntcThermistor: {
         noDependency: 'Create an analog input device before adding an NTC thermistor sensor.',
