@@ -1177,7 +1177,7 @@ const seedDatabase: SeedDatabase = {
         state: false,
       },
     }),
-    createDeviceRecord(670845801, 'lcd1602', 1, {
+    createDeviceRecord(670845802, 'lcd1602', 1, {
       enabled: true,
       name: 'Status Display',
       deps: [
@@ -1204,6 +1204,39 @@ const seedDatabase: SeedDatabase = {
       output: {
         line1: 'Tank: 24.6C',
         line2: 'pH ok',
+      },
+    }),
+    createDeviceRecord(670845803, 'lcd2004', 1, {
+      enabled: true,
+      name: 'Grow Room Display',
+      deps: [
+        {
+          role: 'port_expander',
+          deviceId: 670845761,
+        },
+      ],
+      // Channel 0 on this expander is already claimed by "Grow Light Expander Channel 0" above --
+      // the remaining channels 1-7 cover RS/E/D4-D7/backlight.
+      rsChannel: 1,
+      eChannel: 2,
+      d4Channel: 3,
+      d5Channel: 4,
+      d6Channel: 5,
+      d7Channel: 6,
+      backlightChannel: 7,
+      line1: 'Grow light: {{dev.670845763.state}}',
+      line2: 'Temp {{dev.670845752.temperature}}C',
+      line3: 'Humidity ok',
+      line4: 'All systems ok',
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: {
+        line1: 'Grow light: on',
+        line2: 'Temp: 24.6C',
+        line3: 'Humidity ok',
+        line4: 'All systems ok',
       },
     }),
     createDeviceRecord(670845763, 'gpio_switch', 1, {

@@ -331,6 +331,7 @@ export default {
       cd74hc4067Hub: 'CD74HC4067 analog input hub',
       analogInputChannel: 'Analog input channel',
       lcd1602: 'LCD1602 character display',
+      lcd2004: 'LCD2004 character display',
       unknown: 'Unknown device type',
     },
     mode: {
@@ -502,6 +503,10 @@ export default {
       lcd1602WiringCustom: 'Custom wiring',
       lcd1602Line1: 'Line 1',
       lcd1602Line2: 'Line 2',
+      lcd2004Line1: 'Line 1',
+      lcd2004Line2: 'Line 2',
+      lcd2004Line3: 'Line 3',
+      lcd2004Line4: 'Line 4',
       lcd1602Wiring: 'Port expander channels',
       lcd1602RsChannel: 'RS channel',
       lcd1602EChannel: 'E channel',
@@ -742,6 +747,9 @@ export default {
       lcd1602: {
         noDependency: 'Create a PCF8574 or PCF8575 port expander dependency before adding this display.',
         backlightChannelHint: 'Set to 255 if the backlight is not wired to a port expander channel.',
+      },
+      lcd2004: {
+        noDependency: 'Create a PCF8574 or PCF8575 port expander dependency before adding this display.',
       },
       ntcThermistor: {
         noDependency: 'Create an analog input device before adding an NTC thermistor sensor.',

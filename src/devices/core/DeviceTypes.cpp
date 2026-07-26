@@ -12,6 +12,7 @@
 #include "devices/bus/onewire/OneWireBusDevice.h"
 #include "devices/bus/spi/SpiBusDevice.h"
 #include "devices/display/lcd1602/Lcd1602Device.h"
+#include "devices/display/lcd2004/Lcd2004Device.h"
 #include "devices/display/ssd1306/Ssd1306Device.h"
 #include "devices/display/st7735/St7735Device.h"
 #include "devices/dosing/DosingPumpDevice.h"
@@ -202,6 +203,7 @@ DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     (void)registry.registerDescriptor(Ads1115HubDevice::descriptor());
     (void)registry.registerDescriptor(AnalogInputChannelDevice::descriptor());
     (void)registry.registerDescriptor(Lcd1602Device::descriptor());
+    (void)registry.registerDescriptor(Lcd2004Device::descriptor());
     return registry;
 }
 

@@ -29,6 +29,7 @@ import { Ads1115HubDevice } from '@/models/devices/ads1115-hub'
 import { AnalogInputChannelDevice } from '@/models/devices/analog-input-channel'
 import { Cd74hc4067HubDevice } from '@/models/devices/cd74hc4067-hub'
 import { Lcd1602Device } from '@/models/devices/lcd1602'
+import { Lcd2004Device } from '@/models/devices/lcd2004'
 import DummyFields from '@/components/devices/dummy/DummyFields.vue'
 import DummyWidget from '@/components/devices/dummy/DummyWidget.vue'
 import GpioSwitchFields from '@/components/devices/gpio-switch/GpioSwitchFields.vue'
@@ -83,6 +84,8 @@ import AnalogInputChannelFields from '@/components/devices/analog-input/AnalogIn
 import AnalogInputChannelWidget from '@/components/devices/analog-input/AnalogInputChannelWidget.vue'
 import Lcd1602Fields from '@/components/devices/lcd1602/Lcd1602Fields.vue'
 import Lcd1602Widget from '@/components/devices/lcd1602/Lcd1602Widget.vue'
+import Lcd2004Fields from '@/components/devices/lcd2004/Lcd2004Fields.vue'
+import Lcd2004Widget from '@/components/devices/lcd2004/Lcd2004Widget.vue'
 
 const unknownUi: DeviceUi = {
   typeId: 0,
@@ -383,6 +386,15 @@ const lcd1602Ui: DeviceUi = {
   widgetComponent: Lcd1602Widget,
 }
 
+const lcd2004Ui: DeviceUi = {
+  typeId: Lcd2004Device.TYPE_ID,
+  typeName: Lcd2004Device.TYPE_NAME,
+  labelKey: 'device.type.lcd2004',
+  icon: 'display',
+  fieldsComponent: Lcd2004Fields,
+  widgetComponent: Lcd2004Widget,
+}
+
 const deviceUiV2ByTypeId: Record<number, DeviceUi> = {
   [dummyUi.typeId]: dummyUi,
   [gpioSwitchUi.typeId]: gpioSwitchUi,
@@ -414,6 +426,7 @@ const deviceUiV2ByTypeId: Record<number, DeviceUi> = {
   [cd74hc4067HubUi.typeId]: cd74hc4067HubUi,
   [analogInputChannelUi.typeId]: analogInputChannelUi,
   [lcd1602Ui.typeId]: lcd1602Ui,
+  [lcd2004Ui.typeId]: lcd2004Ui,
 }
 
 export const allDeviceUis: DeviceUi[] = Object.values(deviceUiV2ByTypeId)

@@ -23,6 +23,7 @@
 #include "integrations/rest/htu21/Htu21SensorDeviceApiAdapter.h"
 #include "integrations/rest/i2c_bus/I2cBusDeviceApiAdapter.h"
 #include "integrations/rest/lcd1602/Lcd1602DeviceApiAdapter.h"
+#include "integrations/rest/lcd2004/Lcd2004DeviceApiAdapter.h"
 #include "integrations/rest/ntc_thermistor/NtcThermistorTemperatureSensorDeviceApiAdapter.h"
 #include "integrations/rest/onewire_bus/OneWireBusDeviceApiAdapter.h"
 #include "integrations/rest/rtc_ds3231/Ds3231RtcDeviceApiAdapter.h"
@@ -288,6 +289,7 @@ DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(Ads1115HubDeviceApiAdapter::instance());
     (void)registry.registerAdapter(AnalogInputChannelDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Lcd1602DeviceApiAdapter::instance());
+    (void)registry.registerAdapter(Lcd2004DeviceApiAdapter::instance());
     return registry;
 }
 

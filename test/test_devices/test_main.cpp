@@ -125,6 +125,12 @@ void test_lcd1602_config_channels_skip_unset_backlight();
 void test_lcd1602_type_and_api_adapter_are_registered();
 void test_lcd1602_reaches_ready_through_port_expander_and_renders_with_diffing();
 void test_lcd1602_adapter_rejects_duplicate_channel_on_same_expander_but_allows_distinct_channel();
+void test_lcd2004_config_codec_json_and_validation();
+void test_lcd2004_config_rejects_invalid_fields();
+void test_lcd2004_type_and_api_adapter_are_registered();
+void test_lcd2004_reaches_ready_through_port_expander_and_renders_with_diffing();
+void test_lcd2004_sends_correct_ddram_row_addresses();
+void test_lcd2004_adapter_rejects_duplicate_channel_on_same_expander_but_allows_distinct_channel();
 void test_device_api_adapter_registry_resolves_gpio_switch();
 void test_gpio_switch_api_adapter_parses_create_request();
 void test_gpio_switch_api_adapter_rejects_invalid_pin();
@@ -617,5 +623,11 @@ int main(int, char**) {
     RUN_TEST(test_lcd1602_type_and_api_adapter_are_registered);
     RUN_TEST(test_lcd1602_reaches_ready_through_port_expander_and_renders_with_diffing);
     RUN_TEST(test_lcd1602_adapter_rejects_duplicate_channel_on_same_expander_but_allows_distinct_channel);
+    RUN_TEST(test_lcd2004_config_codec_json_and_validation);
+    RUN_TEST(test_lcd2004_config_rejects_invalid_fields);
+    RUN_TEST(test_lcd2004_type_and_api_adapter_are_registered);
+    RUN_TEST(test_lcd2004_reaches_ready_through_port_expander_and_renders_with_diffing);
+    RUN_TEST(test_lcd2004_sends_correct_ddram_row_addresses);
+    RUN_TEST(test_lcd2004_adapter_rejects_duplicate_channel_on_same_expander_but_allows_distinct_channel);
     return UNITY_END();
 }

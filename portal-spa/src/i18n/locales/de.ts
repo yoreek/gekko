@@ -331,6 +331,7 @@ export default {
       cd74hc4067Hub: 'CD74HC4067-Analogeingangs-Hub',
       analogInputChannel: 'Analogeingangskanal',
       lcd1602: 'LCD1602-Textdisplay',
+      lcd2004: 'LCD2004-Textdisplay',
       unknown: 'Unbekannter Gerätetyp',
     },
     mode: {
@@ -502,6 +503,10 @@ export default {
       lcd1602WiringCustom: 'Eigene Verdrahtung',
       lcd1602Line1: 'Zeile 1',
       lcd1602Line2: 'Zeile 2',
+      lcd2004Line1: 'Zeile 1',
+      lcd2004Line2: 'Zeile 2',
+      lcd2004Line3: 'Zeile 3',
+      lcd2004Line4: 'Zeile 4',
       lcd1602Wiring: 'Port-Expander-Kanäle',
       lcd1602RsChannel: 'RS-Kanal',
       lcd1602EChannel: 'E-Kanal',
@@ -742,6 +747,9 @@ export default {
       lcd1602: {
         noDependency: 'Erstellen Sie eine PCF8574- oder PCF8575-Portexpander-Abhängigkeit, bevor Sie dieses Display hinzufügen.',
         backlightChannelHint: 'Auf 255 setzen, wenn die Hintergrundbeleuchtung nicht an einen Port-Expander-Kanal angeschlossen ist.',
+      },
+      lcd2004: {
+        noDependency: 'Erstellen Sie eine PCF8574- oder PCF8575-Portexpander-Abhängigkeit, bevor Sie dieses Display hinzufügen.',
       },
       ntcThermistor: {
         noDependency: 'Erstellen Sie eine Analogeingang-Abhängigkeit, bevor Sie einen NTC-Thermistorsensor hinzufügen.',

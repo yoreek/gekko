@@ -29,6 +29,7 @@ import { Ads1115HubDevice } from './ads1115-hub.ts'
 import { Cd74hc4067HubDevice } from './cd74hc4067-hub.ts'
 import { AnalogInputChannelDevice } from './analog-input-channel.ts'
 import { Lcd1602Device } from './lcd1602.ts'
+import { Lcd2004Device } from './lcd2004.ts'
 import { UnknownDevice } from './unknown-device.ts'
 
 const fallbackDevice = new UnknownDevice()
@@ -64,6 +65,7 @@ const allDeviceModels: BaseDevice<any, any, any>[] = [
   new Cd74hc4067HubDevice(),
   new AnalogInputChannelDevice(),
   new Lcd1602Device(),
+  new Lcd2004Device(),
 ]
 
 const deviceModelsByTypeId: Record<number, BaseDevice<any, any, any>> = Object.fromEntries(

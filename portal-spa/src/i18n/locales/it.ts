@@ -331,6 +331,7 @@ export default {
       cd74hc4067Hub: 'Hub di ingresso analogico CD74HC4067',
       analogInputChannel: 'Canale di ingresso analogico',
       lcd1602: 'Display di testo LCD1602',
+      lcd2004: 'Display di testo LCD2004',
       unknown: 'Tipo di dispositivo sconosciuto',
     },
     mode: {
@@ -502,6 +503,10 @@ export default {
       lcd1602WiringCustom: 'Cablaggio personalizzato',
       lcd1602Line1: 'Riga 1',
       lcd1602Line2: 'Riga 2',
+      lcd2004Line1: 'Riga 1',
+      lcd2004Line2: 'Riga 2',
+      lcd2004Line3: 'Riga 3',
+      lcd2004Line4: 'Riga 4',
       lcd1602Wiring: "Canali dell'espansore di porte",
       lcd1602RsChannel: 'Canale RS',
       lcd1602EChannel: 'Canale E',
@@ -742,6 +747,9 @@ export default {
       lcd1602: {
         noDependency: "Crea una dipendenza espansore di porte PCF8574 o PCF8575 prima di aggiungere questo display.",
         backlightChannelHint: "Imposta 255 se la retroilluminazione non è collegata a un canale dell'espansore di porte.",
+      },
+      lcd2004: {
+        noDependency: "Crea una dipendenza espansore di porte PCF8574 o PCF8575 prima di aggiungere questo display.",
       },
       ntcThermistor: {
         noDependency: 'Crea una dipendenza di ingresso analogico prima di aggiungere un sensore termistore NTC.',

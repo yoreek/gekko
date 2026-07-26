@@ -331,6 +331,7 @@ export default {
       cd74hc4067Hub: "Concentrateur d'entrée analogique CD74HC4067",
       analogInputChannel: "Canal d'entrée analogique",
       lcd1602: 'Afficheur texte LCD1602',
+      lcd2004: 'Afficheur texte LCD2004',
       unknown: "Type d'appareil inconnu",
     },
     mode: {
@@ -502,6 +503,10 @@ export default {
       lcd1602WiringCustom: 'Câblage personnalisé',
       lcd1602Line1: 'Ligne 1',
       lcd1602Line2: 'Ligne 2',
+      lcd2004Line1: 'Ligne 1',
+      lcd2004Line2: 'Ligne 2',
+      lcd2004Line3: 'Ligne 3',
+      lcd2004Line4: 'Ligne 4',
       lcd1602Wiring: "Canaux de l'extenseur de ports",
       lcd1602RsChannel: 'Canal RS',
       lcd1602EChannel: 'Canal E',
@@ -742,6 +747,9 @@ export default {
       lcd1602: {
         noDependency: "Créez une dépendance d'extenseur de ports PCF8574 ou PCF8575 avant d'ajouter cet afficheur.",
         backlightChannelHint: "Réglez sur 255 si le rétroéclairage n'est pas câblé à un canal de l'extenseur de ports.",
+      },
+      lcd2004: {
+        noDependency: "Créez une dépendance d'extenseur de ports PCF8574 ou PCF8575 avant d'ajouter cet afficheur.",
       },
       ntcThermistor: {
         noDependency: "Créez une dépendance d'entrée analogique avant d'ajouter un capteur thermistance NTC.",

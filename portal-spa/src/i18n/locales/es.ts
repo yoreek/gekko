@@ -331,6 +331,7 @@ export default {
       cd74hc4067Hub: 'Concentrador de entrada analógica CD74HC4067',
       analogInputChannel: 'Canal de entrada analógica',
       lcd1602: 'Pantalla de texto LCD1602',
+      lcd2004: 'Pantalla de texto LCD2004',
       unknown: 'Tipo de dispositivo desconocido',
     },
     mode: {
@@ -502,6 +503,10 @@ export default {
       lcd1602WiringCustom: 'Cableado personalizado',
       lcd1602Line1: 'Línea 1',
       lcd1602Line2: 'Línea 2',
+      lcd2004Line1: 'Línea 1',
+      lcd2004Line2: 'Línea 2',
+      lcd2004Line3: 'Línea 3',
+      lcd2004Line4: 'Línea 4',
       lcd1602Wiring: 'Canales del expansor de puertos',
       lcd1602RsChannel: 'Canal RS',
       lcd1602EChannel: 'Canal E',
@@ -742,6 +747,9 @@ export default {
       lcd1602: {
         noDependency: 'Cree una dependencia de expansor de puertos PCF8574 o PCF8575 antes de añadir esta pantalla.',
         backlightChannelHint: 'Ponga 255 si la retroiluminación no está conectada a un canal del expansor de puertos.',
+      },
+      lcd2004: {
+        noDependency: 'Cree una dependencia de expansor de puertos PCF8574 o PCF8575 antes de añadir esta pantalla.',
       },
       ntcThermistor: {
         noDependency: 'Crea una dependencia de entrada analógica antes de añadir un sensor termistor NTC.',
