@@ -10,6 +10,7 @@ import { St7735Device } from './st7735/device.ts'
 import { SpiBusDevice } from './spi-bus.ts'
 import { NtcThermistorDevice } from './ntc-thermistor.ts'
 import { Aht10Device } from './aht10.ts'
+import { Dht11Device } from './dht11.ts'
 import { Htu21Device } from './htu21.ts'
 import { OneWireBusDevice } from './onewire-bus.ts'
 import { ThermostatDevice } from './thermostat.ts'
@@ -43,6 +44,7 @@ const allDeviceModels: BaseDevice<any, any, any>[] = [
   new Ds18b20Device(),
   new NtcThermistorDevice(),
   new Aht10Device(),
+  new Dht11Device(),
   new Htu21Device(),
   new ThermostatDevice(),
   new RtcDs3231Device(),

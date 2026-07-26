@@ -47,6 +47,7 @@ export function simulateMockSensorDrift(now: number = Date.now()): void {
     const isTemperatureSensor = device.record.typeName === 'ds18b20_temperature_sensor'
       || device.record.typeName === 'ntc_thermistor_temperature_sensor'
       || device.record.typeName === 'aht10'
+      || device.record.typeName === 'dht11'
       || device.record.typeName === 'htu21'
     if (isTemperatureSensor) {
       const output = device.runtime.output as { temperature?: TemperatureOutputSnapshot; humidity?: HumidityOutputSnapshot } | undefined
@@ -69,7 +70,7 @@ export function simulateMockSensorDrift(now: number = Date.now()): void {
         },
       }
       const humidity = output?.humidity
-      if ((device.record.typeName === 'htu21' || device.record.typeName === 'aht10') && humidity?.valid) {
+      if ((device.record.typeName === 'htu21' || device.record.typeName === 'aht10' || device.record.typeName === 'dht11') && humidity?.valid) {
         // Reuse the temperature drift model with a separate map key so the two channels wander
         // independently; humidity stays clamped to its physical range.
         const drifted = nextDriftedValue(-device.record.id, humidity.value, 0.1)

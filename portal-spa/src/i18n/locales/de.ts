@@ -311,6 +311,7 @@ export default {
       ds18b20TemperatureSensor: 'DS18B20-Temperatursensor',
       ntcThermistorTemperatureSensor: 'NTC-Thermistor-Temperatursensor',
       aht10: 'AHT10-Temperatur- und Feuchtesensor',
+      dht11: 'DHT11-Temperatur- und Feuchtesensor',
       htu21: 'HTU21-Temperatur- & Feuchtesensor',
       thermostat: 'Thermostat',
       rtcDs3231: 'DS3231-RTC',

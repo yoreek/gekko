@@ -23,6 +23,11 @@ export interface Aht10SensorOutputSnapshot {
   humidity?: HumidityOutputSnapshot
 }
 
+export interface Dht11SensorOutputSnapshot {
+  temperature?: TemperatureOutputSnapshot
+  humidity?: HumidityOutputSnapshot
+}
+
 export interface ThermostatOutputSnapshot {
   desiredSwitchState?: boolean
   actualSwitchState?: boolean
@@ -185,6 +190,7 @@ export type DeviceOutputSnapshot =
   | NtcThermistorTemperatureSensorOutputSnapshot
   | Htu21SensorOutputSnapshot
   | Aht10SensorOutputSnapshot
+  | Dht11SensorOutputSnapshot
   | ThermostatOutputSnapshot
   | RtcDs3231OutputSnapshot
   | PortExpanderOutputSnapshot

@@ -22,6 +22,7 @@
 #include "devices/schedule/ScheduleDevice.h"
 #include "devices/sensors/aht10/Aht10SensorDevice.h"
 #include "devices/sensors/binary/BinarySensorDevice.h"
+#include "devices/sensors/dht11/Dht11SensorDevice.h"
 #include "devices/sensors/ds18b20/Ds18b20TemperatureSensorDevice.h"
 #include "devices/sensors/htu21/Htu21SensorDevice.h"
 #include "devices/sensors/ntc_thermistor/NtcThermistorTemperatureSensorDevice.h"
@@ -180,6 +181,7 @@ DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     (void)registry.registerDescriptor(St7735Device::descriptor());
     (void)registry.registerDescriptor(Ds18b20TemperatureSensorDevice::descriptor());
     (void)registry.registerDescriptor(NtcThermistorTemperatureSensorDevice::descriptor());
+    (void)registry.registerDescriptor(Dht11SensorDevice::descriptor());
     (void)registry.registerDescriptor(Htu21SensorDevice::descriptor());
     (void)registry.registerDescriptor(Aht10SensorDevice::descriptor());
     (void)registry.registerDescriptor(ThermostatDevice::descriptor());

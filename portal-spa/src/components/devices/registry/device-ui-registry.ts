@@ -9,6 +9,7 @@ import { SpiBusDevice } from '@/models/devices/spi-bus'
 import { Ds18b20Device } from '@/models/devices/ds18b20'
 import { NtcThermistorDevice } from '@/models/devices/ntc-thermistor'
 import { Aht10Device } from '@/models/devices/aht10'
+import { Dht11Device } from '@/models/devices/dht11'
 import { Htu21Device } from '@/models/devices/htu21'
 import { ThermostatDevice } from '@/models/devices/thermostat'
 import { Ssd1306Device } from '@/models/devices/ssd1306/device'
@@ -44,6 +45,8 @@ import NtcThermistorFields from '@/components/devices/ntc-thermistor/NtcThermist
 import NtcThermistorWidget from '@/components/devices/ntc-thermistor/NtcThermistorWidget.vue'
 import Aht10Fields from '@/components/devices/aht10/Aht10Fields.vue'
 import Aht10Widget from '@/components/devices/aht10/Aht10Widget.vue'
+import Dht11Fields from '@/components/devices/dht11/Dht11Fields.vue'
+import Dht11Widget from '@/components/devices/dht11/Dht11Widget.vue'
 import Htu21Fields from '@/components/devices/htu21/Htu21Fields.vue'
 import Htu21Widget from '@/components/devices/htu21/Htu21Widget.vue'
 import ThermostatFields from '@/components/devices/thermostat/ThermostatFields.vue'
@@ -160,6 +163,15 @@ const aht10Ui: DeviceUi = {
   icon: 'temperature',
   fieldsComponent: Aht10Fields,
   widgetComponent: Aht10Widget,
+}
+
+const dht11Ui: DeviceUi = {
+  typeId: Dht11Device.TYPE_ID,
+  typeName: Dht11Device.TYPE_NAME,
+  labelKey: 'device.type.dht11',
+  icon: 'temperature',
+  fieldsComponent: Dht11Fields,
+  widgetComponent: Dht11Widget,
 }
 
 const htu21Ui: DeviceUi = {
@@ -380,6 +392,7 @@ const deviceUiV2ByTypeId: Record<number, DeviceUi> = {
   [ds18b20Ui.typeId]: ds18b20Ui,
   [ntcThermistorUi.typeId]: ntcThermistorUi,
   [aht10Ui.typeId]: aht10Ui,
+  [dht11Ui.typeId]: dht11Ui,
   [htu21Ui.typeId]: htu21Ui,
   [thermostatUi.typeId]: thermostatUi,
   [ssd1306Ui.typeId]: ssd1306Ui,

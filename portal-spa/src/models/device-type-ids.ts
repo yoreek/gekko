@@ -5,6 +5,7 @@ import { I2cBusDevice } from './devices/i2c-bus.ts'
 import { Ds18b20Device } from './devices/ds18b20.ts'
 import { NtcThermistorDevice } from './devices/ntc-thermistor.ts'
 import { Aht10Device } from './devices/aht10.ts'
+import { Dht11Device } from './devices/dht11.ts'
 import { Htu21Device } from './devices/htu21.ts'
 import { ThermostatDevice } from './devices/thermostat.ts'
 import { SpiBusDevice } from './devices/spi-bus.ts'
@@ -33,6 +34,7 @@ export const I2C_BUS_DEVICE_TYPE_ID = I2cBusDevice.TYPE_ID
 export const DS18B20_TEMPERATURE_SENSOR_DEVICE_TYPE_ID = Ds18b20Device.TYPE_ID
 export const NTC_THERMISTOR_TEMPERATURE_SENSOR_DEVICE_TYPE_ID = NtcThermistorDevice.TYPE_ID
 export const AHT10_DEVICE_TYPE_ID = Aht10Device.TYPE_ID
+export const DHT11_DEVICE_TYPE_ID = Dht11Device.TYPE_ID
 export const HTU21_DEVICE_TYPE_ID = Htu21Device.TYPE_ID
 export const THERMOSTAT_DEVICE_TYPE_ID = ThermostatDevice.TYPE_ID
 export const SPI_BUS_DEVICE_TYPE_ID = SpiBusDevice.TYPE_ID
@@ -64,6 +66,7 @@ export type DeviceTypeName =
   | typeof Ds18b20Device.TYPE_NAME
   | typeof NtcThermistorDevice.TYPE_NAME
   | typeof Aht10Device.TYPE_NAME
+  | typeof Dht11Device.TYPE_NAME
   | typeof Htu21Device.TYPE_NAME
   | typeof ThermostatDevice.TYPE_NAME
   | typeof SpiBusDevice.TYPE_NAME
@@ -96,6 +99,7 @@ const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
   [Ds18b20Device.TYPE_NAME]: Ds18b20Device.TYPE_ID,
   [NtcThermistorDevice.TYPE_NAME]: NtcThermistorDevice.TYPE_ID,
   [Aht10Device.TYPE_NAME]: Aht10Device.TYPE_ID,
+  [Dht11Device.TYPE_NAME]: Dht11Device.TYPE_ID,
   [Htu21Device.TYPE_NAME]: Htu21Device.TYPE_ID,
   [ThermostatDevice.TYPE_NAME]: ThermostatDevice.TYPE_ID,
   [SpiBusDevice.TYPE_NAME]: SpiBusDevice.TYPE_ID,
@@ -128,6 +132,7 @@ const deviceTypeNames: Record<DeviceTypeId, DeviceTypeName> = {
   [Ds18b20Device.TYPE_ID]: Ds18b20Device.TYPE_NAME,
   [NtcThermistorDevice.TYPE_ID]: NtcThermistorDevice.TYPE_NAME,
   [Aht10Device.TYPE_ID]: Aht10Device.TYPE_NAME,
+  [Dht11Device.TYPE_ID]: Dht11Device.TYPE_NAME,
   [Htu21Device.TYPE_ID]: Htu21Device.TYPE_NAME,
   [ThermostatDevice.TYPE_ID]: ThermostatDevice.TYPE_NAME,
   [SpiBusDevice.TYPE_ID]: SpiBusDevice.TYPE_NAME,

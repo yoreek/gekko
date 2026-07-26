@@ -1159,6 +1159,23 @@ export function normalizeAht10ConfigPayload(value: unknown, enabledFallback: boo
   }
 }
 
+export function normalizeDht11ConfigPayload(value: unknown, enabledFallback: boolean): Record<string, unknown> & { enabled: boolean } {
+  if (!isRecordPayload(value)) {
+    throw new ApiClientError('invalid dht11 config', 'BAD_ARGS', 400, null)
+  }
+  return {
+    enabled: typeof value.enabled === 'boolean' ? value.enabled : enabledFallback,
+    gpioPin: Math.min(39, Math.max(0, Math.round(normalizeFiniteNumber(value.gpioPin, 17)))),
+    unit: normalizeDs18b20Unit(value.unit),
+    pollMs: Math.max(1000, normalizeFiniteNumber(value.pollMs, 5000)),
+    reportDeltaCelsius: Math.max(0.01, normalizeFiniteNumber(value.reportDeltaCelsius, 0.1)),
+    reportDeltaHumidity: Math.max(0.01, normalizeFiniteNumber(value.reportDeltaHumidity, 0.1)),
+    reportAlways: typeof value.reportAlways === 'boolean' ? value.reportAlways : false,
+    temperatureFilter: normalizeSensorFilterPayload(value.temperatureFilter),
+    humidityFilter: normalizeSensorFilterPayload(value.humidityFilter),
+  }
+}
+
 export function createHtu21Device(
   nextId: number,
   configSource: Record<string, unknown>,
@@ -1225,6 +1242,47 @@ export function createAht10Device(
     status: 'ready',
     lifecycleStatus: 'ready',
     effectiveStatus: 'ready',
+    output: {
+      temperature: {
+        value: 23.4,
+        unit: config.unit === 'fahrenheit' ? 'fahrenheit' : 'celsius',
+        unitSymbol: config.unit === 'fahrenheit' ? 'F' : 'C',
+        measuredAtMs: Date.now(),
+        valid: true,
+        status: 'ok',
+      },
+      humidity: {
+        value: 45.3,
+        unitSymbol: '%',
+        measuredAtMs: Date.now(),
+        valid: true,
+        status: 'ok',
+      },
+    },
+  })
+}
+
+export function createDht11Device(
+  nextId: number,
+  configSource: Record<string, unknown>,
+  baseDeps: DeviceDependencyLink[],
+  enabled: boolean,
+  name: string,
+  db: Database,
+): DeviceRecord {
+  void db
+  if (baseDeps.length > 0 || (Array.isArray(configSource.deps) && configSource.deps.length > 0)) {
+    throw new ApiClientError('dht11 does not use dependencies', 'BAD_ARGS', 400, null)
+  }
+  const config = normalizeDht11ConfigPayload(configSource, enabled)
+  return createDeviceRecord(nextId, 'dht11', 1, {
+    ...config,
+    name,
+    deps: [],
+  }, {
+    status: enabled ? 'ready' : 'disabled',
+    lifecycleStatus: enabled ? 'ready' : 'disabled',
+    effectiveStatus: enabled ? 'ready' : 'disabled',
     output: {
       temperature: {
         value: 23.4,

@@ -311,6 +311,7 @@ export default {
       ds18b20TemperatureSensor: 'Датчик температуры DS18B20',
       ntcThermistorTemperatureSensor: 'Датчик температуры NTC-термистор',
       aht10: 'Датчик температуры и влажности AHT10',
+      dht11: 'Датчик температуры и влажности DHT11',
       htu21: 'Датчик температуры и влажности HTU21',
       thermostat: 'Термостат',
       rtcDs3231: 'Часы реального времени DS3231',

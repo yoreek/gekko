@@ -12,6 +12,7 @@
 #include "integrations/rest/analog_output/ScheduledAnalogOutputDeviceApiAdapter.h"
 #include "integrations/rest/auto_switch/AutoSwitchDeviceApiAdapter.h"
 #include "integrations/rest/binary_sensor/BinarySensorDeviceApiAdapter.h"
+#include "integrations/rest/dht11/Dht11SensorDeviceApiAdapter.h"
 #include "integrations/rest/dosing_pump/DosingPumpDeviceApiAdapter.h"
 #include "integrations/rest/ds18b20/Ds18b20TemperatureSensorDeviceApiAdapter.h"
 #include "integrations/rest/dummy/DummyDeviceApiAdapter.h"
@@ -266,6 +267,7 @@ DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(St7735DeviceApiAdapter::instance());
     (void)registry.registerAdapter(Ds18b20TemperatureSensorDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Aht10SensorDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(Dht11SensorDeviceApiAdapter::instance());
     (void)registry.registerAdapter(NtcThermistorTemperatureSensorDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Htu21SensorDeviceApiAdapter::instance());
     (void)registry.registerAdapter(ThermostatDeviceApiAdapter::instance());

@@ -63,8 +63,10 @@ import {
   createDs18b20Device,
   createNtcThermistorDevice,
   createAht10Device,
+  createDht11Device,
   createHtu21Device,
   normalizeAht10ConfigPayload,
+  normalizeDht11ConfigPayload,
   normalizeHtu21ConfigPayload,
   createThermostatDevice,
   createRtcDs3231Device,
@@ -433,7 +435,7 @@ export function mockFetchMetricPlaceholders(): MetricPlaceholderCatalogResponse 
         ),
       )
     }
-    if (device.record.typeName === 'aht10') {
+    if (device.record.typeName === 'aht10' || device.record.typeName === 'dht11') {
       const output = device.runtime.output as { temperature?: TemperatureOutputSnapshot; humidity?: { value: number; unitSymbol: string; valid: boolean } } | undefined
       const temperature = output?.temperature
       placeholders.push(metricDescriptor(
@@ -564,6 +566,7 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
       typeName !== 'ds18b20_temperature_sensor' &&
       typeName !== 'ntc_thermistor_temperature_sensor' &&
       typeName !== 'aht10' &&
+      typeName !== 'dht11' &&
       typeName !== 'htu21' &&
       typeName !== 'thermostat' &&
       typeName !== 'rtc_ds3231' &&
@@ -616,6 +619,8 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
           return createNtcThermistorDevice(nextId, configSource, baseDeps, enabled, name, db)
         case 'aht10':
           return createAht10Device(nextId, configSource, baseDeps, enabled, name, db)
+        case 'dht11':
+          return createDht11Device(nextId, configSource, baseDeps, enabled, name, db)
         case 'htu21':
           return createHtu21Device(nextId, configSource, baseDeps, enabled, name, db)
         case 'thermostat':
@@ -1004,6 +1009,20 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
               : device.config.name,
             deps: dependencyLinks,
           }
+        } else if (device.record.typeName === 'dht11') {
+          if (Array.isArray(payload.deps) && payload.deps.length > 0) {
+            throw new ApiClientError('dht11 does not use dependencies', 'BAD_ARGS', 400, null)
+          }
+          device.config = {
+            ...normalizeDht11ConfigPayload({
+              ...device.config,
+              ...payload.config,
+            }, device.config.enabled),
+            name: typeof payload.config.name === 'string' && payload.config.name.length > 0
+              ? payload.config.name
+              : device.config.name,
+            deps: [],
+          }
         } else if (device.record.typeName === 'pcf8574_expander' || device.record.typeName === 'pcf8575_expander') {
           const dependencyLinks = normalizeDependencyLinks(payload.deps ?? device.config.deps)
           const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'i2c_bus')
@@ -1166,7 +1185,7 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
             ...device.config,
             deps: dependencyLinks,
           }
-        } else if (device.record.typeName === 'rtc_ds3231' || device.record.typeName === 'pcf8574_expander' || device.record.typeName === 'pcf8575_expander' || device.record.typeName === 'htu21' || device.record.typeName === 'aht10') {
+        } else if (device.record.typeName === 'rtc_ds3231' || device.record.typeName === 'pcf8574_expander' || device.record.typeName === 'pcf8575_expander' || device.record.typeName === 'htu21' || device.record.typeName === 'aht10' || device.record.typeName === 'dht11') {
           const dependencyDeviceId = dependencyDeviceIdForRole(dependencyLinks, 'i2c_bus')
           if (dependencyDeviceId <= 0) {
             throw new ApiClientError(`${device.record.typeName} i2c dependency is required`, 'BAD_ARGS', 400, null)
@@ -1178,7 +1197,15 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
             dependencyDeviceId,
             normalizeFiniteNumber(
               currentConfig['i2cAddress'],
-              device.record.typeName === 'rtc_ds3231' ? 0x68 : device.record.typeName === 'htu21' ? 0x40 : device.record.typeName === 'aht10' ? 0x38 : 0x20,
+              device.record.typeName === 'rtc_ds3231'
+                ? 0x68
+                : device.record.typeName === 'htu21'
+                  ? 0x40
+                  : device.record.typeName === 'aht10'
+                    ? 0x38
+                    : device.record.typeName === 'dht11'
+                      ? 0x17
+                      : 0x20,
             ),
             device.record.id,
           )
@@ -2195,7 +2222,7 @@ export function mockExportDeviceSetupBundle(): string {
         configVersion:
           device.record.typeName === 'ssd1306'
             ? 5
-            : device.record.typeName === 'htu21' || device.record.typeName === 'aht10'
+            : device.record.typeName === 'htu21' || device.record.typeName === 'aht10' || device.record.typeName === 'dht11'
               ? 3
               : device.record.typeName === 'rtc_ds3231' ||
                   device.record.typeName === 'pcf8574_expander' ||

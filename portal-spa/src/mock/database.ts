@@ -38,6 +38,7 @@ const HA_SUPPORTED_TYPE_NAMES = new Set([
   'ds18b20_temperature_sensor',
   'ntc_thermistor_temperature_sensor',
   'aht10',
+  'dht11',
   'htu21',
   'thermostat',
   'port_expander_switch',
@@ -50,7 +51,7 @@ export function isHaSupportedTypeName(typeName: string): boolean {
   return HA_SUPPORTED_TYPE_NAMES.has(typeName)
 }
 
-export const storageKey = 'gekko.mockDb.v12'
+export const storageKey = 'gekko.mockDb.v13'
 
 type MockDeviceConfig = BaseDeviceConfig & Record<string, unknown>
 type MockDeviceRuntime = BaseDeviceRuntime & {
@@ -966,6 +967,48 @@ const seedDatabase: SeedDatabase = {
         },
         humidity: {
           value: 47.8,
+          unitSymbol: '%',
+          measuredAtMs: 18500,
+          valid: true,
+          status: 'ok',
+        },
+      },
+    }),
+    createDeviceRecord(670845768, 'dht11', 1, {
+      enabled: true,
+      name: 'Seed DHT11 Climate',
+      gpioPin: 17,
+      deps: [],
+      unit: 'celsius',
+      pollMs: 5000,
+      reportDeltaCelsius: 0.1,
+      reportDeltaHumidity: 0.1,
+      reportAlways: false,
+      temperatureFilter: {
+        smoothingWeight: 1,
+        calibrationFactor: 1,
+        calibrationOffset: 0,
+      },
+      humidityFilter: {
+        smoothingWeight: 1,
+        calibrationFactor: 1,
+        calibrationOffset: 0,
+      },
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: {
+        temperature: {
+          value: 24.0,
+          unit: 'celsius',
+          unitSymbol: 'C',
+          measuredAtMs: 18500,
+          valid: true,
+          status: 'ok',
+        },
+        humidity: {
+          value: 47.0,
           unitSymbol: '%',
           measuredAtMs: 18500,
           valid: true,
