@@ -686,6 +686,7 @@ export default {
         oscillatorStoppedWarning: 'Die RTC-Batterie fehlt möglicherweise oder ist leer — die Zeit kann ungenau sein.',
         readOk: 'OK',
         readFailed: 'Lesen fehlgeschlagen',
+        refreshAction: 'Messwert aktualisieren',
       },
       htu21: {
         noDependency: 'Erstellen Sie eine I2C-Bus-Abhängigkeit, bevor Sie einen HTU21-Sensor hinzufügen.',

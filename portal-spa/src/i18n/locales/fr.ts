@@ -686,6 +686,7 @@ export default {
         oscillatorStoppedWarning: 'La pile du RTC est peut-être absente ou déchargée — son heure peut être imprécise.',
         readOk: 'OK',
         readFailed: 'Échec de la lecture',
+        refreshAction: 'Actualiser la lecture',
       },
       htu21: {
         noDependency: "Créez une dépendance de bus I2C avant d'ajouter un capteur HTU21.",

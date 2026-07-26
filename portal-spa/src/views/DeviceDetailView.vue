@@ -36,6 +36,7 @@
             :busy="loading"
             @update:model-value="draft = $event"
             @command="onCommand"
+            @refresh="refresh"
           />
 
           <v-alert v-if="errorMessage" type="error" variant="tonal">

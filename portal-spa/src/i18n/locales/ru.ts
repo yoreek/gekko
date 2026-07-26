@@ -661,6 +661,7 @@ export default {
         oscillatorStoppedWarning: 'Возможно, батарейка RTC отсутствует или разряжена — время может быть неточным.',
         readOk: 'ОК',
         readFailed: 'Ошибка чтения',
+        refreshAction: 'Обновить показания',
       },
       htu21: {
         noDependency: 'Перед добавлением датчика HTU21 создайте зависимость I2C.',

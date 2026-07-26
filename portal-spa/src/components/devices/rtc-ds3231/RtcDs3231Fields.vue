@@ -31,7 +31,18 @@
 
     <v-row v-if="device">
       <v-col cols="12" sm="6">
-        <v-text-field :label="t('device.fields.currentEpochUtc')" :model-value="currentTimeText" readonly />
+        <v-text-field :label="t('device.fields.currentEpochUtc')" :model-value="currentTimeText" readonly>
+          <template #append-inner>
+            <v-btn
+              icon="refresh"
+              variant="text"
+              size="small"
+              :loading="busy"
+              :aria-label="t('device.dialog.rtcDs3231.refreshAction')"
+              @click="emit('refresh')"
+            />
+          </template>
+        </v-text-field>
       </v-col>
       <v-col cols="12" sm="6">
         <v-text-field :label="t('device.fields.status')" :model-value="readStatusText" readonly />
@@ -64,6 +75,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: RtcDs3231ConfigDraft]
+  refresh: []
 }>()
 
 const { t } = useI18n()
@@ -72,9 +84,13 @@ const deviceStore = useDeviceRegistryStore()
 const dependencyItems = computed(() => dependencyOptionsForRole(deviceStore.devices, 'i2c_bus'))
 
 const output = computed(() => props.device?.runtime as RtcDs3231OutputSnapshot | undefined)
+
+// The firmware only pushes a WS update on a real read-status change now, not on every tick of the
+// clock - so this is a snapshot of the last known reading, not a live-ticking clock. It only moves
+// when a real state_changed push arrives or the "refresh" button re-fetches the reading on demand.
 const currentTimeText = computed(() => {
   const epoch = output.value?.currentEpochUtc
-  return epoch ? new Date(epoch * 1000).toLocaleString() : '—'
+  return typeof epoch === 'number' ? new Date(epoch * 1000).toLocaleString() : '—'
 })
 const readStatusText = computed(() =>
   output.value?.lastReadOk ? t('device.dialog.rtcDs3231.readOk') : t('device.dialog.rtcDs3231.readFailed'),

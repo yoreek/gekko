@@ -69,9 +69,10 @@ void RtcSyncCoordinator::tickWriteBack(uint32_t now, const IRealTimeClockRuntime
         return;
     }
 
-    observedSyncRevision_ = ntpManager_.syncRevision();
-    lastWriteBackMs_ = now;
-
+    // Only mark the fresh-sync signal as consumed once we've actually confirmed a write attempt is
+    // possible. Consuming it earlier (e.g. while activeRtc is still nullptr because the RTC device
+    // hasn't reached Ready yet) would silently burn the opportunity: the next chance to write back
+    // would then be gated behind kWriteBackIntervalMs instead of retrying on the next tick.
     if (activeRtc == nullptr || !ntpManager_.hasAuthoritativeSync()) {
         return;
     }
@@ -79,6 +80,10 @@ void RtcSyncCoordinator::tickWriteBack(uint32_t now, const IRealTimeClockRuntime
     if (!lastSynced.has_value()) {
         return;
     }
+
+    observedSyncRevision_ = ntpManager_.syncRevision();
+    lastWriteBackMs_ = now;
+
     // const_cast is safe here: writeTime() is a mutating hardware operation on the RTC device,
     // but findActiveRtc() only hands out const access because most callers only ever read.
     if (const_cast<IRealTimeClockRuntime*>(activeRtc)->writeTime(lastSynced->utcUnixtime())) {

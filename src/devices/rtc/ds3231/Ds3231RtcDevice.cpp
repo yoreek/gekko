@@ -207,7 +207,11 @@ bool Ds3231RtcDevice::writeTimeRegisters(II2cBusDriver& driver, uint32_t utcEpoc
 }
 
 void Ds3231RtcDevice::recordSuccess(uint32_t epoch, bool lostPower) {
-    const bool changed = !hasReading_ || !lastReadOk_ || lastEpoch_ != epoch || lastLostPower_ != lostPower;
+    // Deliberately excludes a bare epoch change from "changed" - the chip ticks every second by
+    // definition, so treating that alone as dirty would broadcast a WS state_changed every second
+    // for no reason. Callers that need the current epoch read it on demand (GET /api/devices/:id),
+    // not via a push notification.
+    const bool changed = !hasReading_ || !lastReadOk_ || lastLostPower_ != lostPower;
     lastEpoch_ = epoch;
     lastLostPower_ = lostPower;
     hasReading_ = true;
