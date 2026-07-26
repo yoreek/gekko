@@ -122,6 +122,15 @@ struct DeviceDependencyRequirement {
 const char* deviceRoleName(DeviceRole role);
 bool parseDeviceRole(std::string_view value, DeviceRole& role);
 
+// Roles that are inherently optional dependencies wherever they appear -- they represent a
+// soft/reference-only link to another device (e.g. a display placeholder's metric source), not a
+// functional requirement, so a Disabled/Faulted/etc. status on the target must never cascade into
+// the dependent device's own status or block it from becoming Ready. Add new roles here as more
+// reference-only dependency kinds are introduced; no per-descriptor opt-in is needed.
+inline bool isGloballyOptionalDependencyRole(DeviceRole role) {
+    return role == DeviceRole::MetricSource;
+}
+
 // The bounded set of roles a device type provides to other devices' dependencies. Most types
 // provide exactly one role (mirrors the single `kProvidedRole` each I*Runtime interface declares);
 // a handful of "dual-purpose" types (e.g. a switch that can also serve as an AND-condition source)

@@ -205,6 +205,9 @@ bool DeviceRuntimeBase::dependencyReady(DeviceRole role) const {
 
 bool DeviceRuntimeBase::dependenciesReady() const {
     for (uint8_t index = 0; index < dependencyCount_ && index < kMaxDeviceDependencies; ++index) {
+        if (isGloballyOptionalDependencyRole(dependencyLinks_[index].role)) {
+            continue;
+        }
         const IDeviceRuntime* dependency = dependencyRuntimes_[index];
         if (dependency == nullptr || dependency->status() != DeviceStatus::Ready) {
             return false;

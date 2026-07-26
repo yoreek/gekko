@@ -1209,6 +1209,44 @@ void test_registry_propagates_dependency_status_and_recovers() {
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::DependencyBlocked), static_cast<int>(faultedDependent->status));
 }
 
+void test_registry_metric_source_dependency_disable_does_not_block_dependent() {
+    // DeviceRole::MetricSource is a globally-optional dependency (see
+    // isGloballyOptionalDependencyRole in DeviceTypes.h): it models a display placeholder
+    // referencing another device's value for rendering, not a functional requirement. Unlike a
+    // real dependency role (see test_registry_propagates_dependency_status_and_recovers just
+    // above), a Disabled source must never cascade into the dependent's own status.
+    MemoryConfigStorage storage;
+    DeviceRegistryStore store(storage);
+    TEST_ASSERT_TRUE(store.begin(false));
+
+    FixedDeviceIdSource idSource({231, 232});
+    DeviceTypeRegistry types = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(store, types, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+
+    DeviceCreateResult sourceResult = registry.create(makeDummyCreateRequest("source"), 10);
+    TEST_ASSERT_TRUE(sourceResult.ok());
+
+    DeviceCreateRequest dependentRequest = makeDummyCreateRequest("dependent");
+    dependentRequest.depCount = 1;
+    dependentRequest.deps[0] = {DeviceRole::MetricSource, sourceResult.deviceId};
+    DeviceCreateResult dependentResult = registry.create(dependentRequest, 20);
+    TEST_ASSERT_TRUE(dependentResult.ok());
+
+    registry.tickFastLoop(21);
+    registry.tickFastLoop(22);
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(registry.runtime(dependentResult.deviceId)->status()));
+
+    DeviceMutationResult disableResult = setDeviceEnabled(registry, sourceResult.deviceId, false, 30, DevicePersistencePolicy::Immediate);
+    TEST_ASSERT_TRUE(disableResult.ok());
+    registry.tickFastLoop(31);
+    registry.tickFastLoop(32);
+    registry.tickFastLoop(33);
+
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Disabled), static_cast<int>(registry.runtime(sourceResult.deviceId)->status()));
+    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(registry.runtime(dependentResult.deviceId)->status()));
+}
+
 void test_registry_backfills_dependency_links_after_begin() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);

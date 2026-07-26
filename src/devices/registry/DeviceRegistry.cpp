@@ -1445,6 +1445,9 @@ DeviceStatus DeviceRegistry::effectiveStatusForRuntime(const IDeviceRuntime& run
     const uint8_t depCount = runtime.dependencyCount();
     bool hasBlockedDependency = false;
     for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
+        if (isGloballyOptionalDependencyRole(links[index].role)) {
+            continue;
+        }
         const IDeviceRuntime* dependency = this->runtime(links[index].deviceId);
         if (dependency == nullptr) {
             return DeviceStatus::DependencyBlocked;
@@ -1475,6 +1478,9 @@ void DeviceRegistry::refreshDependentRuntimeStates(uint32_t now) {
         bool shouldDisable = false;
         bool shouldReconfigure = false;
         for (uint8_t index = 0; index < depCount && links != nullptr; ++index) {
+            if (isGloballyOptionalDependencyRole(links[index].role)) {
+                continue;
+            }
             const IDeviceRuntime* dependency = runtime(links[index].deviceId);
             if (dependency == nullptr || dependency->status() == DeviceStatus::Faulted || dependency->status() == DeviceStatus::Deleting) {
                 shouldReconfigure = true;

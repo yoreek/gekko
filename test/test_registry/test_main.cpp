@@ -20,6 +20,7 @@ void test_registry_rejects_max_device_count();
 void test_registry_rejects_dependency_delete_with_dependents();
 void test_registry_reassigns_dependency_atomically();
 void test_registry_propagates_dependency_status_and_recovers();
+void test_registry_metric_source_dependency_disable_does_not_block_dependent();
 void test_registry_backfills_dependency_links_after_begin();
 void test_registry_set_deps_command_normalization();
 void test_registry_dependency_config_update_reconfigures_dependents();
@@ -119,6 +120,7 @@ int main(int, char**) {
     RUN_TEST(test_registry_rejects_dependency_delete_with_dependents);
     RUN_TEST(test_registry_reassigns_dependency_atomically);
     RUN_TEST(test_registry_propagates_dependency_status_and_recovers);
+    RUN_TEST(test_registry_metric_source_dependency_disable_does_not_block_dependent);
     RUN_TEST(test_registry_backfills_dependency_links_after_begin);
     RUN_TEST(test_registry_set_deps_command_normalization);
     RUN_TEST(test_registry_dependency_config_update_reconfigures_dependents);
