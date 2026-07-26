@@ -38,8 +38,8 @@ Gardez le câblage du capteur et de l’écran séparé : le DS18B20 utilise DAT
    [`ds18b20_temperature_sensor`](/gekko/fr/reference/devices/ds18b20/).
 2. Créez un [`i2c_bus`](/gekko/fr/reference/devices/i2c-bus/) pour les broches
    SDA et SCL de l’OLED. Scannez-le si l’adresse de l’écran est inconnue.
-3. Créez un écran `ssd1306` sur ce bus, avec son adresse détectée et les bonnes
-   dimensions.
+3. Créez un écran `ssd1306` sur ce bus, avec son adresse détectée et le bon
+   panneau.
 4. Attendez que le capteur et l’écran soient tous deux `ready`. Ouvrez l’écran,
    sélectionnez **Concevoir**, puis créez un widget texte.
 5. Utilisez le générateur de placeholders pour insérer la métrique de
@@ -68,8 +68,8 @@ métrique.
 
 ## Problèmes courants
 
-- **L’OLED est vide :** vérifiez l’alimentation, SDA/SCL, l’adresse I2C et les
-  dimensions configurées.
+- **L’OLED est vide :** vérifiez l’alimentation, SDA/SCL, l’adresse I2C et le
+  panneau configuré.
 - **La valeur du capteur manque :** attendez que le capteur soit `ready` et
   utilisez le générateur de placeholders au lieu de saisir un ID supposé.
 - **Le texte est coupé :** utilisez l’aperçu du concepteur, un texte plus petit

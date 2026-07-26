@@ -5,7 +5,7 @@ The public REST endpoint contract is fixed separately in [REST API Contract](res
 
 Rules:
 - `name`, `enabled`, and `deps` belong to the persisted config object.
-- Bus identity is represented only by `deps`; current type-specific configs such as `Ssd1306DeviceConfigV5` store bus parameters and addresses, not a duplicated bus device ID.
+- Bus identity is represented only by `deps`; current type-specific configs such as `Ssd1306DeviceConfigV6` store bus parameters and addresses, not a duplicated bus device ID.
 - `config_revision` belongs to the device record wrapper, not to the type-specific config object.
 - `config_version` is not part of the contract. Binary compatibility is identified by `kMagic`.
 - `typeId` is an internal registry key only; the public API and frontend domain use `typeName`.

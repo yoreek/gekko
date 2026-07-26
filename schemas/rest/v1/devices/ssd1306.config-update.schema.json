@@ -9,6 +9,7 @@
     "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" } },
     "i2cAddress": { "type": "integer", "minimum": 0, "maximum": 255 },
     "rotation": { "type": "integer", "minimum": 0, "maximum": 3 },
+    "panel": { "type": "string", "enum": ["128x64", "128x32", "96x16", "64x32", "custom"] },
     "width": { "type": "integer", "minimum": 1, "maximum": 255 },
     "height": { "type": "integer", "minimum": 1, "maximum": 255 }
   },

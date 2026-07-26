@@ -35,7 +35,3 @@ export function resolveDisplayEffectiveSize(physWidth: number, physHeight: numbe
   }
   return { effectiveWidth: height, effectiveHeight: width }
 }
-
-export function isDisplayLandscapeRotation(physWidth: number, physHeight: number, rotation: number): boolean {
-  return resolveDisplayOrientationGroup(physWidth, physHeight, rotation) === 'landscape'
-}

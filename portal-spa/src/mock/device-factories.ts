@@ -5,6 +5,8 @@ import {
   defaultSsd1306Layout,
   normalizeSsd1306Layout,
 } from '@/models/devices/ssd1306/layout'
+import { normalizeDisplayRotation } from '@/models/devices/display/orientation'
+import { isKnownPanel, resolvePanelGeometry, ST7735_DEFAULT_PANEL, SSD1306_DEFAULT_PANEL } from '@/models/devices/display/panels'
 import { ApiClientError } from '@/api/http'
 import {
   createSeedMockDatabase,
@@ -34,6 +36,12 @@ export function normalizeI2cAddress(value: unknown, fallback: number): number {
     throw new ApiClientError('i2c address is out of bounds', 'BAD_ARGS', 400, null)
   }
   return address
+}
+
+// width/height are always derived from panel (never independently settable), matching the
+// firmware's parseJson for both display types.
+export function normalizeDisplayPanel(typeName: string, value: unknown, fallback: string): string {
+  return isKnownPanel(typeName, value) ? value : fallback
 }
 
 function normalizeDependencyDeviceId(value: unknown): number {
@@ -700,6 +708,8 @@ export function createSsd1306Device(
   const layout = isRecordPayload(configSource.layout)
     ? normalizeSsd1306Layout(configSource.layout)
     : defaultSsd1306Layout()
+  const panel = normalizeDisplayPanel('ssd1306', configSource.panel, SSD1306_DEFAULT_PANEL)
+  const geometry = resolvePanelGeometry('ssd1306', panel)
   const config = {
     enabled,
     name,
@@ -710,8 +720,10 @@ export function createSsd1306Device(
       },
     ] satisfies DeviceDependencyLink[],
     i2cAddress,
-    width: normalizeFiniteNumber(configSource.width, 128),
-    height: normalizeFiniteNumber(configSource.height, 64),
+    rotation: normalizeDisplayRotation(configSource.rotation, 0),
+    panel,
+    width: geometry?.width ?? normalizeFiniteNumber(configSource.width, 128),
+    height: geometry?.height ?? normalizeFiniteNumber(configSource.height, 64),
     layout,
   }
   return createDeviceRecord(nextId, 'ssd1306', 1, config, {
@@ -735,6 +747,8 @@ export function createSt7735Device(
   }
   requireSpiDependency(db, dependencyDeviceId)
   const layoutRaw = isRecordPayload(configSource.layout) ? configSource.layout : {}
+  const panel = normalizeDisplayPanel('st7735', configSource.panel, ST7735_DEFAULT_PANEL)
+  const geometry = resolvePanelGeometry('st7735', panel)
   const config = {
     enabled,
     name,
@@ -748,8 +762,10 @@ export function createSt7735Device(
     chipSelectPin: normalizeFiniteNumber(configSource.chipSelectPin, 5),
     dcPin: normalizeFiniteNumber(configSource.dcPin, 2),
     resetPin: normalizeFiniteNumber(configSource.resetPin, -1),
-    width: normalizeFiniteNumber(configSource.width, 128),
-    height: normalizeFiniteNumber(configSource.height, 160),
+    rotation: normalizeDisplayRotation(configSource.rotation, 0),
+    panel,
+    width: geometry?.width ?? 128,
+    height: geometry?.height ?? 160,
     layout: {
       schemaVersion: 1,
       activePageId: typeof layoutRaw.activePageId === 'string' ? layoutRaw.activePageId : 'main',

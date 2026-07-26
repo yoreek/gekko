@@ -5,6 +5,7 @@ import type { DeviceRecord } from '@/api/contracts'
 import { useDeviceDetail } from '@/composables/useDeviceDetail'
 import type { DisplayLayoutDraft, DisplayLayoutPage, DisplayWidget, DisplayWidgetType } from '@/models/devices/display/layout'
 import { resolveDisplayWidgetDuplicatePosition, resolveDisplayWidgetSpawnPosition } from '@/models/devices/display/canvas/geometry'
+import { resolveDisplayEffectiveSize } from '@/models/devices/display/orientation'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import type { BaseDisplay } from '@/models/devices/display/display'
 import type { RasterImageFormat } from '@/raster/raster-image-types'
@@ -106,7 +107,12 @@ export function useDisplayDesigner(
   function addWidget(type: DisplayWidgetType): void {
     if (draftConfig.value === null) return
     const nextWidget = display.value.createWidget(type, widgets.value.length)
-    const position = resolveDisplayWidgetSpawnPosition(widgets.value.length, draftConfig.value.width, draftConfig.value.height, nextWidget.width, nextWidget.height)
+    const { effectiveWidth, effectiveHeight } = resolveDisplayEffectiveSize(
+      draftConfig.value.width,
+      draftConfig.value.height,
+      draftConfig.value.rotation,
+    )
+    const position = resolveDisplayWidgetSpawnPosition(widgets.value.length, effectiveWidth, effectiveHeight, nextWidget.width, nextWidget.height)
     nextWidget.x = position.x
     nextWidget.y = position.y
     updateActiveWidgets([...widgets.value, nextWidget])
@@ -141,7 +147,12 @@ export function useDisplayDesigner(
     if (draftConfig.value === null) return
     const widget = widgets.value.find(entry => entry.id === widgetId)
     if (widget === undefined) return
-    const position = resolveDisplayWidgetDuplicatePosition(widget.x, widget.y, widget.width, widget.height, draftConfig.value.width, draftConfig.value.height)
+    const { effectiveWidth, effectiveHeight } = resolveDisplayEffectiveSize(
+      draftConfig.value.width,
+      draftConfig.value.height,
+      draftConfig.value.rotation,
+    )
+    const position = resolveDisplayWidgetDuplicatePosition(widget.x, widget.y, widget.width, widget.height, effectiveWidth, effectiveHeight)
     const duplicate: DisplayWidget = { ...widget, id: `${widget.type}-${Date.now()}`, ...position }
     updateActiveWidgets([...widgets.value, duplicate])
     selectWidget(duplicate.id)

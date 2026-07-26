@@ -11,7 +11,9 @@ export interface DisplayTypeEntry {
 
 const displayRegistry: Partial<Record<DeviceTypeName, DisplayTypeEntry>> = {
   ssd1306: { display: ssd1306Display, defaultWidth: 128, defaultHeight: 64 },
-  st7735: { display: st7735Display, defaultWidth: 160, defaultHeight: 128 },
+  // Native (rotation=0) geometry for the default panel (black18) -- must match
+  // st7735/device.ts's defaultConfig() and the firmware's St7735DeviceConfigV5 default.
+  st7735: { display: st7735Display, defaultWidth: 128, defaultHeight: 160 },
 }
 
 const fallbackEntry: DisplayTypeEntry = displayRegistry.ssd1306 as DisplayTypeEntry

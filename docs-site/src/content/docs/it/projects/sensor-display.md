@@ -38,8 +38,8 @@ mentre l’OLED usa SDA e SCL I2C.
    [`ds18b20_temperature_sensor`](/gekko/it/reference/devices/ds18b20/).
 2. Crea un [`i2c_bus`](/gekko/it/reference/devices/i2c-bus/) per i pin SDA e
    SCL dell’OLED. Esegui la scansione se l’indirizzo del display è sconosciuto.
-3. Crea un display `ssd1306` su quel bus, con l’indirizzo rilevato e le giuste
-   dimensioni.
+3. Crea un display `ssd1306` su quel bus, con l’indirizzo rilevato e il
+   pannello giusto.
 4. Attendi che sensore e display siano entrambi `ready`. Apri il display,
    seleziona **Progetta** e crea un widget di testo.
 5. Usa il generatore di placeholder per inserire la metrica della temperatura.
@@ -68,7 +68,7 @@ metrica.
 ## Problemi comuni
 
 - **L’OLED è vuoto:** controlla alimentazione, cablaggio SDA/SCL, indirizzo I2C
-  e dimensioni configurate.
+  e il pannello configurato.
 - **Manca il valore del sensore:** attendi che il sensore raggiunga `ready` e
   usa il generatore di placeholder invece di digitare un ID presunto.
 - **Il testo è tagliato:** usa l’anteprima del progettista, testo più piccolo o

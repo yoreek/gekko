@@ -70,7 +70,7 @@ DeviceRegistryEntry makeSsd1306Record() {
 }
 
 BoundedBlob<kMaxDeviceConfigBytes> encodeSsd1306Config() {
-    Ssd1306DeviceConfigV5 config{};
+    Ssd1306DeviceConfigV6 config{};
     config.enabled = true;
     std::snprintf(config.name, sizeof(config.name), "%s", "ssd1306");
     config.i2cAddress = 0x3C;
@@ -80,7 +80,7 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeSsd1306Config() {
 
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     BoundedBlob<kMaxDeviceConfigBytes> blob{};
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV5::kMagic, config, buffer, ssd1306DeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV6::kMagic, config, buffer, ssd1306DeviceConfigSize(config)));
     TEST_ASSERT_TRUE(blob.assign(buffer, ssd1306DeviceConfigSize(config)));
     return blob;
 }

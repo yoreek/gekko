@@ -63,7 +63,7 @@ bevor ein noch im Layout verwendeter Sensor gelöscht wird.
 
 ## Häufige Probleme
 
-- **OLED bleibt leer:** Versorgung, SDA/SCL, I2C-Adresse und Maße prüfen.
+- **OLED bleibt leer:** Versorgung, SDA/SCL, I2C-Adresse und das konfigurierte Panel prüfen.
 - **Sensorwert fehlt:** auf `ready` warten und den Platzhalter-Builder nutzen.
 - **Text wird abgeschnitten:** Vorschau, kleinere Schrift oder zweite Seite nutzen.
 - **Sensor lässt sich nicht löschen:** Platzhalter zuerst im Layout entfernen.

@@ -4,6 +4,7 @@ import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeB
 import { ssd1306Display } from '../display/display.ts'
 import type { DisplayBaseConfig, DisplayCapabilities } from '../display/base.ts'
 import { normalizeDisplayRotation } from '../display/orientation.ts'
+import { SSD1306_DEFAULT_PANEL, SSD1306_CUSTOM_PANEL, isKnownPanel, resolvePanelGeometry, matchPanelByGeometry } from '../display/panels.ts'
 import {
   defaultSsd1306Layout,
   encodeSsd1306Layout,
@@ -35,6 +36,7 @@ export class Ssd1306Device extends BaseDevice<Ssd1306ConfigDraft, Ssd1306CreateD
       dependencyDeviceId: 0,
       i2cAddress: 60,
       rotation: 0,
+      panel: SSD1306_DEFAULT_PANEL,
       width: 128,
       height: 64,
       layout: defaultSsd1306Layout(),
@@ -50,13 +52,22 @@ export class Ssd1306Device extends BaseDevice<Ssd1306ConfigDraft, Ssd1306CreateD
     const raw = value as Record<string, unknown>
     const layoutRaw = raw.layout
     const layoutObject = typeof layoutRaw === 'object' && layoutRaw !== null && !Array.isArray(layoutRaw) ? (layoutRaw as Record<string, unknown>) : null
+    const rawWidth = typeof raw.width === 'number' ? raw.width : defaults.width
+    const rawHeight = typeof raw.height === 'number' ? raw.height : defaults.height
+    // Prefer an explicit valid panel; otherwise fall back to matching width/height against the
+    // preset table (mirrors the firmware's V5->V6 migration heuristic), else Custom.
+    const panel = isKnownPanel('ssd1306', raw.panel)
+      ? (raw.panel as string)
+      : (matchPanelByGeometry('ssd1306', rawWidth, rawHeight) ?? SSD1306_CUSTOM_PANEL)
+    const geometry = resolvePanelGeometry('ssd1306', panel)
     return {
       ...normalizeBaseDeviceConfig(raw, defaults),
       dependencyDeviceId,
       i2cAddress: typeof raw.i2cAddress === 'number' ? raw.i2cAddress : defaults.i2cAddress,
-      rotation: normalizeDisplayRotation(raw.rotation, defaults.rotation) % 2,
-      width: typeof raw.width === 'number' ? raw.width : defaults.width,
-      height: typeof raw.height === 'number' ? raw.height : defaults.height,
+      rotation: normalizeDisplayRotation(raw.rotation, defaults.rotation),
+      panel,
+      width: geometry?.width ?? rawWidth,
+      height: geometry?.height ?? rawHeight,
       layout: normalizeSsd1306Layout(layoutObject ?? defaults.layout),
     }
   }
@@ -66,6 +77,7 @@ export class Ssd1306Device extends BaseDevice<Ssd1306ConfigDraft, Ssd1306CreateD
       ...encodeBaseDeviceConfig(config),
       i2cAddress: config.i2cAddress,
       rotation: config.rotation,
+      panel: config.panel,
       width: config.width,
       height: config.height,
       layout: encodeSsd1306Layout(config.layout),

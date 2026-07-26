@@ -100,6 +100,7 @@ template <size_t N> void fillSsd1306DeviceDocument(StaticJsonDocument<N>& doc, b
     config["name"] = "ssd1306";
     config["enabled"] = true;
     config["i2cAddress"] = 0x3C;
+    config["panel"] = "128x64";
     config["width"] = 128;
     config["height"] = 64;
     JsonArray deps = config.createNestedArray("deps");
@@ -263,13 +264,14 @@ void test_ssd1306_config_migrates_v1_v2_v3_without_bus_id() {
     v3.height = 64;
 
     uint8_t buffer[kMaxDeviceConfigBytes]{};
-    Ssd1306DeviceConfigV5 migrated{};
+    Ssd1306DeviceConfigV6 migrated{};
 
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV1::kMagic, v1, buffer, ssd1306DeviceConfigV1Size()));
     TEST_ASSERT_TRUE(decodeSsd1306DeviceConfig(buffer, ssd1306DeviceConfigV1Size(), migrated));
     TEST_ASSERT_EQUAL_STRING("OLED V1", migrated.name);
     TEST_ASSERT_EQUAL_UINT8(0x3D, migrated.i2cAddress);
     TEST_ASSERT_EQUAL_UINT8(0, migrated.rotation);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(Ssd1306Panel::Preset96x16), migrated.panel);
     TEST_ASSERT_EQUAL_UINT16(96, migrated.width);
     TEST_ASSERT_EQUAL_UINT16(16, migrated.height);
 
@@ -278,6 +280,7 @@ void test_ssd1306_config_migrates_v1_v2_v3_without_bus_id() {
     TEST_ASSERT_EQUAL_STRING("OLED V2", migrated.name);
     TEST_ASSERT_EQUAL_UINT8(0x3E, migrated.i2cAddress);
     TEST_ASSERT_EQUAL_UINT8(0, migrated.rotation);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(Ssd1306Panel::Preset128x32), migrated.panel);
     TEST_ASSERT_EQUAL_UINT16(128, migrated.width);
     TEST_ASSERT_EQUAL_UINT16(32, migrated.height);
 
@@ -286,9 +289,58 @@ void test_ssd1306_config_migrates_v1_v2_v3_without_bus_id() {
     TEST_ASSERT_EQUAL_STRING("OLED V3", migrated.name);
     TEST_ASSERT_EQUAL_UINT8(0x3F, migrated.i2cAddress);
     TEST_ASSERT_EQUAL_UINT8(2, migrated.rotation);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(Ssd1306Panel::Preset128x64), migrated.panel);
     TEST_ASSERT_EQUAL_UINT16(128, migrated.width);
     TEST_ASSERT_EQUAL_UINT16(64, migrated.height);
     EWFM_LEGACY_CONFIG_USE_END
+}
+
+void test_ssd1306_config_codec_migrates_v4_blob() {
+    EWFM_LEGACY_CONFIG_USE_BEGIN
+    Ssd1306DeviceConfigV4 legacy{};
+    TEST_ASSERT_TRUE(assignDeviceBaseConfig(legacy, "OLED V4", true));
+    legacy.i2cAddress = 0x3D;
+    legacy.rotation = 3;
+    legacy.width = 96;
+    legacy.height = 16;
+
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV4::kMagic, legacy, buffer, ssd1306DeviceConfigSize(legacy)));
+
+    Ssd1306DeviceConfigV6 migrated{};
+    TEST_ASSERT_TRUE(decodeSsd1306DeviceConfig(buffer, ssd1306DeviceConfigSize(legacy), migrated));
+    EWFM_LEGACY_CONFIG_USE_END
+    TEST_ASSERT_EQUAL_STRING("OLED V4", migrated.name);
+    TEST_ASSERT_EQUAL_UINT8(0x3D, migrated.i2cAddress);
+    TEST_ASSERT_EQUAL_UINT8(3, migrated.rotation);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(Ssd1306Panel::Preset96x16), migrated.panel);
+    TEST_ASSERT_EQUAL_UINT16(96, migrated.width);
+    TEST_ASSERT_EQUAL_UINT16(16, migrated.height);
+}
+
+void test_ssd1306_config_codec_migrates_v5_blob_falls_back_to_custom() {
+    EWFM_LEGACY_CONFIG_USE_BEGIN
+    Ssd1306DeviceConfigV5 legacy{};
+    TEST_ASSERT_TRUE(assignDeviceBaseConfig(legacy, "OLED V5", true));
+    legacy.i2cAddress = 0x3D;
+    legacy.rotation = 1;
+    // Not any of the four preset resolutions -- migration must preserve it as Custom rather
+    // than silently rounding to a preset.
+    legacy.width = 100;
+    legacy.height = 90;
+
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV5::kMagic, legacy, buffer, ssd1306DeviceConfigSize(legacy)));
+
+    Ssd1306DeviceConfigV6 migrated{};
+    TEST_ASSERT_TRUE(decodeSsd1306DeviceConfig(buffer, ssd1306DeviceConfigSize(legacy), migrated));
+    EWFM_LEGACY_CONFIG_USE_END
+    TEST_ASSERT_EQUAL_STRING("OLED V5", migrated.name);
+    TEST_ASSERT_EQUAL_UINT8(0x3D, migrated.i2cAddress);
+    TEST_ASSERT_EQUAL_UINT8(1, migrated.rotation);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(Ssd1306Panel::Custom), migrated.panel);
+    TEST_ASSERT_EQUAL_UINT16(100, migrated.width);
+    TEST_ASSERT_EQUAL_UINT16(90, migrated.height);
 }
 
 void test_ssd1306_registry_migrates_v3_blob_and_preserves_bus_dependency() {
@@ -357,19 +409,21 @@ void test_ssd1306_registry_migrates_v3_blob_and_preserves_bus_dependency() {
     TEST_ASSERT_EQUAL_UINT32(busRecord.header.deviceId, runtime->dependencyDeviceId(DeviceRole::I2CBus));
     TEST_ASSERT_EQUAL_UINT8(0x3D, runtime->config().i2cAddress);
     TEST_ASSERT_EQUAL_UINT8(1, runtime->config().rotation);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(Ssd1306Panel::Preset128x32), runtime->config().panel);
     TEST_ASSERT_TRUE(registry.hasPendingPersistence());
 }
 
 void test_ssd1306_api_adapter_streams_layout_and_setup_extension() {
-    Ssd1306DeviceConfigV5 config{};
+    Ssd1306DeviceConfigV6 config{};
     TEST_ASSERT_TRUE(assignDeviceBaseConfig(config, "OLED", true));
     config.i2cAddress = 0x3C;
+    config.panel = static_cast<uint8_t>(Ssd1306Panel::Preset128x64);
     config.width = 128;
     config.height = 64;
 
     uint8_t configBuffer[kMaxDeviceConfigBytes]{};
     DeviceConfigBlob configBlob{};
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV5::kMagic, config, configBuffer, ssd1306DeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV6::kMagic, config, configBuffer, ssd1306DeviceConfigSize(config)));
     TEST_ASSERT_TRUE(configBlob.assign(configBuffer, ssd1306DeviceConfigSize(config)));
     DeviceRegistryEntry record{};
     record.header.deviceId = 42;
@@ -585,20 +639,23 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
 }
 
 void test_ssd1306_api_adapter_partial_update_preserves_bus_and_dimensions() {
-    Ssd1306DeviceConfigV5 config{};
+    Ssd1306DeviceConfigV6 config{};
     config.enabled = 1U;
     std::snprintf(config.name, sizeof(config.name), "%s", "ssd1306");
-    // i2cAddress/width/height are deliberately non-default (compiled defaults are 0x3C/128/64) so
-    // these assertions cannot pass by accident if the merge fix regresses and the fields are
-    // silently reset to their struct defaults instead of the runtime's current values.
+    // i2cAddress/panel/width/height are deliberately non-default (compiled defaults are
+    // 0x3C/128x64) so these assertions cannot pass by accident if the merge fix regresses and the
+    // fields are silently reset to their struct defaults instead of the runtime's current values.
+    // A custom (non-preset) size also exercises that Custom-panel dimensions survive a partial
+    // update that never mentions panel/width/height.
     config.i2cAddress = 0x50;
-    config.width = 64;
-    config.height = 32;
+    config.panel = static_cast<uint8_t>(Ssd1306Panel::Custom);
+    config.width = 70;
+    config.height = 45;
     config.rotation = 0;
 
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = ssd1306DeviceConfigSize(config);
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV5::kMagic, config, buffer, size));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Ssd1306DeviceConfigV6::kMagic, config, buffer, size));
     DeviceConfigBlob configBlob{};
     TEST_ASSERT_TRUE(configBlob.assign(buffer, size));
 
@@ -626,13 +683,14 @@ void test_ssd1306_api_adapter_partial_update_preserves_bus_and_dimensions() {
     TEST_ASSERT_EQUAL_UINT8(1U, request.depCount);
     TEST_ASSERT_EQUAL_UINT32(12U, request.deps[0].deviceId);
 
-    Ssd1306DeviceConfigV5 parsed{};
+    Ssd1306DeviceConfigV6 parsed{};
     TEST_ASSERT_TRUE(
         decodeSsd1306DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
     TEST_ASSERT_EQUAL_UINT8(2, parsed.rotation);
     TEST_ASSERT_EQUAL_UINT8(0x50, parsed.i2cAddress);
-    TEST_ASSERT_EQUAL_UINT16(64, parsed.width);
-    TEST_ASSERT_EQUAL_UINT16(32, parsed.height);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(Ssd1306Panel::Custom), parsed.panel);
+    TEST_ASSERT_EQUAL_UINT16(70, parsed.width);
+    TEST_ASSERT_EQUAL_UINT16(45, parsed.height);
 }
 
 void test_ssd1306_layout_create_request_accepts_empty_pages() {

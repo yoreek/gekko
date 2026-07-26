@@ -68,6 +68,14 @@
                         @update:model-value="updateBackgroundColor"
                       />
                     </v-col>
+                    <v-col cols="12" class="mt-2">
+                      <v-checkbox
+                        v-model="realPositionPreview"
+                        :label="t('device.dialog.display.previewTitle')"
+                        density="compact"
+                        hide-details
+                      />
+                    </v-col>
                   </v-row>
                 </div>
                 <v-sheet class="overflow-auto" max-height="480">
@@ -80,6 +88,10 @@
                     :display="display"
                     :background-color="display.supportsColor ? layout?.backgroundColor ?? '#000000' : '#000000'"
                     :metric-catalog="metricCatalog"
+                    :real-position="realPositionPreview"
+                    :rotation="draftConfig?.rotation ?? 0"
+                    :native-width="draftConfig?.width ?? displayTypeEntry.defaultWidth"
+                    :native-height="draftConfig?.height ?? displayTypeEntry.defaultHeight"
                     @select-widget="selectWidget"
                     @update-widgets="updateActiveWidgets"
                   />
@@ -192,6 +204,7 @@ const {
 const layout = computed(() => draftConfig.value?.layout ?? null)
 
 const zoom = ref(3)
+const realPositionPreview = ref(false)
 
 const deviceWidth = computed(() => resolveDisplayEffectiveSize(draftConfig.value?.width ?? displayTypeEntry.value.defaultWidth, draftConfig.value?.height ?? displayTypeEntry.value.defaultHeight, draftConfig.value?.rotation ?? 0).effectiveWidth)
 const deviceHeight = computed(() => resolveDisplayEffectiveSize(draftConfig.value?.width ?? displayTypeEntry.value.defaultWidth, draftConfig.value?.height ?? displayTypeEntry.value.defaultHeight, draftConfig.value?.rotation ?? 0).effectiveHeight)

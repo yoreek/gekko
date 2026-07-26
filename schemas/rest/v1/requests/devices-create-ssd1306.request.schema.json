@@ -13,6 +13,11 @@
         "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" }, "default": [] },
         "i2cAddress": { "type": "integer", "minimum": 0, "maximum": 255, "default": 60 },
         "rotation": { "type": "integer", "minimum": 0, "maximum": 3, "default": 0 },
+        "panel": {
+          "type": "string",
+          "enum": ["128x64", "128x32", "96x16", "64x32", "custom"],
+          "default": "128x64"
+        },
         "width": { "type": "integer", "minimum": 1, "maximum": 255, "default": 128 },
         "height": { "type": "integer", "minimum": 1, "maximum": 255, "default": 64 },
         "layout": { "$ref": "../common/display-layout.schema.json" }

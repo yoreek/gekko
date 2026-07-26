@@ -851,6 +851,10 @@ interface DeviceDetailResponse {
 > See [Display Layout Persistence](./oled-display-layout.md) for the write/read flow and storage
 > model. SSD1306 bus identity is carried only by `config.deps` using role `i2c_bus`; the removed
 > `config.i2cBusDeviceId` field is rejected by the current API.
+>
+> Both display types also carry `panel` (string) and `rotation` (0-3). `width`/`height` are always
+> derived from `panel` and rejected if the client sends a mismatched value — see
+> [Display Layout Persistence § Geometry & Rotation](./oled-display-layout.md#geometry--rotation).
 
 ### `GET /api/devices/:id/layout`
 

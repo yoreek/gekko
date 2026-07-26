@@ -16,6 +16,11 @@
         "dcPin": { "type": "integer", "minimum": 0, "maximum": 255, "default": 2 },
         "resetPin": { "type": "integer", "minimum": -1, "maximum": 255, "default": -1 },
         "rotation": { "type": "integer", "minimum": 0, "maximum": 3, "default": 0 },
+        "panel": {
+          "type": "string",
+          "enum": ["black18", "green18", "green144", "mini096", "mini096plugin"],
+          "default": "black18"
+        },
         "width": { "type": "integer", "minimum": 1, "maximum": 255, "default": 128 },
         "height": { "type": "integer", "minimum": 1, "maximum": 255, "default": 160 },
         "layout": { "$ref": "../common/display-layout.schema.json" }

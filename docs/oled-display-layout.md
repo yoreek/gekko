@@ -14,6 +14,36 @@ display-layout runtime/codec/store path.
 - Placeholder behavior lives in [display-text-placeholders.md](./display-text-placeholders.md).
 - Compiled placeholder state is transient runtime cache data and is not persisted in the layout payload.
 
+## Geometry & Rotation
+
+Every display device config carries `panel`, `rotation`, `width`, and `height`:
+
+- `panel` selects the physical panel variant. It is the only user-facing size control —
+  `width`/`height` are always derived from it, never independently settable. `parseJson` rejects a
+  client-supplied `width`/`height` that disagrees with the selected panel's geometry.
+  - `st7735` has five fixed panels (`black18`, `green18`, `green144`, `mini096`,
+    `mini096plugin`) covering the ST7735 controller's real panel variants (1.8" 128×160 in two
+    tab colors, 1.44" 128×128, 0.96" 80×160 in two init variants). Red-tab 1.8" panels are not
+    representable: `Adafruit_ST7735.h` defines `INITR_REDTAB` and `INITR_144GREENTAB` as the same
+    numeric value, and the library's `initR()` resolves that value to the 1.44" branch first.
+  - `ssd1306` has four fixed presets (`128x64`, `128x32`, `96x16`, `64x32` — the resolutions
+    `Adafruit_SSD1306::begin()` has tuned `comPins`/`contrast` values for) plus `custom`, which
+    allows any `width`/`height` for less common panel variants the driver falls back to generic
+    defaults for.
+- `width`/`height` are the panel's **native** resolution — the pixel dimensions at `rotation=0`,
+  matching what the manufacturer's datasheet calls width/height. They do not change when
+  `rotation` changes.
+- `rotation` is 0–3, passed straight through to `Adafruit_GFX::setRotation()` (`0`/`90°`/`180°`/`270°`).
+  Odd rotations swap the *effective* on-screen width/height relative to the native `width`/`height`;
+  even rotations don't. Widget `x`/`y` coordinates in `layout` are always in the effective
+  (post-rotation) coordinate space, since that's what `Adafruit_GFX` exposes to draw calls once
+  `setRotation()` has been called.
+- Which physical direction is "up" for a given `rotation` value depends on how the panel glass is
+  mounted on that specific board — it is not derivable from `width`/`height` or from the driver
+  library, and must be determined empirically per board (power it up, look at the result). The
+  portal-spa card/edit form renders a small preview (native frame with rotated "Aa" text) to make
+  this concrete without needing the physical device in hand.
+
 ## Actual Flow
 
 ### Create
@@ -130,6 +160,8 @@ Create and update requests continue to accept layout under:
       }
     ],
     "i2cAddress": 60,
+    "rotation": 0,
+    "panel": "128x64",
     "width": 128,
     "height": 64,
     "layout": {

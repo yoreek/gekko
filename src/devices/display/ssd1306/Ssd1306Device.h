@@ -21,7 +21,7 @@ public:
     Ssd1306Device(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
     ~Ssd1306Device() override;
 
-    const Ssd1306DeviceConfigV5& config() const;
+    const Ssd1306DeviceConfigV6& config() const;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const override;
     bool applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) override;
@@ -38,7 +38,7 @@ public:
 private:
     const DeviceBaseConfigV1& baseConfig() const override;
 
-    Ssd1306DeviceConfigV5 config_{};
+    Ssd1306DeviceConfigV6 config_{};
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     std::unique_ptr<::Adafruit_SSD1306> display_{};
     std::unique_ptr<Ssd1306CanvasSurface> surface_{};

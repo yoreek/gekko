@@ -501,6 +501,8 @@ const seedDatabase: SeedDatabase = {
         },
       ],
       i2cAddress: 60,
+      rotation: 0,
+      panel: '128x64',
       width: 128,
       height: 64,
       layout: {
@@ -576,6 +578,8 @@ const seedDatabase: SeedDatabase = {
       chipSelectPin: 5,
       dcPin: 2,
       resetPin: -1,
+      rotation: 0,
+      panel: 'black18',
       width: 128,
       height: 160,
       layout: {

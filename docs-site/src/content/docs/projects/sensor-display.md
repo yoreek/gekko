@@ -38,7 +38,7 @@ while the OLED uses I2C SDA and SCL.
 2. Create an [`i2c_bus`](/gekko/reference/devices/i2c-bus/) for the OLED's SDA
    and SCL pins. Scan it if the display address is unknown.
 3. Create an `ssd1306` display on that bus, with its scanned address and the
-   correct dimensions.
+   correct panel selected.
 4. Wait until both the temperature sensor and display are `ready`. Open the
    display, select **Design**, and create a text widget.
 5. Use the placeholder builder to insert the temperature metric. For example:
@@ -65,7 +65,7 @@ the sensor is deleted while the layout still uses its metric.
 ## Common problems
 
 - **The OLED is blank:** verify power, SDA/SCL wiring, the I2C address, and the
-  configured dimensions.
+  configured panel.
 - **The sensor value is missing:** wait for the sensor to reach `ready` and use
   the placeholder builder instead of typing a guessed device ID.
 - **Text is clipped:** use the designer preview, smaller text, or a second

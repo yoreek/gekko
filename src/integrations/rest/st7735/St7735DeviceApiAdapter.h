@@ -5,7 +5,7 @@
 
 namespace ewfm {
 
-class St7735DeviceApiAdapter final : public TypedDisplayDeviceApiAdapter<St7735DeviceApiAdapter, St7735Device, St7735DeviceConfigV4> {
+class St7735DeviceApiAdapter final : public TypedDisplayDeviceApiAdapter<St7735DeviceApiAdapter, St7735Device, St7735DeviceConfigV5> {
 public:
     static constexpr const char* kTypeName = "st7735";
     static constexpr const char* kInvalidLayoutError = "st7735 layout is invalid";
@@ -16,12 +16,12 @@ public:
     static constexpr const char* kMetricDependencyError = "st7735 metric source dependency is invalid";
 
     static const St7735DeviceApiAdapter& instance();
-    static bool decodeConfig(const uint8_t* input, size_t size, St7735DeviceConfigV4& config);
+    static bool decodeConfig(const uint8_t* input, size_t size, St7735DeviceConfigV5& config);
     static DeviceRole busRole();
-    static DeviceId configBusDeviceId(const St7735DeviceConfigV4& config);
-    static void setConfigBusDeviceId(St7735DeviceConfigV4& config, DeviceId busDeviceId);
+    static DeviceId configBusDeviceId(const St7735DeviceConfigV5& config);
+    static void setConfigBusDeviceId(St7735DeviceConfigV5& config, DeviceId busDeviceId);
     static DeviceValidationResult validateBusDependency(const DeviceRegistry& registry, DeviceId busDeviceId,
-                                                        const St7735DeviceConfigV4& config, const IDeviceRuntime* ignoreDependent);
+                                                        const St7735DeviceConfigV5& config, const IDeviceRuntime* ignoreDependent);
 };
 
 } // namespace ewfm

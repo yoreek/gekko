@@ -37,6 +37,8 @@ import {
 } from '@/models/devices/ssd1306/layout'
 import { ApiClientError } from '@/api/http'
 import { deviceTypeIdFromName } from '@/models/device-type-ids.ts'
+import { normalizeDisplayRotation } from '@/models/devices/display/orientation'
+import { resolvePanelGeometry } from '@/models/devices/display/panels'
 import { publishRealtimeMessage } from '@/realtime/bus'
 import { scheduleMockPersistenceFlush } from '@/realtime/mockRuntime'
 import {
@@ -88,6 +90,7 @@ import {
   dependencyDeviceIdForRole,
   normalizeFiniteNumber,
   normalizeI2cAddress,
+  normalizeDisplayPanel,
   requirePortExpanderDependency,
   portExpanderChannelCount,
   ensureUniquePortExpanderChannel,
@@ -802,6 +805,8 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           const currentConfig = (isRecordPayload(device.config) ? device.config : {}) as Record<string, unknown>
           const i2cAddress = normalizeI2cAddress(payload.config.i2cAddress, normalizeFiniteNumber(currentConfig['i2cAddress'], 60))
           ensureUniqueI2cAddress(db, dependencyDeviceId, i2cAddress, device.record.id)
+          const ssd1306Panel = normalizeDisplayPanel('ssd1306', payload.config.panel, String(currentConfig['panel'] ?? '128x64'))
+          const ssd1306Geometry = resolvePanelGeometry('ssd1306', ssd1306Panel)
           device.config = {
             ...device.config,
             enabled: Boolean(payload.config.enabled ?? device.config.enabled),
@@ -810,8 +815,10 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
               : device.config.name,
             deps: dependencyLinks,
             i2cAddress,
-            width: normalizeFiniteNumber(payload.config.width, normalizeFiniteNumber(currentConfig['width'], 128)),
-            height: normalizeFiniteNumber(payload.config.height, normalizeFiniteNumber(currentConfig['height'], 64)),
+            rotation: normalizeDisplayRotation(payload.config.rotation, normalizeFiniteNumber(currentConfig['rotation'], 0)),
+            panel: ssd1306Panel,
+            width: ssd1306Geometry?.width ?? normalizeFiniteNumber(payload.config.width, normalizeFiniteNumber(currentConfig['width'], 128)),
+            height: ssd1306Geometry?.height ?? normalizeFiniteNumber(payload.config.height, normalizeFiniteNumber(currentConfig['height'], 64)),
             layout: isRecordPayload(payload.config.layout)
               ? normalizeSsd1306Layout(payload.config.layout)
               : normalizeSsd1306Layout(device.config.layout),
@@ -824,6 +831,8 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           }
           requireSpiDependency(db, dependencyDeviceId)
           const currentConfig = (isRecordPayload(device.config) ? device.config : {}) as Record<string, unknown>
+          const st7735Panel = normalizeDisplayPanel('st7735', payload.config.panel, String(currentConfig['panel'] ?? 'black18'))
+          const st7735Geometry = resolvePanelGeometry('st7735', st7735Panel)
           device.config = {
             ...device.config,
             enabled: Boolean(payload.config.enabled ?? device.config.enabled),
@@ -835,8 +844,10 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
             chipSelectPin: normalizeFiniteNumber(payload.config.chipSelectPin, normalizeFiniteNumber(currentConfig['chipSelectPin'], 5)),
             dcPin: normalizeFiniteNumber(payload.config.dcPin, normalizeFiniteNumber(currentConfig['dcPin'], 2)),
             resetPin: normalizeFiniteNumber(payload.config.resetPin, normalizeFiniteNumber(currentConfig['resetPin'], -1)),
-            width: normalizeFiniteNumber(payload.config.width, normalizeFiniteNumber(currentConfig['width'], 128)),
-            height: normalizeFiniteNumber(payload.config.height, normalizeFiniteNumber(currentConfig['height'], 160)),
+            rotation: normalizeDisplayRotation(payload.config.rotation, normalizeFiniteNumber(currentConfig['rotation'], 0)),
+            panel: st7735Panel,
+            width: st7735Geometry?.width ?? 128,
+            height: st7735Geometry?.height ?? 160,
             layout: isRecordPayload(payload.config.layout)
               ? {
                   schemaVersion: 1,

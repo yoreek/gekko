@@ -6,7 +6,7 @@
 
 namespace ewfm {
 
-class Ssd1306DeviceApiAdapter final : public TypedDisplayDeviceApiAdapter<Ssd1306DeviceApiAdapter, Ssd1306Device, Ssd1306DeviceConfigV5> {
+class Ssd1306DeviceApiAdapter final : public TypedDisplayDeviceApiAdapter<Ssd1306DeviceApiAdapter, Ssd1306Device, Ssd1306DeviceConfigV6> {
 public:
     static constexpr const char* kTypeName = "ssd1306";
     static constexpr const char* kInvalidLayoutError = "ssd1306 layout is invalid";
@@ -17,12 +17,12 @@ public:
     static constexpr const char* kMetricDependencyError = "ssd1306 metric source dependency is invalid";
 
     static const Ssd1306DeviceApiAdapter& instance();
-    static bool decodeConfig(const uint8_t* input, size_t size, Ssd1306DeviceConfigV5& config);
+    static bool decodeConfig(const uint8_t* input, size_t size, Ssd1306DeviceConfigV6& config);
     static DeviceRole busRole();
-    static DeviceId configBusDeviceId(const Ssd1306DeviceConfigV5& config);
-    static void setConfigBusDeviceId(Ssd1306DeviceConfigV5& config, DeviceId busDeviceId);
+    static DeviceId configBusDeviceId(const Ssd1306DeviceConfigV6& config);
+    static void setConfigBusDeviceId(Ssd1306DeviceConfigV6& config, DeviceId busDeviceId);
     static DeviceValidationResult validateBusDependency(const DeviceRegistry& registry, DeviceId busDeviceId,
-                                                        const Ssd1306DeviceConfigV5& config, const IDeviceRuntime* ignoreDependent);
+                                                        const Ssd1306DeviceConfigV6& config, const IDeviceRuntime* ignoreDependent);
 };
 
 } // namespace ewfm

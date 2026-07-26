@@ -1,54 +1,56 @@
 <template>
   <svg
-    :width="deviceWidth * zoom"
-    :height="deviceHeight * zoom"
-    :viewBox="`0 0 ${deviceWidth} ${deviceHeight}`"
+    :width="outerWidth * zoom"
+    :height="outerHeight * zoom"
+    :viewBox="`0 0 ${outerWidth} ${outerHeight}`"
     role="application"
   >
-    <rect x="0" y="0" :width="deviceWidth" :height="deviceHeight" :fill="backgroundColor" />
+    <g :transform="contentTransform">
+      <rect x="0" y="0" :width="deviceWidth" :height="deviceHeight" :fill="backgroundColor" />
 
-    <g v-for="widget in widgets" :key="widget.id" :transform="`translate(${widget.x}, ${widget.y})`">
-      <g
-        role="button"
-        tabindex="0"
-        @pointerdown="startDrag($event, widget)"
-        @click="$emit('select-widget', widget.id)"
-        @keydown.enter.prevent="$emit('select-widget', widget.id)"
-        @keydown.space.prevent="$emit('select-widget', widget.id)"
-      >
-        <rect :width="Math.max(1, widget.width)" :height="Math.max(1, widget.height)" fill="transparent" />
-        <DisplayWidgetPreview
-          :widget="widget"
-          :display="display"
-          :background-color="backgroundColor"
-          :preview-text="widgetPreviewText(widget)"
-          :freeze-render="isBitmapResizeActive(widget.id, widget.type)"
+      <g v-for="widget in widgets" :key="widget.id" :transform="`translate(${widget.x}, ${widget.y})`">
+        <g
+          role="button"
+          tabindex="0"
+          @pointerdown="startDrag($event, widget)"
+          @click="!realPosition && $emit('select-widget', widget.id)"
+          @keydown.enter.prevent="!realPosition && $emit('select-widget', widget.id)"
+          @keydown.space.prevent="!realPosition && $emit('select-widget', widget.id)"
+        >
+          <rect :width="Math.max(1, widget.width)" :height="Math.max(1, widget.height)" fill="transparent" />
+          <DisplayWidgetPreview
+            :widget="widget"
+            :display="display"
+            :background-color="backgroundColor"
+            :preview-text="widgetPreviewText(widget)"
+            :freeze-render="isBitmapResizeActive(widget.id, widget.type)"
+          />
+        </g>
+        <rect
+          v-if="widget.id === selectedWidgetId && !realPosition"
+          :width="Math.max(1, widget.width)"
+          :height="Math.max(1, widget.height)"
+          fill="none"
+          stroke="rgb(var(--v-theme-primary))"
+          stroke-width="1"
+          pointer-events="none"
+        />
+        <rect
+          v-if="widget.id === selectedWidgetId && !realPosition"
+          :x="Math.max(0, widget.width - 6)"
+          :y="Math.max(0, widget.height - 6)"
+          width="6"
+          height="6"
+          fill="rgb(var(--v-theme-primary))"
+          @pointerdown.stop="startResize($event, widget)"
         />
       </g>
-      <rect
-        v-if="widget.id === selectedWidgetId"
-        :width="Math.max(1, widget.width)"
-        :height="Math.max(1, widget.height)"
-        fill="none"
-        stroke="rgb(var(--v-theme-primary))"
-        stroke-width="1"
-        pointer-events="none"
-      />
-      <rect
-        v-if="widget.id === selectedWidgetId"
-        :x="Math.max(0, widget.width - 6)"
-        :y="Math.max(0, widget.height - 6)"
-        width="6"
-        height="6"
-        fill="rgb(var(--v-theme-primary))"
-        @pointerdown.stop="startResize($event, widget)"
-      />
     </g>
   </svg>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { MetricPlaceholderDescriptor } from '@/api/contracts'
 import type { BaseDisplay } from '@/models/devices/display/display'
@@ -62,16 +64,26 @@ import DisplayWidgetPreview from './DisplayWidgetPreview.vue'
 
 type CanvasInteraction = DisplayCanvasInteraction & { pointerId: number }
 
-const props = defineProps<{
-  widgets: DisplayWidget[]
-  deviceWidth: number
-  deviceHeight: number
-  selectedWidgetId: string | null
-  zoom: number
-  display: BaseDisplay<RasterImageFormat>
-  backgroundColor: string
-  metricCatalog: readonly MetricPlaceholderDescriptor[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    widgets: DisplayWidget[]
+    deviceWidth: number
+    deviceHeight: number
+    selectedWidgetId: string | null
+    zoom: number
+    display: BaseDisplay<RasterImageFormat>
+    backgroundColor: string
+    metricCatalog: readonly MetricPlaceholderDescriptor[]
+    // When true, render widgets rotated into the panel's native (rotation=0) frame instead of the
+    // normalized/upright working frame -- a read-only preview of how the panel will physically show
+    // this layout. 0° and 180° are otherwise visually identical in the working frame.
+    realPosition?: boolean
+    rotation?: number
+    nativeWidth?: number
+    nativeHeight?: number
+  }>(),
+  { realPosition: false, rotation: 0, nativeWidth: undefined, nativeHeight: undefined },
+)
 
 const emit = defineEmits<{
   'select-widget': [widgetId: string]
@@ -80,6 +92,17 @@ const emit = defineEmits<{
 }>()
 
 const activeInteraction = ref<CanvasInteraction | null>(null)
+
+const outerWidth = computed(() => (props.realPosition ? props.nativeWidth ?? props.deviceWidth : props.deviceWidth))
+const outerHeight = computed(() => (props.realPosition ? props.nativeHeight ?? props.deviceHeight : props.deviceHeight))
+
+const contentTransform = computed(() => {
+  if (!props.realPosition) return undefined
+  const angle = ((props.rotation % 4) + 4) % 4 * 90
+  const nativeWidth = props.nativeWidth ?? props.deviceWidth
+  const nativeHeight = props.nativeHeight ?? props.deviceHeight
+  return `translate(${nativeWidth / 2}, ${nativeHeight / 2}) rotate(${angle}) translate(${-props.deviceWidth / 2}, ${-props.deviceHeight / 2})`
+})
 
 function widgetPreviewText(widget: DisplayWidget): string {
   return widget.type === 'text' ? resolveMetricPlaceholderText(widget.text, props.metricCatalog) : ''
@@ -90,12 +113,12 @@ function isBitmapResizeActive(widgetId: string, widgetType: DisplayWidget['type'
 }
 
 function startDrag(event: PointerEvent, widget: DisplayWidget): void {
-  if (event.button !== 0) return
+  if (props.realPosition || event.button !== 0) return
   startInteraction(event, widget, 'drag')
 }
 
 function startResize(event: PointerEvent, widget: DisplayWidget): void {
-  if (event.button !== 0) return
+  if (props.realPosition || event.button !== 0) return
   startInteraction(event, widget, 'resize')
 }
 

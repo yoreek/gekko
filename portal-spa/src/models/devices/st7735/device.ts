@@ -4,6 +4,7 @@ import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeB
 import { st7735Display } from '../display/display.ts'
 import type { DisplayBaseConfig, DisplayCapabilities } from '../display/base.ts'
 import { normalizeDisplayRotation } from '../display/orientation.ts'
+import { ST7735_DEFAULT_PANEL, isKnownPanel, resolvePanelGeometry } from '../display/panels.ts'
 import {
   defaultSt7735Layout,
   encodeSt7735Layout,
@@ -46,6 +47,7 @@ export class St7735Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraf
     return {
       ...defaultBaseDeviceConfig(),
       name: 'New Display',
+      panel: ST7735_DEFAULT_PANEL,
       width: 128,
       height: 160,
       spiBusDeviceId: 0,
@@ -67,15 +69,20 @@ export class St7735Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraf
       }
     }
     const raw = value as Record<string, unknown>
+    // width/height are always derived from the panel (never independently settable), matching
+    // the firmware's St7735DeviceConfigV5::parseJson.
+    const panel = isKnownPanel('st7735', raw.panel) ? (raw.panel as string) : defaults.panel
+    const geometry = resolvePanelGeometry('st7735', panel)
     return {
       ...normalizeBaseDeviceConfig(raw, defaults),
-      width: normalizeNumber(raw.width, defaults.width),
-      height: normalizeNumber(raw.height, defaults.height),
+      panel,
+      width: geometry?.width ?? defaults.width,
+      height: geometry?.height ?? defaults.height,
       spiBusDeviceId: normalizeNumber(raw.spiBusDeviceId ?? dependencyDeviceIdFromDeps(deps, 'spi_bus'), defaults.spiBusDeviceId),
       chipSelectPin: normalizeNumber(raw.chipSelectPin, defaults.chipSelectPin),
       dcPin: normalizeNumber(raw.dcPin, defaults.dcPin),
       resetPin: normalizeNumber(raw.resetPin, defaults.resetPin),
-      rotation: normalizeDisplayRotation(raw.rotation, defaults.rotation) % 2,
+      rotation: normalizeDisplayRotation(raw.rotation, defaults.rotation),
       layout: normalizeSt7735Layout(raw.layout),
     }
   }
@@ -85,6 +92,7 @@ export class St7735Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraf
   static encodeConfig(config: St7735ConfigDraft): Record<string, unknown> {
     return {
       ...encodeBaseDeviceConfig(config),
+      panel: config.panel,
       width: config.width,
       height: config.height,
       chipSelectPin: config.chipSelectPin,

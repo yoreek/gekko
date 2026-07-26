@@ -15,7 +15,7 @@ namespace ewfm {
 
 namespace {
 constexpr DeviceTypeId kSsd1306DeviceTypeId = 7;
-constexpr uint32_t kSsd1306DeviceConfigVersion = 5;
+constexpr uint32_t kSsd1306DeviceConfigVersion = 6;
 } // namespace
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
@@ -166,9 +166,9 @@ private:
 };
 #endif
 
-static_assert(std::is_trivially_copyable<Ssd1306DeviceConfigV5>::value, "Ssd1306DeviceConfigV5 must be POD");
-static_assert(sizeof(Ssd1306DeviceConfigV5::kMagic) - 1U + sizeof(Ssd1306DeviceConfigV5) <= kMaxDeviceConfigBytes,
-              "Ssd1306DeviceConfigV5 exceeds device config bound");
+static_assert(std::is_trivially_copyable<Ssd1306DeviceConfigV6>::value, "Ssd1306DeviceConfigV6 must be POD");
+static_assert(sizeof(Ssd1306DeviceConfigV6::kMagic) - 1U + sizeof(Ssd1306DeviceConfigV6) <= kMaxDeviceConfigBytes,
+              "Ssd1306DeviceConfigV6 exceeds device config bound");
 
 Ssd1306Device::Ssd1306Device(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob)
     : Ssd1306DeviceBase(DisplayDeviceBase::initialState()) {
@@ -178,7 +178,7 @@ Ssd1306Device::Ssd1306Device(const DeviceRegistryEntry& record, const DeviceConf
 
 Ssd1306Device::~Ssd1306Device() = default;
 
-const Ssd1306DeviceConfigV5& Ssd1306Device::config() const {
+const Ssd1306DeviceConfigV6& Ssd1306Device::config() const {
     return config_;
 }
 
@@ -189,24 +189,24 @@ const DeviceBaseConfigV1& Ssd1306Device::baseConfig() const {
 bool Ssd1306Device::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = ssd1306DeviceConfigSize(config_);
-    return encodeFixedConfigBlob(Ssd1306DeviceConfigV5::kMagic, config_, buffer, size) && configBlob.assign(buffer, size);
+    return encodeFixedConfigBlob(Ssd1306DeviceConfigV6::kMagic, config_, buffer, size) && configBlob.assign(buffer, size);
 }
 
 DeviceConfigUpdatePlan Ssd1306Device::planConfigUpdate(const DeviceConfigBlob& configBlob) const {
-    Ssd1306DeviceConfigV5 config{};
+    Ssd1306DeviceConfigV6 config{};
     if (!decodeSsd1306DeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return {};
     }
     DeviceConfigUpdatePlan plan{};
-    plan.endOldConfig = config.i2cAddress != config_.i2cAddress || config.rotation != config_.rotation || config.width != config_.width ||
-                        config.height != config_.height;
+    plan.endOldConfig = config.i2cAddress != config_.i2cAddress || config.rotation != config_.rotation || config.panel != config_.panel ||
+                        config.width != config_.width || config.height != config_.height;
     plan.resetStateMachine = plan.endOldConfig;
     return plan;
 }
 
 bool Ssd1306Device::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
     (void)now;
-    Ssd1306DeviceConfigV5 config{};
+    Ssd1306DeviceConfigV6 config{};
     if (!decodeSsd1306DeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return false;
     }
@@ -306,7 +306,7 @@ std::unique_ptr<IDeviceRuntime> Ssd1306Device::createRuntime(const DeviceRegistr
 }
 
 DeviceValidationResult Ssd1306Device::validateConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
-    return validateI2cConfig<Ssd1306DeviceConfigV5>(record, configBlob, decodeSsd1306DeviceConfig);
+    return validateI2cConfig<Ssd1306DeviceConfigV6>(record, configBlob, decodeSsd1306DeviceConfig);
 }
 
 } // namespace ewfm

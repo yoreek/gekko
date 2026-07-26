@@ -7,6 +7,8 @@
 
 namespace ewfm {
 
+bool st7735PanelFromByte(uint8_t value, St7735Panel& panel);
+
 namespace {
 EWFM_LEGACY_CONFIG_USE_BEGIN
 DeviceValidationResult validateSt7735DeviceConfigV1(const St7735DeviceConfigV1& config) {
@@ -63,16 +65,42 @@ static_assert(sizeof(St7735DeviceConfigV2::kMagic) - 1U + sizeof(St7735DeviceCon
 static_assert(std::is_trivially_copyable<St7735DeviceConfigV3>::value, "St7735DeviceConfigV3 must be POD");
 static_assert(sizeof(St7735DeviceConfigV3::kMagic) - 1U + sizeof(St7735DeviceConfigV3) <= kMaxDeviceConfigBytes,
               "St7735DeviceConfigV3 exceeds device config bound");
-EWFM_LEGACY_CONFIG_USE_END
 static_assert(std::is_trivially_copyable<St7735DeviceConfigV4>::value, "St7735DeviceConfigV4 must be POD");
 static_assert(sizeof(St7735DeviceConfigV4::kMagic) - 1U + sizeof(St7735DeviceConfigV4) <= kMaxDeviceConfigBytes,
               "St7735DeviceConfigV4 exceeds device config bound");
 
-bool decodeSt7735DeviceConfig(const uint8_t* blob, size_t size, St7735DeviceConfigV4& config) {
-    if (decodeFixedConfigBlob(St7735DeviceConfigV4::kMagic, blob, size, config) && config.validate().ok()) {
+DeviceValidationResult St7735DeviceConfigV4::validate() const {
+    const DeviceValidationResult baseValidation = DeviceBaseConfigV1::validate();
+    if (!baseValidation.ok()) {
+        return baseValidation;
+    }
+    if (spiBusDeviceId == 0U) {
+        return {DeviceError::InvalidConfig, "st7735 spi bus device id is required"};
+    }
+    if (rotation > 3U) {
+        return {DeviceError::InvalidConfig, "st7735 rotation is out of bounds"};
+    }
+    if (width == 0U || height == 0U) {
+        return {DeviceError::InvalidConfig, "st7735 layout dimensions must be positive"};
+    }
+    return {};
+}
+EWFM_LEGACY_CONFIG_USE_END
+
+static_assert(std::is_trivially_copyable<St7735DeviceConfigV5>::value, "St7735DeviceConfigV5 must be POD");
+static_assert(sizeof(St7735DeviceConfigV5::kMagic) - 1U + sizeof(St7735DeviceConfigV5) <= kMaxDeviceConfigBytes,
+              "St7735DeviceConfigV5 exceeds device config bound");
+
+bool decodeSt7735DeviceConfig(const uint8_t* blob, size_t size, St7735DeviceConfigV5& config) {
+    if (decodeFixedConfigBlob(St7735DeviceConfigV5::kMagic, blob, size, config) && config.validate().ok()) {
         return true;
     }
     EWFM_LEGACY_CONFIG_USE_BEGIN
+    St7735DeviceConfigV4 legacyV4{};
+    if (decodeFixedConfigBlob(St7735DeviceConfigV4::kMagic, blob, size, legacyV4) && legacyV4.validate().ok()) {
+        config.migrateFrom(legacyV4);
+        return config.validate().ok();
+    }
     St7735DeviceConfigV3 legacyV3{};
     if (decodeFixedConfigBlob(St7735DeviceConfigV3::kMagic, blob, size, legacyV3) && validateSt7735DeviceConfigV3(legacyV3).ok()) {
         config.migrateFrom(legacyV3);
@@ -93,7 +121,7 @@ bool decodeSt7735DeviceConfig(const uint8_t* blob, size_t size, St7735DeviceConf
 }
 
 EWFM_LEGACY_CONFIG_USE_BEGIN
-void St7735DeviceConfigV4::migrateFrom(const St7735DeviceConfigV1& origState) {
+void St7735DeviceConfigV5::migrateFrom(const St7735DeviceConfigV1& origState) {
     enabled = origState.enabled;
     std::memcpy(name, origState.name, sizeof(name));
     spiBusDeviceId = origState.spiBusDeviceId;
@@ -101,11 +129,11 @@ void St7735DeviceConfigV4::migrateFrom(const St7735DeviceConfigV1& origState) {
     dcPin = 2U;
     resetPin = -1;
     rotation = 0U;
-    width = origState.layoutWidth;
-    height = origState.layoutHeight;
+    panel = static_cast<uint8_t>(St7735Panel::Black18);
+    st7735PanelGeometry(St7735Panel::Black18, width, height);
 }
 
-void St7735DeviceConfigV4::migrateFrom(const St7735DeviceConfigV2& origState) {
+void St7735DeviceConfigV5::migrateFrom(const St7735DeviceConfigV2& origState) {
     enabled = origState.enabled;
     std::memcpy(name, origState.name, sizeof(name));
     spiBusDeviceId = origState.spiBusDeviceId;
@@ -113,11 +141,11 @@ void St7735DeviceConfigV4::migrateFrom(const St7735DeviceConfigV2& origState) {
     dcPin = origState.dcPin;
     resetPin = origState.resetPin;
     rotation = 0U;
-    width = origState.layoutWidth;
-    height = origState.layoutHeight;
+    panel = static_cast<uint8_t>(St7735Panel::Black18);
+    st7735PanelGeometry(St7735Panel::Black18, width, height);
 }
 
-void St7735DeviceConfigV4::migrateFrom(const St7735DeviceConfigV3& origState) {
+void St7735DeviceConfigV5::migrateFrom(const St7735DeviceConfigV3& origState) {
     enabled = origState.enabled;
     std::memcpy(name, origState.name, sizeof(name));
     spiBusDeviceId = origState.spiBusDeviceId;
@@ -125,12 +153,107 @@ void St7735DeviceConfigV4::migrateFrom(const St7735DeviceConfigV3& origState) {
     dcPin = origState.dcPin;
     resetPin = origState.resetPin;
     rotation = 0U;
-    width = origState.width;
-    height = origState.height;
+    panel = static_cast<uint8_t>(St7735Panel::Black18);
+    st7735PanelGeometry(St7735Panel::Black18, width, height);
+}
+
+void St7735DeviceConfigV5::migrateFrom(const St7735DeviceConfigV4& origState) {
+    enabled = origState.enabled;
+    std::memcpy(name, origState.name, sizeof(name));
+    spiBusDeviceId = origState.spiBusDeviceId;
+    chipSelectPin = origState.chipSelectPin;
+    dcPin = origState.dcPin;
+    resetPin = origState.resetPin;
+    rotation = origState.rotation;
+    panel = static_cast<uint8_t>(St7735Panel::Black18);
+    st7735PanelGeometry(St7735Panel::Black18, width, height);
 }
 EWFM_LEGACY_CONFIG_USE_END
 
-bool St7735DeviceConfigV4::parseJson(const JsonObjectConst& input, const char*& error) {
+bool st7735PanelFromString(const char* value, St7735Panel& panel) {
+    if (value == nullptr || std::strcmp(value, "black18") == 0) {
+        panel = St7735Panel::Black18;
+        return true;
+    }
+    if (std::strcmp(value, "green18") == 0) {
+        panel = St7735Panel::Green18;
+        return true;
+    }
+    if (std::strcmp(value, "green144") == 0) {
+        panel = St7735Panel::Green144;
+        return true;
+    }
+    if (std::strcmp(value, "mini096") == 0) {
+        panel = St7735Panel::Mini096;
+        return true;
+    }
+    if (std::strcmp(value, "mini096plugin") == 0) {
+        panel = St7735Panel::Mini096Plugin;
+        return true;
+    }
+    return false;
+}
+
+const char* st7735PanelName(St7735Panel panel) {
+    switch (panel) {
+    case St7735Panel::Black18:
+        return "black18";
+    case St7735Panel::Green18:
+        return "green18";
+    case St7735Panel::Green144:
+        return "green144";
+    case St7735Panel::Mini096:
+        return "mini096";
+    case St7735Panel::Mini096Plugin:
+        return "mini096plugin";
+    }
+    return "black18";
+}
+
+bool st7735PanelFromByte(uint8_t value, St7735Panel& panel) {
+    switch (value) {
+    case static_cast<uint8_t>(St7735Panel::Black18):
+        panel = St7735Panel::Black18;
+        return true;
+    case static_cast<uint8_t>(St7735Panel::Green18):
+        panel = St7735Panel::Green18;
+        return true;
+    case static_cast<uint8_t>(St7735Panel::Green144):
+        panel = St7735Panel::Green144;
+        return true;
+    case static_cast<uint8_t>(St7735Panel::Mini096):
+        panel = St7735Panel::Mini096;
+        return true;
+    case static_cast<uint8_t>(St7735Panel::Mini096Plugin):
+        panel = St7735Panel::Mini096Plugin;
+        return true;
+    default:
+        return false;
+    }
+}
+
+void st7735PanelGeometry(St7735Panel panel, uint16_t& width, uint16_t& height) {
+    switch (panel) {
+    case St7735Panel::Green144:
+        width = 128U;
+        height = 128U;
+        return;
+    case St7735Panel::Mini096:
+    case St7735Panel::Mini096Plugin:
+        width = 80U;
+        height = 160U;
+        return;
+    case St7735Panel::Black18:
+    case St7735Panel::Green18:
+        width = 128U;
+        height = 160U;
+        return;
+    }
+    width = 128U;
+    height = 160U;
+}
+
+bool St7735DeviceConfigV5::parseJson(const JsonObjectConst& input, const char*& error) {
     if (!DeviceBaseConfigV1::parseJson(input, error)) {
         return false;
     }
@@ -210,30 +333,49 @@ bool St7735DeviceConfigV4::parseJson(const JsonObjectConst& input, const char*& 
         rotation = static_cast<uint8_t>(parsed);
     }
 
+    St7735Panel parsedPanel{};
+    (void)st7735PanelFromByte(this->panel, parsedPanel);
+    const JsonVariantConst panelVariant = input["panel"];
+    if (!panelVariant.isNull()) {
+        if (!panelVariant.is<const char*>()) {
+            error = "st7735 panel must be a string";
+            return false;
+        }
+        if (!st7735PanelFromString(panelVariant.as<const char*>(), parsedPanel)) {
+            error = "st7735 panel is invalid";
+            return false;
+        }
+    }
+    this->panel = static_cast<uint8_t>(parsedPanel);
+    uint16_t panelWidth = 0U;
+    uint16_t panelHeight = 0U;
+    st7735PanelGeometry(parsedPanel, panelWidth, panelHeight);
+
     const JsonVariantConst widthVariant = input["width"];
     if (!widthVariant.isNull()) {
         const long parsed = widthVariant.as<long>();
-        if (parsed <= 0 || parsed > 255) {
-            error = "st7735 layout width is out of bounds";
+        if (parsed != static_cast<long>(panelWidth)) {
+            error = "st7735 width is derived from panel";
             return false;
         }
-        width = static_cast<uint16_t>(parsed);
     }
 
     const JsonVariantConst heightVariant = input["height"];
     if (!heightVariant.isNull()) {
         const long parsed = heightVariant.as<long>();
-        if (parsed <= 0 || parsed > 255) {
-            error = "st7735 layout height is out of bounds";
+        if (parsed != static_cast<long>(panelHeight)) {
+            error = "st7735 height is derived from panel";
             return false;
         }
-        height = static_cast<uint16_t>(parsed);
     }
+
+    width = panelWidth;
+    height = panelHeight;
 
     return true;
 }
 
-DeviceValidationResult St7735DeviceConfigV4::validate() const {
+DeviceValidationResult St7735DeviceConfigV5::validate() const {
     const DeviceValidationResult baseValidation = DeviceBaseConfigV1::validate();
     if (!baseValidation.ok()) {
         return baseValidation;
@@ -244,19 +386,26 @@ DeviceValidationResult St7735DeviceConfigV4::validate() const {
     if (rotation > 3U) {
         return {DeviceError::InvalidConfig, "st7735 rotation is out of bounds"};
     }
+    St7735Panel parsedPanel{};
+    if (!st7735PanelFromByte(panel, parsedPanel)) {
+        return {DeviceError::InvalidConfig, "st7735 panel is invalid"};
+    }
     if (width == 0U || height == 0U) {
         return {DeviceError::InvalidConfig, "st7735 layout dimensions must be positive"};
     }
     return {};
 }
 
-void St7735DeviceConfigV4::writeJson(JsonObject output) const {
+void St7735DeviceConfigV5::writeJson(JsonObject output) const {
     DeviceBaseConfigV1::writeJson(output);
     output["spiBusDeviceId"] = spiBusDeviceId;
     output["chipSelectPin"] = chipSelectPin;
     output["dcPin"] = dcPin;
     output["resetPin"] = resetPin;
     output["rotation"] = rotation;
+    St7735Panel parsedPanel{};
+    (void)st7735PanelFromByte(panel, parsedPanel);
+    output["panel"] = st7735PanelName(parsedPanel);
     output["width"] = width;
     output["height"] = height;
 }

@@ -1046,8 +1046,8 @@ void driveSpiBusToReady(SpiBusDevice& device, uint32_t startNow = 10U) {
     }
 }
 
-St7735DeviceConfigV4 makeSt7735Config() {
-    St7735DeviceConfigV4 config{};
+St7735DeviceConfigV5 makeSt7735Config() {
+    St7735DeviceConfigV5 config{};
     config.enabled = true;
     std::snprintf(config.name, sizeof(config.name), "%s", "display");
     config.spiBusDeviceId = 11U;
@@ -1055,20 +1055,21 @@ St7735DeviceConfigV4 makeSt7735Config() {
     config.dcPin = 2U;
     config.resetPin = -1;
     config.rotation = 0U;
+    config.panel = static_cast<uint8_t>(St7735Panel::Black18);
     config.width = 128U;
     config.height = 160U;
     return config;
 }
 
-DeviceConfigBlob encodeSt7735Blob(const St7735DeviceConfigV4& config) {
+DeviceConfigBlob encodeSt7735Blob(const St7735DeviceConfigV5& config) {
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     DeviceConfigBlob blob{};
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV4::kMagic, config, buffer, st7735DeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV5::kMagic, config, buffer, st7735DeviceConfigSize(config)));
     TEST_ASSERT_TRUE(blob.assign(buffer, st7735DeviceConfigSize(config)));
     return blob;
 }
 
-DeviceRegistryEntry makeSt7735Record(DeviceId deviceId, DeviceId busDeviceId, const St7735DeviceConfigV4& config) {
+DeviceRegistryEntry makeSt7735Record(DeviceId deviceId, DeviceId busDeviceId, const St7735DeviceConfigV5& config) {
     DeviceRegistryEntry record{};
     record.header.deviceId = deviceId;
     record.header.typeId = St7735Device::descriptor().typeId;
@@ -2010,7 +2011,7 @@ void test_st7735_api_adapter_parses_create_request() {
     TEST_ASSERT_EQUAL_UINT8(1U, request.dependencyCount());
     TEST_ASSERT_EQUAL_UINT32(11U, request.dependencyLinks()[0].deviceId);
 
-    St7735DeviceConfigV4 parsed{};
+    St7735DeviceConfigV5 parsed{};
     TEST_ASSERT_TRUE(
         decodeSt7735DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
     TEST_ASSERT_EQUAL_UINT32(11U, parsed.spiBusDeviceId);
@@ -2022,7 +2023,7 @@ void test_st7735_api_adapter_parses_create_request() {
 }
 
 void test_st7735_api_adapter_partial_update_preserves_other_fields() {
-    const St7735DeviceConfigV4 current = makeSt7735Config();
+    const St7735DeviceConfigV5 current = makeSt7735Config();
     const DeviceConfigBlob blob = encodeSt7735Blob(current);
     const DeviceRegistryEntry record = makeSt7735Record(9030U, 11U, current);
     St7735Device runtime(record, blob);
@@ -2040,7 +2041,7 @@ void test_st7735_api_adapter_partial_update_preserves_other_fields() {
         St7735DeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error), error);
     TEST_ASSERT_FALSE(request.depsProvided);
 
-    St7735DeviceConfigV4 parsed{};
+    St7735DeviceConfigV5 parsed{};
     TEST_ASSERT_TRUE(
         decodeSt7735DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
     TEST_ASSERT_EQUAL_UINT32(11U, parsed.spiBusDeviceId);
@@ -2053,7 +2054,7 @@ void test_st7735_api_adapter_partial_update_preserves_other_fields() {
 }
 
 void test_st7735_api_adapter_serializes_record() {
-    const St7735DeviceConfigV4 config = makeSt7735Config();
+    const St7735DeviceConfigV5 config = makeSt7735Config();
     const DeviceConfigBlob blob = encodeSt7735Blob(config);
     const DeviceRegistryEntry record = makeSt7735Record(9031U, 11U, config);
     St7735Device device(record, blob);

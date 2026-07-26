@@ -10,6 +10,7 @@ export interface DisplayCapabilities {
 }
 
 export interface DisplayBaseConfig {
+  panel: string
   width: number
   height: number
   name: string
