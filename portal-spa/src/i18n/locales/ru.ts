@@ -38,6 +38,7 @@ export default {
   },
   validation: {
     required: 'Обязательное поле',
+    uniqueDeviceName: 'Устройство с таким именем уже существует',
   },
   dashboard: {
     title: 'Панель',

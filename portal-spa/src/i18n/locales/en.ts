@@ -38,6 +38,7 @@ export default {
   },
   validation: {
     required: 'Required',
+    uniqueDeviceName: 'A device with this name already exists',
   },
   dashboard: {
     title: 'Dashboard',

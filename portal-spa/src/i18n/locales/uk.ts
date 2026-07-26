@@ -38,6 +38,7 @@ export default {
   },
   validation: {
     required: "Обов'язкове поле",
+    uniqueDeviceName: 'Пристрій із таким ім’ям уже існує',
   },
   dashboard: {
     title: 'Панель',

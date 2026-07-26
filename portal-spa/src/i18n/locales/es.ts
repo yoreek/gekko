@@ -38,6 +38,7 @@ export default {
   },
   validation: {
     required: 'Obligatorio',
+    uniqueDeviceName: 'Ya existe un dispositivo con este nombre',
   },
   dashboard: {
     title: 'Panel',

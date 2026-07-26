@@ -7,6 +7,7 @@
         :readonly="mode === 'view'"
         :disabled="busy && mode !== 'view'"
         :rules="nameRules"
+        :error-messages="nameError"
         @update:model-value="update('name', String($event))"
       />
     </v-col>
@@ -45,6 +46,7 @@ const props = defineProps<{
   modelValue: T
   mode: 'view' | 'edit' | 'create'
   busy?: boolean
+  nameError?: string
 }>()
 
 const emit = defineEmits<{

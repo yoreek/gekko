@@ -6,7 +6,13 @@
       </template>
 
       <div class="d-flex flex-column ga-4">
-        <DeviceBaseFields :model-value="draft" mode="create" :busy="isCreating" @update:model-value="onBaseUpdate" />
+        <DeviceBaseFields
+          :model-value="draft"
+          mode="create"
+          :busy="isCreating"
+          :name-error="duplicateNameError"
+          @update:model-value="onBaseUpdate"
+        />
 
         <v-divider v-if="typeUi" />
 
@@ -37,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeMount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -70,13 +76,19 @@ const errorMessage = ref('')
 const draft = ref<DeviceCreateDraft>(createDefaultDeviceDraft())
 
 const typeUi = computed(() => (draft.value.typeName ? resolveDeviceUi(draft.value.typeName) : null))
+const duplicateNameError = computed(() => isDuplicateDeviceName(draft.value.name) ? t('validation.uniqueDeviceName') : '')
 
-const canCreate = computed(() => draft.value.name.trim().length > 0 && draft.value.typeName.length > 0)
+const canCreate = computed(() => draft.value.name.trim().length > 0 && draft.value.typeName.length > 0 && !isDuplicateDeviceName(draft.value.name))
+
+onBeforeMount(async () => {
+  await deviceStore.initialize()
+  draft.value.name = nextAvailableDeviceName(draft.value.typeName)
+})
 
 function onBaseUpdate(value: DeviceCreateDraft): void {
   if (value.typeName !== draft.value.typeName) {
     draft.value = createDefaultDeviceDraft(value.typeName)
-    draft.value.name = value.name
+    draft.value.name = nextAvailableDeviceName(value.typeName)
     draft.value.enabled = value.enabled
     return
   }
@@ -85,6 +97,24 @@ function onBaseUpdate(value: DeviceCreateDraft): void {
 
 function onTypeUpdate(value: DeviceCreateDraft): void {
   draft.value = value
+}
+
+function isDuplicateDeviceName(name: string): boolean {
+  const normalizedName = name.trim().toLocaleLowerCase()
+  return normalizedName.length > 0 && deviceStore.devices.some(device => device.config.name.trim().toLocaleLowerCase() === normalizedName)
+}
+
+function nextAvailableDeviceName(typeName: DeviceCreateDraft['typeName']): string {
+  const baseName = t(resolveDeviceUi(typeName).labelKey)
+  if (!isDuplicateDeviceName(baseName)) {
+    return baseName
+  }
+
+  let suffix = 2
+  while (isDuplicateDeviceName(`${baseName} ${suffix}`)) {
+    suffix += 1
+  }
+  return `${baseName} ${suffix}`
 }
 
 function navigateBack(): void {
