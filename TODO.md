@@ -66,12 +66,6 @@ blob-module import; the command allow-list + confirmation policy.
 
 ## REST schema coverage gaps
 
-These API groups still do not have dedicated `schemas/rest/v1` coverage yet:
-
-- multipart/file-upload transport bodies for:
-  - `POST /api/ota`
-  - `POST /api/mqtt/ca-cert`
-
 Already covered by dedicated schemas in `schemas/rest/v1`:
 
 - `GET /api/dosejournal`
@@ -114,3 +108,9 @@ Already covered by dedicated schemas in `schemas/rest/v1`:
 - `GET /api/schedulepresets/<id>`
 - `PUT /api/schedulepresets/<id>/<slot>`
 - `DELETE /api/schedulepresets/<id>/<slot>`
+
+Transport-only upload request schemas are also covered now for:
+
+- `POST /api/device-setup/import` multipart field `bundle`
+- `POST /api/mqtt/ca-cert` multipart field `cert`
+- `POST /api/ota` raw firmware body

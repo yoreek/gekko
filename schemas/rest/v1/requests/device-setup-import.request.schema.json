@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/device-setup-import.request.schema.json",
+  "title": "Device setup import request",
+  "type": "object",
+  "properties": {
+    "bundle": {
+      "type": "string",
+      "minLength": 1,
+      "contentEncoding": "binary",
+      "contentMediaType": "application/x-ndjson"
+    }
+  },
+  "required": ["bundle"],
+  "additionalProperties": false,
+  "$comment": "Multipart form-data upload field named bundle containing the exported NDJSON device-setup transfer."
+}

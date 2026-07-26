@@ -47,3 +47,21 @@ void test_manual_time_request_schema_smoke() {
     doc["iso8601"] = "2026-07-23T12:34:56+03:00";
     assertMatchesJsonSchema("schemas/rest/v1/requests/manual-time.request.schema.json", doc.as<JsonVariantConst>());
 }
+
+void test_device_setup_import_request_schema_smoke() {
+    StaticJsonDocument<128> doc;
+    doc["bundle"] = "device-setup.ndjson";
+    assertMatchesJsonSchema("schemas/rest/v1/requests/device-setup-import.request.schema.json", doc.as<JsonVariantConst>());
+}
+
+void test_mqtt_ca_cert_request_schema_smoke() {
+    StaticJsonDocument<128> doc;
+    doc["cert"] = "-----BEGIN CERTIFICATE-----";
+    assertMatchesJsonSchema("schemas/rest/v1/requests/mqtt-ca-cert.request.schema.json", doc.as<JsonVariantConst>());
+}
+
+void test_ota_upload_request_schema_smoke() {
+    StaticJsonDocument<128> doc;
+    doc.set("firmware-image");
+    assertMatchesJsonSchema("schemas/rest/v1/requests/ota-upload.request.schema.json", doc.as<JsonVariantConst>());
+}
