@@ -70,9 +70,9 @@ Les filtres optionnels viennent ensuite après `|` :
 | `format:pattern` | `{{system.time \| format:EEEE HH:mm}}` | Modèle date/heure (`YYYY MM DD HH mm ss EEEE`; texte `[literal]` entre crochets) |
 | `upper` / `lower` / `trim` | `{{system.wifi.station_ip \| upper}}` | Transformations de texte |
 
-Un espace réservé impossible à résoudre est rendu comme texte vide au lieu de
+Un espace réservé impossible à résoudre est rendu comme `N/A` au lieu de
 casser tout le widget, donc un capteur temporairement absent ne vide jamais
-votre écran.
+votre écran — il affiche `N/A` à cet endroit.
 
 Les périphériques référencés par les espaces réservés deviennent de vraies
 dépendances du registre pour l'affichage — le registre vous avertira avant de

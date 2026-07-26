@@ -111,6 +111,11 @@ uint32_t hashText(std::string_view text) {
     return hash;
 }
 
+// Shown on screen in place of a placeholder that can't be resolved (source missing/disabled) or
+// isn't syntactically valid, so a stale/blank widget reads as "something's wrong" rather than
+// looking like empty-but-intentional text.
+constexpr const char* kUnresolvedPlaceholderText = "N/A";
+
 bool appendText(char* dest, const size_t capacity, size_t& length, const char* value, const size_t valueLength, bool& truncated) {
     if (dest == nullptr || capacity == 0U || value == nullptr) {
         return false;
@@ -470,6 +475,8 @@ void appendResolvedText(std::string_view sourceText, const DisplayTextCompiledWi
         hadPlaceholder = true;
         if (!segment.valid) {
             hadInvalidPlaceholder = true;
+            appendText(result.text, sizeof(result.text), length, kUnresolvedPlaceholderText, std::strlen(kUnresolvedPlaceholderText),
+                       truncated);
             continue;
         }
         MetricValue value{};
@@ -486,11 +493,13 @@ void appendResolvedText(std::string_view sourceText, const DisplayTextCompiledWi
                 appendText(result.text, sizeof(result.text), length, filtered, std::strlen(filtered), truncated);
             } else {
                 hadMissingMetric = true;
-                appendText(result.text, sizeof(result.text), length, "", 0U, truncated);
+                appendText(result.text, sizeof(result.text), length, kUnresolvedPlaceholderText, std::strlen(kUnresolvedPlaceholderText),
+                           truncated);
             }
         } else {
             hadMissingMetric = true;
-            appendText(result.text, sizeof(result.text), length, "", 0U, truncated);
+            appendText(result.text, sizeof(result.text), length, kUnresolvedPlaceholderText, std::strlen(kUnresolvedPlaceholderText),
+                       truncated);
         }
     }
 
@@ -635,7 +644,7 @@ bool evaluateDisplayTextWidget(const DisplayLayoutWidgetV1& widget, const Metric
             std::snprintf(result.text, sizeof(result.text), "%s", value.text);
         } else {
             result.status = DisplayTextEvaluationStatus::MissingMetric;
-            result.text[0] = '\0';
+            std::snprintf(result.text, sizeof(result.text), "%s", kUnresolvedPlaceholderText);
         }
         return true;
     }
@@ -644,7 +653,7 @@ bool evaluateDisplayTextWidget(const DisplayLayoutWidgetV1& widget, const Metric
     if (!ensureDisplayTextWidgetAst(widget, compiled, &status)) {
         result.available = true;
         result.status = DisplayTextEvaluationStatus::InvalidPlaceholder;
-        result.text[0] = '\0';
+        std::snprintf(result.text, sizeof(result.text), "%s", kUnresolvedPlaceholderText);
         return true;
     }
     return evaluateDisplayTextWidget(widget.text, *compiled, resolver, result);

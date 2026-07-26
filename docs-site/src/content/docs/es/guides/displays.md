@@ -68,9 +68,9 @@ Los filtros opcionales van después de `|`:
 | `format:pattern` | `{{system.time \| format:EEEE HH:mm}}` | Patrón de fecha/hora (`YYYY MM DD HH mm ss EEEE`; texto `[literal]` entre corchetes) |
 | `upper` / `lower` / `trim` | `{{system.wifi.station_ip \| upper}}` | Transformaciones de texto |
 
-Un marcador que no pueda resolverse se renderiza como texto vacío en vez de
-romper todo el widget, así que un sensor temporalmente ausente no deja la
-pantalla en blanco.
+Un marcador que no pueda resolverse se renderiza como `N/A` en vez de romper
+todo el widget, así que un sensor temporalmente ausente no deja la pantalla
+en blanco — mostrará `N/A` en su lugar.
 
 Los dispositivos referenciados por marcadores se convierten en dependencias
 reales del registro para esa pantalla: el registro te avisará antes de borrar

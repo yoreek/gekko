@@ -67,9 +67,9 @@ I filtri opzionali seguono dopo `|`:
 | `format:pattern` | `{{system.time \| format:EEEE HH:mm}}` | Pattern data/ora (`YYYY MM DD HH mm ss EEEE`; testo `[literal]` tra parentesi quadre) |
 | `upper` / `lower` / `trim` | `{{system.wifi.station_ip \| upper}}` | Trasformazioni di testo |
 
-Un placeholder che non può essere risolto viene renderizzato come testo vuoto
+Un placeholder che non può essere risolto viene renderizzato come `N/A`
 anziché rompere l'intero widget, quindi un sensore temporaneamente assente non
-svuota mai il tuo schermo.
+svuota mai il tuo schermo — mostra `N/A` al suo posto.
 
 I dispositivi referenziati dai placeholder diventano vere dipendenze del
 registro per il display — il registro ti avviserà prima di cancellare un

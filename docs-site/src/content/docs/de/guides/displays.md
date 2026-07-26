@@ -69,9 +69,9 @@ Optionale Filter folgen hinter `|`:
 | `format:pattern` | `{{system.time \| format:EEEE HH:mm}}` | Datums-/Zeitmuster (`YYYY MM DD HH mm ss EEEE`; `[literal]`-Text in Klammern) |
 | `upper` / `lower` / `trim` | `{{system.wifi.station_ip \| upper}}` | Texttransformationen |
 
-Ein Platzhalter, der nicht aufgeloest werden kann, wird als leerer Text
-gerendert statt das ganze Widget zu zerstoeren - ein kurz fehlender Sensor
-macht den Bildschirm also nicht leer.
+Ein Platzhalter, der nicht aufgeloest werden kann, wird als `N/A` gerendert
+statt das ganze Widget zu zerstoeren - ein kurz fehlender Sensor macht den
+Bildschirm also nicht leer, sondern zeigt an dieser Stelle `N/A` an.
 
 Geraete, auf die Platzhalter verweisen, werden zu echten Registry-
 Abhaengigkeiten des Displays - das Register warnt dich, bevor du einen Sensor

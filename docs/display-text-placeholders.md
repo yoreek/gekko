@@ -92,7 +92,7 @@ Rules:
 
 - Multiple placeholders are supported.
 - Each placeholder is parsed independently.
-- If a placeholder cannot be parsed or cannot be resolved, it is replaced with an empty string.
+- If a placeholder cannot be parsed or cannot be resolved, it is replaced with `N/A` (`kUnresolvedPlaceholderText` in `DisplayTextPlaceholderAst.cpp`) rather than an empty string, so a stuck/unavailable value reads as a visible problem on screen instead of blank space.
 - A bad placeholder does not cancel the full text render.
 - Static text still renders unchanged.
 - Metric-bound widgets without inline placeholders continue to resolve through `bindingKind`, `metricNamespace`, `sourceDeviceId`, and `metricId`.
@@ -164,7 +164,7 @@ The runtime AST and any compiled placeholder references are transient and are re
 - Long placeholder text should use a multiline text editor in the UI.
 - Text widget width and height still define the render box.
 - Placeholder evaluation happens after layout loading and before widget drawing.
-- The rendered output may be partially empty if some placeholders are unavailable.
+- Individual placeholders render as `N/A` if some are unavailable; surrounding static text still renders.
 - Filters are intentionally small and bounded, even though `format`/`fixed` now take an argument. New filters should be added only when they map cleanly to typed metric values or existing display formatting rules.
 
 ## Related Docs

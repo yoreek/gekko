@@ -64,8 +64,9 @@ Optional filters follow after `|`:
 | `format:pattern` | `{{system.time \| format:EEEE HH:mm}}` | Date/time pattern (`YYYY MM DD HH mm ss EEEE`; `[literal]` text in brackets) |
 | `upper` / `lower` / `trim` | `{{system.wifi.station_ip \| upper}}` | Text transforms |
 
-A placeholder that cannot be resolved renders as empty text instead of breaking
-the whole widget, so a temporarily missing sensor never blanks your screen.
+A placeholder that cannot be resolved renders as `N/A` instead of breaking
+the whole widget, so a temporarily missing sensor never blanks your screen —
+you'll see `N/A` in its place instead of a silent gap.
 
 Devices referenced by placeholders become real registry dependencies of the
 display — the registry will warn you before deleting a sensor a display still

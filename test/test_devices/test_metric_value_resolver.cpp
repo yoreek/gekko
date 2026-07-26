@@ -197,14 +197,14 @@ void test_display_text_evaluator_handles_missing_and_binding_only_metrics() {
     TEST_ASSERT_TRUE(result.dynamic);
     TEST_ASSERT_TRUE(result.available);
     TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::MissingMetric, result.status);
-    TEST_ASSERT_EQUAL_STRING("Sensor ", result.text);
+    TEST_ASSERT_EQUAL_STRING("Sensor N/A", result.text);
 
     std::snprintf(widget.text, sizeof(widget.text), "%s", "AP {{system.wifi.setup_ap_ip}}");
     TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
     TEST_ASSERT_TRUE(result.dynamic);
     TEST_ASSERT_TRUE(result.available);
     TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::MissingMetric, result.status);
-    TEST_ASSERT_EQUAL_STRING("AP ", result.text);
+    TEST_ASSERT_EQUAL_STRING("AP N/A", result.text);
 
     const DateTime fixedTime(2026, 7, 11, 20, 15, 0);
     MetricValueResolver timeResolver(&registry, wifi, 3723000U, fixedTime);
@@ -239,7 +239,7 @@ void test_display_text_evaluator_reports_invalid_placeholders() {
     TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
     TEST_ASSERT_TRUE(result.available);
     TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::InvalidPlaceholder, result.status);
-    TEST_ASSERT_EQUAL_STRING("", result.text);
+    TEST_ASSERT_EQUAL_STRING("N/A", result.text);
 
     std::snprintf(widget.text, sizeof(widget.text), "%s", "{{system.wifi.station_ip}}{{system.wifi.station_ip}}");
     TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
@@ -274,7 +274,7 @@ void test_display_text_evaluator_reports_invalid_placeholders() {
     TEST_ASSERT_TRUE(result.dynamic);
     TEST_ASSERT_TRUE(result.available);
     TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::InvalidPlaceholder, result.status);
-    TEST_ASSERT_EQUAL_STRING(" 192.168.1.50", result.text);
+    TEST_ASSERT_EQUAL_STRING("N/A 192.168.1.50", result.text);
 
     std::snprintf(widget.text, sizeof(widget.text), "%s", "{{system.wifi.station_ip | nope}}");
     TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
@@ -311,12 +311,12 @@ void test_display_text_evaluator_applies_format_and_fixed_filters() {
     std::snprintf(widget.text, sizeof(widget.text), "%s", "T {{system.time | fixed:1}}");
     TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
     TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::MissingMetric, result.status);
-    TEST_ASSERT_EQUAL_STRING("T ", result.text);
+    TEST_ASSERT_EQUAL_STRING("T N/A", result.text);
 
     std::snprintf(widget.text, sizeof(widget.text), "%s", "IP {{system.wifi.station_ip | format:HH:mm}}");
     TEST_ASSERT_TRUE(evaluateDisplayTextWidget(widget, resolver, result));
     TEST_ASSERT_EQUAL(DisplayTextEvaluationStatus::MissingMetric, result.status);
-    TEST_ASSERT_EQUAL_STRING("IP ", result.text);
+    TEST_ASSERT_EQUAL_STRING("IP N/A", result.text);
 }
 
 void test_display_text_evaluator_rejects_malformed_filter_arguments() {
