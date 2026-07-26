@@ -61,6 +61,26 @@ already dirtied only generated artifacts, discard or reset only those generated
 changes after confirming they do not belong to the task; do not treat them as a
 new source change.
 
+### Commits routinely take longer than 2 minutes
+
+`scripts/test.sh` alone runs `pio check` (cppcheck + clang-tidy) for **both**
+`esp32dev` and `native`, and the native `cppcheck` pass regularly takes
+1.5–3 minutes on its own — on top of the SPA rebuild, firmware rebuild, and
+`buildfs` that follow it. A full `git commit` through the hook can easily run
+5+ minutes. Any tool or shell with a short fixed timeout (e.g. a 2-minute
+default) will kill the process mid-hook if you just wait on it directly —
+this does not corrupt anything (see "If a commit aborts partway" below), but
+it wastes the run and leaves you re-diagnosing a timeout instead of a real
+failure.
+
+Don't just raise the timeout and block on it. Redirect the commit's output to
+a log file and run it as a background/non-blocking process, then poll or tail
+that log file to watch progress and pick up the real pass/fail result once it
+finishes — the same way `pio run`/`pio test` output is inspected elsewhere in
+this workflow. Waiting on a single foreground call with no visibility into
+which stage (cppcheck vs. SPA build vs. firmware build) is currently running
+makes a slow-but-healthy commit indistinguishable from a hung one.
+
 ### If a commit aborts partway
 
 The hook stages the rebuilt artifacts before the checks that can fail (e.g.
