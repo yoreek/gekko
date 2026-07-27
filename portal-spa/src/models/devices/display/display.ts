@@ -1,8 +1,8 @@
 import { rasterImageCodecRegistry } from '../../../raster/core/RasterImageCodecRegistry.ts'
 import type { RasterImageFormat, RasterImageImportResult } from '../../../raster/raster-image-types.ts'
 
-import type { DisplayCapabilities } from './base.ts'
-import type { DisplayBitmapWidget, DisplayWidget, DisplayWidgetType } from './layout.ts'
+import { DISPLAY_CANVAS_UNIT_SIZE, type DisplayCapabilities } from './base.ts'
+import { DISPLAY_WIDGET_CAPABILITIES, type DisplayBitmapWidget, type DisplayWidget, type DisplayWidgetType } from './layout.ts'
 import { BaseWidget, Gray8BitmapWidget, Mono1BitmapWidget, Rgb565BitmapWidget } from './widgets/index.ts'
 import { BaseRender, Gray8Render, Mono1Render, Rgb565Render } from './renders/index.ts'
 
@@ -35,12 +35,17 @@ export abstract class BaseDisplay<TBitmapFormat extends RasterImageFormat> {
   abstract readonly render: BaseRender
   abstract readonly supportsColor: boolean
 
-  readonly supportsBitmapImport = true
-  readonly supportsAspectRatioLock = true
+  readonly supportsBitmapImport: boolean = true
+  readonly supportsAspectRatioLock: boolean = true
+  readonly coordinateUnit: 'pixel' | 'cell' | 'digit' = 'pixel'
+  readonly supportedWidgetTypes: readonly DisplayWidgetType[] = ['text', 'digital', 'bitmap', 'rect', 'line', 'circle', 'ellipse']
+  readonly supportedRotations: readonly number[] = [0, 1, 2, 3]
 
   get displayCapabilities(): DisplayCapabilities {
     return {
       supportsColor: this.supportsColor,
+      coordinateUnit: this.coordinateUnit,
+      canvasUnitSize: DISPLAY_CANVAS_UNIT_SIZE[this.coordinateUnit],
       supportedRasterFormats: [this.bitmapFormat],
       defaultRasterFormat: this.bitmapFormat,
       supportsBitmapImport: this.supportsBitmapImport,
@@ -51,6 +56,10 @@ export abstract class BaseDisplay<TBitmapFormat extends RasterImageFormat> {
 
   supportsBitmapFormat(format: RasterImageFormat): boolean {
     return format === this.bitmapFormat
+  }
+
+  widgetCapabilities(type: DisplayWidgetType) {
+    return DISPLAY_WIDGET_CAPABILITIES[type]
   }
 
   bitmapByteLength(width: number, height: number): number {
@@ -67,8 +76,12 @@ export abstract class BaseDisplay<TBitmapFormat extends RasterImageFormat> {
       return this.createBitmapPlaceholder(this.defaultBitmapWidth, this.defaultBitmapHeight, index)
     }
     return BaseWidget.createBase(type, index, {
-      text: type === 'text' ? this.defaultText : '',
+      text: type === 'text' || type === 'character' || type === 'digital' ? this.defaultText : '',
     }) as DisplayWidget
+  }
+
+  resolveDesignerRotation(rotation: number): number {
+    return rotation
   }
 
   createBitmapPlaceholder(width = this.defaultBitmapWidth, height = this.defaultBitmapHeight, index = 0): DisplayBitmapWidget {

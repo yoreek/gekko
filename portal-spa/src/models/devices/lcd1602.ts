@@ -2,8 +2,8 @@ import type { DeviceRecord, DeviceDependencyLink, BaseDeviceConfig, Lcd1602Outpu
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import type { DeviceRole } from '@/models/device-type-ids'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
+import { defaultLcd1602Layout, encodeLcd1602Layout, normalizeLcd1602Layout, type Lcd1602LayoutDraft } from './lcd1602/layout.ts'
 
-export const LCD1602_LINE_LENGTH = 16
 // Sentinel for backlightChannel meaning "not wired" -- mirrors kLcd1602ChannelUnset in
 // Lcd1602DeviceConfig.h. The one optional channel: some parallel-wired boards tie backlight
 // permanently high instead of giving it a PCF857x pin.
@@ -23,8 +23,7 @@ export interface Lcd1602ConfigDraft extends BaseDeviceConfig {
   d6Channel: number
   d7Channel: number
   backlightChannel: number
-  line1: string
-  line2: string
+  layout: Lcd1602LayoutDraft
 }
 
 export interface Lcd1602CreateDraft extends DeviceCreateDraftBase, Lcd1602ConfigDraft {}
@@ -48,10 +47,6 @@ function normalizeBacklightChannel(value: unknown, fallback: number): number {
     return LCD1602_CHANNEL_UNSET
   }
   return normalizeChannel(value, fallback)
-}
-
-function normalizeLine(value: unknown, fallback: string): string {
-  return typeof value === 'string' ? value.slice(0, LCD1602_LINE_LENGTH) : fallback
 }
 
 // Standard PCF8574 LCM1602-IIC backpack wiring -- the near-universal convention among cheap I2C
@@ -83,8 +78,7 @@ export class Lcd1602Device extends BaseDevice<Lcd1602ConfigDraft, Lcd1602CreateD
       ...defaultBaseDeviceConfig(),
       expanderDeviceId: 0,
       ...standardLcd1602Wiring(),
-      line1: '',
-      line2: '',
+      layout: defaultLcd1602Layout(),
     }
   }
 
@@ -112,8 +106,7 @@ export class Lcd1602Device extends BaseDevice<Lcd1602ConfigDraft, Lcd1602CreateD
       d6Channel: normalizeChannel(raw.d6Channel, defaults.d6Channel),
       d7Channel: normalizeChannel(raw.d7Channel, defaults.d7Channel),
       backlightChannel: normalizeBacklightChannel(raw.backlightChannel, defaults.backlightChannel),
-      line1: normalizeLine(raw.line1, defaults.line1),
-      line2: normalizeLine(raw.line2, defaults.line2),
+      layout: normalizeLcd1602Layout(raw.layout ?? defaults.layout),
     }
   }
 
@@ -127,8 +120,7 @@ export class Lcd1602Device extends BaseDevice<Lcd1602ConfigDraft, Lcd1602CreateD
       d6Channel: config.d6Channel,
       d7Channel: config.d7Channel,
       backlightChannel: config.backlightChannel,
-      line1: config.line1,
-      line2: config.line2,
+      layout: encodeLcd1602Layout(config.layout),
     }
   }
 
@@ -156,7 +148,7 @@ export class Lcd1602Device extends BaseDevice<Lcd1602ConfigDraft, Lcd1602CreateD
   }
 
   normalizeOutput(record: DeviceRecord): Lcd1602OutputSnapshot {
-    return record.runtime as Lcd1602OutputSnapshot
+    return record.runtime as unknown as Lcd1602OutputSnapshot
   }
 
   protected override encodeConfig(config: Lcd1602ConfigDraft): Record<string, unknown> {

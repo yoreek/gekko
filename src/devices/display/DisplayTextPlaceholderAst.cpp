@@ -662,7 +662,7 @@ bool evaluateDisplayTextWidget(std::string_view sourceText, const DisplayTextCom
 bool evaluateDisplayTextWidget(const DisplayLayoutWidgetV1& widget, const MetricValueResolver& resolver,
                                DisplayTextEvaluationResult& result) {
     result = {};
-    if (static_cast<DisplayLayoutWidgetType>(widget.type) != DisplayLayoutWidgetType::Text) {
+    if (!isDisplayTextWidgetType(static_cast<DisplayLayoutWidgetType>(widget.type))) {
         result.available = false;
         result.status = DisplayTextEvaluationStatus::InvalidWidget;
         return false;
@@ -711,7 +711,7 @@ bool displayTextPlaceholderSupportsRuntime(const IDeviceRuntime& runtime, const 
 }
 
 bool displayTextWidgetUsesStructuredPlaceholders(const DisplayLayoutWidgetV1& widget) {
-    if (static_cast<DisplayLayoutWidgetType>(widget.type) != DisplayLayoutWidgetType::Text) {
+    if (!isDisplayTextWidgetType(static_cast<DisplayLayoutWidgetType>(widget.type))) {
         return false;
     }
     return std::strstr(widget.text, "{{") != nullptr;
@@ -720,7 +720,7 @@ bool displayTextWidgetUsesStructuredPlaceholders(const DisplayLayoutWidgetV1& wi
 bool prepareDisplayLayoutTextAst(const DisplayLayoutRecordV1& layout) {
     for (const DisplayLayoutPageV1& page : layout.pages) {
         for (const DisplayLayoutWidgetV1& widget : page.widgets) {
-            if (static_cast<DisplayLayoutWidgetType>(widget.type) != DisplayLayoutWidgetType::Text) {
+            if (!isDisplayTextWidgetType(static_cast<DisplayLayoutWidgetType>(widget.type))) {
                 continue;
             }
             const DisplayTextCompiledWidget* compiled = nullptr;
@@ -735,7 +735,7 @@ bool prepareDisplayLayoutTextAst(const DisplayLayoutRecordV1& layout) {
 bool bindDisplayLayoutTextAst(const DisplayLayoutRecordV1& layout, const DeviceRegistry& registry) {
     for (const DisplayLayoutPageV1& page : layout.pages) {
         for (const DisplayLayoutWidgetV1& widget : page.widgets) {
-            if (static_cast<DisplayLayoutWidgetType>(widget.type) != DisplayLayoutWidgetType::Text) {
+            if (!isDisplayTextWidgetType(static_cast<DisplayLayoutWidgetType>(widget.type))) {
                 continue;
             }
             const DisplayTextCompiledWidget* compiled = nullptr;
@@ -759,7 +759,7 @@ bool bindDisplayLayoutTextAst(const DisplayLayoutRecordV1& layout, const DeviceR
 }
 
 DeviceValidationResult validateDisplayTextWidget(const DisplayLayoutWidgetV1& widget, const DeviceRegistry& registry) {
-    if (static_cast<DisplayLayoutWidgetType>(widget.type) != DisplayLayoutWidgetType::Text) {
+    if (!isDisplayTextWidgetType(static_cast<DisplayLayoutWidgetType>(widget.type))) {
         return {DeviceError::InvalidConfig, "display text widget is invalid"};
     }
 

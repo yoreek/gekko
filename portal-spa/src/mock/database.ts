@@ -21,9 +21,27 @@ import {
   normalizeSsd1306Layout,
 } from '../models/devices/ssd1306/layout.ts'
 import {
+  defaultLcd1602Layout,
+  normalizeLcd1602Layout,
+} from '../models/devices/lcd1602/layout.ts'
+import {
+  defaultLcd2004Layout,
+  normalizeLcd2004Layout,
+} from '../models/devices/lcd2004/layout.ts'
+import {
+  defaultTm1637Layout,
+  normalizeTm1637Layout,
+} from '../models/devices/tm1637/layout.ts'
+import {
   defaultDisplayWidget,
 } from '../models/devices/display/layout-normalizer.ts'
-import { ST7735_DISPLAY_LAYOUT_PROFILE } from '../models/devices/display/profile.ts'
+import {
+  LCD1602_DISPLAY_LAYOUT_PROFILE,
+  LCD2004_DISPLAY_LAYOUT_PROFILE,
+  ST7735_DISPLAY_LAYOUT_PROFILE,
+  TM1637_DISPLAY_LAYOUT_PROFILE,
+} from '../models/devices/display/profile.ts'
+import { TM1637_PANEL } from '../models/devices/tm1637.ts'
 import { Rgb565RasterImageCodec } from '../raster/rgb565/Rgb565RasterImageCodec.ts'
 import {
   defaultSt7735Layout,
@@ -1210,16 +1228,41 @@ const seedDatabase: SeedDatabase = {
       d6Channel: 5,
       d7Channel: 6,
       backlightChannel: 7,
-      line1: 'Tank {{dev.670845752.temperature}}C',
-      line2: 'pH ok',
+      layout: {
+        ...defaultLcd1602Layout(),
+        pages: [
+          {
+            id: 'main',
+            name: 'Main',
+            order: 0,
+            widgets: [
+              {
+                ...defaultDisplayWidget(LCD1602_DISPLAY_LAYOUT_PROFILE, 'text', 0),
+                id: 'line-0',
+                x: 0,
+                y: 0,
+                width: 16,
+                height: 1,
+                text: 'Tank 24.6C',
+              },
+              {
+                ...defaultDisplayWidget(LCD1602_DISPLAY_LAYOUT_PROFILE, 'text', 1),
+                id: 'line-1',
+                x: 0,
+                y: 1,
+                width: 16,
+                height: 1,
+                text: 'pH ok',
+              },
+            ],
+          },
+        ],
+      },
     }, {
       status: 'ready',
       lifecycleStatus: 'ready',
       effectiveStatus: 'ready',
-      output: {
-        line1: 'Tank: 24.6C',
-        line2: 'pH ok',
-      },
+      output: {},
     }),
     createDeviceRecord(670845803, 'lcd2004', 1, {
       enabled: true,
@@ -1239,20 +1282,103 @@ const seedDatabase: SeedDatabase = {
       d6Channel: 5,
       d7Channel: 6,
       backlightChannel: 7,
-      line1: 'Grow light: {{dev.670845763.state}}',
-      line2: 'Temp {{dev.670845752.temperature}}C',
-      line3: 'Humidity ok',
-      line4: 'All systems ok',
+      layout: {
+        ...defaultLcd2004Layout(),
+        pages: [
+          {
+            id: 'main',
+            name: 'Main',
+            order: 0,
+            widgets: [
+              {
+                ...defaultDisplayWidget(LCD2004_DISPLAY_LAYOUT_PROFILE, 'text', 0),
+                id: 'line-0',
+                x: 0,
+                y: 0,
+                width: 20,
+                height: 1,
+                text: 'Grow light: on',
+              },
+              {
+                ...defaultDisplayWidget(LCD2004_DISPLAY_LAYOUT_PROFILE, 'text', 1),
+                id: 'line-1',
+                x: 0,
+                y: 1,
+                width: 20,
+                height: 1,
+                text: 'Temp 24.6C',
+              },
+              {
+                ...defaultDisplayWidget(LCD2004_DISPLAY_LAYOUT_PROFILE, 'text', 2),
+                id: 'line-2',
+                x: 0,
+                y: 2,
+                width: 20,
+                height: 1,
+                text: 'Humidity ok',
+              },
+              {
+                ...defaultDisplayWidget(LCD2004_DISPLAY_LAYOUT_PROFILE, 'text', 3),
+                id: 'line-3',
+                x: 0,
+                y: 3,
+                width: 20,
+                height: 1,
+                text: 'All systems ok',
+              },
+            ],
+          },
+        ],
+      },
     }, {
       status: 'ready',
       lifecycleStatus: 'ready',
       effectiveStatus: 'ready',
-      output: {
-        line1: 'Grow light: on',
-        line2: 'Temp: 24.6C',
-        line3: 'Humidity ok',
-        line4: 'All systems ok',
+      output: {},
+    }),
+    createDeviceRecord(670845805, 'tm1637', 1, {
+      enabled: true,
+      name: 'Temperature Display',
+      deps: [
+        {
+          role: 'switch',
+          deviceId: 670845750,
+        },
+        {
+          role: 'switch',
+          deviceId: 670845763,
+        },
+      ],
+      panel: TM1637_PANEL,
+      brightness: 5,
+      rotation: 0,
+      clockSwitchDeviceId: 670845750,
+      dataSwitchDeviceId: 670845763,
+      layout: {
+        ...defaultTm1637Layout(),
+        pages: [
+          {
+            id: 'main',
+            name: 'Main',
+            order: 0,
+            widgets: [
+              {
+                ...defaultDisplayWidget(TM1637_DISPLAY_LAYOUT_PROFILE, 'digital', 0),
+                id: 'digits-0',
+                x: 0,
+                y: 0,
+                width: 4,
+                height: 1,
+                text: '24.6',
+              },
+            ],
+          },
+        ],
       },
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
     }),
     createDeviceRecord(670845763, 'gpio_switch', 1, {
       enabled: true,
@@ -1796,6 +1922,12 @@ export function canonicalizeDeviceRecord(value: unknown): MockDeviceRecord {
     config.layout = normalizeSsd1306Layout(configSource.layout ?? defaultSsd1306Layout())
   } else if (typeName === 'st7735') {
     config.layout = normalizeSt7735Layout(configSource.layout ?? defaultSt7735Layout())
+  } else if (typeName === 'lcd1602') {
+    config.layout = normalizeLcd1602Layout(configSource.layout ?? defaultLcd1602Layout())
+  } else if (typeName === 'lcd2004') {
+    config.layout = normalizeLcd2004Layout(configSource.layout ?? defaultLcd2004Layout())
+  } else if (typeName === 'tm1637') {
+    config.layout = normalizeTm1637Layout(configSource.layout ?? defaultTm1637Layout())
   }
   const runtimeStatus = typeof runtimeSource.status === 'string'
     ? runtimeSource.status

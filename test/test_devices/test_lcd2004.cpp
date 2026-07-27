@@ -1,7 +1,10 @@
+#include "Hd44780TestSupport.h"
 #include "config/MemoryConfigStorage.h"
 #include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/core/ConfigCodec.h"
 #include "devices/core/DeviceIdGenerator.h"
+#include "devices/display/DisplayLayoutProfile.h"
+#include "devices/display/DisplayLayoutStore.h"
 #include "devices/display/lcd1602/Lcd1602Device.h"
 #include "devices/display/lcd2004/Lcd2004Device.h"
 #include "devices/display/lcd2004/Lcd2004DeviceConfig.h"
@@ -15,7 +18,9 @@
 #include "metrics/MetricValueResolver.h"
 #include "wifi/WifiDriver.h"
 
+#include <array>
 #include <cstdio>
+#include <memory>
 #include <string>
 #include <unity.h>
 #include <vector>
@@ -219,8 +224,8 @@ Pcf857xExpanderConfigV2 makeExpanderConfig(uint8_t i2cAddress = 0x20U) {
     return config;
 }
 
-Lcd2004DeviceConfigV1 makeLcdConfig(const char* name = "lcd") {
-    Lcd2004DeviceConfigV1 config{};
+Lcd2004DeviceConfigV2 makeLcdConfig(const char* name = "lcd") {
+    Lcd2004DeviceConfigV2 config{};
     config.enabled = 1U;
     std::snprintf(config.name, sizeof(config.name), "%s", name);
     return config;
@@ -251,12 +256,38 @@ BoundedBlob<kMaxDeviceConfigBytes> encodeSwitchPayload(const PortExpanderSwitchD
     return payload;
 }
 
-BoundedBlob<kMaxDeviceConfigBytes> encodeLcdPayload(const Lcd2004DeviceConfigV1& config) {
+BoundedBlob<kMaxDeviceConfigBytes> encodeLcdPayload(const Lcd2004DeviceConfigV2& config) {
     BoundedBlob<kMaxDeviceConfigBytes> payload{};
     uint8_t buffer[kMaxDeviceConfigBytes]{};
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Lcd2004DeviceConfigV1::kMagic, config, buffer, lcd2004DeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Lcd2004DeviceConfigV2::kMagic, config, buffer, lcd2004DeviceConfigSize(config)));
     TEST_ASSERT_TRUE(payload.assign(buffer, lcd2004DeviceConfigSize(config)));
     return payload;
+}
+
+DisplayLayoutRecordV1 makeLcdLayout(const char* row0, const char* row1, const char* row2, const char* row3) {
+    DisplayLayoutRecordV1 layout{};
+    layout.activePageIndex = 0U;
+
+    DisplayLayoutPageV1 page{};
+    std::snprintf(page.id, sizeof(page.id), "%s", "main");
+    std::snprintf(page.name, sizeof(page.name), "%s", "Main");
+
+    const char* rows[4] = {row0, row1, row2, row3};
+    for (uint8_t row = 0U; row < 4U; ++row) {
+        DisplayLayoutWidgetV1 widget{};
+        std::snprintf(widget.id, sizeof(widget.id), "row%u", static_cast<unsigned>(row));
+        widget.type = static_cast<uint8_t>(DisplayLayoutWidgetType::Character);
+        widget.bindingKind = static_cast<uint8_t>(DisplayLayoutBindingKind::ConstantText);
+        widget.x = 0U;
+        widget.y = row;
+        widget.width = 20U;
+        widget.height = 1U;
+        std::snprintf(widget.text, sizeof(widget.text), "%s", rows[row]);
+        page.widgets.push_back(widget);
+    }
+
+    layout.pages.push_back(page);
+    return layout;
 }
 
 void driveBusReady(I2cBusDevice& bus, uint32_t startNow = 1U) {
@@ -284,14 +315,16 @@ void driveExpanderUntilReady(IDeviceRuntime& expander, uint32_t startNow = 10U) 
     }
 }
 
-void bindLcdDependency(Lcd2004Device& lcd, DeviceId lcdId, DeviceId expanderId) {
+void bindLcdDependency(Lcd2004Device& lcd, DeviceId lcdId, const std::array<DeviceId, 7U>& switchIds) {
     DeviceRegistryEntry record{};
     record.header.deviceId = lcdId;
     record.header.typeId = Lcd2004Device::descriptor().typeId;
     record.header.configVersion = Lcd2004Device::descriptor().currentConfigVersion;
     record.header.configRevision = 1;
-    record.depCount = 1;
-    record.deps[0] = {DeviceRole::PortExpander, expanderId};
+    record.depCount = static_cast<uint8_t>(switchIds.size());
+    for (uint8_t index = 0; index < switchIds.size(); ++index) {
+        record.deps[index] = {DeviceRole::Switch, switchIds[index]};
+    }
     record.status = DeviceStatus::Ready;
     lcd.bindDeviceIdentity(record, DeviceConfigBlob{});
 }
@@ -341,45 +374,39 @@ DeviceCreateRequest makeSwitchCreateRequest(const char* name, DeviceId expanderI
     return request;
 }
 
-DeviceCreateRequest makeLcdCreateRequest(const char* name, DeviceId expanderId, uint8_t rsChannel) {
+DeviceCreateRequest makeLcdCreateRequest(const char* name, const std::array<DeviceId, 7U>& switchIds) {
     DeviceCreateRequest request{};
     request.typeId = Lcd2004Device::descriptor().typeId;
     TEST_ASSERT_TRUE(request.assignName(name));
     request.setEnabled(true);
-    request.depCount = 1;
-    request.deps[0] = {DeviceRole::PortExpander, expanderId};
+    request.depCount = static_cast<uint8_t>(switchIds.size());
+    for (uint8_t index = 0; index < switchIds.size(); ++index) {
+        request.deps[index] = {DeviceRole::Switch, switchIds[index]};
+    }
     request.configVersion = Lcd2004Device::descriptor().currentConfigVersion;
-    Lcd2004DeviceConfigV1 config = makeLcdConfig(name);
-    config.channels.rsChannel = rsChannel;
-    request.configBlob = encodeLcdPayload(config);
+    request.configBlob = encodeLcdPayload(makeLcdConfig(name));
     return request;
 }
 
 } // namespace
 
 void test_lcd2004_config_codec_json_and_validation() {
-    const Lcd2004DeviceConfigV1 config = makeLcdConfig();
+    const Lcd2004DeviceConfigV2 config = makeLcdConfig();
     TEST_ASSERT_TRUE(config.validate().ok());
 
     StaticJsonDocument<512> doc;
     JsonObject json = doc.to<JsonObject>();
     config.writeJson(json);
     TEST_ASSERT_EQUAL_UINT8(0U, json["rsChannel"].as<uint8_t>());
-    TEST_ASSERT_EQUAL_UINT8(2U, json["eChannel"].as<uint8_t>());
-    TEST_ASSERT_EQUAL_UINT8(4U, json["d4Channel"].as<uint8_t>());
-    TEST_ASSERT_EQUAL_UINT8(3U, json["backlightChannel"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_UINT8(1U, json["eChannel"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_UINT8(2U, json["d4Channel"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_UINT8(6U, json["backlightChannel"].as<uint8_t>());
 
-    json["line1"] = "Row0";
-    json["line2"] = "Row1";
-    json["line3"] = "Row2";
-    json["line4"] = "Row3";
-    Lcd2004DeviceConfigV1 parsed{};
+    json["d7Channel"] = 7U;
+    Lcd2004DeviceConfigV2 parsed{};
     const char* error = nullptr;
     TEST_ASSERT_TRUE(parsed.parseJson(json, error));
-    TEST_ASSERT_EQUAL_STRING("Row0", parsed.line1);
-    TEST_ASSERT_EQUAL_STRING("Row1", parsed.line2);
-    TEST_ASSERT_EQUAL_STRING("Row2", parsed.line3);
-    TEST_ASSERT_EQUAL_STRING("Row3", parsed.line4);
+    TEST_ASSERT_EQUAL_UINT8(7U, parsed.channels.d7Channel);
     TEST_ASSERT_TRUE(parsed.validate().ok());
 }
 
@@ -387,14 +414,13 @@ void test_lcd2004_config_rejects_invalid_fields() {
     StaticJsonDocument<256> doc;
     JsonObject json = doc.to<JsonObject>();
     json["enabled"] = true;
-    json["name"] = "lcd";
-    json["line3"] = "012345678901234567890"; // 21 chars, exceeds the 20-char panel width
-    Lcd2004DeviceConfigV1 tooLong{};
+    json["name"] = "lcd-2004-config-name-that-is-way-too-long";
+    Lcd2004DeviceConfigV2 tooLong{};
     const char* error = nullptr;
     TEST_ASSERT_FALSE(tooLong.parseJson(json, error));
     TEST_ASSERT_NOT_NULL(error);
 
-    Lcd2004DeviceConfigV1 duplicateChannels = makeLcdConfig();
+    Lcd2004DeviceConfigV2 duplicateChannels = makeLcdConfig();
     duplicateChannels.channels.rsChannel = duplicateChannels.channels.d4Channel;
     TEST_ASSERT_FALSE(duplicateChannels.validate().ok());
 }
@@ -408,6 +434,16 @@ void test_lcd2004_type_and_api_adapter_are_registered() {
     TEST_ASSERT_NOT_NULL(adapterRegistry.findByName("lcd2004"));
     TEST_ASSERT_EQUAL_STRING("lcd2004", Lcd2004DeviceApiAdapter::instance().typeName());
     TEST_ASSERT_TRUE(Lcd2004Device::descriptor().typeId != Lcd1602Device::descriptor().typeId);
+
+    Lcd2004Device lcd(makeLcdConfig());
+    const DisplayLayoutProfile profile = lcd.displayProfile();
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayCoordinateUnit::CharacterCell), static_cast<uint8_t>(profile.coordinateUnit));
+    TEST_ASSERT_EQUAL_UINT8(20U, profile.logicalWidth);
+    TEST_ASSERT_EQUAL_UINT8(4U, profile.logicalHeight);
+    TEST_ASSERT_EQUAL_UINT32(displayLayoutWidgetMask(DisplayLayoutWidgetType::Character), profile.supportedWidgetMask);
+    TEST_ASSERT_EQUAL_UINT8(0x01U, profile.supportedRotationsMask);
+    TEST_ASSERT_FALSE(profile.supportsBitmap);
+    TEST_ASSERT_FALSE(profile.supportsColor);
 }
 
 void test_lcd2004_reaches_ready_through_port_expander_and_renders_with_diffing() {
@@ -421,15 +457,29 @@ void test_lcd2004_reaches_ready_through_port_expander_and_renders_with_diffing()
     driveExpanderUntilReady(expander);
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(expander.status()));
 
+    const std::array<DeviceId, 7U> switchIds{6003U, 6004U, 6005U, 6006U, 6007U, 6008U, 6009U};
+    std::array<std::unique_ptr<PortExpanderSwitchDevice>, 7U> switches{};
+    switches[0] = test_support::makeSwitchRuntime("rs", switchIds[0], expander.deviceId(), 0U, expander);
+    switches[1] = test_support::makeSwitchRuntime("e", switchIds[1], expander.deviceId(), 1U, expander);
+    switches[2] = test_support::makeSwitchRuntime("d4", switchIds[2], expander.deviceId(), 2U, expander);
+    switches[3] = test_support::makeSwitchRuntime("d5", switchIds[3], expander.deviceId(), 3U, expander);
+    switches[4] = test_support::makeSwitchRuntime("d6", switchIds[4], expander.deviceId(), 4U, expander);
+    switches[5] = test_support::makeSwitchRuntime("d7", switchIds[5], expander.deviceId(), 5U, expander);
+    switches[6] = test_support::makeSwitchRuntime("backlight", switchIds[6], expander.deviceId(), 6U, expander);
+
     Lcd2004Device lcd(makeLcdConfig());
-    bindLcdDependency(lcd, 6002, expander.deviceId());
-    lcd.setDependencyRuntime(DeviceRole::PortExpander, &expander);
+    bindLcdDependency(lcd, 6002, switchIds);
+    for (uint8_t index = 0; index < switchIds.size(); ++index) {
+        lcd.setDependencyRuntimeAt(index, switches[index].get());
+    }
     driveLcdUntilReady(lcd);
     TEST_ASSERT_EQUAL_MESSAGE(static_cast<int>(DeviceStatus::Ready), static_cast<int>(lcd.status()),
-                              "lcd2004 should reach Ready once its port-expander dependency and HD44780 init sequence succeed");
+                              "lcd2004 should reach Ready once its switch dependencies and HD44780 init sequence succeed");
 
     FakeWifiDriver wifi;
     const MetricValueResolver resolver(nullptr, wifi, 1000U);
+
+    lcd.setLayout(makeLcdLayout("Row 0", "Row 1", "Row 2", "Row 3"));
 
     const uint32_t writesBeforeFirstRender = driver.writeCount;
     TEST_ASSERT_TRUE(lcd.renderText(resolver, 1001U));
@@ -440,36 +490,50 @@ void test_lcd2004_reaches_ready_through_port_expander_and_renders_with_diffing()
     TEST_ASSERT_FALSE(lcd.renderText(resolver, 1002U));
     TEST_ASSERT_EQUAL_UINT32(writesAfterFirstRender, driver.writeCount);
 
-    // Changing only line3 must write again.
-    Lcd2004DeviceConfigV1 changedLine3 = lcd.config();
-    std::snprintf(changedLine3.line3, sizeof(changedLine3.line3), "%s", "Changed");
-    BoundedBlob<kMaxDeviceConfigBytes> updatedBlob = encodeLcdPayload(changedLine3);
-    TEST_ASSERT_TRUE(lcd.applyConfig(updatedBlob, 1003U));
+    // Changing only row 2 in the persisted layout must write again.
+    lcd.setLayout(makeLcdLayout("Row 0", "Row 1", "Changed", "Row 3"));
     TEST_ASSERT_TRUE(lcd.renderText(resolver, 1004U));
     TEST_ASSERT_TRUE(driver.writeCount > writesAfterFirstRender);
 }
 
 void test_lcd2004_sends_correct_ddram_row_addresses() {
-    // Standard PCF8574 LCM-IIC wiring: RS=0, E=2, D4-D7=4-7, backlight=3.
-    RecordingPortExpanderRuntime expander(0U, 2U, 4U, 5U, 6U, 7U);
+    // Standard switch-slot wiring for rs/e/d4/d5/d6/d7. The backlight is a separate slot.
+    RecordingPortExpanderRuntime expander(0U, 1U, 2U, 3U, 4U, 5U);
+    DeviceRegistryEntry expanderRecord{};
+    expanderRecord.header.deviceId = 7000U;
+    expanderRecord.header.typeId = Pcf8574ExpanderDevice::descriptor().typeId;
+    expanderRecord.header.configVersion = Pcf8574ExpanderDevice::descriptor().currentConfigVersion;
+    expanderRecord.header.configRevision = 1;
+    expanderRecord.status = DeviceStatus::Ready;
+    expander.bindDeviceIdentity(expanderRecord, DeviceConfigBlob{});
 
-    Lcd2004DeviceConfigV1 config = makeLcdConfig();
-    std::snprintf(config.line1, sizeof(config.line1), "%s", "A");
-    std::snprintf(config.line2, sizeof(config.line2), "%s", "B");
-    std::snprintf(config.line3, sizeof(config.line3), "%s", "C");
-    std::snprintf(config.line4, sizeof(config.line4), "%s", "D");
+    Lcd2004DeviceConfigV2 config = makeLcdConfig();
+
+    const std::array<DeviceId, 7U> switchIds{7001U, 7002U, 7003U, 7004U, 7005U, 7006U, 7007U};
+    std::array<std::unique_ptr<PortExpanderSwitchDevice>, 7U> switches{};
+    switches[0] = test_support::makeSwitchRuntime("rs", switchIds[0], expander.deviceId(), 0U, expander);
+    switches[1] = test_support::makeSwitchRuntime("e", switchIds[1], expander.deviceId(), 1U, expander);
+    switches[2] = test_support::makeSwitchRuntime("d4", switchIds[2], expander.deviceId(), 2U, expander);
+    switches[3] = test_support::makeSwitchRuntime("d5", switchIds[3], expander.deviceId(), 3U, expander);
+    switches[4] = test_support::makeSwitchRuntime("d6", switchIds[4], expander.deviceId(), 4U, expander);
+    switches[5] = test_support::makeSwitchRuntime("d7", switchIds[5], expander.deviceId(), 5U, expander);
+    switches[6] = test_support::makeSwitchRuntime("backlight", switchIds[6], expander.deviceId(), 6U, expander);
 
     Lcd2004Device lcd(config);
     DeviceRegistryEntry record{};
-    record.header.deviceId = 7001;
+    record.header.deviceId = 7010U;
     record.header.typeId = Lcd2004Device::descriptor().typeId;
     record.header.configVersion = Lcd2004Device::descriptor().currentConfigVersion;
     record.header.configRevision = 1;
-    record.depCount = 1;
-    record.deps[0] = {DeviceRole::PortExpander, 7000};
+    record.depCount = static_cast<uint8_t>(switchIds.size());
+    for (uint8_t index = 0; index < switchIds.size(); ++index) {
+        record.deps[index] = {DeviceRole::Switch, switchIds[index]};
+    }
     record.status = DeviceStatus::Ready;
     lcd.bindDeviceIdentity(record, DeviceConfigBlob{});
-    lcd.setDependencyRuntime(DeviceRole::PortExpander, &expander);
+    for (uint8_t index = 0; index < switchIds.size(); ++index) {
+        lcd.setDependencyRuntimeAt(index, switches[index].get());
+    }
 
     lcd.begin(10U);
     for (uint32_t now = 11U; now < 5000U && lcd.status() != DeviceStatus::Ready; now += 10U) {
@@ -479,6 +543,7 @@ void test_lcd2004_sends_correct_ddram_row_addresses() {
 
     FakeWifiDriver wifi;
     const MetricValueResolver resolver(nullptr, wifi, 6000U);
+    lcd.setLayout(makeLcdLayout("A", "B", "C", "D"));
     TEST_ASSERT_TRUE(lcd.renderText(resolver, 6001U));
 
     // Each row write starts with a command byte (rs=false): 0x80 | rowAddress. The general HD44780
@@ -513,27 +578,28 @@ void test_lcd2004_adapter_rejects_duplicate_channel_on_same_expander_but_allows_
     const DeviceCreateResult expanderResult = registry.create(makeExpanderCreateRequest("expander", busResult.deviceId), 11);
     TEST_ASSERT_TRUE_MESSAGE(expanderResult.ok(), expanderResult.validation.message);
 
-    // Occupy channel 2 with an ordinary switch first.
-    const DeviceCreateResult switchResult = registry.create(makeSwitchCreateRequest("sw", expanderResult.deviceId, 2U), 12);
-    TEST_ASSERT_TRUE_MESSAGE(switchResult.ok(), switchResult.validation.message);
+    std::array<DeviceId, 7U> switchIds{};
+    for (uint8_t index = 0; index < switchIds.size(); ++index) {
+        const char* switchName = index == 0U   ? "rs"
+                                 : index == 1U ? "e"
+                                 : index == 2U ? "d4"
+                                 : index == 3U ? "d5"
+                                 : index == 4U ? "d6"
+                                 : index == 5U ? "d7"
+                                               : "backlight";
+        const DeviceCreateResult switchResult =
+            registry.create(makeSwitchCreateRequest(switchName, expanderResult.deviceId, index), static_cast<uint32_t>(12U + index));
+        TEST_ASSERT_TRUE_MESSAGE(switchResult.ok(), switchResult.validation.message);
+        switchIds[index] = switchResult.deviceId;
+    }
 
-    // The LCD's default eChannel is also 2 -- must collide with the switch above.
-    const DeviceCreateRequest collidingLcd = makeLcdCreateRequest("lcd-bad", expanderResult.deviceId, 0U);
+    std::array<DeviceId, 7U> duplicateSwitchIds = switchIds;
+    duplicateSwitchIds[6] = duplicateSwitchIds[0];
+    const DeviceCreateRequest collidingLcd = makeLcdCreateRequest("lcd-bad", duplicateSwitchIds);
     const DeviceValidationResult collidingValidation = Lcd2004DeviceApiAdapter::instance().validateCreateRequest(collidingLcd, registry);
     TEST_ASSERT_FALSE(collidingValidation.ok());
 
-    // Moving every LCD channel off of the busy channel 2 must succeed.
-    DeviceCreateRequest okLcd = makeLcdCreateRequest("lcd-ok", expanderResult.deviceId, 0U);
-    Lcd2004DeviceConfigV1 okConfig{};
-    TEST_ASSERT_TRUE(decodeLcd2004DeviceConfig(okLcd.configBlob.data(), okLcd.configBlob.size(), okConfig));
-    okConfig.channels.rsChannel = 0U;
-    okConfig.channels.eChannel = 1U;
-    okConfig.channels.d4Channel = 3U;
-    okConfig.channels.d5Channel = 4U;
-    okConfig.channels.d6Channel = 5U;
-    okConfig.channels.d7Channel = 6U;
-    okConfig.channels.backlightChannel = 7U;
-    okLcd.configBlob = encodeLcdPayload(okConfig);
+    const DeviceCreateRequest okLcd = makeLcdCreateRequest("lcd-ok", switchIds);
     const DeviceValidationResult okValidation = Lcd2004DeviceApiAdapter::instance().validateCreateRequest(okLcd, registry);
     TEST_ASSERT_TRUE_MESSAGE(okValidation.ok(), okValidation.message);
 }

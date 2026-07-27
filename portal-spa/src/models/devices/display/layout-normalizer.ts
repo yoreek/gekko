@@ -47,7 +47,7 @@ function normalizeText(profile: DisplayLayoutProfile, value: unknown): string {
 function normalizeWidgetType(profile: DisplayLayoutProfile, value: unknown): DisplayWidgetType {
   return typeof value === 'string' && profile.widgetTypes.includes(value as DisplayWidgetType)
     ? (value as DisplayWidgetType)
-    : 'text'
+    : profile.widgetTypes[0] ?? 'text'
 }
 
 function normalizeBindingKind(value: unknown): DisplayBindingKind {
@@ -121,9 +121,25 @@ function normalizeBitmapData(profile: DisplayLayoutProfile, value: unknown, widt
   }
 }
 
+function normalizeCharacterAutoSize(profile: DisplayLayoutProfile, widget: DisplayWidget): DisplayWidget {
+  if (widget.type !== 'character' || !widget.autoSize) return widget
+  const availableWidth = Math.max(1, profile.logicalWidth - widget.x)
+  const availableHeight = Math.max(1, profile.logicalHeight - widget.y)
+  const sourceLines = widget.text.split('\n')
+  const longestLine = Math.max(1, ...sourceLines.map(line => line.length))
+  const width = Math.min(availableWidth, longestLine)
+  const height = Math.min(
+    availableHeight,
+    widget.styleFlags.wrap
+      ? sourceLines.reduce((count, line) => count + Math.max(1, Math.ceil(Math.max(1, line.length) / width)), 0)
+      : sourceLines.length,
+  )
+  return { ...widget, width, height }
+}
+
 export function defaultDisplayWidget(
   profile: DisplayLayoutProfile,
-  type: DisplayWidgetType = 'text',
+  type: DisplayWidgetType = profile.widgetTypes[0] ?? 'text',
   index = 0,
 ): DisplayWidget {
   const widget: DisplayWidgetBase = {
@@ -131,14 +147,32 @@ export function defaultDisplayWidget(
     type,
     x: 0,
     y: 0,
-    width: type === 'bitmap' ? profile.defaultBitmapWidth : type === 'line' ? 16 : 24,
-    height: type === 'bitmap' ? profile.defaultBitmapHeight : type === 'line' ? 1 : type === 'circle' ? 24 : 12,
+    width: type === 'bitmap'
+      ? profile.defaultBitmapWidth
+      : type === 'line'
+        ? 16
+      : type === 'digital'
+          ? 4
+          : type === 'character'
+            ? Math.min(profile.logicalWidth || 16, profile.defaultText.length || 1)
+            : 24,
+    height: type === 'bitmap'
+      ? profile.defaultBitmapHeight
+      : type === 'line'
+        ? 1
+        : type === 'circle'
+          ? 24
+            : type === 'digital'
+            ? 1
+            : type === 'character'
+              ? 1
+            : 12,
     bindingKind: 'unbound',
     metricNamespace: 'dev',
     sourceDeviceId: 0,
     metricId: 0,
     refreshIntervalMs: DISPLAY_WIDGET_REFRESH_INTERVAL_DISABLED,
-    text: type === 'text' ? profile.defaultText : '',
+    text: type === 'text' || type === 'character' || type === 'digital' ? profile.defaultText : '',
     fontSize: 1,
     strokeWidth: 1,
     autoSize: false,
@@ -183,7 +217,7 @@ export function normalizeDisplayWidget(
   index = 0,
   options: DisplayWidgetNormalizerOptions = {},
 ): DisplayWidget {
-  const defaults = defaultDisplayWidget(profile, 'text', index)
+  const defaults = defaultDisplayWidget(profile, profile.widgetTypes[0], index)
   if (!isRecord(value)) {
     return defaults
   }
@@ -209,14 +243,14 @@ export function normalizeDisplayWidget(
     metricId: clampInteger(value.metricId, typeDefaults.metricId, -0x7fffffff, 0x7fffffff),
     refreshIntervalMs: normalizeRefreshIntervalMs(value.refreshIntervalMs, typeDefaults.refreshIntervalMs),
     text: normalizeText(profile, value.text),
-    fontSize: clampInteger(value.fontSize, typeDefaults.fontSize, 1, 8),
-    strokeWidth: clampInteger(value.strokeWidth, typeDefaults.strokeWidth, 1, 32),
-    autoSize: Boolean(value.autoSize ?? typeDefaults.autoSize),
-    color: normalizeDisplayColor(value.color, typeDefaults.color),
+    fontSize: type === 'character' || type === 'digital' ? 1 : clampInteger(value.fontSize, typeDefaults.fontSize, 1, 8),
+    strokeWidth: type === 'character' || type === 'digital' ? 1 : clampInteger(value.strokeWidth, typeDefaults.strokeWidth, 1, 32),
+    autoSize: type === 'digital' ? false : Boolean(value.autoSize ?? typeDefaults.autoSize),
+    color: type === 'character' || type === 'digital' ? DISPLAY_WIDGET_COLOR_DEFAULT : normalizeDisplayColor(value.color, typeDefaults.color),
     styleFlags: {
       filled: Boolean((value.styleFlags as Record<string, unknown> | undefined)?.filled ?? typeDefaults.styleFlags.filled),
       inverted: Boolean((value.styleFlags as Record<string, unknown> | undefined)?.inverted ?? typeDefaults.styleFlags.inverted),
-      wrap: Boolean((value.styleFlags as Record<string, unknown> | undefined)?.wrap ?? typeDefaults.styleFlags.wrap),
+      wrap: Boolean(value.wrap ?? (value.styleFlags as Record<string, unknown> | undefined)?.wrap ?? typeDefaults.styleFlags.wrap),
     },
   }
   if (baseWidget.metricNamespace !== 'dev') {
@@ -231,7 +265,8 @@ export function normalizeDisplayWidget(
         keepAspectRatio: Boolean(value.keepAspectRatio ?? false),
       } as DisplayBitmapWidget
     : baseWidget as DisplayWidget
-  return options.normalizeWidget?.(widget) ?? widget
+  const normalizedWidget = normalizeCharacterAutoSize(profile, widget)
+  return options.normalizeWidget?.(normalizedWidget) ?? normalizedWidget
 }
 
 export function normalizeDisplayLayout(
@@ -320,15 +355,18 @@ export function encodeDisplayLayout(
         metricId: widget.metricId,
         refreshIntervalMs: widget.refreshIntervalMs,
         text: widget.text,
-        fontSize: widget.fontSize,
-        strokeWidth: widget.strokeWidth,
-        autoSize: widget.autoSize,
-        ...(profile.supportsColor && widget.type !== 'bitmap' ? { color: widget.color } : {}),
-        styleFlags: {
-          filled: widget.styleFlags.filled,
-          inverted: widget.styleFlags.inverted,
-          wrap: widget.styleFlags.wrap,
-        },
+        ...(widget.type === 'character' ? { autoSize: widget.autoSize, wrap: widget.styleFlags.wrap } : {}),
+        ...(widget.type !== 'character' && widget.type !== 'digital' ? {
+          fontSize: widget.fontSize,
+          strokeWidth: widget.strokeWidth,
+          autoSize: widget.autoSize,
+          ...(profile.supportsColor && widget.type !== 'bitmap' ? { color: widget.color } : {}),
+          styleFlags: {
+            filled: widget.styleFlags.filled,
+            inverted: widget.styleFlags.inverted,
+            wrap: widget.styleFlags.wrap,
+          },
+        } : {}),
         ...(widget.type === 'bitmap' ? { bitmapData: widget.bitmapData, bitmapFormat: widget.bitmapFormat, keepAspectRatio: widget.keepAspectRatio } : {}),
       })),
     })),

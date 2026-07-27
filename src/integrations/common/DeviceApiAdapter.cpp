@@ -33,6 +33,7 @@
 #include "integrations/rest/ssd1306/Ssd1306DeviceApiAdapter.h"
 #include "integrations/rest/st7735/St7735DeviceApiAdapter.h"
 #include "integrations/rest/thermostat/ThermostatDeviceApiAdapter.h"
+#include "integrations/rest/tm1637/Tm1637DeviceApiAdapter.h"
 
 namespace ewfm {
 
@@ -292,6 +293,7 @@ DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(AnalogInputChannelDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Lcd1602DeviceApiAdapter::instance());
     (void)registry.registerAdapter(Lcd2004DeviceApiAdapter::instance());
+    (void)registry.registerAdapter(Tm1637DeviceApiAdapter::instance());
     return registry;
 }
 

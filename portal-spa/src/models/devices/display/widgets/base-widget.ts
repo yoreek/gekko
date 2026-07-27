@@ -29,8 +29,8 @@ function createBaseWidget(
   index: number,
   overrides: Partial<DisplayWidgetBase> = {},
 ): DisplayWidgetBase {
-  const width = normalizeInteger(overrides.width, type === 'line' ? 16 : 24)
-  const height = normalizeInteger(overrides.height, type === 'line' ? 1 : type === 'circle' ? 24 : 12)
+  const width = normalizeInteger(overrides.width, type === 'line' ? 16 : type === 'digital' ? 4 : 24)
+  const height = normalizeInteger(overrides.height, type === 'line' ? 1 : type === 'circle' ? 24 : type === 'digital' ? 1 : 12)
   return {
     id: overrides.id ?? `${type}-${index}`,
     type,

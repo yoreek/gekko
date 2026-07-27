@@ -1,6 +1,12 @@
 #include "config/MemoryConfigStorage.h"
 #include "devices/display/DisplayDeviceBase.h"
+#include "devices/display/DisplayLayoutProfile.h"
 #include "devices/display/DisplayLayoutRenderer.h"
+#include "devices/display/DisplayLayoutValidator.h"
+#include "devices/display/render/CharacterDisplayLayoutRenderer.h"
+#include "devices/display/render/DisplayRenderSurface.h"
+#include "devices/display/render/PixelDisplayLayoutRenderer.h"
+#include "devices/display/render/SegmentDisplayLayoutRenderer.h"
 #include "devices/dummy/DummyDevice.h"
 #include "devices/registry/DeviceRegistry.h"
 #include "devices/registry/DeviceRegistryStore.h"
@@ -65,18 +71,82 @@ public:
     }
 };
 
-class FakeDisplaySurface final : public IDisplayRenderSurface {
+class FakePixelDisplaySurface final : public IPixelDisplayRenderSurface {
 public:
-    void clear(const uint16_t color) override {
+    void clear(uint16_t color) override {
+        record("clear", color);
+    }
+
+    void drawText(const DisplayLayoutWidgetV1& widget, const DisplayTextEvaluationResult& text) override {
+        recordWidget("text", widget.id, text.text);
+    }
+
+    void drawRect(const DisplayLayoutWidgetV1& widget) override {
+        recordWidget("rect", widget.id);
+    }
+
+    void drawLine(const DisplayLayoutWidgetV1& widget) override {
+        recordWidget("line", widget.id);
+    }
+
+    void drawCircle(const DisplayLayoutWidgetV1& widget) override {
+        recordWidget("circle", widget.id);
+    }
+
+    void drawEllipse(const DisplayLayoutWidgetV1& widget) override {
+        recordWidget("ellipse", widget.id);
+    }
+
+    void drawBitmap(const DisplayLayoutWidgetV1& widget) override {
+        recordWidget("bitmap", widget.id);
+    }
+
+    std::vector<std::string> ops;
+
+private:
+    void record(const char* op, uint16_t value) {
         char buffer[32]{};
-        std::snprintf(buffer, sizeof(buffer), "clear:%04X", color);
+        std::snprintf(buffer, sizeof(buffer), "%s:%04X", op, value);
         ops.emplace_back(buffer);
+    }
+
+    void recordWidget(const char* op, const char* id, const char* value = nullptr) {
+        char buffer[128]{};
+        if (value != nullptr) {
+            std::snprintf(buffer, sizeof(buffer), "%s:%s:%s", op, id, value);
+        } else {
+            std::snprintf(buffer, sizeof(buffer), "%s:%s", op, id);
+        }
+        ops.emplace_back(buffer);
+    }
+};
+
+class FakeCharacterDisplaySurface final : public ICharacterDisplayRenderSurface {
+public:
+    void clear(uint16_t color) override {
+        record("clear", color);
     }
 
     void drawText(const DisplayLayoutWidgetV1& widget, const DisplayTextEvaluationResult& text) override {
         char buffer[128]{};
         std::snprintf(buffer, sizeof(buffer), "text:%s:%s", widget.id, text.text);
         ops.emplace_back(buffer);
+    }
+
+    std::vector<std::string> ops;
+
+private:
+    void record(const char* op, uint16_t value) {
+        char buffer[32]{};
+        std::snprintf(buffer, sizeof(buffer), "%s:%04X", op, value);
+        ops.emplace_back(buffer);
+    }
+};
+
+class FakeSegmentDisplaySurface final : public ISegmentDisplayRenderSurface {
+public:
+    void clear(uint16_t color) override {
+        record("clear", color);
     }
 
     void drawDigital(const DisplayLayoutWidgetV1& widget, const DisplayDigitalFrame& frame) override {
@@ -87,44 +157,22 @@ public:
         ops.emplace_back(buffer);
     }
 
-    void drawRect(const DisplayLayoutWidgetV1& widget) override {
-        char buffer[64]{};
-        std::snprintf(buffer, sizeof(buffer), "rect:%s", widget.id);
-        ops.emplace_back(buffer);
-    }
-
-    void drawLine(const DisplayLayoutWidgetV1& widget) override {
-        char buffer[64]{};
-        std::snprintf(buffer, sizeof(buffer), "line:%s", widget.id);
-        ops.emplace_back(buffer);
-    }
-
-    void drawCircle(const DisplayLayoutWidgetV1& widget) override {
-        char buffer[64]{};
-        std::snprintf(buffer, sizeof(buffer), "circle:%s", widget.id);
-        ops.emplace_back(buffer);
-    }
-
-    void drawEllipse(const DisplayLayoutWidgetV1& widget) override {
-        char buffer[64]{};
-        std::snprintf(buffer, sizeof(buffer), "ellipse:%s", widget.id);
-        ops.emplace_back(buffer);
-    }
-
-    void drawBitmap(const DisplayLayoutWidgetV1& widget) override {
-        char buffer[64]{};
-        std::snprintf(buffer, sizeof(buffer), "bitmap:%s", widget.id);
-        ops.emplace_back(buffer);
-    }
-
     std::vector<std::string> ops;
     std::string digitalWidgetId{};
     DisplayDigitalFrame digitalFrame{};
+
+private:
+    void record(const char* op, uint16_t value) {
+        char buffer[32]{};
+        std::snprintf(buffer, sizeof(buffer), "%s:%04X", op, value);
+        ops.emplace_back(buffer);
+    }
 };
 
-class TestDisplayDevice final : public DisplayDeviceBase {
+class TestCharacterDisplayDevice final : public DisplayDeviceBase {
 public:
-    explicit TestDisplayDevice(FakeDisplaySurface& surface) : DisplayDeviceBase(DisplayDeviceBase::initialState()), surface_(surface) {}
+    explicit TestCharacterDisplayDevice(FakeCharacterDisplaySurface& surface)
+        : DisplayDeviceBase(DisplayDeviceBase::initialState()), surface_(surface) {}
 
     void enableReadyState() {
         status_ = DeviceStatus::Ready;
@@ -135,12 +183,18 @@ protected:
         (void)output;
     }
 
-    IDisplayRenderSurface* renderSurface() const override {
-        return &surface_;
+    bool clearDisplay(uint16_t color) override {
+        surface_.clear(color);
+        return true;
+    }
+
+    DisplayLayoutRenderResult renderDisplayFrame(const MetricValueResolver& resolver, uint32_t now) override {
+        CharacterDisplayLayoutRenderer renderer(surface_);
+        return renderSession_.render(layout_, resolver, renderer, now);
     }
 
 private:
-    FakeDisplaySurface& surface_;
+    FakeCharacterDisplaySurface& surface_;
 };
 
 DisplayLayoutWidgetV1 makeTextWidget(const char* id, const char* text, uint16_t refreshIntervalMs) {
@@ -150,12 +204,6 @@ DisplayLayoutWidgetV1 makeTextWidget(const char* id, const char* text, uint16_t 
     widget.bindingKind = static_cast<uint8_t>(DisplayLayoutBindingKind::ConstantText);
     std::snprintf(widget.text, sizeof(widget.text), "%s", text);
     widget.refreshIntervalMs = refreshIntervalMs;
-    return widget;
-}
-
-DisplayLayoutWidgetV1 makeMetricWidget(const char* id, const char* text, uint16_t refreshIntervalMs) {
-    DisplayLayoutWidgetV1 widget = makeTextWidget(id, text, refreshIntervalMs);
-    widget.bindingKind = static_cast<uint8_t>(DisplayLayoutBindingKind::Metric);
     return widget;
 }
 
@@ -202,19 +250,20 @@ void test_display_layout_renderer_clears_once_and_uses_min_refresh_interval() {
     std::snprintf(page.id, sizeof(page.id), "%s", "main");
     std::snprintf(page.name, sizeof(page.name), "%s", "Main");
     page.widgets.push_back(makeTextWidget("static", "Hello", kDisplayLayoutRefreshIntervalDisabled));
-    page.widgets.push_back(makeMetricWidget("device_status", devicePlaceholder, kDisplayLayoutRefreshIntervalDisabled));
-    page.widgets.push_back(makeMetricWidget("system_time", "Time {{system.time}}", kDisplayLayoutRefreshIntervalDisabled));
-    page.widgets.push_back(makeMetricWidget("wifi_status", "WiFi {{system.wifi.station_ip}}", 1000));
+    page.widgets.push_back(makeTextWidget("device_status", devicePlaceholder, kDisplayLayoutRefreshIntervalDisabled));
+    page.widgets.push_back(makeTextWidget("system_time", "Time {{system.time}}", kDisplayLayoutRefreshIntervalDisabled));
+    page.widgets.push_back(makeTextWidget("wifi_status", "WiFi {{system.wifi.station_ip}}", 1000));
     page.widgets.push_back(makeShapeWidget("box", DisplayLayoutWidgetType::Rect));
     layout.pages.push_back(page);
 
     FakeWifiDriver wifi;
     const DateTime fixedTime(2026, 7, 11, 20, 15, 0);
     MetricValueResolver resolver(&registry, wifi, 3723000U, fixedTime);
-    FakeDisplaySurface surface;
+    FakePixelDisplaySurface surface;
     DisplayLayoutRenderSession session;
+    PixelDisplayLayoutRenderer renderer(surface);
 
-    const DisplayLayoutRenderResult first = session.render(layout, resolver, surface, 3723000U);
+    const DisplayLayoutRenderResult first = session.render(layout, resolver, renderer, 3723000U);
     TEST_ASSERT_TRUE(first.rendered);
     TEST_ASSERT_TRUE(first.cleared);
     TEST_ASSERT_TRUE(first.hasDynamicWidgets);
@@ -228,11 +277,11 @@ void test_display_layout_renderer_clears_once_and_uses_min_refresh_interval() {
     TEST_ASSERT_EQUAL_STRING("text:wifi_status:WiFi 192.168.1.50", surface.ops[4].c_str());
     TEST_ASSERT_EQUAL_STRING("rect:box", surface.ops[5].c_str());
 
-    const DisplayLayoutRenderResult notDue = session.render(layout, resolver, surface, 3723100U);
+    const DisplayLayoutRenderResult notDue = session.render(layout, resolver, renderer, 3723100U);
     TEST_ASSERT_FALSE(notDue.rendered);
     TEST_ASSERT_EQUAL_UINT32(6U, static_cast<uint32_t>(surface.ops.size()));
 
-    const DisplayLayoutRenderResult second = session.render(layout, resolver, surface, 3723250U);
+    const DisplayLayoutRenderResult second = session.render(layout, resolver, renderer, 3723250U);
     TEST_ASSERT_TRUE(second.rendered);
     TEST_ASSERT_TRUE(second.cleared);
     TEST_ASSERT_EQUAL_UINT32(12U, static_cast<uint32_t>(surface.ops.size()));
@@ -258,14 +307,15 @@ void test_display_layout_renderer_rerenders_when_page_changes() {
 
     FakeWifiDriver wifi;
     MetricValueResolver resolver(nullptr, wifi, 0U);
-    FakeDisplaySurface surface;
+    FakeCharacterDisplaySurface surface;
     DisplayLayoutRenderSession session;
+    CharacterDisplayLayoutRenderer renderer(surface);
 
-    TEST_ASSERT_TRUE(session.render(layout, resolver, surface, 0U).rendered);
+    TEST_ASSERT_TRUE(session.render(layout, resolver, renderer, 0U).rendered);
     TEST_ASSERT_EQUAL_UINT32(2U, static_cast<uint32_t>(surface.ops.size()));
 
     layout.activePageIndex = 1;
-    const DisplayLayoutRenderResult rerendered = session.render(layout, resolver, surface, 1U);
+    const DisplayLayoutRenderResult rerendered = session.render(layout, resolver, renderer, 1U);
     TEST_ASSERT_TRUE(rerendered.rendered);
     TEST_ASSERT_TRUE(rerendered.pageChanged);
     TEST_ASSERT_EQUAL_UINT32(4U, static_cast<uint32_t>(surface.ops.size()));
@@ -276,6 +326,7 @@ void test_display_layout_renderer_rerenders_when_page_changes() {
 void test_display_layout_renderer_renders_digital_widget_with_decimal_point() {
     DisplayLayoutRecordV1 layout{};
     layout.activePageIndex = 0;
+    layout.backgroundColor = 0U;
 
     DisplayLayoutPageV1 page{};
     std::snprintf(page.id, sizeof(page.id), "%s", "main");
@@ -285,10 +336,11 @@ void test_display_layout_renderer_renders_digital_widget_with_decimal_point() {
 
     FakeWifiDriver wifi;
     MetricValueResolver resolver(nullptr, wifi, 0U);
-    FakeDisplaySurface surface;
+    FakeSegmentDisplaySurface surface;
     DisplayLayoutRenderSession session;
+    SegmentDisplayLayoutRenderer renderer(surface);
 
-    TEST_ASSERT_TRUE(session.render(layout, resolver, surface, 0U).rendered);
+    TEST_ASSERT_TRUE(session.render(layout, resolver, renderer, 0U).rendered);
     TEST_ASSERT_EQUAL_STRING("digital", surface.digitalWidgetId.c_str());
     TEST_ASSERT_EQUAL_UINT8(4U, surface.digitalFrame.cellCount);
     TEST_ASSERT_EQUAL_CHAR('1', surface.digitalFrame.cells[0].glyph);
@@ -301,11 +353,27 @@ void test_display_layout_renderer_renders_digital_widget_with_decimal_point() {
     TEST_ASSERT_EQUAL_UINT8(0U, surface.digitalFrame.cells[3].decimalPoint);
 }
 
+void test_display_layout_validator_handles_logical_cell_bounds() {
+    DisplayLayoutProfile profile = segmentDisplayLayoutProfile(4U);
+
+    DisplayLayoutWidgetV1 widget{};
+    widget.type = static_cast<uint8_t>(DisplayLayoutWidgetType::Digital);
+    widget.width = 4U;
+    widget.height = 1U;
+    widget.digitalAlign = static_cast<uint8_t>(DisplayDigitalAlign::Right);
+    std::snprintf(widget.text, sizeof(widget.text), "%s", "12.34");
+
+    TEST_ASSERT_TRUE(validateDisplayLayoutWidget(widget, profile).ok());
+
+    widget.x = 3U;
+    TEST_ASSERT_FALSE(validateDisplayLayoutWidget(widget, profile).ok());
+}
+
 void test_display_device_clears_once_when_layout_becomes_empty() {
     FakeWifiDriver wifi;
     MetricValueResolver resolver(nullptr, wifi, 0U);
-    FakeDisplaySurface surface;
-    TestDisplayDevice device(surface);
+    FakeCharacterDisplaySurface surface;
+    TestCharacterDisplayDevice device(surface);
     device.enableReadyState();
 
     DisplayLayoutRecordV1 layout{};

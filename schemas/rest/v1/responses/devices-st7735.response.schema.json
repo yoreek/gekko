@@ -23,9 +23,10 @@
         },
         "effectiveStatus": {
           "enum": ["creating", "starting", "ready", "disabled", "faulted", "dependency_blocked", "reconfiguring", "stopping", "deleting", "unknown"]
-        }
+        },
+        "displayProfile": { "$ref": "../common/display-profile.schema.json" }
       },
-      "required": ["status", "effectiveStatus"],
+      "required": ["status", "effectiveStatus", "displayProfile"],
       "additionalProperties": false
     }
   },

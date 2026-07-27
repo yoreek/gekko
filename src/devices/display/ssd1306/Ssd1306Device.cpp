@@ -19,7 +19,7 @@ constexpr uint32_t kSsd1306DeviceConfigVersion = 6;
 } // namespace
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-class Ssd1306CanvasSurface final : public IDisplayRenderSurface {
+class Ssd1306CanvasSurface final : public IPixelDisplayRenderSurface {
 public:
     explicit Ssd1306CanvasSurface(::Adafruit_SSD1306& display) : display_(display) {}
 
@@ -182,6 +182,10 @@ const Ssd1306DeviceConfigV6& Ssd1306Device::config() const {
     return config_;
 }
 
+DisplayLayoutProfile Ssd1306Device::displayProfile() const {
+    return pixelDisplayLayoutProfile(config_.width, config_.height, false, true);
+}
+
 const DeviceBaseConfigV1& Ssd1306Device::baseConfig() const {
     return config_;
 }
@@ -253,6 +257,30 @@ bool Ssd1306Device::initializeDisplayHardware(uint32_t now) {
 #endif
 }
 
+bool Ssd1306Device::clearDisplay(const uint16_t color) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    if (surface_ == nullptr) {
+        return false;
+    }
+    surface_->clear(color);
+    return true;
+#else
+    return true;
+#endif
+}
+
+DisplayLayoutRenderResult Ssd1306Device::renderDisplayFrame(const MetricValueResolver& resolver, const uint32_t now) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    if (surface_ == nullptr) {
+        return {};
+    }
+    PixelDisplayLayoutRenderer renderer(*surface_);
+    return renderSession_.render(layout_, resolver, renderer, now);
+#else
+    return {};
+#endif
+}
+
 void Ssd1306Device::releaseDisplayHardware(uint32_t now) {
     (void)now;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
@@ -262,14 +290,6 @@ void Ssd1306Device::releaseDisplayHardware(uint32_t now) {
         display_->display();
         display_.reset();
     }
-#endif
-}
-
-IDisplayRenderSurface* Ssd1306Device::renderSurface() const {
-#if defined(ARDUINO) && !defined(UNIT_TEST)
-    return surface_.get();
-#else
-    return nullptr;
 #endif
 }
 

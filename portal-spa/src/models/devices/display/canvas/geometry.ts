@@ -1,5 +1,3 @@
-import type { Ssd1306Widget } from '@/models/devices/ssd1306/layout'
-
 export type DisplayCanvasStyle = Record<string, string>
 export type DisplayWidgetFrameStyle = Record<string, string>
 

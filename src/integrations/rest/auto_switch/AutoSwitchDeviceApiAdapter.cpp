@@ -1,22 +1,10 @@
 #include "integrations/rest/auto_switch/AutoSwitchDeviceApiAdapter.h"
 
+#include "devices/core/DeviceDependencyValidation.h"
+
 namespace ewfm {
 
 namespace {
-// A device must not appear more than once in the same auto_switch's dependency list, whether as
-// two condition links pointing at the same device or as the target switch reused as its own
-// condition - either would be a confusing, almost-certainly-accidental configuration.
-bool hasDuplicateDeviceId(const DeviceDependencyLink* links, uint8_t count) {
-    for (uint8_t index = 0; index < count; ++index) {
-        for (uint8_t otherIndex = index + 1; otherIndex < count; ++otherIndex) {
-            if (links[index].deviceId == links[otherIndex].deviceId) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
 bool parseDepsField(const JsonObjectConst& input, std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t& depCount,
                     const char*& error) {
     if (!IDeviceApiAdapter::parseDependenciesJson(input, deps, depCount, error)) {
@@ -50,7 +38,7 @@ bool parseDepsField(const JsonObjectConst& input, std::array<DeviceDependencyLin
         error = "auto switch requires a switch dependency";
         return false;
     }
-    if (hasDuplicateDeviceId(deps.data(), depCount)) {
+    if (dependencyLinksHaveDuplicateDeviceIds(deps.data(), depCount)) {
         error = "auto switch dependency device id is duplicated";
         return false;
     }
@@ -112,7 +100,7 @@ DeviceValidationResult AutoSwitchDeviceApiAdapter::validateCreateRequest(const D
     if (switchLink == nullptr) {
         return {DeviceError::InvalidRelationship, "auto switch requires a switch dependency"};
     }
-    if (hasDuplicateDeviceId(request.dependencyLinks(), request.dependencyCount())) {
+    if (dependencyLinksHaveDuplicateDeviceIds(request.dependencyLinks(), request.dependencyCount())) {
         return {DeviceError::InvalidRelationship, "auto switch dependency device id is duplicated"};
     }
 
@@ -149,7 +137,7 @@ DeviceValidationResult AutoSwitchDeviceApiAdapter::validateUpdateConfigRequest(c
     uint8_t conditionCount = 0;
 
     if (request.depsProvided) {
-        if (hasDuplicateDeviceId(request.deps.data(), request.depCount)) {
+        if (dependencyLinksHaveDuplicateDeviceIds(request.deps.data(), request.depCount)) {
             return {DeviceError::InvalidRelationship, "auto switch dependency device id is duplicated"};
         }
         switchDeviceId = 0;
@@ -196,7 +184,7 @@ AutoSwitchDeviceApiAdapter::validateSetDepsRequest(const IDeviceRuntime& runtime
                                                    const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t depCount,
                                                    const DeviceRegistry& registry) const {
     (void)runtime;
-    if (hasDuplicateDeviceId(deps.data(), depCount)) {
+    if (dependencyLinksHaveDuplicateDeviceIds(deps.data(), depCount)) {
         return {DeviceError::InvalidRelationship, "auto switch dependency device id is duplicated"};
     }
     const DeviceDependencyLink* switchDependency = nullptr;

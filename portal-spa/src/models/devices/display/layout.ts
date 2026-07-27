@@ -1,6 +1,24 @@
 import type { RasterImageFormat } from '../../../raster/raster-image-types.ts'
 
-export type DisplayWidgetType = 'text' | 'bitmap' | 'rect' | 'line' | 'circle' | 'ellipse'
+export type DisplayWidgetType = 'text' | 'character' | 'digital' | 'bitmap' | 'rect' | 'line' | 'circle' | 'ellipse'
+
+export interface DisplayWidgetCapabilities {
+  readonly supportsWrap: boolean
+  readonly supportsAutoSize: boolean
+  readonly supportsMultiLine: boolean
+  readonly supportsAlignment: boolean
+}
+
+export const DISPLAY_WIDGET_CAPABILITIES: Readonly<Record<DisplayWidgetType, DisplayWidgetCapabilities>> = {
+  text: { supportsWrap: true, supportsAutoSize: true, supportsMultiLine: true, supportsAlignment: false },
+  character: { supportsWrap: true, supportsAutoSize: true, supportsMultiLine: true, supportsAlignment: false },
+  digital: { supportsWrap: false, supportsAutoSize: false, supportsMultiLine: false, supportsAlignment: true },
+  bitmap: { supportsWrap: false, supportsAutoSize: false, supportsMultiLine: false, supportsAlignment: false },
+  rect: { supportsWrap: false, supportsAutoSize: false, supportsMultiLine: false, supportsAlignment: false },
+  line: { supportsWrap: false, supportsAutoSize: false, supportsMultiLine: false, supportsAlignment: false },
+  circle: { supportsWrap: false, supportsAutoSize: false, supportsMultiLine: false, supportsAlignment: false },
+  ellipse: { supportsWrap: false, supportsAutoSize: false, supportsMultiLine: false, supportsAlignment: false },
+}
 
 export type DisplayBindingKind = 'unbound' | 'device' | 'metric' | 'constant_text'
 export type DisplayMetricNamespace = 'dev' | 'system' | 'wifi'
@@ -42,6 +60,14 @@ export interface DisplayTextWidget extends DisplayWidgetBase {
   type: 'text'
 }
 
+export interface DisplayCharacterWidget extends DisplayWidgetBase {
+  type: 'character'
+}
+
+export interface DisplayDigitalWidget extends DisplayWidgetBase {
+  type: 'digital'
+}
+
 export interface DisplayRectWidget extends DisplayWidgetBase {
   type: 'rect'
 }
@@ -60,6 +86,8 @@ export interface DisplayEllipseWidget extends DisplayWidgetBase {
 
 export type DisplayWidget =
   | DisplayTextWidget
+  | DisplayCharacterWidget
+  | DisplayDigitalWidget
   | DisplayBitmapWidget
   | DisplayRectWidget
   | DisplayLineWidget
@@ -80,7 +108,7 @@ export interface DisplayLayoutDraft {
   pages: DisplayLayoutPage[]
 }
 
-export const DISPLAY_LAYOUT_SCHEMA_VERSION = 1
+export const DISPLAY_LAYOUT_SCHEMA_VERSION = 3
 export const DISPLAY_LAYOUT_MAX_PAGES = 2
 export const DISPLAY_LAYOUT_MAX_WIDGETS_PER_PAGE = 10
 export const DISPLAY_LAYOUT_TEXT_CAPACITY = 128
@@ -93,6 +121,8 @@ export type Ssd1306WidgetStyleFlags = DisplayWidgetStyleFlags
 export type Ssd1306WidgetBase = DisplayWidgetBase
 export type Ssd1306BitmapWidget = DisplayBitmapWidget
 export type Ssd1306TextWidget = DisplayTextWidget
+export type Ssd1306CharacterWidget = DisplayCharacterWidget
+export type Ssd1306DigitalWidget = DisplayDigitalWidget
 export type Ssd1306RectWidget = DisplayRectWidget
 export type Ssd1306LineWidget = DisplayLineWidget
 export type Ssd1306CircleWidget = DisplayCircleWidget

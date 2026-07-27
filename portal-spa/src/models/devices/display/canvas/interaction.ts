@@ -1,4 +1,4 @@
-import type { Ssd1306Widget } from '@/models/devices/ssd1306/layout'
+import type { DisplayWidget } from '@/models/devices/display/layout'
 
 export interface DisplayCanvasInteraction {
   mode: 'drag' | 'resize'
@@ -14,14 +14,14 @@ export interface DisplayCanvasInteraction {
 }
 
 export function resolveDisplayInteractionWidgets(
-  widgets: Ssd1306Widget[],
+  widgets: DisplayWidget[],
   interaction: DisplayCanvasInteraction,
   currentClientX: number,
   currentClientY: number,
   zoom: number,
   deviceWidth: number,
   deviceHeight: number,
-): Ssd1306Widget[] {
+): DisplayWidget[] {
   const scale = Math.max(1, Number.isFinite(zoom) ? zoom : 1)
   const deltaX = Math.round((currentClientX - interaction.startClientX) / scale)
   const deltaY = Math.round((currentClientY - interaction.startClientY) / scale)
@@ -30,10 +30,12 @@ export function resolveDisplayInteractionWidgets(
       return widget
     }
     if (interaction.mode === 'drag') {
+      const height = widget.type === 'digital' ? 1 : widget.height
       return {
         ...widget,
         x: clamp(interaction.startX + deltaX, 0, Math.max(0, deviceWidth - widget.width)),
-        y: clamp(interaction.startY + deltaY, 0, Math.max(0, deviceHeight - widget.height)),
+        y: clamp(interaction.startY + deltaY, 0, Math.max(0, deviceHeight - height)),
+        height,
       }
     }
     if (interaction.keepAspectRatio) {
@@ -47,10 +49,11 @@ export function resolveDisplayInteractionWidgets(
         height: preferredHeight,
       }
     }
+    const fixedHeight = widget.type === 'digital'
     return {
       ...widget,
       width: clamp(interaction.startWidth + deltaX, 1, Math.max(1, deviceWidth - widget.x)),
-      height: clamp(interaction.startHeight + deltaY, 1, Math.max(1, deviceHeight - widget.y)),
+      height: fixedHeight ? 1 : clamp(interaction.startHeight + deltaY, 1, Math.max(1, deviceHeight - widget.y)),
     }
   })
 }

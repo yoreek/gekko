@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/tm1637.config.schema.json",
+  "title": "tm1637 configuration",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean", "default": true },
+    "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" }, "minItems": 2, "maxItems": 2 },
+    "panel": { "type": "string", "enum": ["four_digit_decimal_036"] },
+    "brightness": { "type": "integer", "minimum": 0, "maximum": 7 },
+    "rotation": { "type": "integer", "enum": [0, 180] },
+    "layout": { "$ref": "../common/display-layout.schema.json" }
+  },
+  "required": ["name"],
+  "additionalProperties": true
+}

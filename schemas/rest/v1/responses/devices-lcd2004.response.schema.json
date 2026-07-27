@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/devices-lcd2004.response.schema.json",
+  "title": "lcd2004 device response",
+  "type": "object",
+  "properties": {
+    "record": { "type": "object", "properties": { "id": { "type": "integer", "minimum": 1 }, "typeName": { "const": "lcd2004" }, "configRevision": { "type": "integer", "minimum": 0 } }, "required": ["id", "typeName", "configRevision"], "additionalProperties": false },
+    "config": { "$ref": "../devices/lcd2004.config.schema.json" },
+    "runtime": { "type": "object", "properties": { "status": { "type": "string" }, "effectiveStatus": { "type": "string" }, "displayProfile": { "$ref": "../common/display-profile.schema.json" } }, "required": ["status", "effectiveStatus", "displayProfile"], "additionalProperties": false }
+  },
+  "required": ["record", "config", "runtime"],
+  "additionalProperties": false
+}

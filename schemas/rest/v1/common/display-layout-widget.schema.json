@@ -6,7 +6,7 @@
   "properties": {
     "id": { "type": "string", "minLength": 1, "maxLength": 16 },
     "type": {
-      "enum": ["text", "bitmap", "rect", "line", "circle", "ellipse", 0, 2, 3, 4, 5, 6]
+      "enum": ["text", "digital", "bitmap", "rect", "line", "circle", "ellipse", "character", 0, 1, 2, 3, 4, 5, 6, 7]
     },
     "bindingKind": {
       "enum": ["unbound", "device", "metric", "constant_text", 0, 1, 2, 3]
@@ -24,6 +24,7 @@
     "fontSize": { "type": "integer", "minimum": 1, "maximum": 255 },
     "strokeWidth": { "type": "integer", "minimum": 1, "maximum": 255 },
     "autoSize": { "type": "boolean", "default": false },
+    "wrap": { "type": "boolean", "default": false },
     "styleFlags": { "$ref": "display-layout-widget-style-flags.schema.json" },
     "color": { "type": "string" },
     "text": { "type": "string" },

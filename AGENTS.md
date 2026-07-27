@@ -9,6 +9,31 @@ See also: [portal-spa/AGENTS.md](portal-spa/AGENTS.md)
 - Prefer one class per domain/responsibility and split growing domains into focused files before they become large dispatchers.
 - Prefer plain C arrays for fixed-size scratch buffers when a wrapper type adds no value.
 
+## Shared Architecture And Duplication
+
+- Treat duplicated behavior, markup, validation, serialization, translations, and tests as an architecture defect, not as an acceptable type-specific implementation.
+- Before adding a second implementation, identify the shared responsibility and extract it into one common class, component, service, model, adapter, or contract.
+- Differences that are data, dimensions, capabilities, registration metadata, or hardware descriptors must be represented as configuration/profile data. Do not encode them as copied type-specific branches.
+- Shared user-facing behavior must use shared translation keys. Add type-specific translations only when the displayed meaning is genuinely different.
+- A new type-specific file or branch requires a concrete justification describing the behavior that cannot be represented by the shared abstraction.
+
+## Display Family Architecture
+
+- LCD1602 and LCD2004 are one HD44780 character-display family. They must use one shared firmware base class, one shared REST adapter, one shared SPA model, one shared form, one shared preview, one shared designer contract, and one shared translation namespace.
+- LCD1602 and LCD2004 differ only by registered type identity and logical geometry: LCD1602 is `16 x 2`, LCD2004 is `20 x 4`. Do not duplicate behavior, markup, validation, serialization, or translations for these two types.
+- Display-specific differences belong in a profile or metadata object such as columns, rows, supported rotation, and hardware descriptor. They must not be implemented as copied `if lcd1602` / `if lcd2004` branches when the behavior is shared.
+- All displays use the shared `layout` model. LCD must use only the `Character` widget; TM1637 must use only the `Digital` widget. LCD and TM1637 must not have line fields or a line-based REST/runtime model.
+- LCD coordinates are character-cell coordinates. TM1637 coordinates are digit-cell coordinates. Pixel coordinates, font size, color, stroke, autosize, bitmap, and pixel-style flags must not appear in LCD/TM layout contracts.
+- Hardware configuration and layout configuration are separate. Hardware pin/dependency fields remain in the common display form's hardware section; layout editing remains in the shared designer.
+- User-facing labels, errors, hints, and validation messages for the shared display family must use common i18n keys. Do not add duplicated `lcd1602` and `lcd2004` translations for identical text.
+
+## Duplication Stop Gate
+
+- Before editing a display family, identify the shared class, model, adapter, form, preview, designer contract, and translation namespace.
+- Before creating a second implementation or a type-specific branch, prove that the behavior is genuinely different. If it is only geometry or registration metadata, extend the shared profile instead.
+- Stop the implementation if the proposed change introduces duplicated LCD1602/LCD2004 code, duplicated translations, duplicated REST handling, or legacy per-row fields. Refactor the common layer first.
+- At the start of display work, state the common layer and the exact per-type differences before making file edits.
+
 ## Git Index Ownership
 
 - The user owns any files that were already staged before the current task; do not unstage, reset, or overwrite that selection.

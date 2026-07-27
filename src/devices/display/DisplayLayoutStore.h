@@ -27,6 +27,7 @@ enum class DisplayLayoutWidgetType : uint8_t {
     Line = 4,
     Circle = 5,
     Ellipse = 6,
+    Character = 7,
 };
 
 enum class DisplayDigitalAlign : uint8_t {
@@ -41,7 +42,7 @@ enum class DisplayLayoutBitmapFormat : uint8_t {
     Rgb565 = 2,
 };
 
-constexpr uint8_t kDisplayLayoutSchemaVersion = 2;
+constexpr uint8_t kDisplayLayoutSchemaVersion = 3;
 constexpr uint16_t kDisplayLayoutRecordVersion = 6;
 constexpr size_t kDisplayLayoutMaxPages = 2;
 constexpr size_t kDisplayLayoutMaxWidgetsPerPage = 10;
@@ -82,6 +83,10 @@ struct DisplayLayoutWidgetV1 {
     mutable std::optional<DisplayTextCompiledWidget> textAst{};
     std::vector<uint8_t> bitmapData{};
 };
+
+constexpr bool isDisplayTextWidgetType(const DisplayLayoutWidgetType type) {
+    return type == DisplayLayoutWidgetType::Text || type == DisplayLayoutWidgetType::Character || type == DisplayLayoutWidgetType::Digital;
+}
 
 struct DisplayLayoutPageV1 {
     char id[kDisplayLayoutPageIdCapacity]{};

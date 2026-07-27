@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-create-lcd2004.request.schema.json",
+  "title": "Create lcd2004 request",
+  "type": "object",
+  "properties": { "typeName": { "const": "lcd2004" }, "config": { "$ref": "../devices/lcd2004.config.schema.json" }, "layout": { "$ref": "../common/display-layout.schema.json" } },
+  "required": ["typeName", "config"],
+  "additionalProperties": true
+}

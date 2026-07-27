@@ -1,7 +1,7 @@
 <template>
   <svg
-    :width="outerWidth * zoom"
-    :height="outerHeight * zoom"
+    :width="outerWidth * effectiveZoom"
+    :height="outerHeight * effectiveZoom"
     :viewBox="`0 0 ${outerWidth} ${outerHeight}`"
     role="application"
   >
@@ -33,14 +33,15 @@
           fill="none"
           stroke="rgb(var(--v-theme-primary))"
           stroke-width="1"
+          vector-effect="non-scaling-stroke"
           pointer-events="none"
         />
         <rect
           v-if="widget.id === selectedWidgetId && !realPosition"
-          :x="Math.max(0, widget.width - 6)"
-          :y="Math.max(0, widget.height - 6)"
-          width="6"
-          height="6"
+          :x="Math.max(0, widget.width - selectionHandleSize)"
+          :y="Math.max(0, widget.height - selectionHandleSize)"
+          :width="selectionHandleSize"
+          :height="selectionHandleSize"
           fill="rgb(var(--v-theme-primary))"
           @pointerdown.stop="startResize($event, widget)"
         />
@@ -93,6 +94,9 @@ const emit = defineEmits<{
 
 const activeInteraction = ref<CanvasInteraction | null>(null)
 
+const effectiveZoom = computed(() => Math.max(1, props.zoom) * props.display.displayCapabilities.canvasUnitSize.width)
+const selectionHandleSize = computed(() => 6 / effectiveZoom.value)
+
 const outerWidth = computed(() => (props.realPosition ? props.nativeWidth ?? props.deviceWidth : props.deviceWidth))
 const outerHeight = computed(() => (props.realPosition ? props.nativeHeight ?? props.deviceHeight : props.deviceHeight))
 
@@ -105,7 +109,9 @@ const contentTransform = computed(() => {
 })
 
 function widgetPreviewText(widget: DisplayWidget): string {
-  return widget.type === 'text' ? resolveMetricPlaceholderText(widget.text, props.metricCatalog) : ''
+  return widget.type === 'text' || widget.type === 'character' || widget.type === 'digital'
+    ? resolveMetricPlaceholderText(widget.text, props.metricCatalog)
+    : ''
 }
 
 function isBitmapResizeActive(widgetId: string, widgetType: DisplayWidget['type']): boolean {
@@ -157,7 +163,7 @@ function updateInteraction(event: Event): void {
     interaction,
     pointerEvent.clientX,
     pointerEvent.clientY,
-    props.zoom,
+    effectiveZoom.value,
     props.deviceWidth,
     props.deviceHeight,
   )

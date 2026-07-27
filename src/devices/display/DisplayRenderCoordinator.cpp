@@ -1,6 +1,5 @@
 #include "devices/display/DisplayRenderCoordinator.h"
 
-#include "devices/display/CharacterDisplayRuntimeBase.h"
 #include "metrics/MetricValueResolver.h"
 
 namespace ewfm {
@@ -23,9 +22,6 @@ void DisplayRenderCoordinator::tick(const uint32_t now) {
         if (DisplayDeviceBase* display = runtime.displayRuntime()) {
             (void)display->renderDisplay(resolver, now);
             return;
-        }
-        if (CharacterDisplayRuntimeBase* charDisplay = runtime.characterDisplayRuntime()) {
-            (void)charDisplay->renderText(resolver, now);
         }
     });
 }

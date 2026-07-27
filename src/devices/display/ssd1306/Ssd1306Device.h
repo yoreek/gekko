@@ -2,6 +2,7 @@
 
 #include "devices/bus/i2c/I2cDeviceRuntimeBase.h"
 #include "devices/display/DisplayDeviceBase.h"
+#include "devices/display/render/PixelDisplayLayoutRenderer.h"
 #include "devices/display/ssd1306/Ssd1306DeviceConfig.h"
 
 #include <ArduinoJson.h>
@@ -22,13 +23,15 @@ public:
     ~Ssd1306Device() override;
 
     const Ssd1306DeviceConfigV6& config() const;
+    DisplayLayoutProfile displayProfile() const override;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const override;
     bool applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) override;
     void writeDisplayConfigJson(JsonObject output) const override;
     bool initializeDisplayHardware(uint32_t now) override;
     void releaseDisplayHardware(uint32_t now) override;
-    IDisplayRenderSurface* renderSurface() const override;
+    bool clearDisplay(uint16_t color) override;
+    DisplayLayoutRenderResult renderDisplayFrame(const MetricValueResolver& resolver, uint32_t now) override;
     void onDisplayFrameRendered(const DisplayLayoutRenderResult& result) override;
 
     static DeviceTypeDescriptor descriptor();

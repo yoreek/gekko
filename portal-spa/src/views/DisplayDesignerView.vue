@@ -25,6 +25,11 @@
                 {{ type.label }}
               </v-btn>
             </v-col>
+            <v-col cols="auto">
+              <v-chip variant="tonal" color="primary">
+                {{ unitLabel }}
+              </v-chip>
+            </v-col>
           </v-row>
 
           <v-row density="comfortable">
@@ -68,14 +73,6 @@
                         @update:model-value="updateBackgroundColor"
                       />
                     </v-col>
-                    <v-col cols="12" class="mt-2">
-                      <v-checkbox
-                        v-model="realPositionPreview"
-                        :label="t('device.dialog.display.previewTitle')"
-                        density="compact"
-                        hide-details
-                      />
-                    </v-col>
                   </v-row>
                 </div>
                 <v-sheet class="overflow-auto" max-height="480">
@@ -88,8 +85,7 @@
                     :display="display"
                     :background-color="display.supportsColor ? layout?.backgroundColor ?? '#000000' : '#000000'"
                     :metric-catalog="metricCatalog"
-                    :real-position="realPositionPreview"
-                    :rotation="draftConfig?.rotation ?? 0"
+                    :rotation="designerRotationTurns"
                     :native-width="draftConfig?.width ?? displayTypeEntry.defaultWidth"
                     :native-height="draftConfig?.height ?? displayTypeEntry.defaultHeight"
                     @select-widget="selectWidget"
@@ -143,7 +139,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, ref, toRef } from 'vue'
+import { computed, onBeforeMount, ref, toRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -203,20 +199,41 @@ const {
 
 const layout = computed(() => draftConfig.value?.layout ?? null)
 
-const zoom = ref(3)
-const realPositionPreview = ref(false)
+const zoom = ref(displayTypeEntry.value.designerDefaultZoom)
+const unitLabel = computed(() => {
+  switch (display.value.coordinateUnit) {
+    case 'cell':
+      return t('device.dialog.display.unitLabelCell')
+    case 'digit':
+      return t('device.dialog.display.unitLabelDigit')
+    default:
+      return t('device.dialog.display.unitLabelPixel')
+  }
+})
+const designerRotationTurns = computed(() => display.value.resolveDesignerRotation(draftConfig.value?.rotation ?? 0))
 
-const deviceWidth = computed(() => resolveDisplayEffectiveSize(draftConfig.value?.width ?? displayTypeEntry.value.defaultWidth, draftConfig.value?.height ?? displayTypeEntry.value.defaultHeight, draftConfig.value?.rotation ?? 0).effectiveWidth)
-const deviceHeight = computed(() => resolveDisplayEffectiveSize(draftConfig.value?.width ?? displayTypeEntry.value.defaultWidth, draftConfig.value?.height ?? displayTypeEntry.value.defaultHeight, draftConfig.value?.rotation ?? 0).effectiveHeight)
+const deviceWidth = computed(() => resolveDisplayEffectiveSize(
+  draftConfig.value?.width ?? displayTypeEntry.value.defaultWidth,
+  draftConfig.value?.height ?? displayTypeEntry.value.defaultHeight,
+  designerRotationTurns.value,
+).effectiveWidth)
+const deviceHeight = computed(() => resolveDisplayEffectiveSize(
+  draftConfig.value?.width ?? displayTypeEntry.value.defaultWidth,
+  draftConfig.value?.height ?? displayTypeEntry.value.defaultHeight,
+  designerRotationTurns.value,
+).effectiveHeight)
 
-const widgetTypeOptions: Array<{ value: DisplayWidgetType; label: string; icon: string }> = [
-  { value: 'text', label: t('device.dialog.display.widgetTypes.text'), icon: 'oled-text' },
-  { value: 'bitmap', label: t('device.dialog.display.widgetTypes.bitmap'), icon: 'oled-bitmap' },
-  { value: 'rect', label: t('device.dialog.display.widgetTypes.rect'), icon: 'oled-rect' },
-  { value: 'line', label: t('device.dialog.display.widgetTypes.line'), icon: 'oled-line' },
-  { value: 'circle', label: t('device.dialog.display.widgetTypes.circle'), icon: 'oled-circle' },
-  { value: 'ellipse', label: t('device.dialog.display.widgetTypes.ellipse'), icon: 'oled-ellipse' },
-]
+const widgetTypeOptions = computed<Array<{ value: DisplayWidgetType; label: string; icon: string }>>(() =>
+  display.value.supportedWidgetTypes.map(value => ({
+    value,
+    label: t(`device.dialog.display.widgetTypes.${value}`),
+    icon: iconForWidgetType(value),
+  })),
+)
+
+watch(displayTypeEntry, entry => {
+  zoom.value = entry.designerDefaultZoom
+}, { immediate: true })
 
 onBeforeMount(async () => {
   await deviceStore.initialize()
@@ -231,6 +248,25 @@ async function onSave(): Promise<void> {
   await save()
   if (!errorMessage.value) {
     notifications.notify(t('notifications.deviceSaved'), 'success')
+  }
+}
+
+function iconForWidgetType(type: DisplayWidgetType): string {
+  switch (type) {
+    case 'digital':
+      return 'display'
+    case 'bitmap':
+      return 'oled-bitmap'
+    case 'rect':
+      return 'oled-rect'
+    case 'line':
+      return 'oled-line'
+    case 'circle':
+      return 'oled-circle'
+    case 'ellipse':
+      return 'oled-ellipse'
+    default:
+      return 'oled-text'
   }
 }
 </script>

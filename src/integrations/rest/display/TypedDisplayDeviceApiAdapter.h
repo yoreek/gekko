@@ -3,6 +3,7 @@
 #include "devices/core/ConfigCodec.h"
 #include "devices/core/DeviceBaseConfig.h"
 #include "devices/display/DisplayLayoutCodec.h"
+#include "devices/display/DisplayLayoutProfile.h"
 #include "integrations/rest/display/DisplayDeviceApiAdapter.h"
 
 namespace ewfm {
@@ -175,6 +176,9 @@ public:
     void writeDeviceJson(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus, JsonObject output) const final {
         writeCommonDeviceJson(runtime, effectiveStatus, typeName(), output);
         writeConfigJson(runtime, output["config"].as<JsonObject>());
+        JsonObject runtimeJson = output["runtime"].as<JsonObject>();
+        JsonObject profileJson = runtimeJson.createNestedObject("displayProfile");
+        writeDisplayLayoutProfileJson(static_cast<const Device&>(runtime).displayProfile(), profileJson);
     }
 
     void writeConfigJson(const IDeviceRuntime& runtime, JsonObject config) const final {

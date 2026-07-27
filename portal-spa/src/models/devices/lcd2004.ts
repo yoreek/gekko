@@ -2,9 +2,9 @@ import type { DeviceRecord, DeviceDependencyLink, BaseDeviceConfig, Lcd2004Outpu
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import type { DeviceRole } from '@/models/device-type-ids'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
+import { defaultLcd2004Layout, encodeLcd2004Layout, normalizeLcd2004Layout, type Lcd2004LayoutDraft } from './lcd2004/layout.ts'
 import { standardLcd1602Wiring } from './lcd1602.ts'
 
-export const LCD2004_LINE_LENGTH = 20
 export const LCD2004_CHANNEL_UNSET = 255
 
 type Lcd2004WiringChannels = Pick<
@@ -21,10 +21,7 @@ export interface Lcd2004ConfigDraft extends BaseDeviceConfig {
   d6Channel: number
   d7Channel: number
   backlightChannel: number
-  line1: string
-  line2: string
-  line3: string
-  line4: string
+  layout: Lcd2004LayoutDraft
 }
 
 export interface Lcd2004CreateDraft extends DeviceCreateDraftBase, Lcd2004ConfigDraft {}
@@ -50,10 +47,6 @@ function normalizeBacklightChannel(value: unknown, fallback: number): number {
   return normalizeChannel(value, fallback)
 }
 
-function normalizeLine(value: unknown, fallback: string): string {
-  return typeof value === 'string' ? value.slice(0, LCD2004_LINE_LENGTH) : fallback
-}
-
 // Same near-universal PCF8574 LCM-IIC backpack wiring as lcd1602 (RS=P0, RW=P1 unused/tied low,
 // E=P2, Backlight=P3, D4-D7=P4-P7) -- the channel roles are identical, only the visible geometry
 // (columns/rows) differs between the two panel types.
@@ -74,10 +67,7 @@ export class Lcd2004Device extends BaseDevice<Lcd2004ConfigDraft, Lcd2004CreateD
       ...defaultBaseDeviceConfig(),
       expanderDeviceId: 0,
       ...standardLcd2004Wiring(),
-      line1: '',
-      line2: '',
-      line3: '',
-      line4: '',
+      layout: defaultLcd2004Layout(),
     }
   }
 
@@ -105,10 +95,7 @@ export class Lcd2004Device extends BaseDevice<Lcd2004ConfigDraft, Lcd2004CreateD
       d6Channel: normalizeChannel(raw.d6Channel, defaults.d6Channel),
       d7Channel: normalizeChannel(raw.d7Channel, defaults.d7Channel),
       backlightChannel: normalizeBacklightChannel(raw.backlightChannel, defaults.backlightChannel),
-      line1: normalizeLine(raw.line1, defaults.line1),
-      line2: normalizeLine(raw.line2, defaults.line2),
-      line3: normalizeLine(raw.line3, defaults.line3),
-      line4: normalizeLine(raw.line4, defaults.line4),
+      layout: normalizeLcd2004Layout(raw.layout ?? defaults.layout),
     }
   }
 
@@ -122,10 +109,7 @@ export class Lcd2004Device extends BaseDevice<Lcd2004ConfigDraft, Lcd2004CreateD
       d6Channel: config.d6Channel,
       d7Channel: config.d7Channel,
       backlightChannel: config.backlightChannel,
-      line1: config.line1,
-      line2: config.line2,
-      line3: config.line3,
-      line4: config.line4,
+      layout: encodeLcd2004Layout(config.layout),
     }
   }
 
@@ -153,7 +137,7 @@ export class Lcd2004Device extends BaseDevice<Lcd2004ConfigDraft, Lcd2004CreateD
   }
 
   normalizeOutput(record: DeviceRecord): Lcd2004OutputSnapshot {
-    return record.runtime as Lcd2004OutputSnapshot
+    return record.runtime as unknown as Lcd2004OutputSnapshot
   }
 
   protected override encodeConfig(config: Lcd2004ConfigDraft): Record<string, unknown> {

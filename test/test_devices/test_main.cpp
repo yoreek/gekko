@@ -144,6 +144,11 @@ void test_lcd2004_type_and_api_adapter_are_registered();
 void test_lcd2004_reaches_ready_through_port_expander_and_renders_with_diffing();
 void test_lcd2004_sends_correct_ddram_row_addresses();
 void test_lcd2004_adapter_rejects_duplicate_channel_on_same_expander_but_allows_distinct_channel();
+void test_tm1637_config_codec_json_and_validation();
+void test_tm1637_config_rejects_invalid_fields();
+void test_tm1637_type_and_api_adapter_are_registered();
+void test_tm1637_segment_codec_applies_decimal_point_and_rotation();
+void test_tm1637_device_renders_digital_layout_and_diffing();
 void test_device_api_adapter_registry_resolves_gpio_switch();
 void test_gpio_switch_api_adapter_parses_create_request();
 void test_gpio_switch_api_adapter_rejects_invalid_pin();
@@ -249,6 +254,7 @@ void test_metric_value_resolver_resolves_system_values();
 void test_display_layout_renderer_clears_once_and_uses_min_refresh_interval();
 void test_display_layout_renderer_rerenders_when_page_changes();
 void test_display_layout_renderer_renders_digital_widget_with_decimal_point();
+void test_display_layout_validator_handles_logical_cell_bounds();
 void test_display_device_clears_once_when_layout_becomes_empty();
 void test_display_text_evaluator_resolves_static_and_placeholder_text();
 void test_display_text_evaluator_handles_missing_and_binding_only_metrics();
@@ -568,6 +574,7 @@ int main(int, char**) {
     RUN_TEST(test_display_layout_renderer_clears_once_and_uses_min_refresh_interval);
     RUN_TEST(test_display_layout_renderer_rerenders_when_page_changes);
     RUN_TEST(test_display_layout_renderer_renders_digital_widget_with_decimal_point);
+    RUN_TEST(test_display_layout_validator_handles_logical_cell_bounds);
     RUN_TEST(test_display_device_clears_once_when_layout_becomes_empty);
     RUN_TEST(test_display_text_evaluator_resolves_static_and_placeholder_text);
     RUN_TEST(test_display_text_evaluator_handles_missing_and_binding_only_metrics);
@@ -659,5 +666,10 @@ int main(int, char**) {
     RUN_TEST(test_lcd2004_reaches_ready_through_port_expander_and_renders_with_diffing);
     RUN_TEST(test_lcd2004_sends_correct_ddram_row_addresses);
     RUN_TEST(test_lcd2004_adapter_rejects_duplicate_channel_on_same_expander_but_allows_distinct_channel);
+    RUN_TEST(test_tm1637_config_codec_json_and_validation);
+    RUN_TEST(test_tm1637_config_rejects_invalid_fields);
+    RUN_TEST(test_tm1637_type_and_api_adapter_are_registered);
+    RUN_TEST(test_tm1637_segment_codec_applies_decimal_point_and_rotation);
+    RUN_TEST(test_tm1637_device_renders_digital_layout_and_diffing);
     return UNITY_END();
 }

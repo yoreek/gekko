@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-create-lcd1602.request.schema.json",
+  "title": "Create lcd1602 request",
+  "type": "object",
+  "properties": { "typeName": { "const": "lcd1602" }, "config": { "$ref": "../devices/lcd1602.config.schema.json" }, "layout": { "$ref": "../common/display-layout.schema.json" } },
+  "required": ["typeName", "config"],
+  "additionalProperties": true
+}

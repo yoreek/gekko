@@ -82,15 +82,17 @@ export function useDisplayDesigner(
   }
 
   function updateActiveWidgets(nextWidgets: DisplayWidget[]): void {
-    if (draftConfig.value === null || layout.value === null || activePage.value === null) return
+    if (draftConfig.value === null || layout.value === null || activePage.value === null || device.value === null) return
     const pageId = activePage.value.id
-    draftConfig.value = {
-      ...draftConfig.value,
-      layout: {
-        ...layout.value,
-        pages: layout.value.pages.map(page => (page.id === pageId ? { ...page, widgets: nextWidgets } : page)),
-      },
+    const nextLayout = {
+      ...layout.value,
+      pages: layout.value.pages.map(page => (page.id === pageId ? { ...page, widgets: nextWidgets } : page)),
     }
+    const normalized = normalizeConfig({
+      ...device.value,
+      config: { ...draftConfig.value, layout: nextLayout },
+    } as unknown as DeviceRecord)
+    draftConfig.value = { ...draftConfig.value, layout: normalized.layout }
   }
 
   function updateBackgroundColor(backgroundColor: string): void {
@@ -107,10 +109,11 @@ export function useDisplayDesigner(
   function addWidget(type: DisplayWidgetType): void {
     if (draftConfig.value === null) return
     const nextWidget = display.value.createWidget(type, widgets.value.length)
+    const rotation = display.value.resolveDesignerRotation(draftConfig.value.rotation)
     const { effectiveWidth, effectiveHeight } = resolveDisplayEffectiveSize(
       draftConfig.value.width,
       draftConfig.value.height,
-      draftConfig.value.rotation,
+      rotation,
     )
     const position = resolveDisplayWidgetSpawnPosition(widgets.value.length, effectiveWidth, effectiveHeight, nextWidget.width, nextWidget.height)
     nextWidget.x = position.x
@@ -120,9 +123,10 @@ export function useDisplayDesigner(
   }
 
   function updateSelectedWidget(patch: Partial<DisplayWidget>): void {
-    if (selectedWidget.value === null) return
+    if (selectedWidget.value === null || draftConfig.value === null || layout.value === null || device.value === null) return
     const id = selectedWidget.value.id
-    updateActiveWidgets(widgets.value.map(widget => (widget.id === id ? { ...widget, ...patch } as DisplayWidget : widget)))
+    const nextWidgets = widgets.value.map(widget => (widget.id === id ? { ...widget, ...patch } as DisplayWidget : widget))
+    updateActiveWidgets(nextWidgets)
   }
 
   function moveWidgetUp(widgetId: string): void {
@@ -147,10 +151,11 @@ export function useDisplayDesigner(
     if (draftConfig.value === null) return
     const widget = widgets.value.find(entry => entry.id === widgetId)
     if (widget === undefined) return
+    const rotation = display.value.resolveDesignerRotation(draftConfig.value.rotation)
     const { effectiveWidth, effectiveHeight } = resolveDisplayEffectiveSize(
       draftConfig.value.width,
       draftConfig.value.height,
-      draftConfig.value.rotation,
+      rotation,
     )
     const position = resolveDisplayWidgetDuplicatePosition(widget.x, widget.y, widget.width, widget.height, effectiveWidth, effectiveHeight)
     const duplicate: DisplayWidget = { ...widget, id: `${widget.type}-${Date.now()}`, ...position }

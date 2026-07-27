@@ -1,5 +1,7 @@
 #include "devices/display/DisplayDeviceBase.h"
 
+#include "devices/display/DisplayLayoutValidator.h"
+
 namespace ewfm {
 
 #undef SM_CLASS
@@ -29,6 +31,10 @@ DeviceValidationResult DisplayDeviceBase::loadPersistedState(DeviceScopedDataSto
             invalidateDisplayRender();
         }
         return result;
+    }
+    const DeviceValidationResult layoutResult = validateDisplayLayout(layout, displayProfile());
+    if (!layoutResult.ok()) {
+        return layoutResult;
     }
     layout_ = layout;
     invalidateDisplayRender();
@@ -66,6 +72,10 @@ DeviceValidationResult DisplayDeviceBase::applyPersistedStateUpdate(const uint8_
     if (layout.deviceId != 0U && layout.deviceId != deviceId()) {
         return {DeviceError::InvalidDeviceId, "device scoped data device id is invalid"};
     }
+    const DeviceValidationResult layoutResult = validateDisplayLayout(layout, displayProfile());
+    if (!layoutResult.ok()) {
+        return layoutResult;
+    }
     layout.deviceId = deviceId();
     layout_ = layout;
     invalidateDisplayRender();
@@ -76,8 +86,15 @@ const DisplayLayoutRecordV1& DisplayDeviceBase::layout() const {
 }
 
 void DisplayDeviceBase::setLayout(const DisplayLayoutRecordV1& layout) {
+    if (!layout.pages.empty() && !validateDisplayLayout(layout, displayProfile()).ok()) {
+        return;
+    }
     layout_ = layout;
     invalidateDisplayRender();
+}
+
+DisplayLayoutProfile DisplayDeviceBase::displayProfile() const {
+    return defaultDisplayLayoutProfile();
 }
 
 DisplayDeviceBase* DisplayDeviceBase::displayRuntime() {
@@ -92,21 +109,19 @@ bool DisplayDeviceBase::renderDisplay(const MetricValueResolver& resolver, const
     if (status_ != DeviceStatus::Ready) {
         return false;
     }
-    IDisplayRenderSurface* surface = renderSurface();
-    if (surface == nullptr) {
-        return false;
-    }
     if (layout_.pages.empty()) {
         if (emptyLayoutCleared_) {
             return false;
         }
-        surface->clear(layout_.backgroundColor);
+        if (!clearDisplay(layout_.backgroundColor)) {
+            return false;
+        }
         emptyLayoutCleared_ = true;
         onDisplayFrameRendered({});
         return true;
     }
     emptyLayoutCleared_ = false;
-    const DisplayLayoutRenderResult result = renderSession_.render(layout_, resolver, *surface, now);
+    const DisplayLayoutRenderResult result = renderDisplayFrame(resolver, now);
     if (result.rendered) {
         onDisplayFrameRendered(result);
     }
@@ -120,10 +135,6 @@ bool DisplayDeviceBase::initializeDisplayHardware(uint32_t now) {
 
 void DisplayDeviceBase::releaseDisplayHardware(uint32_t now) {
     (void)now;
-}
-
-IDisplayRenderSurface* DisplayDeviceBase::renderSurface() const {
-    return nullptr;
 }
 
 void DisplayDeviceBase::onDisplayFrameRendered(const DisplayLayoutRenderResult& result) {

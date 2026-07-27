@@ -39,7 +39,7 @@
           :model-value="widget.y"
           type="number"
           min="0"
-          :max="deviceHeight"
+          :max="Math.max(0, deviceHeight - 1)"
           @update:model-value="updateNumber('y', $event)"
         />
       </v-col>
@@ -99,7 +99,7 @@
           @update:model-value="updateBitmapDimension('height', $event)"
         />
       </v-col>
-      <v-col v-if="isTextWidget" cols="6">
+      <v-col v-if="isTextWidget && !isCharacterWidget" cols="6">
         <v-text-field
           density="compact"
           variant="outlined"
@@ -125,7 +125,7 @@
           @update:model-value="updateNumber('strokeWidth', $event)"
         />
       </v-col>
-      <v-col v-if="display.supportsColor && !isBitmapWidget" cols="12">
+      <v-col v-if="display.supportsColor && !isBitmapWidget && !isCharacterWidget && !isDigitalWidget" cols="12">
         <DisplayColorField
           :label="t('device.dialog.display.color')"
           :model-value="widget.color"
@@ -135,7 +135,7 @@
     </v-row>
 
     <!-- Text -->
-    <v-row v-if="isTextWidget" density="comfortable" class="mt-1">
+    <v-row v-if="isTextLikeWidget" density="comfortable" class="mt-1">
       <v-col cols="12">
         <v-textarea
           :label="t('device.dialog.display.text')"
@@ -148,7 +148,7 @@
           @update:model-value="updateText(String($event))"
         />
       </v-col>
-      <v-col cols="12">
+      <v-col v-if="fitInfo.title.length > 0 || fitInfo.details.length > 0" cols="12">
         <v-chip size="small" variant="tonal" :color="fitInfo.type" class="me-2">
           {{ fitInfo.title }}
         </v-chip>
@@ -175,7 +175,7 @@
     </v-row>
 
     <MetricPlaceholderBuilder
-      v-if="isTextWidget"
+      v-if="isTextLikeWidget"
       class="mt-3"
       :catalog="metricCatalog"
       :loading="metricsLoading"
@@ -230,7 +230,7 @@
 
     <!-- Toggles -->
     <v-row density="comfortable" class="mt-1">
-      <v-col v-if="isTextWidget" cols="12">
+      <v-col v-if="isTextWidget && display.widgetCapabilities(widget.type).supportsAutoSize" cols="12">
         <v-switch
           :label="t('device.dialog.display.autoSize')"
           :model-value="widget.autoSize"
@@ -250,7 +250,7 @@
           @update:model-value="updateFlag('filled', Boolean($event))"
         />
       </v-col>
-      <v-col cols="12">
+      <v-col v-if="!isCharacterWidget && !isDigitalWidget" cols="12">
         <v-switch
           :label="t('device.dialog.display.inverted')"
           :model-value="widget.styleFlags.inverted"
@@ -260,7 +260,7 @@
           @update:model-value="updateFlag('inverted', Boolean($event))"
         />
       </v-col>
-      <v-col v-if="isTextWidget" cols="12">
+      <v-col v-if="isTextWidget && display.widgetCapabilities(widget.type).supportsWrap" cols="12">
         <v-switch
           :label="t('device.dialog.display.wrap')"
           :model-value="widget.styleFlags.wrap"
@@ -317,19 +317,40 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const widgetTypeItems: Array<{ title: string; value: DisplayWidgetType }> = (['text', 'bitmap', 'rect', 'line', 'circle', 'ellipse'] as DisplayWidgetType[]).map(value => ({
-  title: t(`device.dialog.display.widgetTypes.${value}`),
-  value,
-}))
+const widgetTypeItems = computed<Array<{ title: string; value: DisplayWidgetType }>>(() =>
+  props.display.supportedWidgetTypes.map(value => ({
+    title: t(`device.dialog.display.widgetTypes.${value}`),
+    value,
+  })),
+)
 
-const isTextWidget = computed(() => props.widget.type === 'text')
+const isTextWidget = computed(() => props.widget.type === 'text' || props.widget.type === 'character')
+const isCharacterWidget = computed(() => props.widget.type === 'character')
+const isDigitalWidget = computed(() => props.widget.type === 'digital')
+const isTextLikeWidget = computed(() => isTextWidget.value || isDigitalWidget.value)
 const isBitmapWidget = computed(() => props.widget.type === 'bitmap')
 const supportsFill = computed(() => props.widget.type === 'rect' || props.widget.type === 'circle' || props.widget.type === 'ellipse')
 const supportsStroke = computed(() => props.widget.type === 'rect' || props.widget.type === 'line' || props.widget.type === 'circle' || props.widget.type === 'ellipse')
-const resolvedPreviewText = computed(() => (isTextWidget.value ? resolveMetricPlaceholderText(props.widget.text, props.metricCatalog) : ''))
+const resolvedPreviewText = computed(() => (isTextLikeWidget.value ? resolveMetricPlaceholderText(props.widget.text, props.metricCatalog) : ''))
 
 const fitInfo = computed<{ type: 'info' | 'success' | 'warning'; title: string; details: string }>(() => {
-  if (props.widget.type !== 'text') return { type: 'info', title: '', details: '' }
+  if (isCharacterWidget.value) {
+    const width = Math.max(1, props.widget.width)
+    const height = Math.max(1, props.widget.height)
+    const sourceLines = resolvedPreviewText.value.split('\n')
+    const lines = sourceLines.reduce((count, line) => count + (props.widget.styleFlags.wrap ? Math.max(1, Math.ceil(Math.max(1, line.length) / width)) : 1), 0)
+    const longestLine = Math.max(0, ...sourceLines.map(line => line.length))
+    const fits = lines <= height && (props.widget.styleFlags.wrap || longestLine <= width)
+    return {
+      type: fits ? 'success' : 'warning',
+      title: fits ? t('device.dialog.display.fits') : t('device.dialog.display.clips'),
+      details: t('device.dialog.display.sizeFit', {
+        needed: `${props.widget.styleFlags.wrap ? width : longestLine} × ${lines}`,
+        box: `${width} × ${height}`,
+      }),
+    }
+  }
+  if (!isTextWidget.value) return { type: 'info', title: '', details: '' }
   const measurement = measureSsd1306TextWidget(props.widget, { text: resolvedPreviewText.value })
   return {
     type: measurement.fits ? 'success' : 'warning',
@@ -397,7 +418,7 @@ watch(() => props.widget.text, text => {
 })
 watch(() => props.metricCatalog, () => runPlaceholderValidation(props.widget.text))
 watch(() => props.widget.refreshIntervalMs, () => restartMetricRefresh())
-watch(isTextWidget, () => restartMetricRefresh())
+watch(isTextLikeWidget, () => restartMetricRefresh())
 
 function updateField<K extends keyof DisplayWidget>(key: K, value: DisplayWidget[K]): void {
   emit('update-widget', { [key]: value } as Partial<DisplayWidget>)
@@ -409,7 +430,7 @@ function updateKeepAspectRatio(value: boolean): void {
 }
 
 function updateWidgetType(value: string): void {
-  if (!['text', 'bitmap', 'rect', 'line', 'circle', 'ellipse'].includes(value)) return
+  if (!props.display.supportedWidgetTypes.includes(value as DisplayWidgetType)) return
   if (value === 'bitmap') {
     emit('update-widget', {
       type: 'bitmap',
@@ -429,7 +450,14 @@ function updateFlag(key: keyof DisplayWidget['styleFlags'], value: boolean): voi
 function updateNumber(key: keyof Pick<DisplayWidget, 'x' | 'y' | 'width' | 'height' | 'fontSize' | 'strokeWidth'>, value: string | number): void {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return
-  emit('update-widget', { [key]: Math.round(numeric) } as Partial<DisplayWidget>)
+  const maximum = key === 'y'
+      ? Math.max(0, props.deviceHeight - props.widget.height)
+      : key === 'x'
+        ? Math.max(0, props.deviceWidth - props.widget.width)
+        : key === 'width'
+          ? Math.max(1, props.deviceWidth - props.widget.x)
+          : Number.POSITIVE_INFINITY
+  emit('update-widget', { [key]: Math.max(key === 'height' || key === 'width' ? 1 : 0, Math.min(Math.round(numeric), maximum)) } as Partial<DisplayWidget>)
 }
 
 function normalizeRefreshInterval(value: string | number): number {
@@ -490,7 +518,7 @@ function stopMetricRefresh(): void {
 
 function restartMetricRefresh(): void {
   stopMetricRefresh()
-  if (!isTextWidget.value || props.widget.refreshIntervalMs <= 0 || validateMetricPlaceholders(props.widget.text, props.metricCatalog).status === 'static') return
+  if (!isTextLikeWidget.value || props.widget.refreshIntervalMs <= 0 || validateMetricPlaceholders(props.widget.text, props.metricCatalog).status === 'static') return
   refreshTimer = setInterval(() => {
     void loadMetricCatalog()
   }, props.widget.refreshIntervalMs)

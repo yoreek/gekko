@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/lcd2004.config.schema.json",
+  "title": "lcd2004 configuration",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean", "default": true },
+    "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" }, "minItems": 6, "maxItems": 7 },
+    "rsChannel": { "type": "integer", "minimum": 0, "maximum": 15 },
+    "eChannel": { "type": "integer", "minimum": 0, "maximum": 15 },
+    "d4Channel": { "type": "integer", "minimum": 0, "maximum": 15 },
+    "d5Channel": { "type": "integer", "minimum": 0, "maximum": 15 },
+    "d6Channel": { "type": "integer", "minimum": 0, "maximum": 15 },
+    "d7Channel": { "type": "integer", "minimum": 0, "maximum": 15 },
+    "backlightChannel": { "type": "integer", "minimum": 0, "maximum": 15 }
+    ,"layout": { "$ref": "../common/display-layout.schema.json" }
+  },
+  "required": ["name"],
+  "additionalProperties": true
+}

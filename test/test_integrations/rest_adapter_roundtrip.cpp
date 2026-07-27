@@ -1220,7 +1220,7 @@ void test_analog_output_composer_api_adapter_serializes_record() {
     AnalogOutputComposerDevice device(config);
     device.bindDeviceIdentity(record, blob);
 
-    StaticJsonDocument<4096> doc;
+    StaticJsonDocument<1024> doc;
     JsonObject output = doc.to<JsonObject>();
     AnalogOutputComposerDeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
 
@@ -1519,7 +1519,7 @@ void test_ds18b20_api_adapter_serializes_record() {
     sensor.begin(10U);
     sensor.tick100ms(11U);
 
-    StaticJsonDocument<2048> doc;
+    StaticJsonDocument<4096> doc;
     JsonObject output = doc.to<JsonObject>();
     Ds18b20TemperatureSensorDeviceApiAdapter::instance().writeDeviceJson(sensor, sensor.status(), output);
 
@@ -1705,7 +1705,7 @@ void test_analog_input_channel_api_adapter_serializes_record() {
     bindAnalogInputChannelIdentity(device, 8023U, 44U);
     driveAnalogInputChannelUntilReading(device, hub);
 
-    StaticJsonDocument<1024> doc;
+    StaticJsonDocument<2048> doc;
     JsonObject output = doc.to<JsonObject>();
     AnalogInputChannelDeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
 
@@ -1882,7 +1882,7 @@ void test_rtc_ds3231_api_adapter_serializes_record() {
     bindRtcIdentity(device, 9013U, 9012U);
     driveRtcUntilReading(device, bus);
 
-    StaticJsonDocument<1024> doc;
+    StaticJsonDocument<4096> doc;
     JsonObject output = doc.to<JsonObject>();
     Ds3231RtcDeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
 
@@ -2059,7 +2059,7 @@ void test_st7735_api_adapter_serializes_record() {
     const DeviceRegistryEntry record = makeSt7735Record(9031U, 11U, config);
     St7735Device device(record, blob);
 
-    StaticJsonDocument<1024> doc;
+    StaticJsonDocument<4096> doc;
     JsonObject output = doc.to<JsonObject>();
     St7735DeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
 

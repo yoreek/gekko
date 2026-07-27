@@ -1,11 +1,14 @@
 <template>
-  <v-row density="comfortable">
-    <!-- I2C connection (bus id, address + scan) -->
-    <v-col v-if="dependencyItems.length === 0" cols="12">
-      <v-alert type="warning" variant="tonal">
+  <DisplayDeviceFieldsFrame
+    :device="props.device"
+    :designer-label="t('device.dialog.openDesigner')"
+  >
+    <template #notice>
+      <v-alert v-if="dependencyItems.length === 0" type="warning" variant="tonal">
         {{ t('device.dialog.ssd1306Display.noDependency') }}
       </v-alert>
-    </v-col>
+    </template>
+
     <v-col cols="12" sm="4">
       <v-select
         :model-value="modelValue.dependencyDeviceId"
@@ -25,7 +28,6 @@
       />
     </v-col>
 
-    <!-- Display geometry -->
     <v-col cols="12" sm="6">
       <v-select
         :model-value="modelValue.panel"
@@ -70,26 +72,15 @@
         @update:model-value="update('height', Number($event))"
       />
     </v-col>
-    <v-col cols="12">
+
+    <template #preview>
       <DisplayOrientationPreview
         :width="modelValue.width"
         :height="modelValue.height"
         :rotation="modelValue.rotation"
       />
-    </v-col>
-
-    <!-- Designer button (only once the device exists) -->
-    <v-col v-if="device" cols="12">
-      <v-btn
-        color="primary"
-        variant="tonal"
-        :to="{ name: 'device-design', params: { id: device.record.id } }"
-      >
-        <v-icon class="me-2" icon="design-display" />
-        {{ t('device.dialog.ssd1306Display.designerTitle') }}
-      </v-btn>
-    </v-col>
-  </v-row>
+    </template>
+  </DisplayDeviceFieldsFrame>
 </template>
 
 <script setup lang="ts" generic="T extends Ssd1306ConfigDraft">
@@ -98,6 +89,7 @@ import { useI18n } from 'vue-i18n'
 import type { DeviceRecord } from '@/api/contracts'
 import type { Ssd1306ConfigDraft } from '@/models/devices/ssd1306/device'
 import I2cAddressPicker from '@/components/devices/common/I2cAddressPicker.vue'
+import DisplayDeviceFieldsFrame from '@/components/devices/display/DisplayDeviceFieldsFrame.vue'
 import DisplayOrientationPreview from '@/components/devices/display/DisplayOrientationPreview.vue'
 import { dependencyOptionsForRole } from '@/models/devices/device-model-factory'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'

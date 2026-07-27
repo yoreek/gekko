@@ -53,17 +53,9 @@ export interface PortExpanderOutputSnapshot {
   diagnostics?: BusRuntimeDiagnosticsSnapshot
 }
 
-export interface Lcd1602OutputSnapshot {
-  line1?: string
-  line2?: string
-}
+export type Lcd1602OutputSnapshot = Record<string, never>
 
-export interface Lcd2004OutputSnapshot {
-  line1?: string
-  line2?: string
-  line3?: string
-  line4?: string
-}
+export type Lcd2004OutputSnapshot = Record<string, never>
 
 // Deliberately empty: the firmware never pushes a live "active"/"timeValid" value (ScheduleDevice
 // never marks itself runtime-dirty, so it would just be a stale snapshot from page load) - the

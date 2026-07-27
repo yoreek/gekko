@@ -40,7 +40,7 @@ bool Pcf857xExpanderDeviceBase::hasDuplicateDependentChannel(uint8_t channel, co
             return true;
         }
         uint8_t channels[kMaxChannelsPerDependent]{};
-        const uint8_t count = dependent->expanderChannels(channels, kMaxChannelsPerDependent);
+        const uint8_t count = dependent->dependencySlots(channels, kMaxChannelsPerDependent);
         for (uint8_t i = 0; i < count; ++i) {
             if (channels[i] == channel) {
                 return true;

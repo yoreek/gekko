@@ -15,6 +15,7 @@
 #include "devices/display/lcd2004/Lcd2004Device.h"
 #include "devices/display/ssd1306/Ssd1306Device.h"
 #include "devices/display/st7735/St7735Device.h"
+#include "devices/display/tm1637/Tm1637Device.h"
 #include "devices/dosing/DosingPumpDevice.h"
 #include "devices/dummy/DummyDevice.h"
 #include "devices/expander/Pcf8574ExpanderDevice.h"
@@ -206,6 +207,7 @@ DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     (void)registry.registerDescriptor(AnalogInputChannelDevice::descriptor());
     (void)registry.registerDescriptor(Lcd1602Device::descriptor());
     (void)registry.registerDescriptor(Lcd2004Device::descriptor());
+    (void)registry.registerDescriptor(Tm1637Device::descriptor());
     return registry;
 }
 

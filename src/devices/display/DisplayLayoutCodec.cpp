@@ -1,6 +1,7 @@
 #include "devices/display/DisplayLayoutCodec.h"
 
 #include "devices/core/DeviceBaseConfig.h"
+#include "devices/display/DisplayLayoutValidator.h"
 #include "devices/display/DisplayTextPlaceholderAst.h"
 
 #include <algorithm>
@@ -255,6 +256,7 @@ DisplayLayoutWidgetType normalizeWidgetType(const DisplayLayoutWidgetType type) 
     case DisplayLayoutWidgetType::Line:
     case DisplayLayoutWidgetType::Circle:
     case DisplayLayoutWidgetType::Ellipse:
+    case DisplayLayoutWidgetType::Character:
         return type;
     default:
         return DisplayLayoutWidgetType::Text;
@@ -277,6 +279,8 @@ const char* widgetTypeToString(DisplayLayoutWidgetType type) {
         return "circle";
     case DisplayLayoutWidgetType::Ellipse:
         return "ellipse";
+    case DisplayLayoutWidgetType::Character:
+        return "character";
     }
     return "text";
 }
@@ -311,6 +315,9 @@ bool parseWidgetType(const JsonObjectConst& input, DisplayLayoutWidgetType& type
         case 6:
             type = DisplayLayoutWidgetType::Ellipse;
             return true;
+        case 7:
+            type = DisplayLayoutWidgetType::Character;
+            return true;
         default:
             error = "unsupported display widget type";
             return false;
@@ -335,6 +342,8 @@ bool parseWidgetType(const JsonObjectConst& input, DisplayLayoutWidgetType& type
         type = DisplayLayoutWidgetType::Circle;
     } else if (std::strcmp(value, "ellipse") == 0) {
         type = DisplayLayoutWidgetType::Ellipse;
+    } else if (std::strcmp(value, "character") == 0) {
+        type = DisplayLayoutWidgetType::Character;
     } else {
         error = "unsupported display widget type";
         return false;
@@ -531,6 +540,24 @@ bool parseWidget(const JsonObjectConst& widgetJson, DisplayLayoutWidgetV1& widge
         return false;
     }
     widget.type = static_cast<uint8_t>(type);
+    if (type == DisplayLayoutWidgetType::Character || type == DisplayLayoutWidgetType::Digital) {
+        const char* unsupportedFields[] = {"fontSize",        "strokeWidth",  "color",     "styleFlags",
+                                           "keepAspectRatio", "bitmapFormat", "bitmapData"};
+        for (const char* field : unsupportedFields) {
+            if (widgetJson.containsKey(field)) {
+                error = "cell display widget contains pixel-only fields";
+                return false;
+            }
+        }
+    }
+    if (type == DisplayLayoutWidgetType::Digital && widgetJson.containsKey("wrap")) {
+        error = "digital widget does not support wrapping";
+        return false;
+    }
+    if (type == DisplayLayoutWidgetType::Digital && widgetJson.containsKey("autoSize")) {
+        error = "digital widget does not support auto sizing";
+        return false;
+    }
     if (!parseBindingKind(widgetJson, widget.bindingKind)) {
         error = "display widget binding kind is invalid";
         return false;
@@ -546,11 +573,16 @@ bool parseWidget(const JsonObjectConst& widgetJson, DisplayLayoutWidgetV1& widge
     widget.sourceDeviceId = widgetJson["sourceDeviceId"] | 0UL;
     widget.metricId = widgetJson["metricId"] | 0L;
     widget.refreshIntervalMs = normalizeRefreshIntervalMs(widgetJson["refreshIntervalMs"] | 0UL);
-    widget.fontSize = widgetJson["fontSize"] | 1U;
-    widget.strokeWidth = widgetJson["strokeWidth"] | 1U;
-    widget.autoSize = readBool(widgetJson["autoSize"], false) ? 1U : 0U;
-    widget.styleFlags = styleFlagsFromJson(widgetJson);
-    if (type != DisplayLayoutWidgetType::Bitmap && !parseRgb565Color(widgetJson["color"], 0xFFFFU, widget.color)) {
+    widget.fontSize =
+        type == DisplayLayoutWidgetType::Character || type == DisplayLayoutWidgetType::Digital ? 1U : widgetJson["fontSize"] | 1U;
+    widget.strokeWidth =
+        type == DisplayLayoutWidgetType::Character || type == DisplayLayoutWidgetType::Digital ? 1U : widgetJson["strokeWidth"] | 1U;
+    widget.autoSize = type == DisplayLayoutWidgetType::Digital ? 0U : (readBool(widgetJson["autoSize"], false) ? 1U : 0U);
+    widget.styleFlags = type == DisplayLayoutWidgetType::Character
+                            ? (readBool(widgetJson["wrap"], false) ? 0x04U : 0U)
+                            : (type == DisplayLayoutWidgetType::Digital ? 0U : styleFlagsFromJson(widgetJson));
+    if (type != DisplayLayoutWidgetType::Bitmap && type != DisplayLayoutWidgetType::Character && type != DisplayLayoutWidgetType::Digital &&
+        !parseRgb565Color(widgetJson["color"], 0xFFFFU, widget.color)) {
         error = "display widget color must use #RRGGBB";
         return false;
     }
@@ -646,13 +678,13 @@ bool validateWidget(const DisplayLayoutWidgetV1& widget) {
             return false;
         }
     }
-    return true;
+    return validateDisplayLayoutWidget(widget, defaultDisplayLayoutProfile()).ok();
 }
 
 bool validateLayout(const DisplayLayoutRecordV1& layout) {
     if ((layout.recordVersion != 1U && layout.recordVersion != 2U && layout.recordVersion != 3U && layout.recordVersion != 4U &&
          layout.recordVersion != 5U && layout.recordVersion != kDisplayLayoutRecordVersion) ||
-        (layout.schemaVersion != 1U && layout.schemaVersion != kDisplayLayoutSchemaVersion)) {
+        (layout.schemaVersion < 1U || layout.schemaVersion > kDisplayLayoutSchemaVersion)) {
         return false;
     }
     if (layout.pages.size() > kDisplayLayoutMaxPages) {
@@ -677,7 +709,7 @@ bool validateLayout(const DisplayLayoutRecordV1& layout) {
             }
         }
     }
-    return true;
+    return validateDisplayLayout(layout, defaultDisplayLayoutProfile()).ok();
 }
 
 size_t estimateWidgetSize(const DisplayLayoutWidgetV1& widget) {
@@ -695,6 +727,7 @@ void normalizePageOrder(DisplayLayoutRecordV1& layout) {
 } // namespace
 
 void writeDisplayLayoutWidgetJson(const DisplayLayoutWidgetV1& widget, JsonObject widgetJson) {
+    const DisplayLayoutWidgetType type = static_cast<DisplayLayoutWidgetType>(widget.type);
     widgetJson["type"] = widgetTypeToString(static_cast<DisplayLayoutWidgetType>(widget.type));
     widgetJson["id"] = widget.id;
     widgetJson["bindingKind"] = bindingKindToString(static_cast<DisplayLayoutBindingKind>(widget.bindingKind));
@@ -706,19 +739,26 @@ void writeDisplayLayoutWidgetJson(const DisplayLayoutWidgetV1& widget, JsonObjec
     widgetJson["sourceDeviceId"] = widget.sourceDeviceId;
     widgetJson["metricId"] = widget.metricId;
     widgetJson["refreshIntervalMs"] = widget.refreshIntervalMs;
-    widgetJson["fontSize"] = widget.fontSize;
-    widgetJson["strokeWidth"] = widget.strokeWidth;
-    widgetJson["autoSize"] = widget.autoSize != 0U;
-    if (static_cast<DisplayLayoutWidgetType>(widget.type) != DisplayLayoutWidgetType::Bitmap) {
+    if (type != DisplayLayoutWidgetType::Digital) {
+        widgetJson["fontSize"] = widget.fontSize;
+        widgetJson["strokeWidth"] = widget.strokeWidth;
+        widgetJson["autoSize"] = widget.autoSize != 0U;
+    }
+    if (type != DisplayLayoutWidgetType::Bitmap && type != DisplayLayoutWidgetType::Character && type != DisplayLayoutWidgetType::Digital) {
         writeRgb565Color(widgetJson, "color", widget.color);
     }
-    if (static_cast<DisplayLayoutWidgetType>(widget.type) == DisplayLayoutWidgetType::Digital) {
+    if (type == DisplayLayoutWidgetType::Digital) {
         widgetJson["align"] = digitalAlignToString(widget.digitalAlign);
         widgetJson["overflow"] = JsonString(widget.digitalOverflow, JsonString::Copied);
         widgetJson["missing"] = JsonString(widget.digitalMissing, JsonString::Copied);
     }
-    JsonObject styleFlags = widgetJson.createNestedObject("styleFlags");
-    writeStyleFlagsJson(widget.styleFlags, styleFlags);
+    if (type == DisplayLayoutWidgetType::Character) {
+        widgetJson["wrap"] = (widget.styleFlags & 0x04U) != 0U;
+    }
+    if (type != DisplayLayoutWidgetType::Character && type != DisplayLayoutWidgetType::Digital) {
+        JsonObject styleFlags = widgetJson.createNestedObject("styleFlags");
+        writeStyleFlagsJson(widget.styleFlags, styleFlags);
+    }
     widgetJson["text"] = widget.text;
     if (static_cast<DisplayLayoutWidgetType>(widget.type) == DisplayLayoutWidgetType::Bitmap) {
         widgetJson["bitmapFormat"] = bitmapFormatToString(static_cast<DisplayLayoutBitmapFormat>(widget.bitmapFormat));
@@ -766,7 +806,7 @@ bool parseDisplayLayoutJson(const JsonObjectConst& input, DisplayLayoutRecordV1&
     layout.deviceId = 0;
     layout.recordVersion = kDisplayLayoutRecordVersion;
     layout.schemaVersion = input["schemaVersion"] | kDisplayLayoutSchemaVersion;
-    if (layout.schemaVersion != 1U && layout.schemaVersion != kDisplayLayoutSchemaVersion) {
+    if (layout.schemaVersion < 1U || layout.schemaVersion > kDisplayLayoutSchemaVersion) {
         return false;
     }
     if (!parseRgb565Color(input["backgroundColor"], 0U, layout.backgroundColor)) {
@@ -978,7 +1018,7 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
         pageCount = header.pageCount;
         layout.backgroundColor = 0U;
     }
-    if (schemaVersion != kDisplayLayoutSchemaVersion || pageCount == 0U || pageCount > kDisplayLayoutMaxPages ||
+    if (schemaVersion < 1U || schemaVersion > kDisplayLayoutSchemaVersion || pageCount == 0U || pageCount > kDisplayLayoutMaxPages ||
         activePageIndex >= pageCount) {
         return false;
     }

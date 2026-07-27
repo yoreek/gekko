@@ -1,25 +1,32 @@
 <template>
-  <DeviceWidgetBase v-if="dense" :device="device" :editable="editable">
+  <DeviceWidgetBase v-if="dense" :device="device" :editable="editable" subtitle="16×2">
     <template #prepend>
       <v-icon icon="display" />
     </template>
-    <div class="d-flex flex-column">
-      <span class="text-body-2">{{ line1Text }}</span>
-      <span class="text-body-2">{{ line2Text }}</span>
+    <div class="d-flex flex-column ga-2">
+      <DisplayStaticPreview kind="lcd1602" :max-side="82" />
+      <div class="d-flex flex-column">
+        <span class="text-body-2">16×2 character LCD</span>
+        <span class="text-body-2 text-medium-emphasis">Rows: 2</span>
+      </div>
     </div>
   </DeviceWidgetBase>
 
   <v-card v-else variant="tonal">
-    <v-card-text class="d-flex flex-column ga-1">
-      <span class="text-body-1">{{ line1Text }}</span>
-      <span class="text-body-1">{{ line2Text }}</span>
+    <v-card-text class="d-flex flex-column ga-3">
+      <DisplayStaticPreview kind="lcd1602" :max-side="180" />
+      <div class="d-flex flex-column ga-1">
+        <span class="text-body-1">16×2 character LCD</span>
+        <span class="text-body-2 text-medium-emphasis">Rows: 2</span>
+        <span class="text-body-2 text-medium-emphasis">Backlight and line text are configured through the LCD layout</span>
+      </div>
     </v-card-text>
   </v-card>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
 import type { BaseDeviceRuntime, DeviceRecord, Lcd1602OutputSnapshot } from '@/api/contracts'
+import DisplayStaticPreview from '@/components/devices/display/DisplayStaticPreview.vue'
 import DeviceWidgetBase from '@/components/devices/common/DeviceWidgetBase.vue'
 
 interface Lcd1602Runtime extends BaseDeviceRuntime {
@@ -33,7 +40,4 @@ const props = withDefaults(defineProps<{
 }>(), {
   dense: true,
 })
-
-const line1Text = computed(() => props.device.runtime.output?.line1 ?? '')
-const line2Text = computed(() => props.device.runtime.output?.line2 ?? '')
 </script>

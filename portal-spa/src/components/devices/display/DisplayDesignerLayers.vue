@@ -81,6 +81,8 @@ const { t } = useI18n()
 
 function iconForType(type: DisplayWidget['type']): string {
   switch (type) {
+    case 'digital':
+      return 'display'
     case 'bitmap':
       return 'oled-bitmap'
     case 'rect':

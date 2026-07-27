@@ -5,6 +5,7 @@
 #include "devices/core/ConfigCodec.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/display/DisplayLayoutCodec.h"
+#include "devices/display/DisplayLayoutProfile.h"
 #include "devices/display/st7735/St7735Device.h"
 #include "devices/display/st7735/St7735DeviceConfig.h"
 #include "devices/registry/DeviceRegistry.h"
@@ -508,7 +509,7 @@ void test_st7735_update_round_trip_includes_layout() {
     TEST_ASSERT_EQUAL_UINT8(1U, reloadedRuntime->layout().pages[0].widgets[0].keepAspectRatio);
     TEST_ASSERT_EQUAL_UINT8(4U, reloadedRuntime->layout().pages[0].widgets[0].bitmapData.size());
 
-    StaticJsonDocument<2048> outputDoc;
+    StaticJsonDocument<4096> outputDoc;
     JsonObject output = outputDoc.to<JsonObject>();
     St7735DeviceApiAdapter::instance().writeDeviceJson(*reloadedRuntime, reloadedRuntime->status(), output);
     assertMatchesJsonSchema("schemas/rest/v1/responses/devices-st7735.response.schema.json", outputDoc.as<JsonVariantConst>());
@@ -517,4 +518,9 @@ void test_st7735_update_round_trip_includes_layout() {
     TEST_ASSERT_EQUAL_STRING("black18", output["config"]["panel"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT8(2U, output["config"]["dcPin"].as<uint8_t>());
     TEST_ASSERT_EQUAL_INT8(-1, output["config"]["resetPin"].as<int8_t>());
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayCoordinateUnit::Pixel),
+                            output["runtime"]["displayProfile"]["coordinateUnit"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_UINT16(128U, output["runtime"]["displayProfile"]["logicalWidth"].as<uint16_t>());
+    TEST_ASSERT_EQUAL_UINT16(160U, output["runtime"]["displayProfile"]["logicalHeight"].as<uint16_t>());
+    TEST_ASSERT_TRUE(output["runtime"]["displayProfile"]["supportsColor"].as<bool>());
 }

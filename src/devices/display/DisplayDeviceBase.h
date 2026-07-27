@@ -2,6 +2,7 @@
 
 #include "devices/core/DeviceRuntimeBase.h"
 #include "devices/display/DisplayLayoutCodec.h"
+#include "devices/display/DisplayLayoutProfile.h"
 #include "devices/display/DisplayLayoutRenderer.h"
 #include "devices/display/DisplayLayoutStore.h"
 
@@ -23,6 +24,7 @@ public:
 
     const DisplayLayoutRecordV1& layout() const;
     void setLayout(const DisplayLayoutRecordV1& layout);
+    virtual DisplayLayoutProfile displayProfile() const;
     bool renderDisplay(const MetricValueResolver& resolver, uint32_t now);
     DisplayDeviceBase* displayRuntime() override;
     const DisplayDeviceBase* displayRuntime() const override;
@@ -31,7 +33,8 @@ protected:
     virtual void writeDisplayConfigJson(JsonObject output) const = 0;
     virtual bool initializeDisplayHardware(uint32_t now);
     virtual void releaseDisplayHardware(uint32_t now);
-    virtual IDisplayRenderSurface* renderSurface() const;
+    virtual bool clearDisplay(uint16_t color) = 0;
+    virtual DisplayLayoutRenderResult renderDisplayFrame(const MetricValueResolver& resolver, uint32_t now) = 0;
     virtual void onDisplayFrameRendered(const DisplayLayoutRenderResult& result);
     void invalidateDisplayRender();
 

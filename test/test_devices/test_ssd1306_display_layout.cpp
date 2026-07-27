@@ -3,6 +3,7 @@
 #include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/display/DisplayLayoutCodec.h"
+#include "devices/display/DisplayLayoutProfile.h"
 #include "devices/display/DisplayLayoutStore.h"
 #include "devices/display/ssd1306/Ssd1306Device.h"
 #include "devices/display/ssd1306/Ssd1306DeviceConfig.h"
@@ -490,11 +491,12 @@ void test_ssd1306_api_adapter_streams_layout_and_setup_extension() {
     std::snprintf(secondPage.id, sizeof(secondPage.id), "%s", "second");
     std::snprintf(secondPage.name, sizeof(secondPage.name), "%s", "Second");
     layout.pages.push_back(secondPage);
+    layout.pages[0].widgets[0].color = 0xFFFFU;
     std::vector<uint8_t> layoutBlob;
     TEST_ASSERT_TRUE(encodeDisplayLayoutBinary(layout, layoutBlob));
     TEST_ASSERT_TRUE(device.applyPersistedStateUpdate(layoutBlob.data(), layoutBlob.size()).ok());
 
-    StaticJsonDocument<512> outputDoc;
+    StaticJsonDocument<4096> outputDoc;
     JsonObject output = outputDoc.to<JsonObject>();
     Ssd1306DeviceApiAdapter::instance().writeDeviceJson(device, device.status(), output);
     assertMatchesJsonSchema("schemas/rest/v1/responses/devices-ssd1306.response.schema.json", outputDoc.as<JsonVariantConst>());
@@ -685,10 +687,15 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
                             reloadedRuntime->layout().pages[0].widgets[1].bitmapFormat);
     TEST_ASSERT_EQUAL_UINT8(4, reloadedRuntime->layout().pages[0].widgets[1].bitmapData.size());
 
-    StaticJsonDocument<512> outputDoc;
+    StaticJsonDocument<4096> outputDoc;
     JsonObject output = outputDoc.to<JsonObject>();
     Ssd1306DeviceApiAdapter::instance().writeDeviceJson(*reloadedRuntime, reloadedRuntime->status(), output);
     assertMatchesJsonSchema("schemas/rest/v1/responses/devices-ssd1306.response.schema.json", outputDoc.as<JsonVariantConst>());
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayCoordinateUnit::Pixel),
+                            output["runtime"]["displayProfile"]["coordinateUnit"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_UINT16(128U, output["runtime"]["displayProfile"]["logicalWidth"].as<uint16_t>());
+    TEST_ASSERT_EQUAL_UINT16(64U, output["runtime"]["displayProfile"]["logicalHeight"].as<uint16_t>());
+    TEST_ASSERT_FALSE(output["runtime"]["displayProfile"]["supportsColor"].as<bool>());
 }
 
 void test_ssd1306_api_adapter_partial_update_preserves_bus_and_dimensions() {

@@ -36,7 +36,7 @@ uint8_t st7735InitrOptionForPanel(St7735Panel panel) {
 }
 } // namespace
 
-class St7735CanvasSurface final : public IDisplayRenderSurface {
+class St7735CanvasSurface final : public IPixelDisplayRenderSurface {
 public:
     explicit St7735CanvasSurface(::Adafruit_ST7735& display) : display_(display) {}
 
@@ -200,6 +200,10 @@ const St7735DeviceConfigV5& St7735Device::config() const {
     return config_;
 }
 
+DisplayLayoutProfile St7735Device::displayProfile() const {
+    return pixelDisplayLayoutProfile(config_.width, config_.height, true, true);
+}
+
 const DeviceBaseConfigV1& St7735Device::baseConfig() const {
     return config_;
 }
@@ -274,6 +278,30 @@ bool St7735Device::initializeDisplayHardware(uint32_t now) {
 #endif
 }
 
+bool St7735Device::clearDisplay(const uint16_t color) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    if (surface_ == nullptr) {
+        return false;
+    }
+    surface_->clear(color);
+    return true;
+#else
+    return true;
+#endif
+}
+
+DisplayLayoutRenderResult St7735Device::renderDisplayFrame(const MetricValueResolver& resolver, const uint32_t now) {
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    if (surface_ == nullptr) {
+        return {};
+    }
+    PixelDisplayLayoutRenderer renderer(*surface_);
+    return renderSession_.render(layout_, resolver, renderer, now);
+#else
+    return {};
+#endif
+}
+
 void St7735Device::releaseDisplayHardware(uint32_t now) {
     (void)now;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
@@ -286,14 +314,6 @@ void St7735Device::releaseDisplayHardware(uint32_t now) {
         delete display_;
         display_ = nullptr;
     }
-#endif
-}
-
-IDisplayRenderSurface* St7735Device::renderSurface() const {
-#if defined(ARDUINO) && !defined(UNIT_TEST)
-    return surface_;
-#else
-    return nullptr;
 #endif
 }
 

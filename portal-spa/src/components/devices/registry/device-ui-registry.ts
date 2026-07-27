@@ -31,6 +31,7 @@ import { AnalogInputChannelDevice } from '@/models/devices/analog-input-channel'
 import { Cd74hc4067HubDevice } from '@/models/devices/cd74hc4067-hub'
 import { Lcd1602Device } from '@/models/devices/lcd1602'
 import { Lcd2004Device } from '@/models/devices/lcd2004'
+import { Tm1637Device } from '@/models/devices/tm1637'
 import DummyFields from '@/components/devices/dummy/DummyFields.vue'
 import DummyWidget from '@/components/devices/dummy/DummyWidget.vue'
 import GpioSwitchFields from '@/components/devices/gpio-switch/GpioSwitchFields.vue'
@@ -55,6 +56,8 @@ import ThermostatFields from '@/components/devices/thermostat/ThermostatFields.v
 import ThermostatWidget from '@/components/devices/thermostat/ThermostatWidget.vue'
 import Ssd1306Fields from '@/components/devices/Ssd1306Fields.vue'
 import St7735Fields from '@/components/devices/St7735Fields.vue'
+import Ssd1306Widget from '@/components/devices/ssd1306/Ssd1306Widget.vue'
+import St7735Widget from '@/components/devices/st7735/St7735Widget.vue'
 import RtcDs3231Fields from '@/components/devices/rtc-ds3231/RtcDs3231Fields.vue'
 import RtcDs3231Widget from '@/components/devices/rtc-ds3231/RtcDs3231Widget.vue'
 import RtcDs1302Fields from '@/components/devices/rtc-ds1302/RtcDs1302Fields.vue'
@@ -89,6 +92,9 @@ import Lcd1602Fields from '@/components/devices/lcd1602/Lcd1602Fields.vue'
 import Lcd1602Widget from '@/components/devices/lcd1602/Lcd1602Widget.vue'
 import Lcd2004Fields from '@/components/devices/lcd2004/Lcd2004Fields.vue'
 import Lcd2004Widget from '@/components/devices/lcd2004/Lcd2004Widget.vue'
+import Tm1637Fields from '@/components/devices/tm1637/Tm1637Fields.vue'
+import Tm1637Widget from '@/components/devices/tm1637/Tm1637Widget.vue'
+import DisplayDesignerView from '@/views/DisplayDesignerView.vue'
 
 const unknownUi: DeviceUi = {
   typeId: 0,
@@ -204,7 +210,9 @@ const ssd1306Ui: DeviceUi = {
   labelKey: 'device.type.ssd1306Display',
   icon: 'display',
   fieldsComponent: Ssd1306Fields,
-  widgetComponent: DummyWidget,
+  widgetComponent: Ssd1306Widget,
+  moreInfoMaxWidth: 720,
+  designerComponent: DisplayDesignerView,
 }
 
 const st7735Ui: DeviceUi = {
@@ -213,7 +221,9 @@ const st7735Ui: DeviceUi = {
   labelKey: 'device.type.st7735',
   icon: 'display',
   fieldsComponent: St7735Fields,
-  widgetComponent: DummyWidget,
+  widgetComponent: St7735Widget,
+  moreInfoMaxWidth: 720,
+  designerComponent: DisplayDesignerView,
 }
 
 const rtcDs3231Ui: DeviceUi = {
@@ -396,6 +406,8 @@ const lcd1602Ui: DeviceUi = {
   icon: 'display',
   fieldsComponent: Lcd1602Fields,
   widgetComponent: Lcd1602Widget,
+  moreInfoMaxWidth: 720,
+  designerComponent: DisplayDesignerView,
 }
 
 const lcd2004Ui: DeviceUi = {
@@ -405,6 +417,19 @@ const lcd2004Ui: DeviceUi = {
   icon: 'display',
   fieldsComponent: Lcd2004Fields,
   widgetComponent: Lcd2004Widget,
+  moreInfoMaxWidth: 720,
+  designerComponent: DisplayDesignerView,
+}
+
+const tm1637Ui: DeviceUi = {
+  typeId: Tm1637Device.TYPE_ID,
+  typeName: Tm1637Device.TYPE_NAME,
+  labelKey: 'device.type.tm1637',
+  icon: 'display',
+  fieldsComponent: Tm1637Fields,
+  widgetComponent: Tm1637Widget,
+  moreInfoMaxWidth: 720,
+  designerComponent: DisplayDesignerView,
 }
 
 const deviceUiV2ByTypeId: Record<number, DeviceUi> = {
@@ -440,6 +465,7 @@ const deviceUiV2ByTypeId: Record<number, DeviceUi> = {
   [analogInputChannelUi.typeId]: analogInputChannelUi,
   [lcd1602Ui.typeId]: lcd1602Ui,
   [lcd2004Ui.typeId]: lcd2004Ui,
+  [tm1637Ui.typeId]: tm1637Ui,
 }
 
 export const allDeviceUis: DeviceUi[] = Object.values(deviceUiV2ByTypeId)

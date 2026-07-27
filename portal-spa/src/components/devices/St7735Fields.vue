@@ -1,11 +1,14 @@
 <template>
-  <v-row density="comfortable">
-    <!-- SPI connection -->
-    <v-col v-if="dependencyItems.length === 0" cols="12">
-      <v-alert type="warning" variant="tonal">
+  <DisplayDeviceFieldsFrame
+    :device="props.device"
+    :designer-label="t('device.dialog.openDesigner')"
+  >
+    <template #notice>
+      <v-alert v-if="dependencyItems.length === 0" type="warning" variant="tonal">
         {{ t('device.dialog.st7735Display.noDependency') }}
       </v-alert>
-    </v-col>
+    </template>
+
     <v-col cols="12" sm="6">
       <v-select
         :model-value="modelValue.spiBusDeviceId"
@@ -28,7 +31,6 @@
       />
     </v-col>
 
-    <!-- Probe: check whether a device responds on the selected CS pin -->
     <v-col cols="12">
       <SpiChipSelectProbe
         :bus-device-id="modelValue.spiBusDeviceId"
@@ -36,7 +38,6 @@
       />
     </v-col>
 
-    <!-- Control pins -->
     <v-col cols="12" sm="6">
       <v-text-field
         :model-value="modelValue.dcPin"
@@ -58,7 +59,6 @@
       />
     </v-col>
 
-    <!-- Display geometry -->
     <v-col cols="12" sm="6">
       <v-select
         :model-value="modelValue.panel"
@@ -101,26 +101,15 @@
         density="compact"
       />
     </v-col>
-    <v-col cols="12">
+
+    <template #preview>
       <DisplayOrientationPreview
         :width="modelValue.width"
         :height="modelValue.height"
         :rotation="modelValue.rotation"
       />
-    </v-col>
-
-    <!-- Designer button (only once the device exists) -->
-    <v-col v-if="device" cols="12">
-      <v-btn
-        color="primary"
-        variant="tonal"
-        :to="{ name: 'device-design', params: { id: device.record.id } }"
-      >
-        <v-icon class="me-2" icon="design-display" />
-        {{ t('device.dialog.st7735Display.designerTitle') }}
-      </v-btn>
-    </v-col>
-  </v-row>
+    </template>
+  </DisplayDeviceFieldsFrame>
 </template>
 
 <script setup lang="ts" generic="T extends St7735ConfigDraft">
@@ -129,6 +118,7 @@ import { useI18n } from 'vue-i18n'
 import type { DeviceRecord } from '@/api/contracts'
 import type { St7735ConfigDraft } from '@/models/devices/st7735/device'
 import SpiChipSelectProbe from '@/components/devices/common/SpiChipSelectProbe.vue'
+import DisplayDeviceFieldsFrame from '@/components/devices/display/DisplayDeviceFieldsFrame.vue'
 import DisplayOrientationPreview from '@/components/devices/display/DisplayOrientationPreview.vue'
 import { dependencyOptionsForRole } from '@/models/devices/device-model-factory'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'

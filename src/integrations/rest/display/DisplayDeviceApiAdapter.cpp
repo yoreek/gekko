@@ -414,7 +414,7 @@ bool DisplayDeviceApiAdapter::collectLayoutMetricSourceDependencies(const Displa
                                                                     const char* invalidLayoutError, const char* dependencyCountError) {
     for (const DisplayLayoutPageV1& page : layout.pages) {
         for (const DisplayLayoutWidgetV1& widget : page.widgets) {
-            if (static_cast<DisplayLayoutWidgetType>(widget.type) != DisplayLayoutWidgetType::Text) {
+            if (!isDisplayTextWidgetType(static_cast<DisplayLayoutWidgetType>(widget.type))) {
                 continue;
             }
             if (!collectTextPlaceholderDeviceIds(widget.text, dependencies, dependencyCount, error, invalidLayoutError,
@@ -429,7 +429,7 @@ bool DisplayDeviceApiAdapter::collectLayoutMetricSourceDependencies(const Displa
 bool DisplayDeviceApiAdapter::validateLayoutMetricPlaceholders(const DisplayLayoutRecordV1& layout, const DeviceRegistry& registry) {
     for (const DisplayLayoutPageV1& page : layout.pages) {
         for (const DisplayLayoutWidgetV1& widget : page.widgets) {
-            if (static_cast<DisplayLayoutWidgetType>(widget.type) != DisplayLayoutWidgetType::Text) {
+            if (!isDisplayTextWidgetType(static_cast<DisplayLayoutWidgetType>(widget.type))) {
                 continue;
             }
             if (!validateDisplayTextWidget(widget, registry).ok()) {

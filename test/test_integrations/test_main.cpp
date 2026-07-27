@@ -14,6 +14,7 @@ void test_onewire_api_adapter_parses_update_config_request();
 void test_onewire_api_adapter_partial_update_preserves_internal_pullup();
 void test_onewire_api_adapter_rejects_missing_update_config();
 void test_ssd1306_device_api_adapter_encodes_layout_update_payload();
+void test_new_display_rest_api_schemas_and_parsers();
 void test_ledc_analog_output_api_adapter_parses_single_output_config();
 void test_ledc_analog_output_api_adapter_schema_smoke();
 void test_wifi_configure_request_schema_smoke();
@@ -171,6 +172,7 @@ int main(int, char**) {
     RUN_TEST(test_onewire_api_adapter_partial_update_preserves_internal_pullup);
     RUN_TEST(test_onewire_api_adapter_rejects_missing_update_config);
     RUN_TEST(test_ssd1306_device_api_adapter_encodes_layout_update_payload);
+    RUN_TEST(test_new_display_rest_api_schemas_and_parsers);
     RUN_TEST(test_ledc_analog_output_api_adapter_parses_single_output_config);
     RUN_TEST(test_ledc_analog_output_api_adapter_schema_smoke);
     RUN_TEST(test_wifi_configure_request_schema_smoke);

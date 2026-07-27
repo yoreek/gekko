@@ -29,10 +29,10 @@ bool Hd44780ChannelConfigV1::parseJson(const JsonObjectConst& input, const char*
 DeviceValidationResult Hd44780ChannelConfigV1::validate() const {
     if (!channelIsValid(rsChannel) || !channelIsValid(eChannel) || !channelIsValid(d4Channel) || !channelIsValid(d5Channel) ||
         !channelIsValid(d6Channel) || !channelIsValid(d7Channel)) {
-        return {DeviceError::InvalidConfig, "hd44780 channel is out of range"};
+        return {DeviceError::InvalidConfig, "hd44780 dependency slot is out of range"};
     }
     if (!channelIsValidOrUnset(backlightChannel)) {
-        return {DeviceError::InvalidConfig, "hd44780 backlight channel is out of range"};
+        return {DeviceError::InvalidConfig, "hd44780 backlight dependency slot is out of range"};
     }
 
     const uint8_t channels[7] = {rsChannel, eChannel, d4Channel, d5Channel, d6Channel, d7Channel, backlightChannel};
@@ -42,7 +42,7 @@ DeviceValidationResult Hd44780ChannelConfigV1::validate() const {
         }
         for (size_t j = i + 1U; j < 7U; ++j) {
             if (channels[j] != kHd44780ChannelUnset && channels[i] == channels[j]) {
-                return {DeviceError::InvalidConfig, "hd44780 channels must be distinct"};
+                return {DeviceError::InvalidConfig, "hd44780 dependency slots must be distinct"};
             }
         }
     }
