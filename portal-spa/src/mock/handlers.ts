@@ -67,9 +67,11 @@ import {
   createHtu21Device,
   normalizeAht10ConfigPayload,
   normalizeDht11ConfigPayload,
+  normalizeRtcDs1302ConfigPayload,
   normalizeHtu21ConfigPayload,
   createThermostatDevice,
   createRtcDs3231Device,
+  createRtcDs1302Device,
   createPcf8574ExpanderDevice,
   createPcf8575ExpanderDevice,
   createPortExpanderSwitchDevice,
@@ -570,6 +572,7 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
       typeName !== 'htu21' &&
       typeName !== 'thermostat' &&
       typeName !== 'rtc_ds3231' &&
+      typeName !== 'rtc_ds1302' &&
       typeName !== 'pcf8574_expander' &&
       typeName !== 'pcf8575_expander' &&
       typeName !== 'port_expander_switch' &&
@@ -627,6 +630,8 @@ export function mockCreateDevice(payload: DeviceCreateRequest | Record<string, u
           return createThermostatDevice(nextId, configSource, baseDeps, enabled, name, db)
         case 'rtc_ds3231':
           return createRtcDs3231Device(nextId, configSource, baseDeps, enabled, name, db)
+        case 'rtc_ds1302':
+          return createRtcDs1302Device(nextId, configSource, baseDeps, enabled, name, db)
         case 'pcf8574_expander':
           return createPcf8574ExpanderDevice(nextId, configSource, baseDeps, enabled, name, db)
         case 'pcf8575_expander':
@@ -1015,6 +1020,20 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           }
           device.config = {
             ...normalizeDht11ConfigPayload({
+              ...device.config,
+              ...payload.config,
+            }, device.config.enabled),
+            name: typeof payload.config.name === 'string' && payload.config.name.length > 0
+              ? payload.config.name
+              : device.config.name,
+            deps: [],
+          }
+        } else if (device.record.typeName === 'rtc_ds1302') {
+          if (Array.isArray(payload.deps) && payload.deps.length > 0) {
+            throw new ApiClientError('rtc_ds1302 does not use dependencies', 'BAD_ARGS', 400, null)
+          }
+          device.config = {
+            ...normalizeRtcDs1302ConfigPayload({
               ...device.config,
               ...payload.config,
             }, device.config.enabled),

@@ -26,6 +26,7 @@
 #include "integrations/rest/lcd2004/Lcd2004DeviceApiAdapter.h"
 #include "integrations/rest/ntc_thermistor/NtcThermistorTemperatureSensorDeviceApiAdapter.h"
 #include "integrations/rest/onewire_bus/OneWireBusDeviceApiAdapter.h"
+#include "integrations/rest/rtc_ds1302/Ds1302RtcDeviceApiAdapter.h"
 #include "integrations/rest/rtc_ds3231/Ds3231RtcDeviceApiAdapter.h"
 #include "integrations/rest/schedule/ScheduleDeviceApiAdapter.h"
 #include "integrations/rest/spi_bus/SpiBusDeviceApiAdapter.h"
@@ -273,6 +274,7 @@ DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(Htu21SensorDeviceApiAdapter::instance());
     (void)registry.registerAdapter(ThermostatDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Ds3231RtcDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(Ds1302RtcDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Pcf8574ExpanderDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Pcf8575ExpanderDeviceApiAdapter::instance());
     (void)registry.registerAdapter(LedcAnalogOutputDeviceApiAdapter::instance());

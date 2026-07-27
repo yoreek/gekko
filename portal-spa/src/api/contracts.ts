@@ -42,6 +42,11 @@ export interface RtcDs3231OutputSnapshot {
   oscillatorStopped?: boolean
 }
 
+export interface RtcDs1302OutputSnapshot {
+  currentEpochUtc?: number
+  lastReadOk?: boolean
+}
+
 export interface PortExpanderOutputSnapshot {
   channelCount?: number
   channelStates?: number
@@ -200,6 +205,7 @@ export type DeviceOutputSnapshot =
   | Dht11SensorOutputSnapshot
   | ThermostatOutputSnapshot
   | RtcDs3231OutputSnapshot
+  | RtcDs1302OutputSnapshot
   | PortExpanderOutputSnapshot
   | ScheduleOutputSnapshot
   | AutoSwitchOutputSnapshot

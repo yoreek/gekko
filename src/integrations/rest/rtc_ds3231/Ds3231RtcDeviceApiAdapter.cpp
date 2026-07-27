@@ -1,33 +1,13 @@
 #include "integrations/rest/rtc_ds3231/Ds3231RtcDeviceApiAdapter.h"
 
 #include "integrations/rest/common/I2cDeviceApiSupport.h"
+#include "integrations/rest/common/RtcDeviceApiSupport.h"
 
 namespace ewfm {
 namespace {
 bool parseDepsField(const JsonObjectConst& input, std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t& depCount,
                     const char*& error) {
     return IDeviceApiAdapter::parseDependenciesJson(input, deps, depCount, error);
-}
-
-// Only one RTC device may act as the system time synchronizer at a time - RtcSyncCoordinator
-// picks up whichever one is Ready and has this flag set, so allowing two would make that choice
-// ambiguous. Enforced here rather than at the registry/dependency layer since it is a business
-// rule about config content, not a structural relationship.
-DeviceValidationResult validateAtMostOneActiveSync(const DeviceRegistry& registry, const IDeviceRuntime* self, bool requestedActive) {
-    if (!requestedActive) {
-        return {};
-    }
-    DeviceValidationResult result{};
-    registry.forEachRuntime([&](const IDeviceRuntime& runtime) {
-        if (!result.ok() || &runtime == self) {
-            return;
-        }
-        const IRealTimeClockRuntime* rtc = runtime.realTimeClockRuntime();
-        if (rtc != nullptr && rtc->useForSystemTimeSync()) {
-            result = {DeviceError::InvalidConfig, "another RTC device is already set to sync system time"};
-        }
-    });
-    return result;
 }
 } // namespace
 
@@ -62,7 +42,7 @@ DeviceValidationResult Ds3231RtcDeviceApiAdapter::validateCreateRequest(const De
     if (!busResult.ok()) {
         return busResult;
     }
-    return validateAtMostOneActiveSync(registry, nullptr, config.useForSystemTimeSync != 0U);
+    return validateAtMostOneActiveRtcSync(registry, nullptr, config.useForSystemTimeSync != 0U);
 }
 
 DeviceValidationResult Ds3231RtcDeviceApiAdapter::validateUpdateConfigRequest(const IDeviceRuntime& runtime,
@@ -79,7 +59,7 @@ DeviceValidationResult Ds3231RtcDeviceApiAdapter::validateUpdateConfigRequest(co
     if (!busResult.ok()) {
         return busResult;
     }
-    return validateAtMostOneActiveSync(registry, &runtime, config.useForSystemTimeSync != 0U);
+    return validateAtMostOneActiveRtcSync(registry, &runtime, config.useForSystemTimeSync != 0U);
 }
 
 DeviceValidationResult

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/rtc_ds1302.config.schema.json",
+  "title": "rtc_ds1302 configuration",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean", "default": true },
+    "clkPin": { "type": "integer", "minimum": 0, "maximum": 255, "default": 25 },
+    "dataPin": { "type": "integer", "minimum": 0, "maximum": 255, "default": 26 },
+    "rstPin": { "type": "integer", "minimum": 0, "maximum": 255, "default": 27 },
+    "useForSystemTimeSync": { "type": "boolean", "default": false }
+  },
+  "required": ["name"],
+  "additionalProperties": true
+}

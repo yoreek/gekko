@@ -15,6 +15,7 @@ import { Htu21Device } from './htu21.ts'
 import { OneWireBusDevice } from './onewire-bus.ts'
 import { ThermostatDevice } from './thermostat.ts'
 import { RtcDs3231Device } from './rtc-ds3231.ts'
+import { RtcDs1302Device } from './rtc-ds1302.ts'
 import { Pcf8574ExpanderDevice } from './pcf8574-expander.ts'
 import { Pcf8575ExpanderDevice } from './pcf8575-expander.ts'
 import { PortExpanderSwitchDevice } from './port-expander-switch.ts'
@@ -49,6 +50,7 @@ const allDeviceModels: BaseDevice<any, any, any>[] = [
   new Htu21Device(),
   new ThermostatDevice(),
   new RtcDs3231Device(),
+  new RtcDs1302Device(),
   new Pcf8574ExpanderDevice(),
   new Pcf8575ExpanderDevice(),
   new PortExpanderSwitchDevice(),

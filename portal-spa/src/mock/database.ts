@@ -1083,6 +1083,21 @@ const seedDatabase: SeedDatabase = {
       lastReadOk: true,
       oscillatorStopped: false,
     }),
+    createDeviceRecord(670845804, 'rtc_ds1302', 1, {
+      enabled: true,
+      name: 'Battery RTC',
+      deps: [],
+      clkPin: 25,
+      dataPin: 26,
+      rstPin: 27,
+      useForSystemTimeSync: false,
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      currentEpochUtc: Math.floor(Date.now() / 1000),
+      lastReadOk: true,
+    }),
     createDeviceRecord(670845760, 'pcf8574_expander', 1, {
       enabled: true,
       name: 'Relay Expander',

@@ -16,11 +16,10 @@ constexpr uint8_t kRegTime = 0x00;
 constexpr uint8_t kRegStatus = 0x0F;
 constexpr uint8_t kOscillatorStopFlagBit = 0x80;
 
-constexpr uint32_t kPollMs = 1000;
+// kBusyRetryMs is the only backoff duration that isn't shared via RtcDeviceRuntimeBase's
+// kPollMs/kRetryBackoffMs/kFaultRetryBackoffMs constants - RetryBackoff is entered via two paths
+// with different durations here (bus-busy vs read-failure), so this one stays DS3231-private.
 constexpr uint32_t kBusyRetryMs = 100;
-constexpr uint32_t kRetryBackoffMs = 1000;
-constexpr uint32_t kFaultRetryBackoffMs = 30000;
-constexpr uint8_t kFaultErrorThreshold = 3;
 
 uint8_t bcd2bin(uint8_t val) {
     return static_cast<uint8_t>(val - 6 * (val >> 4));
@@ -47,37 +46,12 @@ const Ds3231RtcDeviceConfigV2& Ds3231RtcDevice::config() const {
     return config_;
 }
 
-const DeviceBaseConfigV1& Ds3231RtcDevice::baseConfig() const {
-    return config_;
-}
-
-const IRealTimeClockRuntime* Ds3231RtcDevice::realTimeClockRuntime() const {
-    return this;
-}
-
-bool Ds3231RtcDevice::latestTimeReading(uint32_t& outUtcEpoch, bool& outLostPower) const {
-    if (!hasReading_) {
-        return false;
-    }
-    outUtcEpoch = lastEpoch_;
-    outLostPower = lastLostPower_;
-    return true;
-}
-
 bool Ds3231RtcDevice::writeTime(uint32_t utcEpoch) {
     I2cBusDevice::DependencyTransaction transaction;
     if (beginDependencyTransaction(transaction) != DependencyAccessResult::Ready || transaction.driver() == nullptr) {
         return false;
     }
     return writeTimeRegisters(*transaction.driver(), utcEpoch);
-}
-
-bool Ds3231RtcDevice::useForSystemTimeSync() const {
-    return config_.useForSystemTimeSync != 0U;
-}
-
-bool Ds3231RtcDevice::lastReadOk() const {
-    return lastReadOk_;
 }
 
 void Ds3231RtcDevice::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
@@ -206,33 +180,6 @@ bool Ds3231RtcDevice::writeTimeRegisters(II2cBusDriver& driver, uint32_t utcEpoc
     return driver.endTransmission(true) == 0U;
 }
 
-void Ds3231RtcDevice::recordSuccess(uint32_t epoch, bool lostPower) {
-    // Deliberately excludes a bare epoch change from "changed" - the chip ticks every second by
-    // definition, so treating that alone as dirty would broadcast a WS state_changed every second
-    // for no reason. Callers that need the current epoch read it on demand (GET /api/devices/:id),
-    // not via a push notification.
-    const bool changed = !hasReading_ || !lastReadOk_ || lastLostPower_ != lostPower;
-    lastEpoch_ = epoch;
-    lastLostPower_ = lostPower;
-    hasReading_ = true;
-    lastReadOk_ = true;
-    consecutiveErrors_ = 0;
-    if (changed) {
-        markRuntimeStateDirty();
-    }
-}
-
-void Ds3231RtcDevice::recordFailure(uint32_t now) {
-    if (lastReadOk_) {
-        lastReadOk_ = false;
-        markRuntimeStateDirty();
-    }
-    if (consecutiveErrors_ < 255U) {
-        ++consecutiveErrors_;
-    }
-    retryDeadline_ = now + (consecutiveErrors_ >= kFaultErrorThreshold ? kFaultRetryBackoffMs : kRetryBackoffMs);
-}
-
 SM_STATE(Ds3231RtcDevice::Idle) {
     status_ = DeviceStatus::Creating;
     if (deleteRequested_) {
@@ -277,10 +224,11 @@ SM_STATE(Ds3231RtcDevice::Starting) {
     }
 
     if (!probeI2cPresence(*transaction.driver())) {
-        recordFailure(uptime());
-        if (consecutiveErrors_ >= kFaultErrorThreshold) {
+        recordFailure();
+        if (readingState_.consecutiveErrors() >= kFaultErrorThreshold) {
             SM_GOTO(Faulted);
         }
+        retryDeadline_ = uptime() + kRetryBackoffMs;
         SM_GOTO(RetryBackoff);
     }
 
@@ -323,15 +271,15 @@ SM_STATE(Ds3231RtcDevice::Reading) {
     uint32_t epoch = 0;
     bool lostPower = false;
     if (!readTimeRegisters(*transaction.driver(), epoch, lostPower)) {
-        recordFailure(uptime());
-        if (consecutiveErrors_ >= kFaultErrorThreshold) {
+        recordFailure();
+        if (readingState_.consecutiveErrors() >= kFaultErrorThreshold) {
             SM_GOTO(Faulted);
         }
+        retryDeadline_ = uptime() + kRetryBackoffMs;
         SM_GOTO(RetryBackoff);
     }
 
     recordSuccess(epoch, lostPower);
-    nextPollAt_ = uptime() + kPollMs;
     SM_GOTO(Ready);
 }
 
@@ -354,7 +302,7 @@ SM_STATE(Ds3231RtcDevice::Ready) {
         status_ = DeviceStatus::Reconfiguring;
         SM_GOTO(Reconfiguring);
     }
-    if (!EWFM_SM_TIME_REACHED(uptime(), nextPollAt_)) {
+    if (!elapsed(uptime(), kPollMs)) {
         return;
     }
     SM_GOTO(Reading);
@@ -407,7 +355,7 @@ SM_STATE(Ds3231RtcDevice::Reconfiguring) {
     clearReconfigureRequested();
     clearStartRequested();
     lastDependencyGeneration_ = 0;
-    consecutiveErrors_ = 0;
+    readingState_.resetErrors();
     if (deleteRequested_) {
         status_ = DeviceStatus::Deleting;
         setDeleted();
@@ -457,7 +405,7 @@ SM_STATE(Ds3231RtcDevice::Faulted) {
         status_ = DeviceStatus::Reconfiguring;
         SM_GOTO(Reconfiguring);
     }
-    if (!EWFM_SM_TIME_REACHED(uptime(), retryDeadline_)) {
+    if (!elapsed(uptime(), kFaultRetryBackoffMs)) {
         return;
     }
     SM_GOTO(Starting);

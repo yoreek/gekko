@@ -19,7 +19,7 @@ one entry per supported `typeName`, in the same order:
 
 `dummy`, `gpio_switch`, `onewire_bus`, `i2c_bus`, `spi_bus`, `ssd1306`, `st7735`,
 `ds18b20_temperature_sensor`, `ntc_thermistor_temperature_sensor`, `htu21`, `thermostat`,
-`rtc_ds3231`, `pcf8574_expander`, `pcf8575_expander`, `analog_output`, `fade_analog_output`,
+`rtc_ds3231`, `rtc_ds1302`, `pcf8574_expander`, `pcf8575_expander`, `analog_output`, `fade_analog_output`,
 `scheduled_analog_output`, `analog_output_composer`, `port_expander_switch`, `schedule`,
 `auto_switch`, `binary_sensor`, `dosing_pump`, `analog_port_input`, `ads1115_hub`,
 `cd74hc4067_hub`, `analog_input_channel`.
@@ -585,6 +585,7 @@ time, not a per-type constant (see [Analog Input](analog-input.md)).
 
 Everything else (`DummyDevice`, `GpioSwitchDevice`, `I2cBusDevice`, `SpiBusDevice`,
 `OneWireBusDevice`, `Ssd1306Device`, `St7735Device`, `ThermostatDevice`, `RtcDs3231Device`,
+`RtcDs1302Device`,
 `PortExpanderSwitchDevice`, `ScheduleDevice`, `AutoSwitchDevice`, `BinarySensorDevice`,
 `DosingPumpDevice`, `AnalogPortInputDevice`, `Ads1115HubDevice`, `Cd74hc4067HubDevice`,
 `AnalogInputChannelDevice`, `UnknownDevice`) extends `BaseDevice` with no family base in between.

@@ -19,6 +19,7 @@
 #include "devices/dummy/DummyDevice.h"
 #include "devices/expander/Pcf8574ExpanderDevice.h"
 #include "devices/expander/Pcf8575ExpanderDevice.h"
+#include "devices/rtc/ds1302/Ds1302RtcDevice.h"
 #include "devices/rtc/ds3231/Ds3231RtcDevice.h"
 #include "devices/schedule/ScheduleDevice.h"
 #include "devices/sensors/aht10/Aht10SensorDevice.h"
@@ -187,6 +188,7 @@ DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     (void)registry.registerDescriptor(Aht10SensorDevice::descriptor());
     (void)registry.registerDescriptor(ThermostatDevice::descriptor());
     (void)registry.registerDescriptor(Ds3231RtcDevice::descriptor());
+    (void)registry.registerDescriptor(Ds1302RtcDevice::descriptor());
     (void)registry.registerDescriptor(Pcf8574ExpanderDevice::descriptor());
     (void)registry.registerDescriptor(Pcf8575ExpanderDevice::descriptor());
     (void)registry.registerDescriptor(LedcAnalogOutputDevice::descriptor());

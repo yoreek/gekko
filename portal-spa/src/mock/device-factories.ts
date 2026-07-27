@@ -1383,6 +1383,45 @@ export function createRtcDs3231Device(
   })
 }
 
+export function normalizeRtcDs1302ConfigPayload(value: unknown, enabledFallback: boolean): Record<string, unknown> & { enabled: boolean } {
+  if (!isRecordPayload(value)) {
+    throw new ApiClientError('invalid rtc_ds1302 config', 'BAD_ARGS', 400, null)
+  }
+  return {
+    enabled: typeof value.enabled === 'boolean' ? value.enabled : enabledFallback,
+    clkPin: Math.max(0, Math.round(normalizeFiniteNumber(value.clkPin, 25))),
+    dataPin: Math.max(0, Math.round(normalizeFiniteNumber(value.dataPin, 26))),
+    rstPin: Math.max(0, Math.round(normalizeFiniteNumber(value.rstPin, 27))),
+    useForSystemTimeSync: typeof value.useForSystemTimeSync === 'boolean' ? value.useForSystemTimeSync : false,
+  }
+}
+
+export function createRtcDs1302Device(
+  nextId: number,
+  configSource: Record<string, unknown>,
+  baseDeps: DeviceDependencyLink[],
+  enabled: boolean,
+  name: string,
+  db: Database,
+): DeviceRecord {
+  void db
+  if (baseDeps.length > 0 || (Array.isArray(configSource.deps) && configSource.deps.length > 0)) {
+    throw new ApiClientError('rtc_ds1302 does not use dependencies', 'BAD_ARGS', 400, null)
+  }
+  const config = normalizeRtcDs1302ConfigPayload(configSource, enabled)
+  return createDeviceRecord(nextId, 'rtc_ds1302', 1, {
+    ...config,
+    name,
+    deps: [],
+  }, {
+    status: 'ready',
+    lifecycleStatus: 'ready',
+    effectiveStatus: 'ready',
+    currentEpochUtc: Math.floor(Date.now() / 1000),
+    lastReadOk: true,
+  })
+}
+
 function createPortExpanderDevice(
   typeName: 'pcf8574_expander' | 'pcf8575_expander',
   channelCount: number,

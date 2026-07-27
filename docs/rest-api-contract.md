@@ -96,6 +96,7 @@ Supported public `typeName` values:
 - `htu21`
 - `thermostat`
 - `rtc_ds3231`
+- `rtc_ds1302`
 - `pcf8574_expander`
 - `pcf8575_expander`
 - `port_expander_switch`
@@ -516,6 +517,34 @@ persistent `true` after a fresh write-back means the RTC's battery is likely
 dead or missing. See `GET /api/system/time`'s `source: "rtc"` for how the
 active RTC device feeds system time (`RtcSyncCoordinator`,
 `src/time/RtcSyncCoordinator.h`).
+
+### DS1302 RTC
+
+```ts
+interface RtcDs1302Config extends BaseDeviceConfig {
+  useForSystemTimeSync: boolean
+  clkPin: number
+  dataPin: number
+  rstPin: number
+}
+
+interface RtcDs1302Runtime extends BaseDeviceRuntime {
+  currentEpochUtc?: number
+  lastReadOk?: boolean
+}
+```
+
+DS1302 is a battery-backed RTC wired directly to three GPIO pins (CLK/DAT/
+RST) over its own bit-bang 3-wire protocol, not I2C — `config.deps` is always
+empty and `clkPin`/`dataPin`/`rstPin` must be distinct. The "at most one
+active sync RTC" rule from DS3231 above is enforced *registry-wide across RTC
+types*, not per-type: a `rtc_ds3231` device already flagged
+`useForSystemTimeSync: true` blocks a `rtc_ds1302` from also requesting it,
+and vice versa (shared `validateAtMostOneActiveRtcSync` helper). Unlike
+DS3231's oscillator-stop flag, DS1302 has no reliable hardware "lost power"
+signal — its clock-halt (CH) bit only reflects whether the firmware last told
+it to stop, not real backup-battery loss — so `RtcDs1302Runtime` omits an
+`oscillatorStopped`-equivalent field entirely.
 
 ### PCF8574 / PCF8575 Port Expander
 

@@ -15,6 +15,7 @@ import { ThermostatDevice } from '@/models/devices/thermostat'
 import { Ssd1306Device } from '@/models/devices/ssd1306/device'
 import { St7735Device } from '@/models/devices/st7735/device'
 import { RtcDs3231Device } from '@/models/devices/rtc-ds3231'
+import { RtcDs1302Device } from '@/models/devices/rtc-ds1302'
 import { Pcf8574ExpanderDevice } from '@/models/devices/pcf8574-expander'
 import { Pcf8575ExpanderDevice } from '@/models/devices/pcf8575-expander'
 import { PortExpanderSwitchDevice } from '@/models/devices/port-expander-switch'
@@ -56,6 +57,8 @@ import Ssd1306Fields from '@/components/devices/Ssd1306Fields.vue'
 import St7735Fields from '@/components/devices/St7735Fields.vue'
 import RtcDs3231Fields from '@/components/devices/rtc-ds3231/RtcDs3231Fields.vue'
 import RtcDs3231Widget from '@/components/devices/rtc-ds3231/RtcDs3231Widget.vue'
+import RtcDs1302Fields from '@/components/devices/rtc-ds1302/RtcDs1302Fields.vue'
+import RtcDs1302Widget from '@/components/devices/rtc-ds1302/RtcDs1302Widget.vue'
 import Pcf857xExpanderFields from '@/components/devices/expander/Pcf857xExpanderFields.vue'
 import Pcf857xExpanderWidget from '@/components/devices/expander/Pcf857xExpanderWidget.vue'
 import PortExpanderSwitchFields from '@/components/devices/port-expander-switch/PortExpanderSwitchFields.vue'
@@ -220,6 +223,15 @@ const rtcDs3231Ui: DeviceUi = {
   icon: 'time',
   fieldsComponent: RtcDs3231Fields,
   widgetComponent: RtcDs3231Widget,
+}
+
+const rtcDs1302Ui: DeviceUi = {
+  typeId: RtcDs1302Device.TYPE_ID,
+  typeName: RtcDs1302Device.TYPE_NAME,
+  labelKey: 'device.type.rtcDs1302',
+  icon: 'time',
+  fieldsComponent: RtcDs1302Fields,
+  widgetComponent: RtcDs1302Widget,
 }
 
 const pcf8574ExpanderUi: DeviceUi = {
@@ -410,6 +422,7 @@ const deviceUiV2ByTypeId: Record<number, DeviceUi> = {
   [ssd1306Ui.typeId]: ssd1306Ui,
   [st7735Ui.typeId]: st7735Ui,
   [rtcDs3231Ui.typeId]: rtcDs3231Ui,
+  [rtcDs1302Ui.typeId]: rtcDs1302Ui,
   [pcf8574ExpanderUi.typeId]: pcf8574ExpanderUi,
   [pcf8575ExpanderUi.typeId]: pcf8575ExpanderUi,
   [portExpanderSwitchUi.typeId]: portExpanderSwitchUi,

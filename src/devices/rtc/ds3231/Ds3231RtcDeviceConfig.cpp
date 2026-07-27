@@ -2,6 +2,7 @@
 
 #include "devices/bus/i2c/I2cAddress.h"
 #include "devices/core/ConfigCodec.h"
+#include "devices/rtc/common/RtcSyncConfig.h"
 
 #include <cstring>
 #include <type_traits>
@@ -58,23 +59,19 @@ DeviceValidationResult Ds3231RtcDeviceConfigV2::validate() const {
     if (!i2cValidation.ok()) {
         return i2cValidation;
     }
-    if (useForSystemTimeSync > 1U) {
-        return {DeviceError::InvalidConfig, "ds3231 useForSystemTimeSync is invalid"};
-    }
-    return {};
+    return validateRtcSyncField(useForSystemTimeSync);
 }
 
 bool Ds3231RtcDeviceConfigV2::parseJson(const JsonObjectConst& input, const char*& error) {
     if (!I2cDeviceConfigV1::parseJson(input, error)) {
         return false;
     }
-    useForSystemTimeSync = (input["useForSystemTimeSync"] | (useForSystemTimeSync != 0U)) ? 1U : 0U;
-    return true;
+    return parseRtcSyncFieldJson(input, useForSystemTimeSync, error);
 }
 
 void Ds3231RtcDeviceConfigV2::writeJson(JsonObject output) const {
     I2cDeviceConfigV1::writeJson(output);
-    output["useForSystemTimeSync"] = useForSystemTimeSync != 0U;
+    writeRtcSyncFieldJson(useForSystemTimeSync, output);
 }
 
 EWFM_LEGACY_CONFIG_USE_BEGIN

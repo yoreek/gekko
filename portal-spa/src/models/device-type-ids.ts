@@ -12,6 +12,7 @@ import { SpiBusDevice } from './devices/spi-bus.ts'
 import { Ssd1306Device } from './devices/ssd1306/device.ts'
 import { St7735Device } from './devices/st7735/device.ts'
 import { RtcDs3231Device } from './devices/rtc-ds3231.ts'
+import { RtcDs1302Device } from './devices/rtc-ds1302.ts'
 import { Pcf8574ExpanderDevice } from './devices/pcf8574-expander.ts'
 import { Pcf8575ExpanderDevice } from './devices/pcf8575-expander.ts'
 import { PortExpanderSwitchDevice } from './devices/port-expander-switch.ts'
@@ -42,6 +43,7 @@ export const SPI_BUS_DEVICE_TYPE_ID = SpiBusDevice.TYPE_ID
 export const SSD1306_DEVICE_TYPE_ID = Ssd1306Device.TYPE_ID
 export const ST7735_DEVICE_TYPE_ID = St7735Device.TYPE_ID
 export const RTC_DS3231_DEVICE_TYPE_ID = RtcDs3231Device.TYPE_ID
+export const RTC_DS1302_DEVICE_TYPE_ID = RtcDs1302Device.TYPE_ID
 export const PCF8574_EXPANDER_DEVICE_TYPE_ID = Pcf8574ExpanderDevice.TYPE_ID
 export const PCF8575_EXPANDER_DEVICE_TYPE_ID = Pcf8575ExpanderDevice.TYPE_ID
 export const PORT_EXPANDER_SWITCH_DEVICE_TYPE_ID = PortExpanderSwitchDevice.TYPE_ID
@@ -75,6 +77,7 @@ export type DeviceTypeName =
   | typeof Ssd1306Device.TYPE_NAME
   | typeof St7735Device.TYPE_NAME
   | typeof RtcDs3231Device.TYPE_NAME
+  | typeof RtcDs1302Device.TYPE_NAME
   | typeof Pcf8574ExpanderDevice.TYPE_NAME
   | typeof Pcf8575ExpanderDevice.TYPE_NAME
   | typeof PortExpanderSwitchDevice.TYPE_NAME
@@ -109,6 +112,7 @@ const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
   [Ssd1306Device.TYPE_NAME]: Ssd1306Device.TYPE_ID,
   [St7735Device.TYPE_NAME]: St7735Device.TYPE_ID,
   [RtcDs3231Device.TYPE_NAME]: RtcDs3231Device.TYPE_ID,
+  [RtcDs1302Device.TYPE_NAME]: RtcDs1302Device.TYPE_ID,
   [Pcf8574ExpanderDevice.TYPE_NAME]: Pcf8574ExpanderDevice.TYPE_ID,
   [Pcf8575ExpanderDevice.TYPE_NAME]: Pcf8575ExpanderDevice.TYPE_ID,
   [PortExpanderSwitchDevice.TYPE_NAME]: PortExpanderSwitchDevice.TYPE_ID,
@@ -143,6 +147,7 @@ const deviceTypeNames: Record<DeviceTypeId, DeviceTypeName> = {
   [Ssd1306Device.TYPE_ID]: Ssd1306Device.TYPE_NAME,
   [St7735Device.TYPE_ID]: St7735Device.TYPE_NAME,
   [RtcDs3231Device.TYPE_ID]: RtcDs3231Device.TYPE_NAME,
+  [RtcDs1302Device.TYPE_ID]: RtcDs1302Device.TYPE_NAME,
   [Pcf8574ExpanderDevice.TYPE_ID]: Pcf8574ExpanderDevice.TYPE_NAME,
   [Pcf8575ExpanderDevice.TYPE_ID]: Pcf8575ExpanderDevice.TYPE_NAME,
   [PortExpanderSwitchDevice.TYPE_ID]: PortExpanderSwitchDevice.TYPE_NAME,
