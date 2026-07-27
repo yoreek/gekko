@@ -275,7 +275,7 @@ private:
             return false;
         }
         const uint8_t schemaVersion = input["schemaVersion"] | 0U;
-        if (schemaVersion != kDisplayLayoutSchemaVersion) {
+        if (schemaVersion != 1U && schemaVersion != kDisplayLayoutSchemaVersion) {
             error = "display layout schemaVersion is unsupported";
             return false;
         }
@@ -283,7 +283,7 @@ private:
             error = "display layout activePageId is invalid";
             return false;
         }
-        layout_.schemaVersion = schemaVersion;
+        layout_.schemaVersion = kDisplayLayoutSchemaVersion;
         layout_.pages.reserve(pageCount);
         expectedPageCount_ = pageCount;
         beginSeen_ = true;

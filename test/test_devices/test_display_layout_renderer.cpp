@@ -79,6 +79,14 @@ public:
         ops.emplace_back(buffer);
     }
 
+    void drawDigital(const DisplayLayoutWidgetV1& widget, const DisplayDigitalFrame& frame) override {
+        digitalWidgetId = widget.id;
+        digitalFrame = frame;
+        char buffer[128]{};
+        std::snprintf(buffer, sizeof(buffer), "digital:%s:%u", widget.id, static_cast<unsigned>(frame.cellCount));
+        ops.emplace_back(buffer);
+    }
+
     void drawRect(const DisplayLayoutWidgetV1& widget) override {
         char buffer[64]{};
         std::snprintf(buffer, sizeof(buffer), "rect:%s", widget.id);
@@ -110,6 +118,8 @@ public:
     }
 
     std::vector<std::string> ops;
+    std::string digitalWidgetId{};
+    DisplayDigitalFrame digitalFrame{};
 };
 
 class TestDisplayDevice final : public DisplayDeviceBase {
@@ -155,6 +165,20 @@ DisplayLayoutWidgetV1 makeShapeWidget(const char* id, DisplayLayoutWidgetType ty
     widget.type = static_cast<uint8_t>(type);
     widget.width = 10;
     widget.height = 10;
+    return widget;
+}
+
+DisplayLayoutWidgetV1 makeDigitalWidget(const char* id, const char* text) {
+    DisplayLayoutWidgetV1 widget{};
+    std::snprintf(widget.id, sizeof(widget.id), "%s", id);
+    widget.type = static_cast<uint8_t>(DisplayLayoutWidgetType::Digital);
+    widget.bindingKind = static_cast<uint8_t>(DisplayLayoutBindingKind::ConstantText);
+    widget.width = 4;
+    widget.height = 1;
+    std::snprintf(widget.text, sizeof(widget.text), "%s", text);
+    std::snprintf(widget.digitalOverflow, sizeof(widget.digitalOverflow), "%s", "----");
+    std::snprintf(widget.digitalMissing, sizeof(widget.digitalMissing), "%s", "----");
+    widget.digitalAlign = static_cast<uint8_t>(DisplayDigitalAlign::Right);
     return widget;
 }
 
@@ -247,6 +271,34 @@ void test_display_layout_renderer_rerenders_when_page_changes() {
     TEST_ASSERT_EQUAL_UINT32(4U, static_cast<uint32_t>(surface.ops.size()));
     TEST_ASSERT_EQUAL_STRING("clear:0000", surface.ops[2].c_str());
     TEST_ASSERT_EQUAL_STRING("text:second_text:Second", surface.ops[3].c_str());
+}
+
+void test_display_layout_renderer_renders_digital_widget_with_decimal_point() {
+    DisplayLayoutRecordV1 layout{};
+    layout.activePageIndex = 0;
+
+    DisplayLayoutPageV1 page{};
+    std::snprintf(page.id, sizeof(page.id), "%s", "main");
+    std::snprintf(page.name, sizeof(page.name), "%s", "Main");
+    page.widgets.push_back(makeDigitalWidget("digital", "12.34"));
+    layout.pages.push_back(page);
+
+    FakeWifiDriver wifi;
+    MetricValueResolver resolver(nullptr, wifi, 0U);
+    FakeDisplaySurface surface;
+    DisplayLayoutRenderSession session;
+
+    TEST_ASSERT_TRUE(session.render(layout, resolver, surface, 0U).rendered);
+    TEST_ASSERT_EQUAL_STRING("digital", surface.digitalWidgetId.c_str());
+    TEST_ASSERT_EQUAL_UINT8(4U, surface.digitalFrame.cellCount);
+    TEST_ASSERT_EQUAL_CHAR('1', surface.digitalFrame.cells[0].glyph);
+    TEST_ASSERT_EQUAL_CHAR('2', surface.digitalFrame.cells[1].glyph);
+    TEST_ASSERT_EQUAL_CHAR('3', surface.digitalFrame.cells[2].glyph);
+    TEST_ASSERT_EQUAL_CHAR('4', surface.digitalFrame.cells[3].glyph);
+    TEST_ASSERT_EQUAL_UINT8(0U, surface.digitalFrame.cells[0].decimalPoint);
+    TEST_ASSERT_EQUAL_UINT8(1U, surface.digitalFrame.cells[1].decimalPoint);
+    TEST_ASSERT_EQUAL_UINT8(0U, surface.digitalFrame.cells[2].decimalPoint);
+    TEST_ASSERT_EQUAL_UINT8(0U, surface.digitalFrame.cells[3].decimalPoint);
 }
 
 void test_display_device_clears_once_when_layout_becomes_empty() {

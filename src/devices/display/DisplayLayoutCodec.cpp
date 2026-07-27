@@ -150,6 +150,47 @@ bool readBool(const JsonVariantConst& value, const bool fallback) {
     return value.isNull() ? fallback : value.as<bool>();
 }
 
+bool parseDigitalAlign(const JsonVariantConst& value, uint8_t& align) {
+    if (value.isNull()) {
+        align = static_cast<uint8_t>(DisplayDigitalAlign::Right);
+        return true;
+    }
+    if (value.is<uint8_t>() || value.is<int>() || value.is<unsigned int>()) {
+        const int numeric = value.as<int>();
+        if (numeric < static_cast<int>(DisplayDigitalAlign::Left) || numeric > static_cast<int>(DisplayDigitalAlign::Right)) {
+            return false;
+        }
+        align = static_cast<uint8_t>(numeric);
+        return true;
+    }
+    const char* text = value.as<const char*>();
+    if (text == nullptr) {
+        return false;
+    }
+    if (std::strcmp(text, "left") == 0) {
+        align = static_cast<uint8_t>(DisplayDigitalAlign::Left);
+    } else if (std::strcmp(text, "center") == 0) {
+        align = static_cast<uint8_t>(DisplayDigitalAlign::Center);
+    } else if (std::strcmp(text, "right") == 0) {
+        align = static_cast<uint8_t>(DisplayDigitalAlign::Right);
+    } else {
+        return false;
+    }
+    return true;
+}
+
+const char* digitalAlignToString(const uint8_t align) {
+    switch (static_cast<DisplayDigitalAlign>(align)) {
+    case DisplayDigitalAlign::Left:
+        return "left";
+    case DisplayDigitalAlign::Center:
+        return "center";
+    case DisplayDigitalAlign::Right:
+    default:
+        return "right";
+    }
+}
+
 int hexDigit(const char value) {
     if (value >= '0' && value <= '9') {
         return value - '0';
@@ -208,6 +249,7 @@ DisplayLayoutPageV1 defaultLayoutPage() {
 DisplayLayoutWidgetType normalizeWidgetType(const DisplayLayoutWidgetType type) {
     switch (type) {
     case DisplayLayoutWidgetType::Text:
+    case DisplayLayoutWidgetType::Digital:
     case DisplayLayoutWidgetType::Bitmap:
     case DisplayLayoutWidgetType::Rect:
     case DisplayLayoutWidgetType::Line:
@@ -223,6 +265,8 @@ const char* widgetTypeToString(DisplayLayoutWidgetType type) {
     switch (normalizeWidgetType(type)) {
     case DisplayLayoutWidgetType::Text:
         return "text";
+    case DisplayLayoutWidgetType::Digital:
+        return "digital";
     case DisplayLayoutWidgetType::Bitmap:
         return "bitmap";
     case DisplayLayoutWidgetType::Rect:
@@ -248,6 +292,9 @@ bool parseWidgetType(const JsonObjectConst& input, DisplayLayoutWidgetType& type
         switch (numeric) {
         case 0:
             type = DisplayLayoutWidgetType::Text;
+            return true;
+        case 1:
+            type = DisplayLayoutWidgetType::Digital;
             return true;
         case 2:
             type = DisplayLayoutWidgetType::Bitmap;
@@ -276,6 +323,8 @@ bool parseWidgetType(const JsonObjectConst& input, DisplayLayoutWidgetType& type
     }
     if (std::strcmp(value, "text") == 0) {
         type = DisplayLayoutWidgetType::Text;
+    } else if (std::strcmp(value, "digital") == 0) {
+        type = DisplayLayoutWidgetType::Digital;
     } else if (std::strcmp(value, "bitmap") == 0) {
         type = DisplayLayoutWidgetType::Bitmap;
     } else if (std::strcmp(value, "rect") == 0) {
@@ -505,9 +554,23 @@ bool parseWidget(const JsonObjectConst& widgetJson, DisplayLayoutWidgetV1& widge
         error = "display widget color must use #RRGGBB";
         return false;
     }
+    if (type == DisplayLayoutWidgetType::Digital && !parseDigitalAlign(widgetJson["align"], widget.digitalAlign)) {
+        error = "display digital align is invalid";
+        return false;
+    }
     if (!copyText(widget.text, sizeof(widget.text), widgetJson["text"] | "")) {
         error = "display widget text is invalid";
         return false;
+    }
+    if (type == DisplayLayoutWidgetType::Digital) {
+        if (!copyText(widget.digitalOverflow, sizeof(widget.digitalOverflow), widgetJson["overflow"] | "----")) {
+            error = "display digital overflow pattern is invalid";
+            return false;
+        }
+        if (!copyText(widget.digitalMissing, sizeof(widget.digitalMissing), widgetJson["missing"] | "----")) {
+            error = "display digital missing pattern is invalid";
+            return false;
+        }
     }
     widget.bitmapFormat = static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1);
     widget.keepAspectRatio = readBool(widgetJson["keepAspectRatio"], false) ? 1U : 0U;
@@ -553,6 +616,18 @@ bool validateWidget(const DisplayLayoutWidgetV1& widget) {
     if (widget.width == 0U || widget.height == 0U) {
         return false;
     }
+    if (type == DisplayLayoutWidgetType::Digital) {
+        if (widget.height != 1U) {
+            return false;
+        }
+        if (widget.digitalAlign > static_cast<uint8_t>(DisplayDigitalAlign::Right)) {
+            return false;
+        }
+        if (std::strlen(widget.digitalOverflow) >= kDisplayLayoutDigitalPatternCapacity ||
+            std::strlen(widget.digitalMissing) >= kDisplayLayoutDigitalPatternCapacity) {
+            return false;
+        }
+    }
     if (widget.fontSize == 0U || widget.fontSize > 8U || widget.strokeWidth == 0U || widget.strokeWidth > 32U) {
         return false;
     }
@@ -576,8 +651,8 @@ bool validateWidget(const DisplayLayoutWidgetV1& widget) {
 
 bool validateLayout(const DisplayLayoutRecordV1& layout) {
     if ((layout.recordVersion != 1U && layout.recordVersion != 2U && layout.recordVersion != 3U && layout.recordVersion != 4U &&
-         layout.recordVersion != kDisplayLayoutRecordVersion) ||
-        layout.schemaVersion != kDisplayLayoutSchemaVersion) {
+         layout.recordVersion != 5U && layout.recordVersion != kDisplayLayoutRecordVersion) ||
+        (layout.schemaVersion != 1U && layout.schemaVersion != kDisplayLayoutSchemaVersion)) {
         return false;
     }
     if (layout.pages.size() > kDisplayLayoutMaxPages) {
@@ -606,7 +681,7 @@ bool validateLayout(const DisplayLayoutRecordV1& layout) {
 }
 
 size_t estimateWidgetSize(const DisplayLayoutWidgetV1& widget) {
-    return sizeof(DisplayLayoutBinaryWidgetV5) + widget.bitmapData.size();
+    return sizeof(DisplayLayoutBinaryWidgetV6) + widget.bitmapData.size();
 }
 
 void normalizePageOrder(DisplayLayoutRecordV1& layout) {
@@ -636,6 +711,11 @@ void writeDisplayLayoutWidgetJson(const DisplayLayoutWidgetV1& widget, JsonObjec
     widgetJson["autoSize"] = widget.autoSize != 0U;
     if (static_cast<DisplayLayoutWidgetType>(widget.type) != DisplayLayoutWidgetType::Bitmap) {
         writeRgb565Color(widgetJson, "color", widget.color);
+    }
+    if (static_cast<DisplayLayoutWidgetType>(widget.type) == DisplayLayoutWidgetType::Digital) {
+        widgetJson["align"] = digitalAlignToString(widget.digitalAlign);
+        widgetJson["overflow"] = JsonString(widget.digitalOverflow, JsonString::Copied);
+        widgetJson["missing"] = JsonString(widget.digitalMissing, JsonString::Copied);
     }
     JsonObject styleFlags = widgetJson.createNestedObject("styleFlags");
     writeStyleFlagsJson(widget.styleFlags, styleFlags);
@@ -669,7 +749,7 @@ const char* displayLayoutActivePageId(const DisplayLayoutRecordV1& layout) {
 }
 
 void writeDisplayLayoutJson(const DisplayLayoutRecordV1& layout, JsonObject output, int onlyPageIndex) {
-    output["schemaVersion"] = layout.schemaVersion;
+    output["schemaVersion"] = kDisplayLayoutSchemaVersion;
     writeRgb565Color(output, "backgroundColor", layout.backgroundColor);
     output["activePageId"] = displayLayoutActivePageId(layout);
     JsonArray pages = output.createNestedArray("pages");
@@ -686,6 +766,9 @@ bool parseDisplayLayoutJson(const JsonObjectConst& input, DisplayLayoutRecordV1&
     layout.deviceId = 0;
     layout.recordVersion = kDisplayLayoutRecordVersion;
     layout.schemaVersion = input["schemaVersion"] | kDisplayLayoutSchemaVersion;
+    if (layout.schemaVersion != 1U && layout.schemaVersion != kDisplayLayoutSchemaVersion) {
+        return false;
+    }
     if (!parseRgb565Color(input["backgroundColor"], 0U, layout.backgroundColor)) {
         return false;
     }
@@ -765,6 +848,7 @@ bool parseDisplayLayoutJson(const JsonObjectConst& input, DisplayLayoutRecordV1&
     if (!validateLayout(layout)) {
         return false;
     }
+    layout.schemaVersion = kDisplayLayoutSchemaVersion;
     return prepareDisplayLayoutTextAst(layout);
 }
 
@@ -779,7 +863,7 @@ bool encodeDisplayLayoutBinary(const DisplayLayoutRecordV1& layout, std::vector<
     }
 
     blob.clear();
-    size_t estimatedSize = sizeof(DisplayLayoutBinaryHeaderV5);
+    size_t estimatedSize = sizeof(DisplayLayoutBinaryHeaderV6);
     for (const DisplayLayoutPageV1& page : layout.pages) {
         estimatedSize += sizeof(DisplayLayoutBinaryPageHeaderV1);
         for (const DisplayLayoutWidgetV1& widget : page.widgets) {
@@ -788,10 +872,10 @@ bool encodeDisplayLayoutBinary(const DisplayLayoutRecordV1& layout, std::vector<
     }
     blob.reserve(estimatedSize);
 
-    DisplayLayoutBinaryHeaderV5 header{};
+    DisplayLayoutBinaryHeaderV6 header{};
     header.recordVersion = kDisplayLayoutRecordVersion;
     header.deviceId = layout.deviceId;
-    header.schemaVersion = layout.schemaVersion;
+    header.schemaVersion = kDisplayLayoutSchemaVersion;
     header.activePageIndex = layout.activePageIndex;
     header.pageCount = static_cast<uint8_t>(layout.pages.size());
     header.backgroundColor = layout.backgroundColor;
@@ -813,7 +897,7 @@ bool encodeDisplayLayoutBinary(const DisplayLayoutRecordV1& layout, std::vector<
             return false;
         }
         for (const DisplayLayoutWidgetV1& widget : page.widgets) {
-            DisplayLayoutBinaryWidgetV5 binaryWidget{};
+            DisplayLayoutBinaryWidgetV6 binaryWidget{};
             if (!copyText(binaryWidget.id, sizeof(binaryWidget.id), widget.id)) {
                 return false;
             }
@@ -832,6 +916,13 @@ bool encodeDisplayLayoutBinary(const DisplayLayoutRecordV1& layout, std::vector<
             binaryWidget.autoSize = widget.autoSize;
             binaryWidget.styleFlags = widget.styleFlags;
             binaryWidget.color = widget.color;
+            binaryWidget.digitalAlign = widget.digitalAlign;
+            if (!copyText(binaryWidget.digitalOverflow, sizeof(binaryWidget.digitalOverflow), widget.digitalOverflow)) {
+                return false;
+            }
+            if (!copyText(binaryWidget.digitalMissing, sizeof(binaryWidget.digitalMissing), widget.digitalMissing)) {
+                return false;
+            }
             binaryWidget.bitmapFormat = widget.bitmapFormat;
             binaryWidget.keepAspectRatio = widget.keepAspectRatio;
             binaryWidget.bitmapDataLength = static_cast<uint16_t>(widget.bitmapData.size());
@@ -866,8 +957,8 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
     uint8_t schemaVersion = 0U;
     uint8_t activePageIndex = 0U;
     uint8_t pageCount = 0U;
-    if (recordVersion == kDisplayLayoutRecordVersion) {
-        DisplayLayoutBinaryHeaderV5 header{};
+    if (recordVersion == 5U || recordVersion == kDisplayLayoutRecordVersion) {
+        DisplayLayoutBinaryHeaderV6 header{};
         if (!readBinary(data, size, offset, header)) {
             return false;
         }
@@ -916,7 +1007,7 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
         page.order = pageHeader.order;
         page.widgets.reserve(pageHeader.widgetCount);
         for (uint8_t widgetIndex = 0; widgetIndex < pageHeader.widgetCount; ++widgetIndex) {
-            DisplayLayoutBinaryWidgetV5 binaryWidget{};
+            DisplayLayoutBinaryWidgetV6 binaryWidget{};
             if (recordVersion == 1U) {
                 DisplayLayoutBinaryWidgetV1 legacyWidget{};
                 if (!readBinary(data, size, offset, legacyWidget)) {
@@ -943,6 +1034,7 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
                 binaryWidget.bitmapFormat = legacyWidget.bitmapFormat;
                 binaryWidget.keepAspectRatio = legacyWidget.keepAspectRatio;
                 binaryWidget.bitmapDataLength = legacyWidget.bitmapDataLength;
+                binaryWidget.digitalAlign = static_cast<uint8_t>(DisplayDigitalAlign::Right);
                 if (!copyText(binaryWidget.text, sizeof(binaryWidget.text), legacyWidget.text)) {
                     return false;
                 }
@@ -972,6 +1064,7 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
                 binaryWidget.bitmapFormat = legacyWidget.bitmapFormat;
                 binaryWidget.keepAspectRatio = legacyWidget.keepAspectRatio;
                 binaryWidget.bitmapDataLength = legacyWidget.bitmapDataLength;
+                binaryWidget.digitalAlign = static_cast<uint8_t>(DisplayDigitalAlign::Right);
                 if (!copyText(binaryWidget.text, sizeof(binaryWidget.text), legacyWidget.text)) {
                     return false;
                 }
@@ -1002,6 +1095,7 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
                 binaryWidget.bitmapFormat = legacyWidget.bitmapFormat;
                 binaryWidget.keepAspectRatio = legacyWidget.keepAspectRatio;
                 binaryWidget.bitmapDataLength = legacyWidget.bitmapDataLength;
+                binaryWidget.digitalAlign = static_cast<uint8_t>(DisplayDigitalAlign::Right);
             } else if (recordVersion == 4U) {
                 DisplayLayoutBinaryWidgetV4 legacyWidget{};
                 if (!readBinary(data, size, offset, legacyWidget)) {
@@ -1026,6 +1120,35 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
                 binaryWidget.autoSize = legacyWidget.autoSize;
                 binaryWidget.styleFlags = legacyWidget.styleFlags;
                 binaryWidget.color = 0xFFFFU;
+                binaryWidget.bitmapFormat = legacyWidget.bitmapFormat;
+                binaryWidget.keepAspectRatio = legacyWidget.keepAspectRatio;
+                binaryWidget.bitmapDataLength = legacyWidget.bitmapDataLength;
+                binaryWidget.digitalAlign = static_cast<uint8_t>(DisplayDigitalAlign::Right);
+            } else if (recordVersion == 5U) {
+                DisplayLayoutBinaryWidgetV5 legacyWidget{};
+                if (!readBinary(data, size, offset, legacyWidget)) {
+                    return false;
+                }
+                if (!copyText(binaryWidget.id, sizeof(binaryWidget.id), legacyWidget.id) ||
+                    !copyText(binaryWidget.text, sizeof(binaryWidget.text), legacyWidget.text)) {
+                    return false;
+                }
+                binaryWidget.type = legacyWidget.type;
+                binaryWidget.bindingKind = legacyWidget.bindingKind;
+                binaryWidget.metricNamespace = legacyWidget.metricNamespace;
+                binaryWidget.x = legacyWidget.x;
+                binaryWidget.y = legacyWidget.y;
+                binaryWidget.width = legacyWidget.width;
+                binaryWidget.height = legacyWidget.height;
+                binaryWidget.sourceDeviceId = legacyWidget.sourceDeviceId;
+                binaryWidget.metricId = legacyWidget.metricId;
+                binaryWidget.refreshIntervalMs = legacyWidget.refreshIntervalMs;
+                binaryWidget.fontSize = legacyWidget.fontSize;
+                binaryWidget.strokeWidth = legacyWidget.strokeWidth;
+                binaryWidget.autoSize = legacyWidget.autoSize;
+                binaryWidget.styleFlags = legacyWidget.styleFlags;
+                binaryWidget.color = legacyWidget.color;
+                binaryWidget.digitalAlign = static_cast<uint8_t>(DisplayDigitalAlign::Right);
                 binaryWidget.bitmapFormat = legacyWidget.bitmapFormat;
                 binaryWidget.keepAspectRatio = legacyWidget.keepAspectRatio;
                 binaryWidget.bitmapDataLength = legacyWidget.bitmapDataLength;
@@ -1056,6 +1179,13 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
             widget.autoSize = binaryWidget.autoSize;
             widget.styleFlags = binaryWidget.styleFlags;
             widget.color = binaryWidget.color;
+            widget.digitalAlign = binaryWidget.digitalAlign;
+            if (!copyText(widget.digitalOverflow, sizeof(widget.digitalOverflow), binaryWidget.digitalOverflow)) {
+                return false;
+            }
+            if (!copyText(widget.digitalMissing, sizeof(widget.digitalMissing), binaryWidget.digitalMissing)) {
+                return false;
+            }
             widget.bitmapFormat = binaryWidget.bitmapFormat;
             widget.keepAspectRatio = binaryWidget.keepAspectRatio;
             if (!copyText(widget.text, sizeof(widget.text), binaryWidget.text)) {
@@ -1073,6 +1203,7 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
     if (offset != size || !validateLayout(layout)) {
         return false;
     }
+    layout.schemaVersion = kDisplayLayoutSchemaVersion;
     return prepareDisplayLayoutTextAst(layout);
 }
 

@@ -179,6 +179,59 @@ void test_ssd1306_layout_codec_round_trip_json() {
     TEST_ASSERT_EQUAL_UINT8(0, decoded.activePageIndex);
 }
 
+void test_ssd1306_layout_codec_round_trip_digital_widget() {
+    DisplayLayoutRecordV1 original{};
+    original.deviceId = 99;
+    original.recordVersion = kDisplayLayoutRecordVersion;
+    original.schemaVersion = kDisplayLayoutSchemaVersion;
+    original.activePageIndex = 0;
+
+    DisplayLayoutPageV1 page{};
+    std::snprintf(page.id, sizeof(page.id), "%s", "main");
+    std::snprintf(page.name, sizeof(page.name), "%s", "Main");
+
+    DisplayLayoutWidgetV1 digital{};
+    std::snprintf(digital.id, sizeof(digital.id), "%s", "voltage");
+    digital.type = static_cast<uint8_t>(DisplayLayoutWidgetType::Digital);
+    digital.bindingKind = static_cast<uint8_t>(DisplayLayoutBindingKind::ConstantText);
+    digital.width = 4U;
+    digital.height = 1U;
+    digital.digitalAlign = static_cast<uint8_t>(DisplayDigitalAlign::Right);
+    std::snprintf(digital.digitalOverflow, sizeof(digital.digitalOverflow), "%s", "----");
+    std::snprintf(digital.digitalMissing, sizeof(digital.digitalMissing), "%s", "----");
+    std::snprintf(digital.text, sizeof(digital.text), "%s", "12.34");
+    page.widgets.push_back(digital);
+    original.pages.push_back(page);
+
+    DynamicJsonDocument doc(2048);
+    JsonObject root = doc.to<JsonObject>();
+    writeDisplayLayoutJson(original, root);
+    TEST_ASSERT_EQUAL_UINT8(kDisplayLayoutSchemaVersion, root["schemaVersion"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_STRING("digital", root["pages"][0]["widgets"][0]["type"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("right", root["pages"][0]["widgets"][0]["align"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("----", root["pages"][0]["widgets"][0]["overflow"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("----", root["pages"][0]["widgets"][0]["missing"].as<const char*>());
+
+    DisplayLayoutRecordV1 decoded{};
+    TEST_ASSERT_TRUE(parseDisplayLayoutJson(root, decoded));
+    TEST_ASSERT_EQUAL_UINT8(kDisplayLayoutSchemaVersion, decoded.schemaVersion);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Digital), decoded.pages[0].widgets[0].type);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayDigitalAlign::Right), decoded.pages[0].widgets[0].digitalAlign);
+    TEST_ASSERT_EQUAL_STRING("----", decoded.pages[0].widgets[0].digitalOverflow);
+    TEST_ASSERT_EQUAL_STRING("----", decoded.pages[0].widgets[0].digitalMissing);
+    TEST_ASSERT_EQUAL_STRING("12.34", decoded.pages[0].widgets[0].text);
+
+    std::vector<uint8_t> blob;
+    TEST_ASSERT_TRUE(encodeDisplayLayoutBinary(decoded, blob));
+    DisplayLayoutRecordV1 roundTrip{};
+    TEST_ASSERT_TRUE(decodeDisplayLayoutBinary(blob.data(), blob.size(), roundTrip));
+    TEST_ASSERT_EQUAL_UINT8(kDisplayLayoutSchemaVersion, roundTrip.schemaVersion);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Digital), roundTrip.pages[0].widgets[0].type);
+    TEST_ASSERT_EQUAL_STRING("----", roundTrip.pages[0].widgets[0].digitalOverflow);
+    TEST_ASSERT_EQUAL_STRING("----", roundTrip.pages[0].widgets[0].digitalMissing);
+    TEST_ASSERT_EQUAL_STRING("12.34", roundTrip.pages[0].widgets[0].text);
+}
+
 void test_ssd1306_layout_codec_migrates_v4_colors() {
     DisplayLayoutBinaryHeaderV1 header{};
     header.recordVersion = 4U;

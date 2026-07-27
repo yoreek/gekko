@@ -26,6 +26,24 @@ void renderTextWidget(const DisplayLayoutWidgetV1& widget, const MetricValueReso
     surface.drawText(widget, text);
 }
 
+void renderDigitalWidget(const DisplayLayoutWidgetV1& widget, const MetricValueResolver& resolver, IDisplayRenderSurface& surface,
+                         bool& dynamic) {
+    DisplayTextEvaluationResult text{};
+    const DisplayTextCompiledWidget* compiled = nullptr;
+    if (ensureDisplayTextWidgetAst(widget, compiled, nullptr) && compiled != nullptr) {
+        (void)evaluateDisplayTextWidget(widget.text, *compiled, resolver, text);
+    } else {
+        (void)evaluateDisplayTextWidget(widget, resolver, text);
+    }
+    dynamic = text.dynamic;
+
+    DisplayDigitalFrame frame{};
+    if (!buildDisplayDigitalFrame(widget, text, frame)) {
+        return;
+    }
+    surface.drawDigital(widget, frame);
+}
+
 } // namespace
 
 void DisplayLayoutRenderSession::invalidate() {
@@ -81,6 +99,15 @@ DisplayLayoutRenderResult DisplayLayoutRenderSession::render(const DisplayLayout
         if (type == DisplayLayoutWidgetType::Text) {
             bool dynamic = false;
             renderTextWidget(widget, resolver, surface, dynamic);
+            const uint16_t effectiveIntervalMs = widgetRefreshInterval(widget, dynamic);
+            if (effectiveIntervalMs != kDisplayLayoutRefreshIntervalDisabled &&
+                (minimumRefreshIntervalMs == 0U || effectiveIntervalMs < minimumRefreshIntervalMs)) {
+                minimumRefreshIntervalMs = effectiveIntervalMs;
+            }
+            hasDynamicWidgets = hasDynamicWidgets || dynamic;
+        } else if (type == DisplayLayoutWidgetType::Digital) {
+            bool dynamic = false;
+            renderDigitalWidget(widget, resolver, surface, dynamic);
             const uint16_t effectiveIntervalMs = widgetRefreshInterval(widget, dynamic);
             if (effectiveIntervalMs != kDisplayLayoutRefreshIntervalDisabled &&
                 (minimumRefreshIntervalMs == 0U || effectiveIntervalMs < minimumRefreshIntervalMs)) {

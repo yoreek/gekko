@@ -198,6 +198,7 @@ void test_spi_runtime_lifecycle_transactions_and_duplicate_cs_detection();
 void test_spi_runtime_reconfigures_and_advances_generation();
 void test_spi_setup_transfer_round_trip_and_api_serialization();
 void test_ssd1306_layout_codec_round_trip_json();
+void test_ssd1306_layout_codec_round_trip_digital_widget();
 void test_ssd1306_layout_codec_migrates_v4_colors();
 void test_ssd1306_layout_codec_emits_single_page_when_filtered();
 void test_ssd1306_config_migrates_v1_v2_v3_without_bus_id();
@@ -247,6 +248,7 @@ void test_metric_value_resolver_resolves_device_temperature_and_missing_sources(
 void test_metric_value_resolver_resolves_system_values();
 void test_display_layout_renderer_clears_once_and_uses_min_refresh_interval();
 void test_display_layout_renderer_rerenders_when_page_changes();
+void test_display_layout_renderer_renders_digital_widget_with_decimal_point();
 void test_display_device_clears_once_when_layout_becomes_empty();
 void test_display_text_evaluator_resolves_static_and_placeholder_text();
 void test_display_text_evaluator_handles_missing_and_binding_only_metrics();
@@ -515,6 +517,7 @@ int main(int, char**) {
     RUN_TEST(test_spi_runtime_reconfigures_and_advances_generation);
     RUN_TEST(test_spi_setup_transfer_round_trip_and_api_serialization);
     RUN_TEST(test_ssd1306_layout_codec_round_trip_json);
+    RUN_TEST(test_ssd1306_layout_codec_round_trip_digital_widget);
     RUN_TEST(test_ssd1306_layout_codec_migrates_v4_colors);
     RUN_TEST(test_ssd1306_layout_codec_emits_single_page_when_filtered);
     RUN_TEST(test_ssd1306_config_migrates_v1_v2_v3_without_bus_id);
@@ -564,6 +567,7 @@ int main(int, char**) {
     RUN_TEST(test_metric_value_resolver_resolves_system_values);
     RUN_TEST(test_display_layout_renderer_clears_once_and_uses_min_refresh_interval);
     RUN_TEST(test_display_layout_renderer_rerenders_when_page_changes);
+    RUN_TEST(test_display_layout_renderer_renders_digital_widget_with_decimal_point);
     RUN_TEST(test_display_device_clears_once_when_layout_becomes_empty);
     RUN_TEST(test_display_text_evaluator_resolves_static_and_placeholder_text);
     RUN_TEST(test_display_text_evaluator_handles_missing_and_binding_only_metrics);
