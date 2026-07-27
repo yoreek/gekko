@@ -81,6 +81,7 @@ Pick the closest base instead of deriving straight from `DeviceRuntimeBase`:
 | Device on a bus | `BusDependentDeviceBase<Bus, Role>` | bus access |
 | Hub channel | `AnalogInputHubChannelDeviceBase` | protocol driver |
 | **Polled temperature sensor** | **`PolledTemperatureSensorDeviceBase`** | `sensorReady()`, `sampleReading()`, poll/filter/report accessors |
+| **Async I2C temperature+humidity sensor** | **`I2cAsyncTemperatureHumiditySensorDeviceBase`** | init/trigger/read hooks per measurement phase, poll/filter/report accessors |
 
 `PolledTemperatureSensorDeviceBase` owns the whole lifecycle state machine, poll
 cadence, smoothing filter, and reading publisher. It was extracted because
@@ -89,15 +90,25 @@ machine (htu21 had even grown its own private base). Migrating `ntc_thermistor` 
 it dropped that class from 408 to 216 lines with no behavior change (all native tests
 pass).
 
-`ds18b20` and `htu21` do **not** fit this base, despite also being temperature
-sensors: both derive from `BusDependentDeviceBase` (a diamond over `DeviceRuntimeBase`
-with `PolledTemperatureSensorDeviceBase`), read asynchronously across several states
-(trigger → wait for conversion → read, plus fault/retry), and `htu21` is dual-channel
-(temperature + humidity, two publishers/filters). They form a separate "async bus
-sensor" sub-family that would need its own base — a reminder to size a base to one
-read model, not to every device that shares a role. `ds18b20` did gain the same
-smoothing/calibration filter as a standalone config-version bump (`DS18B20-2`) for
-parity, without adopting the base.
+`ds18b20` does **not** fit this base, despite also being a temperature sensor: it derives
+from `BusDependentDeviceBase` and reads asynchronously across several states (trigger →
+wait for conversion → read, plus fault/retry) but is single-channel over a one-wire bus.
+It did gain the same smoothing/calibration filter as a standalone config-version bump
+(`DS18B20-2`) for parity, without adopting the base — a reminder to size a base to one
+read model, not to every device that shares a role.
+
+`htu21` and `aht10` are both async, dual-channel (temperature + humidity), and share an
+I2C bus dependency — a distinct "async I2C dual-channel sensor" sub-family, predicted
+above when `PolledTemperatureSensorDeviceBase` was first extracted. `aht10` was added
+after `htu21` by copying its state machine wholesale (same guard clauses, same
+`publishReadings`/`invalidateReadings`/`recordFailure`, same retry constants, differing
+only in protocol: `aht10` does one init+measure phase decoding both channels from a
+single frame, `htu21` does a soft reset followed by two independent trigger/wait/read
+phases with a CRC check). That duplication was resolved by extracting
+`I2cAsyncTemperatureHumiditySensorDeviceBase`, generalizing the measurement cycle into
+`measurementPhaseCount()` trigger→wait→read phases so both fit: migrating dropped
+`Aht10SensorDevice`/`Htu21SensorDevice` from 79+556 / 83+648 lines to 60+176 / 61+182
+lines each, with all existing native tests passing unmodified (no behavior change).
 
 When a family has no base yet and a second device is about to duplicate a first,
 extract the base *before* the copy — that is the highest-leverage move for a family

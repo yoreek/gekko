@@ -1,12 +1,9 @@
 #pragma once
 
-#include "devices/bus/BusDependentDeviceBase.h"
 #include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/bus/i2c/I2cDeviceRuntimeBase.h"
-#include "devices/sensors/filter/SensorReadingFilter.h"
+#include "devices/sensors/common/I2cAsyncTemperatureHumiditySensorDeviceBase.h"
 #include "devices/sensors/htu21/Htu21SensorConfig.h"
-#include "devices/sensors/humidity/HumidityReadingPublisher.h"
-#include "devices/sensors/temperature/TemperatureReadingPublisher.h"
 
 #include <ArduinoJson.h>
 
@@ -15,24 +12,18 @@ namespace ewfm {
 // HTU21(D)F combined temperature + humidity sensor on a shared I2C bus (default address 0x40).
 // One device, two output channels: it provides DeviceRole::TemperatureSensor (so thermostats can
 // bind it exactly like a DS18B20) and additionally exposes humidity through the role-less
-// IHumidityReadingRuntime for the metric/display pipeline. Bus handling mirrors Ds3231RtcDevice;
-// the poll cycle mirrors Ds18b20's split trigger/wait shape because the no-hold measurement
-// commands need a conversion delay that must not hold a bus transaction across ticks.
+// IHumidityReadingRuntime for the metric/display pipeline. Runtime lifecycle, filtering, and
+// publishing are owned by I2cAsyncTemperatureHumiditySensorDeviceBase; this class supplies only
+// the HTU21 protocol (soft reset, two no-hold measurement phases with CRC-checked responses).
 class Htu21SensorDevice;
-using Htu21SensorDeviceBase = I2cDeviceRuntimeBase<Htu21SensorDevice, BusDependentDeviceBase<I2cBusDevice, DeviceRole::I2CBus>>;
+using Htu21SensorDeviceBase = I2cDeviceRuntimeBase<Htu21SensorDevice, I2cAsyncTemperatureHumiditySensorDeviceBase>;
 
-class Htu21SensorDevice final : public Htu21SensorDeviceBase, public ITemperatureReadingRuntime, public IHumidityReadingRuntime {
+class Htu21SensorDevice final : public Htu21SensorDeviceBase {
 public:
     Htu21SensorDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
     explicit Htu21SensorDevice(const Htu21SensorConfigV3& config);
 
     const Htu21SensorConfigV3& config() const;
-    const ITemperatureReadingRuntime* temperatureReadingRuntime() const override;
-    const IHumidityReadingRuntime* humidityReadingRuntime() const override;
-    bool latestTemperatureReading(TemperatureReading& reading) const override;
-    const char* latestTemperatureStatus() const override;
-    bool latestHumidityReading(HumidityReading& reading) const override;
-    const char* latestHumidityStatus() const override;
     void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const override;
@@ -45,39 +36,26 @@ public:
 private:
     const DeviceBaseConfigV1& baseConfig() const override;
 
-    State Idle();
-    State Starting();
-    State ResetDelay();
-    State TriggerTemperature();
-    State ReadTemperature();
-    State TriggerHumidity();
-    State ReadHumidity();
-    State Ready();
-    State RetryBackoff();
-    State DependencyBlocked();
-    State Reconfiguring();
-    State Disabled();
-    State Faulted();
-    State Deleting();
+    bool sendInitCommand(II2cBusDriver& driver) const override;
+    uint32_t initDelayMs() const override;
+    uint8_t measurementPhaseCount() const override;
+    bool sendPhaseTrigger(II2cBusDriver& driver, uint8_t phaseIndex) const override;
+    uint32_t phaseDelayMs(uint8_t phaseIndex) const override;
+    bool readPhase(II2cBusDriver& driver, uint8_t phaseIndex, const char*& errorStatus) override;
+    void computeReadings(int32_t& milliCelsius, int32_t& milliPercent) const override;
 
-    bool triggerMeasurement(II2cBusDriver& driver, uint8_t command) const;
-    bool readMeasurement(II2cBusDriver& driver, uint16_t& raw, const char*& errorStatus) const;
+    uint32_t pollIntervalMs() const override;
+    const SensorFilterConfigV1& temperatureFilterConfig() const override;
+    const SensorFilterConfigV1& humidityFilterConfig() const override;
+    bool reportAlways() const override;
+    uint16_t reportDeltaCentiCelsius() const override;
+    uint16_t reportDeltaCentiPercent() const override;
+
     TemperatureUnit outputUnit() const;
-    void publishReadings(int32_t rawMilliCelsius, int32_t rawMilliPercent, uint32_t now);
-    void invalidateReadings(const char* status);
-    void recordFailure(uint32_t now);
 
     Htu21SensorConfigV3 config_{};
-    SensorReadingFilter temperatureFilter_{};
-    SensorReadingFilter humidityFilter_{};
-    TemperatureReadingPublisher temperaturePublisher_{};
-    HumidityReadingPublisher humidityPublisher_{};
-    uint32_t lastDependencyGeneration_{0};
-    uint32_t nextPollAt_{0};
-    uint32_t retryDeadline_{0};
-    uint32_t measureDeadline_{0};
     int32_t pendingMilliCelsius_{0};
-    uint8_t consecutiveErrors_{0};
+    int32_t pendingMilliPercent_{0};
 };
 
 } // namespace ewfm

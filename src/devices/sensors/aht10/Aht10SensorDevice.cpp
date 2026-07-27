@@ -3,25 +3,10 @@
 #include "devices/bus/i2c/I2cDeviceValidation.h"
 #include "devices/sensors/aht10/Aht10Protocol.h"
 
-#include <cmath>
-#include <cstring>
-
 namespace ewfm {
 
-#undef SM_CLASS
-#define SM_CLASS Aht10SensorDevice
-
 namespace {
-constexpr uint32_t kBusyRetryMs = 100;
-constexpr uint32_t kRetryBackoffMs = 1000;
-constexpr uint32_t kFaultRetryBackoffMs = 30000;
-constexpr uint8_t kFaultErrorThreshold = 3;
-
-const char* kOutputNotReady = "not_ready";
-const char* kOutputDisabled = "disabled";
-const char* kOutputDependencyUnavailable = "dependency_unavailable";
 const char* kOutputNotFound = "not_found";
-const char* kOutputBusy = "busy";
 } // namespace
 
 Aht10SensorDevice::Aht10SensorDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob)
@@ -33,10 +18,8 @@ Aht10SensorDevice::Aht10SensorDevice(const DeviceRegistryEntry& record, const De
     bindDeviceIdentity(record, configBlob);
 }
 
-Aht10SensorDevice::Aht10SensorDevice(const Aht10SensorConfigV1& config)
-    : Aht10SensorDeviceBase((PState)&Aht10SensorDevice::Idle), config_(config) {
-    temperatureFilter_.configure(config_.temperatureFilter);
-    humidityFilter_.configure(config_.humidityFilter);
+Aht10SensorDevice::Aht10SensorDevice(const Aht10SensorConfigV1& config) : Aht10SensorDeviceBase(), config_(config) {
+    applyFilterConfig();
 }
 
 const Aht10SensorConfigV1& Aht10SensorDevice::config() const {
@@ -45,32 +28,6 @@ const Aht10SensorConfigV1& Aht10SensorDevice::config() const {
 
 const DeviceBaseConfigV1& Aht10SensorDevice::baseConfig() const {
     return config_;
-}
-
-const ITemperatureReadingRuntime* Aht10SensorDevice::temperatureReadingRuntime() const {
-    return this;
-}
-
-const IHumidityReadingRuntime* Aht10SensorDevice::humidityReadingRuntime() const {
-    return this;
-}
-
-bool Aht10SensorDevice::latestTemperatureReading(TemperatureReading& reading) const {
-    reading = temperaturePublisher_.reading();
-    return true;
-}
-
-const char* Aht10SensorDevice::latestTemperatureStatus() const {
-    return temperaturePublisher_.status();
-}
-
-bool Aht10SensorDevice::latestHumidityReading(HumidityReading& reading) const {
-    reading = humidityPublisher_.reading();
-    return true;
-}
-
-const char* Aht10SensorDevice::latestHumidityStatus() const {
-    return humidityPublisher_.status();
 }
 
 void Aht10SensorDevice::bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) {
@@ -101,10 +58,9 @@ bool Aht10SensorDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t
     }
     const bool pollChanged = config.pollMs != config_.pollMs;
     config_ = config;
-    temperatureFilter_.configure(config_.temperatureFilter);
-    humidityFilter_.configure(config_.humidityFilter);
+    applyFilterConfig();
     if (pollChanged) {
-        nextPollAt_ = now + config_.pollMs;
+        reschedulePoll(now);
     }
     return true;
 }
@@ -134,16 +90,38 @@ DeviceValidationResult Aht10SensorDevice::validateConfig(const DeviceRegistryEnt
     return validateI2cConfig<Aht10SensorConfigV1>(record, configBlob, decodeAht10SensorConfig);
 }
 
-bool Aht10SensorDevice::sendCommand(II2cBusDriver& driver, uint8_t command, uint8_t arg1, uint8_t arg2) const {
+bool Aht10SensorDevice::sendInitCommand(II2cBusDriver& driver) const {
+    if (!probeI2cPresence(driver)) {
+        return false;
+    }
     driver.beginTransmission(config_.i2cAddress);
-    driver.write(command);
-    driver.write(arg1);
-    driver.write(arg2);
+    driver.write(kAht10CmdInit);
+    driver.write(kAht10CmdInitArg1);
+    driver.write(kAht10CmdInitArg2);
     return driver.endTransmission(true) == 0U;
 }
 
-bool Aht10SensorDevice::readMeasurement(II2cBusDriver& driver, uint32_t& humidityRaw, uint32_t& temperatureRaw,
-                                        const char*& errorStatus) const {
+uint32_t Aht10SensorDevice::initDelayMs() const {
+    return kAht10InitMs;
+}
+
+uint8_t Aht10SensorDevice::measurementPhaseCount() const {
+    return 1U;
+}
+
+bool Aht10SensorDevice::sendPhaseTrigger(II2cBusDriver& driver, uint8_t /*phaseIndex*/) const {
+    driver.beginTransmission(config_.i2cAddress);
+    driver.write(kAht10CmdMeasure);
+    driver.write(kAht10CmdMeasureArg1);
+    driver.write(kAht10CmdMeasureArg2);
+    return driver.endTransmission(true) == 0U;
+}
+
+uint32_t Aht10SensorDevice::phaseDelayMs(uint8_t /*phaseIndex*/) const {
+    return kAht10MeasureMs;
+}
+
+bool Aht10SensorDevice::readPhase(II2cBusDriver& driver, uint8_t /*phaseIndex*/, const char*& errorStatus) {
     uint8_t frame[kAht10MeasureResponseBytes]{};
     if (driver.requestFrom(config_.i2cAddress, kAht10MeasureResponseBytes, true) != kAht10MeasureResponseBytes) {
         errorStatus = kOutputNotFound;
@@ -157,400 +135,42 @@ bool Aht10SensorDevice::readMeasurement(II2cBusDriver& driver, uint32_t& humidit
         }
         frame[index] = static_cast<uint8_t>(value);
     }
-    return aht10DecodeMeasurement(frame, humidityRaw, temperatureRaw, errorStatus);
+    return aht10DecodeMeasurement(frame, humidityRaw_, temperatureRaw_, errorStatus);
+}
+
+void Aht10SensorDevice::computeReadings(int32_t& milliCelsius, int32_t& milliPercent) const {
+    milliCelsius = aht10RawToMilliCelsius(temperatureRaw_);
+    milliPercent = aht10RawToMilliPercent(humidityRaw_);
+}
+
+uint32_t Aht10SensorDevice::pollIntervalMs() const {
+    return config_.pollMs;
+}
+
+const SensorFilterConfigV1& Aht10SensorDevice::temperatureFilterConfig() const {
+    return config_.temperatureFilter;
+}
+
+const SensorFilterConfigV1& Aht10SensorDevice::humidityFilterConfig() const {
+    return config_.humidityFilter;
+}
+
+bool Aht10SensorDevice::reportAlways() const {
+    return config_.reportAlways != 0U;
+}
+
+uint16_t Aht10SensorDevice::reportDeltaCentiCelsius() const {
+    return config_.reportDeltaCentiCelsius;
+}
+
+uint16_t Aht10SensorDevice::reportDeltaCentiPercent() const {
+    return config_.reportDeltaCentiPercent;
 }
 
 TemperatureUnit Aht10SensorDevice::outputUnit() const {
     TemperatureUnit unit{TemperatureUnit::Celsius};
     (void)temperatureUnitFromByte(config_.outputUnit, unit);
     return unit;
-}
-
-void Aht10SensorDevice::publishReadings(int32_t rawMilliCelsius, int32_t rawMilliPercent, uint32_t now) {
-    temperaturePublisher_.configure(config_.reportAlways != 0U, config_.reportDeltaCentiCelsius);
-    humidityPublisher_.configure(config_.reportAlways != 0U, config_.reportDeltaCentiPercent);
-
-    const float filteredTemperature = temperatureFilter_.apply(static_cast<float>(rawMilliCelsius));
-    float filteredHumidity = humidityFilter_.apply(static_cast<float>(rawMilliPercent));
-    if (filteredHumidity < 0.0F) {
-        filteredHumidity = 0.0F;
-    } else if (filteredHumidity > 100000.0F) {
-        filteredHumidity = 100000.0F;
-    }
-
-    bool dirty = temperaturePublisher_.publish(static_cast<int32_t>(std::lround(filteredTemperature)), now);
-    dirty = humidityPublisher_.publish(static_cast<int32_t>(std::lround(filteredHumidity)), now) || dirty;
-    if (dirty) {
-        markRuntimeStateDirty();
-    }
-}
-
-void Aht10SensorDevice::invalidateReadings(const char* status) {
-    bool dirty = temperaturePublisher_.invalidate(status);
-    dirty = humidityPublisher_.invalidate(status) || dirty;
-    if (dirty) {
-        markRuntimeStateDirty();
-    }
-}
-
-void Aht10SensorDevice::recordFailure(uint32_t now) {
-    if (consecutiveErrors_ < 255U) {
-        ++consecutiveErrors_;
-    }
-    retryDeadline_ = now + (consecutiveErrors_ >= kFaultErrorThreshold ? kFaultRetryBackoffMs : kRetryBackoffMs);
-}
-
-SM_STATE(Aht10SensorDevice::Idle) {
-    status_ = DeviceStatus::Creating;
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        invalidateReadings(kOutputNotReady);
-        SM_GOTO(Deleting);
-    }
-    if (disableRequested_ || config_.enabled == 0U) {
-        status_ = DeviceStatus::Disabled;
-        invalidateReadings(kOutputDisabled);
-        SM_GOTO(Disabled);
-    }
-    if (startRequested_) {
-        invalidateReadings(kOutputNotReady);
-        SM_GOTO(Starting);
-    }
-}
-
-SM_STATE(Aht10SensorDevice::Starting) {
-    status_ = DeviceStatus::Starting;
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        invalidateReadings(kOutputNotReady);
-        SM_GOTO(Deleting);
-    }
-    if (disableRequested_ || config_.enabled == 0U) {
-        status_ = DeviceStatus::Disabled;
-        invalidateReadings(kOutputDisabled);
-        SM_GOTO(Disabled);
-    }
-    if (!dependencyBusReady()) {
-        status_ = DeviceStatus::DependencyBlocked;
-        invalidateReadings(kOutputDependencyUnavailable);
-        SM_GOTO(DependencyBlocked);
-    }
-
-    I2cBusDevice::DependencyTransaction transaction;
-    const DependencyAccessResult dependencyAccess = beginDependencyTransaction(transaction);
-    if (dependencyAccess == DependencyAccessResult::Missing) {
-        status_ = DeviceStatus::DependencyBlocked;
-        invalidateReadings(kOutputDependencyUnavailable);
-        SM_GOTO(DependencyBlocked);
-    }
-    if (dependencyAccess == DependencyAccessResult::Busy || transaction.driver() == nullptr) {
-        retryDeadline_ = uptime() + kBusyRetryMs;
-        SM_GOTO(RetryBackoff);
-    }
-
-    if (!probeI2cPresence(*transaction.driver()) ||
-        !sendCommand(*transaction.driver(), kAht10CmdInit, kAht10CmdInitArg1, kAht10CmdInitArg2)) {
-        invalidateReadings(kOutputNotFound);
-        recordFailure(uptime());
-        if (consecutiveErrors_ >= kFaultErrorThreshold) {
-            SM_GOTO(Faulted);
-        }
-        SM_GOTO(RetryBackoff);
-    }
-
-    lastDependencyGeneration_ = transaction.generation();
-    clearStartRequested();
-    temperatureFilter_.reset();
-    humidityFilter_.reset();
-    initDeadline_ = uptime() + kAht10InitMs;
-    SM_GOTO(InitDelay);
-}
-
-SM_STATE(Aht10SensorDevice::InitDelay) {
-    status_ = DeviceStatus::Starting;
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        invalidateReadings(kOutputNotReady);
-        SM_GOTO(Deleting);
-    }
-    if (disableRequested_ || config_.enabled == 0U) {
-        status_ = DeviceStatus::Disabled;
-        invalidateReadings(kOutputDisabled);
-        SM_GOTO(Disabled);
-    }
-    if (!dependencyBusReady()) {
-        status_ = DeviceStatus::DependencyBlocked;
-        invalidateReadings(kOutputDependencyUnavailable);
-        SM_GOTO(DependencyBlocked);
-    }
-    if (dependencyGenerationChanged(lastDependencyGeneration_) || reconfigureRequested_) {
-        status_ = DeviceStatus::Reconfiguring;
-        SM_GOTO(Reconfiguring);
-    }
-    if (!EWFM_SM_TIME_REACHED(uptime(), initDeadline_)) {
-        return;
-    }
-    SM_GOTO(TriggerMeasurement);
-}
-
-SM_STATE(Aht10SensorDevice::TriggerMeasurement) {
-    status_ = DeviceStatus::Ready;
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        invalidateReadings(kOutputNotReady);
-        SM_GOTO(Deleting);
-    }
-    if (disableRequested_ || config_.enabled == 0U) {
-        status_ = DeviceStatus::Disabled;
-        invalidateReadings(kOutputDisabled);
-        SM_GOTO(Disabled);
-    }
-    if (!dependencyBusReady()) {
-        status_ = DeviceStatus::DependencyBlocked;
-        invalidateReadings(kOutputDependencyUnavailable);
-        SM_GOTO(DependencyBlocked);
-    }
-    if (dependencyGenerationChanged(lastDependencyGeneration_) || reconfigureRequested_) {
-        status_ = DeviceStatus::Reconfiguring;
-        SM_GOTO(Reconfiguring);
-    }
-
-    I2cBusDevice::DependencyTransaction transaction;
-    const DependencyAccessResult dependencyAccess = beginDependencyTransaction(transaction);
-    if (dependencyAccess == DependencyAccessResult::Missing) {
-        status_ = DeviceStatus::DependencyBlocked;
-        invalidateReadings(kOutputDependencyUnavailable);
-        SM_GOTO(DependencyBlocked);
-    }
-    if (dependencyAccess == DependencyAccessResult::Busy || transaction.driver() == nullptr) {
-        retryDeadline_ = uptime() + kBusyRetryMs;
-        SM_GOTO(RetryBackoff);
-    }
-
-    if (!sendCommand(*transaction.driver(), kAht10CmdMeasure, kAht10CmdMeasureArg1, kAht10CmdMeasureArg2)) {
-        invalidateReadings(kOutputNotFound);
-        recordFailure(uptime());
-        if (consecutiveErrors_ >= kFaultErrorThreshold) {
-            SM_GOTO(Faulted);
-        }
-        SM_GOTO(RetryBackoff);
-    }
-
-    measureDeadline_ = uptime() + kAht10MeasureMs;
-    SM_GOTO(ReadMeasurement);
-}
-
-SM_STATE(Aht10SensorDevice::ReadMeasurement) {
-    status_ = DeviceStatus::Ready;
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        invalidateReadings(kOutputNotReady);
-        SM_GOTO(Deleting);
-    }
-    if (disableRequested_ || config_.enabled == 0U) {
-        status_ = DeviceStatus::Disabled;
-        invalidateReadings(kOutputDisabled);
-        SM_GOTO(Disabled);
-    }
-    if (!dependencyBusReady()) {
-        status_ = DeviceStatus::DependencyBlocked;
-        invalidateReadings(kOutputDependencyUnavailable);
-        SM_GOTO(DependencyBlocked);
-    }
-    if (dependencyGenerationChanged(lastDependencyGeneration_) || reconfigureRequested_) {
-        status_ = DeviceStatus::Reconfiguring;
-        SM_GOTO(Reconfiguring);
-    }
-    if (!EWFM_SM_TIME_REACHED(uptime(), measureDeadline_)) {
-        return;
-    }
-
-    I2cBusDevice::DependencyTransaction transaction;
-    const DependencyAccessResult dependencyAccess = beginDependencyTransaction(transaction);
-    if (dependencyAccess == DependencyAccessResult::Missing) {
-        status_ = DeviceStatus::DependencyBlocked;
-        invalidateReadings(kOutputDependencyUnavailable);
-        SM_GOTO(DependencyBlocked);
-    }
-    if (dependencyAccess == DependencyAccessResult::Busy || transaction.driver() == nullptr) {
-        retryDeadline_ = uptime() + kBusyRetryMs;
-        SM_GOTO(RetryBackoff);
-    }
-
-    uint32_t humidityRaw = 0;
-    uint32_t temperatureRaw = 0;
-    const char* errorStatus = kOutputNotFound;
-    if (!readMeasurement(*transaction.driver(), humidityRaw, temperatureRaw, errorStatus)) {
-        invalidateReadings(errorStatus);
-        if (errorStatus != nullptr && std::strcmp(errorStatus, kOutputBusy) != 0) {
-            recordFailure(uptime());
-            if (consecutiveErrors_ >= kFaultErrorThreshold) {
-                SM_GOTO(Faulted);
-            }
-        } else {
-            retryDeadline_ = uptime() + kBusyRetryMs;
-        }
-        SM_GOTO(RetryBackoff);
-    }
-
-    publishReadings(aht10RawToMilliCelsius(temperatureRaw), aht10RawToMilliPercent(humidityRaw), uptime());
-    consecutiveErrors_ = 0;
-    nextPollAt_ = uptime() + config_.pollMs;
-    SM_GOTO(Ready);
-}
-
-SM_STATE(Aht10SensorDevice::Ready) {
-    status_ = DeviceStatus::Ready;
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        invalidateReadings(kOutputNotReady);
-        SM_GOTO(Deleting);
-    }
-    if (disableRequested_ || config_.enabled == 0U) {
-        status_ = DeviceStatus::Disabled;
-        invalidateReadings(kOutputDisabled);
-        SM_GOTO(Disabled);
-    }
-    if (!dependencyBusReady()) {
-        status_ = DeviceStatus::DependencyBlocked;
-        invalidateReadings(kOutputDependencyUnavailable);
-        SM_GOTO(DependencyBlocked);
-    }
-    if (dependencyGenerationChanged(lastDependencyGeneration_) || reconfigureRequested_) {
-        status_ = DeviceStatus::Reconfiguring;
-        SM_GOTO(Reconfiguring);
-    }
-    if (!EWFM_SM_TIME_REACHED(uptime(), nextPollAt_)) {
-        return;
-    }
-    SM_GOTO(TriggerMeasurement);
-}
-
-SM_STATE(Aht10SensorDevice::RetryBackoff) {
-    status_ = DeviceStatus::Starting;
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        invalidateReadings(kOutputNotReady);
-        SM_GOTO(Deleting);
-    }
-    if (disableRequested_ || config_.enabled == 0U) {
-        status_ = DeviceStatus::Disabled;
-        invalidateReadings(kOutputDisabled);
-        SM_GOTO(Disabled);
-    }
-    if (!dependencyBusReady()) {
-        status_ = DeviceStatus::DependencyBlocked;
-        invalidateReadings(kOutputDependencyUnavailable);
-        SM_GOTO(DependencyBlocked);
-    }
-    if (reconfigureRequested_) {
-        status_ = DeviceStatus::Reconfiguring;
-        SM_GOTO(Reconfiguring);
-    }
-    if (!EWFM_SM_TIME_REACHED(uptime(), retryDeadline_)) {
-        return;
-    }
-    SM_GOTO(Starting);
-}
-
-SM_STATE(Aht10SensorDevice::DependencyBlocked) {
-    status_ = DeviceStatus::DependencyBlocked;
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        invalidateReadings(kOutputNotReady);
-        SM_GOTO(Deleting);
-    }
-    if (disableRequested_ || config_.enabled == 0U) {
-        status_ = DeviceStatus::Disabled;
-        invalidateReadings(kOutputDisabled);
-        SM_GOTO(Disabled);
-    }
-    if (dependencyBusReady() && (reconfigureRequested_ || startRequested_ || lastDependencyGeneration_ == 0U)) {
-        status_ = DeviceStatus::Reconfiguring;
-        SM_GOTO(Reconfiguring);
-    }
-}
-
-SM_STATE(Aht10SensorDevice::Reconfiguring) {
-    status_ = DeviceStatus::Reconfiguring;
-    clearReconfigureRequested();
-    clearStartRequested();
-    lastDependencyGeneration_ = 0;
-    consecutiveErrors_ = 0;
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        invalidateReadings(kOutputNotReady);
-        SM_GOTO(Deleting);
-    }
-    if (disableRequested_ || config_.enabled == 0U) {
-        status_ = DeviceStatus::Disabled;
-        invalidateReadings(kOutputDisabled);
-        SM_GOTO(Disabled);
-    }
-    if (!dependencyBusReady()) {
-        status_ = DeviceStatus::DependencyBlocked;
-        invalidateReadings(kOutputDependencyUnavailable);
-        SM_GOTO(DependencyBlocked);
-    }
-    SM_GOTO(Starting);
-}
-
-SM_STATE(Aht10SensorDevice::Disabled) {
-    status_ = DeviceStatus::Disabled;
-    invalidateReadings(kOutputDisabled);
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        SM_GOTO(Deleting);
-    }
-    if (reconfigureRequested_ && config_.enabled != 0U) {
-        status_ = DeviceStatus::Reconfiguring;
-        SM_GOTO(Reconfiguring);
-    }
-}
-
-SM_STATE(Aht10SensorDevice::Faulted) {
-    status_ = DeviceStatus::Faulted;
-    if (deleteRequested_) {
-        status_ = DeviceStatus::Deleting;
-        setDeleted();
-        invalidateReadings(kOutputNotReady);
-        SM_GOTO(Deleting);
-    }
-    if (disableRequested_ || config_.enabled == 0U) {
-        status_ = DeviceStatus::Disabled;
-        invalidateReadings(kOutputDisabled);
-        SM_GOTO(Disabled);
-    }
-    if (!dependencyBusReady()) {
-        status_ = DeviceStatus::DependencyBlocked;
-        invalidateReadings(kOutputDependencyUnavailable);
-        SM_GOTO(DependencyBlocked);
-    }
-    if (reconfigureRequested_) {
-        clearFaultRequested();
-        status_ = DeviceStatus::Reconfiguring;
-        SM_GOTO(Reconfiguring);
-    }
-    if (!EWFM_SM_TIME_REACHED(uptime(), retryDeadline_)) {
-        return;
-    }
-    SM_GOTO(Starting);
-}
-
-SM_STATE(Aht10SensorDevice::Deleting) {
-    status_ = DeviceStatus::Deleting;
-    invalidateReadings(kOutputNotReady);
-    setDeleted();
 }
 
 } // namespace ewfm
