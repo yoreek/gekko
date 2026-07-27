@@ -53,7 +53,13 @@ public:
     }
 
     void drawRect(const DisplayLayoutWidgetV1& widget) override {
-        drawBox(widget, [&](GFXcanvas1& canvas) { canvas.drawRect(0, 0, widget.width, widget.height, 1); });
+        drawBox(widget, [&](GFXcanvas1& canvas) {
+            if (isFilledShape(widget)) {
+                canvas.fillRect(0, 0, widget.width, widget.height, 1);
+            } else {
+                canvas.drawRect(0, 0, widget.width, widget.height, 1);
+            }
+        });
     }
 
     void drawLine(const DisplayLayoutWidgetV1& widget) override {
@@ -66,16 +72,33 @@ public:
 
     void drawCircle(const DisplayLayoutWidgetV1& widget) override {
         drawBox(widget, [&](GFXcanvas1& canvas) {
-            const int16_t radius = static_cast<int16_t>((widget.width < widget.height ? widget.width : widget.height) / 2U);
-            canvas.drawCircle(static_cast<int16_t>(widget.width / 2U), static_cast<int16_t>(widget.height / 2U), radius, 1);
+            const int16_t cx = static_cast<int16_t>(widget.width / 2U);
+            const int16_t cy = static_cast<int16_t>(widget.height / 2U);
+            // Inset by 1px: a radius reaching exactly to the canvas edge (e.g. width/2 on an
+            // even width) lands the outline on the one-past-the-end row/column, which the
+            // canvas silently clips - producing visible gaps in the outline.
+            const int16_t diameter =
+                widget.width < widget.height ? static_cast<int16_t>(widget.width) : static_cast<int16_t>(widget.height);
+            const int16_t radius = diameter > 1 ? static_cast<int16_t>((diameter - 1) / 2) : 0;
+            if (isFilledShape(widget)) {
+                canvas.fillCircle(cx, cy, radius, 1);
+            } else {
+                canvas.drawCircle(cx, cy, radius, 1);
+            }
         });
     }
 
     void drawEllipse(const DisplayLayoutWidgetV1& widget) override {
         drawBox(widget, [&](GFXcanvas1& canvas) {
-            const int16_t radiusX = static_cast<int16_t>(widget.width / 2U);
-            const int16_t radiusY = static_cast<int16_t>(widget.height / 2U);
-            canvas.drawEllipse(static_cast<int16_t>(widget.width / 2U), static_cast<int16_t>(widget.height / 2U), radiusX, radiusY, 1);
+            const int16_t cx = static_cast<int16_t>(widget.width / 2U);
+            const int16_t cy = static_cast<int16_t>(widget.height / 2U);
+            const int16_t radiusX = widget.width > 1U ? static_cast<int16_t>((widget.width - 1U) / 2U) : 0;
+            const int16_t radiusY = widget.height > 1U ? static_cast<int16_t>((widget.height - 1U) / 2U) : 0;
+            if (isFilledShape(widget)) {
+                canvas.fillEllipse(cx, cy, radiusX, radiusY, 1);
+            } else {
+                canvas.drawEllipse(cx, cy, radiusX, radiusY, 1);
+            }
         });
     }
 
@@ -147,6 +170,10 @@ private:
         return widget.color != 0U ? SSD1306_WHITE : SSD1306_BLACK;
     }
 
+    static bool isFilledShape(const DisplayLayoutWidgetV1& widget) {
+        return (widget.styleFlags & 0x01U) != 0U;
+    }
+
     void blit(const DisplayLayoutWidgetV1& widget, const uint8_t* buffer, const uint16_t color) {
         if (buffer == nullptr) {
             return;
@@ -183,7 +210,14 @@ const Ssd1306DeviceConfigV6& Ssd1306Device::config() const {
 }
 
 DisplayLayoutProfile Ssd1306Device::displayProfile() const {
-    return pixelDisplayLayoutProfile(config_.width, config_.height, false, true);
+    uint16_t width = config_.width;
+    uint16_t height = config_.height;
+    if ((config_.rotation % 2U) != 0U) {
+        const uint16_t swapped = width;
+        width = height;
+        height = swapped;
+    }
+    return pixelDisplayLayoutProfile(width, height, false, true);
 }
 
 const DeviceBaseConfigV1& Ssd1306Device::baseConfig() const {

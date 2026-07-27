@@ -6,6 +6,7 @@
 #include "devices/core/DeviceIdGenerator.h"
 #include "devices/display/DisplayLayoutCodec.h"
 #include "devices/display/DisplayLayoutProfile.h"
+#include "devices/display/DisplayLayoutValidator.h"
 #include "devices/display/st7735/St7735Device.h"
 #include "devices/display/st7735/St7735DeviceConfig.h"
 #include "devices/registry/DeviceRegistry.h"
@@ -520,7 +521,86 @@ void test_st7735_update_round_trip_includes_layout() {
     TEST_ASSERT_EQUAL_INT8(-1, output["config"]["resetPin"].as<int8_t>());
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayCoordinateUnit::Pixel),
                             output["runtime"]["displayProfile"]["coordinateUnit"].as<uint8_t>());
-    TEST_ASSERT_EQUAL_UINT16(128U, output["runtime"]["displayProfile"]["logicalWidth"].as<uint16_t>());
-    TEST_ASSERT_EQUAL_UINT16(160U, output["runtime"]["displayProfile"]["logicalHeight"].as<uint16_t>());
+    // fillDisplayDocument sets rotation=1 (90 degrees) on a native 128x160 panel, so the
+    // effective/logical bounds are swapped - see test_st7735_display_profile_swaps_bounds_on_quarter_rotation.
+    TEST_ASSERT_EQUAL_UINT16(160U, output["runtime"]["displayProfile"]["logicalWidth"].as<uint16_t>());
+    TEST_ASSERT_EQUAL_UINT16(128U, output["runtime"]["displayProfile"]["logicalHeight"].as<uint16_t>());
     TEST_ASSERT_TRUE(output["runtime"]["displayProfile"]["supportsColor"].as<bool>());
+}
+
+DisplayLayoutProfile buildSt7735ProfileForRotation(uint8_t rotation) {
+    const St7735DeviceConfigV5 config = makeConfig(12, 5, 2, -1, rotation, 128, 160);
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = st7735DeviceConfigSize(config);
+    encodeFixedConfigBlob(St7735DeviceConfigV5::kMagic, config, buffer, size);
+    DeviceConfigBlob configBlob{};
+    configBlob.assign(buffer, size);
+
+    DeviceRegistryEntry record{};
+    record.header.deviceId = 300;
+    record.header.typeId = St7735Device::descriptor().typeId;
+    record.header.configVersion = St7735Device::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(configBlob.size());
+    record.depCount = 1U;
+    record.deps[0] = {DeviceRole::SpiBus, 12};
+    record.status = DeviceStatus::Ready;
+
+    const St7735Device device(record, configBlob);
+    return device.displayProfile();
+}
+
+// A native (rotation=0) 128x160 panel reports logical bounds swapped to 160x128 at 90/270
+// degrees, matching what Adafruit_GFX::setRotation() actually does to physical draw coordinates
+// (see St7735Device::initializeDisplayHardware) and what the SPA's resolveDisplayEffectiveSize
+// already computed independently - the backend profile was the one out of sync.
+void test_st7735_display_profile_swaps_bounds_on_quarter_rotation() {
+    const DisplayLayoutProfile rotation0 = buildSt7735ProfileForRotation(0U);
+    TEST_ASSERT_EQUAL_UINT8(128U, rotation0.logicalWidth);
+    TEST_ASSERT_EQUAL_UINT8(160U, rotation0.logicalHeight);
+
+    const DisplayLayoutProfile rotation1 = buildSt7735ProfileForRotation(1U);
+    TEST_ASSERT_EQUAL_UINT8(160U, rotation1.logicalWidth);
+    TEST_ASSERT_EQUAL_UINT8(128U, rotation1.logicalHeight);
+
+    const DisplayLayoutProfile rotation2 = buildSt7735ProfileForRotation(2U);
+    TEST_ASSERT_EQUAL_UINT8(128U, rotation2.logicalWidth);
+    TEST_ASSERT_EQUAL_UINT8(160U, rotation2.logicalHeight);
+
+    const DisplayLayoutProfile rotation3 = buildSt7735ProfileForRotation(3U);
+    TEST_ASSERT_EQUAL_UINT8(160U, rotation3.logicalWidth);
+    TEST_ASSERT_EQUAL_UINT8(128U, rotation3.logicalHeight);
+}
+
+// Reproduces the field report exactly: a 24x24 circle at x=115 fits a 90-degree-rotated
+// 128x160 panel (effective 160x128) but is rejected against the unrotated 128-wide bounds.
+void test_st7735_layout_validation_respects_rotated_bounds() {
+    const DisplayLayoutProfile rotated = buildSt7735ProfileForRotation(1U);
+
+    DisplayLayoutWidgetV1 widget{};
+    widget.type = static_cast<uint8_t>(DisplayLayoutWidgetType::Circle);
+    widget.x = 115U;
+    widget.y = 87U;
+    widget.width = 24U;
+    widget.height = 24U;
+    TEST_ASSERT_TRUE(validateDisplayLayoutWidget(widget, rotated).ok());
+
+    // Exactly at the rotated edge (x + width == logicalWidth) must still pass.
+    DisplayLayoutWidgetV1 edgeWidget{};
+    edgeWidget.type = static_cast<uint8_t>(DisplayLayoutWidgetType::Circle);
+    edgeWidget.x = static_cast<uint8_t>(rotated.logicalWidth - 24U);
+    edgeWidget.y = 0U;
+    edgeWidget.width = 24U;
+    edgeWidget.height = 24U;
+    TEST_ASSERT_TRUE(validateDisplayLayoutWidget(edgeWidget, rotated).ok());
+
+    // One pixel past the rotated edge must fail.
+    DisplayLayoutWidgetV1 overflowWidget = edgeWidget;
+    overflowWidget.x = static_cast<uint8_t>(edgeWidget.x + 1U);
+    TEST_ASSERT_FALSE(validateDisplayLayoutWidget(overflowWidget, rotated).ok());
+
+    // Same widget against the unrotated (rotation=0) profile - this was the actual bug: the
+    // pre-fix backend validated against native bounds regardless of configured rotation.
+    const DisplayLayoutProfile unrotated = buildSt7735ProfileForRotation(0U);
+    TEST_ASSERT_FALSE(validateDisplayLayoutWidget(widget, unrotated).ok());
 }

@@ -5,6 +5,7 @@
 #include "devices/display/DisplayLayoutCodec.h"
 #include "devices/display/DisplayLayoutProfile.h"
 #include "devices/display/DisplayLayoutStore.h"
+#include "devices/display/DisplayLayoutValidator.h"
 #include "devices/display/ssd1306/Ssd1306Device.h"
 #include "devices/display/ssd1306/Ssd1306DeviceConfig.h"
 #include "devices/registry/DeviceRegistry.h"
@@ -696,6 +697,92 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_EQUAL_UINT16(128U, output["runtime"]["displayProfile"]["logicalWidth"].as<uint16_t>());
     TEST_ASSERT_EQUAL_UINT16(64U, output["runtime"]["displayProfile"]["logicalHeight"].as<uint16_t>());
     TEST_ASSERT_FALSE(output["runtime"]["displayProfile"]["supportsColor"].as<bool>());
+}
+
+DisplayLayoutProfile buildSsd1306ProfileForRotation(uint8_t rotation) {
+    Ssd1306DeviceConfigV6 config{};
+    config.enabled = 1U;
+    std::snprintf(config.name, sizeof(config.name), "%s", "ssd1306");
+    config.i2cAddress = 0x3CU;
+    config.rotation = rotation;
+    config.panel = static_cast<uint8_t>(Ssd1306Panel::Preset128x64);
+    config.width = 128;
+    config.height = 64;
+
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = ssd1306DeviceConfigSize(config);
+    encodeFixedConfigBlob(Ssd1306DeviceConfigV6::kMagic, config, buffer, size);
+    DeviceConfigBlob configBlob{};
+    configBlob.assign(buffer, size);
+
+    DeviceRegistryEntry record{};
+    record.header.deviceId = 400;
+    record.header.typeId = Ssd1306Device::descriptor().typeId;
+    record.header.configVersion = Ssd1306Device::descriptor().currentConfigVersion;
+    record.header.configRevision = 1U;
+    record.header.payloadLength = static_cast<uint32_t>(configBlob.size());
+    record.depCount = 1U;
+    record.deps[0] = {DeviceRole::I2CBus, 12};
+    record.status = DeviceStatus::Ready;
+
+    const Ssd1306Device device(record, configBlob);
+    return device.displayProfile();
+}
+
+// A native (rotation=0) 128x64 panel reports logical bounds swapped to 64x128 at 90/270
+// degrees, matching what Adafruit_GFX::setRotation() actually does to physical draw coordinates
+// (see Ssd1306Device::initializeDisplayHardware) - mirrors the same fix applied to ST7735.
+void test_ssd1306_display_profile_swaps_bounds_on_quarter_rotation() {
+    const DisplayLayoutProfile rotation0 = buildSsd1306ProfileForRotation(0U);
+    TEST_ASSERT_EQUAL_UINT8(128U, rotation0.logicalWidth);
+    TEST_ASSERT_EQUAL_UINT8(64U, rotation0.logicalHeight);
+
+    const DisplayLayoutProfile rotation1 = buildSsd1306ProfileForRotation(1U);
+    TEST_ASSERT_EQUAL_UINT8(64U, rotation1.logicalWidth);
+    TEST_ASSERT_EQUAL_UINT8(128U, rotation1.logicalHeight);
+
+    const DisplayLayoutProfile rotation2 = buildSsd1306ProfileForRotation(2U);
+    TEST_ASSERT_EQUAL_UINT8(128U, rotation2.logicalWidth);
+    TEST_ASSERT_EQUAL_UINT8(64U, rotation2.logicalHeight);
+
+    const DisplayLayoutProfile rotation3 = buildSsd1306ProfileForRotation(3U);
+    TEST_ASSERT_EQUAL_UINT8(64U, rotation3.logicalWidth);
+    TEST_ASSERT_EQUAL_UINT8(128U, rotation3.logicalHeight);
+}
+
+// Boundary check mirroring test_st7735_layout_validation_respects_rotated_bounds: a widget
+// exactly at the rotated edge must pass, one pixel past it must fail.
+void test_ssd1306_layout_validation_respects_rotated_bounds() {
+    const DisplayLayoutProfile rotated = buildSsd1306ProfileForRotation(1U);
+
+    // Native 128x64 rotates to effective 64x128 - unlike the taller-than-wide ST7735 panel, the
+    // extra room after rotation shows up in height, not width, so exercise the y/height edge here.
+    DisplayLayoutWidgetV1 widget{};
+    widget.type = static_cast<uint8_t>(DisplayLayoutWidgetType::Rect);
+    widget.x = 0U;
+    widget.y = 100U;
+    widget.width = 10U;
+    widget.height = 20U;
+    TEST_ASSERT_TRUE(validateDisplayLayoutWidget(widget, rotated).ok());
+
+    // Exactly at the rotated edge (y + height == logicalHeight) must still pass.
+    DisplayLayoutWidgetV1 edgeWidget{};
+    edgeWidget.type = static_cast<uint8_t>(DisplayLayoutWidgetType::Rect);
+    edgeWidget.x = 0U;
+    edgeWidget.y = static_cast<uint8_t>(rotated.logicalHeight - 20U);
+    edgeWidget.width = 10U;
+    edgeWidget.height = 20U;
+    TEST_ASSERT_TRUE(validateDisplayLayoutWidget(edgeWidget, rotated).ok());
+
+    // One pixel past the rotated edge must fail.
+    DisplayLayoutWidgetV1 overflowWidget = edgeWidget;
+    overflowWidget.y = static_cast<uint8_t>(edgeWidget.y + 1U);
+    TEST_ASSERT_FALSE(validateDisplayLayoutWidget(overflowWidget, rotated).ok());
+
+    // Same widget against the unrotated (rotation=0) profile must fail - the actual bug was
+    // validating against native bounds (height=64) regardless of configured rotation.
+    const DisplayLayoutProfile unrotated = buildSsd1306ProfileForRotation(0U);
+    TEST_ASSERT_FALSE(validateDisplayLayoutWidget(widget, unrotated).ok());
 }
 
 void test_ssd1306_api_adapter_partial_update_preserves_bus_and_dimensions() {
