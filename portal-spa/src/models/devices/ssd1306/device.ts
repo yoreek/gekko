@@ -10,6 +10,7 @@ import {
   encodeSsd1306Layout,
   normalizeSsd1306Layout,
   type Ssd1306LayoutDraft,
+  type Ssd1306WidgetNormalizationOptions,
 } from './layout.ts'
 
 export interface Ssd1306ConfigDraft extends BaseDeviceConfig, DisplayBaseConfig {
@@ -43,7 +44,10 @@ export class Ssd1306Device extends BaseDevice<Ssd1306ConfigDraft, Ssd1306CreateD
     }
   }
 
-  static normalizeConfig(value: unknown, deps?: DeviceDependencyLink[]): Ssd1306ConfigDraft {
+  // `layoutOptions.resolveText` lets a caller with live metric data (the display designer) size
+  // auto-size text widgets against the resolved placeholder value instead of the raw
+  // `{{dev.id.metric}}` token; omitted everywhere else (store hydration, mocks, tests).
+  static normalizeConfig(value: unknown, deps?: DeviceDependencyLink[], layoutOptions?: Ssd1306WidgetNormalizationOptions): Ssd1306ConfigDraft {
     const defaults = Ssd1306Device.defaultConfig()
     const dependencyDeviceId = deps?.find(dep => dep.role === 'i2c_bus')?.deviceId ?? 0
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -68,7 +72,7 @@ export class Ssd1306Device extends BaseDevice<Ssd1306ConfigDraft, Ssd1306CreateD
       panel,
       width: geometry?.width ?? rawWidth,
       height: geometry?.height ?? rawHeight,
-      layout: normalizeSsd1306Layout(layoutObject ?? defaults.layout),
+      layout: normalizeSsd1306Layout(layoutObject ?? defaults.layout, layoutOptions),
     }
   }
 

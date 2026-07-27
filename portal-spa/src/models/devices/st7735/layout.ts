@@ -28,8 +28,15 @@ function normalizeWidgetAutoSize(widget: Ssd1306Widget, options: St7735WidgetNor
   if (!widget.autoSize || widget.type !== 'text') {
     return widget
   }
-  return autoSizeSsd1306TextWidget(widget, 0x7fff, 0x7fff, {
-    text: options.resolveText?.(widget) ?? widget.text,
+  if (options.resolveText === undefined) {
+    // No live metric text available (store hydration, mocks, the save-path's internal
+    // re-normalize pass) -- keep the already-computed width/height rather than re-deriving it
+    // from the raw, unresolved `{{dev.id.metric}}` placeholder text, which is typically far
+    // longer than the value it resolves to and would otherwise widen the box on every re-save.
+    return widget
+  }
+  return autoSizeSsd1306TextWidget(widget, ST7735_DISPLAY_LAYOUT_PROFILE.logicalWidth, ST7735_DISPLAY_LAYOUT_PROFILE.logicalHeight, {
+    text: options.resolveText(widget),
   }) as Ssd1306Widget
 }
 

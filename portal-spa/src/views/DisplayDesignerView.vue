@@ -146,9 +146,12 @@ import { useRouter } from 'vue-router'
 import type { DeviceRecord } from '@/api/contracts'
 import { useMetricPlaceholderCatalog } from '@/composables/display/useMetricPlaceholderCatalog'
 import { resolveDisplayTypeEntry } from '@/models/devices/display/display-registry'
-import type { DisplayWidgetType } from '@/models/devices/display/layout'
+import type { DisplayWidget, DisplayWidgetType } from '@/models/devices/display/layout'
 import { resolveDisplayEffectiveSize } from '@/models/devices/display/orientation'
 import { resolveDeviceModel } from '@/models/devices/device-model-factory'
+import { resolveMetricPlaceholderText } from '@/models/metrics/placeholders'
+import { Ssd1306Device } from '@/models/devices/ssd1306/device'
+import { St7735Device } from '@/models/devices/st7735/device'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import PageContainer from '@/components/layout/PageContainer.vue'
 import PageCard from '@/components/layout/PageCard.vue'
@@ -174,7 +177,21 @@ const device = computed(() => deviceStore.devices.find(d => d.record.id === prop
 const displayTypeEntry = computed(() => resolveDisplayTypeEntry(device.value?.record.typeName))
 const display = computed(() => displayTypeEntry.value.display)
 
+// Text-widget auto-size needs the resolved placeholder value (e.g. "62.0 %"), not the raw
+// `{{dev.id.humidity}}` token, to size the box -- st7735/ssd1306 are the only layouts with
+// resolveText-aware auto-size, so they're normalized directly instead of through the generic
+// polymorphic model to pass it through.
+function resolveWidgetText(widget: Pick<DisplayWidget, 'text'>): string {
+  return resolveMetricPlaceholderText(widget.text, metricCatalog.value)
+}
+
 function normalizeConfig(current: DeviceRecord): DisplayDesignerConfig {
+  if (current.record.typeName === 'st7735') {
+    return St7735Device.normalizeConfig(current.config, current.config.deps, { resolveText: resolveWidgetText }) as unknown as DisplayDesignerConfig
+  }
+  if (current.record.typeName === 'ssd1306') {
+    return Ssd1306Device.normalizeConfig(current.config, current.config.deps, { resolveText: resolveWidgetText }) as unknown as DisplayDesignerConfig
+  }
   return resolveDeviceModel(current).normalizeConfig(current.config, current.config.deps) as DisplayDesignerConfig
 }
 

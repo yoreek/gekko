@@ -10,6 +10,7 @@ import {
   encodeSt7735Layout,
   normalizeSt7735Layout,
   type St7735LayoutDraft,
+  type St7735WidgetNormalizationOptions,
 } from './layout.ts'
 
 export interface St7735ConfigDraft extends BaseDeviceConfig, DisplayBaseConfig {
@@ -59,7 +60,10 @@ export class St7735Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraf
     }
   }
 
-  static normalizeConfig(value: unknown, deps?: DeviceDependencyLink[]): St7735ConfigDraft {
+  // `layoutOptions.resolveText` lets a caller with live metric data (the display designer) size
+  // auto-size text widgets against the resolved placeholder value instead of the raw
+  // `{{dev.id.metric}}` token; omitted everywhere else (store hydration, mocks, tests).
+  static normalizeConfig(value: unknown, deps?: DeviceDependencyLink[], layoutOptions?: St7735WidgetNormalizationOptions): St7735ConfigDraft {
     const defaults = St7735Device.defaultConfig()
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
       return {
@@ -83,7 +87,7 @@ export class St7735Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraf
       dcPin: normalizeNumber(raw.dcPin, defaults.dcPin),
       resetPin: normalizeNumber(raw.resetPin, defaults.resetPin),
       rotation: normalizeDisplayRotation(raw.rotation, defaults.rotation),
-      layout: normalizeSt7735Layout(raw.layout),
+      layout: normalizeSt7735Layout(raw.layout, layoutOptions),
     }
   }
 
