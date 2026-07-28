@@ -52,6 +52,7 @@ public:
     ValidationResult saveWifiCredentials(const WiFiCredentials& credentials);
     bool clearWifiCredentials();
     ValidationResult saveTimeConfig(const TimeConfig& time);
+    ValidationResult savePersistenceConfig(const PersistenceConfig& persistence);
 
 private:
     IConfigStorage& storage_;

@@ -5,6 +5,7 @@ import type {
   DashboardLayoutRecord,
   DashboardLayoutResponse,
   DeviceCreateRequest,
+  DeviceFlushResponse,
   DeviceMutationResponse,
   MetricPlaceholderCatalogResponse,
   MetricValuesResponse,
@@ -13,6 +14,7 @@ import type {
   MqttSettingsRecord,
   MqttStatusResponse,
   OtaStatusResponse,
+  PersistenceSettingsRecord,
   SetTimeRequest,
   SystemRestartResponse,
   SystemStatusResponse,
@@ -301,6 +303,33 @@ export function updateTimeSettings(settings: Partial<TimeSettingsRecord>): Promi
       'Content-Type': 'application/json',
     },
   })
+}
+
+export function fetchPersistenceSettings(): Promise<PersistenceSettingsRecord> {
+  if (useMockTransport()) {
+    return import('@/mock/handlers').then(m => m.mockFetchPersistenceSettings())
+  }
+  return requestJson<PersistenceSettingsRecord>('/api/system/persistence/settings')
+}
+
+export function updatePersistenceSettings(settings: Partial<PersistenceSettingsRecord>): Promise<PersistenceSettingsRecord> {
+  if (useMockTransport()) {
+    return import('@/mock/handlers').then(m => m.mockUpdatePersistenceSettings(settings))
+  }
+  return requestJson<PersistenceSettingsRecord>('/api/system/persistence/settings', {
+    method: 'PUT',
+    body: JSON.stringify(settings),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+}
+
+export function flushDevicePersistence(): Promise<DeviceFlushResponse> {
+  if (useMockTransport()) {
+    return import('@/mock/handlers').then(m => m.mockFlushDevicePersistence())
+  }
+  return requestJson<DeviceFlushResponse>('/api/devices/flush', { method: 'POST' })
 }
 
 export function fetchTimezones(): Promise<TimezoneCatalogResponse> {

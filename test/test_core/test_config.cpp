@@ -114,3 +114,67 @@ void test_config_store_rejects_invalid_time_config() {
     TEST_ASSERT_FALSE(result.ok());
     TEST_ASSERT_EQUAL_STRING("Etc/GMT", store.config().time.timezoneId.c_str());
 }
+
+void test_persistence_config_rejects_out_of_range_debounce() {
+    PersistenceConfig persistence = defaultConfig().persistence;
+    persistence.debounceMs = kMinPersistenceDebounceMs - 1;
+    ValidationResult tooShort = validatePersistenceConfig(persistence);
+    TEST_ASSERT_FALSE(tooShort.ok());
+    TEST_ASSERT_EQUAL(static_cast<int>(ConfigError::PersistenceDebounceInvalid), static_cast<int>(tooShort.error));
+
+    persistence.debounceMs = kMaxPersistenceDebounceMs + 1;
+    ValidationResult tooLong = validatePersistenceConfig(persistence);
+    TEST_ASSERT_FALSE(tooLong.ok());
+    TEST_ASSERT_EQUAL(static_cast<int>(ConfigError::PersistenceDebounceInvalid), static_cast<int>(tooLong.error));
+}
+
+void test_persistence_config_rejects_out_of_range_max_delay() {
+    PersistenceConfig persistence = defaultConfig().persistence;
+    persistence.maxDelayMs = kMinPersistenceMaxDelayMs - 1;
+    ValidationResult tooShort = validatePersistenceConfig(persistence);
+    TEST_ASSERT_FALSE(tooShort.ok());
+    TEST_ASSERT_EQUAL(static_cast<int>(ConfigError::PersistenceMaxDelayInvalid), static_cast<int>(tooShort.error));
+
+    persistence.maxDelayMs = kMaxPersistenceMaxDelayMs + 1;
+    ValidationResult tooLong = validatePersistenceConfig(persistence);
+    TEST_ASSERT_FALSE(tooLong.ok());
+    TEST_ASSERT_EQUAL(static_cast<int>(ConfigError::PersistenceMaxDelayInvalid), static_cast<int>(tooLong.error));
+}
+
+void test_persistence_config_rejects_debounce_exceeding_max_delay() {
+    PersistenceConfig persistence;
+    persistence.debounceMs = 5000;
+    persistence.maxDelayMs = 1000;
+    ValidationResult result = validatePersistenceConfig(persistence);
+    TEST_ASSERT_FALSE(result.ok());
+    TEST_ASSERT_EQUAL(static_cast<int>(ConfigError::PersistenceDebounceExceedsMaxDelay), static_cast<int>(result.error));
+}
+
+void test_config_store_save_persistence_config_persists_across_reload() {
+    MemoryConfigStorage storage;
+    ConfigStore store(storage);
+    TEST_ASSERT_TRUE(store.begin());
+    TEST_ASSERT_TRUE(store.load().ok());
+
+    PersistenceConfig persistence;
+    persistence.debounceMs = 1000;
+    persistence.maxDelayMs = 30000;
+    TEST_ASSERT_TRUE(store.savePersistenceConfig(persistence).ok());
+
+    TEST_ASSERT_TRUE(store.load().ok());
+    TEST_ASSERT_EQUAL_UINT32(1000UL, store.config().persistence.debounceMs);
+    TEST_ASSERT_EQUAL_UINT32(30000UL, store.config().persistence.maxDelayMs);
+}
+
+void test_config_store_rejects_invalid_persistence_config() {
+    MemoryConfigStorage storage;
+    ConfigStore store(storage);
+    TEST_ASSERT_TRUE(store.begin());
+    TEST_ASSERT_TRUE(store.load().ok());
+
+    PersistenceConfig invalid;
+    invalid.debounceMs = kMaxPersistenceDebounceMs + 1;
+    ValidationResult result = store.savePersistenceConfig(invalid);
+    TEST_ASSERT_FALSE(result.ok());
+    TEST_ASSERT_EQUAL_UINT32(kDefaultPersistenceDebounceMs, store.config().persistence.debounceMs);
+}

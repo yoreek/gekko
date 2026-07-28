@@ -21,6 +21,8 @@ constexpr const char* kNtpEnabled = "ntp_enabled";
 constexpr const char* kNtpServer = "ntp_server";
 constexpr const char* kTimezoneId = "tz_id";
 constexpr const char* kNtpSyncInterval = "ntp_sync_int";
+constexpr const char* kPersistDebounceMs = "persist_deb_ms";
+constexpr const char* kPersistMaxDelayMs = "persist_max_ms";
 } // namespace
 
 bool ConfigStore::begin() {
@@ -44,6 +46,8 @@ ValidationResult ConfigStore::load() {
     storage_.getString(kNtpServer, config_.time.ntpServer);
     storage_.getString(kTimezoneId, config_.time.timezoneId);
     storage_.getUInt(kNtpSyncInterval, config_.time.syncIntervalSeconds);
+    storage_.getUInt(kPersistDebounceMs, config_.persistence.debounceMs);
+    storage_.getUInt(kPersistMaxDelayMs, config_.persistence.maxDelayMs);
 
     const ValidationResult migrated = migrateConfig(config_);
     if (!migrated.ok()) {
@@ -70,7 +74,9 @@ ValidationResult ConfigStore::save(const DeviceConfig& config) {
                        storage_.putBool(kWebOta, config.firmwareUpdate.webOtaEnabled) &&
                        storage_.putBool(kNtpEnabled, config.time.enabled) && storage_.putString(kNtpServer, config.time.ntpServer) &&
                        storage_.putString(kTimezoneId, config.time.timezoneId) &&
-                       storage_.putUInt(kNtpSyncInterval, config.time.syncIntervalSeconds);
+                       storage_.putUInt(kNtpSyncInterval, config.time.syncIntervalSeconds) &&
+                       storage_.putUInt(kPersistDebounceMs, config.persistence.debounceMs) &&
+                       storage_.putUInt(kPersistMaxDelayMs, config.persistence.maxDelayMs);
 
     if (!saved) {
         EWFM_CONFIG_LOG_WARN("failed to save configuration");
@@ -106,6 +112,16 @@ ValidationResult ConfigStore::saveTimeConfig(const TimeConfig& time) {
     }
     DeviceConfig next = config_;
     next.time = time;
+    return save(next);
+}
+
+ValidationResult ConfigStore::savePersistenceConfig(const PersistenceConfig& persistence) {
+    const ValidationResult validation = validatePersistenceConfig(persistence);
+    if (!validation.ok()) {
+        return validation;
+    }
+    DeviceConfig next = config_;
+    next.persistence = persistence;
     return save(next);
 }
 

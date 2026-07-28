@@ -20,6 +20,17 @@ constexpr uint32_t kDefaultNtpSyncIntervalSeconds = 3600;
 constexpr uint32_t kMinNtpSyncIntervalSeconds = 60;
 constexpr uint32_t kMaxNtpSyncIntervalSeconds = 24UL * 3600UL;
 
+// Device-registry persistence debounce: how long a dirty config/layout can sit in RAM before it is
+// flushed to flash. debounceMs is the quiet-period timer (fires this long after the *last* change);
+// maxDelayMs is the hard cap measured from the *first* unflushed change, regardless of continued
+// activity -- it is the real ceiling on flash write frequency under continuous churn.
+constexpr uint32_t kDefaultPersistenceDebounceMs = 500;
+constexpr uint32_t kMinPersistenceDebounceMs = 100;
+constexpr uint32_t kMaxPersistenceDebounceMs = 10000;
+constexpr uint32_t kDefaultPersistenceMaxDelayMs = 30000;
+constexpr uint32_t kMinPersistenceMaxDelayMs = 1000;
+constexpr uint32_t kMaxPersistenceMaxDelayMs = 300000;
+
 struct WiFiCredentials {
     std::string ssid;
     std::string password;
@@ -59,6 +70,13 @@ struct TimeConfig {
     uint32_t syncIntervalSeconds{kDefaultNtpSyncIntervalSeconds};
 };
 
+// See DeviceRegistry::tick()/DeviceRegistryPersistenceCoordinator::shouldFlush() for how these
+// two values gate the debounced flash write.
+struct PersistenceConfig {
+    uint32_t debounceMs{kDefaultPersistenceDebounceMs};
+    uint32_t maxDelayMs{kDefaultPersistenceMaxDelayMs};
+};
+
 struct DeviceConfig {
     uint32_t schemaVersion{kCurrentConfigSchemaVersion};
     std::string deviceName{"gekko"};
@@ -67,6 +85,7 @@ struct DeviceConfig {
     WifiRuntimeConfig wifiRuntime{};
     FirmwareUpdateConfig firmwareUpdate{};
     TimeConfig time{};
+    PersistenceConfig persistence{};
     size_t maxJsonBytes{kDefaultMaxJsonBytes};
 };
 
@@ -84,6 +103,9 @@ enum class ConfigError {
     NtpServerTooLong,
     TimezoneInvalid,
     SyncIntervalInvalid,
+    PersistenceDebounceInvalid,
+    PersistenceMaxDelayInvalid,
+    PersistenceDebounceExceedsMaxDelay,
 };
 
 struct ValidationResult {
@@ -100,6 +122,7 @@ ValidationResult validateConfig(const DeviceConfig& config);
 ValidationResult validateConfig(const DeviceConfig& config, bool requireWifiCredentials);
 ValidationResult validateWifiCredentials(const WiFiCredentials& credentials, bool requireCredentials);
 ValidationResult validateTimeConfig(const TimeConfig& time);
+ValidationResult validatePersistenceConfig(const PersistenceConfig& persistence);
 ValidationResult migrateConfig(DeviceConfig& config);
 
 } // namespace ewfm

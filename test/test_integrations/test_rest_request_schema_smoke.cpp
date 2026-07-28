@@ -42,6 +42,13 @@ void test_time_settings_request_schema_smoke() {
     assertMatchesJsonSchema("schemas/rest/v1/requests/time-settings.request.schema.json", doc.as<JsonVariantConst>());
 }
 
+void test_persistence_settings_request_schema_smoke() {
+    StaticJsonDocument<128> doc;
+    doc["debounceMs"] = 1000;
+    doc["maxDelayMs"] = 30000;
+    assertMatchesJsonSchema("schemas/rest/v1/requests/persistence-settings.request.schema.json", doc.as<JsonVariantConst>());
+}
+
 void test_manual_time_request_schema_smoke() {
     StaticJsonDocument<128> doc;
     doc["iso8601"] = "2026-07-23T12:34:56+03:00";

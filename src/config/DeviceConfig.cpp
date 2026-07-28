@@ -38,6 +38,19 @@ ValidationResult validateTimeConfig(const TimeConfig& time) {
     return {};
 }
 
+ValidationResult validatePersistenceConfig(const PersistenceConfig& persistence) {
+    if (persistence.debounceMs < kMinPersistenceDebounceMs || persistence.debounceMs > kMaxPersistenceDebounceMs) {
+        return {ConfigError::PersistenceDebounceInvalid, "persistence debounce is out of range"};
+    }
+    if (persistence.maxDelayMs < kMinPersistenceMaxDelayMs || persistence.maxDelayMs > kMaxPersistenceMaxDelayMs) {
+        return {ConfigError::PersistenceMaxDelayInvalid, "persistence max delay is out of range"};
+    }
+    if (persistence.debounceMs > persistence.maxDelayMs) {
+        return {ConfigError::PersistenceDebounceExceedsMaxDelay, "persistence debounce must not exceed max delay"};
+    }
+    return {};
+}
+
 ValidationResult validateConfig(const DeviceConfig& config, bool requireWifiCredentials) {
     if (config.schemaVersion > kCurrentConfigSchemaVersion || config.schemaVersion == 0) {
         return {ConfigError::UnsupportedSchemaVersion, "unsupported schema version"};
@@ -57,6 +70,10 @@ ValidationResult validateConfig(const DeviceConfig& config, bool requireWifiCred
     const ValidationResult timeResult = validateTimeConfig(config.time);
     if (!timeResult.ok()) {
         return timeResult;
+    }
+    const ValidationResult persistenceResult = validatePersistenceConfig(config.persistence);
+    if (!persistenceResult.ok()) {
+        return persistenceResult;
     }
     return validateWifiCredentials(config.wifi, requireWifiCredentials);
 }

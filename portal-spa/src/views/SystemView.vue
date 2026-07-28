@@ -55,6 +55,45 @@
 
     <PageCard class="mt-4">
       <template #header>
+        <PageToolbar :title="t('system.persistence.title')" :subtitle="t('system.persistence.subtitle')" />
+      </template>
+
+      <div class="d-flex flex-column ga-4">
+        <v-text-field
+          v-select-on-focus
+          v-model.number="persistenceForm.debounceSeconds"
+          type="number"
+          step="0.1"
+          :label="t('system.persistence.debounce')"
+          :hint="t('system.persistence.debounceHint')"
+          persistent-hint
+        />
+        <v-text-field
+          v-select-on-focus
+          v-model.number="persistenceForm.maxDelaySeconds"
+          type="number"
+          :label="t('system.persistence.maxDelay')"
+          :hint="t('system.persistence.maxDelayHint')"
+          persistent-hint
+        />
+
+        <v-alert v-if="persistenceErrorMessage" type="error" variant="tonal">
+          {{ persistenceErrorMessage }}
+        </v-alert>
+      </div>
+
+      <template #actions>
+        <v-btn variant="outlined" :loading="flushLoading" size="small" class="mr-2" @click="flushNow">
+          {{ t('system.persistence.flushNow') }}
+        </v-btn>
+        <v-btn :loading="persistenceSaving" color="primary" size="small" @click="savePersistenceSettings">
+          {{ t('actions.save') }}
+        </v-btn>
+      </template>
+    </PageCard>
+
+    <PageCard class="mt-4">
+      <template #header>
         <PageToolbar :title="t('system.backup.title')" :subtitle="t('system.backup.subtitle')" />
       </template>
 
@@ -123,12 +162,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { fetchDeviceSetupBundle, importDeviceSetupBundle, restartSystem as restartSystemApi } from '@/api'
+import {
+  fetchDeviceSetupBundle,
+  fetchPersistenceSettings,
+  flushDevicePersistence,
+  importDeviceSetupBundle,
+  restartSystem as restartSystemApi,
+  updatePersistenceSettings,
+} from '@/api'
 import { useSystemStore } from '@/stores/system'
 import { useWebSocketStore } from '@/stores/websocket'
+import { useNotificationsStore } from '@/stores/notifications'
 import { APP_BUILD_DATE, APP_VERSION } from '@/utils/version'
 import PageContainer from '@/components/layout/PageContainer.vue'
 import PageToolbar from '@/components/layout/PageToolbar.vue'
@@ -137,9 +184,11 @@ import PageCard from '@/components/layout/PageCard.vue'
 const { t } = useI18n()
 const systemStore = useSystemStore()
 const wsStore = useWebSocketStore()
+const notifications = useNotificationsStore()
 
 onMounted(() => {
   void systemStore.loadFirmwareVersion()
+  void loadPersistenceSettings()
 })
 
 const restartLoading = ref(false)
@@ -179,6 +228,73 @@ async function restartSystem(): Promise<void> {
     restartState.value = 'error'
   } finally {
     restartLoading.value = false
+  }
+}
+
+// Mirrors kMin/kMaxPersistenceDebounceMs / kMin/kMaxPersistenceMaxDelayMs in src/config/DeviceConfig.h.
+const kMinDebounceSeconds = 0.1
+const kMaxDebounceSeconds = 10
+const kMinMaxDelaySeconds = 1
+const kMaxMaxDelaySeconds = 300
+
+const persistenceForm = reactive({
+  debounceSeconds: 0.5,
+  maxDelaySeconds: 30,
+})
+const persistenceSaving = ref(false)
+const flushLoading = ref(false)
+const persistenceErrorMessage = ref('')
+
+async function loadPersistenceSettings(): Promise<void> {
+  try {
+    const settings = await fetchPersistenceSettings()
+    persistenceForm.debounceSeconds = settings.debounceMs / 1000
+    persistenceForm.maxDelaySeconds = settings.maxDelayMs / 1000
+  } catch {
+    // Keep the defaults shown above; the save button will still surface any real server error.
+  }
+}
+
+async function savePersistenceSettings(): Promise<void> {
+  persistenceErrorMessage.value = ''
+  if (persistenceForm.debounceSeconds < kMinDebounceSeconds || persistenceForm.debounceSeconds > kMaxDebounceSeconds) {
+    persistenceErrorMessage.value = t('system.persistence.debounceRangeError', { min: kMinDebounceSeconds, max: kMaxDebounceSeconds })
+    return
+  }
+  if (persistenceForm.maxDelaySeconds < kMinMaxDelaySeconds || persistenceForm.maxDelaySeconds > kMaxMaxDelaySeconds) {
+    persistenceErrorMessage.value = t('system.persistence.maxDelayRangeError', { min: kMinMaxDelaySeconds, max: kMaxMaxDelaySeconds })
+    return
+  }
+  if (persistenceForm.debounceSeconds > persistenceForm.maxDelaySeconds) {
+    persistenceErrorMessage.value = t('system.persistence.debounceExceedsMaxDelayError')
+    return
+  }
+
+  persistenceSaving.value = true
+  try {
+    const settings = await updatePersistenceSettings({
+      debounceMs: Math.round(persistenceForm.debounceSeconds * 1000),
+      maxDelayMs: Math.round(persistenceForm.maxDelaySeconds * 1000),
+    })
+    persistenceForm.debounceSeconds = settings.debounceMs / 1000
+    persistenceForm.maxDelaySeconds = settings.maxDelayMs / 1000
+    notifications.notify(t('system.persistence.saveSuccess'), 'success')
+  } catch (error) {
+    persistenceErrorMessage.value = error instanceof Error && error.message.length > 0 ? error.message : t('system.persistence.saveError')
+  } finally {
+    persistenceSaving.value = false
+  }
+}
+
+async function flushNow(): Promise<void> {
+  flushLoading.value = true
+  try {
+    await flushDevicePersistence()
+    notifications.notify(t('system.persistence.flushSuccess'), 'success')
+  } catch {
+    notifications.notify(t('system.persistence.flushError'), 'error')
+  } finally {
+    flushLoading.value = false
   }
 }
 

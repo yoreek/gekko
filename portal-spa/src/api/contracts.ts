@@ -629,6 +629,20 @@ export interface SetTimeRequest {
   iso8601: string
 }
 
+/** GET/PUT /api/system/persistence/settings -- device-registry flush debounce/max-delay. */
+export interface PersistenceSettingsRecord {
+  debounceMs: number
+  maxDelayMs: number
+  success?: boolean
+}
+
+/** POST /api/devices/flush -- forces pending registry persistence to be flushed immediately. */
+export interface DeviceFlushResponse {
+  success: boolean
+  registryRevision: number
+  pendingPersistence: boolean
+}
+
 export interface TimezoneCatalogEntry {
   id: string
   name: string

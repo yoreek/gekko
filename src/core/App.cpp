@@ -42,7 +42,7 @@ App::App()
 #else
                     nullptr, nullptr, nullptr, nullptr,
 #endif
-                    &ntpManager_) {
+                    &ntpManager_, &configStore_) {
 }
 
 bool App::begin() {
@@ -145,6 +145,7 @@ bool App::begin() {
         mqttConfigStore_.save(seeded);
     }
 #endif
+    deviceRegistry_.setPersistenceDelays(config.persistence.debounceMs, config.persistence.maxDelayMs);
     const uint32_t now = ArduinoClock::millis();
     EWFM_BOOT_PRINTF("BOOT App::begin deviceRegistry begin\n");
     const DeviceValidationResult registryResult = deviceRegistry_.begin(now);

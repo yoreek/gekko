@@ -661,7 +661,7 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_TRUE(updateResult.ok());
     TEST_ASSERT_TRUE(registry
                          .applyPersistedStateUpdate(createResult.deviceId, updateRequest.persistedStateBlob.data(),
-                                                    updateRequest.persistedStateBlob.size())
+                                                    updateRequest.persistedStateBlob.size(), 0)
                          .ok());
     TEST_ASSERT_TRUE(registry.flushNow().ok());
 
@@ -697,6 +697,88 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_EQUAL_UINT16(128U, output["runtime"]["displayProfile"]["logicalWidth"].as<uint16_t>());
     TEST_ASSERT_EQUAL_UINT16(64U, output["runtime"]["displayProfile"]["logicalHeight"].as<uint16_t>());
     TEST_ASSERT_FALSE(output["runtime"]["displayProfile"]["supportsColor"].as<bool>());
+}
+
+// Reproduces the persistence race: a background flushNow() landing between updateConfigAndDeps()
+// (marks config dirty) and applyPersistedStateUpdate() (updates layout_ in RAM) used to persist the
+// stale layout and clear the dirty flag, silently orphaning the new layout in RAM forever since
+// nothing would ever mark the device dirty again. applyPersistedStateUpdate() now marks it dirty
+// itself, so a flush that runs before it just persists the old layout as before, and a *subsequent*
+// flush still picks up the new one.
+void test_ssd1306_layout_update_survives_flush_landing_between_config_and_layout_update() {
+    MemoryConfigStorage registryStorage;
+    MemoryConfigStorage retainedStorage;
+    MemoryConfigStorage scopedStorage;
+    DeviceRegistryStore registryStore(registryStorage);
+    DeviceRetainedDataStore retainedStore(retainedStorage);
+    DeviceScopedDataStore scopedStore(scopedStorage);
+    TEST_ASSERT_TRUE(registryStore.begin(false));
+    TEST_ASSERT_TRUE(retainedStore.begin(false));
+    TEST_ASSERT_TRUE(scopedStore.begin(false));
+
+    SequentialDeviceIdSource idSource(100);
+    DeviceTypeRegistry typeRegistry = DeviceTypeRegistry::withDefaults();
+    DeviceRegistry registry(registryStore, typeRegistry, idSource, &retainedStore, &scopedStore);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+
+    StaticJsonDocument<512> busDoc;
+    fillI2cBusDocument(busDoc, "bus", 21, 22);
+    DeviceCreateRequest busRequest{};
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(I2cBusDeviceApiAdapter::instance().parseCreateRequest(busDoc.as<JsonObjectConst>(), busRequest, error));
+    TEST_ASSERT_NULL(error);
+    const DeviceCreateResult busResult = registry.create(busRequest, 0);
+    TEST_ASSERT_TRUE(busResult.ok());
+
+    StaticJsonDocument<2048> createDoc;
+    fillSsd1306DeviceDocument(createDoc, false);
+    createDoc["config"]["deps"][0]["deviceId"] = busResult.deviceId;
+    DeviceCreateRequest createRequest{};
+    TEST_ASSERT_TRUE(Ssd1306DeviceApiAdapter::instance().parseCreateRequest(createDoc.as<JsonObjectConst>(), createRequest, error));
+    TEST_ASSERT_NULL(error);
+    const DeviceCreateResult createResult = registry.create(createRequest, 0);
+    TEST_ASSERT_TRUE(createResult.ok());
+    // create() persists immediately, so nothing is dirty yet at this point.
+    TEST_ASSERT_TRUE(registry.dirtyConfigRecordIds().empty());
+
+    IDeviceRuntime* runtime = registry.runtime(createResult.deviceId);
+    TEST_ASSERT_NOT_NULL(runtime);
+
+    StaticJsonDocument<2048> updateDoc;
+    fillSsd1306DeviceDocument(updateDoc, true);
+    DeviceConfigUpdateRequest updateRequest{};
+    TEST_ASSERT_TRUE(
+        Ssd1306DeviceApiAdapter::instance().parseUpdateConfigRequest(updateDoc.as<JsonObjectConst>(), *runtime, updateRequest, error));
+    TEST_ASSERT_NULL(error);
+    TEST_ASSERT_TRUE(updateRequest.persistedStateProvided);
+
+    // Step 1, mirroring the controller: updateConfigAndDeps() marks the device config-dirty.
+    const DeviceMutationResult updateResult =
+        registry.updateConfigAndDeps(createResult.deviceId, updateRequest.configBlob, updateRequest.configVersion, updateRequest.baseConfig,
+                                     updateRequest.depsProvided, updateRequest.deps, updateRequest.depCount, 0);
+    TEST_ASSERT_TRUE(updateResult.ok());
+    TEST_ASSERT_FALSE(registry.dirtyConfigRecordIds().empty());
+
+    // Simulate a background DeviceRegistry::tick() flush landing in the gap before the controller's
+    // second call (applyPersistedStateUpdate) runs -- this persists the config with the *old*
+    // (default) layout and clears the dirty flag.
+    TEST_ASSERT_TRUE(registry.flushNow().ok());
+    TEST_ASSERT_TRUE(registry.dirtyConfigRecordIds().empty());
+
+    // Step 2: applyPersistedStateUpdate() must mark the device dirty again on its own, or the new
+    // layout below would never be flushed by anything.
+    TEST_ASSERT_TRUE(registry
+                         .applyPersistedStateUpdate(createResult.deviceId, updateRequest.persistedStateBlob.data(),
+                                                    updateRequest.persistedStateBlob.size(), 0)
+                         .ok());
+    TEST_ASSERT_FALSE(registry.dirtyConfigRecordIds().empty());
+
+    TEST_ASSERT_TRUE(registry.flushNow().ok());
+
+    DisplayLayoutStore layoutStore(scopedStore);
+    DisplayLayoutRecordV1 storedLayout{};
+    TEST_ASSERT_TRUE(layoutStore.load(createResult.deviceId, storedLayout).ok());
+    TEST_ASSERT_EQUAL_STRING("{{system.wifi.station_ip}} {{system.time}}", storedLayout.pages[0].widgets[0].text);
 }
 
 DisplayLayoutProfile buildSsd1306ProfileForRotation(uint8_t rotation) {

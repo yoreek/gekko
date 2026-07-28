@@ -15,6 +15,7 @@ class MqttConfigStore;
 class MqttManager;
 class HaDiscoveryBridge;
 class NtpManager;
+class ConfigStore;
 
 enum class PortalRuntimeState {
     Idle,
@@ -30,7 +31,7 @@ public:
                  DeviceEventDispatcher* deviceEventDispatcher = nullptr, DashboardLayoutStore* dashboardLayoutStore = nullptr,
                  MqttConfigStore* mqttConfigStore = nullptr, MqttManager* mqttManager = nullptr,
                  DeviceScopedDataStore* haSettingsStore = nullptr, HaDiscoveryBridge* haDiscoveryBridge = nullptr,
-                 NtpManager* ntpManager = nullptr);
+                 NtpManager* ntpManager = nullptr, ConfigStore* configStore = nullptr);
     // NOLINTNEXTLINE(performance-trivially-destructible)
     ~PortalServer();
 
@@ -59,6 +60,7 @@ private:
     DeviceScopedDataStore* haSettingsStore_{nullptr};
     HaDiscoveryBridge* haDiscoveryBridge_{nullptr};
     NtpManager* ntpManager_{nullptr};
+    ConfigStore* configStore_{nullptr};
     std::unique_ptr<Impl> impl_;
 };
 

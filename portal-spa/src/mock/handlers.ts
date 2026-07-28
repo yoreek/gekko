@@ -4,6 +4,7 @@ import type {
   DashboardLayoutResponse,
   DeviceCommandRequest,
   DeviceDetailResponse,
+  DeviceFlushResponse,
   DeviceLayoutResponse,
   DeviceCreateRequest,
   DeviceMutationResponse,
@@ -15,6 +16,7 @@ import type {
   MqttSettingsRecord,
   MqttStatusResponse,
   OtaStatusResponse,
+  PersistenceSettingsRecord,
   SystemRestartResponse,
   SystemStatusResponse,
   SystemVersionResponse,
@@ -1761,6 +1763,39 @@ export function mockUpdateTimeSettings(settings: Partial<TimeSettingsRecord>): P
   })
   publishTimeStatus(loadMockDatabase())
   return Promise.resolve(response)
+}
+
+export function mockFetchPersistenceSettings(): PersistenceSettingsRecord {
+  const db = loadMockDatabase()
+  return ok({
+    debounceMs: db.persistence.debounceMs,
+    maxDelayMs: db.persistence.maxDelayMs,
+  })
+}
+
+export function mockUpdatePersistenceSettings(settings: Partial<PersistenceSettingsRecord>): Promise<PersistenceSettingsRecord> {
+  const response = mutateRegistry(db => {
+    db.persistence = {
+      ...db.persistence,
+      ...(settings.debounceMs !== undefined ? { debounceMs: settings.debounceMs } : {}),
+      ...(settings.maxDelayMs !== undefined ? { maxDelayMs: settings.maxDelayMs } : {}),
+    }
+    // Build the response from the just-mutated `db` directly rather than calling
+    // mockFetchPersistenceSettings() (which re-reads via loadMockDatabase()): mutateRegistry only
+    // writes `db` back to storage *after* this mutator returns, so a nested fresh read here would
+    // echo back the pre-mutation value.
+    return ok({ debounceMs: db.persistence.debounceMs, maxDelayMs: db.persistence.maxDelayMs })
+  })
+  return Promise.resolve(response)
+}
+
+export function mockFlushDevicePersistence(): Promise<DeviceFlushResponse> {
+  const db = loadMockDatabase()
+  return Promise.resolve({
+    success: true,
+    registryRevision: db.registryRevision,
+    pendingPersistence: false,
+  })
 }
 
 export function mockSetSystemTime(payload: { iso8601: string }): Promise<TimeStatusResponse> {

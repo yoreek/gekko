@@ -520,14 +520,15 @@ void DeviceRegistryController::create() {
         return;
     }
 
-    const DeviceCreateResult result = registry_.command(createRequest, ArduinoClock::millis());
+    const uint32_t now = ArduinoClock::millis();
+    const DeviceCreateResult result = registry_.command(createRequest, now);
     if (!result.ok()) {
         renderError(400, errorCodeForDeviceError(result.validation.error), result.validation.message);
         return;
     }
     if (createPersistedRequest->persistedStateProvided) {
         const DeviceValidationResult persistedResult = registry_.applyPersistedStateUpdate(
-            result.deviceId, createPersistedRequest->persistedStateBlob.data(), createPersistedRequest->persistedStateBlob.size());
+            result.deviceId, createPersistedRequest->persistedStateBlob.data(), createPersistedRequest->persistedStateBlob.size(), now);
         if (!persistedResult.ok()) {
             renderError(400, errorCodeForDeviceError(persistedResult.error), persistedResult.message);
             return;
@@ -719,7 +720,7 @@ void DeviceRegistryController::cmd() {
         }
         if (updateRequest->persistedStateProvided) {
             const DeviceValidationResult persistedResult = registry_.applyPersistedStateUpdate(
-                deviceId_, updateRequest->persistedStateBlob.data(), updateRequest->persistedStateBlob.size());
+                deviceId_, updateRequest->persistedStateBlob.data(), updateRequest->persistedStateBlob.size(), now);
             if (!persistedResult.ok()) {
                 renderError(400, errorCodeForDeviceError(persistedResult.error), persistedResult.message);
                 return;

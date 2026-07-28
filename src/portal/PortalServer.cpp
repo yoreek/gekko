@@ -10,6 +10,7 @@
 #include "portal/controllers/MetricsController.h"
 #include "portal/controllers/MqttController.h"
 #include "portal/controllers/OtaController.h"
+#include "portal/controllers/PersistenceController.h"
 #include "portal/controllers/PortalAssetController.h"
 #include "portal/controllers/SchedulePresetController.h"
 #include "portal/controllers/SystemController.h"
@@ -33,11 +34,11 @@ class PortalServer::Impl : public StateMachine {
 public:
     Impl(WifiManager& wifiManager, IWifiDriver& wifiDriver, DeviceRegistry* deviceRegistry, DeviceEventDispatcher* deviceEventDispatcher,
          DashboardLayoutStore* dashboardLayoutStore, MqttConfigStore* mqttConfigStore, MqttManager* mqttManager,
-         DeviceScopedDataStore* haSettingsStore, HaDiscoveryBridge* haDiscoveryBridge, NtpManager* ntpManager)
+         DeviceScopedDataStore* haSettingsStore, HaDiscoveryBridge* haDiscoveryBridge, NtpManager* ntpManager, ConfigStore* configStore)
         : StateMachine((PState)&PortalServer::Impl::Idle), wifiManager_(wifiManager), wifiDriver_(wifiDriver),
           deviceRegistry_(deviceRegistry), deviceEventDispatcher_(deviceEventDispatcher), dashboardLayoutStore_(dashboardLayoutStore),
           mqttConfigStore_(mqttConfigStore), mqttManager_(mqttManager), haSettingsStore_(haSettingsStore),
-          haDiscoveryBridge_(haDiscoveryBridge), ntpManager_(ntpManager) {}
+          haDiscoveryBridge_(haDiscoveryBridge), ntpManager_(ntpManager), configStore_(configStore) {}
 
     bool begin() {
         configured_ = true;
@@ -122,6 +123,7 @@ private:
         SystemController::registerRoutes(*server_, deviceRegistry_);
         MqttController::registerRoutes(*server_, mqttConfigStore_, mqttManager_, haDiscoveryBridge_);
         TimeController::registerRoutes(*server_, ntpManager_);
+        PersistenceController::registerRoutes(*server_, configStore_, deviceRegistry_);
         DoseJournalController::registerRoutes(*server_, defaultDoseJournal());
         SchedulePresetController::registerRoutes(*server_, defaultSchedulePresetStorage());
         if (!webSocketManager_) {
@@ -240,6 +242,7 @@ private:
     DeviceScopedDataStore* haSettingsStore_{nullptr};
     HaDiscoveryBridge* haDiscoveryBridge_{nullptr};
     NtpManager* ntpManager_{nullptr};
+    ConfigStore* configStore_{nullptr};
     std::unique_ptr<PortalWebSocketManager> webSocketManager_;
     bool configured_{false};
     bool dependencyWaitLogged_{false};
@@ -330,17 +333,17 @@ SM_STATE(Faulted) {
 PortalServer::PortalServer(WifiManager& wifiManager, IWifiDriver& wifiDriver, DeviceRegistry* deviceRegistry,
                            DeviceEventDispatcher* deviceEventDispatcher, DashboardLayoutStore* dashboardLayoutStore,
                            MqttConfigStore* mqttConfigStore, MqttManager* mqttManager, DeviceScopedDataStore* haSettingsStore,
-                           HaDiscoveryBridge* haDiscoveryBridge, NtpManager* ntpManager)
+                           HaDiscoveryBridge* haDiscoveryBridge, NtpManager* ntpManager, ConfigStore* configStore)
     : wifiManager_(wifiManager), wifiDriver_(wifiDriver), deviceRegistry_(deviceRegistry), deviceEventDispatcher_(deviceEventDispatcher),
       dashboardLayoutStore_(dashboardLayoutStore), mqttConfigStore_(mqttConfigStore), mqttManager_(mqttManager),
-      haSettingsStore_(haSettingsStore), haDiscoveryBridge_(haDiscoveryBridge), ntpManager_(ntpManager) {}
+      haSettingsStore_(haSettingsStore), haDiscoveryBridge_(haDiscoveryBridge), ntpManager_(ntpManager), configStore_(configStore) {}
 
 PortalServer::~PortalServer() = default;
 
 bool PortalServer::begin() {
     if (!impl_) {
         impl_ = std::make_unique<Impl>(wifiManager_, wifiDriver_, deviceRegistry_, deviceEventDispatcher_, dashboardLayoutStore_,
-                                       mqttConfigStore_, mqttManager_, haSettingsStore_, haDiscoveryBridge_, ntpManager_);
+                                       mqttConfigStore_, mqttManager_, haSettingsStore_, haDiscoveryBridge_, ntpManager_, configStore_);
     }
     return impl_ != nullptr && impl_->begin();
 }

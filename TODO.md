@@ -19,6 +19,14 @@ Working notes on features discussed but not necessarily finished. Grouped by sta
   `PUT/DELETE /api/schedulepresets/<id>/<slot>`. Apply is SPA-driven (loads points into the schedule
   draft, saves through the normal config path). Point parse/validate/serialize shared between the
   config codec and the preset controller.
+- **Persisted-state dirty-flag race fix + configurable persistence debounce** — `DeviceRegistry::applyPersistedStateUpdate`
+  now marks the device config-dirty itself (`DeviceRegistry.cpp`) instead of relying on the preceding
+  `updateConfigAndDeps` call across a released/reacquired `mutex_`; a background `tick()` flush landing in
+  that gap used to persist the *old* layout and orphan the new one in RAM forever. Regression test:
+  `test_ssd1306_layout_update_survives_flush_landing_between_config_and_layout_update`. The previously
+  hardcoded 500ms/2000ms debounce/max-delay is now `PersistenceConfig` (`config/DeviceConfig.h`), exposed
+  via `GET/PUT /api/system/persistence/settings` (`PersistenceController`), default max-delay raised to
+  30s to reduce flash write frequency.
 
 ## Kept as-is (decided, no action)
 
@@ -61,6 +69,29 @@ Not in git `data/`, not NVS. Mock: store in the mock DB like presets.
 Open forks to decide when resuming: option 1 vs 2; CSP `script-src blob:` for option 2's
 blob-module import; the command allow-list + confirmation policy.
 
+### Rework display layout save to stream instead of buffering the whole body
+
+Goal: bring `POST /api/devices/:id/command` (`updateConfig` with a `config.layout` payload) in line
+with the read side, which already avoids holding a whole layout in one RAM buffer.
+
+Key facts:
+- Save path buffers the entire request body in one `calloc` (`BaseController::appendRequestBody`)
+  and parses it with one `DynamicJsonDocument`, capped at `kMaxControllerJsonBodyBytes` = 8192 bytes
+  total (body + parse overhead) — `BaseController.cpp:16,55,243-259`. The whole layout (both pages,
+  up to `kDisplayLayoutMaxPages=2` × `kDisplayLayoutMaxWidgetsPerPage=10` widgets) has to fit in that
+  one JSON body on every save, even for a single-widget edit, because the SPA always re-encodes and
+  sends the full `config.layout` (`St7735Device.encodeConfig`/`Ssd1306Device.encodeConfig`). Once the
+  encoded JSON exceeds the cap, the save is rejected outright with `400 "invalid body"`.
+- Two other paths already solved this: `GET /api/devices/:id/layout` streams via
+  `IJsonChunkProducer` with `?page=` (`DeviceRegistryController.cpp:477-489`), and
+  `POST /api/device-setup/import` streams the upload straight to a LittleFS tmp file and parses
+  NDJSON off disk (`DeviceSetupTransferController.cpp:200-221`,
+  `DeviceSetupTransferCodec::parseFile`). The layout-save path is the one place still on the old
+  whole-buffer model.
+- The dirty-flag race that could silently drop a layout save (found while investigating this) is
+  already fixed — see "Persisted-state dirty-flag race fix" under Done above. What remains here is
+  purely the memory/chunking rework.
+
 ### Originally raised, then set aside
 - Universal/multi-protocol devices and no-recompile plugins — judged low-value earlier; not pursued.
 
@@ -96,6 +127,8 @@ Already covered by dedicated schemas in `schemas/rest/v1`:
 - `POST /api/system/time`
 - `GET /api/system/time/settings`
 - `PUT /api/system/time/settings`
+- `GET /api/system/persistence/settings`
+- `PUT /api/system/persistence/settings`
 - `POST /api/device-setup/import` response envelope
 - `GET /api/metrics/placeholders`
 - `GET /api/metrics/values`

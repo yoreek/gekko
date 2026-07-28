@@ -146,6 +146,10 @@ export interface MockDatabase {
     syncIntervalSeconds: number
     lastSyncEpochUtc: number
   }
+  persistence: {
+    debounceMs: number
+    maxDelayMs: number
+  }
 }
 
 export function createDeviceRecord(
@@ -1883,6 +1887,10 @@ const seedDatabase: SeedDatabase = {
     syncIntervalSeconds: 3600,
     lastSyncEpochUtc: Math.floor(Date.now() / 1000),
   },
+  persistence: {
+    debounceMs: 500,
+    maxDelayMs: 30000,
+  },
 }
 
 export function canonicalizeDeviceRecord(value: unknown): MockDeviceRecord {
@@ -2110,6 +2118,10 @@ export function normalizeStoredDatabase(stored: unknown): MockDatabase {
     time: {
       ...seed.time,
       ...(isRecord(stored.time) ? stored.time : {}),
+    },
+    persistence: {
+      ...seed.persistence,
+      ...(isRecord(stored.persistence) ? stored.persistence : {}),
     },
   }
 }

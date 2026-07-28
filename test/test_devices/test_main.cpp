@@ -217,6 +217,7 @@ void test_ssd1306_layout_codec_rejects_invalid_bitmap_payload();
 void test_ssd1306_layout_store_round_trip_binary();
 void test_ssd1306_layout_store_rejects_invalid_device_id();
 void test_ssd1306_layout_update_round_trip_via_registry_binary_store();
+void test_ssd1306_layout_update_survives_flush_landing_between_config_and_layout_update();
 void test_ssd1306_display_profile_swaps_bounds_on_quarter_rotation();
 void test_ssd1306_layout_validation_respects_rotated_bounds();
 void test_ssd1306_api_adapter_partial_update_preserves_bus_and_dimensions();
@@ -541,6 +542,7 @@ int main(int, char**) {
     RUN_TEST(test_ssd1306_layout_store_round_trip_binary);
     RUN_TEST(test_ssd1306_layout_store_rejects_invalid_device_id);
     RUN_TEST(test_ssd1306_layout_update_round_trip_via_registry_binary_store);
+    RUN_TEST(test_ssd1306_layout_update_survives_flush_landing_between_config_and_layout_update);
     RUN_TEST(test_ssd1306_display_profile_swaps_bounds_on_quarter_rotation);
     RUN_TEST(test_ssd1306_layout_validation_respects_rotated_bounds);
     RUN_TEST(test_ssd1306_api_adapter_partial_update_preserves_bus_and_dimensions);

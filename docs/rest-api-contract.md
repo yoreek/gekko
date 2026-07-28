@@ -1034,12 +1034,14 @@ Deletes a device. On dependency conflicts, the error body includes
 
 ### `POST /api/devices/flush`
 
-Forces pending registry persistence to be flushed.
+Forces pending registry persistence to be flushed immediately (bypassing the debounce/max-delay
+window described under `GET /api/system/persistence/settings` below).
 
 ```ts
 interface DeviceFlushResponse {
   success: true
   registryRevision: number
+  pendingPersistence: boolean
 }
 ```
 
@@ -1388,6 +1390,23 @@ interface TimeSettingsRecord {
 }
 ```
 
+### `GET /api/system/persistence/settings` / `PUT /api/system/persistence/settings`
+
+Controls the debounce/max-delay window the device registry uses before flushing dirty
+config/layout/retained state to flash (see `DeviceRegistry::tick()`). `PUT` accepts a partial
+object — only provided fields are updated — validates, persists via `ConfigStore`, and applies
+immediately to the live registry (no restart needed). Use `POST /api/devices/flush` to force an
+immediate flush regardless of this window.
+
+```ts
+interface PersistenceSettingsRecord {
+  debounceMs: number // quiet period after the *last* change; [100, 10000], default 500
+  maxDelayMs: number // hard cap from the *first* unflushed change; [1000, 300000], default 30000
+}
+```
+
+`debounceMs` must not exceed `maxDelayMs` (`PERSISTENCE_DEBOUNCE_EXCEEDS_MAX_DELAY`).
+
 ### Timezone catalog (no endpoint)
 
 There is no REST endpoint for the timezone list. The display names are static
@@ -1460,6 +1479,9 @@ MQTT-specific codes (`## MQTT`): `HOST_REQUIRED`, `HOST_TOO_LONG`,
 Time/NTP-specific codes (`## System`): `NTP_SERVER_TOO_LONG`,
 `TIMEZONE_INVALID`, `SYNC_INTERVAL_INVALID`, and `INVALID_TIME` (malformed
 `iso8601` on `POST /api/system/time`).
+
+Persistence-settings-specific codes (`## System`): `PERSISTENCE_DEBOUNCE_INVALID`,
+`PERSISTENCE_MAX_DELAY_INVALID`, and `PERSISTENCE_DEBOUNCE_EXCEEDS_MAX_DELAY`.
 
 Error example:
 

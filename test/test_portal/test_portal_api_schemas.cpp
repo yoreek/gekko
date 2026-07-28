@@ -74,6 +74,15 @@ void test_time_settings_response_schema_smoke() {
     assertMatchesJsonSchema("schemas/rest/v1/responses/time-settings.response.schema.json", doc.as<JsonVariantConst>());
 }
 
+void test_persistence_settings_response_schema_smoke() {
+    StaticJsonDocument<128> doc;
+    doc["success"] = true;
+    doc["status"] = "ok";
+    doc["debounceMs"] = 1000;
+    doc["maxDelayMs"] = 30000;
+    assertMatchesJsonSchema("schemas/rest/v1/responses/persistence-settings.response.schema.json", doc.as<JsonVariantConst>());
+}
+
 void test_time_status_response_schema_smoke() {
     StaticJsonDocument<512> doc;
     doc["success"] = true;

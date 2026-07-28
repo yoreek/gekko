@@ -89,14 +89,21 @@ struct DevicePersistedStateUpdate {
 
 class DeviceRegistry {
 public:
-    static constexpr uint32_t kPersistenceDebounceMs = 500;
-    static constexpr uint32_t kPersistenceMaxDelayMs = 2000;
+    // Defaults match the previous hardcoded constants; App overrides these from ConfigStore's
+    // PersistenceConfig at boot (and on every settings PUT) via setPersistenceDelays().
+    static constexpr uint32_t kDefaultPersistenceDebounceMs = 500;
+    static constexpr uint32_t kDefaultPersistenceMaxDelayMs = 2000;
 
     DeviceRegistry(DeviceRegistryStore& store, const DeviceTypeRegistry& typeRegistry, IDeviceIdSource& idSource,
                    DeviceRetainedDataStore* retainedStateStore = nullptr, DeviceScopedDataStore* persistedStateStore = nullptr,
                    DeviceEventDispatcher* eventDispatcher = nullptr);
     DeviceRegistry(DeviceRegistryStore& store, const DeviceTypeRegistry& typeRegistry, IDeviceIdSource& idSource,
                    DeviceRetainedDataStore* retainedStateStore, DeviceEventDispatcher* eventDispatcher);
+
+    // debounceMs: how long after the *last* change to wait before flushing (quiet period).
+    // maxDelayMs: hard cap measured from the *first* unflushed change, regardless of continued
+    // activity -- the real ceiling on flash write frequency under continuous churn.
+    void setPersistenceDelays(uint32_t debounceMs, uint32_t maxDelayMs);
 
     DeviceValidationResult begin(uint32_t now = 0);
     void tick(uint32_t now);
@@ -138,7 +145,7 @@ public:
     DeviceValidationResult restore(const DeviceRegistrySnapshot& snapshot, const DeviceConfigBlobMap& configBlobs,
                                    const std::vector<DevicePersistedStateUpdate>& persistedStateUpdates, uint32_t registryRevision,
                                    uint32_t now);
-    DeviceValidationResult applyPersistedStateUpdate(DeviceId deviceId, const uint8_t* data, size_t size);
+    DeviceValidationResult applyPersistedStateUpdate(DeviceId deviceId, const uint8_t* data, size_t size, uint32_t now);
 
     bool dirtyIndex() const;
     std::vector<DeviceId> dirtyConfigRecordIds() const;
@@ -182,6 +189,8 @@ private:
     DeviceScopedDataStore* persistedStateStore_{nullptr};
     DeviceRegistryEventReporter eventReporter_{};
     DeviceRegistryPersistenceCoordinator persistence_{};
+    uint32_t persistenceDebounceMs_{kDefaultPersistenceDebounceMs};
+    uint32_t persistenceMaxDelayMs_{kDefaultPersistenceMaxDelayMs};
     DeviceRuntimeMap runtimes_{};
     uint32_t registryRevision_{0};
     mutable DeviceRegistryMutex mutex_{};

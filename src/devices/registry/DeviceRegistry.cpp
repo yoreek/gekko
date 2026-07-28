@@ -262,9 +262,15 @@ DeviceValidationResult DeviceRegistry::begin(uint32_t now) {
     return {};
 }
 
+void DeviceRegistry::setPersistenceDelays(const uint32_t debounceMs, const uint32_t maxDelayMs) {
+    DeviceRegistryLockGuard guard(mutex_);
+    persistenceDebounceMs_ = debounceMs;
+    persistenceMaxDelayMs_ = maxDelayMs;
+}
+
 void DeviceRegistry::tick(uint32_t now) {
     DeviceRegistryLockGuard guard(mutex_);
-    if (!persistence_.shouldFlush(now, kPersistenceDebounceMs, kPersistenceMaxDelayMs)) {
+    if (!persistence_.shouldFlush(now, persistenceDebounceMs_, persistenceMaxDelayMs_)) {
         return;
     }
 
@@ -957,13 +963,22 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
     return result;
 }
 
-DeviceValidationResult DeviceRegistry::applyPersistedStateUpdate(DeviceId deviceId, const uint8_t* data, size_t size) {
+DeviceValidationResult DeviceRegistry::applyPersistedStateUpdate(DeviceId deviceId, const uint8_t* data, size_t size, uint32_t now) {
     DeviceRegistryLockGuard guard(mutex_);
     IDevicePersistedState* persistedRuntime = persistedStateRuntime(deviceId);
     if (persistedRuntime == nullptr) {
         return {DeviceError::InvalidConfig, "device type does not support persisted state"};
     }
-    return persistedRuntime->applyPersistedStateUpdate(data, size);
+    const DeviceValidationResult result = persistedRuntime->applyPersistedStateUpdate(data, size);
+    if (!result.ok()) {
+        return result;
+    }
+    // Mark dirty here rather than relying on the caller's preceding updateConfigAndDeps() call:
+    // that call releases mutex_ before this one re-acquires it, and a background tick()-driven
+    // flush landing in that gap would persist the old layout and clear the dirty flag, silently
+    // orphaning this update in RAM forever (nothing would ever mark it dirty again).
+    persistence_.markConfigDirty(deviceId, now);
+    return result;
 }
 
 DeviceMutationResult DeviceRegistry::command(const DeviceCommand& command, uint32_t now) {

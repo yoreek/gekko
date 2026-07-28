@@ -20,6 +20,7 @@ void test_ledc_analog_output_api_adapter_schema_smoke();
 void test_wifi_configure_request_schema_smoke();
 void test_mqtt_settings_request_schema_smoke();
 void test_time_settings_request_schema_smoke();
+void test_persistence_settings_request_schema_smoke();
 void test_manual_time_request_schema_smoke();
 void test_device_setup_import_request_schema_smoke();
 void test_mqtt_ca_cert_request_schema_smoke();
@@ -178,6 +179,7 @@ int main(int, char**) {
     RUN_TEST(test_wifi_configure_request_schema_smoke);
     RUN_TEST(test_mqtt_settings_request_schema_smoke);
     RUN_TEST(test_time_settings_request_schema_smoke);
+    RUN_TEST(test_persistence_settings_request_schema_smoke);
     RUN_TEST(test_manual_time_request_schema_smoke);
     RUN_TEST(test_device_setup_import_request_schema_smoke);
     RUN_TEST(test_mqtt_ca_cert_request_schema_smoke);

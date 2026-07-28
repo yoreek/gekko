@@ -150,8 +150,8 @@ DeviceId createFromJson(DeviceRegistry& registry, const char* typeName, const ch
     const DeviceCreateResult result = registry.create(request, 0);
     TEST_ASSERT_TRUE_MESSAGE(result.ok(), result.validation.message);
     if (persisted->persistedStateProvided) {
-        const DeviceValidationResult stateResult =
-            registry.applyPersistedStateUpdate(result.deviceId, persisted->persistedStateBlob.data(), persisted->persistedStateBlob.size());
+        const DeviceValidationResult stateResult = registry.applyPersistedStateUpdate(result.deviceId, persisted->persistedStateBlob.data(),
+                                                                                      persisted->persistedStateBlob.size(), 0);
         TEST_ASSERT_TRUE_MESSAGE(stateResult.ok(), stateResult.message);
     }
     return result.deviceId;

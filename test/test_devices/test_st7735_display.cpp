@@ -492,7 +492,7 @@ void test_st7735_update_round_trip_includes_layout() {
     TEST_ASSERT_TRUE(updateResult.ok());
     TEST_ASSERT_TRUE(registry
                          .applyPersistedStateUpdate(createResult.deviceId, updateRequest.persistedStateBlob.data(),
-                                                    updateRequest.persistedStateBlob.size())
+                                                    updateRequest.persistedStateBlob.size(), 0)
                          .ok());
     TEST_ASSERT_TRUE(registry.flushNow().ok());
 

@@ -28,6 +28,7 @@ void test_ota_status_response_schema_smoke();
 void test_mqtt_status_response_schema_smoke();
 void test_mqtt_settings_response_schema_smoke();
 void test_time_settings_response_schema_smoke();
+void test_persistence_settings_response_schema_smoke();
 void test_time_status_response_schema_smoke();
 void test_dosejournal_response_schema_smoke();
 void test_system_restart_response_schema_smoke();
@@ -81,6 +82,7 @@ int main(int, char**) {
     RUN_TEST(test_mqtt_status_response_schema_smoke);
     RUN_TEST(test_mqtt_settings_response_schema_smoke);
     RUN_TEST(test_time_settings_response_schema_smoke);
+    RUN_TEST(test_persistence_settings_response_schema_smoke);
     RUN_TEST(test_time_status_response_schema_smoke);
     RUN_TEST(test_dosejournal_response_schema_smoke);
     RUN_TEST(test_system_restart_response_schema_smoke);
