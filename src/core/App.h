@@ -1,6 +1,10 @@
 #pragma once
 
 #include "config/ConfigStore.h"
+
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+#include <LittleFS.h>
+#endif
 #if defined(WITH_HOME_ASSISTANT)
 #include "config/MqttConfigStore.h"
 #include "integrations/mqtt/HaDiscoveryBridge.h"
@@ -26,6 +30,7 @@
 #include "platform/ArduinoNtpClient.h"
 #include "platform/ArduinoOtaService.h"
 #include "platform/ArduinoWifiDriver.h"
+#include "platform/DevDataPartition.h"
 #include "platform/PreferencesConfigStorage.h"
 #include "portal/DashboardLayoutStore.h"
 #include "portal/PortalServer.h"
@@ -71,10 +76,21 @@ private:
     RtcSyncCoordinator rtcSyncCoordinator_;
     DisplayRenderCoordinator displayRenderCoordinator_;
     DashboardLayoutStore dashboardLayoutStore_;
-    LittleFsDoseJournalStorage doseJournalStorage_;
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    fs::LittleFSFS devDataFs_;
+#endif
+    LittleFsDoseJournalStorage doseJournalStorage_
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+        {devDataFs_}
+#endif
+    ;
     SegmentedDoseJournal doseJournal_{doseJournalStorage_, kDoseJournalRecordsPerSegment};
     DoseJournalCleanupSink doseJournalCleanupSink_{doseJournal_};
-    LittleFsSchedulePresetStorage schedulePresetStorage_;
+    LittleFsSchedulePresetStorage schedulePresetStorage_
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+        {devDataFs_}
+#endif
+    ;
     SchedulePresetCleanupSink schedulePresetCleanupSink_{schedulePresetStorage_};
     PortalServer portalServer_;
     uint32_t lastTick100ms_{0};

@@ -60,14 +60,22 @@ bool App::begin() {
 #endif
 #endif
 
-    // Dose journal mounts its own devdata partition (formatted on first boot); a missing/failed
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    // Single mount of the shared devdata partition (my_partitions.csv); formatOnFail covers first
+    // boot after this partition was introduced (leftover app bytes, nothing to migrate - everything
+    // starts empty). A failed mount must never block boot - each consumer's own begin() harmlessly
+    // no-ops when its directory checks fail against an unmounted fs.
+    (void)devDataFs_.begin(true, "/devdata", 4, kDeviceDataPartitionLabel);
+#endif
+
+    // Dose journal directory lives on the shared devdata partition (mounted above); a missing/failed
     // journal must never block boot - dosing devices tolerate a null journal by dropping records.
     (void)doseJournalStorage_.begin();
     setDefaultDoseJournal(&doseJournal_);
     (void)deviceEventDispatcher_.registerSink(doseJournalCleanupSink_);
 
-    // Schedule presets share the same devdata partition (already mounted above); a failed mount
-    // must never block boot - preset save/list simply become unavailable.
+    // Schedule presets directory lives on the shared devdata partition (mounted above); a failed
+    // mount must never block boot - preset save/list simply become unavailable.
     (void)schedulePresetStorage_.begin();
     setDefaultSchedulePresetStorage(&schedulePresetStorage_);
     (void)deviceEventDispatcher_.registerSink(schedulePresetCleanupSink_);

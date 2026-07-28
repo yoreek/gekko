@@ -1,7 +1,5 @@
 #include "devices/analog/scheduled/presets/LittleFsSchedulePresetStorage.h"
 
-#include "devices/dosing/journal/LittleFsDoseJournalStorage.h" // kDeviceDataPartitionLabel
-
 #include <cinttypes>
 #include <cstdio>
 
@@ -18,12 +16,8 @@ void LittleFsSchedulePresetStorage::buildSlotPath(char (&out)[kMaxPathBytes], ui
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 
 bool LittleFsSchedulePresetStorage::begin() {
-    // formatOnFail covers the first boot after the devdata partition is introduced; if another
-    // feature (e.g. the dose journal) already mounted this partition, begin() returns true and we
-    // just reuse the mount.
-    if (!fs_.begin(true, "/devdata", 4, kDeviceDataPartitionLabel)) {
-        return false;
-    }
+    // Assumes App has already mounted the shared devdata partition; only responsible for this
+    // feature's own top-level directory.
     if (!fs_.exists("/sap")) {
         return fs_.mkdir("/sap");
     }

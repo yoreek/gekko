@@ -17,11 +17,8 @@ void LittleFsDoseJournalStorage::buildSegmentPath(char (&out)[kMaxPathBytes], ui
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 
 bool LittleFsDoseJournalStorage::begin() {
-    // formatOnFail covers the first boot after the devdata partition is introduced (the region
-    // holds leftover app bytes until formatted) - nothing to migrate, the journal starts empty.
-    if (!fs_.begin(true, "/devdata", 4, kDeviceDataPartitionLabel)) {
-        return false;
-    }
+    // Assumes App has already mounted the shared devdata partition; only responsible for this
+    // feature's own top-level directory.
     if (!fs_.exists("/dj")) {
         return fs_.mkdir("/dj");
     }

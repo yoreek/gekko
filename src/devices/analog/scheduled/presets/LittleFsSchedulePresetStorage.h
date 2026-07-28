@@ -1,6 +1,7 @@
 #pragma once
 
 #include "devices/analog/scheduled/presets/SchedulePreset.h"
+#include "platform/DevDataPartition.h"
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 #include <LittleFS.h>
@@ -14,8 +15,13 @@ namespace ewfm {
 // per preset slot. Device ids are registry-unique, so directory names cannot collide.
 class LittleFsSchedulePresetStorage final : public ISchedulePresetStorage {
 public:
-    // Mounts the devdata partition (formatting on first use) and creates the presets directory.
-    // Safe to call after another feature already mounted the same partition.
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+    // Injected by App, which owns the single mount of the shared devdata partition.
+    explicit LittleFsSchedulePresetStorage(fs::LittleFSFS& fs) : fs_(fs) {}
+#endif
+
+    // Assumes App has already mounted the devdata partition; creates the presets directory if
+    // missing.
     bool begin();
 
     bool save(uint32_t deviceId, uint8_t slot, const SchedulePresetRecordV1& record) override;
@@ -32,8 +38,7 @@ private:
     static void buildSlotPath(char (&out)[kMaxPathBytes], uint32_t deviceId, uint8_t slot);
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    // FS::open/exists are non-const in the Arduino API; the reads really are logically const.
-    mutable fs::LittleFSFS fs_;
+    fs::LittleFSFS& fs_;
 #endif
 };
 
