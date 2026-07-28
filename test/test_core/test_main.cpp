@@ -118,6 +118,7 @@ void test_ntp_manager_seed_from_rtc_does_not_count_as_authoritative_sync();
 void test_rtc_sync_coordinator_seeds_system_time_from_rtc_before_first_ntp_sync();
 void test_rtc_sync_coordinator_ignores_rtc_device_not_opted_in();
 void test_rtc_sync_coordinator_writes_back_after_authoritative_sync();
+void test_rtc_sync_coordinator_writes_current_time_when_rtc_is_enabled_after_sync();
 void test_rtc_sync_coordinator_falls_back_to_rtc_after_prolonged_ntp_outage();
 void test_blob_key_segment_accepts_valid_charset();
 void test_blob_key_segment_rejects_empty_dot_and_dotdot();
@@ -267,6 +268,7 @@ int main(int, char**) {
     RUN_TEST(test_rtc_sync_coordinator_seeds_system_time_from_rtc_before_first_ntp_sync);
     RUN_TEST(test_rtc_sync_coordinator_ignores_rtc_device_not_opted_in);
     RUN_TEST(test_rtc_sync_coordinator_writes_back_after_authoritative_sync);
+    RUN_TEST(test_rtc_sync_coordinator_writes_current_time_when_rtc_is_enabled_after_sync);
     RUN_TEST(test_rtc_sync_coordinator_falls_back_to_rtc_after_prolonged_ntp_outage);
     RUN_TEST(test_blob_key_segment_accepts_valid_charset);
     RUN_TEST(test_blob_key_segment_rejects_empty_dot_and_dotdot);

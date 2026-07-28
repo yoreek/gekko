@@ -170,14 +170,35 @@ void test_rtc_sync_coordinator_writes_back_after_authoritative_sync() {
     harness.coordinator.tick(31000); // boot seed, not authoritative, no write-back yet
     TEST_ASSERT_EQUAL_UINT32(0, harness.rtc->writeCount);
 
+    harness.ntpManager.tick(31000);
     harness.ntpManager.setManualTime(1700005000UL); // authoritative
     harness.coordinator.tick(62000);
     TEST_ASSERT_EQUAL_UINT32(1, harness.rtc->writeCount);
-    TEST_ASSERT_EQUAL_UINT32(1700005000UL, harness.rtc->lastWrittenEpoch);
+    TEST_ASSERT_EQUAL_UINT32(1700005031UL, harness.rtc->lastWrittenEpoch);
 
     // No new authoritative sync and well under the periodic write-back interval - no repeat write.
     harness.coordinator.tick(93000);
     TEST_ASSERT_EQUAL_UINT32(1, harness.rtc->writeCount);
+}
+
+void test_rtc_sync_coordinator_writes_current_time_when_rtc_is_enabled_after_sync() {
+    Harness harness;
+    harness.begin();
+    harness.rtc->activeSync = false;
+
+    harness.ntpManager.tick(1000);
+    harness.ntpManager.setManualTime(1700005000UL);
+    harness.coordinator.tick(31000);
+    TEST_ASSERT_EQUAL_UINT32(0, harness.rtc->writeCount);
+
+    // Enabling an RTC later must write the advancing system clock, not the stale instant at which
+    // NTP/manual synchronization originally occurred.
+    harness.rtc->activeSync = true;
+    harness.ntpManager.tick(25UL * 60UL * 1000UL + 1000UL);
+    harness.coordinator.tick(25UL * 60UL * 1000UL + 1000UL);
+
+    TEST_ASSERT_EQUAL_UINT32(1, harness.rtc->writeCount);
+    TEST_ASSERT_EQUAL_UINT32(1700006500UL, harness.rtc->lastWrittenEpoch);
 }
 
 void test_rtc_sync_coordinator_falls_back_to_rtc_after_prolonged_ntp_outage() {

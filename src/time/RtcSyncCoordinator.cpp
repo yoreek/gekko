@@ -58,7 +58,7 @@ void RtcSyncCoordinator::tickBootSeed(uint32_t now, const IRealTimeClockRuntime*
     if (lostPower) {
         EWFM_RTC_SYNC_LOG_WARN("rtc reports lost power - boot seed epoch may be inaccurate");
     }
-    ntpManager_.seedFromRtc(epoch);
+    ntpManager_.seedFromRtc(epoch, now);
     EWFM_RTC_SYNC_LOG_INFO("system time seeded from rtc epoch=%lu", static_cast<unsigned long>(epoch));
 }
 
@@ -76,8 +76,8 @@ void RtcSyncCoordinator::tickWriteBack(uint32_t now, const IRealTimeClockRuntime
     if (activeRtc == nullptr || !ntpManager_.hasAuthoritativeSync()) {
         return;
     }
-    const std::optional<DateTime>& lastSynced = ntpManager_.lastSyncedUtc();
-    if (!lastSynced.has_value()) {
+    const uint32_t currentEpoch = ntpManager_.currentUtcEpoch(now);
+    if (currentEpoch == 0U) {
         return;
     }
 
@@ -86,8 +86,8 @@ void RtcSyncCoordinator::tickWriteBack(uint32_t now, const IRealTimeClockRuntime
 
     // const_cast is safe here: writeTime() is a mutating hardware operation on the RTC device,
     // but findActiveRtc() only hands out const access because most callers only ever read.
-    if (const_cast<IRealTimeClockRuntime*>(activeRtc)->writeTime(lastSynced->utcUnixtime())) {
-        EWFM_RTC_SYNC_LOG_INFO("system time written back to rtc epoch=%lu", static_cast<unsigned long>(lastSynced->utcUnixtime()));
+    if (const_cast<IRealTimeClockRuntime*>(activeRtc)->writeTime(currentEpoch)) {
+        EWFM_RTC_SYNC_LOG_INFO("system time written back to rtc epoch=%lu", static_cast<unsigned long>(currentEpoch));
     }
 }
 
@@ -108,7 +108,7 @@ void RtcSyncCoordinator::tickStalenessFallback(uint32_t now, const IRealTimeCloc
     if (!activeRtc->latestTimeReading(epoch, lostPower)) {
         return;
     }
-    ntpManager_.seedFromRtc(epoch);
+    ntpManager_.seedFromRtc(epoch, now);
     EWFM_RTC_SYNC_LOG_WARN("ntp sync stale, corrected system time from rtc epoch=%lu", static_cast<unsigned long>(epoch));
 }
 

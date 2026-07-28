@@ -59,12 +59,20 @@ public:
     // setManualTime()/a successful NTP sync, this does NOT count as an authoritative sync - it
     // exists so NTP keeps retrying independently and the status endpoint can honestly report
     // TimeSource::Rtc as a weaker, stand-in source rather than as good as a real sync.
-    void seedFromRtc(uint32_t utcEpoch) {
-        applyExternalTime(utcEpoch, TimeSource::Rtc);
+    void seedFromRtc(uint32_t utcEpoch, uint32_t now) {
+        applyExternalTime(utcEpoch, TimeSource::Rtc, now);
     }
 
     [[nodiscard]] bool synced() const {
         return synced_;
+    }
+    // Advances the last applied UTC reading by cooperative uptime. This is the value to use when
+    // writing system time to an RTC after the authoritative sync itself happened some time ago.
+    [[nodiscard]] uint32_t currentUtcEpoch(uint32_t now) const {
+        if (!lastSyncedUtc_.has_value()) {
+            return 0U;
+        }
+        return lastSyncedUtc_->unixtime() + static_cast<uint32_t>(now - lastTimeAppliedMs_) / 1000UL;
     }
     [[nodiscard]] const std::optional<DateTime>& lastSyncedUtc() const {
         return lastSyncedUtc_;
@@ -108,7 +116,7 @@ private:
     void RetryDelay();
 
     [[nodiscard]] bool ntpReady() const;
-    void applyExternalTime(uint32_t utcEpoch, TimeSource source);
+    void applyExternalTime(uint32_t utcEpoch, TimeSource source, uint32_t appliedAtMs);
 
     static constexpr uint32_t kResolveTimeoutMs = 30000;
     static constexpr uint32_t kResponseTimeoutMs = 3000;
@@ -123,6 +131,7 @@ private:
     bool synced_{false};
     bool stationWaitLogged_{false};
     std::optional<DateTime> lastSyncedUtc_{};
+    uint32_t lastTimeAppliedMs_{0};
     TimeSource lastSource_{TimeSource::None};
     bool hasAuthoritativeSync_{false};
     uint32_t lastAuthoritativeSyncMs_{0};

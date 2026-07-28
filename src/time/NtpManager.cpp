@@ -43,13 +43,14 @@ ValidationResult NtpManager::applySettings(const TimeConfig& config) {
 }
 
 void NtpManager::setManualTime(uint32_t utcEpoch) {
-    applyExternalTime(utcEpoch, TimeSource::Manual);
+    applyExternalTime(utcEpoch, TimeSource::Manual, uptime());
     EWFM_NTP_LOG_INFO("time set manually epoch=%lu", static_cast<unsigned long>(utcEpoch));
 }
 
-void NtpManager::applyExternalTime(uint32_t utcEpoch, TimeSource source) {
+void NtpManager::applyExternalTime(uint32_t utcEpoch, TimeSource source, uint32_t appliedAtMs) {
     synced_ = true;
     lastSyncedUtc_ = DateTime(utcEpoch);
+    lastTimeAppliedMs_ = appliedAtMs;
     lastSource_ = source;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     setTime(utcEpoch);
@@ -132,7 +133,7 @@ SM_STATE(CheckSynced) {
     uint32_t epoch = 0;
     if (client_.pollResponse(epoch)) {
         client_.closeSocket();
-        applyExternalTime(epoch, TimeSource::Ntp);
+        applyExternalTime(epoch, TimeSource::Ntp, uptime());
         EWFM_NTP_LOG_INFO("ntp sync succeeded epoch=%lu", static_cast<unsigned long>(epoch));
         SM_GOTO(Synced);
     }

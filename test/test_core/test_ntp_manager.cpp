@@ -429,7 +429,7 @@ void test_ntp_manager_seed_from_rtc_does_not_count_as_authoritative_sync() {
     ntp.begin(manager);
     ntp.tick(50);
 
-    ntp.seedFromRtc(1700000000UL);
+    ntp.seedFromRtc(1700000000UL, 100U);
     TEST_ASSERT_TRUE(ntp.synced());
     TEST_ASSERT_TRUE(TimeSource::Rtc == ntp.lastSource());
     TEST_ASSERT_TRUE(ntp.lastSyncedUtc().has_value());
