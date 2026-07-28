@@ -95,7 +95,7 @@ test('normalizes OLED layout widgets and preserves typed data', () => {
     ],
   })
 
-  assert.equal(layout.schemaVersion, 1)
+  assert.equal(layout.schemaVersion, 3)
   assert.equal(layout.activePageId, 'main')
   assert.equal(layout.pages[0].widgets[0].type, 'text')
   assert.equal(layout.pages[0].widgets[0].text, 'Water')

@@ -10,7 +10,7 @@ import {
 test('creates a default RGB565 ST7735 layout', () => {
   const layout = defaultSt7735Layout()
 
-  assert.equal(layout.schemaVersion, 1)
+  assert.equal(layout.schemaVersion, 3)
   assert.equal(layout.activePageId, 'main')
   assert.equal(layout.colorMode, 'rgb565')
   assert.equal(layout.pages.length, 1)
