@@ -80,6 +80,13 @@ bool App::begin() {
     setDefaultSchedulePresetStorage(&schedulePresetStorage_);
     (void)deviceEventDispatcher_.registerSink(schedulePresetCleanupSink_);
 
+    // Generic blob store's reserved root directory lives on the shared devdata partition
+    // (mounted above); a failed mount must never block boot - blob read/write simply become
+    // unavailable.
+    (void)blobStore_.begin();
+    setDefaultBlobStore(&blobStore_);
+    (void)deviceEventDispatcher_.registerSink(blobStoreCleanupSink_);
+
     EWFM_BOOT_PRINTF("BOOT App::begin configStore\n");
     if (!configStore_.begin()) {
         EWFM_BOOT_PRINTF("BOOT App::begin ConfigStore failed\n");

@@ -128,3 +128,36 @@ export async function requestFormData<T>(path: string, formData: FormData, optio
   })
   return parseJsonResponse<T>(response, text)
 }
+
+// Sends a raw binary body (no multipart/JSON wrapping) - used by the generic blob-store endpoints
+// (/api/blobs/...), which read the request body as-is.
+export async function requestBinary<T>(path: string, body: BodyInit, options: RequestOptions = {}): Promise<T> {
+  const { response, text } = await requestWithTextResponse(path, {
+    ...options,
+    body,
+    method: options.method ?? 'POST',
+  })
+  return parseJsonResponse<T>(response, text)
+}
+
+// Fetches a raw binary response body as a Blob rather than parsing it as JSON - used to read a
+// blob's bytes back from /api/blobs/<key>.
+export async function requestBlob(path: string, options: Omit<RequestOptions, 'body'> = {}): Promise<Blob> {
+  const controller = new AbortController()
+  const timeoutMs = options.timeoutMs ?? 10000
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const response = await fetch(withBase(path), {
+      method: options.method ?? 'GET',
+      headers: options.headers,
+      signal: controller.signal,
+    })
+    if (!response.ok) {
+      throw new ApiClientError(response.statusText || 'request failed', 'HTTP_ERROR', response.status, null)
+    }
+    return await response.blob()
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}

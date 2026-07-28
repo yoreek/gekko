@@ -435,6 +435,7 @@ function updateWidgetType(value: string): void {
     emit('update-widget', {
       type: 'bitmap',
       bitmapData: props.display.createBitmapPlaceholder(props.widget.width, props.widget.height).bitmapData,
+      imageKey: '',
       bitmapFormat: props.display.bitmapFormat,
       keepAspectRatio: false,
     } as Partial<DisplayWidget>)

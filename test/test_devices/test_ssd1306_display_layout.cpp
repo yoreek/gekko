@@ -86,7 +86,7 @@ DisplayLayoutRecordV1 makeLayoutRecord() {
     third.height = 2;
     third.bitmapFormat = static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1);
     third.keepAspectRatio = 1;
-    third.bitmapData = {0x00, 0x01, 0x02, 0x03};
+    std::snprintf(third.imageKey, sizeof(third.imageKey), "%s", "dev/2a/AAAAAAAA");
 
     page.widgets.push_back(first);
     page.widgets.push_back(second);
@@ -138,7 +138,7 @@ template <size_t N> void fillSsd1306DeviceDocument(StaticJsonDocument<N>& doc, b
     bitmapWidget["height"] = 2;
     bitmapWidget["bitmapFormat"] = "mono1";
     bitmapWidget["keepAspectRatio"] = true;
-    bitmapWidget["bitmapData"] = "AAECAw==";
+    bitmapWidget["imageKey"] = "dev/2a/AAAAAAAA";
 }
 
 void fillI2cBusDocument(StaticJsonDocument<512>& doc, const char* name, uint8_t sdaPin, uint8_t sclPin) {
@@ -177,7 +177,7 @@ void test_ssd1306_layout_codec_round_trip_json() {
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap), decoded.pages[0].widgets[2].type);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1), decoded.pages[0].widgets[2].bitmapFormat);
     TEST_ASSERT_EQUAL_UINT8(1, decoded.pages[0].widgets[2].keepAspectRatio);
-    TEST_ASSERT_EQUAL_UINT8(4, decoded.pages[0].widgets[2].bitmapData.size());
+    TEST_ASSERT_EQUAL_STRING("dev/2a/AAAAAAAA", decoded.pages[0].widgets[2].imageKey);
     TEST_ASSERT_EQUAL_UINT8(0, decoded.activePageIndex);
 }
 
@@ -270,6 +270,85 @@ void test_ssd1306_layout_codec_migrates_v4_colors() {
     TEST_ASSERT_EQUAL_HEX16(0U, decoded.backgroundColor);
     TEST_ASSERT_EQUAL_HEX16(0xFFFFU, decoded.pages[0].widgets[0].color);
     TEST_ASSERT_EQUAL_STRING("legacy", decoded.pages[0].widgets[0].text);
+}
+
+// A pre-V7 record's inline bitmap trailer must be skipped (offset tracking correct so the
+// following widget still decodes), and the resulting widget's imageKey must come back empty
+// rather than any migrated/synthesized value - decode has no blob-store dependency, so a legacy
+// bitmap's bytes are deliberately dropped, not migrated (see decodeDisplayLayoutBinary).
+void test_ssd1306_layout_codec_migrates_v6_bitmap_drops_inline_bytes_but_keeps_offsets_correct() {
+    EWFM_LEGACY_CONFIG_USE_BEGIN
+    DisplayLayoutBinaryHeaderV6 header{};
+    header.recordVersion = 6U;
+    header.deviceId = 55U;
+    header.schemaVersion = kDisplayLayoutSchemaVersion;
+    header.pageCount = 1U;
+
+    DisplayLayoutBinaryPageHeaderV1 pageHeader{};
+    pageHeader.widgetCount = 2U;
+    std::snprintf(pageHeader.id, sizeof(pageHeader.id), "%s", "main");
+    std::snprintf(pageHeader.name, sizeof(pageHeader.name), "%s", "Main");
+
+    DisplayLayoutBinaryWidgetV6 bitmapWidget{};
+    std::snprintf(bitmapWidget.id, sizeof(bitmapWidget.id), "%s", "legacy-bitmap");
+    bitmapWidget.type = static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap);
+    bitmapWidget.width = 2U;
+    bitmapWidget.height = 2U;
+    bitmapWidget.bitmapFormat = static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1);
+    bitmapWidget.bitmapDataLength = 4U;
+    const uint8_t bitmapBytes[4] = {0xAA, 0xBB, 0xCC, 0xDD};
+
+    DisplayLayoutBinaryWidgetV6 textWidget{};
+    std::snprintf(textWidget.id, sizeof(textWidget.id), "%s", "after-bitmap");
+    textWidget.type = static_cast<uint8_t>(DisplayLayoutWidgetType::Text);
+    textWidget.bindingKind = static_cast<uint8_t>(DisplayLayoutBindingKind::ConstantText);
+    textWidget.width = 20U;
+    textWidget.height = 8U;
+    std::snprintf(textWidget.text, sizeof(textWidget.text), "%s", "still here");
+
+    std::vector<uint8_t> blob;
+    const auto append = [&blob](const auto& value) {
+        const size_t offset = blob.size();
+        blob.resize(offset + sizeof(value));
+        std::memcpy(blob.data() + offset, &value, sizeof(value));
+    };
+    append(header);
+    append(pageHeader);
+    append(bitmapWidget);
+    blob.insert(blob.end(), bitmapBytes, bitmapBytes + sizeof(bitmapBytes));
+    append(textWidget);
+    EWFM_LEGACY_CONFIG_USE_END
+
+    DisplayLayoutRecordV1 decoded{};
+    TEST_ASSERT_TRUE(decodeDisplayLayoutBinary(blob.data(), blob.size(), decoded));
+    TEST_ASSERT_EQUAL_UINT16(kDisplayLayoutRecordVersion, decoded.recordVersion);
+    TEST_ASSERT_EQUAL_UINT8(2U, decoded.pages[0].widgets.size());
+    TEST_ASSERT_EQUAL_STRING("", decoded.pages[0].widgets[0].imageKey);
+    TEST_ASSERT_EQUAL_STRING("still here", decoded.pages[0].widgets[1].text);
+}
+
+// Symmetric to the migration test above at the JSON layer: an incoming "bitmapData" field for a
+// Bitmap widget must be rejected outright, not silently ignored/defaulted (device-config-versioning
+// rule: never fall back to a removed field's old meaning).
+void test_ssd1306_layout_json_rejects_legacy_bitmap_data_field() {
+    StaticJsonDocument<512> doc;
+    JsonObject root = doc.to<JsonObject>();
+    root["schemaVersion"] = 1;
+    root["activePageId"] = "main";
+    JsonArray pages = root.createNestedArray("pages");
+    JsonObject page = pages.createNestedObject();
+    page["id"] = "main";
+    JsonArray widgets = page.createNestedArray("widgets");
+    JsonObject widget = widgets.createNestedObject();
+    widget["id"] = "bitmap";
+    widget["type"] = "bitmap";
+    widget["width"] = 2;
+    widget["height"] = 2;
+    widget["bitmapFormat"] = "mono1";
+    widget["bitmapData"] = "AAECAw==";
+
+    DisplayLayoutRecordV1 decoded{};
+    TEST_ASSERT_FALSE(parseDisplayLayoutJson(root, decoded));
 }
 
 void test_ssd1306_layout_codec_emits_single_page_when_filtered() {
@@ -587,7 +666,7 @@ void test_ssd1306_layout_store_round_trip_binary() {
     TEST_ASSERT_EQUAL_STRING(original.pages[0].widgets[1].text, loaded.pages[0].widgets[1].text);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap), loaded.pages[0].widgets[2].type);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1), loaded.pages[0].widgets[2].bitmapFormat);
-    TEST_ASSERT_EQUAL_UINT8(4, loaded.pages[0].widgets[2].bitmapData.size());
+    TEST_ASSERT_EQUAL_STRING("dev/2a/AAAAAAAA", loaded.pages[0].widgets[2].imageKey);
 
     std::vector<uint8_t> blob;
     TEST_ASSERT_TRUE(encodeDisplayLayoutBinary(original, blob));
@@ -674,7 +753,7 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_EQUAL_STRING("{{system.wifi.station_ip}} {{system.time}}", storedLayout.pages[0].widgets[0].text);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap), storedLayout.pages[0].widgets[1].type);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1), storedLayout.pages[0].widgets[1].bitmapFormat);
-    TEST_ASSERT_EQUAL_UINT8(4, storedLayout.pages[0].widgets[1].bitmapData.size());
+    TEST_ASSERT_EQUAL_STRING("dev/2a/AAAAAAAA", storedLayout.pages[0].widgets[1].imageKey);
 
     DeviceRegistry reloadedRegistry(registryStore, typeRegistry, idSource, &retainedStore, &scopedStore);
     TEST_ASSERT_TRUE(reloadedRegistry.begin(0).ok());
@@ -686,7 +765,7 @@ void test_ssd1306_layout_update_round_trip_via_registry_binary_store() {
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap), reloadedRuntime->layout().pages[0].widgets[1].type);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1),
                             reloadedRuntime->layout().pages[0].widgets[1].bitmapFormat);
-    TEST_ASSERT_EQUAL_UINT8(4, reloadedRuntime->layout().pages[0].widgets[1].bitmapData.size());
+    TEST_ASSERT_EQUAL_STRING("dev/2a/AAAAAAAA", reloadedRuntime->layout().pages[0].widgets[1].imageKey);
 
     StaticJsonDocument<4096> outputDoc;
     JsonObject output = outputDoc.to<JsonObject>();

@@ -652,3 +652,10 @@ export interface TimezoneCatalogResponse {
   timezones: TimezoneCatalogEntry[]
   success?: boolean
 }
+
+// Response from POST /api/blobs/<prefix> - the server generates the unique part of the key and
+// returns the full key; callers never construct it themselves (see docs/blob-store.md).
+export interface BlobUploadResponse {
+  success: boolean
+  key: string
+}

@@ -2,11 +2,14 @@
 
 #include "devices/display/DisplayDeviceBase.h"
 #include "devices/display/DisplayLayoutCodec.h"
+#include "devices/display/DisplayLayoutProfile.h"
 #include "devices/display/DisplayTextPlaceholderAst.h"
+#include "platform/LittleFsBlobStore.h"
 
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,7 +21,28 @@ constexpr size_t kWidgetJsonCapacity = 5120;
 constexpr char kLayoutBeginKind[] = "layout_begin";
 constexpr char kLayoutPageKind[] = "layout_page";
 constexpr char kLayoutWidgetKind[] = "layout_widget";
+constexpr char kLayoutBitmapKind[] = "layout_bitmap";
 constexpr char kLayoutEndKind[] = "layout_end";
+
+// Reads a Bitmap widget's bytes back out of the blob store for the setup bundle's "layout_bitmap"
+// line - the bundle stays self-contained/portable (base64 bytes, like the old inline bitmapData
+// field), even though the live layout only carries a key.
+std::string readBitmapDataForExport(const char* imageKey) {
+    if (imageKey == nullptr || imageKey[0] == '\0') {
+        return {};
+    }
+    LittleFsBlobStore* store = defaultBlobStore();
+    if (store == nullptr) {
+        return {};
+    }
+    std::vector<uint8_t> buffer(kDisplayLayoutBitmapDataCapacity);
+    size_t length = 0U;
+    if (!store->get(imageKey, buffer.data(), buffer.size(), length)) {
+        return {};
+    }
+    buffer.resize(length);
+    return bytesToString(buffer);
+}
 
 class DisplayLayoutJsonProducer final : public IJsonChunkProducer {
 public:
@@ -132,12 +156,35 @@ public:
 
         if (phase_ == 2U) {
             const DisplayLayoutPageV1& page = layout_.pages[pageIndex_];
+            if (pendingBitmapWidgetIndex_) {
+                const size_t bitmapWidgetIndex = *pendingBitmapWidgetIndex_;
+                output["kind"] = kLayoutBitmapKind;
+                output["deviceId"] = layout_.deviceId;
+                output["pageIndex"] = pageIndex_;
+                output["widgetIndex"] = bitmapWidgetIndex;
+                // bitmapFormat is not duplicated here - it's already on the sibling layout_widget line.
+                output["bitmapData"] = JsonString(pendingBitmapData_.c_str(), JsonString::Copied);
+                pendingBitmapWidgetIndex_.reset();
+                pendingBitmapData_.clear();
+                return emitLine(sink);
+            }
             if (widgetIndex_ < page.widgets.size()) {
+                const DisplayLayoutWidgetV1& widget = page.widgets[widgetIndex_];
                 output["kind"] = kLayoutWidgetKind;
                 output["deviceId"] = layout_.deviceId;
                 output["pageIndex"] = pageIndex_;
                 output["widgetIndex"] = widgetIndex_;
-                writeDisplayLayoutWidgetJson(page.widgets[widgetIndex_], output);
+                writeDisplayLayoutWidgetJson(widget, output);
+                if (static_cast<DisplayLayoutWidgetType>(widget.type) == DisplayLayoutWidgetType::Bitmap && widget.imageKey[0] != '\0') {
+                    // Only defer to a layout_bitmap line if the blob store actually has bytes for
+                    // this key - if it doesn't (missing/unavailable), skip the line entirely rather
+                    // than emitting one with empty data that import would have nothing to do with.
+                    std::string bitmapData = readBitmapDataForExport(widget.imageKey);
+                    if (!bitmapData.empty()) {
+                        pendingBitmapWidgetIndex_ = widgetIndex_;
+                        pendingBitmapData_ = std::move(bitmapData);
+                    }
+                }
                 ++widgetIndex_;
                 return emitLine(sink);
             }
@@ -169,6 +216,8 @@ private:
     DisplayLayoutRecordV1 layout_{};
     size_t pageIndex_{0U};
     size_t widgetIndex_{0U};
+    std::optional<size_t> pendingBitmapWidgetIndex_{};
+    std::string pendingBitmapData_{};
     uint8_t phase_{0U};
     StaticJsonDocument<kWidgetJsonCapacity> document_{};
     std::string line_{};
@@ -195,6 +244,11 @@ public:
         if (complete_) {
             error = "display layout contains records after layout_end";
             return false;
+        }
+        // layout_bitmap can arrive right after its widget's layout_widget line, while more widgets
+        // on the same page are still expected - must be checked before the widget-count dispatch.
+        if (std::strcmp(kind, kLayoutBitmapKind) == 0) {
+            return consumeBitmap(input, error);
         }
         if (currentWidgetCount_ < expectedWidgetCount_) {
             return consumeWidget(input, kind, error);
@@ -343,6 +397,55 @@ private:
         return true;
     }
 
+    // Handles a "layout_bitmap" record: decodes its base64 bytes, writes them into the blob store
+    // under a freshly generated key (never trusting whatever key the exporting device happened to
+    // use - it may be a different device, or the same device re-importing after a wipe), and patches
+    // the already-consumed Bitmap widget it targets. This is the reverse of export's
+    // readBitmapDataForExport(): import always regenerates the key, it never reuses the one that was
+    // exported.
+    bool consumeBitmap(const JsonObjectConst& input, const char*& error) {
+        if (layout_.pages.empty()) {
+            error = "display layout_bitmap record is out of order";
+            return false;
+        }
+        const size_t pageIndex = layout_.pages.size() - 1U;
+        const size_t widgetIndex = input["widgetIndex"] | static_cast<size_t>(-1);
+        if (!hasExpectedDeviceId(input) || (input["pageIndex"] | static_cast<size_t>(-1)) != pageIndex ||
+            widgetIndex >= layout_.pages[pageIndex].widgets.size()) {
+            error = "display layout_bitmap record is out of order";
+            return false;
+        }
+        DisplayLayoutWidgetV1& widget = layout_.pages[pageIndex].widgets[widgetIndex];
+        if (static_cast<DisplayLayoutWidgetType>(widget.type) != DisplayLayoutWidgetType::Bitmap) {
+            error = "display layout_bitmap record targets a non-bitmap widget";
+            return false;
+        }
+        std::vector<uint8_t> bytes;
+        if (!copyStringToBytes(bytes, input["bitmapData"] | "") || bytes.empty()) {
+            error = "display layout_bitmap data is invalid";
+            return false;
+        }
+        LittleFsBlobStore* store = defaultBlobStore();
+        if (store == nullptr) {
+            error = "blob store is not available";
+            return false;
+        }
+        char prefix[16]{};
+        std::snprintf(prefix, sizeof(prefix), "dev/%x", static_cast<unsigned int>(deviceId_));
+        std::string key;
+        LittleFsBlobStore::WriteHandle handle = store->beginPutGenerated(prefix, key);
+        if (!handle.valid() || !handle.write(bytes.data(), bytes.size()) || !handle.commit()) {
+            error = "failed to store display bitmap";
+            return false;
+        }
+        if (!copyText(widget.imageKey, sizeof(widget.imageKey), key.c_str())) {
+            error = "generated image key is too long";
+            return false;
+        }
+        error = nullptr;
+        return true;
+    }
+
     bool hasExpectedDeviceId(const JsonObjectConst& input) const {
         return static_cast<DeviceId>(input["deviceId"] | 0U) == deviceId_;
     }
@@ -437,6 +540,34 @@ bool DisplayDeviceApiAdapter::validateLayoutMetricPlaceholders(const DisplayLayo
             }
         }
     }
+    return true;
+}
+
+bool DisplayDeviceApiAdapter::validateLayoutImageKeys(const DisplayLayoutRecordV1& layout, const char*& error) {
+    LittleFsBlobStore* store = defaultBlobStore();
+    if (store == nullptr) {
+        // Not wired up yet (e.g. native tests that never call setDefaultBlobStore) - nothing to
+        // check against. In production App::begin() always sets this before the portal accepts
+        // requests, so this branch is a test/degraded-boot concern only, never a real gap.
+        error = nullptr;
+        return true;
+    }
+    for (const DisplayLayoutPageV1& page : layout.pages) {
+        for (const DisplayLayoutWidgetV1& widget : page.widgets) {
+            if (static_cast<DisplayLayoutWidgetType>(widget.type) != DisplayLayoutWidgetType::Bitmap || widget.imageKey[0] == '\0') {
+                continue;
+            }
+            if (store == nullptr || !store->exists(widget.imageKey)) {
+                error = "referenced image was not found";
+                return false;
+            }
+            if (store->size(widget.imageKey) > defaultDisplayLayoutProfile().maxBitmapBytes) {
+                error = "referenced image exceeds supported size";
+                return false;
+            }
+        }
+    }
+    error = nullptr;
     return true;
 }
 

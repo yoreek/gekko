@@ -257,6 +257,10 @@ DeviceValidationResult Tm1637DeviceApiAdapter::validatePersistedLayout(const Bou
     if (!validateLayoutMetricPlaceholders(layout, registry)) {
         return {DeviceError::InvalidRelationship, kLayoutPlaceholderError};
     }
+    const char* imageKeyError = nullptr;
+    if (!validateLayoutImageKeys(layout, imageKeyError)) {
+        return {DeviceError::InvalidConfig, imageKeyError};
+    }
     return {};
 }
 

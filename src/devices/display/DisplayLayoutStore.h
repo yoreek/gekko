@@ -43,7 +43,7 @@ enum class DisplayLayoutBitmapFormat : uint8_t {
 };
 
 constexpr uint8_t kDisplayLayoutSchemaVersion = 3;
-constexpr uint16_t kDisplayLayoutRecordVersion = 6;
+constexpr uint16_t kDisplayLayoutRecordVersion = 7;
 constexpr size_t kDisplayLayoutMaxPages = 2;
 constexpr size_t kDisplayLayoutMaxWidgetsPerPage = 10;
 constexpr size_t kDisplayLayoutPageIdCapacity = 16;
@@ -53,6 +53,10 @@ constexpr size_t kDisplayLayoutTextCapacity = 128;
 constexpr size_t kDisplayLayoutTextCapacityLegacy = 32;
 constexpr size_t kDisplayLayoutDigitalPatternCapacity = 8;
 constexpr size_t kDisplayLayoutBitmapDataCapacity = 3072;
+// Sized for the blob-store key format this feature actually uses ("dev/<deviceId hex, <=8
+// chars>/<8-char random suffix>"), not the store's generic kBlobStoreMaxKeyBytes ceiling (96) -
+// "dev"(3) + '/' + 8 + '/' + 8 + '\0' = 22, rounded up to 32 for headroom.
+constexpr size_t kDisplayLayoutImageKeyCapacity = 32;
 constexpr uint16_t kDisplayLayoutRefreshIntervalDisabled = 0;
 constexpr uint16_t kDisplayLayoutRefreshIntervalMinMs = 250;
 constexpr uint16_t kDisplayLayoutRefreshIntervalMaxMs = 60000;
@@ -81,7 +85,14 @@ struct DisplayLayoutWidgetV1 {
     uint8_t keepAspectRatio{0};
     char text[kDisplayLayoutTextCapacity]{};
     mutable std::optional<DisplayTextCompiledWidget> textAst{};
-    std::vector<uint8_t> bitmapData{};
+    // Blob-store key for a Bitmap widget's pixel bytes (empty for every other widget type); the
+    // bytes themselves live in LittleFsBlobStore, not here (see docs/blob-store.md).
+    char imageKey[kDisplayLayoutImageKeyCapacity]{};
+    // Lazily-populated cache of the bytes fetched from the blob store for `imageKey`, read once per
+    // render session. Same pattern as `textAst` above: reset happens for free because reloading the
+    // layout (DisplayLayoutStore::load) always constructs a fresh DisplayLayoutWidgetV1, so there is
+    // no separate invalidation path to maintain.
+    mutable std::optional<std::vector<uint8_t>> cachedImageBytes{};
 };
 
 constexpr bool isDisplayTextWidgetType(const DisplayLayoutWidgetType type) {
@@ -105,7 +116,7 @@ struct DisplayLayoutRecordV1 {
 };
 
 #pragma pack(push, 1)
-struct DisplayLayoutBinaryHeaderV1 {
+struct [[deprecated("legacy persisted display layout header; decode/migration only")]] DisplayLayoutBinaryHeaderV1 {
     uint16_t recordVersion{1U};
     DeviceId deviceId{0};
     uint8_t schemaVersion{kDisplayLayoutSchemaVersion};
@@ -141,7 +152,7 @@ struct DisplayLayoutBinaryPageHeaderV1 {
     uint8_t order{0};
 };
 
-struct DisplayLayoutBinaryWidgetV1 {
+struct [[deprecated("legacy persisted display layout widget; decode/migration only")]] DisplayLayoutBinaryWidgetV1 {
     char id[kDisplayLayoutWidgetIdCapacity]{};
     uint8_t type{static_cast<uint8_t>(DisplayLayoutWidgetType::Text)};
     uint8_t bindingKind{static_cast<uint8_t>(DisplayLayoutBindingKind::Unbound)};
@@ -161,7 +172,7 @@ struct DisplayLayoutBinaryWidgetV1 {
     char text[kDisplayLayoutTextCapacityLegacy]{};
 };
 
-struct DisplayLayoutBinaryWidgetV2 {
+struct [[deprecated("legacy persisted display layout widget; decode/migration only")]] DisplayLayoutBinaryWidgetV2 {
     char id[kDisplayLayoutWidgetIdCapacity]{};
     uint8_t type{static_cast<uint8_t>(DisplayLayoutWidgetType::Text)};
     uint8_t bindingKind{static_cast<uint8_t>(DisplayLayoutBindingKind::Unbound)};
@@ -182,7 +193,7 @@ struct DisplayLayoutBinaryWidgetV2 {
     char text[kDisplayLayoutTextCapacityLegacy]{};
 };
 
-struct DisplayLayoutBinaryWidgetV3 {
+struct [[deprecated("legacy persisted display layout widget; decode/migration only")]] DisplayLayoutBinaryWidgetV3 {
     char id[kDisplayLayoutWidgetIdCapacity]{};
     uint8_t type{static_cast<uint8_t>(DisplayLayoutWidgetType::Text)};
     uint8_t bindingKind{static_cast<uint8_t>(DisplayLayoutBindingKind::Unbound)};
@@ -204,7 +215,7 @@ struct DisplayLayoutBinaryWidgetV3 {
     char text[kDisplayLayoutTextCapacityLegacy]{};
 };
 
-struct DisplayLayoutBinaryWidgetV4 {
+struct [[deprecated("legacy persisted display layout widget; decode/migration only")]] DisplayLayoutBinaryWidgetV4 {
     char id[kDisplayLayoutWidgetIdCapacity]{};
     uint8_t type{static_cast<uint8_t>(DisplayLayoutWidgetType::Text)};
     uint8_t bindingKind{static_cast<uint8_t>(DisplayLayoutBindingKind::Unbound)};
@@ -226,7 +237,7 @@ struct DisplayLayoutBinaryWidgetV4 {
     char text[kDisplayLayoutTextCapacity]{};
 };
 
-struct DisplayLayoutBinaryWidgetV5 {
+struct [[deprecated("legacy persisted display layout widget; decode/migration only")]] DisplayLayoutBinaryWidgetV5 {
     char id[kDisplayLayoutWidgetIdCapacity]{};
     uint8_t type{static_cast<uint8_t>(DisplayLayoutWidgetType::Text)};
     uint8_t bindingKind{static_cast<uint8_t>(DisplayLayoutBindingKind::Unbound)};
@@ -249,7 +260,7 @@ struct DisplayLayoutBinaryWidgetV5 {
     char text[kDisplayLayoutTextCapacity]{};
 };
 
-struct DisplayLayoutBinaryWidgetV6 {
+struct [[deprecated("legacy persisted display layout widget; decode/migration only")]] DisplayLayoutBinaryWidgetV6 {
     char id[kDisplayLayoutWidgetIdCapacity]{};
     uint8_t type{static_cast<uint8_t>(DisplayLayoutWidgetType::Text)};
     uint8_t bindingKind{static_cast<uint8_t>(DisplayLayoutBindingKind::Unbound)};
@@ -272,6 +283,35 @@ struct DisplayLayoutBinaryWidgetV6 {
     uint8_t bitmapFormat{static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1)};
     uint8_t keepAspectRatio{0};
     uint16_t bitmapDataLength{0};
+    char text[kDisplayLayoutTextCapacity]{};
+};
+
+// Current wire format (record version kDisplayLayoutRecordVersion = 7). Unlike V1-V6, the bitmap
+// payload is not a variable-length trailer following this struct - it is a fixed-size blob-store
+// key embedded directly in the struct, since the actual pixel bytes now live in LittleFsBlobStore.
+struct DisplayLayoutBinaryWidgetV7 {
+    char id[kDisplayLayoutWidgetIdCapacity]{};
+    uint8_t type{static_cast<uint8_t>(DisplayLayoutWidgetType::Text)};
+    uint8_t bindingKind{static_cast<uint8_t>(DisplayLayoutBindingKind::Unbound)};
+    uint8_t metricNamespace{static_cast<uint8_t>(MetricNamespace::Device)};
+    uint8_t x{0};
+    uint8_t y{0};
+    uint8_t width{1};
+    uint8_t height{1};
+    uint32_t sourceDeviceId{0};
+    int32_t metricId{0};
+    uint16_t refreshIntervalMs{kDisplayLayoutRefreshIntervalDisabled};
+    uint8_t fontSize{1};
+    uint8_t strokeWidth{1};
+    uint8_t autoSize{0};
+    uint8_t styleFlags{0};
+    uint16_t color{0xFFFFU};
+    uint8_t digitalAlign{static_cast<uint8_t>(DisplayDigitalAlign::Right)};
+    char digitalOverflow[kDisplayLayoutDigitalPatternCapacity]{};
+    char digitalMissing[kDisplayLayoutDigitalPatternCapacity]{};
+    uint8_t bitmapFormat{static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1)};
+    uint8_t keepAspectRatio{0};
+    char imageKey[kDisplayLayoutImageKeyCapacity]{};
     char text[kDisplayLayoutTextCapacity]{};
 };
 #pragma pack(pop)

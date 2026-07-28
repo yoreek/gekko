@@ -4,9 +4,16 @@
 
 #include <ArduinoJson.h>
 #include <cstddef>
+#include <string>
 #include <vector>
 
 namespace ewfm {
+
+// Base64 codec shared with the setup-bundle export/import ("layout_bitmap" NDJSON line in
+// DisplayDeviceApiAdapter.cpp), which reads/writes a bitmap's raw bytes from/to the blob store and
+// needs the same encoding used historically for the JSON "bitmapData" field.
+bool copyStringToBytes(std::vector<uint8_t>& dest, const char* source);
+std::string bytesToString(const std::vector<uint8_t>& bytes);
 
 bool parseDisplayLayoutJson(const JsonObjectConst& input, DisplayLayoutRecordV1& layout);
 bool parseDisplayLayoutWidgetJson(const JsonObjectConst& input, DisplayLayoutWidgetV1& widget);

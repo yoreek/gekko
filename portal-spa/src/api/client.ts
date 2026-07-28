@@ -11,6 +11,7 @@ import type {
   MetricValuesResponse,
   DeviceSetupTransferResponse,
   DeviceRegistryResponse,
+  BlobUploadResponse,
   MqttSettingsRecord,
   MqttStatusResponse,
   OtaStatusResponse,
@@ -27,7 +28,7 @@ import type {
 } from './contracts'
 import { TIMEZONE_CATALOG } from '@/data/timezones'
 import { detectTransportMode } from './transport'
-import { requestEmpty, requestFormData, requestJson, requestText } from './http'
+import { requestBinary, requestBlob, requestEmpty, requestFormData, requestJson, requestText } from './http'
 
 // `import.meta.env.DEV` is inlined to a literal by Vite's build-time define pass, so in a
 // production build (`vite build`, what ships to `data/` and the device's LittleFS) this whole
@@ -349,4 +350,31 @@ export function setSystemTime(payload: SetTimeRequest): Promise<TimeStatusRespon
       'Content-Type': 'application/json',
     },
   })
+}
+
+// Generic blob store (docs/blob-store.md). `prefix` is a grouping label the caller already knows
+// (e.g. "dev/<deviceId hex>") - the server generates the unique part of the key and returns the
+// full key in the response; the caller must never construct the key itself.
+export function uploadBlob(prefix: string, bytes: Blob | ArrayBuffer): Promise<BlobUploadResponse> {
+  if (useMockTransport()) {
+    return import('@/mock/handlers').then(m => m.mockUploadBlob(prefix, bytes))
+  }
+  return requestBinary<BlobUploadResponse>(`/api/blobs/${prefix}`, bytes, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream' },
+  })
+}
+
+export function fetchBlob(key: string): Promise<Blob> {
+  if (useMockTransport()) {
+    return import('@/mock/handlers').then(m => m.mockFetchBlob(key))
+  }
+  return requestBlob(`/api/blobs/${key}`)
+}
+
+export function deleteBlob(key: string): Promise<void> {
+  if (useMockTransport()) {
+    return import('@/mock/handlers').then(m => m.mockDeleteBlob(key))
+  }
+  return requestEmpty(`/api/blobs/${key}`, { method: 'DELETE' })
 }

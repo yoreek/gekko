@@ -30,7 +30,7 @@
     "text": { "type": "string" },
     "bitmapFormat": { "enum": ["mono1", "gray8", "rgb565", 0, 1, 2] },
     "keepAspectRatio": { "type": "boolean", "default": false },
-    "bitmapData": { "type": "string" }
+    "imageKey": { "type": "string" }
   },
   "required": ["id", "type", "x", "y", "width", "height"],
   "additionalProperties": false

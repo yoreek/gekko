@@ -52,13 +52,8 @@ DeviceValidationResult validateDisplayLayoutWidget(const DisplayLayoutWidgetV1& 
     if (!profile.supportsColor && widget.color != 0xFFFFU) {
         return {DeviceError::InvalidConfig, "display widget color is not supported"};
     }
-    if (type == DisplayLayoutWidgetType::Bitmap) {
-        if (!profile.supportsBitmap) {
-            return {DeviceError::InvalidConfig, "bitmap widgets are not supported"};
-        }
-        if (widget.bitmapData.size() > profile.maxBitmapBytes) {
-            return {DeviceError::InvalidConfig, "bitmap payload is too large"};
-        }
+    if (type == DisplayLayoutWidgetType::Bitmap && !profile.supportsBitmap) {
+        return {DeviceError::InvalidConfig, "bitmap widgets are not supported"};
     }
     if (std::strlen(widget.text) > profile.textCapacity) {
         return {DeviceError::InvalidConfig, "display widget text is too long"};

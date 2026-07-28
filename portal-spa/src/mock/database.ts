@@ -150,6 +150,10 @@ export interface MockDatabase {
     debounceMs: number
     maxDelayMs: number
   }
+  // Generic blob store (docs/blob-store.md), keyed exactly like the real backend
+  // ("dev/<deviceId hex>/<suffix>") so seeded display bitmap widgets can reference a key here
+  // instead of embedding bytes inline.
+  blobs: Record<string, string>
 }
 
 export function createDeviceRecord(
@@ -553,7 +557,7 @@ const seedDatabase: SeedDatabase = {
                 y: 0,
                 width: 16,
                 height: 16,
-                bitmapData: 'AAAAAAAAB+AIEBQoEAgQCBAIEAgX6A/wB+AAAAAAAAA=',
+                imageKey: 'dev/27fc4b3b/seed0001',
                 keepAspectRatio: true,
               },
               {
@@ -631,7 +635,7 @@ const seedDatabase: SeedDatabase = {
                 y: 24,
                 width: 16,
                 height: 16,
-                bitmapData: seededRgb565BitmapData,
+                imageKey: 'dev/27fc4b3c/seed0001',
                 keepAspectRatio: true,
               },
               {
@@ -1890,6 +1894,10 @@ const seedDatabase: SeedDatabase = {
   persistence: {
     debounceMs: 500,
     maxDelayMs: 30000,
+  },
+  blobs: {
+    'dev/27fc4b3b/seed0001': 'AAAAAAAAB+AIEBQoEAgQCBAIEAgX6A/wB+AAAAAAAAA=',
+    'dev/27fc4b3c/seed0001': seededRgb565BitmapData,
   },
 }
 

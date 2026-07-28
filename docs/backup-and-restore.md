@@ -27,8 +27,10 @@ One JSON object per line:
 {"kind":"device","record":{"id":1001,"typeName":"i2c_bus","configVersion":1,"configRevision":5},"config":{"deps":[],"enabled":true,"name":"Main I2C","sdaPin":21,"sclPin":22,"frequencyHz":400000}}
 {"kind":"device","record":{"id":1002,"typeName":"ssd1306","configVersion":4,"configRevision":2},"config":{"deps":[{"role":"i2c_bus","deviceId":1001}],"enabled":true,"name":"OLED","i2cAddress":60}}
 {"kind":"layout_begin","deviceId":1002,"schemaVersion":1,"activePageId":"main","pageCount":1}
-{"kind":"layout_page","deviceId":1002,"pageIndex":0,"id":"main","name":"Main","order":0,"widgetCount":1}
+{"kind":"layout_page","deviceId":1002,"pageIndex":0,"id":"main","name":"Main","order":0,"widgetCount":2}
 {"kind":"layout_widget","deviceId":1002,"pageIndex":0,"widgetIndex":0,"id":"title","type":"text","text":"Aquarium"}
+{"kind":"layout_widget","deviceId":1002,"pageIndex":0,"widgetIndex":1,"id":"logo","type":"bitmap","bitmapFormat":"mono1","imageKey":"dev/3ea/a1B2c3D4","keepAspectRatio":true}
+{"kind":"layout_bitmap","deviceId":1002,"pageIndex":0,"widgetIndex":1,"bitmapData":"<base64 pixel bytes>"}
 {"kind":"layout_end","deviceId":1002}
 {"kind":"dashboard_layout","revision":7,"layout":{"schemaVersion":1,"activePanelId":"main","panels":[...]}}
 ```
@@ -41,6 +43,12 @@ One JSON object per line:
   `device` record is invalid until the preceding display reaches `layout_end`.
 - Every layout widget is a separate JSON line, so a bitmap never forces the parser to
   hold the complete layout JSON document in memory.
+- A Bitmap widget's `layout_widget` line carries `imageKey`, not pixel bytes — the bytes
+  live in the [blob store](./blob-store.md), keyed by `imageKey`. A separate
+  `layout_bitmap` line (same `pageIndex`/`widgetIndex` correlation) carries the base64
+  bytes, so the bundle stays self-contained/portable across controllers. On import, the
+  bytes are written into the importing controller's blob store under a freshly generated
+  key — the exported `imageKey` itself is never reused as-is.
 - The `dashboard_layout` line is optional and holds the free-placement dashboard.
 
 ## Hand-editing rules

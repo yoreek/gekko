@@ -3,6 +3,8 @@
 #include "core/StateMachine.h"
 #include "debug/Debug.h"
 #include "devices/dosing/journal/DoseJournal.h"
+#include "platform/LittleFsBlobStore.h"
+#include "portal/controllers/BlobController.h"
 #include "portal/controllers/DashboardLayoutController.h"
 #include "portal/controllers/DeviceRegistryController.h"
 #include "portal/controllers/DeviceSetupTransferController.h"
@@ -126,6 +128,7 @@ private:
         PersistenceController::registerRoutes(*server_, configStore_, deviceRegistry_);
         DoseJournalController::registerRoutes(*server_, defaultDoseJournal());
         SchedulePresetController::registerRoutes(*server_, defaultSchedulePresetStorage());
+        BlobController::registerRoutes(*server_, defaultBlobStore());
         if (!webSocketManager_) {
             webSocketManager_ = std::make_unique<PortalWebSocketManager>(deviceEventDispatcher_, deviceRegistry_);
         }

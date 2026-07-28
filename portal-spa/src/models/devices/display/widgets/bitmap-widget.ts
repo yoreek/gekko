@@ -14,6 +14,7 @@ function createBitmapWidget(
     ...baseWidget,
     type: 'bitmap',
     bitmapData: typeof overrides.bitmapData === 'string' ? overrides.bitmapData : '',
+    imageKey: typeof overrides.imageKey === 'string' ? overrides.imageKey : '',
     bitmapFormat: overrides.bitmapFormat ?? format,
     keepAspectRatio: Boolean(overrides.keepAspectRatio ?? false),
   }

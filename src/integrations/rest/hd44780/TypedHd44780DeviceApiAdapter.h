@@ -266,6 +266,10 @@ private:
         if (!validateLayoutMetricPlaceholders(layout, registry)) {
             return {DeviceError::InvalidRelationship, Derived::kLayoutPlaceholderError};
         }
+        const char* imageKeyError = nullptr;
+        if (!validateLayoutImageKeys(layout, imageKeyError)) {
+            return {DeviceError::InvalidConfig, imageKeyError};
+        }
         return {};
     }
 };

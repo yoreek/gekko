@@ -1,5 +1,6 @@
 #include "devices/display/DisplayLayoutCodec.h"
 
+#include "devices/core/ConfigCodec.h"
 #include "devices/core/DeviceBaseConfig.h"
 #include "devices/display/DisplayLayoutValidator.h"
 #include "devices/display/DisplayTextPlaceholderAst.h"
@@ -24,19 +25,6 @@ template <typename T> bool appendBinary(std::vector<uint8_t>& blob, const T& val
     return true;
 }
 
-bool appendBytes(std::vector<uint8_t>& blob, const uint8_t* data, size_t size) {
-    if (size == 0U) {
-        return true;
-    }
-    if (blob.size() + size > kMaxDisplayLayoutBytes) {
-        return false;
-    }
-    const size_t offset = blob.size();
-    blob.resize(offset + size);
-    std::memcpy(blob.data() + offset, data, size);
-    return true;
-}
-
 template <typename T> bool readBinary(const uint8_t* data, size_t size, size_t& offset, T& value) {
     static_assert(std::is_trivially_copyable<T>::value, "readBinary requires trivially copyable data");
     if (offset + sizeof(T) > size) {
@@ -47,11 +35,13 @@ template <typename T> bool readBinary(const uint8_t* data, size_t size, size_t& 
     return true;
 }
 
-bool readBytes(const uint8_t* data, size_t size, size_t& offset, size_t length, std::vector<uint8_t>& out) {
+// Advances past `length` bytes without allocating/copying - used to skip a legacy (pre-V7) widget's
+// inline bitmap trailer during decode, since the bytes themselves are discarded (see
+// decodeDisplayLayoutBinary).
+bool skipBytes(size_t size, size_t& offset, size_t length) {
     if (offset + length > size) {
         return false;
     }
-    out.assign(data + offset, data + offset + length);
     offset += length;
     return true;
 }
@@ -67,84 +57,6 @@ bool copyText(char* dest, size_t capacity, const char* source) {
     std::strncpy(dest, source, capacity - 1U);
     dest[capacity - 1U] = '\0';
     return true;
-}
-
-bool copyStringToBytes(std::vector<uint8_t>& dest, const char* source) {
-    dest.clear();
-    if (source == nullptr || source[0] == '\0') {
-        return true;
-    }
-
-    auto decodeBase64Char = [](char ch) -> int {
-        if (ch >= 'A' && ch <= 'Z')
-            return ch - 'A';
-        if (ch >= 'a' && ch <= 'z')
-            return ch - 'a' + 26;
-        if (ch >= '0' && ch <= '9')
-            return ch - '0' + 52;
-        if (ch == '+')
-            return 62;
-        if (ch == '/')
-            return 63;
-        return -1;
-    };
-
-    const size_t length = std::strlen(source);
-    if ((length % 4U) != 0U) {
-        return false;
-    }
-
-    dest.reserve((length / 4U) * 3U);
-    for (size_t index = 0; index < length; index += 4U) {
-        const char a = source[index];
-        const char b = source[index + 1U];
-        const char c = source[index + 2U];
-        const char d = source[index + 3U];
-        const int v0 = decodeBase64Char(a);
-        const int v1 = decodeBase64Char(b);
-        const int v2 = c == '=' ? -2 : decodeBase64Char(c);
-        const int v3 = d == '=' ? -2 : decodeBase64Char(d);
-        if (v0 < 0 || v1 < 0 || v2 == -1 || v3 == -1) {
-            return false;
-        }
-        if (c == '=' && d != '=') {
-            return false;
-        }
-
-        const uint32_t triple = (static_cast<uint32_t>(v0) << 18U) | (static_cast<uint32_t>(v1) << 12U) |
-                                (static_cast<uint32_t>((v2 < 0 ? 0 : v2)) << 6U) | static_cast<uint32_t>(v3 < 0 ? 0 : v3);
-        dest.push_back(static_cast<uint8_t>((triple >> 16U) & 0xFFU));
-        if (c != '=') {
-            dest.push_back(static_cast<uint8_t>((triple >> 8U) & 0xFFU));
-        }
-        if (d != '=') {
-            dest.push_back(static_cast<uint8_t>(triple & 0xFFU));
-        }
-        if (dest.size() > kDisplayLayoutBitmapDataCapacity) {
-            return false;
-        }
-    }
-    return true;
-}
-
-std::string bytesToString(const std::vector<uint8_t>& bytes) {
-    if (bytes.empty()) {
-        return {};
-    }
-    static constexpr char kAlphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    std::string result;
-    result.reserve(((bytes.size() + 2U) / 3U) * 4U);
-    for (size_t index = 0; index < bytes.size(); index += 3U) {
-        const uint8_t b0 = bytes[index];
-        const uint8_t b1 = (index + 1U) < bytes.size() ? bytes[index + 1U] : 0U;
-        const uint8_t b2 = (index + 2U) < bytes.size() ? bytes[index + 2U] : 0U;
-        const uint32_t triple = (static_cast<uint32_t>(b0) << 16U) | (static_cast<uint32_t>(b1) << 8U) | static_cast<uint32_t>(b2);
-        result.push_back(kAlphabet[(triple >> 18U) & 0x3FU]);
-        result.push_back(kAlphabet[(triple >> 12U) & 0x3FU]);
-        result.push_back((index + 1U) < bytes.size() ? kAlphabet[(triple >> 6U) & 0x3FU] : '=');
-        result.push_back((index + 2U) < bytes.size() ? kAlphabet[triple & 0x3FU] : '=');
-    }
-    return result;
 }
 
 bool readBool(const JsonVariantConst& value, const bool fallback) {
@@ -541,8 +453,8 @@ bool parseWidget(const JsonObjectConst& widgetJson, DisplayLayoutWidgetV1& widge
     }
     widget.type = static_cast<uint8_t>(type);
     if (type == DisplayLayoutWidgetType::Character || type == DisplayLayoutWidgetType::Digital) {
-        const char* unsupportedFields[] = {"fontSize",        "strokeWidth",  "color",     "styleFlags",
-                                           "keepAspectRatio", "bitmapFormat", "bitmapData"};
+        const char* unsupportedFields[] = {"fontSize",        "strokeWidth",  "color",      "styleFlags",
+                                           "keepAspectRatio", "bitmapFormat", "bitmapData", "imageKey"};
         for (const char* field : unsupportedFields) {
             if (widgetJson.containsKey(field)) {
                 error = "cell display widget contains pixel-only fields";
@@ -606,17 +518,20 @@ bool parseWidget(const JsonObjectConst& widgetJson, DisplayLayoutWidgetV1& widge
     }
     widget.bitmapFormat = static_cast<uint8_t>(DisplayLayoutBitmapFormat::Mono1);
     widget.keepAspectRatio = readBool(widgetJson["keepAspectRatio"], false) ? 1U : 0U;
-    widget.bitmapData.clear();
+    widget.imageKey[0] = '\0';
     if (type == DisplayLayoutWidgetType::Bitmap) {
+        if (widgetJson.containsKey("bitmapData")) {
+            error = "bitmapData is no longer accepted; upload the image and use the returned imageKey";
+            return false;
+        }
         DisplayLayoutBitmapFormat bitmapFormat{};
         if (!parseBitmapFormat(widgetJson, bitmapFormat)) {
             error = "bitmap format is invalid";
             return false;
         }
         widget.bitmapFormat = static_cast<uint8_t>(bitmapFormat);
-        const char* bitmapData = widgetJson["bitmapData"] | "";
-        if (!copyStringToBytes(widget.bitmapData, bitmapData)) {
-            error = "bitmap data exceeds supported size or is invalid";
+        if (!copyText(widget.imageKey, sizeof(widget.imageKey), widgetJson["imageKey"] | "")) {
+            error = "display widget imageKey is invalid";
             return false;
         }
     }
@@ -663,15 +578,14 @@ bool validateWidget(const DisplayLayoutWidgetV1& widget) {
     if (widget.fontSize == 0U || widget.fontSize > 8U || widget.strokeWidth == 0U || widget.strokeWidth > 32U) {
         return false;
     }
-    if (widget.bitmapData.size() > kDisplayLayoutBitmapDataCapacity) {
+    if (type != DisplayLayoutWidgetType::Bitmap && widget.imageKey[0] != '\0') {
         return false;
     }
-    if (type != DisplayLayoutWidgetType::Bitmap && !widget.bitmapData.empty()) {
-        return false;
-    }
-    if (type == DisplayLayoutWidgetType::Bitmap && widget.bitmapData.empty()) {
-        return false;
-    }
+    // Bitmap widgets are deliberately allowed an empty imageKey: a freshly-added widget has no
+    // image yet, and decoding a pre-V7 record drops its inline bytes without an imageKey to put in
+    // their place (decodeDisplayLayoutBinary is a pure function with no blob-store access). Either
+    // way the renderer already handles it - see ensureDisplayBitmapBytes/drawMissingBitmapPlaceholder
+    // - so an empty imageKey is a valid (if incomplete) state, not a validation error.
     if (type == DisplayLayoutWidgetType::Bitmap) {
         const DisplayLayoutBitmapFormat format = normalizeBitmapFormat(static_cast<DisplayLayoutBitmapFormat>(widget.bitmapFormat));
         if (widget.bitmapFormat != static_cast<uint8_t>(format)) {
@@ -683,7 +597,7 @@ bool validateWidget(const DisplayLayoutWidgetV1& widget) {
 
 bool validateLayout(const DisplayLayoutRecordV1& layout) {
     if ((layout.recordVersion != 1U && layout.recordVersion != 2U && layout.recordVersion != 3U && layout.recordVersion != 4U &&
-         layout.recordVersion != 5U && layout.recordVersion != kDisplayLayoutRecordVersion) ||
+         layout.recordVersion != 5U && layout.recordVersion != 6U && layout.recordVersion != kDisplayLayoutRecordVersion) ||
         (layout.schemaVersion < 1U || layout.schemaVersion > kDisplayLayoutSchemaVersion)) {
         return false;
     }
@@ -712,10 +626,6 @@ bool validateLayout(const DisplayLayoutRecordV1& layout) {
     return validateDisplayLayout(layout, defaultDisplayLayoutProfile()).ok();
 }
 
-size_t estimateWidgetSize(const DisplayLayoutWidgetV1& widget) {
-    return sizeof(DisplayLayoutBinaryWidgetV6) + widget.bitmapData.size();
-}
-
 void normalizePageOrder(DisplayLayoutRecordV1& layout) {
     std::sort(layout.pages.begin(), layout.pages.end(),
               [](const DisplayLayoutPageV1& left, const DisplayLayoutPageV1& right) { return left.order < right.order; });
@@ -725,6 +635,89 @@ void normalizePageOrder(DisplayLayoutRecordV1& layout) {
 }
 
 } // namespace
+
+// Base64 helpers. Not anonymous-namespace-local (unlike the rest of this file's helpers) so that
+// the setup-bundle export/import code (DisplayDeviceApiAdapter.cpp) can encode/decode a bitmap's
+// bytes for its own "layout_bitmap" NDJSON line without duplicating a second base64 codec - these
+// used to be the only callers of this pair, decoding/encoding widget.bitmapData directly, before
+// bitmap bytes moved out of the layout into the blob store.
+bool copyStringToBytes(std::vector<uint8_t>& dest, const char* source) {
+    dest.clear();
+    if (source == nullptr || source[0] == '\0') {
+        return true;
+    }
+
+    auto decodeBase64Char = [](char ch) -> int {
+        if (ch >= 'A' && ch <= 'Z')
+            return ch - 'A';
+        if (ch >= 'a' && ch <= 'z')
+            return ch - 'a' + 26;
+        if (ch >= '0' && ch <= '9')
+            return ch - '0' + 52;
+        if (ch == '+')
+            return 62;
+        if (ch == '/')
+            return 63;
+        return -1;
+    };
+
+    const size_t length = std::strlen(source);
+    if ((length % 4U) != 0U) {
+        return false;
+    }
+
+    dest.reserve((length / 4U) * 3U);
+    for (size_t index = 0; index < length; index += 4U) {
+        const char a = source[index];
+        const char b = source[index + 1U];
+        const char c = source[index + 2U];
+        const char d = source[index + 3U];
+        const int v0 = decodeBase64Char(a);
+        const int v1 = decodeBase64Char(b);
+        const int v2 = c == '=' ? -2 : decodeBase64Char(c);
+        const int v3 = d == '=' ? -2 : decodeBase64Char(d);
+        if (v0 < 0 || v1 < 0 || v2 == -1 || v3 == -1) {
+            return false;
+        }
+        if (c == '=' && d != '=') {
+            return false;
+        }
+
+        const uint32_t triple = (static_cast<uint32_t>(v0) << 18U) | (static_cast<uint32_t>(v1) << 12U) |
+                                (static_cast<uint32_t>((v2 < 0 ? 0 : v2)) << 6U) | static_cast<uint32_t>(v3 < 0 ? 0 : v3);
+        dest.push_back(static_cast<uint8_t>((triple >> 16U) & 0xFFU));
+        if (c != '=') {
+            dest.push_back(static_cast<uint8_t>((triple >> 8U) & 0xFFU));
+        }
+        if (d != '=') {
+            dest.push_back(static_cast<uint8_t>(triple & 0xFFU));
+        }
+        if (dest.size() > kDisplayLayoutBitmapDataCapacity) {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::string bytesToString(const std::vector<uint8_t>& bytes) {
+    if (bytes.empty()) {
+        return {};
+    }
+    static constexpr char kAlphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string result;
+    result.reserve(((bytes.size() + 2U) / 3U) * 4U);
+    for (size_t index = 0; index < bytes.size(); index += 3U) {
+        const uint8_t b0 = bytes[index];
+        const uint8_t b1 = (index + 1U) < bytes.size() ? bytes[index + 1U] : 0U;
+        const uint8_t b2 = (index + 2U) < bytes.size() ? bytes[index + 2U] : 0U;
+        const uint32_t triple = (static_cast<uint32_t>(b0) << 16U) | (static_cast<uint32_t>(b1) << 8U) | static_cast<uint32_t>(b2);
+        result.push_back(kAlphabet[(triple >> 18U) & 0x3FU]);
+        result.push_back(kAlphabet[(triple >> 12U) & 0x3FU]);
+        result.push_back((index + 1U) < bytes.size() ? kAlphabet[(triple >> 6U) & 0x3FU] : '=');
+        result.push_back((index + 2U) < bytes.size() ? kAlphabet[triple & 0x3FU] : '=');
+    }
+    return result;
+}
 
 void writeDisplayLayoutWidgetJson(const DisplayLayoutWidgetV1& widget, JsonObject widgetJson) {
     const DisplayLayoutWidgetType type = static_cast<DisplayLayoutWidgetType>(widget.type);
@@ -763,8 +756,7 @@ void writeDisplayLayoutWidgetJson(const DisplayLayoutWidgetV1& widget, JsonObjec
     if (static_cast<DisplayLayoutWidgetType>(widget.type) == DisplayLayoutWidgetType::Bitmap) {
         widgetJson["bitmapFormat"] = bitmapFormatToString(static_cast<DisplayLayoutBitmapFormat>(widget.bitmapFormat));
         widgetJson["keepAspectRatio"] = widget.keepAspectRatio != 0U;
-        const std::string bitmapData = bytesToString(widget.bitmapData);
-        widgetJson["bitmapData"] = JsonString(bitmapData.c_str(), JsonString::Copied);
+        widgetJson["imageKey"] = widget.imageKey;
     }
 }
 
@@ -906,9 +898,7 @@ bool encodeDisplayLayoutBinary(const DisplayLayoutRecordV1& layout, std::vector<
     size_t estimatedSize = sizeof(DisplayLayoutBinaryHeaderV6);
     for (const DisplayLayoutPageV1& page : layout.pages) {
         estimatedSize += sizeof(DisplayLayoutBinaryPageHeaderV1);
-        for (const DisplayLayoutWidgetV1& widget : page.widgets) {
-            estimatedSize += estimateWidgetSize(widget);
-        }
+        estimatedSize += page.widgets.size() * sizeof(DisplayLayoutBinaryWidgetV7);
     }
     blob.reserve(estimatedSize);
 
@@ -937,7 +927,7 @@ bool encodeDisplayLayoutBinary(const DisplayLayoutRecordV1& layout, std::vector<
             return false;
         }
         for (const DisplayLayoutWidgetV1& widget : page.widgets) {
-            DisplayLayoutBinaryWidgetV6 binaryWidget{};
+            DisplayLayoutBinaryWidgetV7 binaryWidget{};
             if (!copyText(binaryWidget.id, sizeof(binaryWidget.id), widget.id)) {
                 return false;
             }
@@ -965,14 +955,13 @@ bool encodeDisplayLayoutBinary(const DisplayLayoutRecordV1& layout, std::vector<
             }
             binaryWidget.bitmapFormat = widget.bitmapFormat;
             binaryWidget.keepAspectRatio = widget.keepAspectRatio;
-            binaryWidget.bitmapDataLength = static_cast<uint16_t>(widget.bitmapData.size());
+            if (!copyText(binaryWidget.imageKey, sizeof(binaryWidget.imageKey), widget.imageKey)) {
+                return false;
+            }
             if (!copyText(binaryWidget.text, sizeof(binaryWidget.text), widget.text)) {
                 return false;
             }
             if (!appendBinary(blob, binaryWidget)) {
-                return false;
-            }
-            if (!appendBytes(blob, widget.bitmapData.data(), widget.bitmapData.size())) {
                 return false;
             }
         }
@@ -982,7 +971,10 @@ bool encodeDisplayLayoutBinary(const DisplayLayoutRecordV1& layout, std::vector<
 
 bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRecordV1& layout) {
     layout = {};
-    if (data == nullptr || size < sizeof(DisplayLayoutBinaryHeaderV1)) {
+    EWFM_LEGACY_CONFIG_USE_BEGIN
+    constexpr size_t kMinHeaderSize = sizeof(DisplayLayoutBinaryHeaderV1); // smallest header shape, still a valid floor for every version
+    EWFM_LEGACY_CONFIG_USE_END
+    if (data == nullptr || size < kMinHeaderSize) {
         return false;
     }
 
@@ -997,7 +989,11 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
     uint8_t schemaVersion = 0U;
     uint8_t activePageIndex = 0U;
     uint8_t pageCount = 0U;
-    if (recordVersion == 5U || recordVersion == kDisplayLayoutRecordVersion) {
+    // Versions 1-4 share the V1 header shape (no backgroundColor); every version since 5 (5, 6, 7,
+    // ...) shares the V6 shape - this is a >= check, not an exact match against the current version,
+    // so adding a future V8/V9/... widget format doesn't silently break header parsing for the
+    // still-current-at-the-time-of-writing V6 shape.
+    if (recordVersion >= 5U) {
         DisplayLayoutBinaryHeaderV6 header{};
         if (!readBinary(data, size, offset, header)) {
             return false;
@@ -1008,6 +1004,7 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
         pageCount = header.pageCount;
         layout.backgroundColor = header.backgroundColor;
     } else {
+        EWFM_LEGACY_CONFIG_USE_BEGIN
         DisplayLayoutBinaryHeaderV1 header{};
         if (!readBinary(data, size, offset, header)) {
             return false;
@@ -1016,6 +1013,7 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
         schemaVersion = header.schemaVersion;
         activePageIndex = header.activePageIndex;
         pageCount = header.pageCount;
+        EWFM_LEGACY_CONFIG_USE_END
         layout.backgroundColor = 0U;
     }
     if (schemaVersion < 1U || schemaVersion > kDisplayLayoutSchemaVersion || pageCount == 0U || pageCount > kDisplayLayoutMaxPages ||
@@ -1047,8 +1045,13 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
         page.order = pageHeader.order;
         page.widgets.reserve(pageHeader.widgetCount);
         for (uint8_t widgetIndex = 0; widgetIndex < pageHeader.widgetCount; ++widgetIndex) {
-            DisplayLayoutBinaryWidgetV6 binaryWidget{};
+            DisplayLayoutBinaryWidgetV7 binaryWidget{};
+            // Non-zero only for widgets decoded from a pre-V7 record: bitmap bytes used to be an
+            // inline trailer following the fixed widget struct. V7 has no trailer (imageKey is a
+            // fixed-size field instead), so this stays 0 for current-version widgets.
+            uint16_t legacyBitmapTrailerLength = 0U;
             if (recordVersion == 1U) {
+                EWFM_LEGACY_CONFIG_USE_BEGIN
                 DisplayLayoutBinaryWidgetV1 legacyWidget{};
                 if (!readBinary(data, size, offset, legacyWidget)) {
                     return false;
@@ -1073,12 +1076,14 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
                 binaryWidget.color = 0xFFFFU;
                 binaryWidget.bitmapFormat = legacyWidget.bitmapFormat;
                 binaryWidget.keepAspectRatio = legacyWidget.keepAspectRatio;
-                binaryWidget.bitmapDataLength = legacyWidget.bitmapDataLength;
                 binaryWidget.digitalAlign = static_cast<uint8_t>(DisplayDigitalAlign::Right);
                 if (!copyText(binaryWidget.text, sizeof(binaryWidget.text), legacyWidget.text)) {
                     return false;
                 }
+                legacyBitmapTrailerLength = legacyWidget.bitmapDataLength;
+                EWFM_LEGACY_CONFIG_USE_END
             } else if (recordVersion == 2U) {
+                EWFM_LEGACY_CONFIG_USE_BEGIN
                 DisplayLayoutBinaryWidgetV2 legacyWidget{};
                 if (!readBinary(data, size, offset, legacyWidget)) {
                     return false;
@@ -1103,12 +1108,14 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
                 binaryWidget.color = 0xFFFFU;
                 binaryWidget.bitmapFormat = legacyWidget.bitmapFormat;
                 binaryWidget.keepAspectRatio = legacyWidget.keepAspectRatio;
-                binaryWidget.bitmapDataLength = legacyWidget.bitmapDataLength;
                 binaryWidget.digitalAlign = static_cast<uint8_t>(DisplayDigitalAlign::Right);
                 if (!copyText(binaryWidget.text, sizeof(binaryWidget.text), legacyWidget.text)) {
                     return false;
                 }
+                legacyBitmapTrailerLength = legacyWidget.bitmapDataLength;
+                EWFM_LEGACY_CONFIG_USE_END
             } else if (recordVersion == 3U) {
+                EWFM_LEGACY_CONFIG_USE_BEGIN
                 DisplayLayoutBinaryWidgetV3 legacyWidget{};
                 if (!readBinary(data, size, offset, legacyWidget)) {
                     return false;
@@ -1134,9 +1141,11 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
                 binaryWidget.color = 0xFFFFU;
                 binaryWidget.bitmapFormat = legacyWidget.bitmapFormat;
                 binaryWidget.keepAspectRatio = legacyWidget.keepAspectRatio;
-                binaryWidget.bitmapDataLength = legacyWidget.bitmapDataLength;
                 binaryWidget.digitalAlign = static_cast<uint8_t>(DisplayDigitalAlign::Right);
+                legacyBitmapTrailerLength = legacyWidget.bitmapDataLength;
+                EWFM_LEGACY_CONFIG_USE_END
             } else if (recordVersion == 4U) {
+                EWFM_LEGACY_CONFIG_USE_BEGIN
                 DisplayLayoutBinaryWidgetV4 legacyWidget{};
                 if (!readBinary(data, size, offset, legacyWidget)) {
                     return false;
@@ -1162,9 +1171,11 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
                 binaryWidget.color = 0xFFFFU;
                 binaryWidget.bitmapFormat = legacyWidget.bitmapFormat;
                 binaryWidget.keepAspectRatio = legacyWidget.keepAspectRatio;
-                binaryWidget.bitmapDataLength = legacyWidget.bitmapDataLength;
                 binaryWidget.digitalAlign = static_cast<uint8_t>(DisplayDigitalAlign::Right);
+                legacyBitmapTrailerLength = legacyWidget.bitmapDataLength;
+                EWFM_LEGACY_CONFIG_USE_END
             } else if (recordVersion == 5U) {
+                EWFM_LEGACY_CONFIG_USE_BEGIN
                 DisplayLayoutBinaryWidgetV5 legacyWidget{};
                 if (!readBinary(data, size, offset, legacyWidget)) {
                     return false;
@@ -1191,13 +1202,55 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
                 binaryWidget.digitalAlign = static_cast<uint8_t>(DisplayDigitalAlign::Right);
                 binaryWidget.bitmapFormat = legacyWidget.bitmapFormat;
                 binaryWidget.keepAspectRatio = legacyWidget.keepAspectRatio;
-                binaryWidget.bitmapDataLength = legacyWidget.bitmapDataLength;
+                legacyBitmapTrailerLength = legacyWidget.bitmapDataLength;
+                EWFM_LEGACY_CONFIG_USE_END
+            } else if (recordVersion == 6U) {
+                EWFM_LEGACY_CONFIG_USE_BEGIN
+                DisplayLayoutBinaryWidgetV6 legacyWidget{};
+                if (!readBinary(data, size, offset, legacyWidget)) {
+                    return false;
+                }
+                if (!copyText(binaryWidget.id, sizeof(binaryWidget.id), legacyWidget.id) ||
+                    !copyText(binaryWidget.text, sizeof(binaryWidget.text), legacyWidget.text) ||
+                    !copyText(binaryWidget.digitalOverflow, sizeof(binaryWidget.digitalOverflow), legacyWidget.digitalOverflow) ||
+                    !copyText(binaryWidget.digitalMissing, sizeof(binaryWidget.digitalMissing), legacyWidget.digitalMissing)) {
+                    return false;
+                }
+                binaryWidget.type = legacyWidget.type;
+                binaryWidget.bindingKind = legacyWidget.bindingKind;
+                binaryWidget.metricNamespace = legacyWidget.metricNamespace;
+                binaryWidget.x = legacyWidget.x;
+                binaryWidget.y = legacyWidget.y;
+                binaryWidget.width = legacyWidget.width;
+                binaryWidget.height = legacyWidget.height;
+                binaryWidget.sourceDeviceId = legacyWidget.sourceDeviceId;
+                binaryWidget.metricId = legacyWidget.metricId;
+                binaryWidget.refreshIntervalMs = legacyWidget.refreshIntervalMs;
+                binaryWidget.fontSize = legacyWidget.fontSize;
+                binaryWidget.strokeWidth = legacyWidget.strokeWidth;
+                binaryWidget.autoSize = legacyWidget.autoSize;
+                binaryWidget.styleFlags = legacyWidget.styleFlags;
+                binaryWidget.color = legacyWidget.color;
+                binaryWidget.digitalAlign = legacyWidget.digitalAlign;
+                binaryWidget.bitmapFormat = legacyWidget.bitmapFormat;
+                binaryWidget.keepAspectRatio = legacyWidget.keepAspectRatio;
+                legacyBitmapTrailerLength = legacyWidget.bitmapDataLength;
+                EWFM_LEGACY_CONFIG_USE_END
             } else {
+                // Current version (kDisplayLayoutRecordVersion = 7): read directly, imageKey is a
+                // fixed field on the struct, there is no trailer to skip.
                 if (!readBinary(data, size, offset, binaryWidget)) {
                     return false;
                 }
             }
-            if (binaryWidget.bitmapDataLength > kDisplayLayoutBitmapDataCapacity) {
+            if (legacyBitmapTrailerLength > kDisplayLayoutBitmapDataCapacity) {
+                return false;
+            }
+            if (legacyBitmapTrailerLength > 0U && !skipBytes(size, offset, legacyBitmapTrailerLength)) {
+                // Discard a legacy widget's inline bitmap bytes rather than migrating them into the
+                // blob store: decode is a pure function used from validation/tests with no store
+                // dependency, and this only affects a handful of pre-upgrade bitmap widgets, which
+                // the user can simply re-upload through the SPA.
                 return false;
             }
             DisplayLayoutWidgetV1 widget{};
@@ -1228,10 +1281,10 @@ bool decodeDisplayLayoutBinary(const uint8_t* data, size_t size, DisplayLayoutRe
             }
             widget.bitmapFormat = binaryWidget.bitmapFormat;
             widget.keepAspectRatio = binaryWidget.keepAspectRatio;
-            if (!copyText(widget.text, sizeof(widget.text), binaryWidget.text)) {
+            if (!copyText(widget.imageKey, sizeof(widget.imageKey), binaryWidget.imageKey)) {
                 return false;
             }
-            if (!readBytes(data, size, offset, binaryWidget.bitmapDataLength, widget.bitmapData)) {
+            if (!copyText(widget.text, sizeof(widget.text), binaryWidget.text)) {
                 return false;
             }
             page.widgets.push_back(widget);

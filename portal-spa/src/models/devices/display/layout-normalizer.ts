@@ -188,6 +188,7 @@ export function defaultDisplayWidget(
       ...widget,
       type,
       bitmapData: createDefaultDisplayBitmapData(profile),
+      imageKey: '',
       bitmapFormat: profile.defaultBitmapFormat,
       keepAspectRatio: false,
     } as DisplayBitmapWidget
@@ -261,6 +262,7 @@ export function normalizeDisplayWidget(
         ...baseWidget,
         type,
         bitmapData: normalizeBitmapData(profile, value.bitmapData, dimensions.width, dimensions.height),
+        imageKey: typeof value.imageKey === 'string' ? value.imageKey : '',
         bitmapFormat: normalizeBitmapFormat(profile, value.bitmapFormat),
         keepAspectRatio: Boolean(value.keepAspectRatio ?? false),
       } as DisplayBitmapWidget
@@ -367,7 +369,10 @@ export function encodeDisplayLayout(
             wrap: widget.styleFlags.wrap,
           },
         } : {}),
-        ...(widget.type === 'bitmap' ? { bitmapData: widget.bitmapData, bitmapFormat: widget.bitmapFormat, keepAspectRatio: widget.keepAspectRatio } : {}),
+        // bitmapData is intentionally NOT sent here - only imageKey. Uploading bitmapData and
+        // refreshing imageKey happens earlier, in the async save flow (useDisplayDesigner.save),
+        // before this synchronous encode step runs.
+        ...(widget.type === 'bitmap' ? { imageKey: widget.imageKey, bitmapFormat: widget.bitmapFormat, keepAspectRatio: widget.keepAspectRatio } : {}),
       })),
     })),
   }

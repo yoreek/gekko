@@ -2,8 +2,10 @@ import { computed, ref, watch, type Ref } from 'vue'
 
 import { fetchDeviceLayout } from '@/api'
 import type { DeviceRecord } from '@/api/contracts'
+import { useBlobStore } from '@/composables/useBlobStore'
 import { useDeviceDetail } from '@/composables/useDeviceDetail'
 import type { DisplayLayoutDraft, DisplayLayoutPage, DisplayWidget, DisplayWidgetType } from '@/models/devices/display/layout'
+import { fetchBitmapWidgetsFromBlobStore, uploadBitmapWidgetsToBlobStore } from '@/models/devices/display/bitmap-blob-sync'
 import { resolveDisplayWidgetDuplicatePosition, resolveDisplayWidgetSpawnPosition } from '@/models/devices/display/canvas/geometry'
 import { resolveDisplayEffectiveSize } from '@/models/devices/display/orientation'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
@@ -30,6 +32,7 @@ export function useDisplayDesigner(
 ) {
   const deviceStore = useDeviceRegistryStore()
   const deviceDetail = useDeviceDetail(deviceId)
+  const blobStore = useBlobStore()
 
   const device = computed<DeviceRecord | null>(() => deviceStore.devices.find(d => d.record.id === deviceId.value) ?? null)
 
@@ -50,7 +53,11 @@ export function useDisplayDesigner(
     try {
       const layoutResponse = await fetchDeviceLayout(deviceId.value)
       const merged = { ...current, config: { ...current.config, layout: layoutResponse } } as DeviceRecord
-      draftConfig.value = normalizeConfig(merged)
+      const normalized = normalizeConfig(merged)
+      // The wire layout only carries each bitmap widget's imageKey - fetch the actual bytes back so
+      // the designer canvas has something to render/resize locally.
+      normalized.layout = await fetchBitmapWidgetsFromBlobStore(normalized.layout, blobStore)
+      draftConfig.value = normalized
     } catch {
       // Fall back to an empty/default layout so the designer still opens if the fetch fails.
       draftConfig.value = normalizeConfig(current)
@@ -173,7 +180,28 @@ export function useDisplayDesigner(
 
   async function save(): Promise<void> {
     if (draftConfig.value === null) return
-    await deviceDetail.save(draftConfig.value as DeviceEditDraft)
+    // Upload every bitmap widget's local bytes first and save the layout with the resulting keys -
+    // the backend rejects a layout referencing a key that doesn't exist in the blob store, so the
+    // upload must complete before the save request is sent.
+    const { layout: uploadedLayout, replacements } = await uploadBitmapWidgetsToBlobStore(
+      draftConfig.value.layout,
+      deviceId.value,
+      blobStore,
+    )
+    const payload = { ...draftConfig.value, layout: uploadedLayout } as DeviceEditDraft
+    await deviceDetail.save(payload)
+    draftConfig.value = { ...draftConfig.value, layout: uploadedLayout }
+    // deviceDetail.save() swallows its own errors into errorMessage rather than throwing - only
+    // delete the superseded blobs once that's empty, i.e. the save actually persisted the new keys.
+    // If the save failed, both the old and the newly-uploaded blobs are left in place; the new one
+    // is an orphan, but that's a smaller problem than deleting a still-referenced old one.
+    if (deviceDetail.errorMessage.value.length === 0) {
+      await Promise.all(
+        replacements
+          .filter(replacement => replacement.previousImageKey.length > 0)
+          .map(replacement => blobStore.remove(replacement.previousImageKey).catch(() => {})),
+      )
+    }
   }
 
   return {

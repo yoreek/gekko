@@ -205,6 +205,8 @@ void test_spi_setup_transfer_round_trip_and_api_serialization();
 void test_ssd1306_layout_codec_round_trip_json();
 void test_ssd1306_layout_codec_round_trip_digital_widget();
 void test_ssd1306_layout_codec_migrates_v4_colors();
+void test_ssd1306_layout_codec_migrates_v6_bitmap_drops_inline_bytes_but_keeps_offsets_correct();
+void test_ssd1306_layout_json_rejects_legacy_bitmap_data_field();
 void test_ssd1306_layout_codec_emits_single_page_when_filtered();
 void test_ssd1306_config_migrates_v1_v2_v3_without_bus_id();
 void test_ssd1306_config_codec_migrates_v4_blob();
@@ -530,6 +532,8 @@ int main(int, char**) {
     RUN_TEST(test_ssd1306_layout_codec_round_trip_json);
     RUN_TEST(test_ssd1306_layout_codec_round_trip_digital_widget);
     RUN_TEST(test_ssd1306_layout_codec_migrates_v4_colors);
+    RUN_TEST(test_ssd1306_layout_codec_migrates_v6_bitmap_drops_inline_bytes_but_keeps_offsets_correct);
+    RUN_TEST(test_ssd1306_layout_json_rejects_legacy_bitmap_data_field);
     RUN_TEST(test_ssd1306_layout_codec_emits_single_page_when_filtered);
     RUN_TEST(test_ssd1306_config_migrates_v1_v2_v3_without_bus_id);
     RUN_TEST(test_ssd1306_config_codec_migrates_v4_blob);

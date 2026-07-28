@@ -30,7 +30,9 @@
 #include "platform/ArduinoNtpClient.h"
 #include "platform/ArduinoOtaService.h"
 #include "platform/ArduinoWifiDriver.h"
+#include "platform/BlobStoreDeviceCleanupSink.h"
 #include "platform/DevDataPartition.h"
+#include "platform/LittleFsBlobStore.h"
 #include "platform/PreferencesConfigStorage.h"
 #include "portal/DashboardLayoutStore.h"
 #include "portal/PortalServer.h"
@@ -92,6 +94,12 @@ private:
 #endif
     ;
     SchedulePresetCleanupSink schedulePresetCleanupSink_{schedulePresetStorage_};
+    LittleFsBlobStore blobStore_
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+        {devDataFs_}
+#endif
+    ;
+    BlobStoreDeviceCleanupSink blobStoreCleanupSink_{blobStore_};
     PortalServer portalServer_;
     uint32_t lastTick100ms_{0};
     uint32_t lastTick1s_{0};

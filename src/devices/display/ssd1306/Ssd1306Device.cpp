@@ -7,6 +7,7 @@
 
 #include "devices/bus/i2c/I2cBusDevice.h"
 #include "devices/bus/i2c/I2cDeviceValidation.h"
+#include "devices/display/DisplayBitmapCache.h"
 
 #include <cstring>
 #include <type_traits>
@@ -103,7 +104,14 @@ public:
     }
 
     void drawBitmap(const DisplayLayoutWidgetV1& widget) override {
-        if (widget.width == 0U || widget.height == 0U || widget.bitmapData.empty()) {
+        if (widget.width == 0U || widget.height == 0U) {
+            return;
+        }
+        const std::vector<uint8_t>* bitmapData = ensureDisplayBitmapBytes(widget);
+        if (bitmapData == nullptr || bitmapData->empty()) {
+            // Missing/unreadable blob (dangling key, blob store unavailable, ...) - draw a
+            // recognizable placeholder instead of leaving the widget's area blank or crashing.
+            drawMissingBitmapPlaceholder(widget);
             return;
         }
         GFXcanvas1 canvas(widget.width, widget.height);
@@ -114,7 +122,7 @@ public:
             for (size_t index = 0U; index < pixelCount; ++index) {
                 const size_t byteIndex = index / 8U;
                 const uint8_t mask = static_cast<uint8_t>(0x80U >> (index % 8U));
-                if (byteIndex < widget.bitmapData.size() && (widget.bitmapData[byteIndex] & mask) != 0U) {
+                if (byteIndex < bitmapData->size() && ((*bitmapData)[byteIndex] & mask) != 0U) {
                     const int16_t x = static_cast<int16_t>(index % widget.width);
                     const int16_t y = static_cast<int16_t>(index / widget.width);
                     canvas.drawPixel(x, y, 1);
@@ -123,8 +131,8 @@ public:
             break;
         }
         case DisplayLayoutBitmapFormat::Gray8: {
-            for (size_t index = 0U; index < pixelCount && index < widget.bitmapData.size(); ++index) {
-                if (widget.bitmapData[index] >= 128U) {
+            for (size_t index = 0U; index < pixelCount && index < bitmapData->size(); ++index) {
+                if ((*bitmapData)[index] >= 128U) {
                     const int16_t x = static_cast<int16_t>(index % widget.width);
                     const int16_t y = static_cast<int16_t>(index / widget.width);
                     canvas.drawPixel(x, y, 1);
@@ -135,11 +143,11 @@ public:
         case DisplayLayoutBitmapFormat::Rgb565: {
             for (size_t index = 0U; index < pixelCount; ++index) {
                 const size_t byteIndex = index * 2U;
-                if (byteIndex + 1U >= widget.bitmapData.size()) {
+                if (byteIndex + 1U >= bitmapData->size()) {
                     break;
                 }
                 const uint16_t pixel =
-                    static_cast<uint16_t>(widget.bitmapData[byteIndex]) << 8U | static_cast<uint16_t>(widget.bitmapData[byteIndex + 1U]);
+                    static_cast<uint16_t>((*bitmapData)[byteIndex]) << 8U | static_cast<uint16_t>((*bitmapData)[byteIndex + 1U]);
                 if (pixel != 0U) {
                     const int16_t x = static_cast<int16_t>(index % widget.width);
                     const int16_t y = static_cast<int16_t>(index / widget.width);
@@ -153,6 +161,17 @@ public:
     }
 
 private:
+    // Rectangle outline + diagonal cross ("broken image" glyph), scaled to the widget's own bounds.
+    void drawMissingBitmapPlaceholder(const DisplayLayoutWidgetV1& widget) {
+        drawBox(widget, [&widget](GFXcanvas1& canvas) {
+            const int16_t w = static_cast<int16_t>(widget.width);
+            const int16_t h = static_cast<int16_t>(widget.height);
+            canvas.drawRect(0, 0, w, h, 1);
+            canvas.drawLine(0, 0, static_cast<int16_t>(w - 1), static_cast<int16_t>(h - 1), 1);
+            canvas.drawLine(static_cast<int16_t>(w - 1), 0, 0, static_cast<int16_t>(h - 1), 1);
+        });
+    }
+
     template <typename DrawFn> void drawBox(const DisplayLayoutWidgetV1& widget, DrawFn&& drawFn) {
         if (widget.width == 0U || widget.height == 0U) {
             return;

@@ -381,14 +381,18 @@ void test_device_setup_transfer_v3_bounds_each_max_bitmap_record() {
 
     const DeviceId busId = createFromJson(registry, "i2c_bus",
                                           R"({"config":{"name":"Main I2C","enabled":true,"sdaPin":21,"sclPin":22,"frequencyHz":400000}})");
-    const std::string bitmapData(4096U, 'A');
+    // The bitmap's pixel bytes no longer live inline in the layout_widget line (imageKey is a small
+    // fixed-size key, docs/blob-store.md) - a large payload's export is instead bounded by the
+    // separate layout_bitmap line, which reads from the blob store (see
+    // test_device_setup_transfer_v3_round_trips_bitmap_widget for that path). This test now just
+    // confirms an imageKey-bearing bitmap widget round-trips and every NDJSON line still respects
+    // the transfer codec's per-line cap.
     const std::string displayJson =
         std::string("{\"config\":{\"name\":\"OLED\",\"enabled\":true,\"deps\":[{\"role\":\"i2c_bus\",\"deviceId\":") +
         std::to_string(busId) +
         "}],\"i2cAddress\":60,\"layout\":{\"activePageId\":\"main\",\"pages\":[{\"id\":\"main\",\"name\":\"Main\","
         "\"widgets\":[{\"id\":\"image\",\"type\":\"bitmap\",\"width\":128,\"height\":64,\"bitmapFormat\":\"mono1\","
-        "\"bitmapData\":\"" +
-        bitmapData + "\"}] }]}}}";
+        "\"imageKey\":\"dev/3e9/AAAAAAAA\"}] }]}}}";
     (void)createFromJson(registry, "ssd1306", displayJson.c_str());
 
     std::string bundle;

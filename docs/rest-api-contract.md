@@ -875,11 +875,16 @@ interface DeviceDetailResponse {
 ```
 
 > Display devices (`ssd1306`, `st7735`): the `config` object does **not** include `layout`. The
-> layout can be large (bitmap data) and is only needed by the designer, so it is served separately
-> by `GET /api/devices/:id/layout` and is still saved through `updateConfig` with `config.layout`.
+> layout is only needed by the designer, so it is served separately by
+> `GET /api/devices/:id/layout` and is still saved through `updateConfig` with `config.layout`.
 > See [Display Layout Persistence](./oled-display-layout.md) for the write/read flow and storage
 > model. SSD1306 bus identity is carried only by `config.deps` using role `i2c_bus`; the removed
 > `config.i2cBusDeviceId` field is rejected by the current API.
+>
+> A Bitmap widget carries `imageKey` (string), not inline pixel bytes. The client must first
+> `POST /api/blobs/dev/<deviceId hex>` with the raw image bytes, then put the returned `key` into
+> the widget's `imageKey` before saving the layout — see [Blob Store](./blob-store.md). Saving a
+> layout that references a non-existent `imageKey` is rejected.
 >
 > Both display types also carry `panel` (string) and `rotation` (0-3). `width`/`height` are always
 > derived from `panel` and rejected if the client sends a mismatched value — see

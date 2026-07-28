@@ -51,7 +51,14 @@ export interface DisplayWidgetBase {
 
 export interface DisplayBitmapWidget extends DisplayWidgetBase {
   type: 'bitmap'
+  // Local working copy of the packed pixel bytes (base64), used for canvas rendering/resize in the
+  // designer - never sent to the backend directly. Populated by fetching `imageKey` from the blob
+  // store after a layout loads, and re-uploaded to get a fresh `imageKey` before a layout saves (see
+  // useBlobStore/useDisplayDesigner). Empty until that fetch/upload resolves.
   bitmapData: string
+  // Blob-store key (docs/blob-store.md) - this, not bitmapData, is what's actually persisted on the
+  // backend and sent on the wire.
+  imageKey: string
   bitmapFormat: RasterImageFormat
   keepAspectRatio: boolean
 }

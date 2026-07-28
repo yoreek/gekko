@@ -93,7 +93,7 @@ void fillDisplayDocument(StaticJsonDocument<1024>& doc, uint32_t spiBusDeviceId,
     widget["height"] = 2;
     widget["bitmapFormat"] = "rgb565";
     widget["keepAspectRatio"] = true;
-    widget["bitmapData"] = "AAECAw==";
+    widget["imageKey"] = "dev/2b/AAAAAAAA";
 }
 
 DeviceCreateRequest makeCreateRequest(uint32_t spiBusDeviceId, uint8_t chipSelectPin) {
@@ -508,7 +508,7 @@ void test_st7735_update_round_trip_includes_layout() {
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutBitmapFormat::Rgb565),
                             reloadedRuntime->layout().pages[0].widgets[0].bitmapFormat);
     TEST_ASSERT_EQUAL_UINT8(1U, reloadedRuntime->layout().pages[0].widgets[0].keepAspectRatio);
-    TEST_ASSERT_EQUAL_UINT8(4U, reloadedRuntime->layout().pages[0].widgets[0].bitmapData.size());
+    TEST_ASSERT_EQUAL_STRING("dev/2b/AAAAAAAA", reloadedRuntime->layout().pages[0].widgets[0].imageKey);
 
     StaticJsonDocument<4096> outputDoc;
     JsonObject output = outputDoc.to<JsonObject>();

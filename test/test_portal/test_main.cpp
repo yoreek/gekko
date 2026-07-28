@@ -51,6 +51,11 @@ void test_ws_manager_ignores_registry_persistence_cleared_events();
 void test_ws_manager_broadcasts_snapshots_only_when_clients_are_connected();
 void test_ws_manager_resyncs_all_device_snapshots_for_new_clients();
 void test_ws_status_messages_are_serializable();
+void test_blob_controller_parses_simple_key();
+void test_blob_controller_parses_nested_key_with_embedded_slashes();
+void test_blob_controller_rejects_missing_key();
+void test_blob_controller_rejects_wrong_prefix();
+void test_blob_controller_rejects_path_traversal_key();
 
 int main(int, char**) {
     UNITY_BEGIN();
@@ -105,5 +110,10 @@ int main(int, char**) {
     RUN_TEST(test_ws_manager_broadcasts_snapshots_only_when_clients_are_connected);
     RUN_TEST(test_ws_manager_resyncs_all_device_snapshots_for_new_clients);
     RUN_TEST(test_ws_status_messages_are_serializable);
+    RUN_TEST(test_blob_controller_parses_simple_key);
+    RUN_TEST(test_blob_controller_parses_nested_key_with_embedded_slashes);
+    RUN_TEST(test_blob_controller_rejects_missing_key);
+    RUN_TEST(test_blob_controller_rejects_wrong_prefix);
+    RUN_TEST(test_blob_controller_rejects_path_traversal_key);
     return UNITY_END();
 }

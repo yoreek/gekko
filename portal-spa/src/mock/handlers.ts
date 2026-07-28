@@ -32,7 +32,7 @@ import type {
   SchedulePresetPoint,
   SchedulePresetsResponse,
 } from '@/api/contracts'
-import type { DeviceDependencyLink, TemperatureOutputSnapshot } from '@/api/contracts'
+import type { BlobUploadResponse, DeviceDependencyLink, TemperatureOutputSnapshot } from '@/api/contracts'
 import {
   defaultSsd1306Layout,
   normalizeSsd1306Layout,
@@ -1696,6 +1696,63 @@ export function mockDeleteMqttCaCert(): Promise<MqttStatusResponse> {
     return null
   })
   return Promise.resolve(mockFetchMqttStatus())
+}
+
+// Generic blob store mock (docs/blob-store.md) - backed by MockDatabase.blobs (key -> base64), the
+// same shape/convention the real backend uses.
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  for (let index = 0; index < bytes.length; index++) {
+    binary += String.fromCharCode(bytes[index])
+  }
+  return globalThis.btoa(binary)
+}
+
+function base64ToBlob(base64: string): Blob {
+  const binary = globalThis.atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index++) {
+    bytes[index] = binary.charCodeAt(index)
+  }
+  return new Blob([bytes])
+}
+
+function randomBlobKeySuffix(length = 8): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  let suffix = ''
+  for (let index = 0; index < length; index++) {
+    suffix += alphabet[Math.floor(Math.random() * alphabet.length)]
+  }
+  return suffix
+}
+
+export async function mockUploadBlob(prefix: string, bytes: Blob | ArrayBuffer): Promise<BlobUploadResponse> {
+  const blob = bytes instanceof Blob ? bytes : new Blob([bytes])
+  const base64 = arrayBufferToBase64(await blob.arrayBuffer())
+  const key = `${prefix}/${randomBlobKeySuffix()}`
+  mutateRegistry(db => {
+    db.blobs[key] = base64
+    return null
+  })
+  return { success: true, key }
+}
+
+export function mockFetchBlob(key: string): Promise<Blob> {
+  const base64 = loadMockDatabase().blobs[key]
+  if (base64 === undefined) {
+    throw new ApiClientError('blob not found', 'NOT_FOUND', 404, null)
+  }
+  return Promise.resolve(base64ToBlob(base64))
+}
+
+export function mockDeleteBlob(key: string): Promise<void> {
+  mutateRegistry(db => {
+    delete db.blobs[key]
+    return null
+  })
+  return Promise.resolve()
 }
 
 function publishTimeStatus(db: ReturnType<typeof createSeedMockDatabase>): void {
