@@ -7,6 +7,13 @@ import {
 } from '@/components/device/device-form'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
+// Home Assistant opt-in/name, edited independently of the main device form: it is persisted by the
+// "setHaSettings" command into its own store, so it has no configRevision of its own.
+export interface DeviceHaDraft {
+  enabled: boolean
+  name: string
+}
+
 export interface UseDeviceDetailReturn {
   device: ComputedRef<DeviceRecord | null>
   deviceName: ComputedRef<string>
@@ -15,6 +22,7 @@ export interface UseDeviceDetailReturn {
   isSaving: ComputedRef<boolean>
   errorMessage: Ref<string>
   draft: Ref<DeviceEditDraft>
+  haDraft: Ref<DeviceHaDraft>
   canSave: ComputedRef<boolean>
   refresh(): Promise<void>
   save(payload?: DeviceEditDraft): Promise<void>
@@ -26,6 +34,7 @@ export function useDeviceDetail(deviceId: Ref<number>): UseDeviceDetailReturn {
   const deviceStore = useDeviceRegistryStore()
 
   const draft = ref<DeviceEditDraft>(createDeviceEditDraft(null))
+  const haDraft = ref<DeviceHaDraft>({ enabled: false, name: '' })
   const busyAction = ref<'refresh' | 'save' | 'command' | null>(null)
   const errorMessage = ref('')
 
@@ -69,6 +78,16 @@ export function useDeviceDetail(deviceId: Ref<number>): UseDeviceDetailReturn {
     draft.value = next
   }
 
+  // HA settings are persisted outside the device config and therefore have no configRevision.
+  // Match the existing MQTT/Time settings-form pattern: copy the persisted value into the draft
+  // only after an explicit REST refresh or a successful save, never after a runtime-only WS upsert.
+  function applyHaSettingsToDraft(): void {
+    haDraft.value = {
+      enabled: device.value?.ha?.enabled ?? false,
+      name: device.value?.ha?.name ?? '',
+    }
+  }
+
   async function refresh(): Promise<void> {
     if (deviceId.value <= 0) return
     busyAction.value = 'refresh'
@@ -76,6 +95,7 @@ export function useDeviceDetail(deviceId: Ref<number>): UseDeviceDetailReturn {
     try {
       const response = await fetchDevice(deviceId.value)
       deviceStore.upsertDevice(response.device, response.registryRevision)
+      applyHaSettingsToDraft()
     } catch (error) {
       errorMessage.value = formatError(error)
     } finally {
@@ -123,6 +143,9 @@ export function useDeviceDetail(deviceId: Ref<number>): UseDeviceDetailReturn {
       if (response.device !== undefined) {
         deviceStore.upsertDevice(response.device, response.registryRevision)
       }
+      if (payload.command === 'setHaSettings') {
+        applyHaSettingsToDraft()
+      }
     } catch (error) {
       errorMessage.value = formatError(error)
     } finally {
@@ -138,6 +161,7 @@ export function useDeviceDetail(deviceId: Ref<number>): UseDeviceDetailReturn {
     isSaving,
     errorMessage,
     draft,
+    haDraft,
     canSave,
     refresh,
     save,

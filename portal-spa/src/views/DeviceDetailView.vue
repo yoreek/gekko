@@ -54,15 +54,15 @@
         </template>
       </PageCard>
 
-      <PageCard v-if="mqttStore.enabled && device.ha?.supported" class="mt-4">
+      <PageCard v-if="device.ha?.supported" class="mt-4">
         <template #header>
           <PageToolbar :title="t('device.ha.title')" :subtitle="haUniqueId ? t('device.ha.uniqueIdLabel', { id: haUniqueId }) : undefined" />
         </template>
 
         <div class="d-flex flex-column ga-4">
-          <v-switch v-model="haForm.enabled" :label="t('device.ha.enabled')" inset hide-details />
+          <v-switch v-model="haDraft.enabled" :label="t('device.ha.enabled')" inset hide-details />
           <v-text-field
-            v-model="haForm.name"
+            v-model="haDraft.name"
             :label="t('device.ha.name')"
             :hint="t('device.ha.nameHint')"
             persistent-hint
@@ -89,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, reactive, ref, toRef, watch } from 'vue'
+import { computed, onBeforeMount, ref, toRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -116,10 +116,9 @@ const deviceStore = useDeviceRegistryStore()
 const notifications = useNotificationsStore()
 const mqttStore = useMqttStore()
 
-const { device, deviceName, loading, isSaving, errorMessage, draft, canSave, refresh, save, submitCommand } =
+const { device, deviceName, loading, isSaving, errorMessage, draft, haDraft, canSave, refresh, save, submitCommand } =
   useDeviceDetail(toRef(props, 'deviceId'))
 
-const haForm = reactive({ enabled: false, name: '' })
 const haSaving = ref(false)
 
 async function onSave(): Promise<void> {
@@ -138,8 +137,8 @@ async function onSaveHaSettings(): Promise<void> {
   try {
     await submitCommand({
       command: 'setHaSettings',
-      haEnabled: haForm.enabled,
-      haName: haForm.name,
+      haEnabled: haDraft.value.enabled,
+      haName: haDraft.value.name,
     })
     if (!errorMessage.value) {
       notifications.notify(t('device.ha.saveSuccess'), 'success')
@@ -148,11 +147,6 @@ async function onSaveHaSettings(): Promise<void> {
     haSaving.value = false
   }
 }
-
-watch(device, value => {
-  haForm.enabled = value?.ha?.enabled ?? false
-  haForm.name = value?.ha?.name ?? ''
-})
 
 onBeforeMount(async () => {
   await deviceStore.initialize()
