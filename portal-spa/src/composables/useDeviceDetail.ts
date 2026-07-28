@@ -6,6 +6,7 @@ import {
   type DeviceEditDraft,
 } from '@/components/device/device-form'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
+import { isValidDeviceName } from '@/models/devices/device-name'
 
 // Home Assistant opt-in/name, edited independently of the main device form: it is persisted by the
 // "setHaSettings" command into its own store, so it has no configRevision of its own.
@@ -52,7 +53,7 @@ export function useDeviceDetail(deviceId: Ref<number>): UseDeviceDetailReturn {
 
   const canSave = computed(() => {
     if (device.value === null) return false
-    if (draft.value.name.trim().length === 0) return false
+    if (!isValidDeviceName(draft.value.name)) return false
     return buildDeviceEditCommands(device.value, draft.value).length > 0
   })
 

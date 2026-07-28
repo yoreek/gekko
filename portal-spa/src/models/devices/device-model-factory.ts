@@ -110,7 +110,7 @@ export function exclusiveAnalogOutputDependencyOptions(
   devices: DeviceRecord[],
   currentOwnerId = 0,
 ): { title: string; value: number }[] {
-  const ownerTypes = new Set([
+  const ownerTypes = new Set<string>([
     FadeAnalogOutputDevice.TYPE_NAME,
     ScheduledAnalogOutputDevice.TYPE_NAME,
     AnalogOutputComposerDevice.TYPE_NAME,

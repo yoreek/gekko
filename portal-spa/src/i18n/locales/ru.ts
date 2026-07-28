@@ -39,6 +39,7 @@ export default {
   validation: {
     required: 'Обязательное поле',
     uniqueDeviceName: 'Устройство с таким именем уже существует',
+    deviceNameTooLong: 'Имя устройства не должно превышать {max} байт UTF-8',
   },
   dashboard: {
     title: 'Панель',
@@ -315,6 +316,18 @@ export default {
     dummy: {
       label: 'Заглушка устройства',
       noFields: 'Дополнительных настроек для этого типа нет.',
+    },
+    category: {
+      buses: 'Шины',
+      expanders: 'Расширители',
+      temperatureSensors: 'Датчики температуры и климата',
+      inputs: 'Входы',
+      outputs: 'Выходы',
+      controllers: 'Контроллеры',
+      rtc: 'RTC',
+      automation: 'Автоматизация',
+      displays: 'Дисплеи',
+      service: 'Служебные',
     },
     type: {
       dummy: 'Dummy устройство',

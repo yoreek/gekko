@@ -16,7 +16,14 @@
           <v-text-field v-select-on-focus v-model="nameFilter" :label="t('devices.search')" density="compact" hide-details />
         </v-col>
         <v-col cols="12" md="4">
-          <v-autocomplete v-model="typeFilter" :items="typeFilterOptions" :label="t('devices.filterByType')" density="compact" hide-details />
+          <v-autocomplete
+            v-model="typeFilter"
+            :items="typeFilterOptions"
+            :filter-keys="deviceTypeFilterKeys"
+            :label="t('devices.filterByType')"
+            density="compact"
+            hide-details
+          />
         </v-col>
         <v-col cols="12" md="4">
           <v-text-field v-select-on-focus v-model="idFilter" :label="t('device.fields.deviceId')" density="compact" hide-details inputmode="numeric" />
@@ -103,6 +110,10 @@ import { deviceStatusColor, deviceStatusLabelKey } from '@/models/devices/device
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore } from '@/stores/panels'
 import { allDeviceUis, resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
+import {
+  buildDeviceTypeOptions,
+  deviceTypeFilterKeys,
+} from '@/components/devices/registry/device-type-options'
 import { useNotificationsStore } from '@/stores/notifications'
 import { safeReadStorage, safeWriteStorage } from '@/utils/storage'
 import PageContainer from '@/components/layout/PageContainer.vue'
@@ -173,10 +184,15 @@ watch([nameFilter, idFilter, typeFilter, page, itemsPerPage], () => {
   } satisfies StoredDevicesViewFilters))
 })
 
-const typeFilterOptions = computed(() => [
-  { title: t('devices.filterAllTypes'), value: 'all' },
-  ...allDeviceUis.map(ui => ({ title: t(ui.labelKey), value: ui.typeId })),
-])
+const typeFilterOptions = computed(() => buildDeviceTypeOptions<number | 'all'>({
+  deviceUis: allDeviceUis,
+  translate: t,
+  valueFor: ui => ui.typeId,
+  firstOption: {
+    title: t('devices.filterAllTypes'),
+    value: 'all',
+  },
+}))
 
 const tableHeaders = [
   {

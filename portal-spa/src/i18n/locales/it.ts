@@ -39,6 +39,7 @@ export default {
   validation: {
     required: 'Obbligatorio',
     uniqueDeviceName: 'Esiste già un dispositivo con questo nome',
+    deviceNameTooLong: 'Il nome del dispositivo non può superare {max} byte UTF-8',
   },
   dashboard: {
     title: 'Dashboard',
@@ -315,6 +316,18 @@ export default {
     dummy: {
       label: 'Dispositivo fittizio',
       noFields: 'Nessuna impostazione aggiuntiva specifica del tipo.',
+    },
+    category: {
+      buses: 'Bus',
+      expanders: 'Espansori',
+      temperatureSensors: 'Sensori di temperatura e clima',
+      inputs: 'Ingressi',
+      outputs: 'Uscite',
+      controllers: 'Controllori',
+      rtc: 'RTC',
+      automation: 'Automazione',
+      displays: 'Display',
+      service: 'Servizio',
     },
     type: {
       dummy: 'Dispositivo fittizio',

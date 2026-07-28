@@ -39,6 +39,7 @@ export default {
   validation: {
     required: 'Pflichtfeld',
     uniqueDeviceName: 'Ein Gerät mit diesem Namen existiert bereits',
+    deviceNameTooLong: 'Der Gerätename darf höchstens {max} UTF-8-Bytes lang sein',
   },
   dashboard: {
     title: 'Dashboard',
@@ -315,6 +316,18 @@ export default {
     dummy: {
       label: 'Dummy-Gerät',
       noFields: 'Keine weiteren typspezifischen Einstellungen.',
+    },
+    category: {
+      buses: 'Busse',
+      expanders: 'Erweiterungsmodule',
+      temperatureSensors: 'Temperatur- und Klimasensoren',
+      inputs: 'Eingänge',
+      outputs: 'Ausgänge',
+      controllers: 'Regler',
+      rtc: 'RTC',
+      automation: 'Automatisierung',
+      displays: 'Displays',
+      service: 'Service',
     },
     type: {
       dummy: 'Dummy-Gerät',

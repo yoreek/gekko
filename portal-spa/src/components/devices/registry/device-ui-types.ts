@@ -6,6 +6,18 @@ import type { DeviceTypeId } from '@/models/device-type-ids'
 
 export type DeviceAlertSeverity = 'warning' | 'critical'
 
+export type DeviceCategory =
+  | 'buses'
+  | 'expanders'
+  | 'temperatureSensors'
+  | 'inputs'
+  | 'outputs'
+  | 'controllers'
+  | 'rtc'
+  | 'automation'
+  | 'displays'
+  | 'service'
+
 /**
  * A standing alert derived from a device's live runtime (e.g. empty dosing
  * container). Alerts are recomputed reactively and disappear on their own
@@ -31,6 +43,10 @@ export interface DeviceUi {
   readonly typeId: DeviceTypeId
   readonly typeName: string
   readonly labelKey: string
+  /** Shared picker/filter grouping metadata. */
+  readonly category: DeviceCategory
+  /** Extra technical terms that are not already present in the label or type name. */
+  readonly searchAliases?: readonly string[]
   readonly icon: PortalIconName
   /**
    * Props: { modelValue: DeviceEditDraft; device?: DeviceRecord; mode: 'view'|'edit'|'create'; busy?: boolean }

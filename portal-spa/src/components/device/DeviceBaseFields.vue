@@ -13,10 +13,12 @@
     </v-col>
 
     <v-col v-if="mode === 'create'" cols="12" sm="6">
-      <v-select
+      <v-autocomplete
         :label="t('device.actions.type')"
         :model-value="modelValue.typeName"
         :items="typeItems"
+        :filter-keys="deviceTypeFilterKeys"
+        auto-select-first="exact"
         :readonly="mode !== 'create'"
         @update:model-value="update('typeName', $event as DeviceCommonDraft['typeName'])"
       />
@@ -40,6 +42,14 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceCommonDraft } from '@/models/devices/device-draft'
+import {
+  MAX_DEVICE_NAME_BYTES,
+  deviceNameByteLength,
+} from '@/models/devices/device-name'
+import {
+  buildDeviceTypeOptions,
+  deviceTypeFilterKeys,
+} from '@/components/devices/registry/device-type-options'
 import { allDeviceUis } from '@/components/devices/registry/device-ui-registry'
 
 const props = defineProps<{
@@ -55,10 +65,17 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const typeItems = computed(() => allDeviceUis.map(ui => ({ title: t(ui.labelKey), value: ui.typeName })))
+const typeItems = computed(() => buildDeviceTypeOptions({
+  deviceUis: allDeviceUis,
+  translate: t,
+  valueFor: ui => ui.typeName,
+}))
 
 const nameRules = [
   (value: unknown) => String(value ?? '').trim().length > 0 || t('validation.required'),
+  (value: unknown) =>
+    deviceNameByteLength(String(value ?? '')) <= MAX_DEVICE_NAME_BYTES
+    || t('validation.deviceNameTooLong', { max: MAX_DEVICE_NAME_BYTES }),
 ]
 
 function update<K extends keyof DeviceCommonDraft>(key: K, value: DeviceCommonDraft[K]): void {

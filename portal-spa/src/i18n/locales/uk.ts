@@ -39,6 +39,7 @@ export default {
   validation: {
     required: "Обов'язкове поле",
     uniqueDeviceName: 'Пристрій із таким ім’ям уже існує',
+    deviceNameTooLong: 'Назва пристрою не повинна перевищувати {max} байтів UTF-8',
   },
   dashboard: {
     title: 'Панель',
@@ -315,6 +316,18 @@ export default {
     dummy: {
       label: 'Тестовий пристрій',
       noFields: 'Додаткових типоспецифічних налаштувань немає.',
+    },
+    category: {
+      buses: 'Шини',
+      expanders: 'Розширювачі',
+      temperatureSensors: 'Датчики температури та клімату',
+      inputs: 'Входи',
+      outputs: 'Виходи',
+      controllers: 'Контролери',
+      rtc: 'RTC',
+      automation: 'Автоматизація',
+      displays: 'Дисплеї',
+      service: 'Службові',
     },
     type: {
       dummy: 'Тестовий пристрій',

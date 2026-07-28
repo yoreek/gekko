@@ -58,7 +58,7 @@ const targetDeps = (ids: number[]): DeviceDependencyLink[] =>
 
 export class FadeAnalogOutputDevice extends BaseDevice<FadeAnalogOutputConfigDraft, FadeCreateDraft, FadeAnalogOutputOutputSnapshot> {
   static readonly TYPE_ID = 21
-  static readonly TYPE_NAME = 'fade_analog_output'
+  static readonly TYPE_NAME = 'fade_analog_output' as const
   readonly typeId = FadeAnalogOutputDevice.TYPE_ID
   readonly typeName = FadeAnalogOutputDevice.TYPE_NAME
   readonly dependencyRoles: DeviceRole[] = ['analog_output']
@@ -97,7 +97,7 @@ export class FadeAnalogOutputDevice extends BaseDevice<FadeAnalogOutputConfigDra
 
 export class ScheduledAnalogOutputDevice extends BaseDevice<ScheduledAnalogOutputConfigDraft, ScheduledCreateDraft, ScheduledAnalogOutputOutputSnapshot> {
   static readonly TYPE_ID = 22
-  static readonly TYPE_NAME = 'scheduled_analog_output'
+  static readonly TYPE_NAME = 'scheduled_analog_output' as const
   readonly typeId = ScheduledAnalogOutputDevice.TYPE_ID
   readonly typeName = ScheduledAnalogOutputDevice.TYPE_NAME
   readonly dependencyRoles: DeviceRole[] = ['analog_output']
@@ -146,7 +146,7 @@ export class ScheduledAnalogOutputDevice extends BaseDevice<ScheduledAnalogOutpu
 
 export class AnalogOutputComposerDevice extends BaseDevice<AnalogOutputComposerConfigDraft, ComposerCreateDraft, AnalogOutputComposerOutputSnapshot> {
   static readonly TYPE_ID = 23
-  static readonly TYPE_NAME = 'analog_output_composer'
+  static readonly TYPE_NAME = 'analog_output_composer' as const
   readonly typeId = AnalogOutputComposerDevice.TYPE_ID
   readonly typeName = AnalogOutputComposerDevice.TYPE_NAME
   readonly dependencyRoles: DeviceRole[] = ['analog_output_group']

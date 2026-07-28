@@ -49,6 +49,11 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { createDevice } from '@/api'
 import { createDefaultDeviceDraft, type DeviceCreateDraft } from '@/models/devices/device-draft'
+import {
+  DEFAULT_DEVICE_NAMES,
+  isValidDeviceName,
+  nextAvailableDeviceName,
+} from '@/models/devices/device-name'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore } from '@/stores/panels'
 import { resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
@@ -78,17 +83,20 @@ const draft = ref<DeviceCreateDraft>(createDefaultDeviceDraft())
 const typeUi = computed(() => (draft.value.typeName ? resolveDeviceUi(draft.value.typeName) : null))
 const duplicateNameError = computed(() => isDuplicateDeviceName(draft.value.name) ? t('validation.uniqueDeviceName') : '')
 
-const canCreate = computed(() => draft.value.name.trim().length > 0 && draft.value.typeName.length > 0 && !isDuplicateDeviceName(draft.value.name))
+const canCreate = computed(() =>
+  isValidDeviceName(draft.value.name)
+  && draft.value.typeName.length > 0
+  && !isDuplicateDeviceName(draft.value.name))
 
 onBeforeMount(async () => {
   await deviceStore.initialize()
-  draft.value.name = nextAvailableDeviceName(draft.value.typeName)
+  draft.value.name = createDefaultName(draft.value.typeName)
 })
 
 function onBaseUpdate(value: DeviceCreateDraft): void {
   if (value.typeName !== draft.value.typeName) {
     draft.value = createDefaultDeviceDraft(value.typeName)
-    draft.value.name = nextAvailableDeviceName(value.typeName)
+    draft.value.name = createDefaultName(value.typeName)
     draft.value.enabled = value.enabled
     return
   }
@@ -104,17 +112,11 @@ function isDuplicateDeviceName(name: string): boolean {
   return normalizedName.length > 0 && deviceStore.devices.some(device => device.config.name.trim().toLocaleLowerCase() === normalizedName)
 }
 
-function nextAvailableDeviceName(typeName: DeviceCreateDraft['typeName']): string {
-  const baseName = t(resolveDeviceUi(typeName).labelKey)
-  if (!isDuplicateDeviceName(baseName)) {
-    return baseName
-  }
-
-  let suffix = 2
-  while (isDuplicateDeviceName(`${baseName} ${suffix}`)) {
-    suffix += 1
-  }
-  return `${baseName} ${suffix}`
+function createDefaultName(typeName: DeviceCreateDraft['typeName']): string {
+  return nextAvailableDeviceName(
+    DEFAULT_DEVICE_NAMES[typeName],
+    deviceStore.devices.map(device => device.config.name),
+  )
 }
 
 function navigateBack(): void {

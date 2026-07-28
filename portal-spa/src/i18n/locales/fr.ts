@@ -39,6 +39,7 @@ export default {
   validation: {
     required: 'Requis',
     uniqueDeviceName: 'Un appareil avec ce nom existe déjà',
+    deviceNameTooLong: "Le nom de l'appareil ne doit pas dépasser {max} octets UTF-8",
   },
   dashboard: {
     title: 'Tableau de bord',
@@ -315,6 +316,18 @@ export default {
     dummy: {
       label: 'Appareil factice',
       noFields: 'Aucun paramètre supplémentaire spécifique au type.',
+    },
+    category: {
+      buses: 'Bus',
+      expanders: 'Extensions',
+      temperatureSensors: 'Capteurs de température et de climat',
+      inputs: 'Entrées',
+      outputs: 'Sorties',
+      controllers: 'Contrôleurs',
+      rtc: 'RTC',
+      automation: 'Automatisation',
+      displays: 'Écrans',
+      service: 'Service',
     },
     type: {
       dummy: 'Appareil factice',

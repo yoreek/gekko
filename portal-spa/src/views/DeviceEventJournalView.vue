@@ -17,7 +17,13 @@
 
       <v-row>
         <v-col cols="12" md="3">
-          <v-select v-model="typeFilter" :items="typeFilterOptions" :label="t('journal.filters.type')" density="compact" />
+          <v-autocomplete
+            v-model="typeFilter"
+            :items="typeFilterOptions"
+            :filter-keys="deviceTypeFilterKeys"
+            :label="t('journal.filters.type')"
+            density="compact"
+          />
         </v-col>
         <v-col cols="12" md="3">
           <v-select v-model="eventKindFilter" :items="eventKindFilterOptions" :label="t('journal.filters.eventKind')" density="compact" />
@@ -109,6 +115,10 @@ import {
   useDeviceEventLogStore,
 } from '@/stores/deviceEventLog'
 import { allDeviceUis, resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
+import {
+  buildDeviceTypeOptions,
+  deviceTypeFilterKeys,
+} from '@/components/devices/registry/device-type-options'
 import PageContainer from '@/components/layout/PageContainer.vue'
 import PageToolbar from '@/components/layout/PageToolbar.vue'
 import PageCard from '@/components/layout/PageCard.vue'
@@ -139,10 +149,15 @@ const tableHeaders = [
   { title: t('journal.columns.eventKind'), key: 'eventKind' },
 ]
 
-const typeFilterOptions = computed(() => [
-  { title: t('journal.filters.allTypes'), value: 'all' },
-  ...allDeviceUis.map(ui => ({ title: t(ui.labelKey), value: ui.typeId })),
-])
+const typeFilterOptions = computed(() => buildDeviceTypeOptions<DeviceJournalTypeFilter>({
+  deviceUis: allDeviceUis,
+  translate: t,
+  valueFor: ui => ui.typeId,
+  firstOption: {
+    title: t('journal.filters.allTypes'),
+    value: 'all',
+  },
+}))
 
 const eventKindFilterOptions = computed(() => [
   { title: t('journal.filters.allEventKinds'), value: 'all' },

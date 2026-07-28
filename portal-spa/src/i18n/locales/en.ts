@@ -39,6 +39,7 @@ export default {
   validation: {
     required: 'Required',
     uniqueDeviceName: 'A device with this name already exists',
+    deviceNameTooLong: 'Device name must not exceed {max} UTF-8 bytes',
   },
   dashboard: {
     title: 'Dashboard',
@@ -315,6 +316,18 @@ export default {
     dummy: {
       label: 'Dummy device',
       noFields: 'No additional type-specific settings.',
+    },
+    category: {
+      buses: 'Buses',
+      expanders: 'Expanders',
+      temperatureSensors: 'Temperature and climate sensors',
+      inputs: 'Inputs',
+      outputs: 'Outputs',
+      controllers: 'Controllers',
+      rtc: 'RTC',
+      automation: 'Automation',
+      displays: 'Displays',
+      service: 'Service',
     },
     type: {
       dummy: 'Dummy device',
