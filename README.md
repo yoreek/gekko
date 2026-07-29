@@ -3,13 +3,26 @@
 [![Test](https://github.com/yoreek/gekko/actions/workflows/build.yml/badge.svg)](https://github.com/yoreek/gekko/actions/workflows/build.yml)
 [![Docs](https://github.com/yoreek/gekko/actions/workflows/docs.yml/badge.svg)](https://yoreek.github.io/gekko/)
 
-**Documentation: [yoreek.github.io/gekko](https://yoreek.github.io/gekko/)** — getting started, guides, and device reference. AI-generated repo walkthrough: [DeepWiki](https://deepwiki.com/yoreek/gekko).
+**[Install from your browser](https://yoreek.github.io/gekko/install/)** ·
+**[Documentation](https://yoreek.github.io/gekko/)** ·
+**[Firmware releases](https://github.com/yoreek/gekko/releases)** ·
+[Repository walkthrough](https://deepwiki.com/yoreek/gekko)
 
 ESP32 firmware (PlatformIO, C++) + web portal (Vue SPA in `portal-spa/`), served by the firmware itself from LittleFS.
 
 **A modular device controller for ESP32 — not a single-purpose product.**
 
 Gekko is firmware plus a web portal for building your own controller out of a growing catalog of device types, wired together and configured entirely through the UI — no per-project firmware rewrite. Add GPIO switches and port expanders (PCF8574/PCF8575), PWM/analog outputs with fade transitions, daily schedules, and multi-channel composition, temperature/humidity sensors (DS18B20, NTC, HTU21, AHT10, DHT11), DS3231 or DS1302 RTCs, pixel, character, and seven-segment displays (SSD1306, ST7735, LCD1602, LCD2004, TM1637) with a shared visual page/widget layout designer, thermostats, dosing pumps with calibration and history, and schedule/condition-driven automation — then group them into dashboard panels. Devices declare dependencies on each other (a switch on a port expander, a sensor on an I2C bus, a schedule driving a pump), and the registry enforces and persists that graph.
+
+![Gekko web dashboard showing sensors, relays, schedules, pumps, lighting, buses, and displays](docs-site/src/assets/screenshots/portal-dashboard.png)
+
+Typical uses include:
+
+- aquarium, greenhouse, and grow-room monitoring and control;
+- scheduled relays, dimmable lighting, pumps, and dosing;
+- local sensor dashboards with optional MQTT and Home Assistant integration;
+- reusable ESP32 controllers configured in the browser instead of rebuilt for
+  every installation.
 
 Everything runs standalone on the ESP32 itself:
 
@@ -104,3 +117,8 @@ pio run -e esp32dev_no_ble          # compile firmware without BLE provisioning
 ## Development commands
 
 See `CLAUDE.md` for firmware build, test, lint, and `portal-spa/` commands.
+
+## License
+
+Gekko is licensed under the
+[GNU General Public License v3.0 only](LICENSE).

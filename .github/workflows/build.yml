@@ -81,3 +81,72 @@ jobs:
           name: gekko-esp32-no-ble-${{ github.sha }}
           path: .pio/no-ble-distribution
           if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test, no-ble-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download no-BLE firmware bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gekko-esp32-no-ble-${{ github.sha }}
+          path: .pio/release/no-ble-source
+
+      - name: Package release firmware
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_root=".pio/release"
+          standard_name="gekko-esp32-standard-${GITHUB_REF_NAME}"
+          no_ble_name="gekko-esp32-no-ble-${GITHUB_REF_NAME}"
+
+          mkdir -p "${release_root}/${standard_name}"
+          cp webflash/bootloader.bin \
+             webflash/partitions.bin \
+             webflash/firmware.bin \
+             webflash/littlefs.bin \
+             webflash/merged-firmware.bin \
+             webflash/manifest.json \
+             webflash/flash-layout.env \
+             webflash/flash.sh \
+             webflash/flash.bat \
+             webflash/flash.py \
+             "${release_root}/${standard_name}/"
+
+          mkdir -p "${release_root}/${no_ble_name}"
+          cp -R "${release_root}/no-ble-source/." \
+                "${release_root}/${no_ble_name}/"
+
+          cd "${release_root}"
+          zip -qr "${standard_name}.zip" "${standard_name}"
+          zip -qr "${no_ble_name}.zip" "${no_ble_name}"
+          sha256sum "${standard_name}.zip" "${no_ble_name}.zip" > SHA256SUMS
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          standard_zip=".pio/release/gekko-esp32-standard-${GITHUB_REF_NAME}.zip"
+          no_ble_zip=".pio/release/gekko-esp32-no-ble-${GITHUB_REF_NAME}.zip"
+          checksums=".pio/release/SHA256SUMS"
+
+          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" \
+              "${standard_zip}" "${no_ble_zip}" "${checksums}" \
+              --clobber \
+              --repo "${GITHUB_REPOSITORY}"
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              "${standard_zip}" "${no_ble_zip}" "${checksums}" \
+              --verify-tag \
+              --generate-notes \
+              --title "Gekko ${GITHUB_REF_NAME}" \
+              --repo "${GITHUB_REPOSITORY}"
+          fi
