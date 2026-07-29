@@ -10,8 +10,8 @@ The frontend build and the ESP32 filesystem upload are separate steps.
 
 ## LittleFS Size Budget
 
-- The ESP32 partition table reserves `0x7D000` bytes (`500 KiB`) for `littlefs`.
-- `portal-spa/scripts/check-data-budget.mjs` should enforce the same `500 KiB` hard limit for git-tracked gzip assets in `data/`.
+- The ESP32 partition table reserves `0xA0000` bytes (`640 KiB`) for `littlefs`.
+- `portal-spa/scripts/check-data-budget.mjs` should enforce the same `640 KiB` hard limit for git-tracked gzip assets in `data/`.
 - The script also reports the largest gzipped JavaScript asset so bundle growth remains visible, but the filesystem fit check is based on total `data/` usage.
 
 ## Flashing The Controller
@@ -30,9 +30,12 @@ The frontend build and the ESP32 filesystem upload are separate steps.
 `.githooks/pre-commit` (activate once per clone with `git config core.hooksPath
 .githooks`) does, on **every** commit: `scripts/test.sh` → `pnpm deploy:data`
 (rebuild SPA into `data/`) → `pio run` + `buildfs` (rebuild firmware +
-littlefs) → copy binaries into `webflash/` → `git add data/ webflash/...`. So
-the regenerated `data/*.gz` and `webflash/*.bin` are folded into the commit
-automatically — you do not stage them by hand.
+littlefs) → `scripts/collect_webflash.py`. The collector verifies that the
+built partition table matches `my_partitions.csv`, copies the individual
+images, creates `merged-firmware.bin`, and regenerates `manifest.json` and
+`flash-layout.env` from the same partition offsets. The hook then stages the
+regenerated `data/` and `webflash/` artifacts for the commit — you do not stage
+them by hand.
 
 Because the hook rebuilds and re-stages on every commit, the SPA build **must be
 reproducible**: the same source at the same commit must produce byte-identical

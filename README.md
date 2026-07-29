@@ -43,7 +43,11 @@ GitHub Actions CI duplicates the test run on the server for every push/PR — a 
 
 ## Flashing the firmware
 
-Ready-to-flash binaries (`bootloader.bin`, `partitions.bin`, `firmware.bin`, `littlefs.bin`) live in `webflash/` and are kept up to date by the pre-commit hook.
+Ready-to-flash binaries (`bootloader.bin`, `partitions.bin`, `firmware.bin`,
+`littlefs.bin`, and the combined `merged-firmware.bin`) live in `webflash/` and
+are kept up to date by the pre-commit hook. The hook derives the individual
+image offsets in `manifest.json` and `flash-layout.env` from
+`my_partitions.csv`.
 
 **Easiest — web installer:** open **[yoreek.github.io/gekko/install](https://yoreek.github.io/gekko/install/)** in Chrome/Edge/Opera on desktop and flash over Web Serial, nothing to install. (Browser serial support has known issues on some Linux + USB-chip combinations — fall back to the options below if it fails.)
 
@@ -51,13 +55,25 @@ Ready-to-flash binaries (`bootloader.bin`, `partitions.bin`, `firmware.bin`, `li
 
 1. Download the standalone `esptool` binary for your OS from the [esptool releases page](https://github.com/espressif/esptool/releases).
 2. Place it next to the scripts in `webflash/` (rename to `esptool` on macOS/Linux, `esptool.exe` on Windows).
-3. Run `webflash/flash.sh [PORT]` (macOS/Linux) or `webflash/flash.bat [PORT]` (Windows). If no port is given, esptool tries to auto-detect it.
+3. Run `webflash/flash.sh [PORT]` (macOS/Linux) or
+   `webflash/flash.bat [PORT]` (Windows). By default this writes the combined
+   image at `0x0`. If no port is given, esptool tries to auto-detect it.
+
+The combined image is intended for a complete installation. Because `devdata`
+is located between the application and LittleFS partitions, writing the
+continuous merged image erases `devdata`; the following NVS partition is not
+part of the image. Use a selective target for routine updates that must preserve
+`devdata`.
+
+To update only one image, append `bootloader`, `partitions`, `firmware`, or
+`littlefs`, for example `webflash/flash.sh /dev/ttyUSB0 littlefs`. The target
+can also be used without a port, for example `webflash/flash.sh littlefs`.
 
 **Alternative — Python:**
 
 ```sh
 pip install esptool
-python3 webflash/flash.py [PORT]
+python3 webflash/flash.py [PORT] [all|bootloader|partitions|firmware|littlefs]
 ```
 
 **Alternative — PlatformIO (for development):**

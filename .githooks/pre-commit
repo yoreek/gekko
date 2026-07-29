@@ -17,10 +17,16 @@ pio run -e esp32dev
 pio run -e esp32dev -t buildfs
 
 echo "==> collect flashable binaries into webflash/"
-mkdir -p webflash
-cp .pio/build/esp32dev/bootloader.bin webflash/
-cp .pio/build/esp32dev/partitions.bin webflash/
-cp .pio/build/esp32dev/firmware.bin webflash/
-cp .pio/build/esp32dev/littlefs.bin webflash/
+python3 scripts/collect_webflash.py \
+    --build-dir .pio/build/esp32dev \
+    --output-dir webflash \
+    --partitions my_partitions.csv
 
-git add data/ webflash/bootloader.bin webflash/partitions.bin webflash/firmware.bin webflash/littlefs.bin
+git add data/ \
+    webflash/bootloader.bin \
+    webflash/partitions.bin \
+    webflash/firmware.bin \
+    webflash/littlefs.bin \
+    webflash/merged-firmware.bin \
+    webflash/manifest.json \
+    webflash/flash-layout.env

@@ -14,6 +14,9 @@ python3 "$ROOT_DIR/tools/devicegen/check_registry.py" "$ROOT_DIR"
 # never as a runtime/adapter's active config. See docs/device-config-versioning.md.
 python3 "$ROOT_DIR/tools/devicegen/check_config_versions.py" "$ROOT_DIR"
 
+# Webflash artifacts must derive all partition offsets from the partition table.
+python3 -B "$ROOT_DIR/scripts/test_collect_webflash.py"
+
 # `pio test` does not run platformio.ini's extra_scripts (unlike `pio run`), so
 # generated/Version.h would be missing on a fresh checkout without this.
 python3 "$ROOT_DIR/scripts/generate_version_header.py"
