@@ -223,7 +223,8 @@ un controllo rapido, ma di solito serve per alimentare un sensore:
   trasforma la lettura in temperatura, che può poi guidare un
   [thermostat](/gekko/it/reference/devices/thermostat/);
 - i millivolt compaiono nei
-  [display placeholders](/gekko/it/guides/displays/) per un OLED/TFT;
+  [display placeholders](/gekko/it/guides/displays/) per qualsiasi display
+  supportato;
 - sulle [build MQTT](/gekko/it/guides/mqtt-home-assistant/) ogni input foglia
   (l'ingresso port e ogni canale) è scopribile in Home Assistant come sensore
   `voltage`. Gli hub non lo sono — forniscono canali, non una lettura propria.

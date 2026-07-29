@@ -2,11 +2,13 @@
 
 > User-facing guide: <https://yoreek.github.io/gekko/guides/displays/> — keep the two in sync when changing behavior described here.
 
-This document defines how metric placeholders work in display text widgets across the frontend, firmware, and mock/runtime layers.
+This document defines how metric placeholders work in display widgets with text
+content across the frontend, firmware, and mock/runtime layers.
 
 ## Scope
 
-- Applies to text widgets on SSD1306 and ST7735 display layouts.
+- Applies to Text widgets on SSD1306/ST7735, Character widgets on
+  LCD1602/LCD2004, and Digital widgets on TM1637 display layouts.
 - Placeholder strings live directly in `widget.text`.
 - Placeholders are evaluated at render time, not stored as a separate field.
 - The same text may contain plain text and any number of placeholders.
@@ -72,7 +74,7 @@ Rules:
 - Any number of placeholders is allowed in the same text field.
 - Valid placeholders are inserted through the placeholder builder UI.
 - Manually typed placeholders are validated on every edit.
-- A text widget with no placeholder is treated as static text.
+- A widget text value with no placeholder is treated as static text.
 - Invalid placeholder syntax is reported, but it does not block preview rendering.
 - A placeholder that exists syntactically but is not present in the fetched catalog is treated as unavailable.
 - The SPA parser mirrors the firmware grammar, including trailing filters.
@@ -162,7 +164,7 @@ The runtime AST and any compiled placeholder references are transient and are re
 ## Notes
 
 - Long placeholder text should use a multiline text editor in the UI.
-- Text widget width and height still define the render box.
+- On pixel displays, Text widget width and height still define the render box.
 - Placeholder evaluation happens after layout loading and before widget drawing.
 - Individual placeholders render as `N/A` if some are unavailable; surrounding static text still renders.
 - Filters are intentionally small and bounded, even though `format`/`fixed` now take an argument. New filters should be added only when they map cleanly to typed metric values or existing display formatting rules.

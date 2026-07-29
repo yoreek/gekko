@@ -38,6 +38,7 @@ HTU21, expander) уже имеет подтяжки на плате**, а уст
 | Устройство | Типичный адрес |
 | --- | --- |
 | SSD1306 OLED display | `0x3C` (иногда `0x3D`) |
+| AHT10 temperature + humidity | `0x38` |
 | HTU21 temperature + humidity | `0x40` |
 | DS3231 real-time clock | `0x68` |
 | PCF8574 / PCF8575 port expanders | `0x20`–`0x27` (задаётся jumper'ами) |

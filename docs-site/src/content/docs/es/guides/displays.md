@@ -1,22 +1,32 @@
 ---
 title: Pantallas y diseñador de disposición
-description: Controla pantallas OLED SSD1306 y TFT ST7735 con el diseñador visual de disposición de Gekko y marcadores vivos de métricas.
+description: Configura pantallas de píxeles, caracteres y siete segmentos con el diseñador visual de Gekko.
 sidebar:
   order: 3
 ---
 
-Gekko controla pantallas OLED I2C **SSD1306** y pantallas TFT SPI **ST7735**,
-y el portal incluye un **diseñador visual de disposición**: compones lo que
-debe mostrar la pantalla a partir de páginas y widgets, en vivo en el
-navegador, con vista previa.
+Gekko admite cinco tipos de pantalla mediante un **diseñador visual de
+disposición** compartido. Configuras páginas y widgets en el navegador con
+vista previa; las coordenadas y widgets se adaptan a la pantalla.
+
+| Tipo | Hardware | Coordenadas | Widgets |
+| --- | --- | --- | --- |
+| `ssd1306` | OLED I2C monocromo | Píxeles | Texto, formas y bitmaps |
+| `st7735` | TFT SPI a color | Píxeles | Texto, formas y bitmaps RGB565 |
+| `lcd1602` | HD44780 16 × 2 mediante PCF857x | Celdas de caracteres | Character |
+| `lcd2004` | HD44780 20 × 4 mediante PCF857x | Celdas de caracteres | Character |
+| `tm1637` | Módulo de siete segmentos de cuatro dígitos | Posiciones de dígitos | Digital |
 
 ## Configurar una pantalla
 
-1. Crea primero el dispositivo de bus: un
-   [**bus I2C**](/gekko/es/reference/devices/i2c-bus/) (pines SDA/SCL) para
-   SSD1306, o un [**bus SPI**](/gekko/es/reference/devices/spi-bus/) para ST7735.
-2. Crea el dispositivo de pantalla y selecciona ese bus como dependencia
-   (además de la dirección I2C o los pines de control del TFT).
+1. Crea primero los dispositivos necesarios:
+   - un [**bus I2C**](/gekko/es/reference/devices/i2c-bus/) para SSD1306;
+   - un [**bus SPI**](/gekko/es/reference/devices/spi-bus/) para ST7735;
+   - un [**expansor de puertos**](/gekko/es/reference/devices/port-expanders/)
+     PCF8574/PCF8575 para LCD1602/LCD2004;
+   - dos dispositivos `gpio_switch` para CLK y DIO del TM1637.
+2. Crea la pantalla, selecciona esos dispositivos como dependencias y
+   configura dirección, cableado, pines de control, brillo o rotación.
 3. Abre el dispositivo y haz clic en **Design** para entrar en el diseñador de
    disposición.
 
@@ -24,18 +34,17 @@ navegador, con vista previa.
 
 ## Páginas y widgets
 
-Una disposición es un conjunto de **páginas**; cada página contiene
-**widgets** posicionados (texto y más). El diseñador muestra una vista previa
-en vivo renderizada con las mismas fuentes y métricas que usa el firmware, así
-que lo que ves es lo que dibuja el panel. Las disposiciones se guardan en el
-dispositivo y se incluyen en los
+Una disposición contiene **páginas** con **widgets** posicionados. Las
+pantallas de píxeles usan píxeles, LCD1602/LCD2004 usan celdas de caracteres y
+TM1637 usa posiciones de dígitos. El diseñador permite solo los widgets
+compatibles y muestra una vista previa adecuada. Las disposiciones se guardan
+en el dispositivo y se incluyen en los
 [paquetes de copia de seguridad](/gekko/es/guides/backup-restore/).
 
 ## Valores en vivo: marcadores de métricas
 
-Los widgets de texto pueden mezclar texto estático con **marcadores** resueltos
-en tiempo de renderizado. Crear una pantalla de estado es solo escribir unas
-líneas de texto plantilla:
+Los widgets Text, Character y Digital pueden mezclar texto estático con
+**marcadores** resueltos en tiempo de renderizado.
 
 ![Texto de widget con marcadores a la izquierda, salida OLED renderizada con valores vivos a la derecha](../../../../assets/diagrams/display-placeholders.svg)
 

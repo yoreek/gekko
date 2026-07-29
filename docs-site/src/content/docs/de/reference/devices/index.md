@@ -1,6 +1,6 @@
 ---
 title: Geraetekatalog
-description: Alle 27 Geraetetypen, die in jedem Gekko-Firmware-Image eingebaut sind.
+description: Alle 33 Geraetetypen, die in jedem Gekko-Firmware-Image eingebaut sind.
 sidebar:
   order: 1
   label: Geraetekatalog
@@ -19,6 +19,7 @@ detaillierten Seiten, die nach und nach folgen.
 | [`i2c_bus`](/gekko/de/reference/devices/i2c-bus/) | I2C-Bus (SDA/SCL); Elternteil fuer Displays, HTU21, RTC, Portexpander |
 | [`spi_bus`](/gekko/de/reference/devices/spi-bus/) | SPI-Bus; Elternteil fuer das ST7735-TFT |
 | `rtc_ds3231` | DS3231-Echtzeituhr - haelt Plaene ohne NTP am Laufen |
+| `rtc_ds1302` | DS1302-Drei-Draht-Echtzeituhr an den GPIO-Pins CLK, DAT und RST |
 | `dummy` | Platzhalter-/Testgeraet |
 
 ## Schalter & Ausgaenge
@@ -49,6 +50,8 @@ detaillierten Seiten, die nach und nach folgen.
 | [`ds18b20_temperature_sensor`](/gekko/de/reference/devices/ds18b20/) | DS18B20-1-Wire-Temperatursonde |
 | [`ntc_thermistor_temperature_sensor`](/gekko/de/reference/devices/ntc-thermistor/) | NTC-Thermistor an einem beliebigen Analogeingang |
 | [`htu21`](/gekko/de/reference/devices/htu21/) | HTU21 I2C-Temperatur- und Luftfeuchtesensor |
+| `aht10` | AHT10 I2C-Temperatur- und Luftfeuchtesensor |
+| `dht11` | DHT11 Temperatur- und Luftfeuchtesensor an einem GPIO |
 | `binary_sensor` | Digitaler Eingang - Schwimmerschalter, Tuerkontakt, Lecksensor |
 
 ## Steuerung & Automatisierung
@@ -66,3 +69,6 @@ detaillierten Seiten, die nach und nach folgen.
 | --- | --- |
 | `ssd1306` | I2C-OLED mit dem [visuellen Layout-Designer](/gekko/de/guides/displays/) |
 | `st7735` | SPI-Farb-TFT, derselbe Layout-Designer |
+| `lcd1602` | HD44780-Zeichen-LCD mit 16 × 2 Zellen ueber einen PCF857x-Portexpander |
+| `lcd2004` | HD44780-Zeichen-LCD mit 20 × 4 Zellen ueber einen PCF857x-Portexpander |
+| `tm1637` | Vierstellige Siebensegmentanzeige mit Helligkeit und 180°-Drehung |

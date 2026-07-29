@@ -122,7 +122,7 @@ offset, доки вони не збігаються — такий одното�
 
 - [термостат](/gekko/uk/reference/devices/thermostat/) для керування нагрівачем
   або охолоджувачем;
-- [display placeholders](/gekko/uk/guides/displays/) на OLED/TFT;
+- [display placeholders](/gekko/uk/guides/displays/) на будь-якому підтримуваному дисплеї;
 - Home Assistant як read-only `sensor` на [MQTT-збірках](/gekko/uk/guides/mqtt-home-assistant/).
 
 ## Конфігурація

@@ -115,7 +115,7 @@ sensor does:
 
 - a [thermostat](/gekko/reference/devices/thermostat/) controlling a heater or
   chiller;
-- [display placeholders](/gekko/guides/displays/) on an OLED/TFT;
+- [display placeholders](/gekko/guides/displays/) on any supported display;
 - Home Assistant as a read-only `sensor` entity on
   [MQTT builds](/gekko/guides/mqtt-home-assistant/).
 

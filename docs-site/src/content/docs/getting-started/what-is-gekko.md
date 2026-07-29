@@ -19,17 +19,15 @@ pump is a web portal action against the running device, never a recompile.
 - **Switches and outputs** — GPIO relays, switches behind PCF8574/PCF8575 I2C
   port expanders, PWM/analog outputs with smooth fade transitions, daily
   brightness curves, and multi-channel grouping.
-- **Sensors** — DS18B20 (1-Wire) and NTC thermistor temperature sensors, HTU21
-  temperature + humidity, and digital binary inputs (door contacts, float
-  switches, leak sensors).
+- **Sensors** — DS18B20 and NTC temperature sensors, HTU21/AHT10/DHT11
+  temperature + humidity sensors, and digital binary inputs.
 - **Automation** — minute-precision daily schedules, condition-driven auto
   switches with manual override and pause, hysteresis thermostats, and dosing
   pumps with calibration and a dose journal.
-- **Displays** — SSD1306 OLED and ST7735 TFT screens with a visual page/widget
-  layout designer built into the portal, including live metric placeholders
-  like `{{dev.123.temperature}}`.
-- **Infrastructure** — I2C/SPI/1-Wire buses, a DS3231 real-time clock, and a
-  dashboard you compose from panels.
+- **Displays** — SSD1306 OLED, ST7735 TFT, LCD1602/LCD2004 character displays,
+  and TM1637 seven-segment modules with a shared visual layout designer.
+- **Infrastructure** — I2C/SPI/1-Wire buses, DS3231/DS1302 real-time clocks,
+  and a dashboard you compose from panels.
 
 Devices declare **dependencies** on each other — a switch on a port expander, a
 sensor on an I2C bus, a pump gated by a schedule — and the registry validates,

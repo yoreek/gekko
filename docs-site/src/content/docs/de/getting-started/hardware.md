@@ -38,17 +38,19 @@ tatsaechlich verdrahtest:
   viele Sonden)
 - **NTC-Thermistoren** und andere analoge Sensoren an einem ADC-Pin, an einem
   **ADS1115** 16-Bit-I2C-ADC oder an einem **CD74HC4067** 16-Kanal-Multiplexer
-- **HTU21** I2C-Temperatur- und Luftfeuchtesensor
-- **SSD1306** I2C-OLED-Displays und **ST7735** SPI-TFT-Displays
-- **DS3231** I2C-Echtzeituhr - empfohlen, wenn du Plaene nutzt und das Geraet
-  auch ohne Internet/NTP laufen soll
+- **HTU21**- und **AHT10**-I2C-Temperatur-/Feuchtesensoren oder **DHT11** an
+  einem GPIO
+- **SSD1306**-OLED, **ST7735**-TFT, **LCD1602/LCD2004**-Zeichenanzeigen und
+  vierstellige **TM1637**-Module
+- **DS3231**-I2C- oder Drei-Draht-**DS1302**-Echtzeituhren - empfohlen fuer
+  Zeitplaene ohne Internet/NTP
 - **Peristaltische Dosierpumpen** ueber einen Schaltausgang
 - **LED-Treiber / PWM-Lasten** auf LEDC-faehigen Pins (`analog_output`)
 - Digitale Eingaenge: Schwimmerschalter, Tuerkontakte, Lecksensoren
   (`binary_sensor`)
 
 Siehe den [Geraetekatalog](/gekko/de/reference/devices/) fuer die komplette Liste
-der 27 eingebauten Geraetetypen.
+der 33 eingebauten Geraetetypen.
 
 :::tip
 Starte nur mit dem nackten Board. Flashen, mit WiFi verbinden und im Portal

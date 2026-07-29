@@ -40,6 +40,7 @@ la velocidad por defecto): I2C es un bus de placa, no de cable largo como
 | Dispositivo | Dirección típica |
 | --- | --- |
 | Pantalla OLED SSD1306 | `0x3C` (a veces `0x3D`) |
+| AHT10 temperatura + humedad | `0x38` |
 | HTU21 temperatura + humedad | `0x40` |
 | Reloj en tiempo real DS3231 | `0x68` |
 | Expansores PCF8574 / PCF8575 | `0x20`-`0x27` (seleccionable con puentes) |

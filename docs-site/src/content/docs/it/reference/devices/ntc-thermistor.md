@@ -122,7 +122,7 @@ altro sensore di temperatura:
 
 - un [thermostat](/gekko/it/reference/devices/thermostat/) che pilota un
   riscaldatore o un chiller;
-- [display placeholders](/gekko/it/guides/displays/) su un OLED/TFT;
+- [display placeholders](/gekko/it/guides/displays/) su qualsiasi display supportato;
 - Home Assistant come entità `sensor` sola lettura nelle
   [build MQTT](/gekko/it/guides/mqtt-home-assistant/).
 

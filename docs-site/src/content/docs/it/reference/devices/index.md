@@ -1,6 +1,6 @@
 ---
 title: Catalogo dispositivi
-description: Tutti e 27 i tipi di dispositivo integrati in ogni immagine firmware Gekko.
+description: Tutti e 33 i tipi di dispositivo integrati in ogni immagine firmware Gekko.
 sidebar:
   order: 1
   label: Catalogo dispositivi
@@ -19,6 +19,7 @@ breve, con pagine dettagliate aggiunte iterativamente.
 | [`i2c_bus`](/gekko/it/reference/devices/i2c-bus/) | Bus I2C (SDA/SCL); parent per display, HTU21, RTC ed espansori di porte |
 | [`spi_bus`](/gekko/it/reference/devices/spi-bus/) | Bus SPI; parent per il TFT ST7735 |
 | `rtc_ds3231` | Orologio in tempo reale DS3231 — mantiene i programmi attivi senza NTP |
+| `rtc_ds1302` | Orologio in tempo reale DS1302 a tre fili sui GPIO CLK, DAT e RST |
 | `dummy` | Dispositivo segnaposto/test |
 
 ## Switch e output
@@ -49,6 +50,8 @@ breve, con pagine dettagliate aggiunte iterativamente.
 | [`ds18b20_temperature_sensor`](/gekko/it/reference/devices/ds18b20/) | Sonda di temperatura DS18B20 1-Wire |
 | [`ntc_thermistor_temperature_sensor`](/gekko/it/reference/devices/ntc-thermistor/) | Termistore NTC su qualsiasi ingresso analogico |
 | [`htu21`](/gekko/it/reference/devices/htu21/) | Sensore I2C HTU21 di temperatura + umidità |
+| `aht10` | Sensore I2C AHT10 di temperatura + umidità |
+| `dht11` | Sensore DHT11 di temperatura + umidità su un GPIO |
 | `binary_sensor` | Ingresso digitale — galleggiante, contatto porta, sensore perdite |
 
 ## Controllo e automazione
@@ -66,3 +69,6 @@ breve, con pagine dettagliate aggiunte iterativamente.
 | --- | --- |
 | `ssd1306` | OLED I2C con il [designer visuale di layout](/gekko/it/guides/displays/) |
 | `st7735` | TFT colore SPI, stesso designer di layout |
+| `lcd1602` | LCD a caratteri HD44780 16 × 2 tramite espansore PCF857x |
+| `lcd2004` | LCD a caratteri HD44780 20 × 4 tramite espansore PCF857x |
+| `tm1637` | Display a sette segmenti a quattro cifre con luminosità e rotazione di 180° |

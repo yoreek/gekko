@@ -117,7 +117,7 @@ offset, пока они не совпадут — такой одноточеч�
 
 - [thermostat](/gekko/ru/reference/devices/thermostat/), управляющий нагревателем
   или чиллером;
-- [display placeholders](/gekko/ru/guides/displays/) на OLED/TFT;
+- [display placeholders](/gekko/ru/guides/displays/) на любом поддерживаемом дисплее;
 - Home Assistant как read-only `sensor` entity на
   [MQTT builds](/gekko/ru/guides/mqtt-home-assistant/).
 

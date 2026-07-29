@@ -38,10 +38,12 @@ realmente lo cableas:
   muchas sondas)
 - **Termistores NTC** y otros sensores analógicos en un pin ADC, un ADC
   I2C **ADS1115** de 16 bits o un multiplexor **CD74HC4067** de 16 canales
-- **HTU21** sensor I2C de temperatura + humedad
-- **SSD1306** pantallas OLED I2C y **ST7735** pantallas TFT SPI
-- **DS3231** reloj en tiempo real I2C - recomendado si usas horarios y el
-  dispositivo puede funcionar sin Internet/NTP
+- Sensores I2C de temperatura y humedad **HTU21** y **AHT10**, o **DHT11** en
+  un GPIO
+- OLED **SSD1306**, TFT **ST7735**, pantallas de caracteres
+  **LCD1602/LCD2004** y módulos **TM1637** de cuatro dígitos
+- Relojes en tiempo real **DS3231** I2C o **DS1302** de tres hilos -
+  recomendados para horarios sin Internet/NTP
 - **Bombas peristálticas dosificadoras** accionadas a través de una salida de
   conmutación
 - **Controladores LED / cargas PWM** en pines compatibles con LEDC
@@ -50,7 +52,7 @@ realmente lo cableas:
   (`binary_sensor`)
 
 Consulta el [catálogo de dispositivos](/gekko/es/reference/devices/) para la
-lista completa de los 27 tipos incorporados.
+lista completa de los 33 tipos incorporados.
 
 :::tip
 Empieza solo con la placa desnuda. Flashea, conéctala a WiFi y explora el

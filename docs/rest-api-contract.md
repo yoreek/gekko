@@ -91,7 +91,13 @@ Supported public `typeName` values:
 - `dummy`
 - `gpio_switch`
 - `onewire_bus`
+- `i2c_bus`
+- `spi_bus`
+- `ssd1306`
+- `st7735`
 - `ds18b20_temperature_sensor`
+- `aht10`
+- `dht11`
 - `ntc_thermistor_temperature_sensor`
 - `htu21`
 - `thermostat`
@@ -112,6 +118,9 @@ Supported public `typeName` values:
 - `ads1115_hub`
 - `cd74hc4067_hub`
 - `analog_input_channel`
+- `lcd1602`
+- `lcd2004`
+- `tm1637`
 
 ## Device Config And Runtime
 

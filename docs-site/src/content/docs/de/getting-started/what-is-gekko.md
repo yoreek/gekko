@@ -21,17 +21,15 @@ laufenden Geraet, nie ein Recompile.
 - **Schalter und Ausgaenge** - GPIO-Relais, Schalter hinter PCF8574/PCF8575
   I2C-Portexpandern, PWM/Analog-Ausgaenge mit sanften Uebergaengen, Tageskurven
   fuer Helligkeit und mehrkanaelige Gruppen.
-- **Sensoren** - DS18B20-Temperatursensoren (1-Wire) und NTC-Thermistoren,
-  HTU21 fuer Temperatur + Luftfeuchte und digitale Binareingaenge (Tueren,
-  Schwimmerschalter, Lecksensoren).
+- **Sensoren** - DS18B20- und NTC-Temperatursensoren, HTU21/AHT10/DHT11 fuer
+  Temperatur + Luftfeuchte und digitale Binaereingaenge.
 - **Automatisierung** - minuezise Tagesplaene, bedingungsgetriebene Auto-Switches
   mit manuellem Override und Pause, Hysterese-Thermostate und Dosierpumpen mit
   Kalibrierung und Dosiereintrag.
-- **Displays** - SSD1306-OLED- und ST7735-TFT-Bildschirme mit einem visuellen
-  Page-/Widget-Layout-Designer direkt im Portal, inklusive Live-Platzhaltern
-  wie `{{dev.123.temperature}}`.
-- **Infrastruktur** - I2C-/SPI-/1-Wire-Busse, eine DS3231-Echtzeituhr und ein
-  Dashboard, das du aus Panels zusammensetzt.
+- **Displays** - SSD1306-OLED, ST7735-TFT, LCD1602/LCD2004-Zeichenanzeigen und
+  TM1637-Siebensegmentmodule mit gemeinsamem visuellem Layout-Designer.
+- **Infrastruktur** - I2C-/SPI-/1-Wire-Busse, DS3231/DS1302-Echtzeituhren und
+  ein Dashboard, das du aus Panels zusammensetzt.
 
 Geraete deklarieren **Abhaengigkeiten** untereinander - ein Schalter auf einem
 Portexpander, ein Sensor auf einem I2C-Bus, eine Pumpe, die von einem Plan

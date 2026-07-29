@@ -124,7 +124,7 @@ capteur de température :
 
 - un [thermostat](/gekko/fr/reference/devices/thermostat/) qui pilote un chauffage
   ou un refroidisseur ;
-- des [espaces réservés d'affichage](/gekko/fr/guides/displays/) sur un OLED/TFT ;
+- des [espaces réservés d'affichage](/gekko/fr/guides/displays/) sur tout affichage compatible ;
 - Home Assistant comme entité `sensor` en lecture seule sur les
   [builds MQTT](/gekko/fr/guides/mqtt-home-assistant/).
 

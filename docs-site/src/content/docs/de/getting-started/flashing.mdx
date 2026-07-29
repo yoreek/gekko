@@ -9,9 +9,18 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 
 Die bereitstellbaren Binaries (`bootloader.bin`, `partitions.bin`,
 `firmware.bin`, `littlefs.bin`) werden aus jedem Commit erzeugt und enthalten
-sowohl die Firmware als auch die Webportal-Assets. **Standard** enthaelt die
-BLE-WiFi-Einrichtung und reserviert GPIO 32 fuer den Taster. **Without BLE**
-ist kleiner; die Einrichtung ueber Access Point und Webportal bleibt erhalten.
+sowohl die Firmware als auch die Webportal-Assets.
+
+## Firmware-Variante waehlen
+
+| Variante | WiFi-Einrichtung ueber BLE | GPIO 32 | Setup-Access-Point und Webportal |
+| --- | --- | --- | --- |
+| **Standard** | Enthalten | Fuer den BLE-Aktivierungstaster reserviert | Verfuegbar |
+| **Without BLE** | BLE-Code wird nicht kompiliert | Fuer ein anderes Geraet verfuegbar | Verfuegbar |
+
+Waehle **Standard** nur, wenn du WiFi ueber eine mobile BLE-App einrichten
+moechtest. Waehle **Without BLE**, wenn Access Point und Webportal genuegen:
+Diese Firmware ist kleiner und reserviert GPIO 32 nicht.
 
 ## Option 1 - Webinstaller (am einfachsten)
 
@@ -73,9 +82,13 @@ Binaries.
 Wenn du aus dem Quellcode baust:
 
 ```sh
-pio run -e esp32dev -t upload       # Firmware, ueber Serial
-pio run -e esp32dev -t uploadfs     # LittleFS-Portal-Assets, ueber Serial
-pio run -e esp32dev_no_ble          # ohne BLE-Provisioning bauen
+# Standard
+pio run -e esp32dev -t upload
+pio run -e esp32dev -t uploadfs
+
+# Without BLE
+pio run -e esp32dev_no_ble -t upload
+pio run -e esp32dev_no_ble -t uploadfs
 ```
 
 Siehe `CLAUDE.md` und `docs/platformio-environments.md` im Repository fuer

@@ -122,7 +122,7 @@ sensor de temperatura:
 
 - un [termostato](/gekko/es/reference/devices/thermostat/) que gobierna un
   calentador o un enfriador;
-- [marcadores de pantalla](/gekko/es/guides/displays/) en un OLED/TFT;
+- [marcadores de pantalla](/gekko/es/guides/displays/) en cualquier pantalla compatible;
 - Home Assistant como entidad `sensor` de solo lectura en
   [compilaciones MQTT](/gekko/es/guides/mqtt-home-assistant/).
 

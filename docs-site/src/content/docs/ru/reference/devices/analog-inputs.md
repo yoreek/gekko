@@ -217,8 +217,8 @@ ADC-семплам, что гасит шум ещё до отправки зна
 - **[NTC thermistor](/gekko/ru/reference/devices/ntc-thermistor/)** превращает
   чтение в температуру, которая затем может управлять
   [thermostat](/gekko/ru/reference/devices/thermostat/);
-- millivolts появляются в [display placeholders](/gekko/ru/guides/displays/) для
-  OLED/TFT;
+- millivolts появляются в [display placeholders](/gekko/ru/guides/displays/)
+  любого поддерживаемого дисплея;
 - на [MQTT builds](/gekko/ru/guides/mqtt-home-assistant/) каждый leaf input
   (портовый вход и каждый канал) обнаруживается в Home Assistant как датчик
   `voltage`. Hubs не являются датчиками — они дают каналы, а не собственное

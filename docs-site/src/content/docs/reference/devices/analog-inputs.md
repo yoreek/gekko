@@ -212,7 +212,7 @@ quick check, but the point is usually to feed a sensor:
   reading into a temperature, which can then drive a
   [thermostat](/gekko/reference/devices/thermostat/);
 - the millivolts show up in
-  [display placeholders](/gekko/guides/displays/) for an OLED/TFT;
+  [display placeholders](/gekko/guides/displays/) for any supported display;
 - on [MQTT builds](/gekko/guides/mqtt-home-assistant/) each leaf input
   (the port input and each channel) is discoverable in Home Assistant as a
   `voltage` sensor. Hubs aren't — they provide channels, not a reading of their

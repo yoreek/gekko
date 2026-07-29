@@ -1,23 +1,32 @@
 ---
 title: Affichages et concepteur de mise en page
-description: Pilotez des écrans OLED SSD1306 et TFT ST7735 avec le concepteur visuel de mise en page de Gekko et des espaces réservés de métriques en direct.
+description: Configurez des affichages à pixels, à caractères et sept segments avec le concepteur visuel de Gekko.
 sidebar:
   order: 3
 ---
 
-Gekko pilote des écrans OLED I2C **SSD1306** et des écrans TFT SPI **ST7735**,
-et le portail inclut un **concepteur visuel de mise en page** — vous composez
-ce que l'écran affiche à partir de pages et de widgets, en direct dans le
-navigateur, avec un aperçu.
+Gekko prend en charge cinq types d'affichage avec un **concepteur visuel de
+mise en page** commun. Vous configurez pages et widgets dans le navigateur avec
+un aperçu ; les coordonnées et widgets s'adaptent à l'affichage.
+
+| Type | Matériel | Coordonnées | Widgets |
+| --- | --- | --- | --- |
+| `ssd1306` | OLED I2C monochrome | Pixels | Texte, formes et bitmaps |
+| `st7735` | TFT SPI couleur | Pixels | Texte, formes et bitmaps RGB565 |
+| `lcd1602` | HD44780 16 × 2 via PCF857x | Cellules de caractères | Character |
+| `lcd2004` | HD44780 20 × 4 via PCF857x | Cellules de caractères | Character |
+| `tm1637` | Module sept segments à quatre chiffres | Positions de chiffres | Digital |
 
 ## Configuration d'un affichage
 
-1. Créez d'abord le périphérique bus : un
-   [**bus I2C**](/gekko/fr/reference/devices/i2c-bus/) (broches SDA/SCL) pour le
-   SSD1306, ou un [**bus SPI**](/gekko/fr/reference/devices/spi-bus/) pour le
-   ST7735.
-2. Créez le périphérique d'affichage et sélectionnez ce bus comme dépendance
-   (plus l'adresse I2C ou les broches de contrôle du TFT).
+1. Créez d'abord les périphériques nécessaires :
+   - un [**bus I2C**](/gekko/fr/reference/devices/i2c-bus/) pour SSD1306 ;
+   - un [**bus SPI**](/gekko/fr/reference/devices/spi-bus/) pour ST7735 ;
+   - un [**expanseur de ports**](/gekko/fr/reference/devices/port-expanders/)
+     PCF8574/PCF8575 pour LCD1602/LCD2004 ;
+   - deux périphériques `gpio_switch` pour CLK et DIO du TM1637.
+2. Créez l'affichage, sélectionnez ces périphériques comme dépendances, puis
+   configurez adresse, câblage, broches de contrôle, luminosité ou rotation.
 3. Ouvrez le périphérique et cliquez sur **Design** pour entrer dans le
    concepteur de mise en page.
 
@@ -25,18 +34,17 @@ navigateur, avec un aperçu.
 
 ## Pages et widgets
 
-Une mise en page est un ensemble de **pages** ; chaque page contient des
-**widgets** positionnés (texte et plus). Le concepteur affiche un aperçu en
-direct rendu avec les mêmes polices et métriques que le firmware, donc ce que
-vous voyez est ce que le panneau dessine. Les mises en page sont enregistrées
-sur l'appareil et incluses dans les
+Une mise en page contient des **pages** et des **widgets** positionnés. Les
+affichages à pixels utilisent des pixels, LCD1602/LCD2004 des cellules de
+caractères et TM1637 des positions de chiffres. Le concepteur autorise
+uniquement les widgets compatibles et affiche un aperçu adapté. Les mises en
+page sont enregistrées sur l'appareil et incluses dans les
 [lots de sauvegarde](/gekko/fr/guides/backup-restore/).
 
 ## Valeurs en direct : espaces réservés de métriques
 
-Les widgets texte peuvent mélanger du texte statique avec des
-**espaces réservés** résolus au moment du rendu. Construire un écran d'état, ce
-n'est qu'écrire quelques lignes de texte modèle :
+Les widgets Text, Character et Digital peuvent mélanger du texte statique avec
+des **espaces réservés** résolus au moment du rendu.
 
 ![Texte du widget avec espaces réservés à gauche, sortie OLED rendue avec valeurs en direct à droite](../../../../assets/diagrams/display-placeholders.svg)
 

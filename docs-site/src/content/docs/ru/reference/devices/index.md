@@ -1,6 +1,6 @@
 ---
 title: Каталог устройств
-description: Все 27 типов устройств, встроенных в каждый образ прошивки Gekko.
+description: Все 33 типа устройств, встроенных в каждый образ прошивки Gekko.
 sidebar:
   order: 1
   label: Каталог устройств
@@ -19,6 +19,7 @@ sidebar:
 | [`i2c_bus`](/gekko/ru/reference/devices/i2c-bus/) | Шина I2C (SDA/SCL); родитель для дисплеев, HTU21, RTC, port expanders |
 | [`spi_bus`](/gekko/ru/reference/devices/spi-bus/) | Шина SPI; родитель для TFT ST7735 |
 | `rtc_ds3231` | Часы реального времени DS3231 — поддерживают расписания без NTP |
+| `rtc_ds1302` | Трёхпроводные часы реального времени DS1302 на GPIO CLK, DAT и RST |
 | `dummy` | Заглушка/тестовое устройство |
 
 ## Выключатели и выходы
@@ -49,6 +50,8 @@ sidebar:
 | [`ds18b20_temperature_sensor`](/gekko/ru/reference/devices/ds18b20/) | Температурный датчик DS18B20 1-Wire |
 | [`ntc_thermistor_temperature_sensor`](/gekko/ru/reference/devices/ntc-thermistor/) | NTC-термистор на любом аналоговом входе |
 | [`htu21`](/gekko/ru/reference/devices/htu21/) | I2C-датчик температуры и влажности HTU21 |
+| `aht10` | I2C-датчик температуры и влажности AHT10 |
+| `dht11` | Датчик температуры и влажности DHT11 на одном GPIO |
 | `binary_sensor` | Цифровой вход — поплавок, дверной контакт, датчик протечки |
 
 ## Управление и автоматика
@@ -66,3 +69,6 @@ sidebar:
 | --- | --- |
 | `ssd1306` | I2C OLED с [визуальным редактором раскладки](/gekko/ru/guides/displays/) |
 | `st7735` | Цветной SPI TFT, тот же редактор раскладки |
+| `lcd1602` | Символьный HD44780 LCD 16 × 2 через расширитель портов PCF857x |
+| `lcd2004` | Символьный HD44780 LCD 20 × 4 через расширитель портов PCF857x |
+| `tm1637` | Четырёхразрядный семисегментный дисплей с яркостью и поворотом на 180° |

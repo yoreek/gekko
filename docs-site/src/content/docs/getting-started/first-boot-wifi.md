@@ -36,12 +36,16 @@ remain available the whole time — reconnect to the AP and fix the settings.
 
 ## Alternative: BLE provisioning
 
-Builds with mobile provisioning enabled can also receive WiFi credentials over
-**Bluetooth LE** using an Espressif-compatible provisioning app (Android/iOS).
-BLE config mode starts only after an explicit request from the portal or API,
-runs with a session timeout, and never alters stored credentials unless the app
-successfully submits new ones. If you flashed the default image, use the setup
-AP flow above — it is always available.
+The **Standard** firmware can also receive WiFi credentials over **Bluetooth
+LE** using an Espressif-compatible provisioning app (Android/iOS). Connect a
+normally open button between GPIO 32 and GND, then hold it for 3 seconds to
+start BLE config mode. You can also start the mode from the WiFi page in the
+portal or through the API. The session has a timeout and stored credentials
+change only after the app successfully submits new ones.
+
+The **Without BLE** firmware has no BLE provisioning code and does not reserve
+GPIO 32. The setup access point and web portal described above remain available
+in both firmware variants.
 
 ## Next
 

@@ -227,7 +227,8 @@ capteur :
   transforme la lecture en température, qui peut ensuite piloter un
   [thermostat](/gekko/fr/reference/devices/thermostat/) ;
 - les millivolts apparaissent dans les
-  [espaces réservés d'affichage](/gekko/fr/guides/displays/) pour un OLED/TFT ;
+  [espaces réservés d'affichage](/gekko/fr/guides/displays/) pour tout affichage
+  compatible ;
 - sur les [builds MQTT](/gekko/fr/guides/mqtt-home-assistant/) chaque entrée
   feuille (l'entrée port et chaque canal) est découvrable dans Home Assistant
   comme capteur `voltage`. Les hubs ne le sont pas — ils fournissent des

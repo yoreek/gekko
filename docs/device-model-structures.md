@@ -18,13 +18,14 @@ Both `src/devices/core/DeviceTypes.cpp::DeviceTypeRegistry::withDefaults()` and
 one entry per supported `typeName`, in the same order:
 
 `dummy`, `gpio_switch`, `onewire_bus`, `i2c_bus`, `spi_bus`, `ssd1306`, `st7735`,
-`ds18b20_temperature_sensor`, `ntc_thermistor_temperature_sensor`, `htu21`, `thermostat`,
-`rtc_ds3231`, `rtc_ds1302`, `pcf8574_expander`, `pcf8575_expander`, `analog_output`, `fade_analog_output`,
-`scheduled_analog_output`, `analog_output_composer`, `port_expander_switch`, `schedule`,
-`auto_switch`, `binary_sensor`, `dosing_pump`, `analog_port_input`, `ads1115_hub`,
-`cd74hc4067_hub`, `analog_input_channel`.
+`ds18b20_temperature_sensor`, `ntc_thermistor_temperature_sensor`, `dht11`, `htu21`,
+`aht10`, `thermostat`, `rtc_ds3231`, `rtc_ds1302`, `pcf8574_expander`,
+`pcf8575_expander`, `analog_output`, `fade_analog_output`, `scheduled_analog_output`,
+`analog_output_composer`, `port_expander_switch`, `schedule`, `auto_switch`,
+`binary_sensor`, `dosing_pump`, `analog_port_input`, `cd74hc4067_hub`, `ads1115_hub`,
+`analog_input_channel`, `lcd1602`, `lcd2004`, `tm1637`.
 
-`portal-spa/src/models/devices/device-model-factory.ts::allDeviceModels` mirrors the same 27 types
+`portal-spa/src/models/devices/device-model-factory.ts::allDeviceModels` mirrors the same 33 types
 one-to-one (plus an `UnknownDevice` fallback for an unrecognized `typeName`, which is never
 registered). This document uses DS18B20 as the running worked example throughout, since it's the
 simplest complete sensor family; HTU21 and the PCF857x expanders are called out separately below

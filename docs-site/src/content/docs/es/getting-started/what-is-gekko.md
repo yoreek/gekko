@@ -21,17 +21,15 @@ sobre el dispositivo en ejecución, nunca una recompilación.
 - **Interruptores y salidas** - relés GPIO, interruptores detrás de
   expansores I2C PCF8574/PCF8575, salidas PWM/analógicas con transiciones
   suaves, curvas diarias de brillo y agrupaciones multicanal.
-- **Sensores** - sondas de temperatura DS18B20 (1-Wire) y termistores NTC,
-  HTU21 para temperatura + humedad y entradas binarias digitales (contactos
-  de puerta, flotadores, sensores de fuga).
+- **Sensores** - DS18B20 y NTC de temperatura, HTU21/AHT10/DHT11 de
+  temperatura + humedad y entradas binarias digitales.
 - **Automatización** - horarios diarios con precisión de minuto, auto-switches
   guiados por condiciones con anulación manual y pausa, termostatos con
   histéresis y bombas dosificadoras con calibración y diario de dosis.
-- **Pantallas** - OLED SSD1306 y TFT ST7735 con un diseñador visual de
-  páginas/widgets integrado en el portal, incluyendo marcadores vivos como
-  `{{dev.123.temperature}}`.
-- **Infraestructura** - buses I2C/SPI/1-Wire, un reloj en tiempo real DS3231 y
-  un panel que compones a partir de tarjetas.
+- **Pantallas** - OLED SSD1306, TFT ST7735, LCD1602/LCD2004 de caracteres y
+  módulos TM1637 de siete segmentos con un diseñador visual compartido.
+- **Infraestructura** - buses I2C/SPI/1-Wire, relojes DS3231/DS1302 y un panel
+  que compones a partir de tarjetas.
 
 Los dispositivos declaran **dependencias** entre sí - un interruptor sobre un
 expansor de puertos, un sensor sobre un bus I2C, una bomba gobernada por un

@@ -37,16 +37,18 @@ actually wire it up:
   probes)
 - **NTC thermistors** and other analog sensors on an ADC pin, an **ADS1115**
   16-bit I2C ADC, or a **CD74HC4067** 16-channel multiplexer
-- **HTU21** I2C temperature + humidity sensor
-- **SSD1306** I2C OLED displays and **ST7735** SPI TFT displays
-- **DS3231** I2C real-time clock — recommended if you use schedules and the
-  device may run without internet/NTP
+- **HTU21** and **AHT10** I2C temperature + humidity sensors, or **DHT11** on
+  one GPIO
+- **SSD1306** OLED, **ST7735** TFT, **LCD1602/LCD2004** character displays, and
+  four-digit **TM1637** modules
+- **DS3231** I2C or three-wire **DS1302** real-time clocks — recommended if you
+  use schedules and the device may run without internet/NTP
 - **Peristaltic dosing pumps** driven through a switch output
 - **LED drivers / PWM loads** on LEDC-capable pins (`analog_output`)
 - Digital inputs: float switches, door contacts, leak sensors
   (`binary_sensor`)
 
-See the [device catalog](/gekko/reference/devices/) for the full list of the 27
+See the [device catalog](/gekko/reference/devices/) for the full list of the 33
 built-in device types.
 
 :::tip

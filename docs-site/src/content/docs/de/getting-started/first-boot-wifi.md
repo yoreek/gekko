@@ -40,13 +40,17 @@ einfach erneut mit dem AP und korrigiere die Einstellungen.
 
 ## Alternative: BLE-Provisionierung
 
-Builds mit aktivierter Mobil-Provisionierung koennen WiFi-Zugangsdaten auch
-ueber **Bluetooth LE** empfangen, und zwar mit einer Espressif-kompatiblen
-Provisioning-App (Android/iOS). Der BLE-Konfigurationsmodus startet nur nach
-einer ausdruecklichen Anfrage aus dem Portal oder per API, laeuft mit
-Session-Timeout und aendert gespeicherte Zugangsdaten nur, wenn die App neue
-Daten erfolgreich sendet. Wenn du das Standard-Image geflasht hast, nimm den
-Setup-AP-Flow oben - er ist immer verfuegbar.
+Die **Standard**-Firmware kann WiFi-Zugangsdaten auch ueber **Bluetooth LE**
+mit einer Espressif-kompatiblen App fuer Android oder iOS empfangen. Schliesse
+einen Schliesser zwischen GPIO 32 und GND an und halte ihn 3 Sekunden gedrueckt,
+um den BLE-Konfigurationsmodus zu starten. Der Modus kann auch auf der
+WiFi-Seite im Webportal oder per API gestartet werden. Die Sitzung hat einen
+Timeout; gespeicherte Zugangsdaten werden erst nach erfolgreicher Uebertragung
+neuer Werte geaendert.
+
+Die **Without BLE**-Firmware enthaelt keinen BLE-Provisioning-Code und
+reserviert GPIO 32 nicht. Setup-Access-Point und Webportal sind bei beiden
+Firmware-Varianten verfuegbar.
 
 ## Naechstes
 

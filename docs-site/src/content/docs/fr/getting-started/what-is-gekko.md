@@ -22,18 +22,16 @@ sur l'appareil en cours d'exécution, jamais une recompilation.
   expanseurs de ports I2C PCF8574/PCF8575, sorties PWM/analogiques avec
   transitions progressives, courbes quotidiennes de luminosité et regroupement
   multicanal.
-- **Capteurs** — capteurs de température DS18B20 (1-Wire) et thermistances NTC,
-  température + humidité HTU21, et entrées binaires numériques (contacts de
-  porte, flotteurs, détecteurs de fuite).
+- **Capteurs** — température DS18B20 et NTC, température + humidité
+  HTU21/AHT10/DHT11 et entrées binaires numériques.
 - **Automatisation** — programmes quotidiens à précision minute, interrupteurs
   automatiques pilotés par conditions avec override manuel et pause,
   thermostats à hystérésis et pompes de dosage avec calibration et journal de
   doses.
-- **Affichages** — écrans OLED SSD1306 et TFT ST7735 avec un concepteur visuel
-  de pages/widgets intégré au portail, y compris des espaces réservés de
-  métriques en direct comme `{{dev.123.temperature}}`.
-- **Infrastructure** — bus I2C/SPI/1-Wire, horloge temps réel DS3231 et tableau
-  de bord composé de panneaux.
+- **Affichages** — OLED SSD1306, TFT ST7735, LCD1602/LCD2004 à caractères et
+  modules TM1637 sept segments avec un concepteur visuel commun.
+- **Infrastructure** — bus I2C/SPI/1-Wire, horloges DS3231/DS1302 et tableau de
+  bord composé de panneaux.
 
 Les périphériques déclarent des **dépendances** les uns aux autres — un
 interrupteur sur un expanseur de ports, un capteur sur un bus I2C, une pompe

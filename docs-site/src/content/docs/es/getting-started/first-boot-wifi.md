@@ -41,13 +41,17 @@ Reconéctate al AP y corrige la configuración.
 
 ## Alternativa: aprovisionamiento BLE
 
-Las compilaciones con aprovisionamiento móvil habilitado también pueden
-recibir credenciales WiFi por **Bluetooth LE** usando una app de provisioning
-compatible con Espressif (Android/iOS). El modo de configuración BLE solo
-arranca tras una petición explícita desde el portal o la API, corre con un
-timeout de sesión y nunca altera las credenciales almacenadas salvo que la app
-envíe correctamente unas nuevas. Si has flasheado la imagen por defecto, usa
-el flujo del AP de configuración de arriba: siempre está disponible.
+El firmware **Standard** también puede recibir los parámetros WiFi por
+**Bluetooth LE** mediante una aplicación compatible con Espressif para Android
+o iOS. Conecta un pulsador normalmente abierto entre GPIO 32 y GND y mantenlo
+pulsado durante 3 segundos para iniciar el modo de configuración BLE. También
+puedes iniciarlo desde la página WiFi del portal web o mediante la API. La
+sesión tiene un timeout y los parámetros guardados solo cambian después de que
+la aplicación envíe correctamente los nuevos valores.
+
+El firmware **Without BLE** no contiene código de provisioning BLE y no
+reserva GPIO 32. El punto de acceso y el portal web están disponibles con
+ambas variantes.
 
 ## Siguiente
 

@@ -8,6 +8,7 @@ type it verifies the touchpoints that are easy to forget and fail only at runtim
   2. TS model exists with a matching TYPE_NAME
   3. TS model class imported into device-ui-registry.ts (UI coverage)
   4. at least one mock seed in database.ts
+  5. every localized device catalog lists the type and the current type count
 
 Plus reverse orphans (TS/mock types with no adapter) and duplicate TS TYPE_IDs.
 
@@ -79,6 +80,7 @@ def main() -> int:
     ui_txt = read("portal-spa/src/components/devices/registry/device-ui-registry.ts")
     mock_txt = read("portal-spa/src/mock/database.ts")
     mock_types = set(re.findall(r"createDeviceRecord\(\s*[^,]+,\s*'([^']+)'", mock_txt))
+    catalog_files = list(REPO.glob("docs-site/src/content/docs/**/reference/devices/index.md"))
 
     problems = []
 
@@ -105,12 +107,26 @@ def main() -> int:
         if len(names) > 1:
             problems.append(f"TYPE_ID {tid} shared by: {', '.join(names)}")
 
+    if not catalog_files:
+        problems.append("no localized device catalogs found")
+    for catalog in catalog_files:
+        catalog_text = catalog.read_text()
+        relative_path = catalog.relative_to(REPO)
+        description = re.search(r"^description:\s*(.+)$", catalog_text, re.MULTILINE)
+        declared_count = re.search(r"\b(\d+)\b", description.group(1)) if description else None
+        if not declared_count or int(declared_count.group(1)) != len(adapters):
+            value = declared_count.group(1) if declared_count else "missing"
+            problems.append(f"{relative_path}: device count is {value}, expected {len(adapters)}")
+        for tn in sorted(adapters):
+            if f"`{tn}`" not in catalog_text:
+                problems.append(f"{relative_path}: missing device type '{tn}'")
+
     if problems:
         print(f"[check-registry] {len(problems)} problem(s) across {len(adapters)} types:")
         for p in problems:
             print("  -", p)
         return 1
-    print(f"[check-registry] OK -- {len(adapters)} types consistent across adapter/TS/UI/mock")
+    print(f"[check-registry] OK -- {len(adapters)} types consistent across adapter/TS/UI/mock/docs")
     return 0
 
 

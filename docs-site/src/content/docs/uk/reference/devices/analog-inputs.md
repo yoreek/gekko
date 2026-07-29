@@ -216,7 +216,8 @@ ADC зручний, але не точний.
   показ у температуру, яка потім може керувати
   [термостатом](/gekko/uk/reference/devices/thermostat/);
 - мілівольти з’являються в
-  [display placeholders](/gekko/uk/guides/displays/) для OLED/TFT;
+  [display placeholders](/gekko/uk/guides/displays/) для будь-якого
+  підтримуваного дисплея;
 - на [MQTT builds](/gekko/uk/guides/mqtt-home-assistant/) кожен leaf input
   (портовий вхід і кожен канал) виявляється в Home Assistant як `voltage`
   sensor. Hub-и — ні: вони надають канали, а не власне читання.

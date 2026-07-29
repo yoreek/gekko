@@ -39,6 +39,7 @@ I2C ist ein Board-Bus, kein Kabel-Bus wie 1-Wire.
 | Geraet | Typische Adresse |
 | --- | --- |
 | SSD1306-OLED-Display | `0x3C` (manchmal `0x3D`) |
+| AHT10 Temperatur + Luftfeuchte | `0x38` |
 | HTU21 Temperatur + Luftfeuchte | `0x40` |
 | DS3231-Echtzeituhr | `0x68` |
 | PCF8574 / PCF8575-Portexpander | `0x20`-`0x27` (per Jumper waehlbar) |

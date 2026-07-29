@@ -121,7 +121,7 @@ Temperatursensor:
 
 - ein [Thermostat](/gekko/de/reference/devices/thermostat/) fuer Heizer oder
   Kuehler;
-- [Display-Platzhalter](/gekko/de/guides/displays/) auf einem OLED/TFT;
+- [Display-Platzhalter](/gekko/de/guides/displays/) auf jedem unterstuetzten Display;
 - Home Assistant als read-only `sensor`-Entity auf
   [MQTT-Builds](/gekko/de/guides/mqtt-home-assistant/).
 

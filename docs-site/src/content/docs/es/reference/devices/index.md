@@ -1,6 +1,6 @@
 ---
 title: Catálogo de dispositivos
-description: Los 27 tipos de dispositivo incorporados en cada imagen de firmware de Gekko.
+description: Los 33 tipos de dispositivo incorporados en cada imagen de firmware de Gekko.
 sidebar:
   order: 1
   label: Catálogo de dispositivos
@@ -20,6 +20,7 @@ iterativamente.
 | [`i2c_bus`](/gekko/es/reference/devices/i2c-bus/) | Bus I2C (SDA/SCL); padre de pantallas, HTU21, RTC, expansores de puertos |
 | [`spi_bus`](/gekko/es/reference/devices/spi-bus/) | Bus SPI; padre del TFT ST7735 |
 | `rtc_ds3231` | Reloj en tiempo real DS3231 - mantiene los horarios funcionando sin NTP |
+| `rtc_ds1302` | Reloj en tiempo real DS1302 de tres hilos en GPIO CLK, DAT y RST |
 | `dummy` | Dispositivo marcador de posición/pruebas |
 
 ## Interruptores y salidas
@@ -50,6 +51,8 @@ iterativamente.
 | [`ds18b20_temperature_sensor`](/gekko/es/reference/devices/ds18b20/) | Sonda de temperatura 1-Wire DS18B20 |
 | [`ntc_thermistor_temperature_sensor`](/gekko/es/reference/devices/ntc-thermistor/) | Termistor NTC sobre cualquier entrada analógica |
 | [`htu21`](/gekko/es/reference/devices/htu21/) | Sensor I2C HTU21 de temperatura + humedad |
+| `aht10` | Sensor I2C AHT10 de temperatura + humedad |
+| `dht11` | Sensor DHT11 de temperatura + humedad en un GPIO |
 | `binary_sensor` | Entrada digital - flotador, contacto de puerta, sensor de fuga |
 
 ## Control y automatización
@@ -67,3 +70,6 @@ iterativamente.
 | --- | --- |
 | `ssd1306` | OLED I2C con el [diseñador visual de disposición](/gekko/es/guides/displays/) |
 | `st7735` | TFT a color SPI, el mismo diseñador de disposición |
+| `lcd1602` | LCD de caracteres HD44780 de 16 × 2 mediante expansor PCF857x |
+| `lcd2004` | LCD de caracteres HD44780 de 20 × 4 mediante expansor PCF857x |
+| `tm1637` | Pantalla de siete segmentos de cuatro dígitos con brillo y giro de 180° |

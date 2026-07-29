@@ -9,9 +9,18 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 
 Les binaires prêts à flasher (`bootloader.bin`, `partitions.bin`,
 `firmware.bin`, `littlefs.bin`) sont produits à chaque commit et incluent à la
-fois le firmware et les ressources du portail web. **Standard** inclut le
-provisionnement WiFi par BLE et réserve GPIO 32 pour le bouton. **Without BLE**
-est plus compact et conserve la configuration par point d'accès et portail web.
+fois le firmware et les ressources du portail web.
+
+## Choisir une variante du firmware
+
+| Variante | Configuration WiFi par BLE | GPIO 32 | Point d'accès et portail web |
+| --- | --- | --- | --- |
+| **Standard** | Incluse | Réservé au bouton d'activation BLE | Disponibles |
+| **Without BLE** | Le code BLE n'est pas compilé | Disponible pour un autre périphérique | Disponibles |
+
+Choisissez **Standard** uniquement si vous devez configurer le WiFi depuis une
+application BLE mobile. Choisissez **Without BLE** si le point d'accès et le
+portail web suffisent : ce firmware est plus compact et ne réserve pas GPIO 32.
 
 ## Option 1 — Installateur web (le plus simple)
 
@@ -73,9 +82,13 @@ elles flashent exactement les mêmes binaires.
 Si vous compilez depuis les sources :
 
 ```sh
-pio run -e esp32dev -t upload       # firmware, via série
-pio run -e esp32dev -t uploadfs     # ressources LittleFS du portail, via série
-pio run -e esp32dev_no_ble          # compiler sans provisioning BLE
+# Standard
+pio run -e esp32dev -t upload
+pio run -e esp32dev -t uploadfs
+
+# Without BLE
+pio run -e esp32dev_no_ble -t upload
+pio run -e esp32dev_no_ble -t uploadfs
 ```
 
 Voir `CLAUDE.md` et `docs/platformio-environments.md` dans le dépôt pour le

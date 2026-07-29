@@ -38,6 +38,7 @@ predefinita) — I2C è un bus da scheda, non un bus da cavo come il 1-Wire.
 | Device | Typical address |
 | --- | --- |
 | Display OLED SSD1306 | `0x3C` (a volte `0x3D`) |
+| AHT10 temperatura + umidità | `0x38` |
 | HTU21 temperatura + umidità | `0x40` |
 | Orologio in tempo reale DS3231 | `0x68` |
 | Espansori di porte PCF8574 / PCF8575 | `0x20`–`0x27` (selezionabili con jumper) |

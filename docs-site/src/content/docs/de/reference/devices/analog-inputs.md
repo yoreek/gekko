@@ -225,7 +225,8 @@ Sensor:
   dem Wert eine Temperatur, die dann ein
   [Thermostat](/gekko/de/reference/devices/thermostat/) steuern kann;
 - die Millivolt erscheinen in
-  [Display-Platzhaltern](/gekko/de/guides/displays/) fuer ein OLED/TFT;
+  [Display-Platzhaltern](/gekko/de/guides/displays/) fuer jedes unterstuetzte
+  Display;
 - auf [MQTT-Builds](/gekko/de/guides/mqtt-home-assistant/) ist jeder Blatt-
   Eingang (Port-Eingang und jeder Kanal) in Home Assistant als `voltage`-
   Sensor auffindbar. Hubs selbst nicht - sie liefern Kanaele, keinen eigenen

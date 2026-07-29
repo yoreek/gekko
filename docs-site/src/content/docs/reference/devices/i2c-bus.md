@@ -37,6 +37,7 @@ is a board-level bus, not a cable bus like 1-Wire.
 | Device | Typical address |
 | --- | --- |
 | SSD1306 OLED display | `0x3C` (sometimes `0x3D`) |
+| AHT10 temperature + humidity | `0x38` |
 | HTU21 temperature + humidity | `0x40` |
 | DS3231 real-time clock | `0x68` |
 | PCF8574 / PCF8575 port expanders | `0x20`–`0x27` (jumper-selectable) |

@@ -1,23 +1,32 @@
 ---
 title: Displays & Layout-Designer
-description: Steuere SSD1306-OLED- und ST7735-TFT-Displays mit Gekkos visuellem Layout-Designer und Live-Metric-Platzhaltern.
+description: Konfiguriere Pixel-, Zeichen- und Siebensegmentanzeigen mit Gekkos visuellem Layout-Designer.
 sidebar:
   order: 3
 ---
 
-Gekko steuert **SSD1306**-I2C-OLED-Displays und **ST7735**-SPI-TFT-Displays,
-und das Portal bringt einen **visuellen Layout-Designer** mit - du setzt
-zusammen, was auf dem Bildschirm erscheinen soll, direkt im Browser, mit
-Vorschau.
+Gekko unterstuetzt fuenf Displaytypen ueber einen gemeinsamen **visuellen
+Layout-Designer**. Seiten und Widgets werden mit Vorschau im Browser
+konfiguriert; Koordinaten und Widgets passen sich dem Display an.
+
+| Typ | Hardware | Koordinaten | Widgets |
+| --- | --- | --- | --- |
+| `ssd1306` | Monochromes I2C-OLED | Pixel | Text, Formen und Bitmaps |
+| `st7735` | SPI-Farb-TFT | Pixel | Text, Formen und RGB565-Bitmaps |
+| `lcd1602` | HD44780 16 × 2 ueber PCF857x | Zeichenzellen | Character |
+| `lcd2004` | HD44780 20 × 4 ueber PCF857x | Zeichenzellen | Character |
+| `tm1637` | Vierstellige Siebensegmentanzeige | Ziffernpositionen | Digital |
 
 ## Ein Display einrichten
 
-1. Erstelle zuerst das Bus-Geraet: ein
-   [**I2C-Bus**](/gekko/de/reference/devices/i2c-bus/) (SDA/SCL-Pins) fuer
-   SSD1306 oder ein [**SPI-Bus**](/gekko/de/reference/devices/spi-bus/) fuer
-   ST7735.
-2. Erstelle das Display-Geraet und waehle diesen Bus als Abhaengigkeit (plus
-   I2C-Adresse oder TFT-Steuerpins).
+1. Erstelle zuerst die erforderlichen Geraete:
+   - einen [**I2C-Bus**](/gekko/de/reference/devices/i2c-bus/) fuer SSD1306;
+   - einen [**SPI-Bus**](/gekko/de/reference/devices/spi-bus/) fuer ST7735;
+   - einen [**Portexpander**](/gekko/de/reference/devices/port-expanders/)
+     PCF8574/PCF8575 fuer LCD1602/LCD2004;
+   - zwei `gpio_switch`-Geraete fuer CLK und DIO des TM1637.
+2. Erstelle das Display, waehle diese Geraete als Abhaengigkeiten und
+   konfiguriere Adresse, Verdrahtung, Steuerpins, Helligkeit oder Drehung.
 3. Oeffne das Geraet und klicke auf **Design**, um in den Layout-Designer zu
    wechseln.
 
@@ -25,18 +34,17 @@ Vorschau.
 
 ## Seiten und Widgets
 
-Ein Layout besteht aus **Seiten**; jede Seite enthaelt positionierte
-**Widgets** (Text und mehr). Der Designer zeigt eine Live-Vorschau, die mit
-denselben Fonts und denselben Metriken gerendert wird, die auch die Firmware
-verwendet - was du siehst, ist das, was das Panel zeichnet. Layouts werden auf
-dem Geraet gespeichert und sind in
+Ein Layout besteht aus **Seiten** mit positionierten **Widgets**. Pixelanzeigen
+verwenden Pixelkoordinaten, LCD1602/LCD2004 Zeichenzellen und TM1637
+Ziffernpositionen. Der Designer erlaubt nur die vom Display unterstuetzten
+Widgettypen und zeigt eine passende Vorschau. Layouts werden auf dem Geraet
+gespeichert und sind in
 [Backup-Bundles](/gekko/de/guides/backup-restore/) enthalten.
 
 ## Livewerte: Platzhalter fuer Metriken
 
-Text-Widgets koennen statischen Text mit **Platzhaltern** mischen, die zur
-Renderzeit aufgeloest werden. Eine Statusanzeige bauen ist nur ein paar Zeilen
-Template-Text:
+Text-, Character- und Digital-Widgets koennen statischen Text mit
+**Platzhaltern** mischen, die zur Renderzeit aufgeloest werden.
 
 ![Widget-Text mit Platzhaltern links, gerendertes OLED-Output mit Livewerten rechts](../../../../assets/diagrams/display-placeholders.svg)
 

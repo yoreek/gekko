@@ -8,10 +8,19 @@ sidebar:
 import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 Готовые к прошивке бинарники (`bootloader.bin`, `partitions.bin`,
-`firmware.bin`, `littlefs.bin`) собираются на каждый commit и содержат и
-прошивку, и ресурсы веб-портала. Вариант **Standard** включает настройку WiFi
-через BLE и резервирует GPIO 32 для кнопки. Вариант **Without BLE** занимает
-меньше памяти; настройка через точку доступа и веб-портал в нём остаётся.
+`firmware.bin`, `littlefs.bin`) собираются для каждого коммита и содержат
+прошивку и ресурсы веб-портала.
+
+## Выбор варианта прошивки
+
+| Вариант | Настройка WiFi через BLE | GPIO 32 | Точка доступа и веб-портал |
+| --- | --- | --- | --- |
+| **Standard** | Включена | Зарезервирован для кнопки активации BLE | Доступны |
+| **Without BLE** | Код BLE не компилируется в прошивку | Доступен для другого устройства | Доступны |
+
+Выбирайте **Standard**, только если нужна настройка WiFi из мобильного
+BLE-приложения. Выбирайте **Without BLE**, если достаточно настройки через
+точку доступа и веб-портал: эта прошивка меньше и не резервирует GPIO 32.
 
 ## Вариант 1 — веб-установщик (проще всего)
 
@@ -73,9 +82,13 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 Если вы собираете из исходников:
 
 ```sh
-pio run -e esp32dev -t upload       # прошивка, через serial
-pio run -e esp32dev -t uploadfs     # LittleFS ресурсы портала, через serial
-pio run -e esp32dev_no_ble          # сборка без BLE provisioning
+# Standard
+pio run -e esp32dev -t upload
+pio run -e esp32dev -t uploadfs
+
+# Without BLE
+pio run -e esp32dev_no_ble -t upload
+pio run -e esp32dev_no_ble -t uploadfs
 ```
 
 Смотрите `CLAUDE.md` и `docs/platformio-environments.md` в репозитории для

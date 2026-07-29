@@ -41,10 +41,12 @@ web lorsque vous le câblez réellement :
   plusieurs sondes)
 - **Thermistances NTC** et autres capteurs analogiques sur une broche ADC, un
   **ADS1115** ADC I2C 16 bits, ou un **CD74HC4067** multiplexeur 16 canaux
-- Capteur I2C **HTU21** température + humidité
-- Affichages OLED I2C **SSD1306** et écrans TFT SPI **ST7735**
-- Horloge temps réel I2C **DS3231** — recommandée si vous utilisez des
-  programmes et que l'appareil peut fonctionner sans internet/NTP
+- Capteurs I2C de température et d'humidité **HTU21** et **AHT10**, ou
+  **DHT11** sur un GPIO
+- OLED **SSD1306**, TFT **ST7735**, afficheurs à caractères
+  **LCD1602/LCD2004** et modules **TM1637** à quatre chiffres
+- Horloges temps réel **DS3231** I2C ou **DS1302** à trois fils — recommandées
+  pour les programmes sans Internet/NTP
 - Pompes péristaltiques de dosage pilotées par une sortie d'interrupteur
 - **Pilotes LED / charges PWM** sur des broches compatibles LEDC
   (`analog_output`)
@@ -52,7 +54,7 @@ web lorsque vous le câblez réellement :
   (`binary_sensor`)
 
 Voir le [catalogue des périphériques](/gekko/fr/reference/devices/) pour la liste
-complète des 27 types de périphériques intégrés.
+complète des 33 types de périphériques intégrés.
 
 :::tip
 Commencez avec la carte nue. Flashez-la, connectez-la au WiFi, puis explorez le

@@ -1,6 +1,6 @@
 ---
 title: Catalogue des périphériques
-description: Les 27 types de périphériques intégrés dans chaque image firmware Gekko.
+description: Les 33 types de périphériques intégrés dans chaque image firmware Gekko.
 sidebar:
   order: 1
   label: Catalogue des périphériques
@@ -19,6 +19,7 @@ ici brièvement, avec des pages détaillées ajoutées progressivement.
 | [`i2c_bus`](/gekko/fr/reference/devices/i2c-bus/) | Bus I2C (SDA/SCL) ; parent des affichages, de l'HTU21, de l'RTC et des expanseurs de ports |
 | [`spi_bus`](/gekko/fr/reference/devices/spi-bus/) | Bus SPI ; parent du TFT ST7735 |
 | `rtc_ds3231` | Horloge temps réel DS3231 — garde les programmes en marche sans NTP |
+| `rtc_ds1302` | Horloge temps réel DS1302 à trois fils sur les GPIO CLK, DAT et RST |
 | `dummy` | Périphérique factice/de test |
 
 ## Interrupteurs et sorties
@@ -49,6 +50,8 @@ ici brièvement, avec des pages détaillées ajoutées progressivement.
 | [`ds18b20_temperature_sensor`](/gekko/fr/reference/devices/ds18b20/) | Sonde de température 1-Wire DS18B20 |
 | [`ntc_thermistor_temperature_sensor`](/gekko/fr/reference/devices/ntc-thermistor/) | Thermistance NTC sur n'importe quelle entrée analogique |
 | [`htu21`](/gekko/fr/reference/devices/htu21/) | Capteur I2C de température + humidité HTU21 |
+| `aht10` | Capteur I2C de température + humidité AHT10 |
+| `dht11` | Capteur DHT11 de température + humidité sur un GPIO |
 | `binary_sensor` | Entrée numérique — flotteur, contact de porte, capteur de fuite |
 
 ## Contrôle et automatisation
@@ -66,3 +69,6 @@ ici brièvement, avec des pages détaillées ajoutées progressivement.
 | --- | --- |
 | `ssd1306` | OLED I2C avec le [concepteur visuel de mise en page](/gekko/fr/guides/displays/) |
 | `st7735` | TFT couleur SPI, même concepteur de mise en page |
+| `lcd1602` | LCD à caractères HD44780 de 16 × 2 via un expanseur PCF857x |
+| `lcd2004` | LCD à caractères HD44780 de 20 × 4 via un expanseur PCF857x |
+| `tm1637` | Afficheur sept segments à quatre chiffres avec luminosité et rotation à 180° |

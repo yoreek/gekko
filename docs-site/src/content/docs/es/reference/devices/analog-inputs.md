@@ -224,7 +224,8 @@ una comprobación rápida, pero normalmente la idea es alimentar un sensor:
   la lectura en temperatura, que luego puede gobernar un
   [termostato](/gekko/es/reference/devices/thermostat/);
 - los milivoltios aparecen en
-  [marcadores de pantalla](/gekko/es/guides/displays/) para un OLED/TFT;
+  [marcadores de pantalla](/gekko/es/guides/displays/) para cualquier pantalla
+  compatible;
 - en [compilaciones MQTT](/gekko/es/guides/mqtt-home-assistant/) cada entrada
   hoja (la entrada de puerto y cada canal) se descubre en Home Assistant como
   un sensor `voltage`. Los hubs no: ellos proporcionan canales, no una lectura

@@ -1,22 +1,32 @@
 ---
 title: Display e designer di layout
-description: Controlla display OLED SSD1306 e TFT ST7735 con il designer visuale di layout di Gekko e i placeholder di metriche live.
+description: Configura display a pixel, a caratteri e a sette segmenti con il designer visuale di Gekko.
 sidebar:
   order: 3
 ---
 
-Gekko controlla display OLED I2C **SSD1306** e display TFT SPI **ST7735**, e
-il portale include un **designer visuale di layout** — componi ciò che lo
-schermo mostra da pagine e widget, live nel browser, con un'anteprima.
+Gekko supporta cinque tipi di display tramite un **designer visuale di layout**
+condiviso. Configuri pagine e widget nel browser con anteprima; coordinate e
+widget si adattano al display.
+
+| Tipo | Hardware | Coordinate | Widget |
+| --- | --- | --- | --- |
+| `ssd1306` | OLED I2C monocromatico | Pixel | Testo, forme e bitmap |
+| `st7735` | TFT SPI a colori | Pixel | Testo, forme e bitmap RGB565 |
+| `lcd1602` | HD44780 16 × 2 tramite PCF857x | Celle carattere | Character |
+| `lcd2004` | HD44780 20 × 4 tramite PCF857x | Celle carattere | Character |
+| `tm1637` | Modulo a sette segmenti a quattro cifre | Posizioni cifra | Digital |
 
 ## Configurare un display
 
-1. Crea prima il dispositivo bus: un
-   [**bus I2C**](/gekko/it/reference/devices/i2c-bus/) (pin SDA/SCL) per il
-   SSD1306, oppure un [**bus SPI**](/gekko/it/reference/devices/spi-bus/) per lo
-   ST7735.
-2. Crea il dispositivo display e seleziona quel bus come dipendenza (più
-   l'indirizzo I2C o i pin di controllo del TFT).
+1. Crea prima i dispositivi necessari:
+   - un [**bus I2C**](/gekko/it/reference/devices/i2c-bus/) per SSD1306;
+   - un [**bus SPI**](/gekko/it/reference/devices/spi-bus/) per ST7735;
+   - un [**espansore di porte**](/gekko/it/reference/devices/port-expanders/)
+     PCF8574/PCF8575 per LCD1602/LCD2004;
+   - due dispositivi `gpio_switch` per CLK e DIO del TM1637.
+2. Crea il display, seleziona questi dispositivi come dipendenze e configura
+   indirizzo, cablaggio, pin di controllo, luminosità o rotazione.
 3. Apri il dispositivo e fai clic su **Design** per entrare nel designer di
    layout.
 
@@ -24,17 +34,16 @@ schermo mostra da pagine e widget, live nel browser, con un'anteprima.
 
 ## Pagine e widget
 
-Un layout è un insieme di **pagine**; ogni pagina contiene **widget**
-posizionati (testo e altro). Il designer mostra un'anteprima live renderizzata
-con gli stessi font e metriche usati dal firmware, quindi ciò che vedi è ciò
-che il pannello disegna. I layout vengono salvati sul dispositivo e inclusi
-nei [bundle di backup](/gekko/it/guides/backup-restore/).
+Un layout contiene **pagine** con **widget** posizionati. I display a pixel
+usano pixel, LCD1602/LCD2004 usano celle carattere e TM1637 usa posizioni
+cifra. Il designer consente solo i widget compatibili e mostra un'anteprima
+adeguata. I layout vengono salvati sul dispositivo e inclusi nei
+[bundle di backup](/gekko/it/guides/backup-restore/).
 
 ## Valori live: placeholder di metrica
 
-I widget di testo possono mescolare testo statico con **placeholder** risolti
-al momento del render. Costruire una schermata di stato è solo scrivere poche
-righe di testo template:
+I widget Text, Character e Digital possono mescolare testo statico con
+**placeholder** risolti al momento del render.
 
 ![Widget text with placeholders on the left, the rendered OLED output with live values on the right](../../../../assets/diagrams/display-placeholders.svg)
 

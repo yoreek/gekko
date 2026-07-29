@@ -8,10 +8,19 @@ sidebar:
 import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 Готові до прошивки бінарники (`bootloader.bin`, `partitions.bin`,
-`firmware.bin`, `littlefs.bin`) збираються на кожному коміті та містять і
-прошивку, і файли вебпорталу. **Standard** містить налаштування WiFi через BLE
-і резервує GPIO 32 для кнопки. **Without BLE** займає менше пам’яті, а
-налаштування через точку доступу та вебпортал залишається доступним.
+`firmware.bin`, `littlefs.bin`) збираються на кожному коміті та містять
+прошивку й файли вебпорталу.
+
+## Вибір варіанта прошивки
+
+| Варіант | Налаштування WiFi через BLE | GPIO 32 | Точка доступу та вебпортал |
+| --- | --- | --- | --- |
+| **Standard** | Увімкнено | Зарезервовано для кнопки активації BLE | Доступні |
+| **Without BLE** | Код BLE не компілюється у прошивку | Доступний для іншого пристрою | Доступні |
+
+Вибирайте **Standard**, лише якщо потрібне налаштування WiFi з мобільного
+BLE-додатка. Вибирайте **Without BLE**, якщо достатньо точки доступу та
+вебпорталу: ця прошивка менша й не резервує GPIO 32.
 
 ## Варіант 1 — вебінсталятор (найпростіше)
 
@@ -73,9 +82,13 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 Якщо збираєте з вихідного коду:
 
 ```sh
-pio run -e esp32dev -t upload       # firmware, over serial
-pio run -e esp32dev -t uploadfs     # LittleFS portal assets, over serial
-pio run -e esp32dev_no_ble          # build without BLE provisioning
+# Standard
+pio run -e esp32dev -t upload
+pio run -e esp32dev -t uploadfs
+
+# Without BLE
+pio run -e esp32dev_no_ble -t upload
+pio run -e esp32dev_no_ble -t uploadfs
 ```
 
 Дивіться `CLAUDE.md` у корені репозиторію та

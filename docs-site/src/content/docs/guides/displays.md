@@ -1,37 +1,51 @@
 ---
 title: Displays & layout designer
-description: Drive SSD1306 OLED and ST7735 TFT displays with Gekko's visual layout designer and live metric placeholders.
+description: Configure pixel, character, and seven-segment displays with Gekko's visual layout designer and live metric placeholders.
 sidebar:
   order: 3
 ---
 
-Gekko drives **SSD1306** I2C OLED displays and **ST7735** SPI TFT displays, and
-the portal includes a **visual layout designer** — you compose what the screen
-shows from pages and widgets, live in the browser, with a preview.
+Gekko supports five display types through one shared **visual layout
+designer**. You compose pages and widgets in the browser with a preview; the
+available coordinates and widgets adapt to the selected display.
+
+| Type | Hardware | Layout coordinates | Widgets |
+| --- | --- | --- | --- |
+| `ssd1306` | I2C monochrome OLED | Pixels | Text, shapes, and bitmaps |
+| `st7735` | SPI color TFT | Pixels | Text, shapes, and RGB565 bitmaps |
+| `lcd1602` | HD44780 16 × 2 through PCF857x | Character cells | Character |
+| `lcd2004` | HD44780 20 × 4 through PCF857x | Character cells | Character |
+| `tm1637` | Four-digit seven-segment module | Digit positions | Digital |
 
 ## Setting up a display
 
-1. Create the bus device first: an
-   [**I2C bus**](/gekko/reference/devices/i2c-bus/) (SDA/SCL pins) for
-   SSD1306, or an [**SPI bus**](/gekko/reference/devices/spi-bus/) for ST7735.
-2. Create the display device and select that bus as its dependency (plus the
-   I2C address or the TFT's control pins).
+1. Create the required infrastructure first:
+   - an [**I2C bus**](/gekko/reference/devices/i2c-bus/) for SSD1306;
+   - an [**SPI bus**](/gekko/reference/devices/spi-bus/) for ST7735;
+   - a PCF8574/PCF8575 [**port expander**](/gekko/reference/devices/port-expanders/)
+     for LCD1602/LCD2004;
+   - two `gpio_switch` devices for the TM1637 CLK and DIO lines.
+2. Create the display and select those devices as its dependencies, then set
+   its address, wiring channels, control pins, brightness, or rotation as
+   applicable.
 3. Open the device and click **Design** to enter the layout designer.
 
 ![Display layout designer](../../../assets/screenshots/portal-display-designer.png)
 
 ## Pages and widgets
 
-A layout is a set of **pages**; each page holds positioned **widgets** (text
-and more). The designer shows a live preview rendered with the same fonts and
-metrics the firmware uses, so what you see is what the panel draws. Layouts are
-saved on the device and are included in
+A layout is a set of **pages**; each page holds positioned **widgets**. Pixel
+displays use pixel coordinates, LCD1602/LCD2004 use character-cell coordinates,
+and TM1637 uses digit positions. The designer permits only the widget types
+supported by that display and shows a matching live preview. Layouts are saved
+on the device and are included in
 [backup bundles](/gekko/guides/backup-restore/).
 
 ## Live values: metric placeholders
 
-Text widgets can mix static text with **placeholders** resolved at render
-time. Building a status screen is just writing a few lines of template text:
+Text, Character, and Digital widgets can mix static text with **placeholders**
+resolved at render time. Building a status screen is just writing a few lines
+of template text:
 
 ![Widget text with placeholders on the left, the rendered OLED output with live values on the right](../../../assets/diagrams/display-placeholders.svg)
 

@@ -37,17 +37,19 @@ cablaggi davvero:
 - **DS18B20** sonde impermeabili su bus 1-Wire (un GPIO, molte sonde)
 - **Termistori NTC** e altri sensori analogici su un pin ADC, un **ADS1115**
   ADC I2C a 16 bit, o un **CD74HC4067** multiplexer a 16 canali
-- Sensore I2C **HTU21** temperatura + umidità
-- Display OLED I2C **SSD1306** e TFT SPI **ST7735**
-- Orologio in tempo reale I2C **DS3231** — consigliato se usi programmi e il
-  dispositivo può stare senza internet/NTP
+- Sensori I2C di temperatura e umidità **HTU21** e **AHT10**, oppure **DHT11**
+  su un GPIO
+- OLED **SSD1306**, TFT **ST7735**, display a caratteri **LCD1602/LCD2004** e
+  moduli **TM1637** a quattro cifre
+- Orologi in tempo reale **DS3231** I2C o **DS1302** a tre fili — consigliati
+  per programmi senza Internet/NTP
 - Pompe peristaltiche di dosaggio pilotate tramite un'uscita switch
 - **Driver LED / carichi PWM** su pin compatibili LEDC (`analog_output`)
 - Ingressi digitali: galleggianti, contatti porta, sensori perdite
   (`binary_sensor`)
 
 Vedi il [catalogo dispositivi](/gekko/it/reference/devices/) per la lista
-completa dei 27 tipi integrati.
+completa dei 33 tipi integrati.
 
 :::tip
 Parti con la scheda nuda. Flasha, connettila al WiFi e fai un giro nel

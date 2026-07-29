@@ -41,6 +41,7 @@ câble comme le 1-Wire.
 | Device | Typical address |
 | --- | --- |
 | Affichage OLED SSD1306 | `0x3C` (parfois `0x3D`) |
+| Température + humidité AHT10 | `0x38` |
 | Température + humidité HTU21 | `0x40` |
 | Horloge temps réel DS3231 | `0x68` |
 | Expanseurs de ports PCF8574 / PCF8575 | `0x20`–`0x27` (sélectionnables par cavalier) |

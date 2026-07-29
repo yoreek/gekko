@@ -21,17 +21,15 @@ sul dispositivo in esecuzione, mai una ricompilazione.
 - **Switch e output** — relè GPIO, switch dietro espansori di porte I2C
   PCF8574/PCF8575, output PWM/analogici con transizioni fade fluide, curve
   giornaliere di luminosità e grouping multicanale.
-- **Sensori** — sensori di temperatura DS18B20 (1-Wire) e termistori NTC,
-  temperatura + umidità HTU21, e ingressi digitali binari (contatti porta,
-  galleggianti, sensori perdite).
+- **Sensori** — temperatura DS18B20 e NTC, temperatura + umidità
+  HTU21/AHT10/DHT11 e ingressi digitali binari.
 - **Automazione** — programmi giornalieri a precisione al minuto, auto switch
   guidati da condizioni con override manuale e pausa, termostati a isteresi e
   pompe di dosaggio con calibrazione e registro dosi.
-- **Display** — schermi OLED SSD1306 e TFT ST7735 con un designer visuale di
-  pagine/widget integrato nel portale, inclusi placeholder di metriche live
-  come `{{dev.123.temperature}}`.
-- **Infrastruttura** — bus I2C/SPI/1-Wire, orologio in tempo reale DS3231 e
-  dashboard composta da pannelli.
+- **Display** — OLED SSD1306, TFT ST7735, LCD1602/LCD2004 a caratteri e moduli
+  TM1637 a sette segmenti con un designer visuale condiviso.
+- **Infrastruttura** — bus I2C/SPI/1-Wire, orologi DS3231/DS1302 e dashboard
+  composta da pannelli.
 
 I dispositivi dichiarano **dipendenze** l'uno dall'altro — uno switch su un
 espansore di porte, un sensore su un bus I2C, una pompa abilitata da un
