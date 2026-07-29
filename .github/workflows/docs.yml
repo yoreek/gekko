@@ -72,9 +72,15 @@ jobs:
       - name: Bundle web flasher without BLE provisioning
         run: |
           pio run -e esp32dev_no_ble
+          mkdir -p .pio/no-ble-staging
+          cp .pio/build/esp32dev_no_ble/bootloader.bin \
+             .pio/build/esp32dev_no_ble/partitions.bin \
+             .pio/build/esp32dev_no_ble/firmware.bin \
+             .pio/no-ble-staging/
           pio run -e esp32dev_no_ble -t buildfs
+          cp .pio/build/esp32dev_no_ble/littlefs.bin .pio/no-ble-staging/
           python3 scripts/collect_webflash.py \
-            --build-dir .pio/build/esp32dev_no_ble \
+            --build-dir .pio/no-ble-staging \
             --output-dir docs-site/dist/install/no-ble \
             --partitions my_partitions.csv
 

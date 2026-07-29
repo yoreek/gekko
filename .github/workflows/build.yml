@@ -60,10 +60,16 @@ jobs:
       - name: Build firmware bundle without BLE provisioning
         run: |
           pio run -e esp32dev_no_ble
+          mkdir -p .pio/no-ble-staging
+          cp .pio/build/esp32dev_no_ble/bootloader.bin \
+             .pio/build/esp32dev_no_ble/partitions.bin \
+             .pio/build/esp32dev_no_ble/firmware.bin \
+             .pio/no-ble-staging/
           pio run -e esp32dev_no_ble -t buildfs
+          cp .pio/build/esp32dev_no_ble/littlefs.bin .pio/no-ble-staging/
           mkdir -p .pio/no-ble-distribution/no-ble
           python3 scripts/collect_webflash.py \
-            --build-dir .pio/build/esp32dev_no_ble \
+            --build-dir .pio/no-ble-staging \
             --output-dir .pio/no-ble-distribution/no-ble \
             --partitions my_partitions.csv
           cp webflash/flash.sh webflash/flash.bat webflash/flash.py \
