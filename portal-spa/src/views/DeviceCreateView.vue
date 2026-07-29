@@ -2,7 +2,7 @@
   <PageContainer>
     <PageCard>
       <template #header>
-        <PageToolbar :title="t('device.dialog.createTitle')" :subtitle="t('device.dialog.createHint')" show-back @back="navigateBack" />
+        <PageToolbar :title="t('device.dialog.createTitle')" show-back @back="navigateBack" />
       </template>
 
       <div class="d-flex flex-column ga-4">
@@ -54,9 +54,14 @@ import {
   isValidDeviceName,
   nextAvailableDeviceName,
 } from '@/models/devices/device-name'
+import { deviceTypeName } from '@/models/device-type-ids'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore } from '@/stores/panels'
-import { resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
+import {
+  allDeviceUis,
+  resolveDeviceUi,
+} from '@/components/devices/registry/device-ui-registry'
+import { firstDeviceTypeOption } from '@/components/devices/registry/device-type-options'
 import { resolveDeviceModelByTypeName } from '@/models/devices/device-model-factory'
 import { useNotificationsStore } from '@/stores/notifications'
 import DeviceBaseFields from '@/components/device/DeviceBaseFields.vue'
@@ -78,7 +83,8 @@ const targetPanelId = computed(() => {
 
 const isCreating = ref(false)
 const errorMessage = ref('')
-const draft = ref<DeviceCreateDraft>(createDefaultDeviceDraft())
+const defaultTypeId = firstDeviceTypeOption(allDeviceUis)?.typeId
+const draft = ref<DeviceCreateDraft>(createDefaultDeviceDraft(deviceTypeName(defaultTypeId ?? 0)))
 
 const typeUi = computed(() => (draft.value.typeName ? resolveDeviceUi(draft.value.typeName) : null))
 const duplicateNameError = computed(() => isDuplicateDeviceName(draft.value.name) ? t('validation.uniqueDeviceName') : '')

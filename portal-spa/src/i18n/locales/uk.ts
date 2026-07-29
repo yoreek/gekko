@@ -679,7 +679,6 @@ export default {
       ssd1306LayoutHint: ssd1306Dialog.layoutHint,
       oledLayoutHint: ssd1306Dialog.layoutHint,
       createTitle: 'Створити пристрій',
-      createHint: 'Додайте новий запис реєстру через поточний API порталу.',
       title: 'Деталі пристрою',
       noneSelected: 'Виберіть пристрій для перегляду.',
       edit: 'Редагувати',

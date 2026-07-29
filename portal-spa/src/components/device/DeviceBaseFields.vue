@@ -1,18 +1,6 @@
 <template>
   <v-row>
-    <v-col cols="12">
-      <v-text-field
-        :label="t('device.actions.name')"
-        :model-value="modelValue.name"
-        :readonly="mode === 'view'"
-        :disabled="busy && mode !== 'view'"
-        :rules="nameRules"
-        :error-messages="nameError"
-        @update:model-value="update('name', String($event))"
-      />
-    </v-col>
-
-    <v-col v-if="mode === 'create'" cols="12" sm="6">
+    <v-col v-if="mode === 'create'" cols="12">
       <v-autocomplete
         :label="t('device.actions.type')"
         :model-value="modelValue.typeName"
@@ -21,6 +9,18 @@
         auto-select-first="exact"
         :readonly="mode !== 'create'"
         @update:model-value="update('typeName', $event as DeviceCommonDraft['typeName'])"
+      />
+    </v-col>
+
+    <v-col cols="12" :sm="mode === 'create' ? 6 : 12">
+      <v-text-field
+        :label="t('device.actions.name')"
+        :model-value="modelValue.name"
+        :readonly="mode === 'view'"
+        :disabled="busy && mode !== 'view'"
+        :rules="nameRules"
+        :error-messages="nameError"
+        @update:model-value="update('name', String($event))"
       />
     </v-col>
 

@@ -679,7 +679,6 @@ export default {
       ssd1306LayoutHint: ssd1306Dialog.layoutHint,
       oledLayoutHint: ssd1306Dialog.layoutHint,
       createTitle: 'Create device',
-      createHint: 'Add a new registry record with the current portal API.',
       title: 'Device details',
       noneSelected: 'Select a device to inspect it.',
       edit: 'Edit',

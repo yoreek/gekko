@@ -50,6 +50,18 @@ interface BuildDeviceTypeOptionsParams<T extends DeviceTypeOptionValue> {
   }
 }
 
+export function firstDeviceTypeOption(
+  deviceUis: readonly DeviceTypeOptionSource[],
+): DeviceTypeOptionSource | undefined {
+  for (const category of deviceCategoryOrder) {
+    const deviceUi = deviceUis.find(ui => ui.category === category)
+    if (deviceUi) {
+      return deviceUi
+    }
+  }
+  return undefined
+}
+
 export function buildDeviceTypeOptions<T extends DeviceTypeOptionValue>({
   deviceUis,
   translate,

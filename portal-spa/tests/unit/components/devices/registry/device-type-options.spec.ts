@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   buildDeviceTypeOptions,
   deviceCategoryOrder,
+  firstDeviceTypeOption,
 } from '../../../../../src/components/devices/registry/device-type-options.ts'
 import type { DeviceCategory } from '../../../../../src/components/devices/registry/device-ui-types.ts'
 
@@ -30,6 +31,15 @@ test('device type options follow the shared category order', () => {
     deviceCategoryOrder.map(category => `device.category.${category}`),
   )
   assert.equal(options.filter(option => option.type === 'item').length, deviceUis.length)
+})
+
+test('default device type follows the first registered type in the shared category order', () => {
+  const optionsStartingWithService = [
+    deviceUis.find(ui => ui.category === 'service')!,
+    ...deviceUis.filter(ui => ui.category !== 'service'),
+  ]
+
+  assert.equal(firstDeviceTypeOption(optionsStartingWithService)?.typeName, 'buses')
 })
 
 test('device type options omit categories with no registered devices', () => {

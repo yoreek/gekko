@@ -679,7 +679,6 @@ export default {
       ssd1306LayoutHint: ssd1306Dialog.layoutHint,
       oledLayoutHint: ssd1306Dialog.layoutHint,
       createTitle: 'Crea dispositivo',
-      createHint: "Aggiungi un nuovo record al registro tramite l'API attuale del portale.",
       title: 'Dettagli dispositivo',
       noneSelected: 'Seleziona un dispositivo da ispezionare.',
       edit: 'Modifica',
