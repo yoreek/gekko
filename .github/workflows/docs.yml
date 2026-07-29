@@ -6,6 +6,11 @@ on:
     paths:
       - 'docs-site/**'
       - 'webflash/**'
+      - 'src/**'
+      - 'data/**'
+      - 'platformio.ini'
+      - 'my_partitions.csv'
+      - 'scripts/collect_webflash.py'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -34,6 +39,21 @@ jobs:
           cache: pnpm
           cache-dependency-path: docs-site/pnpm-lock.yaml
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install -U platformio
+
       - name: Install dependencies
         working-directory: docs-site
         run: pnpm install --frozen-lockfile
@@ -48,6 +68,15 @@ jobs:
           cp webflash/index.html webflash/manifest.json webflash/*.bin \
              webflash/flash.sh webflash/flash.bat webflash/flash.py \
              docs-site/dist/install/
+
+      - name: Bundle web flasher without BLE provisioning
+        run: |
+          pio run -e esp32dev_no_ble
+          pio run -e esp32dev_no_ble -t buildfs
+          python3 scripts/collect_webflash.py \
+            --build-dir .pio/build/esp32dev_no_ble \
+            --output-dir docs-site/dist/install/no-ble \
+            --partitions my_partitions.csv
 
       - uses: actions/upload-pages-artifact@v3
         with:

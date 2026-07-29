@@ -33,3 +33,45 @@ jobs:
 
       - name: Lint + native unit tests
         run: scripts/test.sh
+
+  no-ble-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install -U platformio
+
+      - name: Prepare PlatformIO home dirs
+        run: mkdir -p ~/.platformio/packages ~/.platformio/platforms
+
+      - name: Build firmware bundle without BLE provisioning
+        run: |
+          pio run -e esp32dev_no_ble
+          pio run -e esp32dev_no_ble -t buildfs
+          mkdir -p .pio/no-ble-distribution/no-ble
+          python3 scripts/collect_webflash.py \
+            --build-dir .pio/build/esp32dev_no_ble \
+            --output-dir .pio/no-ble-distribution/no-ble \
+            --partitions my_partitions.csv
+          cp webflash/flash.sh webflash/flash.bat webflash/flash.py \
+            .pio/no-ble-distribution/
+
+      - name: Upload no-BLE firmware bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: gekko-esp32-no-ble-${{ github.sha }}
+          path: .pio/no-ble-distribution
+          if-no-files-found: error

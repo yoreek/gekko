@@ -11,10 +11,25 @@
   <style>
     body {
       font-family: system-ui, sans-serif;
-      max-width: 32rem;
+      max-width: 42rem;
       margin: 4rem auto;
       padding: 0 1rem;
       text-align: center;
+    }
+    .variants {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+      text-align: left;
+    }
+    .variant {
+      border: 1px solid #ddd;
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+    }
+    .variant h2 {
+      margin-top: 0;
     }
     esp-web-install-button {
       display: block;
@@ -29,15 +44,31 @@
 </head>
 <body>
   <h1>Gekko Web Installer</h1>
-  <p>Connect the ESP32 to your computer via USB and click the button below.</p>
+  <p>Connect the ESP32 to your computer via USB and choose a firmware variant.</p>
 
-  <esp-web-install-button manifest="manifest.json">
-    <button slot="activate">Install Gekko</button>
-    <span slot="unsupported">Your browser doesn't support Web Serial. Open this page in Chrome or Edge.</span>
-    <span slot="not-allowed">This page must be served over HTTPS or localhost.</span>
-  </esp-web-install-button>
+  <div class="variants">
+    <section class="variant">
+      <h2>Standard</h2>
+      <p>Includes BLE WiFi provisioning and the setup button on GPIO 32.</p>
+      <esp-web-install-button manifest="manifest.json">
+        <button slot="activate">Install standard firmware</button>
+        <span slot="unsupported">Your browser doesn't support Web Serial. Open this page in Chrome or Edge.</span>
+        <span slot="not-allowed">This page must be served over HTTPS or localhost.</span>
+      </esp-web-install-button>
+    </section>
 
-  <p class="note">Requires Chrome, Edge, or Opera on desktop.</p>
+    <section class="variant">
+      <h2>Without BLE</h2>
+      <p>Smaller build without Bluetooth provisioning. WiFi setup through the access point and web portal remains available.</p>
+      <esp-web-install-button manifest="no-ble/manifest.json">
+        <button slot="activate">Install firmware without BLE</button>
+        <span slot="unsupported">Your browser doesn't support Web Serial. Open this page in Chrome or Edge.</span>
+        <span slot="not-allowed">This page must be served over HTTPS or localhost.</span>
+      </esp-web-install-button>
+    </section>
+  </div>
+
+  <p class="note">Requires Chrome, Edge, or Opera on desktop. Installing a complete image erases device data.</p>
   <p class="note"><a href="../">&larr; Back to the Gekko documentation</a></p>
 </body>
 </html>

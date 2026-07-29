@@ -9,7 +9,9 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 
 Los binarios listos para flashear (`bootloader.bin`, `partitions.bin`,
 `firmware.bin`, `littlefs.bin`) se generan a partir de cada commit e incluyen
-tanto el firmware como los assets del portal web.
+tanto el firmware como los assets del portal web. **Standard** incluye la
+configuración WiFi por BLE y reserva GPIO 32 para el botón. **Without BLE** es
+más pequeño y mantiene la configuración por punto de acceso y portal web.
 
 ## Opción 1 - Instalador web (la más fácil)
 
@@ -24,9 +26,8 @@ Flashea directamente desde el navegador, sin instalar software adicional:
 2. Abre el instalador en **Chrome**, **Edge** u **Opera** en escritorio (Web
    Serial no está disponible en Firefox/Safari ni en móviles).
 
-3. Haz clic en **Install Gekko**, elige el puerto serie de la placa en el
-   diálogo del navegador y confirma. En una primera instalación se ofrecerá
-   borrar el dispositivo.
+3. Elige **Standard** o **Without BLE**, pulsa su botón de instalación,
+   selecciona el puerto serie y confirma.
 
 4. Espera a que termine la barra de progreso y continúa con
    [Primer arranque y configuración WiFi](/gekko/es/getting-started/first-boot-wifi/).
@@ -52,13 +53,15 @@ binarios.
     3. Ejecuta `webflash/flash.sh [PORT]` (macOS/Linux) o
        `webflash/flash.bat [PORT]` (Windows). Sin argumento de puerto,
        esptool lo detecta automáticamente.
+       Para el paquete no-BLE de CI usa `flash.sh no-ble [PORT]` o
+       `flash.bat no-ble [PORT]`.
 
   </TabItem>
   <TabItem label="Python">
 
     ```sh
     pip install esptool
-    python3 webflash/flash.py [PORT]
+    python3 webflash/flash.py [standard|no-ble] [PORT]
     ```
 
   </TabItem>
@@ -71,6 +74,7 @@ Si compilas desde el código fuente:
 ```sh
 pio run -e esp32dev -t upload       # firmware, por serie
 pio run -e esp32dev -t uploadfs     # assets del portal LittleFS, por serie
+pio run -e esp32dev_no_ble          # compilar sin provisioning BLE
 ```
 
 Consulta `CLAUDE.md` y `docs/platformio-environments.md` en el repositorio

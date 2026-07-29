@@ -9,7 +9,9 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 
 Les binaires prêts à flasher (`bootloader.bin`, `partitions.bin`,
 `firmware.bin`, `littlefs.bin`) sont produits à chaque commit et incluent à la
-fois le firmware et les ressources du portail web.
+fois le firmware et les ressources du portail web. **Standard** inclut le
+provisionnement WiFi par BLE et réserve GPIO 32 pour le bouton. **Without BLE**
+est plus compact et conserve la configuration par point d'accès et portail web.
 
 ## Option 1 — Installateur web (le plus simple)
 
@@ -25,9 +27,8 @@ Flashez directement depuis le navigateur, sans logiciel à installer :
 2. Ouvrez l'installateur dans **Chrome**, **Edge** ou **Opera** sur ordinateur
    (Web Serial n'est pas disponible dans Firefox/Safari ni sur mobile).
 
-3. Cliquez sur **Installer Gekko**, choisissez le port série de la carte dans
-   la boîte de dialogue du navigateur, puis confirmez. Une première
-   installation propose d'effacer l'appareil.
+3. Choisissez **Standard** ou **Without BLE**, cliquez sur son bouton
+   d'installation, sélectionnez le port série, puis confirmez.
 
 4. Attendez la fin de la barre de progression, puis continuez avec
    [Premier démarrage et configuration WiFi](/gekko/fr/getting-started/first-boot-wifi/).
@@ -53,13 +54,15 @@ elles flashent exactement les mêmes binaires.
     3. Exécutez `webflash/flash.sh [PORT]` (macOS/Linux) ou `webflash/flash.bat
        [PORT]` (Windows). Sans argument de port, esptool le détecte
        automatiquement.
+       Pour le paquet no-BLE de CI, utilisez `flash.sh no-ble [PORT]` ou
+       `flash.bat no-ble [PORT]`.
 
   </TabItem>
   <TabItem label="Python">
 
     ```sh
     pip install esptool
-    python3 webflash/flash.py [PORT]
+    python3 webflash/flash.py [standard|no-ble] [PORT]
     ```
 
   </TabItem>
@@ -72,6 +75,7 @@ Si vous compilez depuis les sources :
 ```sh
 pio run -e esp32dev -t upload       # firmware, via série
 pio run -e esp32dev -t uploadfs     # ressources LittleFS du portail, via série
+pio run -e esp32dev_no_ble          # compiler sans provisioning BLE
 ```
 
 Voir `CLAUDE.md` et `docs/platformio-environments.md` dans le dépôt pour le

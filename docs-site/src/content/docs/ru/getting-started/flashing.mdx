@@ -9,7 +9,9 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 
 Готовые к прошивке бинарники (`bootloader.bin`, `partitions.bin`,
 `firmware.bin`, `littlefs.bin`) собираются на каждый commit и содержат и
-прошивку, и ресурсы веб-портала.
+прошивку, и ресурсы веб-портала. Вариант **Standard** включает настройку WiFi
+через BLE и резервирует GPIO 32 для кнопки. Вариант **Without BLE** занимает
+меньше памяти; настройка через точку доступа и веб-портал в нём остаётся.
 
 ## Вариант 1 — веб-установщик (проще всего)
 
@@ -24,8 +26,9 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 2. Откройте установщик в **Chrome**, **Edge** или **Opera** на рабочем столе
    (Web Serial недоступен в Firefox/Safari и на мобильных браузерах).
 
-3. Нажмите **Install Gekko**, выберите serial port платы в диалоге браузера
-   и подтвердите. При первой установке предлагается стереть устройство.
+3. Выберите **Standard** или **Without BLE**, нажмите соответствующую кнопку
+   установки, выберите serial port платы в диалоге браузера и подтвердите.
+   При первой установке предлагается стереть устройство.
 
 4. Дождитесь завершения прогресс-бара, затем перейдите к
    [Первому запуску и WiFi-setup](/gekko/ru/getting-started/first-boot-wifi/).
@@ -51,13 +54,15 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
     3. Запустите `webflash/flash.sh [PORT]` (macOS/Linux) или
        `webflash/flash.bat [PORT]` (Windows). Если порт не указан, esptool
        попытается найти его сам.
+       Для скачанного из CI no-BLE комплекта используйте
+       `flash.sh no-ble [PORT]` или `flash.bat no-ble [PORT]`.
 
   </TabItem>
   <TabItem label="Python">
 
     ```sh
     pip install esptool
-    python3 webflash/flash.py [PORT]
+    python3 webflash/flash.py [standard|no-ble] [PORT]
     ```
 
   </TabItem>
@@ -70,6 +75,7 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 ```sh
 pio run -e esp32dev -t upload       # прошивка, через serial
 pio run -e esp32dev -t uploadfs     # LittleFS ресурсы портала, через serial
+pio run -e esp32dev_no_ble          # сборка без BLE provisioning
 ```
 
 Смотрите `CLAUDE.md` и `docs/platformio-environments.md` в репозитории для

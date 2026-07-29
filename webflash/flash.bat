@@ -3,17 +3,24 @@ REM Flashes the firmware via standalone esptool.exe (no Python, no browser neede
 REM Download esptool.exe and place it next to this file:
 REM   https://github.com/espressif/esptool/releases
 REM
-REM Usage: flash.bat [PORT] [all^|bootloader^|partitions^|firmware^|littlefs]
+REM Usage: flash.bat [standard^|no-ble] [PORT] [all^|bootloader^|partitions^|firmware^|littlefs]
 REM The target can be passed without a port, for example: flash.bat littlefs
 
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
-if not exist flash-layout.env (
-  echo flash-layout.env not found.
+set "BUNDLE_DIR=."
+if /i "%~1"=="standard" shift
+if /i "%~1"=="no-ble" (
+  set "BUNDLE_DIR=no-ble"
+  shift
+)
+
+if not exist "!BUNDLE_DIR!\flash-layout.env" (
+  echo !BUNDLE_DIR!\flash-layout.env not found.
   exit /b 1
 )
-for /f "usebackq tokens=1,* delims==" %%A in ("flash-layout.env") do set "%%A=%%B"
+for /f "usebackq tokens=1,* delims==" %%A in ("!BUNDLE_DIR!\flash-layout.env") do set "%%A=%%B"
 
 if not exist esptool.exe (
   echo esptool.exe not found. Download it from:
@@ -55,6 +62,6 @@ if /i "!TARGET!"=="all" (
 
 esptool.exe --chip esp32 --baud 921600 !PORT_ARG! write_flash -z ^
   --flash_mode dio --flash_freq 40m --flash_size detect ^
-  !FLASH_OFFSET! !FLASH_FILE!
+  !FLASH_OFFSET! "!BUNDLE_DIR!\!FLASH_FILE!"
 
 pause

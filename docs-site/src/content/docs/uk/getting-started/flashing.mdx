@@ -9,7 +9,9 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 
 Готові до прошивки бінарники (`bootloader.bin`, `partitions.bin`,
 `firmware.bin`, `littlefs.bin`) збираються на кожному коміті та містять і
-прошивку, і файли вебпорталу.
+прошивку, і файли вебпорталу. **Standard** містить налаштування WiFi через BLE
+і резервує GPIO 32 для кнопки. **Without BLE** займає менше пам’яті, а
+налаштування через точку доступу та вебпортал залишається доступним.
 
 ## Варіант 1 — вебінсталятор (найпростіше)
 
@@ -25,9 +27,8 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
    комп’ютері (Web Serial недоступний у Firefox/Safari та на мобільних
    пристроях).
 
-3. Натисніть **Install Gekko**, виберіть послідовний порт плати в
-   системному діалозі браузера й підтвердьте. Під час першої інсталяції
-   пропонується стерти пристрій.
+3. Виберіть **Standard** або **Without BLE**, натисніть відповідну кнопку,
+   виберіть послідовний порт і підтвердьте.
 
 4. Дочекайтеся завершення індикатора прогресу, а потім перейдіть до
    [Першого запуску та налаштування WiFi](/gekko/uk/getting-started/first-boot-wifi/).
@@ -53,13 +54,15 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
     3. Запустіть `webflash/flash.sh [PORT]` (macOS/Linux) або
        `webflash/flash.bat [PORT]` (Windows). Якщо порт не вказано, esptool
        визначить його автоматично.
+       Для no-BLE пакета з CI використовуйте `flash.sh no-ble [PORT]` або
+       `flash.bat no-ble [PORT]`.
 
   </TabItem>
   <TabItem label="Python">
 
     ```sh
     pip install esptool
-    python3 webflash/flash.py [PORT]
+    python3 webflash/flash.py [standard|no-ble] [PORT]
     ```
 
   </TabItem>
@@ -72,6 +75,7 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 ```sh
 pio run -e esp32dev -t upload       # firmware, over serial
 pio run -e esp32dev -t uploadfs     # LittleFS portal assets, over serial
+pio run -e esp32dev_no_ble          # build without BLE provisioning
 ```
 
 Дивіться `CLAUDE.md` у корені репозиторію та

@@ -51,6 +51,19 @@ image offsets in `manifest.json` and `flash-layout.env` from
 
 **Easiest — web installer:** open **[yoreek.github.io/gekko/install](https://yoreek.github.io/gekko/install/)** in Chrome/Edge/Opera on desktop and flash over Web Serial, nothing to install. (Browser serial support has known issues on some Linux + USB-chip combinations — fall back to the options below if it fails.)
 
+The installer offers two variants:
+
+- **Standard** includes BLE WiFi provisioning and reserves GPIO 32 for its
+  activation button.
+- **Without BLE** excludes the Bluetooth provisioning code and GPIO
+  reservation. WiFi setup through the access point and web portal remains
+  available.
+
+CI builds the no-BLE variant separately and publishes it as the
+`gekko-esp32-no-ble-<commit>` workflow artifact. It is intentionally not built
+by the local pre-commit hook, so local tests and commits still compile firmware
+only once.
+
 **Recommended offline — esptool script (Windows/macOS/Linux, no Python required):**
 
 1. Download the standalone `esptool` binary for your OS from the [esptool releases page](https://github.com/espressif/esptool/releases).
@@ -58,6 +71,8 @@ image offsets in `manifest.json` and `flash-layout.env` from
 3. Run `webflash/flash.sh [PORT]` (macOS/Linux) or
    `webflash/flash.bat [PORT]` (Windows). By default this writes the combined
    image at `0x0`. If no port is given, esptool tries to auto-detect it.
+   To flash a downloaded no-BLE CI bundle, add `no-ble` before the port:
+   `flash.sh no-ble [PORT]` or `flash.bat no-ble [PORT]`.
 
 The combined image is intended for a complete installation. Because `devdata`
 is located between the application and LittleFS partitions, writing the
@@ -73,7 +88,7 @@ can also be used without a port, for example `webflash/flash.sh littlefs`.
 
 ```sh
 pip install esptool
-python3 webflash/flash.py [PORT] [all|bootloader|partitions|firmware|littlefs]
+python3 webflash/flash.py [standard|no-ble] [PORT] [all|bootloader|partitions|firmware|littlefs]
 ```
 
 **Alternative — PlatformIO (for development):**
@@ -81,6 +96,7 @@ python3 webflash/flash.py [PORT] [all|bootloader|partitions|firmware|littlefs]
 ```sh
 pio run -e esp32dev -t upload       # firmware, over serial
 pio run -e esp32dev -t uploadfs     # LittleFS data, over serial
+pio run -e esp32dev_no_ble          # compile firmware without BLE provisioning
 ```
 
 **Browser, local copy:** `webflash/index.html` is the same [ESP Web Tools](https://esphome.github.io/esp-web-tools/) installer that is published at the web installer link above; serve it with any static file server (e.g. `python3 -m http.server` from `webflash/`) to flash local binaries.

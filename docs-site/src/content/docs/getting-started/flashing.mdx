@@ -9,7 +9,9 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 
 Ready-to-flash binaries (`bootloader.bin`, `partitions.bin`, `firmware.bin`,
 `littlefs.bin`) are built from every commit and include both the firmware and
-the web portal assets.
+the web portal assets. The **standard** variant includes BLE WiFi provisioning
+and reserves GPIO 32 for its button. The **without BLE** variant is smaller and
+keeps access-point and web-portal WiFi setup.
 
 ## Option 1 — Web installer (easiest)
 
@@ -24,8 +26,9 @@ Flash directly from the browser, no software to install:
 2. Open the installer in **Chrome**, **Edge**, or **Opera** on desktop (Web
    Serial is not available in Firefox/Safari or on mobile).
 
-3. Click **Install Gekko**, pick the board's serial port in the browser
-   dialog, and confirm. A first-time install offers to erase the device.
+3. Choose **Standard** or **Without BLE**, click its install button, pick the
+   board's serial port in the browser dialog, and confirm. A first-time install
+   offers to erase the device.
 
 4. Wait for the progress bar to finish, then continue with
    [First boot & WiFi setup](/gekko/getting-started/first-boot-wifi/).
@@ -49,13 +52,15 @@ below — they flash the exact same binaries.
        (rename to `esptool` on macOS/Linux, `esptool.exe` on Windows).
     3. Run `webflash/flash.sh [PORT]` (macOS/Linux) or `webflash/flash.bat
        [PORT]` (Windows). Without a port argument, esptool auto-detects it.
+       For a downloaded no-BLE CI bundle, use `flash.sh no-ble [PORT]` or
+       `flash.bat no-ble [PORT]`.
 
   </TabItem>
   <TabItem label="Python">
 
     ```sh
     pip install esptool
-    python3 webflash/flash.py [PORT]
+    python3 webflash/flash.py [standard|no-ble] [PORT]
     ```
 
   </TabItem>
@@ -68,6 +73,7 @@ If you build from source:
 ```sh
 pio run -e esp32dev -t upload       # firmware, over serial
 pio run -e esp32dev -t uploadfs     # LittleFS portal assets, over serial
+pio run -e esp32dev_no_ble          # compile without BLE provisioning
 ```
 
 See the repository's `CLAUDE.md` and `docs/platformio-environments.md` for the

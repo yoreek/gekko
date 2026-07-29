@@ -9,7 +9,9 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 
 Die bereitstellbaren Binaries (`bootloader.bin`, `partitions.bin`,
 `firmware.bin`, `littlefs.bin`) werden aus jedem Commit erzeugt und enthalten
-sowohl die Firmware als auch die Webportal-Assets.
+sowohl die Firmware als auch die Webportal-Assets. **Standard** enthaelt die
+BLE-WiFi-Einrichtung und reserviert GPIO 32 fuer den Taster. **Without BLE**
+ist kleiner; die Einrichtung ueber Access Point und Webportal bleibt erhalten.
 
 ## Option 1 - Webinstaller (am einfachsten)
 
@@ -24,9 +26,8 @@ Direkt im Browser flashen, ohne zusaetzliche Software:
 2. Oeffne den Installer in **Chrome**, **Edge** oder **Opera** auf dem Desktop
    (Web Serial ist in Firefox/Safari und auf Mobilgeraeten nicht verfuegbar).
 
-3. Klicke auf **Install Gekko**, waehle im Browser-Dialog den seriellen Port
-   des Boards und bestaetige. Bei einer Erstinstallation kann das Geraet auch
-   geloescht werden.
+3. Waehle **Standard** oder **Without BLE**, klicke auf die zugehoerige
+   Schaltflaeche, waehle den seriellen Port und bestaetige.
 
 4. Warte, bis der Fortschrittsbalken fertig ist, und fahre dann mit
    [First boot & WiFi setup](/gekko/de/getting-started/first-boot-wifi/) fort.
@@ -53,13 +54,15 @@ Binaries.
     3. Starte `webflash/flash.sh [PORT]` (macOS/Linux) oder
        `webflash/flash.bat [PORT]` (Windows). Ohne Port-Argument erkennt
        esptool den Port automatisch.
+       Fuer das no-BLE-CI-Paket nutze `flash.sh no-ble [PORT]` oder
+       `flash.bat no-ble [PORT]`.
 
   </TabItem>
   <TabItem label="Python">
 
     ```sh
     pip install esptool
-    python3 webflash/flash.py [PORT]
+    python3 webflash/flash.py [standard|no-ble] [PORT]
     ```
 
   </TabItem>
@@ -72,6 +75,7 @@ Wenn du aus dem Quellcode baust:
 ```sh
 pio run -e esp32dev -t upload       # Firmware, ueber Serial
 pio run -e esp32dev -t uploadfs     # LittleFS-Portal-Assets, ueber Serial
+pio run -e esp32dev_no_ble          # ohne BLE-Provisioning bauen
 ```
 
 Siehe `CLAUDE.md` und `docs/platformio-environments.md` im Repository fuer

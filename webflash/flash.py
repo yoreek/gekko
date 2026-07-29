@@ -2,7 +2,7 @@
 """Flashes the complete Gekko image or one selected ESP32 partition.
 
 Requires: pip install esptool
-Usage:    python3 flash.py [PORT] [all|bootloader|partitions|firmware|littlefs]
+Usage:    python3 flash.py [standard|no-ble] [PORT] [all|bootloader|partitions|firmware|littlefs]
 If no port is given, esptool will try to auto-detect it.
 """
 import json
@@ -13,23 +13,27 @@ import esptool
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TARGETS = {"all", "bootloader", "partitions", "firmware", "littlefs"}
+VARIANTS = {"standard": "", "no-ble": "no-ble"}
 
 
 def parse_arguments():
     arguments = sys.argv[1:]
+    variant = "standard"
+    if arguments and arguments[0] in VARIANTS:
+        variant = arguments.pop(0)
     if len(arguments) > 2:
         sys.exit(__doc__)
     if arguments and arguments[0] in TARGETS:
-        return None, arguments[0]
+        return variant, None, arguments[0]
     port = arguments[0] if arguments else None
     target = arguments[1] if len(arguments) == 2 else "all"
     if target not in TARGETS:
         sys.exit(f"Unknown target: {target}\n\n{__doc__}")
-    return port, target
+    return variant, port, target
 
 
-def manifest_parts():
-    with open(os.path.join(HERE, "manifest.json"), encoding="utf-8") as source:
+def manifest_parts(bundle_dir):
+    with open(os.path.join(bundle_dir, "manifest.json"), encoding="utf-8") as source:
         manifest = json.load(source)
     return {
         os.path.splitext(part["path"])[0]: (str(part["offset"]), part["path"])
@@ -38,11 +42,12 @@ def manifest_parts():
 
 
 def main():
-    port, target = parse_arguments()
+    variant, port, target = parse_arguments()
+    bundle_dir = os.path.join(HERE, VARIANTS[variant])
     port_args = ["--port", port] if port else []
-    parts = {"all": ("0", "merged-firmware.bin"), **manifest_parts()}
+    parts = {"all": ("0", "merged-firmware.bin"), **manifest_parts(bundle_dir)}
     offset, filename = parts[target]
-    path = os.path.join(HERE, filename)
+    path = os.path.join(bundle_dir, filename)
 
     if not os.path.isfile(path):
         sys.exit(f"File not found: {path}")
