@@ -333,6 +333,7 @@ bool St7735Device::initializeDisplayHardware(uint32_t now) {
 }
 
 bool St7735Device::clearDisplay(const uint16_t color) {
+    (void)color;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     if (surface_ == nullptr) {
         return false;
@@ -345,6 +346,8 @@ bool St7735Device::clearDisplay(const uint16_t color) {
 }
 
 DisplayLayoutRenderResult St7735Device::renderDisplayFrame(const MetricValueResolver& resolver, const uint32_t now) {
+    (void)resolver;
+    (void)now;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     if (surface_ == nullptr) {
         return {};

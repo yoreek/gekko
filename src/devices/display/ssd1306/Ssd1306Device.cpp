@@ -311,6 +311,7 @@ bool Ssd1306Device::initializeDisplayHardware(uint32_t now) {
 }
 
 bool Ssd1306Device::clearDisplay(const uint16_t color) {
+    (void)color;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     if (surface_ == nullptr) {
         return false;
@@ -323,6 +324,8 @@ bool Ssd1306Device::clearDisplay(const uint16_t color) {
 }
 
 DisplayLayoutRenderResult Ssd1306Device::renderDisplayFrame(const MetricValueResolver& resolver, const uint32_t now) {
+    (void)resolver;
+    (void)now;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     if (surface_ == nullptr) {
         return {};

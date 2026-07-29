@@ -14,7 +14,6 @@ namespace {
 
 void setNull(MetricValue& value);
 void setText(MetricValue& value, const char* text);
-void setInt(MetricValue& value, int32_t intValue, const char* text);
 void setFloat(MetricValue& value, float floatValue, const char* text);
 void setDuration(MetricValue& value, uint32_t durationMs, const char* text);
 void setDateTime(MetricValue& value, const DateTime& dateTime, const char* text);
@@ -77,12 +76,6 @@ void setNull(MetricValue& value) {
 void setText(MetricValue& value, const char* text) {
     value.valueType = MetricValueType::String;
     value.number = MetricNumber{};
-    std::snprintf(value.text, sizeof(value.text), "%s", text != nullptr ? text : "");
-}
-
-void setInt(MetricValue& value, const int32_t intValue, const char* text) {
-    value.valueType = MetricValueType::Int;
-    value.number = intValue;
     std::snprintf(value.text, sizeof(value.text), "%s", text != nullptr ? text : "");
 }
 

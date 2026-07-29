@@ -44,7 +44,7 @@ bool parseDoseTime(const JsonVariantConst& variant, uint16_t& minuteOfDay, const
 }
 
 void writeDoseTime(uint16_t minuteOfDay, JsonObject output) {
-    char text[6]{};
+    char text[8]{};
     std::snprintf(text, sizeof(text), "%02u:%02u", static_cast<unsigned int>(minuteOfDay / 60U),
                   static_cast<unsigned int>(minuteOfDay % 60U));
     output["time"] = JsonString(text, JsonString::Copied);

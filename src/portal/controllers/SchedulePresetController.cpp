@@ -12,6 +12,8 @@
 
 namespace ewfm {
 
+#if defined(ARDUINO) && !defined(UNIT_TEST)
+
 namespace {
 constexpr char kPresetPathPrefix[] = "/api/schedulepresets/";
 
@@ -43,6 +45,8 @@ bool parsePresetPath(const char* url, uint32_t& deviceId, uint8_t& slot, bool& h
     return true;
 }
 } // namespace
+
+#endif
 
 SchedulePresetController::SchedulePresetController(AsyncWebServerRequest* request, const Action action, ISchedulePresetStorage* storage)
     : BaseController(request, action), storage_(storage) {}
