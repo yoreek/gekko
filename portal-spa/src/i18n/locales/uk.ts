@@ -38,6 +38,7 @@ export default {
   },
   validation: {
     required: "Обов'язкове поле",
+    range: '{min}–{max}',
     uniqueDeviceName: 'Пристрій із таким ім’ям уже існує',
     deviceNameTooLong: 'Назва пристрою не повинна перевищувати {max} байтів UTF-8',
   },
@@ -172,11 +173,6 @@ export default {
     haNodeNameHint: 'Відображувана назва в Home Assistant. Можна змінювати будь-коли без побічних ефектів.',
     caCertUpload: 'Завантажити CA-сертифікат',
     caCertRemove: 'Видалити CA-сертифікат',
-    caCertUploadSuccess: 'CA-сертифікат завантажено.',
-    caCertUploadError: 'Не вдалося завантажити CA-сертифікат.',
-    caCertRemoveSuccess: 'CA-сертифікат видалено.',
-    saveSuccess: 'Налаштування MQTT збережено.',
-    saveError: 'Не вдалося зберегти налаштування MQTT.',
     status: {
       connected: 'Підключено',
       waitingForStation: 'Очікування Wi-Fi',
@@ -197,8 +193,6 @@ export default {
     timezone: 'Часовий пояс',
     syncInterval: 'Інтервал синхронізації (с)',
     syncIntervalHint: 'Як часто контролер синхронізується з сервером NTP, у секундах.',
-    saveSuccess: 'Налаштування часу збережено.',
-    saveError: 'Не вдалося зберегти налаштування часу.',
     manualSetTitle: 'Встановити час вручну',
     manualSetSubtitle: 'Корисно, коли синхронізація NTP вимкнена або ще немає доступу до інтернету',
     manualSetLabel: 'Дата й час',
@@ -269,12 +263,8 @@ export default {
       maxDelay: 'Максимальна затримка, с',
       maxDelayHint: 'Жорсткий поріг запису під час безперервних змін',
       flushNow: 'Записати зараз',
-      saveSuccess: 'Налаштування збережено',
-      saveError: 'Не вдалося зберегти налаштування',
       flushSuccess: 'Зміни записано на флеш',
       flushError: 'Не вдалося записати зміни',
-      debounceRangeError: 'Затримка має бути від {min} до {max} с',
-      maxDelayRangeError: 'Максимальна затримка має бути від {min} до {max} с',
       debounceExceedsMaxDelayError: 'Затримка не може перевищувати максимальну затримку',
     },
     backup: {
@@ -550,7 +540,6 @@ export default {
       enabled: 'Публікувати в Home Assistant',
       name: 'Назва в Home Assistant',
       nameHint: 'Залиште порожнім, щоб використати назву пристрою вище.',
-      saveSuccess: 'Налаштування Home Assistant збережено.',
     },
     status: {
       ready: 'Готовий',
@@ -695,7 +684,6 @@ export default {
       noneSelected: 'Виберіть пристрій для перегляду.',
       edit: 'Редагувати',
       openDesigner: 'Дизайн дисплея',
-      save: 'Зберегти',
       configDetails: 'Деталі конфігурації',
       fieldHint: 'Докладніше',
       actions: 'Дії',
@@ -1188,7 +1176,6 @@ export default {
       recentEventsEmpty: 'Для цього пристрою немає збережених подій.',
       deleteConfirmTitle: 'Видалити пристрій?',
       deleteConfirmBody: 'Це прибере пристрій із реєстру та закриє перегляд деталей.',
-      unknownError: 'Невідома помилка пристрою',
     },
   },
   status: {
@@ -1222,7 +1209,7 @@ export default {
   },
   notifications: {
     deviceCreated: 'Пристрій "{name}" створено',
-    deviceSaved: 'Зміни збережено',
+    saved: 'Зміни збережено',
     deviceDeleted: 'Пристрій "{name}" видалено',
     error: 'Щось пішло не так',
     alerts: {

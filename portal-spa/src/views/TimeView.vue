@@ -4,17 +4,49 @@
       <template #header>
         <PageToolbar :title="t('navigation.time')" :subtitle="t('time.subtitle')">
           <template #actions>
-            <v-chip v-if="timeStore.synced" variant="tonal" :color="sourceChipColor" size="small" class="mr-2">
+            <v-progress-circular
+              v-if="timeLifecycle.initialLoading.value"
+              indeterminate
+              color="primary"
+              size="24"
+              width="2"
+            />
+            <v-chip
+              v-else-if="timeLifecycle.ready.value && timeStore.synced"
+              variant="tonal"
+              :color="sourceChipColor"
+              size="small"
+              class="mr-2"
+            >
               {{ sourceLabel }}
             </v-chip>
-            <v-chip variant="tonal" :color="statusChipColor" size="small">
+            <v-chip
+              v-if="timeLifecycle.ready.value"
+              variant="tonal"
+              :color="statusChipColor"
+              size="small"
+            >
               {{ statusChipLabel }}
             </v-chip>
           </template>
         </PageToolbar>
       </template>
 
-      <v-row class="ga-4">
+      <v-progress-linear
+        v-if="timeLifecycle.initialLoading.value || timeLifecycle.refreshing.value"
+        indeterminate
+        color="primary"
+      />
+
+      <v-alert
+        v-else-if="timeLifecycle.loadError.value !== null && !timeLifecycle.ready.value"
+        type="error"
+        variant="tonal"
+      >
+        {{ loadErrorMessage }}
+      </v-alert>
+
+      <v-row v-else-if="timeLifecycle.ready.value" class="ga-4">
         <v-col cols="12" sm="3">
           <div>
             <div class="text-label-small text-medium-emphasis">{{ t('time.syncStatus') }}</div>
@@ -42,10 +74,23 @@
       </v-row>
 
       <template #actions>
-        <v-btn variant="outlined" :loading="syncingNow" size="small" class="mr-2" @click="syncNow">
+        <v-btn
+          variant="outlined"
+          :loading="syncingNow"
+          :disabled="!timeLifecycle.ready.value || timeLifecycle.busy.value"
+          size="small"
+          class="mr-2"
+          @click="syncNow"
+        >
           {{ t('time.syncNow') }}
         </v-btn>
-        <v-btn :loading="loading" color="primary" size="small" @click="refreshTimeStatus">
+        <v-btn
+          :loading="timeLifecycle.refreshing.value"
+          :disabled="timeLifecycle.busy.value || timeLifecycle.dirty.value"
+          color="primary"
+          size="small"
+          @click="refreshTimeStatus"
+        >
           {{ t('actions.refresh') }}
         </v-btn>
       </template>
@@ -56,39 +101,64 @@
         <PageToolbar :title="t('time.settingsTitle')" />
       </template>
 
-      <div class="d-flex flex-column ga-4">
-        <v-switch v-model="form.enabled" :label="t('time.enabled')" inset hide-details />
-        <v-text-field
-          v-select-on-focus
-          v-model="form.ntpServer"
-          :label="t('time.ntpServer')"
-          :disabled="!form.enabled"
-          autocomplete="off"
-        />
-        <v-select
-          v-model="form.timezoneId"
-          :label="t('time.timezone')"
-          :items="timezones"
-          item-title="name"
-          item-value="id"
-        />
-        <v-text-field
-          v-select-on-focus
-          v-model.number="form.syncIntervalSeconds"
-          type="number"
-          :label="t('time.syncInterval')"
-          :disabled="!form.enabled"
-          :hint="t('time.syncIntervalHint')"
-          persistent-hint
-        />
+      <v-progress-linear
+        v-if="timeLifecycle.initialLoading.value || timeLifecycle.refreshing.value"
+        indeterminate
+        color="primary"
+      />
 
-        <v-alert v-if="errorMessage" type="error" variant="tonal">
-          {{ errorMessage }}
-        </v-alert>
-      </div>
+      <v-alert
+        v-else-if="timeLifecycle.loadError.value !== null && !timeLifecycle.ready.value"
+        type="error"
+        variant="tonal"
+      >
+        {{ loadErrorMessage }}
+      </v-alert>
+
+      <v-form v-else-if="timeDraft" :disabled="timeLifecycle.busy.value">
+        <div class="d-flex flex-column ga-4">
+          <v-switch v-model="timeDraft.enabled" :label="t('time.enabled')" inset hide-details />
+          <v-text-field
+            v-select-on-focus
+            v-model="timeDraft.ntpServer"
+            :label="t('time.ntpServer')"
+            :disabled="!timeDraft.enabled"
+            autocomplete="off"
+          />
+          <v-select
+            v-model="timeDraft.timezoneId"
+            :label="t('time.timezone')"
+            :items="timezones"
+            item-title="name"
+            item-value="id"
+          />
+          <v-text-field
+            v-select-on-focus
+            v-model.number="timeDraft.syncIntervalSeconds"
+            type="number"
+            :label="t('time.syncInterval')"
+            :disabled="!timeDraft.enabled"
+            :hint="t('time.syncIntervalHint')"
+            persistent-hint
+          />
+
+          <v-alert v-if="timeLifecycle.loadError.value !== null" type="error" variant="tonal">
+            {{ loadErrorMessage }}
+          </v-alert>
+          <v-alert v-if="timeLifecycle.saveError.value !== null" type="error" variant="tonal">
+            {{ saveErrorMessage }}
+          </v-alert>
+        </div>
+      </v-form>
 
       <template #actions>
-        <v-btn :loading="saving" color="primary" size="small" @click="saveSettings">
+        <v-btn
+          :loading="timeLifecycle.saving.value"
+          :disabled="!timeLifecycle.canSave.value"
+          color="primary"
+          size="small"
+          @click="saveSettings"
+        >
           {{ t('actions.save') }}
         </v-btn>
       </template>
@@ -99,16 +169,24 @@
         <PageToolbar :title="t('time.manualSetTitle')" :subtitle="t('time.manualSetSubtitle')" />
       </template>
 
-      <div class="d-flex flex-column ga-4">
-        <v-text-field v-model="manualDateTime" type="datetime-local" :label="t('time.manualSetLabel')" />
+      <v-form :disabled="!timeLifecycle.ready.value || timeLifecycle.busy.value || manualSetting">
+        <div class="d-flex flex-column ga-4">
+          <v-text-field v-model="manualDateTime" type="datetime-local" :label="t('time.manualSetLabel')" />
 
-        <v-alert v-if="manualSetError" type="error" variant="tonal">
-          {{ manualSetError }}
-        </v-alert>
-      </div>
+          <v-alert v-if="manualSetError" type="error" variant="tonal">
+            {{ manualSetError }}
+          </v-alert>
+        </div>
+      </v-form>
 
       <template #actions>
-        <v-btn :loading="manualSetting" color="primary" size="small" @click="setManualTime">
+        <v-btn
+          :loading="manualSetting"
+          :disabled="!timeLifecycle.ready.value || timeLifecycle.busy.value || !manualDateTime"
+          color="primary"
+          size="small"
+          @click="setManualTime"
+        >
           {{ t('time.manualSetApply') }}
         </v-btn>
       </template>
@@ -117,11 +195,18 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref, computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { fetchTimeSettings, fetchTimeStatus, fetchTimezones, setSystemTime, updateTimeSettings } from '@/api'
-import type { TimezoneCatalogEntry } from '@/api'
+import { useAsyncForm } from '@/composables/useAsyncForm'
+import {
+  buildTimeSettingsPayload,
+  createTimeSettingsDraft,
+  isTimeSettingsDirty,
+  type TimeSettingsDraft,
+  type TimeSettingsSnapshot,
+} from '@/models/time-settings-form'
 import { useTimeStore } from '@/stores/time'
 import { useNotificationsStore } from '@/stores/notifications'
 import PageContainer from '@/components/layout/PageContainer.vue'
@@ -132,21 +217,23 @@ const { t } = useI18n()
 const timeStore = useTimeStore()
 const notifications = useNotificationsStore()
 
-const loading = ref(false)
-const saving = ref(false)
 const syncingNow = ref(false)
 const manualSetting = ref(false)
-const errorMessage = ref('')
 const manualSetError = ref('')
-const timezones = ref<TimezoneCatalogEntry[]>([])
 const manualDateTime = ref('')
 
-const form = reactive({
-  enabled: true,
-  ntpServer: '',
-  timezoneId: '',
-  syncIntervalSeconds: 3600,
+const timeLifecycle = useAsyncForm<TimeSettingsSnapshot, TimeSettingsDraft>({
+  load: loadTimeSettingsSnapshot,
+  createDraft: createTimeSettingsDraft,
+  isDirty: isTimeSettingsDirty,
+  save: saveTimeSettingsSnapshot,
+  onCommit: commitTimeSettingsSnapshot,
 })
+
+const timeDraft = computed(() => timeLifecycle.draft.value)
+const timezones = computed(() => timeLifecycle.source.value?.timezones ?? [])
+const loadErrorMessage = computed(() => formatError(timeLifecycle.loadError.value, t('notifications.error')))
+const saveErrorMessage = computed(() => formatError(timeLifecycle.saveError.value, t('notifications.error')))
 
 const statusChipLabel = computed(() => {
   if (!timeStore.enabled) return t('time.status.disabled')
@@ -192,44 +279,39 @@ function formatUtcOffset(offsetMinutes: number): string {
   return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
 }
 
-function applySettingsToForm(): void {
-  form.enabled = timeStore.enabled
-  form.ntpServer = timeStore.ntpServer
-  form.timezoneId = timeStore.timezoneId
-  form.syncIntervalSeconds = timeStore.syncIntervalSeconds
+function formatError(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message.length > 0 ? error.message : fallback
 }
 
-async function refreshTimeStatus(): Promise<void> {
-  loading.value = true
-  try {
-    const status = await fetchTimeStatus()
-    timeStore.replaceFromStatus(status)
-    const settings = await fetchTimeSettings()
-    timeStore.replaceFromSettings(settings)
-    applySettingsToForm()
-  } finally {
-    loading.value = false
-  }
+async function loadTimeSettingsSnapshot(): Promise<TimeSettingsSnapshot> {
+  const [status, settings, catalog] = await Promise.all([
+    fetchTimeStatus(),
+    fetchTimeSettings(),
+    fetchTimezones(),
+  ])
+  return { status, settings, timezones: catalog.timezones }
+}
+
+async function saveTimeSettingsSnapshot(
+  { source, draft }: { source: TimeSettingsSnapshot; draft: TimeSettingsDraft },
+): Promise<TimeSettingsSnapshot> {
+  const settings = await updateTimeSettings(buildTimeSettingsPayload(draft))
+  const status = await fetchTimeStatus()
+  return { status, settings, timezones: source.timezones }
+}
+
+function commitTimeSettingsSnapshot(source: TimeSettingsSnapshot): void {
+  timeStore.replaceFromStatus(source.status)
+  timeStore.replaceFromSettings(source.settings)
+}
+
+function refreshTimeStatus(): void {
+  void timeLifecycle.refresh()
 }
 
 async function saveSettings(): Promise<void> {
-  saving.value = true
-  errorMessage.value = ''
-  try {
-    const settings = await updateTimeSettings({
-      enabled: form.enabled,
-      ntpServer: form.ntpServer,
-      timezoneId: form.timezoneId,
-      syncIntervalSeconds: form.syncIntervalSeconds,
-    })
-    timeStore.replaceFromSettings(settings)
-    applySettingsToForm()
-    notifications.notify(t('time.saveSuccess'), 'success')
-    await refreshTimeStatus()
-  } catch (error) {
-    errorMessage.value = error instanceof Error && error.message.length > 0 ? error.message : t('time.saveError')
-  } finally {
-    saving.value = false
+  if (await timeLifecycle.save()) {
+    notifications.notify(t('notifications.saved'), 'success')
   }
 }
 
@@ -240,7 +322,8 @@ async function syncNow(): Promise<void> {
   try {
     const settings = await updateTimeSettings({})
     timeStore.replaceFromSettings(settings)
-    await refreshTimeStatus()
+    const status = await fetchTimeStatus()
+    timeStore.replaceFromStatus(status)
     notifications.notify(t('time.syncNowSuccess'), 'success')
   } catch {
     notifications.notify(t('time.syncNowError'), 'error')
@@ -272,10 +355,6 @@ async function setManualTime(): Promise<void> {
 }
 
 onMounted(() => {
-  void (async () => {
-    const catalog = await fetchTimezones()
-    timezones.value = catalog.timezones
-    await refreshTimeStatus()
-  })()
+  void timeLifecycle.initialize()
 })
 </script>

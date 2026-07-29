@@ -1,6 +1,6 @@
 <template>
   <PageContainer>
-    <template v-if="device">
+    <template v-if="device && draft && haDraft">
       <PageCard>
         <template #header>
           <PageToolbar :title="deviceName" :subtitle="t(typeUi?.labelKey ?? 'device.type.unknown')" show-back @back="navigateBack">
@@ -29,7 +29,7 @@
 
           <component
             :is="typeUi.fieldsComponent"
-            v-if="typeUi && device"
+            v-if="typeUi"
             :model-value="draft"
             :device="device"
             mode="edit"
@@ -38,6 +38,24 @@
             @command="onCommand"
             @refresh="refresh"
           />
+
+          <template v-if="device.ha?.supported">
+            <v-divider />
+
+            <PageToolbar
+              :title="t('device.ha.title')"
+              :subtitle="haUniqueId ? t('device.ha.uniqueIdLabel', { id: haUniqueId }) : undefined"
+            />
+
+            <v-switch v-model="haDraft.enabled" :label="t('device.ha.enabled')" inset hide-details />
+            <v-text-field
+              v-model="haDraft.name"
+              :label="t('device.ha.name')"
+              :hint="t('device.ha.nameHint')"
+              persistent-hint
+              :placeholder="device.config.name"
+            />
+          </template>
 
           <v-alert v-if="errorMessage" type="error" variant="tonal">
             {{ errorMessage }}
@@ -49,34 +67,23 @@
             {{ t('actions.cancel') }}
           </v-btn>
           <v-btn color="primary" :loading="isSaving" :disabled="!canSave || loading" @click="onSave">
-            {{ t('device.dialog.save') }}
-          </v-btn>
-        </template>
-      </PageCard>
-
-      <PageCard v-if="device.ha?.supported" class="mt-4">
-        <template #header>
-          <PageToolbar :title="t('device.ha.title')" :subtitle="haUniqueId ? t('device.ha.uniqueIdLabel', { id: haUniqueId }) : undefined" />
-        </template>
-
-        <div class="d-flex flex-column ga-4">
-          <v-switch v-model="haDraft.enabled" :label="t('device.ha.enabled')" inset hide-details />
-          <v-text-field
-            v-model="haDraft.name"
-            :label="t('device.ha.name')"
-            :hint="t('device.ha.nameHint')"
-            persistent-hint
-            :placeholder="device?.config.name"
-          />
-        </div>
-
-        <template #actions>
-          <v-btn color="primary" size="small" :loading="haSaving" @click="onSaveHaSettings">
             {{ t('actions.save') }}
           </v-btn>
         </template>
       </PageCard>
     </template>
+
+    <PageCard v-else-if="!loading && errorMessage">
+      <v-alert type="error" variant="tonal">
+        {{ errorMessage }}
+      </v-alert>
+
+      <template #actions>
+        <v-btn color="primary" size="small" @click="refresh">
+          {{ t('actions.refresh') }}
+        </v-btn>
+      </template>
+    </PageCard>
 
     <PageCard v-else-if="!loading">
       <div class="text-medium-emphasis">{{ t('notFound.title') }}</div>
@@ -89,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, ref, toRef } from 'vue'
+import { computed, onBeforeMount, toRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -97,7 +104,6 @@ import type { DeviceCommandRequest } from '@/api/contracts'
 import { fetchMqttSettings, fetchMqttStatus } from '@/api'
 import { deviceStatusColor, deviceStatusLabelKey } from '@/models/devices/device-status'
 import { useDeviceDetail } from '@/composables/useDeviceDetail'
-import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { useMqttStore } from '@/stores/mqtt'
 import { resolveDeviceUi } from '@/components/devices/registry/device-ui-registry'
 import { useNotificationsStore } from '@/stores/notifications'
@@ -112,19 +118,16 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const router = useRouter()
-const deviceStore = useDeviceRegistryStore()
 const notifications = useNotificationsStore()
 const mqttStore = useMqttStore()
 
 const { device, deviceName, loading, isSaving, errorMessage, draft, haDraft, canSave, refresh, save, submitCommand } =
   useDeviceDetail(toRef(props, 'deviceId'))
 
-const haSaving = ref(false)
-
 async function onSave(): Promise<void> {
   await save()
   if (!errorMessage.value) {
-    notifications.notify(t('notifications.deviceSaved'), 'success')
+    notifications.notify(t('notifications.saved'), 'success')
   }
 }
 
@@ -132,33 +135,18 @@ async function onCommand(payload: DeviceCommandRequest): Promise<void> {
   await submitCommand(payload)
 }
 
-async function onSaveHaSettings(): Promise<void> {
-  haSaving.value = true
-  try {
-    await submitCommand({
-      command: 'setHaSettings',
-      haEnabled: haDraft.value.enabled,
-      haName: haDraft.value.name,
-    })
-    if (!errorMessage.value) {
-      notifications.notify(t('device.ha.saveSuccess'), 'success')
-    }
-  } finally {
-    haSaving.value = false
-  }
-}
-
 onBeforeMount(async () => {
-  await deviceStore.initialize()
-  await refresh()
+  await Promise.all([refresh(), loadMqttContext()])
+})
+
+async function loadMqttContext(): Promise<void> {
   const mqttStatus = await fetchMqttStatus()
   mqttStore.replaceFromStatus(mqttStatus)
   if (mqttStatus.enabled) {
-    // haNodeId lives in settings, not status - needed to show the real HA unique_id below.
     const mqttSettings = await fetchMqttSettings()
     mqttStore.replaceFromSettings(mqttSettings)
   }
-})
+}
 
 const typeUi = computed(() => (device.value ? resolveDeviceUi(device.value.record.typeName) : null))
 

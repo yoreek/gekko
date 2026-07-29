@@ -73,13 +73,13 @@ this does not corrupt anything (see "If a commit aborts partway" below), but
 it wastes the run and leaves you re-diagnosing a timeout instead of a real
 failure.
 
-Don't just raise the timeout and block on it. Redirect the commit's output to
-a log file and run it as a background/non-blocking process, then poll or tail
-that log file to watch progress and pick up the real pass/fail result once it
-finishes — the same way `pio run`/`pio test` output is inspected elsewhere in
-this workflow. Waiting on a single foreground call with no visibility into
-which stage (cppcheck vs. SPA build vs. firmware build) is currently running
-makes a slow-but-healthy commit indistinguishable from a hung one.
+Use `scripts/commit.sh "<message>"`, never a direct `git commit`. The wrapper
+runs the single commit process non-blockingly, writes complete output to
+`/tmp/gekko-commit.log`, reports hook stage changes, and prevents a second
+wrapper commit from starting concurrently. Poll the original command session
+until it exits. If that session cannot be recovered, use
+`scripts/commit.sh --status`; do not start another commit while the reported
+process is running or its state is unknown.
 
 ### If a commit aborts partway
 

@@ -206,7 +206,7 @@ async function scanSelectedDependency(): Promise<void> {
       deviceStore.upsertDevice(response.device, response.registryRevision)
     }
   } catch (error) {
-    scanError.value = error instanceof Error ? error.message : t('device.dialog.unknownError')
+    scanError.value = error instanceof Error ? error.message : t('notifications.error')
   } finally {
     scanBusy.value = false
   }

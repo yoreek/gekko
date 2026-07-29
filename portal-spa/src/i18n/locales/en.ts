@@ -38,6 +38,7 @@ export default {
   },
   validation: {
     required: 'Required',
+    range: '{min}–{max}',
     uniqueDeviceName: 'A device with this name already exists',
     deviceNameTooLong: 'Device name must not exceed {max} UTF-8 bytes',
   },
@@ -172,11 +173,6 @@ export default {
     haNodeNameHint: 'Display name shown in Home Assistant. Safe to rename at any time.',
     caCertUpload: 'Upload CA certificate',
     caCertRemove: 'Remove CA certificate',
-    caCertUploadSuccess: 'CA certificate uploaded.',
-    caCertUploadError: 'Could not upload the CA certificate.',
-    caCertRemoveSuccess: 'CA certificate removed.',
-    saveSuccess: 'MQTT settings saved.',
-    saveError: 'Could not save MQTT settings.',
     status: {
       connected: 'Connected',
       waitingForStation: 'Waiting for Wi-Fi',
@@ -197,8 +193,6 @@ export default {
     timezone: 'Timezone',
     syncInterval: 'Sync interval (seconds)',
     syncIntervalHint: 'How often the controller re-syncs with the NTP server, in seconds.',
-    saveSuccess: 'Time settings saved.',
-    saveError: 'Could not save time settings.',
     manualSetTitle: 'Set time manually',
     manualSetSubtitle: 'Useful when NTP sync is off or there is no internet access yet',
     manualSetLabel: 'Date and time',
@@ -269,12 +263,8 @@ export default {
       maxDelay: 'Max delay, sec',
       maxDelayHint: 'Hard cap on writes during continuous changes',
       flushNow: 'Flush now',
-      saveSuccess: 'Settings saved',
-      saveError: 'Failed to save settings',
       flushSuccess: 'Changes flushed to flash',
       flushError: 'Failed to flush changes',
-      debounceRangeError: 'Debounce must be between {min} and {max} sec',
-      maxDelayRangeError: 'Max delay must be between {min} and {max} sec',
       debounceExceedsMaxDelayError: 'Debounce cannot exceed max delay',
     },
     backup: {
@@ -550,7 +540,6 @@ export default {
       enabled: 'Publish to Home Assistant',
       name: 'Home Assistant name',
       nameHint: 'Leave blank to use the device name above.',
-      saveSuccess: 'Home Assistant settings saved.',
     },
     status: {
       ready: 'Ready',
@@ -695,7 +684,6 @@ export default {
       noneSelected: 'Select a device to inspect it.',
       edit: 'Edit',
       openDesigner: 'Design display',
-      save: 'Save',
       configDetails: 'Config details',
       fieldHint: 'More information',
       actions: 'Actions',
@@ -1188,7 +1176,6 @@ export default {
       recentEventsEmpty: 'No retained events are available for this device.',
       deleteConfirmTitle: 'Delete device?',
       deleteConfirmBody: 'This will remove the device from the registry and close the detail view.',
-      unknownError: 'Unknown device error',
     },
   },
   status: {
@@ -1222,7 +1209,7 @@ export default {
   },
   notifications: {
     deviceCreated: 'Device "{name}" created',
-    deviceSaved: 'Changes saved',
+    saved: 'Changes saved',
     deviceDeleted: 'Device "{name}" deleted',
     error: 'Something went wrong',
     alerts: {

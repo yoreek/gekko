@@ -38,6 +38,7 @@ export default {
   },
   validation: {
     required: 'Requis',
+    range: '{min}–{max}',
     uniqueDeviceName: 'Un appareil avec ce nom existe déjà',
     deviceNameTooLong: "Le nom de l'appareil ne doit pas dépasser {max} octets UTF-8",
   },
@@ -172,11 +173,6 @@ export default {
     haNodeNameHint: "Nom affiché dans Home Assistant. Peut être renommé à tout moment sans effet secondaire.",
     caCertUpload: 'Télécharger le certificat CA',
     caCertRemove: 'Supprimer le certificat CA',
-    caCertUploadSuccess: 'Certificat CA téléchargé.',
-    caCertUploadError: 'Impossible de télécharger le certificat CA.',
-    caCertRemoveSuccess: 'Certificat CA supprimé.',
-    saveSuccess: 'Paramètres MQTT enregistrés.',
-    saveError: "Impossible d'enregistrer les paramètres MQTT.",
     status: {
       connected: 'Connecté',
       waitingForStation: 'En attente du Wi-Fi',
@@ -197,8 +193,6 @@ export default {
     timezone: 'Fuseau horaire',
     syncInterval: 'Intervalle de synchronisation (secondes)',
     syncIntervalHint: 'Fréquence à laquelle le contrôleur se resynchronise avec le serveur NTP, en secondes.',
-    saveSuccess: "Paramètres d'heure enregistrés.",
-    saveError: "Impossible d'enregistrer les paramètres d'heure.",
     manualSetTitle: "Régler l'heure manuellement",
     manualSetSubtitle: "Utile lorsque la synchronisation NTP est désactivée ou qu'il n'y a pas encore d'accès à internet",
     manualSetLabel: 'Date et heure',
@@ -269,12 +263,8 @@ export default {
       maxDelay: 'Delai maximal, s',
       maxDelayHint: 'Plafond d ecriture en cas de modifications continues',
       flushNow: 'Ecrire maintenant',
-      saveSuccess: 'Parametres enregistres',
-      saveError: 'Echec de l enregistrement des parametres',
       flushSuccess: 'Modifications ecrites sur la flash',
       flushError: 'Echec de l ecriture des modifications',
-      debounceRangeError: 'Le delai doit etre compris entre {min} et {max} s',
-      maxDelayRangeError: 'Le delai maximal doit etre compris entre {min} et {max} s',
       debounceExceedsMaxDelayError: 'Le delai ne peut pas depasser le delai maximal',
     },
     backup: {
@@ -550,7 +540,6 @@ export default {
       enabled: 'Publier vers Home Assistant',
       name: 'Nom dans Home Assistant',
       nameHint: "Laissez vide pour utiliser le nom de l'appareil ci-dessus.",
-      saveSuccess: 'Paramètres Home Assistant enregistrés.',
     },
     status: {
       ready: 'Prêt',
@@ -695,7 +684,6 @@ export default {
       noneSelected: 'Sélectionnez un appareil pour l\'inspecter.',
       edit: 'Modifier',
       openDesigner: "Concevoir l'écran",
-      save: 'Enregistrer',
       configDetails: 'Détails de configuration',
       fieldHint: "Plus d'informations",
       actions: 'Actions',
@@ -1188,7 +1176,6 @@ export default {
       recentEventsEmpty: 'Aucun événement conservé disponible pour cet appareil.',
       deleteConfirmTitle: "Supprimer l'appareil ?",
       deleteConfirmBody: 'Cela retirera l\'appareil du registre et fermera la vue détaillée.',
-      unknownError: 'Erreur d\'appareil inconnue',
     },
   },
   status: {
@@ -1222,7 +1209,7 @@ export default {
   },
   notifications: {
     deviceCreated: 'Appareil "{name}" créé',
-    deviceSaved: 'Modifications enregistrées',
+    saved: 'Modifications enregistrées',
     deviceDeleted: 'Appareil "{name}" supprimé',
     error: "Une erreur s'est produite",
     alerts: {

@@ -134,7 +134,7 @@ async function scanBus(): Promise<void> {
     const payload: DeviceCommandRequest = { command: 'scan' }
     await commandDevice(props.busDeviceId, payload)
   } catch (error) {
-    scanError.value = error instanceof Error ? error.message : t('device.dialog.unknownError')
+    scanError.value = error instanceof Error ? error.message : t('notifications.error')
   } finally {
     scanBusy.value = false
   }

@@ -121,7 +121,7 @@ async function probeChipSelect(): Promise<void> {
     }
     await commandDevice(props.busDeviceId, payload)
   } catch (error) {
-    probeError.value = error instanceof Error ? error.message : t('device.dialog.unknownError')
+    probeError.value = error instanceof Error ? error.message : t('notifications.error')
   } finally {
     probeBusy.value = false
   }

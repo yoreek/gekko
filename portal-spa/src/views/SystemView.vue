@@ -58,35 +58,75 @@
         <PageToolbar :title="t('system.persistence.title')" :subtitle="t('system.persistence.subtitle')" />
       </template>
 
-      <div class="d-flex flex-column ga-4">
-        <v-text-field
-          v-select-on-focus
-          v-model.number="persistenceForm.debounceSeconds"
-          type="number"
-          step="0.1"
-          :label="t('system.persistence.debounce')"
-          :hint="t('system.persistence.debounceHint')"
-          persistent-hint
-        />
-        <v-text-field
-          v-select-on-focus
-          v-model.number="persistenceForm.maxDelaySeconds"
-          type="number"
-          :label="t('system.persistence.maxDelay')"
-          :hint="t('system.persistence.maxDelayHint')"
-          persistent-hint
-        />
+      <v-progress-linear v-if="persistenceLifecycle.busy.value" indeterminate color="primary" />
 
-        <v-alert v-if="persistenceErrorMessage" type="error" variant="tonal">
-          {{ persistenceErrorMessage }}
-        </v-alert>
-      </div>
+      <v-alert
+        v-if="persistenceLifecycle.loadError.value !== null && !persistenceLifecycle.ready.value"
+        type="error"
+        variant="tonal"
+      >
+        {{ persistenceErrorMessage }}
+      </v-alert>
+
+      <v-form v-if="persistenceForm" :disabled="persistenceLifecycle.busy.value">
+        <div class="d-flex flex-column ga-4">
+          <v-text-field
+            v-select-on-focus
+            v-model.number="persistenceForm.debounceSeconds"
+            type="number"
+            step="0.1"
+            :min="kMinDebounceSeconds"
+            :max="kMaxDebounceSeconds"
+            :rules="[debounceRule]"
+            :label="t('system.persistence.debounce')"
+            :hint="t('system.persistence.debounceHint')"
+            persistent-hint
+          />
+          <v-text-field
+            v-select-on-focus
+            v-model.number="persistenceForm.maxDelaySeconds"
+            type="number"
+            :min="kMinMaxDelaySeconds"
+            :max="kMaxMaxDelaySeconds"
+            :rules="[maxDelayRule]"
+            :label="t('system.persistence.maxDelay')"
+            :hint="t('system.persistence.maxDelayHint')"
+            persistent-hint
+          />
+
+          <v-alert v-if="persistenceErrorMessage" type="error" variant="tonal">
+            {{ persistenceErrorMessage }}
+          </v-alert>
+        </div>
+      </v-form>
 
       <template #actions>
-        <v-btn variant="outlined" :loading="flushLoading" size="small" class="mr-2" @click="flushNow">
+        <v-btn
+          v-if="!persistenceLifecycle.ready.value"
+          :loading="persistenceLifecycle.busy.value"
+          size="small"
+          @click="refreshPersistenceSettings"
+        >
+          {{ t('actions.refresh') }}
+        </v-btn>
+        <v-btn
+          v-else
+          variant="outlined"
+          :loading="flushLoading"
+          :disabled="persistenceLifecycle.busy.value"
+          size="small"
+          class="mr-2"
+          @click="flushNow"
+        >
           {{ t('system.persistence.flushNow') }}
         </v-btn>
-        <v-btn :loading="persistenceSaving" color="primary" size="small" @click="savePersistenceSettings">
+        <v-btn
+          :loading="persistenceLifecycle.saving.value"
+          :disabled="!persistenceLifecycle.canSave.value"
+          color="primary"
+          size="small"
+          @click="savePersistenceSettings"
+        >
           {{ t('actions.save') }}
         </v-btn>
       </template>
@@ -162,7 +202,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import {
@@ -171,8 +211,10 @@ import {
   flushDevicePersistence,
   importDeviceSetupBundle,
   restartSystem as restartSystemApi,
+  type PersistenceSettingsRecord,
   updatePersistenceSettings,
 } from '@/api'
+import { useAsyncForm } from '@/composables/useAsyncForm'
 import { useSystemStore } from '@/stores/system'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useNotificationsStore } from '@/stores/notifications'
@@ -188,7 +230,7 @@ const notifications = useNotificationsStore()
 
 onMounted(() => {
   void systemStore.loadFirmwareVersion()
-  void loadPersistenceSettings()
+  void persistenceLifecycle.initialize()
 })
 
 const restartLoading = ref(false)
@@ -237,52 +279,65 @@ const kMaxDebounceSeconds = 10
 const kMinMaxDelaySeconds = 1
 const kMaxMaxDelaySeconds = 300
 
-const persistenceForm = reactive({
-  debounceSeconds: 0.5,
-  maxDelaySeconds: 30,
-})
-const persistenceSaving = ref(false)
-const flushLoading = ref(false)
-const persistenceErrorMessage = ref('')
+interface PersistenceSettingsDraft {
+  debounceSeconds: number
+  maxDelaySeconds: number
+}
 
-async function loadPersistenceSettings(): Promise<void> {
-  try {
-    const settings = await fetchPersistenceSettings()
-    persistenceForm.debounceSeconds = settings.debounceMs / 1000
-    persistenceForm.maxDelaySeconds = settings.maxDelayMs / 1000
-  } catch {
-    // Keep the defaults shown above; the save button will still surface any real server error.
+const persistenceLifecycle = useAsyncForm<PersistenceSettingsRecord, PersistenceSettingsDraft>({
+  load: () => fetchPersistenceSettings(),
+  createDraft: settings => ({
+    debounceSeconds: settings.debounceMs / 1000,
+    maxDelaySeconds: settings.maxDelayMs / 1000,
+  }),
+  isDirty: (settings, draft) => (
+    settings.debounceMs !== Math.round(draft.debounceSeconds * 1000)
+    || settings.maxDelayMs !== Math.round(draft.maxDelaySeconds * 1000)
+  ),
+  validate: isPersistenceDraftValid,
+  save: ({ draft }) => updatePersistenceSettings({
+    debounceMs: Math.round(draft.debounceSeconds * 1000),
+    maxDelayMs: Math.round(draft.maxDelaySeconds * 1000),
+  }),
+})
+const persistenceForm = computed(() => persistenceLifecycle.draft.value)
+const flushLoading = ref(false)
+const persistenceErrorMessage = computed(() => {
+  const error = persistenceLifecycle.saveError.value ?? persistenceLifecycle.loadError.value
+  return error instanceof Error && error.message.length > 0 ? error.message : error ? t('notifications.error') : ''
+})
+
+function isInRange(value: number, min: number, max: number): boolean {
+  return Number.isFinite(value) && value >= min && value <= max
+}
+
+function debounceRule(value: number): true | string {
+  return isInRange(value, kMinDebounceSeconds, kMaxDebounceSeconds)
+    || t('validation.range', { min: kMinDebounceSeconds, max: kMaxDebounceSeconds })
+}
+
+function maxDelayRule(value: number): true | string {
+  if (!isInRange(value, kMinMaxDelaySeconds, kMaxMaxDelaySeconds)) {
+    return t('validation.range', { min: kMinMaxDelaySeconds, max: kMaxMaxDelaySeconds })
   }
+  return persistenceForm.value === null
+    || persistenceForm.value.debounceSeconds <= value
+    || t('system.persistence.debounceExceedsMaxDelayError')
+}
+
+function isPersistenceDraftValid(draft: PersistenceSettingsDraft): boolean {
+  return isInRange(draft.debounceSeconds, kMinDebounceSeconds, kMaxDebounceSeconds)
+    && isInRange(draft.maxDelaySeconds, kMinMaxDelaySeconds, kMaxMaxDelaySeconds)
+    && draft.debounceSeconds <= draft.maxDelaySeconds
+}
+
+function refreshPersistenceSettings(): void {
+  void persistenceLifecycle.refresh()
 }
 
 async function savePersistenceSettings(): Promise<void> {
-  persistenceErrorMessage.value = ''
-  if (persistenceForm.debounceSeconds < kMinDebounceSeconds || persistenceForm.debounceSeconds > kMaxDebounceSeconds) {
-    persistenceErrorMessage.value = t('system.persistence.debounceRangeError', { min: kMinDebounceSeconds, max: kMaxDebounceSeconds })
-    return
-  }
-  if (persistenceForm.maxDelaySeconds < kMinMaxDelaySeconds || persistenceForm.maxDelaySeconds > kMaxMaxDelaySeconds) {
-    persistenceErrorMessage.value = t('system.persistence.maxDelayRangeError', { min: kMinMaxDelaySeconds, max: kMaxMaxDelaySeconds })
-    return
-  }
-  if (persistenceForm.debounceSeconds > persistenceForm.maxDelaySeconds) {
-    persistenceErrorMessage.value = t('system.persistence.debounceExceedsMaxDelayError')
-    return
-  }
-
-  persistenceSaving.value = true
-  try {
-    const settings = await updatePersistenceSettings({
-      debounceMs: Math.round(persistenceForm.debounceSeconds * 1000),
-      maxDelayMs: Math.round(persistenceForm.maxDelaySeconds * 1000),
-    })
-    persistenceForm.debounceSeconds = settings.debounceMs / 1000
-    persistenceForm.maxDelaySeconds = settings.maxDelayMs / 1000
-    notifications.notify(t('system.persistence.saveSuccess'), 'success')
-  } catch (error) {
-    persistenceErrorMessage.value = error instanceof Error && error.message.length > 0 ? error.message : t('system.persistence.saveError')
-  } finally {
-    persistenceSaving.value = false
+  if (await persistenceLifecycle.save()) {
+    notifications.notify(t('notifications.saved'), 'success')
   }
 }
 

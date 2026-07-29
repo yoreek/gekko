@@ -1,29 +1,50 @@
-import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
-import { commandDevice, fetchDevice, type DeviceCommandRequest, type DeviceRecord } from '@/api'
+import {
+  computed,
+  ref,
+  watch,
+  type ComputedRef,
+  type Ref,
+  type WritableComputedRef,
+} from 'vue'
+
+import {
+  commandDevice,
+  fetchDevice,
+  type DeviceCommandRequest,
+  type DeviceRecord,
+} from '@/api'
 import {
   buildDeviceEditCommands,
   createDeviceEditDraft,
   type DeviceEditDraft,
 } from '@/components/device/device-form'
-import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
+import { useAsyncForm } from '@/composables/useAsyncForm'
 import { isValidDeviceName } from '@/models/devices/device-name'
+import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
-// Home Assistant opt-in/name, edited independently of the main device form: it is persisted by the
-// "setHaSettings" command into its own store, so it has no configRevision of its own.
 export interface DeviceHaDraft {
   enabled: boolean
   name: string
+}
+
+interface DeviceDetailSource {
+  device: DeviceRecord
+  registryRevision: number
+}
+
+interface DeviceDetailDraft {
+  config: DeviceEditDraft
+  ha: DeviceHaDraft
 }
 
 export interface UseDeviceDetailReturn {
   device: ComputedRef<DeviceRecord | null>
   deviceName: ComputedRef<string>
   loading: ComputedRef<boolean>
-  busyAction: Ref<'refresh' | 'save' | 'command' | null>
   isSaving: ComputedRef<boolean>
-  errorMessage: Ref<string>
-  draft: Ref<DeviceEditDraft>
-  haDraft: Ref<DeviceHaDraft>
+  errorMessage: ComputedRef<string>
+  draft: WritableComputedRef<DeviceEditDraft | null>
+  haDraft: WritableComputedRef<DeviceHaDraft | null>
   canSave: ComputedRef<boolean>
   refresh(): Promise<void>
   save(payload?: DeviceEditDraft): Promise<void>
@@ -33,107 +54,136 @@ export interface UseDeviceDetailReturn {
 
 export function useDeviceDetail(deviceId: Ref<number>): UseDeviceDetailReturn {
   const deviceStore = useDeviceRegistryStore()
+  const commandBusy = ref(false)
+  const commandError = ref<unknown | null>(null)
 
-  const draft = ref<DeviceEditDraft>(createDeviceEditDraft(null))
-  const haDraft = ref<DeviceHaDraft>({ enabled: false, name: '' })
-  const busyAction = ref<'refresh' | 'save' | 'command' | null>(null)
-  const errorMessage = ref('')
-
-  const device = computed<DeviceRecord | null>(() => {
-    const id = deviceId.value
-    if (id <= 0) return null
-    return deviceStore.devices.find(d => d.record.id === id) ?? null
-  })
-
-  const deviceName = computed(() => (device.value as any)?.config?.name ?? '')
-
-  const loading = computed(() => busyAction.value !== null)
-
-  const isSaving = computed(() => busyAction.value === 'save')
-
-  const canSave = computed(() => {
-    if (device.value === null) return false
-    if (!isValidDeviceName(draft.value.name)) return false
-    return buildDeviceEditCommands(device.value, draft.value).length > 0
-  })
-
-  // Reset the draft only when the device identity or its persisted config changes -- NOT on every
-  // device.value reference change. Live runtime pushes (device.upsert / command_result) replace the
-  // store object on each tick; keying the watch on the whole object would wipe unsaved edits (e.g.
-  // an applied-but-unsaved calibration) on the next runtime update.
-  watch(
-    () => {
-      const record = device.value?.record
-      return record ? `${record.id}:${record.configRevision}` : null
-    },
-    key => {
-      if (key !== null) {
-        resetDraft()
+  const lifecycle = useAsyncForm<DeviceDetailSource, DeviceDetailDraft>({
+    load: async () => {
+      const response = await fetchDevice(deviceId.value)
+      return {
+        device: response.device,
+        registryRevision: response.registryRevision,
       }
     },
-    { immediate: true },
-  )
+    createDraft: source => ({
+      config: createDeviceEditDraft(source.device),
+      ha: {
+        enabled: source.device.ha?.enabled ?? false,
+        name: source.device.ha?.name ?? '',
+      },
+    }),
+    isDirty: (source, form) => (
+      buildDeviceEditCommands(source.device, form.config).length > 0
+      || isHaDirty(source.device, form.ha)
+    ),
+    validate: form => isValidDeviceName(form.config.name),
+    save: saveDevice,
+    onCommit: source => {
+      deviceStore.upsertDevice(source.device, source.registryRevision)
+    },
+  })
 
-  function resetDraft(): void {
-    const next = createDeviceEditDraft(device.value)
-    draft.value = next
-  }
-
-  // HA settings are persisted outside the device config and therefore have no configRevision.
-  // Match the existing MQTT/Time settings-form pattern: copy the persisted value into the draft
-  // only after an explicit REST refresh or a successful save, never after a runtime-only WS upsert.
-  function applyHaSettingsToDraft(): void {
-    haDraft.value = {
-      enabled: device.value?.ha?.enabled ?? false,
-      name: device.value?.ha?.name ?? '',
+  const device = computed<DeviceRecord | null>(() => {
+    if (!lifecycle.ready.value) {
+      return null
     }
+    return deviceStore.devices.find(entry => entry.record.id === deviceId.value) ?? null
+  })
+
+  const deviceName = computed(() => device.value?.config.name ?? '')
+  const loading = computed(() => (
+    lifecycle.phase.value === 'idle'
+    || lifecycle.busy.value
+    || commandBusy.value
+  ))
+  const isSaving = computed(() => lifecycle.saving.value)
+  const errorMessage = computed(() => formatError(
+    commandError.value
+    ?? lifecycle.saveError.value
+    ?? lifecycle.loadError.value,
+  ))
+
+  const draft = computed({
+    get: () => lifecycle.draft.value?.config ?? null,
+    set: value => {
+      if (value !== null && lifecycle.draft.value !== null) {
+        lifecycle.draft.value.config = value
+      }
+    },
+  })
+
+  const haDraft = computed({
+    get: () => lifecycle.draft.value?.ha ?? null,
+    set: value => {
+      if (value !== null && lifecycle.draft.value !== null) {
+        lifecycle.draft.value.ha = value
+      }
+    },
+  })
+
+  watch(deviceId, () => {
+    lifecycle.reset()
+    void lifecycle.initialize()
+  })
+
+  async function saveDevice(
+    { source, draft: form }: { source: DeviceDetailSource; draft: DeviceDetailDraft },
+  ): Promise<DeviceDetailSource> {
+    let nextDevice = source.device
+    let registryRevision = source.registryRevision
+    const commands = buildDeviceEditCommands(source.device, form.config)
+
+    if (source.device.ha?.supported && isHaDirty(source.device, form.ha)) {
+      commands.push({
+        command: 'setHaSettings',
+        haEnabled: form.ha.enabled,
+        haName: form.ha.name,
+      })
+    }
+
+    for (const command of commands) {
+      const commandDeviceId = command.deviceId ?? deviceId.value
+      const response = await commandDevice(commandDeviceId, {
+        ...command,
+        deviceId: commandDeviceId,
+      })
+      registryRevision = response.registryRevision
+      deviceStore.setRevision(response.registryRevision)
+      if (response.device !== undefined) {
+        deviceStore.upsertDevice(response.device, response.registryRevision)
+        if (commandDeviceId === deviceId.value) {
+          nextDevice = deviceStore.devices.find(entry => entry.record.id === deviceId.value)
+            ?? response.device
+        }
+      }
+    }
+
+    return { device: nextDevice, registryRevision }
   }
 
   async function refresh(): Promise<void> {
-    if (deviceId.value <= 0) return
-    busyAction.value = 'refresh'
-    errorMessage.value = ''
-    try {
-      const response = await fetchDevice(deviceId.value)
-      deviceStore.upsertDevice(response.device, response.registryRevision)
-      applyHaSettingsToDraft()
-    } catch (error) {
-      errorMessage.value = formatError(error)
-    } finally {
-      busyAction.value = null
-    }
+    commandError.value = null
+    await lifecycle.refresh()
   }
 
   async function save(payload?: DeviceEditDraft): Promise<void> {
-    if (deviceId.value <= 0 || device.value === null) return
-    busyAction.value = 'save'
-    errorMessage.value = ''
-    try {
-      const payloadToUse = payload ?? draft.value
-      const commands = buildDeviceEditCommands(device.value, payloadToUse)
-      for (const command of commands) {
-        const commandDeviceId = command.deviceId ?? deviceId.value
-        const response = await commandDevice(commandDeviceId, {
-          ...command,
-          deviceId: commandDeviceId,
-        })
-        deviceStore.setRevision(response.registryRevision)
-        if (response.device !== undefined) {
-          deviceStore.upsertDevice(response.device, response.registryRevision)
-        }
-      }
-      resetDraft()
-    } catch (error) {
-      errorMessage.value = formatError(error)
-    } finally {
-      busyAction.value = null
+    commandError.value = null
+    if (!lifecycle.ready.value && !await lifecycle.initialize()) {
+      return
     }
+    if (payload !== undefined && lifecycle.draft.value !== null) {
+      lifecycle.draft.value.config = payload
+    }
+    await lifecycle.save()
   }
 
   async function submitCommand(payload: DeviceCommandRequest): Promise<void> {
-    if (deviceId.value <= 0) return
-    busyAction.value = 'command'
-    errorMessage.value = ''
+    if (deviceId.value <= 0 || commandBusy.value || lifecycle.busy.value) {
+      return
+    }
+
+    commandBusy.value = true
+    commandError.value = null
     try {
       const commandDeviceId = payload.deviceId ?? deviceId.value
       const response = await commandDevice(commandDeviceId, {
@@ -144,13 +194,13 @@ export function useDeviceDetail(deviceId: Ref<number>): UseDeviceDetailReturn {
       if (response.device !== undefined) {
         deviceStore.upsertDevice(response.device, response.registryRevision)
       }
-      if (payload.command === 'setHaSettings') {
-        applyHaSettingsToDraft()
+      if (!lifecycle.dirty.value) {
+        await lifecycle.refresh({ discardChanges: true })
       }
     } catch (error) {
-      errorMessage.value = formatError(error)
+      commandError.value = error
     } finally {
-      busyAction.value = null
+      commandBusy.value = false
     }
   }
 
@@ -158,22 +208,23 @@ export function useDeviceDetail(deviceId: Ref<number>): UseDeviceDetailReturn {
     device,
     deviceName,
     loading,
-    busyAction,
     isSaving,
     errorMessage,
     draft,
     haDraft,
-    canSave,
+    canSave: lifecycle.canSave,
     refresh,
     save,
     submitCommand,
-    resetDraft,
+    resetDraft: lifecycle.resetDraft,
   }
 }
 
+function isHaDirty(device: DeviceRecord, draft: DeviceHaDraft): boolean {
+  return (device.ha?.enabled ?? false) !== draft.enabled
+    || (device.ha?.name ?? '') !== draft.name
+}
+
 function formatError(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message
-  }
-  return 'Unknown error'
+  return error instanceof Error ? error.message : error ? String(error) : ''
 }

@@ -126,7 +126,7 @@
             {{ t('actions.cancel') }}
           </v-btn>
           <v-btn color="primary" :loading="isSaving" @click="onSave">
-            {{ t('device.dialog.save') }}
+            {{ t('actions.save') }}
           </v-btn>
         </template>
       </PageCard>
@@ -264,7 +264,7 @@ function navigateBack(): void {
 async function onSave(): Promise<void> {
   await save()
   if (!errorMessage.value) {
-    notifications.notify(t('notifications.deviceSaved'), 'success')
+    notifications.notify(t('notifications.saved'), 'success')
   }
 }
 

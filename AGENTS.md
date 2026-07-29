@@ -14,7 +14,9 @@ See also: [portal-spa/AGENTS.md](portal-spa/AGENTS.md)
 - Treat duplicated behavior, markup, validation, serialization, translations, and tests as an architecture defect, not as an acceptable type-specific implementation.
 - Before adding a second implementation, identify the shared responsibility and extract it into one common class, component, service, model, adapter, or contract.
 - Differences that are data, dimensions, capabilities, registration metadata, or hardware descriptors must be represented as configuration/profile data. Do not encode them as copied type-specific branches.
-- Shared user-facing behavior must use shared translation keys. Add type-specific translations only when the displayed meaning is genuinely different.
+- Shared user-facing behavior must use short generic translation keys; loading, saving, success, and error messages must not repeat the current form or entity name when context is clear. Add type-specific translations only when the displayed meaning is genuinely different.
+- Validation messages must be short and generic: do not create per-field variants or repeat the field name when context is clear; if a name is necessary, pass it as a placeholder to one shared message.
+- Minimize code and bundle size: never add code, translations, messages, abstractions, or type-specific variants without necessity; reuse or simplify existing generic behavior first.
 - A new type-specific file or branch requires a concrete justification describing the behavior that cannot be represented by the shared abstraction.
 
 ## Display Family Architecture
@@ -48,12 +50,12 @@ Before every `git commit`:
 
 1. Read this `AGENTS.md` and [Frontend Deployment](docs/frontend-deployment.md) completely, even if they were read earlier in the conversation.
 2. State in commentary that both files were read and that the mandatory commit gate is being followed.
-3. Start exactly one `git commit` process and retain its session ID if the command yields.
+3. Start exactly one `scripts/commit.sh "<message>"` process and retain its session ID if the command yields; never invoke `git commit` directly.
 4. Poll that same session until it returns a terminal exit code. A yield, truncated output, or partial hook output is not commit completion.
 5. Never start another commit while the previous commit process has an unknown or non-terminal status.
 6. Never use `--no-verify`, and never use `--amend` to bypass or repair a pre-commit hook run.
 7. If the hook aborts, follow the recovery procedure in [Frontend Deployment](docs/frontend-deployment.md) while preserving the user's index ownership rules above.
-8. The hook produces more output than the command interface can display reliably. Run commit output through a log file, for example `git commit -m "..." > /tmp/gekko-commit.log 2>&1`, then inspect the terminal status and `tail -n 80 /tmp/gekko-commit.log`. Redirecting output must not change or bypass the hook.
+8. The wrapper writes the complete hook output to `/tmp/gekko-commit.log`, reports stage changes, and tails the final 80 lines. If the original tool session cannot be recovered, inspect it with `scripts/commit.sh --status`; never start a replacement commit while its status is running or unknown.
 
 ## Device Config Versioning
 
@@ -86,6 +88,7 @@ Before every `git commit`:
 
 ## Checks
 
+- After every change, audit the complete diff against all project requirements and remove unnecessary code, duplication, messages, translations, and abstractions before reporting completion.
 - Run `scripts/test.sh` for local verification. It runs `scripts/check.sh` before `pio test -e native`.
 - `scripts/check.sh` requires `clang-format` and `cppcheck`.
 - Keep code formatted by `.clang-format`.

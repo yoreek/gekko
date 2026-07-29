@@ -38,6 +38,7 @@ export default {
   },
   validation: {
     required: 'Obligatorio',
+    range: '{min}–{max}',
     uniqueDeviceName: 'Ya existe un dispositivo con este nombre',
     deviceNameTooLong: 'El nombre del dispositivo no puede superar {max} bytes UTF-8',
   },
@@ -172,11 +173,6 @@ export default {
     haNodeNameHint: 'Nombre mostrado en Home Assistant. Se puede renombrar en cualquier momento sin efectos secundarios.',
     caCertUpload: 'Cargar certificado CA',
     caCertRemove: 'Eliminar certificado CA',
-    caCertUploadSuccess: 'Certificado CA cargado.',
-    caCertUploadError: 'No se pudo cargar el certificado CA.',
-    caCertRemoveSuccess: 'Certificado CA eliminado.',
-    saveSuccess: 'Configuración de MQTT guardada.',
-    saveError: 'No se pudo guardar la configuración de MQTT.',
     status: {
       connected: 'Conectado',
       waitingForStation: 'Esperando Wi-Fi',
@@ -197,8 +193,6 @@ export default {
     timezone: 'Zona horaria',
     syncInterval: 'Intervalo de sincronización (segundos)',
     syncIntervalHint: 'Con qué frecuencia el controlador se resincroniza con el servidor NTP, en segundos.',
-    saveSuccess: 'Configuración de hora guardada.',
-    saveError: 'No se pudo guardar la configuración de hora.',
     manualSetTitle: 'Establecer hora manualmente',
     manualSetSubtitle: 'Útil cuando la sincronización NTP está desactivada o aún no hay acceso a internet',
     manualSetLabel: 'Fecha y hora',
@@ -269,12 +263,8 @@ export default {
       maxDelay: 'Retardo maximo, seg',
       maxDelayHint: 'Limite maximo de escritura durante cambios continuos',
       flushNow: 'Escribir ahora',
-      saveSuccess: 'Ajustes guardados',
-      saveError: 'No se pudieron guardar los ajustes',
       flushSuccess: 'Cambios escritos en flash',
       flushError: 'No se pudieron escribir los cambios',
-      debounceRangeError: 'El retardo debe estar entre {min} y {max} seg',
-      maxDelayRangeError: 'El retardo maximo debe estar entre {min} y {max} seg',
       debounceExceedsMaxDelayError: 'El retardo no puede superar el retardo maximo',
     },
     backup: {
@@ -550,7 +540,6 @@ export default {
       enabled: 'Publicar en Home Assistant',
       name: 'Nombre en Home Assistant',
       nameHint: 'Déjelo en blanco para usar el nombre del dispositivo de arriba.',
-      saveSuccess: 'Configuración de Home Assistant guardada.',
     },
     status: {
       ready: 'Listo',
@@ -695,7 +684,6 @@ export default {
       noneSelected: 'Seleccione un dispositivo para inspeccionarlo.',
       edit: 'Editar',
       openDesigner: 'Diseñar pantalla',
-      save: 'Guardar',
       configDetails: 'Detalles de configuración',
       fieldHint: 'Más información',
       actions: 'Acciones',
@@ -1188,7 +1176,6 @@ export default {
       recentEventsEmpty: 'No hay eventos retenidos disponibles para este dispositivo.',
       deleteConfirmTitle: '¿Eliminar dispositivo?',
       deleteConfirmBody: 'Esto eliminará el dispositivo del registro y cerrará la vista de detalles.',
-      unknownError: 'Error de dispositivo desconocido',
     },
   },
   status: {
@@ -1222,7 +1209,7 @@ export default {
   },
   notifications: {
     deviceCreated: 'Dispositivo "{name}" creado',
-    deviceSaved: 'Cambios guardados',
+    saved: 'Cambios guardados',
     deviceDeleted: 'Dispositivo "{name}" eliminado',
     error: 'Algo salió mal',
     alerts: {

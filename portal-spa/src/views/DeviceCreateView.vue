@@ -35,7 +35,7 @@
           {{ t('actions.cancel') }}
         </v-btn>
         <v-btn color="primary" :loading="isCreating" :disabled="!canCreate" @click="submitCreate">
-          {{ t('device.dialog.save') }}
+          {{ t('actions.save') }}
         </v-btn>
       </template>
     </PageCard>
@@ -149,7 +149,7 @@ async function submitCreate(): Promise<void> {
       }
     }
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : t('device.dialog.unknownError')
+    errorMessage.value = error instanceof Error ? error.message : t('notifications.error')
   } finally {
     isCreating.value = false
   }

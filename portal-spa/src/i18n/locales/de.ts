@@ -38,6 +38,7 @@ export default {
   },
   validation: {
     required: 'Pflichtfeld',
+    range: '{min}–{max}',
     uniqueDeviceName: 'Ein Gerät mit diesem Namen existiert bereits',
     deviceNameTooLong: 'Der Gerätename darf höchstens {max} UTF-8-Bytes lang sein',
   },
@@ -172,11 +173,6 @@ export default {
     haNodeNameHint: 'Anzeigename in Home Assistant. Kann jederzeit gefahrlos geändert werden.',
     caCertUpload: 'CA-Zertifikat hochladen',
     caCertRemove: 'CA-Zertifikat entfernen',
-    caCertUploadSuccess: 'CA-Zertifikat hochgeladen.',
-    caCertUploadError: 'CA-Zertifikat konnte nicht hochgeladen werden.',
-    caCertRemoveSuccess: 'CA-Zertifikat entfernt.',
-    saveSuccess: 'MQTT-Einstellungen gespeichert.',
-    saveError: 'MQTT-Einstellungen konnten nicht gespeichert werden.',
     status: {
       connected: 'Verbunden',
       waitingForStation: 'Warte auf Wi-Fi',
@@ -197,8 +193,6 @@ export default {
     timezone: 'Zeitzone',
     syncInterval: 'Sync-Intervall (Sekunden)',
     syncIntervalHint: 'Wie oft der Controller sich mit dem NTP-Server neu synchronisiert, in Sekunden.',
-    saveSuccess: 'Zeiteinstellungen gespeichert.',
-    saveError: 'Zeiteinstellungen konnten nicht gespeichert werden.',
     manualSetTitle: 'Zeit manuell einstellen',
     manualSetSubtitle: 'Nützlich, wenn NTP-Sync aus ist oder noch kein Internetzugang besteht',
     manualSetLabel: 'Datum und Uhrzeit',
@@ -269,12 +263,8 @@ export default {
       maxDelay: 'Maximale Verzoegerung, Sek.',
       maxDelayHint: 'Harte Obergrenze bei fortlaufenden Aenderungen',
       flushNow: 'Jetzt schreiben',
-      saveSuccess: 'Einstellungen gespeichert',
-      saveError: 'Einstellungen konnten nicht gespeichert werden',
       flushSuccess: 'Aenderungen auf Flash geschrieben',
       flushError: 'Aenderungen konnten nicht geschrieben werden',
-      debounceRangeError: 'Die Verzoegerung muss zwischen {min} und {max} Sek. liegen',
-      maxDelayRangeError: 'Die maximale Verzoegerung muss zwischen {min} und {max} Sek. liegen',
       debounceExceedsMaxDelayError: 'Die Verzoegerung darf die maximale Verzoegerung nicht ueberschreiten',
     },
     backup: {
@@ -550,7 +540,6 @@ export default {
       enabled: 'In Home Assistant veröffentlichen',
       name: 'Home-Assistant-Name',
       nameHint: 'Leer lassen, um den obigen Gerätenamen zu verwenden.',
-      saveSuccess: 'Home-Assistant-Einstellungen gespeichert.',
     },
     status: {
       ready: 'Bereit',
@@ -695,7 +684,6 @@ export default {
       noneSelected: 'Wählen Sie ein Gerät zur Ansicht aus.',
       edit: 'Bearbeiten',
       openDesigner: 'Display gestalten',
-      save: 'Speichern',
       configDetails: 'Konfigurationsdetails',
       fieldHint: 'Weitere Informationen',
       actions: 'Aktionen',
@@ -1188,7 +1176,6 @@ export default {
       recentEventsEmpty: 'Für dieses Gerät sind keine gespeicherten Ereignisse verfügbar.',
       deleteConfirmTitle: 'Gerät löschen?',
       deleteConfirmBody: 'Dies entfernt das Gerät aus der Registry und schließt die Detailansicht.',
-      unknownError: 'Unbekannter Gerätefehler',
     },
   },
   status: {
@@ -1222,7 +1209,7 @@ export default {
   },
   notifications: {
     deviceCreated: 'Gerät "{name}" erstellt',
-    deviceSaved: 'Änderungen gespeichert',
+    saved: 'Änderungen gespeichert',
     deviceDeleted: 'Gerät "{name}" gelöscht',
     error: 'Etwas ist schiefgelaufen',
     alerts: {
