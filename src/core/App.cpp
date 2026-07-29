@@ -14,6 +14,16 @@ namespace {
 constexpr uint32_t kTick100msIntervalMs = 100;
 constexpr uint32_t kTick1sIntervalMs = 1000;
 
+#if defined(WITH_BLE_PROVISIONING)
+#ifndef BLE_PROVISIONING_BUTTON_PIN
+#error "BLE_PROVISIONING_BUTTON_PIN must be defined when WITH_BLE_PROVISIONING is enabled"
+#endif
+constexpr uint8_t kBleProvisioningButtonPin = BLE_PROVISIONING_BUTTON_PIN;
+static_assert(kBleProvisioningButtonPin <= 33U, "BLE provisioning button pin must support the ESP32 internal pull-up");
+static_assert(kBleProvisioningButtonPin < 6U || kBleProvisioningButtonPin > 11U,
+              "BLE provisioning button pin must not use the ESP32 flash interface");
+#endif
+
 // Temporary boot probe stage. Increase this one step at a time while tracing
 // the first failing call in App::begin().
 #ifndef EWFM_BOOT_PROBE_STAGE
@@ -30,10 +40,14 @@ constexpr uint32_t kTick1sIntervalMs = 1000;
 } // namespace
 
 App::App()
-    : configStore_(storage_), wifiManager_(wifiDriver_, &configStore_), ntpManager_(ntpClient_, configStore_),
-      deviceRegistryStore_(deviceStorage_), retainedStateStore_(retainedStateStorage_), deviceScopedDataStore_(displayLayoutStorage_),
-      displayLayoutStore_(displayLayoutStorage_), deviceRegistry_(deviceRegistryStore_, deviceTypeRegistry_, deviceIdSource_,
-                                                                  &retainedStateStore_, &deviceScopedDataStore_, &deviceEventDispatcher_),
+    : configStore_(storage_), wifiManager_(wifiDriver_, &configStore_),
+#if defined(WITH_BLE_PROVISIONING)
+      bleProvisioningButton_(defaultArduinoGpioInputDriver(), wifiManager_, kBleProvisioningButtonPin),
+#endif
+      ntpManager_(ntpClient_, configStore_), deviceRegistryStore_(deviceStorage_), retainedStateStore_(retainedStateStorage_),
+      deviceScopedDataStore_(displayLayoutStorage_), displayLayoutStore_(displayLayoutStorage_),
+      deviceRegistry_(deviceRegistryStore_, deviceTypeRegistry_, deviceIdSource_, &retainedStateStore_, &deviceScopedDataStore_,
+                      &deviceEventDispatcher_),
       rtcSyncCoordinator_(ntpManager_, deviceRegistry_), displayRenderCoordinator_(deviceRegistry_, wifiDriver_),
       dashboardLayoutStore_(dashboardLayoutStorage_, &deviceRegistry_),
       portalServer_(wifiManager_, wifiDriver_, &deviceRegistry_, &deviceEventDispatcher_, &dashboardLayoutStore_,
@@ -175,6 +189,9 @@ bool App::begin() {
     lastTick1s_ = now;
     EWFM_BOOT_PRINTF("BOOT App::begin wifiManager begin\n");
     wifiManager_.begin(config);
+#if defined(WITH_BLE_PROVISIONING)
+    (void)bleProvisioningButton_.begin(now);
+#endif
 #if EWFM_BOOT_PROBE_STAGE <= 8
     EWFM_BOOT_PRINTF("BOOT App::begin probe stop after WifiManagerBegin\n");
     return true;
@@ -220,6 +237,9 @@ void App::tick() {
     const uint32_t now = ArduinoClock::millis();
 
     wifiManager_.tick(now);
+#if defined(WITH_BLE_PROVISIONING)
+    bleProvisioningButton_.tick(now);
+#endif
     ntpManager_.tick(now);
 #if defined(WITH_HOME_ASSISTANT)
     mqttManager_.tick(now);

@@ -337,6 +337,7 @@ export interface WifiStatusResponse {
   wifiStatus: 'connected' | 'connecting' | 'disconnected' | 'failed' | 'idle' | 'ble_config'
   stationIp: string
   setupApIp: string
+  bleProvisioningSupported: boolean
   success?: boolean
   status?: string
 }

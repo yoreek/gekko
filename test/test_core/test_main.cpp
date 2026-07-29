@@ -45,6 +45,7 @@ void test_station_connect_clears_setup_ap_readiness();
 void test_wifi_manager_rejects_oversized_credentials();
 void test_wifi_manager_submit_credentials_saves_and_connects();
 void test_wifi_manager_rejects_ble_config_when_disabled();
+void test_ble_provisioning_button_requires_debounced_long_press_and_uses_pullup();
 void test_portal_waits_for_network_stack_before_http_start();
 void test_portal_dns_follows_setup_ap_readiness_without_http_restart();
 void test_portal_restarts_http_only_when_network_stack_is_lost();
@@ -195,6 +196,7 @@ int main(int, char**) {
     RUN_TEST(test_wifi_manager_rejects_oversized_credentials);
     RUN_TEST(test_wifi_manager_submit_credentials_saves_and_connects);
     RUN_TEST(test_wifi_manager_rejects_ble_config_when_disabled);
+    RUN_TEST(test_ble_provisioning_button_requires_debounced_long_press_and_uses_pullup);
     RUN_TEST(test_portal_waits_for_network_stack_before_http_start);
     RUN_TEST(test_portal_dns_follows_setup_ap_readiness_without_http_restart);
     RUN_TEST(test_portal_restarts_http_only_when_network_stack_is_lost);

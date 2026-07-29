@@ -262,6 +262,7 @@ export function mockFetchWifiStatus(): WifiStatusResponse {
     wifiStatus: db.wifi.status,
     stationIp: db.wifi.stationIp,
     setupApIp: db.wifi.setupApIp,
+    bleProvisioningSupported: db.wifi.bleProvisioningSupported,
   }) as unknown as WifiStatusResponse
 }
 

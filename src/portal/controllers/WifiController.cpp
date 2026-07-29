@@ -38,6 +38,7 @@ void WifiController::registerRoutes(AsyncWebServer& server, WifiManager& wifiMan
     server.on("/api/wifi/configure", HTTP_DELETE, [&wifiManager, &wifiDriver](AsyncWebServerRequest* request) {
         WifiController(request, Action::Destroy, wifiManager, wifiDriver).dispatch();
     });
+#if defined(WITH_BLE_PROVISIONING)
     server.on(
         "/api/wifi/ble-config", HTTP_POST, [&wifiManager, &wifiDriver](AsyncWebServerRequest* request) { (void)request; }, nullptr,
         [&wifiManager, &wifiDriver](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
@@ -48,6 +49,7 @@ void WifiController::registerRoutes(AsyncWebServer& server, WifiManager& wifiMan
             WifiController(request, Action::Cmd, wifiManager, wifiDriver).dispatch(static_cast<uint8_t*>(request->_tempObject), total);
             BaseController::clearRequestBody(request);
         });
+#endif
     server.on("/api/wifi/scan", HTTP_OPTIONS, [&wifiManager, &wifiDriver](AsyncWebServerRequest* request) {
         WifiController(request, Action::Options, wifiManager, wifiDriver).dispatch();
     });
@@ -57,9 +59,11 @@ void WifiController::registerRoutes(AsyncWebServer& server, WifiManager& wifiMan
     server.on("/api/wifi/configure", HTTP_OPTIONS, [&wifiManager, &wifiDriver](AsyncWebServerRequest* request) {
         WifiController(request, Action::Options, wifiManager, wifiDriver).dispatch();
     });
+#if defined(WITH_BLE_PROVISIONING)
     server.on("/api/wifi/ble-config", HTTP_OPTIONS, [&wifiManager, &wifiDriver](AsyncWebServerRequest* request) {
         WifiController(request, Action::Options, wifiManager, wifiDriver).dispatch();
     });
+#endif
 }
 #endif
 
@@ -106,29 +110,34 @@ void WifiController::show() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     const WifiDriverStatus status = wifiDriver_.status();
     const char* statusText = "idle";
-    switch (status) {
-    case WifiDriverStatus::Connected:
-        statusText = "connected";
-        break;
-    case WifiDriverStatus::Connecting:
-        statusText = "connecting";
-        break;
-    case WifiDriverStatus::Failed:
-        statusText = "failed";
-        break;
-    case WifiDriverStatus::Disconnected:
-        statusText = "disconnected";
-        break;
-    case WifiDriverStatus::Idle:
-        break;
+    if (wifiManager_.bleConfigMode()) {
+        statusText = "ble_config";
+    } else {
+        switch (status) {
+        case WifiDriverStatus::Connected:
+            statusText = "connected";
+            break;
+        case WifiDriverStatus::Connecting:
+            statusText = "connecting";
+            break;
+        case WifiDriverStatus::Failed:
+            statusText = "failed";
+            break;
+        case WifiDriverStatus::Disconnected:
+            statusText = "disconnected";
+            break;
+        case WifiDriverStatus::Idle:
+            break;
+        }
     }
 
-    StaticJsonDocument<320> doc;
+    StaticJsonDocument<384> doc;
     const std::string stationIp = wifiDriver_.stationIp();
     const std::string setupApIp = wifiDriver_.setupApIp();
     doc["wifiStatus"] = statusText;
     doc["stationIp"] = stationIp;
     doc["setupApIp"] = setupApIp;
+    doc["bleProvisioningSupported"] = WifiManager::bleProvisioningSupported();
     renderOk(doc);
 #endif
 }
@@ -181,7 +190,7 @@ void WifiController::destroy() {
 }
 
 void WifiController::cmd() {
-#if defined(ARDUINO) && !defined(UNIT_TEST)
+#if defined(WITH_BLE_PROVISIONING) && defined(ARDUINO) && !defined(UNIT_TEST)
     if (!wifiManager_.requestBleConfig()) {
         renderError(409, "BUSY", "ble config disabled");
         return;

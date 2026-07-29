@@ -5,6 +5,7 @@
 #include "platform/ArduinoOtaService.h"
 #include "platform/MqttManager.h"
 #include "portal/PortalServer.h"
+#include "wifi/BleProvisioningButton.h"
 #include "wifi/WifiManager.h"
 
 #include <cstring>
@@ -118,6 +119,33 @@ public:
     bool setupApActiveValue{false};
     std::string stationIpValue;
     std::string setupApIpValue{"192.168.4.1"};
+};
+
+class FakeProvisioningButtonInput final : public IGpioInputDriver {
+public:
+    bool configureInput(uint8_t pin, GpioInputPullMode pullMode) override {
+        configuredPin = pin;
+        configuredPullMode = pullMode;
+        return configureResult;
+    }
+
+    bool read(uint8_t pin, bool& level) override {
+        lastReadPin = pin;
+        level = high;
+        return readResult;
+    }
+
+    void release(uint8_t pin) override {
+        releasedPin = pin;
+    }
+
+    uint8_t configuredPin{0};
+    uint8_t lastReadPin{0};
+    uint8_t releasedPin{0};
+    GpioInputPullMode configuredPullMode{GpioInputPullMode::None};
+    bool configureResult{true};
+    bool readResult{true};
+    bool high{true};
 };
 
 #undef SM_CLASS
@@ -462,6 +490,36 @@ void test_wifi_manager_rejects_ble_config_when_disabled() {
     manager.tick(clock.millis());
     TEST_ASSERT_FALSE(manager.bleConfigMode());
     TEST_ASSERT_EQUAL(0, manager.bleStartCount());
+}
+
+void test_ble_provisioning_button_requires_debounced_long_press_and_uses_pullup() {
+    FakeWifiDriver wifiDriver;
+    WifiManager manager(wifiDriver);
+    manager.begin(defaultConfig());
+
+    FakeProvisioningButtonInput input;
+    BleProvisioningButton button(input, manager, 32U);
+    TEST_ASSERT_TRUE(button.begin(0U));
+    TEST_ASSERT_EQUAL_UINT8(32U, input.configuredPin);
+    TEST_ASSERT_EQUAL(static_cast<int>(GpioInputPullMode::PullUp), static_cast<int>(input.configuredPullMode));
+
+    input.high = false;
+    button.tick(10U);
+    button.tick(59U);
+    button.tick(60U);
+    button.tick(3059U);
+    manager.tick(3060U);
+    TEST_ASSERT_EQUAL_UINT16(0U, manager.bleStartCount());
+
+    button.tick(3060U);
+    manager.tick(3061U);
+    manager.tick(3062U);
+    manager.tick(3063U);
+    TEST_ASSERT_EQUAL_UINT16(1U, manager.bleStartCount());
+
+    button.tick(7000U);
+    manager.tick(7001U);
+    TEST_ASSERT_EQUAL_UINT16(1U, manager.bleStartCount());
 }
 
 void test_portal_waits_for_network_stack_before_http_start() {

@@ -39,6 +39,10 @@
 #include "time/NtpManager.h"
 #include "time/RtcSyncCoordinator.h"
 #include "wifi/WifiManager.h"
+#if defined(WITH_BLE_PROVISIONING)
+#include "devices/sensors/binary/ArduinoGpioInputDriver.h"
+#include "wifi/BleProvisioningButton.h"
+#endif
 
 #include <memory>
 
@@ -61,6 +65,9 @@ private:
     ArduinoWifiDriver wifiDriver_;
     ConfigStore configStore_;
     WifiManager wifiManager_;
+#if defined(WITH_BLE_PROVISIONING)
+    BleProvisioningButton bleProvisioningButton_;
+#endif
     ArduinoNtpClient ntpClient_;
     NtpManager ntpManager_;
     DeviceTypeRegistry deviceTypeRegistry_{DeviceTypeRegistry::withDefaults()};

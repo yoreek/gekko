@@ -4,7 +4,7 @@
 
 #include <cstring>
 
-#if defined(ARDUINO) && !defined(UNIT_TEST)
+#if defined(WITH_BLE_PROVISIONING) && defined(ARDUINO) && !defined(UNIT_TEST)
 #include <WiFi.h>
 #include <WiFiProv.h>
 #include <wifi_provisioning/manager.h>
@@ -35,13 +35,17 @@ void copyBoundedCString(char* destination, const size_t destinationSize, const c
 }
 } // namespace
 
+#if defined(WITH_BLE_PROVISIONING)
 constexpr uint32_t kBleStopTimeoutMs = 5000;
+#endif
 
 WifiManager::WifiManager(IWifiDriver& driver, ConfigStore* configStore)
     : StateMachine((PState)&WifiManager::Idle), driver_(driver), configStore_(configStore) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     portMUX_INITIALIZE(&controlMutex_);
+#if defined(WITH_BLE_PROVISIONING)
     portMUX_INITIALIZE(&bleEventMutex_);
+#endif
 #endif
 }
 
@@ -53,17 +57,21 @@ void WifiManager::begin(const DeviceConfig& config) {
     retryCount_ = 0;
     stationIpLogged_ = false;
     pendingCredentialsSubmit_ = false;
+#if defined(WITH_BLE_PROVISIONING)
     setBleConfigRequested(false);
     clearReceivedBleCredentials();
     setBleProvisioningStopped(false);
     bleProvisioningStarted_ = false;
+#endif
 }
 
 WifiManagerResult WifiManager::submitCredentials(const WiFiCredentials& credentials) {
+#if defined(WITH_BLE_PROVISIONING)
     if (isBleConfigState()) {
         EWFM_WIFI_LOG_WARN("credentials rejected: BLE config mode is active");
         return WifiManagerResult::Busy;
     }
+#endif
 
     ValidationResult validation = validateWifiCredentials(credentials, true);
     if (!validation.ok()) {
@@ -107,6 +115,7 @@ WifiManagerResult WifiManager::clearCredentials() {
     return WifiManagerResult::Accepted;
 }
 
+#if defined(WITH_BLE_PROVISIONING)
 bool WifiManager::requestBleConfig() {
     if (!config_.provisioning.mobileProvisioningEnabled) {
         EWFM_WIFI_LOG_WARN("BLE config mode rejected: disabled");
@@ -126,6 +135,7 @@ bool WifiManager::requestBleConfig() {
     EWFM_WIFI_LOG_INFO("BLE config mode requested");
     return true;
 }
+#endif
 
 void WifiManager::updateCredentials(const WiFiCredentials& credentials) {
     credentials_ = credentials;
@@ -155,10 +165,12 @@ SM_STATE(CheckConnection) {
         SM_GOTO(Idle);
     }
 
+#if defined(WITH_BLE_PROVISIONING)
     if (bleConfigRequested()) {
         EWFM_WIFI_LOG_INFO("BLE config requested, leaving connection check");
         SM_GOTO(StartBleConfig);
     }
+#endif
 
     if (pendingCredentialsSubmit()) {
         EWFM_WIFI_LOG_INFO("submitted credentials pending during connection check");
@@ -183,10 +195,12 @@ SM_STATE(CheckConnection) {
 }
 
 SM_STATE(RetryDelay) {
+#if defined(WITH_BLE_PROVISIONING)
     if (bleConfigRequested()) {
         EWFM_WIFI_LOG_INFO("BLE config requested, leaving retry delay");
         SM_GOTO(StartBleConfig);
     }
+#endif
 
     if (isTimeout(config_.wifiRuntime.retryDelayMs)) {
         SM_GOTO(Idle);
@@ -201,10 +215,12 @@ SM_STATE(Connected) {
         SM_GOTO(Idle);
     }
 
+#if defined(WITH_BLE_PROVISIONING)
     if (bleConfigRequested()) {
         EWFM_WIFI_LOG_INFO("BLE config requested, leaving connected station mode");
         SM_GOTO(StartBleConfig);
     }
+#endif
 
     if (!stationIpLogged_) {
         const std::string ip = driver_.stationIp();
@@ -227,10 +243,12 @@ SM_STATE(SetupAp) {
         startSetupAp();
     }
 
+#if defined(WITH_BLE_PROVISIONING)
     if (bleConfigRequested()) {
         EWFM_WIFI_LOG_INFO("BLE config requested from setup AP");
         SM_GOTO(StartBleConfig);
     }
+#endif
 
     if (pendingCredentialsSubmit()) {
         EWFM_WIFI_LOG_INFO("submitted credentials pending from setup AP");
@@ -238,6 +256,7 @@ SM_STATE(SetupAp) {
     }
 }
 
+#if defined(WITH_BLE_PROVISIONING)
 SM_STATE(StartBleConfig) {
     setBleConfigRequested(false);
     clearReceivedBleCredentials();
@@ -299,6 +318,7 @@ SM_STATE(ApplyBleCredentials) {
 
     SM_GOTO(StopBleConfig);
 }
+#endif
 
 SM_STATE(ApplySubmittedCredentials) {
     WiFiCredentials submittedCredentials;
@@ -315,6 +335,7 @@ SM_STATE(ApplySubmittedCredentials) {
     SM_GOTO(Idle);
 }
 
+#if defined(WITH_BLE_PROVISIONING)
 SM_STATE(ReturnFromBleConfig) {
     setBleConfigRequested(false);
     setBleProvisioningStopped(false);
@@ -322,17 +343,20 @@ SM_STATE(ReturnFromBleConfig) {
     clearReceivedBleCredentials();
     SM_GOTO(Idle);
 }
+#endif
 
 bool WifiManager::retriesExhausted() const {
     return retryCount_ >= config_.wifiRuntime.maxConnectRetries;
 }
 
+#if defined(WITH_BLE_PROVISIONING)
 bool WifiManager::isBleConfigState() const {
     return is((PState)&WifiManager::StartBleConfig) || is((PState)&WifiManager::BleConfigRunning) ||
            is((PState)&WifiManager::StopBleConfig) || is((PState)&WifiManager::WaitBleConfigStopped) ||
            is((PState)&WifiManager::DeinitBleConfig) || is((PState)&WifiManager::ApplyBleCredentials) ||
            is((PState)&WifiManager::ReturnFromBleConfig);
 }
+#endif
 
 bool WifiManager::pendingCredentialsSubmit() const {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
@@ -345,6 +369,7 @@ bool WifiManager::pendingCredentialsSubmit() const {
     return pending;
 }
 
+#if defined(WITH_BLE_PROVISIONING)
 bool WifiManager::bleConfigRequested() const {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     portENTER_CRITICAL(&controlMutex_);
@@ -377,6 +402,7 @@ bool WifiManager::bleProvisioningStopped() const {
 #endif
     return stopped;
 }
+#endif
 
 WifiManagerResult WifiManager::applyCredentialsNow(const WiFiCredentials& credentials) {
     ValidationResult validation =
@@ -429,7 +455,11 @@ bool WifiManager::trySavePendingSubmittedCredentials(const WiFiCredentials& cred
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     portENTER_CRITICAL(&controlMutex_);
 #endif
-    const bool accepted = !pendingCredentialsSubmit_ && !bleConfigRequested_;
+    const bool accepted = !pendingCredentialsSubmit_
+#if defined(WITH_BLE_PROVISIONING)
+                          && !bleConfigRequested_
+#endif
+        ;
     if (accepted) {
         copyBoundedCString(pendingSubmitSsid_, sizeof(pendingSubmitSsid_), credentials.ssid.c_str());
         copyBoundedCString(pendingSubmitPassword_, sizeof(pendingSubmitPassword_), credentials.password.c_str());
@@ -441,6 +471,7 @@ bool WifiManager::trySavePendingSubmittedCredentials(const WiFiCredentials& cred
     return accepted;
 }
 
+#if defined(WITH_BLE_PROVISIONING)
 bool WifiManager::tryRequestBleConfig() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     portENTER_CRITICAL(&controlMutex_);
@@ -474,6 +505,7 @@ void WifiManager::setBleProvisioningStopped(bool stopped) {
     portEXIT_CRITICAL(&bleEventMutex_);
 #endif
 }
+#endif
 
 void WifiManager::startSetupAp() {
     if (!driver_.startSetupAp(setupApSsid(), config_.provisioning.setupApPassword)) {
@@ -492,6 +524,7 @@ std::string WifiManager::setupApSsid() const {
     return config_.deviceName + "-" + suffix;
 }
 
+#if defined(WITH_BLE_PROVISIONING)
 bool WifiManager::startBleProvisioning() {
 #if defined(UNIT_TEST)
     ++bleStartCount_;
@@ -601,6 +634,7 @@ void WifiManager::clearReceivedBleCredentials() {
     portEXIT_CRITICAL(&bleEventMutex_);
 #endif
 }
+#endif
 
 void WifiManager::registerWiFiEvents() {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
@@ -610,6 +644,7 @@ void WifiManager::registerWiFiEvents() {
 
     WiFi.onEvent([this](const arduino_event_id_t eventId, const arduino_event_info_t& info) {
         switch (eventId) {
+#if defined(WITH_BLE_PROVISIONING)
         case ARDUINO_EVENT_PROV_INIT:
             EWFM_WIFI_LOG_INFO("event PROV_INIT");
             break;
@@ -634,6 +669,7 @@ void WifiManager::registerWiFiEvents() {
         case ARDUINO_EVENT_PROV_CRED_SUCCESS:
             EWFM_WIFI_LOG_INFO("event PROV_CRED_SUCCESS");
             break;
+#endif
         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
             EWFM_WIFI_LOG_INFO("event WIFI_STA_DISCONNECTED reason=%u", static_cast<unsigned>(info.wifi_sta_disconnected.reason));
             break;
@@ -657,7 +693,7 @@ void WifiManager::registerWiFiEvents() {
 #endif
 }
 
-#if defined(UNIT_TEST)
+#if defined(UNIT_TEST) && defined(WITH_BLE_PROVISIONING)
 void WifiManager::simulateBleCredentialsReceived(const char* ssid, const char* password) {
     saveReceivedBleCredentials({ssid, password});
 }

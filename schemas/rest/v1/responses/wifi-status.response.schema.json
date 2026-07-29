@@ -10,8 +10,9 @@
       "enum": ["connected", "connecting", "disconnected", "failed", "idle", "ble_config"]
     },
     "stationIp": { "type": "string" },
-    "setupApIp": { "type": "string" }
+    "setupApIp": { "type": "string" },
+    "bleProvisioningSupported": { "type": "boolean" }
   },
-  "required": ["success", "status", "wifiStatus", "stationIp", "setupApIp"],
+  "required": ["success", "status", "wifiStatus", "stationIp", "setupApIp", "bleProvisioningSupported"],
   "additionalProperties": false
 }

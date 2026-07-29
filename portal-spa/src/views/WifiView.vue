@@ -4,6 +4,14 @@
       <template #header>
         <PageToolbar :title="t('navigation.wifi')" :subtitle="t('wifi.subtitle')">
           <template #actions>
+            <v-chip
+              variant="tonal"
+              :color="wifiStore.bleProvisioningSupported ? 'success' : 'secondary'"
+              size="small"
+            >
+              {{ t('wifi.bleConfigAction') }}:
+              {{ wifiStore.bleProvisioningSupported ? t('labels.yes') : t('labels.no') }}
+            </v-chip>
             <v-chip variant="tonal" :color="wifiStatusColor" size="small">
               {{ wifiStatusLabel }}
             </v-chip>
@@ -40,7 +48,13 @@
         <v-btn :loading="scanLoading" color="primary" size="small" @click="startScan">
           {{ t('wifi.scan') }}
         </v-btn>
-        <v-btn :loading="bleLoading" color="secondary" size="small" @click="startBleConfig">
+        <v-btn
+          v-if="wifiStore.bleProvisioningSupported"
+          :loading="bleLoading"
+          color="secondary"
+          size="small"
+          @click="startBleConfig"
+        >
           {{ t('wifi.bleConfigAction') }}
         </v-btn>
         <v-btn :loading="resetLoading" color="error" size="small" variant="outlined" @click="resetCredentials">

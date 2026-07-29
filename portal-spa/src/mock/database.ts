@@ -113,6 +113,7 @@ export interface MockDatabase {
     status: WifiStatusResponse['wifiStatus']
     stationIp: string
     setupApIp: string
+    bleProvisioningSupported: boolean
     scan: WifiScanNetwork[]
   }
   ota: OtaStatusResponse
@@ -1830,6 +1831,7 @@ const seedDatabase: SeedDatabase = {
     status: 'connected',
     stationIp: '192.168.1.240',
     setupApIp: '192.168.4.1',
+    bleProvisioningSupported: true,
     scan: [
       { ssid: 'GekkoLab', rssi: -34, channel: 6 },
       { ssid: 'GekkoGuest', rssi: -58, channel: 11 },
