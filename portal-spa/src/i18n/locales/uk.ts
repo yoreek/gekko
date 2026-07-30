@@ -352,6 +352,8 @@ export default {
       analogInputChannel: 'Канал аналогового входу',
       lcd1602: 'Текстовий дисплей LCD1602',
       lcd2004: 'Текстовий дисплей LCD2004',
+      lcd1602Pin: 'Текстовий дисплей LCD1602 (прямі піни)',
+      lcd2004Pin: 'Текстовий дисплей LCD2004 (прямі піни)',
       tm1637: '4-розрядний дисплей TM1637',
       unknown: 'Невідомий тип пристрою',
     },
@@ -528,7 +530,7 @@ export default {
       lcd1602WiringPreset: 'Розпайка',
       lcd1602WiringStandard: 'Стандартний перехідник PCF8574',
       lcd1602WiringCustom: 'Своя розпайка',
-      lcd1602Wiring: 'Канали port-експандера',
+      lcd1602Wiring: 'Канали PCF8574',
       lcd1602RsChannel: 'Канал RS',
       lcd1602EChannel: 'Канал E',
       lcd1602D4Channel: 'Канал D4',
@@ -536,6 +538,13 @@ export default {
       lcd1602D6Channel: 'Канал D6',
       lcd1602D7Channel: 'Канал D7',
       lcd1602BacklightChannel: 'Канал підсвічування',
+      lcd1602RsPin: 'Пін RS',
+      lcd1602EPin: 'Пін E',
+      lcd1602D4Pin: 'Пін D4',
+      lcd1602D5Pin: 'Пін D5',
+      lcd1602D6Pin: 'Пін D6',
+      lcd1602D7Pin: 'Пін D7',
+      lcd1602BacklightPin: 'Пін підсвічування',
     },
     ha: {
       title: 'Home Assistant',
@@ -626,6 +635,7 @@ export default {
         placeholderInvalid: 'Синтаксис metric placeholder некоректний.',
         widgetTypes: {
           text: 'Текст',
+          character: 'Символьний',
           digital: 'Цифровий',
           bitmap: 'Bitmap',
           rect: 'Прямокутник',
@@ -772,11 +782,12 @@ export default {
         noDependency: 'Створіть залежність розширювача портів PCF8574 або PCF8575 перед додаванням цього вимикача.',
       },
       lcd1602: {
-        noDependency: 'Створіть залежність розширювача портів PCF8574 або PCF8575 перед додаванням цього дисплея.',
-        backlightChannelHint: 'Встановіть 255, якщо підсвічування не підключене до каналу port-експандера.',
+        noDependency: 'Створіть залежність шини I2C перед додаванням цього дисплея.',
+        backlightChannelHint: 'Встановіть 255, якщо підсвічування не підключене до каналу PCF8574.',
+        backlightPinHint: 'Залиште порожнім, якщо підсвічування не підключене до GPIO-піна.',
       },
       lcd2004: {
-        noDependency: 'Створіть залежність розширювача портів PCF8574 або PCF8575 перед додаванням цього дисплея.',
+        noDependency: 'Створіть залежність шини I2C перед додаванням цього дисплея.',
       },
       ntcThermistor: {
         noDependency: 'Створіть залежність аналогового входу, перш ніж додавати NTC-термістор.',
@@ -938,6 +949,7 @@ export default {
         sizeWrap: 'Потрібно {needed} · Бокс {box} · {lines} рядків',
         widgetTypes: {
           text: 'Текст',
+          character: 'Символьний',
           digital: 'Цифровий',
           bitmap: 'Bitmap',
           rect: 'Прямокутник',

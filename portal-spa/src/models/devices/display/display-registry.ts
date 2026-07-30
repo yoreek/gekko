@@ -20,6 +20,8 @@ const displayRegistry: Partial<Record<DeviceTypeName, DisplayTypeEntry>> = {
   st7735: { display: st7735Display, defaultWidth: 128, defaultHeight: 160, designerDefaultZoom: 3 },
   lcd1602: { display: lcd1602Display, defaultWidth: 16, defaultHeight: 2, designerDefaultZoom: 3 },
   lcd2004: { display: lcd2004Display, defaultWidth: 20, defaultHeight: 4, designerDefaultZoom: 3 },
+  lcd1602_pin: { display: lcd1602Display, defaultWidth: 16, defaultHeight: 2, designerDefaultZoom: 3 },
+  lcd2004_pin: { display: lcd2004Display, defaultWidth: 20, defaultHeight: 4, designerDefaultZoom: 3 },
   tm1637: { display: tm1637Display, defaultWidth: 4, defaultHeight: 1, designerDefaultZoom: 3 },
 }
 

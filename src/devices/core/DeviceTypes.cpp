@@ -12,7 +12,9 @@
 #include "devices/bus/onewire/OneWireBusDevice.h"
 #include "devices/bus/spi/SpiBusDevice.h"
 #include "devices/display/lcd1602/Lcd1602Device.h"
+#include "devices/display/lcd1602_pin/Lcd1602PinDevice.h"
 #include "devices/display/lcd2004/Lcd2004Device.h"
+#include "devices/display/lcd2004_pin/Lcd2004PinDevice.h"
 #include "devices/display/ssd1306/Ssd1306Device.h"
 #include "devices/display/st7735/St7735Device.h"
 #include "devices/display/tm1637/Tm1637Device.h"
@@ -207,6 +209,8 @@ DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     (void)registry.registerDescriptor(AnalogInputChannelDevice::descriptor());
     (void)registry.registerDescriptor(Lcd1602Device::descriptor());
     (void)registry.registerDescriptor(Lcd2004Device::descriptor());
+    (void)registry.registerDescriptor(Lcd1602PinDevice::descriptor());
+    (void)registry.registerDescriptor(Lcd2004PinDevice::descriptor());
     (void)registry.registerDescriptor(Tm1637Device::descriptor());
     return registry;
 }

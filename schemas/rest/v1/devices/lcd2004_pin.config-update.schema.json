@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/lcd2004_pin.config-update.schema.json",
+  "title": "lcd2004_pin partial configuration update",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 }, "enabled": { "type": "boolean" },
+    "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" } },
+    "rsPin": { "type": "integer", "minimum": 0, "maximum": 255 }, "ePin": { "type": "integer", "minimum": 0, "maximum": 255 },
+    "d4Pin": { "type": "integer", "minimum": 0, "maximum": 255 }, "d5Pin": { "type": "integer", "minimum": 0, "maximum": 255 },
+    "d6Pin": { "type": "integer", "minimum": 0, "maximum": 255 }, "d7Pin": { "type": "integer", "minimum": 0, "maximum": 255 },
+    "backlightPin": { "type": "integer", "minimum": 0, "maximum": 255 }, "layout": { "$ref": "../common/display-layout.schema.json" }
+  },
+  "additionalProperties": true
+}

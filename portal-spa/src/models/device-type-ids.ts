@@ -28,6 +28,8 @@ import { Cd74hc4067HubDevice } from './devices/cd74hc4067-hub.ts'
 import { AnalogInputChannelDevice } from './devices/analog-input-channel.ts'
 import { Lcd1602Device } from './devices/lcd1602.ts'
 import { Lcd2004Device } from './devices/lcd2004.ts'
+import { Lcd1602PinDevice } from './devices/lcd1602-pin.ts'
+import { Lcd2004PinDevice } from './devices/lcd2004-pin.ts'
 import { Tm1637Device } from './devices/tm1637.ts'
 
 export const DUMMY_DEVICE_TYPE_ID = DummyDevice.TYPE_ID
@@ -62,6 +64,8 @@ export const CD74HC4067_HUB_DEVICE_TYPE_ID = Cd74hc4067HubDevice.TYPE_ID
 export const ANALOG_INPUT_CHANNEL_DEVICE_TYPE_ID = AnalogInputChannelDevice.TYPE_ID
 export const LCD1602_DEVICE_TYPE_ID = Lcd1602Device.TYPE_ID
 export const LCD2004_DEVICE_TYPE_ID = Lcd2004Device.TYPE_ID
+export const LCD1602_PIN_DEVICE_TYPE_ID = Lcd1602PinDevice.TYPE_ID
+export const LCD2004_PIN_DEVICE_TYPE_ID = Lcd2004PinDevice.TYPE_ID
 export const TM1637_DEVICE_TYPE_ID = Tm1637Device.TYPE_ID
 
 export type DeviceTypeName =
@@ -97,6 +101,8 @@ export type DeviceTypeName =
   | typeof AnalogInputChannelDevice.TYPE_NAME
   | typeof Lcd1602Device.TYPE_NAME
   | typeof Lcd2004Device.TYPE_NAME
+  | typeof Lcd1602PinDevice.TYPE_NAME
+  | typeof Lcd2004PinDevice.TYPE_NAME
   | typeof Tm1637Device.TYPE_NAME
 export type DeviceTypeId = number
 
@@ -133,6 +139,8 @@ const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
   [AnalogInputChannelDevice.TYPE_NAME]: AnalogInputChannelDevice.TYPE_ID,
   [Lcd1602Device.TYPE_NAME]: Lcd1602Device.TYPE_ID,
   [Lcd2004Device.TYPE_NAME]: Lcd2004Device.TYPE_ID,
+  [Lcd1602PinDevice.TYPE_NAME]: Lcd1602PinDevice.TYPE_ID,
+  [Lcd2004PinDevice.TYPE_NAME]: Lcd2004PinDevice.TYPE_ID,
   [Tm1637Device.TYPE_NAME]: Tm1637Device.TYPE_ID,
 }
 
@@ -169,6 +177,8 @@ const deviceTypeNames: Record<DeviceTypeId, DeviceTypeName> = {
   [AnalogInputChannelDevice.TYPE_ID]: AnalogInputChannelDevice.TYPE_NAME,
   [Lcd1602Device.TYPE_ID]: Lcd1602Device.TYPE_NAME,
   [Lcd2004Device.TYPE_ID]: Lcd2004Device.TYPE_NAME,
+  [Lcd1602PinDevice.TYPE_ID]: Lcd1602PinDevice.TYPE_NAME,
+  [Lcd2004PinDevice.TYPE_ID]: Lcd2004PinDevice.TYPE_NAME,
   [Tm1637Device.TYPE_ID]: Tm1637Device.TYPE_NAME,
 }
 

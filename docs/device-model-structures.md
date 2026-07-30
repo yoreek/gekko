@@ -23,9 +23,9 @@ one entry per supported `typeName`, in the same order:
 `pcf8575_expander`, `analog_output`, `fade_analog_output`, `scheduled_analog_output`,
 `analog_output_composer`, `port_expander_switch`, `schedule`, `auto_switch`,
 `binary_sensor`, `dosing_pump`, `analog_port_input`, `cd74hc4067_hub`, `ads1115_hub`,
-`analog_input_channel`, `lcd1602`, `lcd2004`, `tm1637`.
+`analog_input_channel`, `lcd1602`, `lcd2004`, `lcd1602_pin`, `lcd2004_pin`, `tm1637`.
 
-`portal-spa/src/models/devices/device-model-factory.ts::allDeviceModels` mirrors the same 33 types
+`portal-spa/src/models/devices/device-model-factory.ts::allDeviceModels` mirrors the same 35 types
 one-to-one (plus an `UnknownDevice` fallback for an unrecognized `typeName`, which is never
 registered). This document uses DS18B20 as the running worked example throughout, since it's the
 simplest complete sensor family; HTU21 and the PCF857x expanders are called out separately below

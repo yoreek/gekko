@@ -352,6 +352,8 @@ export default {
       analogInputChannel: 'Canal de entrada analógica',
       lcd1602: 'Pantalla de texto LCD1602',
       lcd2004: 'Pantalla de texto LCD2004',
+      lcd1602Pin: 'Pantalla de texto LCD1602 (pines directos)',
+      lcd2004Pin: 'Pantalla de texto LCD2004 (pines directos)',
       tm1637: 'Pantalla de 4 dígitos TM1637',
       unknown: 'Tipo de dispositivo desconocido',
     },
@@ -528,7 +530,7 @@ export default {
       lcd1602WiringPreset: 'Cableado',
       lcd1602WiringStandard: 'Adaptador PCF8574 estándar',
       lcd1602WiringCustom: 'Cableado personalizado',
-      lcd1602Wiring: 'Canales del expansor de puertos',
+      lcd1602Wiring: 'Canales del PCF8574',
       lcd1602RsChannel: 'Canal RS',
       lcd1602EChannel: 'Canal E',
       lcd1602D4Channel: 'Canal D4',
@@ -536,6 +538,13 @@ export default {
       lcd1602D6Channel: 'Canal D6',
       lcd1602D7Channel: 'Canal D7',
       lcd1602BacklightChannel: 'Canal de retroiluminación',
+      lcd1602RsPin: 'Pin RS',
+      lcd1602EPin: 'Pin E',
+      lcd1602D4Pin: 'Pin D4',
+      lcd1602D5Pin: 'Pin D5',
+      lcd1602D6Pin: 'Pin D6',
+      lcd1602D7Pin: 'Pin D7',
+      lcd1602BacklightPin: 'Pin de retroiluminación',
     },
     ha: {
       title: 'Home Assistant',
@@ -626,6 +635,7 @@ export default {
         placeholderInvalid: 'La sintaxis del marcador de métrica no es válida.',
         widgetTypes: {
           text: 'Texto',
+          character: 'Carácter',
           digital: 'Digital',
           bitmap: 'Bitmap',
           rect: 'Rectángulo',
@@ -772,11 +782,12 @@ export default {
         noDependency: 'Cree una dependencia de expansor de puertos PCF8574 o PCF8575 antes de añadir este interruptor.',
       },
       lcd1602: {
-        noDependency: 'Cree una dependencia de expansor de puertos PCF8574 o PCF8575 antes de añadir esta pantalla.',
-        backlightChannelHint: 'Ponga 255 si la retroiluminación no está conectada a un canal del expansor de puertos.',
+        noDependency: 'Cree una dependencia de bus I2C antes de añadir esta pantalla.',
+        backlightChannelHint: 'Ponga 255 si la retroiluminación no está conectada a un canal del PCF8574.',
+        backlightPinHint: 'Déjelo vacío si la retroiluminación no está conectada a un pin GPIO.',
       },
       lcd2004: {
-        noDependency: 'Cree una dependencia de expansor de puertos PCF8574 o PCF8575 antes de añadir esta pantalla.',
+        noDependency: 'Cree una dependencia de bus I2C antes de añadir esta pantalla.',
       },
       ntcThermistor: {
         noDependency: 'Crea una dependencia de entrada analógica antes de añadir un sensor termistor NTC.',
@@ -938,6 +949,7 @@ export default {
         sizeWrap: 'Necesita {needed} · Caja {box} · {lines} líneas',
         widgetTypes: {
           text: 'Texto',
+          character: 'Carácter',
           digital: 'Digital',
           bitmap: 'Bitmap',
           rect: 'Rectángulo',

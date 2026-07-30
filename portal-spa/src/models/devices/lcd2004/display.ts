@@ -14,6 +14,7 @@ export class Lcd2004Display extends BaseDisplay<'mono1'> {
   readonly coordinateUnit = 'cell' as const
   readonly supportedWidgetTypes = ['character'] as const
   readonly supportedRotations = [0] as const
+  readonly logicalWidth = 20
 }
 
 export const lcd2004Display = new Lcd2004Display()

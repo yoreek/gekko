@@ -23,7 +23,9 @@
 #include "integrations/rest/htu21/Htu21SensorDeviceApiAdapter.h"
 #include "integrations/rest/i2c_bus/I2cBusDeviceApiAdapter.h"
 #include "integrations/rest/lcd1602/Lcd1602DeviceApiAdapter.h"
+#include "integrations/rest/lcd1602_pin/Lcd1602PinDeviceApiAdapter.h"
 #include "integrations/rest/lcd2004/Lcd2004DeviceApiAdapter.h"
+#include "integrations/rest/lcd2004_pin/Lcd2004PinDeviceApiAdapter.h"
 #include "integrations/rest/ntc_thermistor/NtcThermistorTemperatureSensorDeviceApiAdapter.h"
 #include "integrations/rest/onewire_bus/OneWireBusDeviceApiAdapter.h"
 #include "integrations/rest/rtc_ds1302/Ds1302RtcDeviceApiAdapter.h"
@@ -293,6 +295,8 @@ DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(AnalogInputChannelDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Lcd1602DeviceApiAdapter::instance());
     (void)registry.registerAdapter(Lcd2004DeviceApiAdapter::instance());
+    (void)registry.registerAdapter(Lcd1602PinDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(Lcd2004PinDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Tm1637DeviceApiAdapter::instance());
     return registry;
 }

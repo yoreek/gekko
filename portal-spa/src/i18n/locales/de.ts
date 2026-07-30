@@ -352,6 +352,8 @@ export default {
       analogInputChannel: 'Analogeingangskanal',
       lcd1602: 'LCD1602-Textdisplay',
       lcd2004: 'LCD2004-Textdisplay',
+      lcd1602Pin: 'LCD1602-Textdisplay (direkte Pins)',
+      lcd2004Pin: 'LCD2004-Textdisplay (direkte Pins)',
       tm1637: 'TM1637 4-stellige Anzeige',
       unknown: 'Unbekannter Gerätetyp',
     },
@@ -528,7 +530,7 @@ export default {
       lcd1602WiringPreset: 'Verdrahtung',
       lcd1602WiringStandard: 'Standard-PCF8574-Adapter',
       lcd1602WiringCustom: 'Eigene Verdrahtung',
-      lcd1602Wiring: 'Port-Expander-Kanäle',
+      lcd1602Wiring: 'PCF8574-Kanäle',
       lcd1602RsChannel: 'RS-Kanal',
       lcd1602EChannel: 'E-Kanal',
       lcd1602D4Channel: 'D4-Kanal',
@@ -536,6 +538,13 @@ export default {
       lcd1602D6Channel: 'D6-Kanal',
       lcd1602D7Channel: 'D7-Kanal',
       lcd1602BacklightChannel: 'Hintergrundbeleuchtungskanal',
+      lcd1602RsPin: 'RS-Pin',
+      lcd1602EPin: 'E-Pin',
+      lcd1602D4Pin: 'D4-Pin',
+      lcd1602D5Pin: 'D5-Pin',
+      lcd1602D6Pin: 'D6-Pin',
+      lcd1602D7Pin: 'D7-Pin',
+      lcd1602BacklightPin: 'Hintergrundbeleuchtungspin',
     },
     ha: {
       title: 'Home Assistant',
@@ -626,6 +635,7 @@ export default {
         placeholderInvalid: 'Syntax des Metrik-Platzhalters ist ungültig.',
         widgetTypes: {
           text: 'Text',
+          character: 'Zeichen',
           digital: 'Digital',
           bitmap: 'Bitmap',
           rect: 'Rechteck',
@@ -772,11 +782,12 @@ export default {
         noDependency: 'Erstellen Sie eine PCF8574- oder PCF8575-Portexpander-Abhängigkeit, bevor Sie diesen Schalter hinzufügen.',
       },
       lcd1602: {
-        noDependency: 'Erstellen Sie eine PCF8574- oder PCF8575-Portexpander-Abhängigkeit, bevor Sie dieses Display hinzufügen.',
-        backlightChannelHint: 'Auf 255 setzen, wenn die Hintergrundbeleuchtung nicht an einen Port-Expander-Kanal angeschlossen ist.',
+        noDependency: 'Erstellen Sie eine I2C-Bus-Abhängigkeit, bevor Sie dieses Display hinzufügen.',
+        backlightChannelHint: 'Auf 255 setzen, wenn die Hintergrundbeleuchtung nicht an einen PCF8574-Kanal angeschlossen ist.',
+        backlightPinHint: 'Leer lassen, wenn die Hintergrundbeleuchtung nicht an einen GPIO-Pin angeschlossen ist.',
       },
       lcd2004: {
-        noDependency: 'Erstellen Sie eine PCF8574- oder PCF8575-Portexpander-Abhängigkeit, bevor Sie dieses Display hinzufügen.',
+        noDependency: 'Erstellen Sie eine I2C-Bus-Abhängigkeit, bevor Sie dieses Display hinzufügen.',
       },
       ntcThermistor: {
         noDependency: 'Erstellen Sie eine Analogeingang-Abhängigkeit, bevor Sie einen NTC-Thermistorsensor hinzufügen.',
@@ -938,6 +949,7 @@ export default {
         sizeWrap: 'Benötigt {needed} · Box {box} · {lines} Zeilen',
         widgetTypes: {
           text: 'Text',
+          character: 'Zeichen',
           digital: 'Digital',
           bitmap: 'Bitmap',
           rect: 'Rechteck',

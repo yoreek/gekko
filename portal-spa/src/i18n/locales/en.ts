@@ -352,6 +352,8 @@ export default {
       analogInputChannel: 'Analog input channel',
       lcd1602: 'LCD1602 character display',
       lcd2004: 'LCD2004 character display',
+      lcd1602Pin: 'LCD1602 character display (direct pins)',
+      lcd2004Pin: 'LCD2004 character display (direct pins)',
       tm1637: 'TM1637 4-digit display',
       unknown: 'Unknown device type',
     },
@@ -528,7 +530,7 @@ export default {
       lcd1602WiringPreset: 'Wiring',
       lcd1602WiringStandard: 'Standard PCF8574 backpack',
       lcd1602WiringCustom: 'Custom wiring',
-      lcd1602Wiring: 'Port expander channels',
+      lcd1602Wiring: 'PCF8574 channels',
       lcd1602RsChannel: 'RS channel',
       lcd1602EChannel: 'E channel',
       lcd1602D4Channel: 'D4 channel',
@@ -536,6 +538,13 @@ export default {
       lcd1602D6Channel: 'D6 channel',
       lcd1602D7Channel: 'D7 channel',
       lcd1602BacklightChannel: 'Backlight channel',
+      lcd1602RsPin: 'RS pin',
+      lcd1602EPin: 'E pin',
+      lcd1602D4Pin: 'D4 pin',
+      lcd1602D5Pin: 'D5 pin',
+      lcd1602D6Pin: 'D6 pin',
+      lcd1602D7Pin: 'D7 pin',
+      lcd1602BacklightPin: 'Backlight pin',
     },
     ha: {
       title: 'Home Assistant',
@@ -626,6 +635,7 @@ export default {
         placeholderInvalid: 'Metric placeholder syntax is invalid.',
         widgetTypes: {
           text: 'Text',
+          character: 'Character',
           digital: 'Digital',
           bitmap: 'Bitmap',
           rect: 'Rectangle',
@@ -772,11 +782,12 @@ export default {
         noDependency: 'Create a PCF8574 or PCF8575 port expander dependency before adding this switch.',
       },
       lcd1602: {
-        noDependency: 'Create a PCF8574 or PCF8575 port expander dependency before adding this display.',
-        backlightChannelHint: 'Set to 255 if the backlight is not wired to a port expander channel.',
+        noDependency: 'Create an I2C bus dependency before adding this display.',
+        backlightChannelHint: 'Set to 255 if the backlight is not wired to a PCF8574 channel.',
+        backlightPinHint: 'Leave empty if the backlight is not wired to a GPIO pin.',
       },
       lcd2004: {
-        noDependency: 'Create a PCF8574 or PCF8575 port expander dependency before adding this display.',
+        noDependency: 'Create an I2C bus dependency before adding this display.',
       },
       ntcThermistor: {
         noDependency: 'Create an analog input device before adding an NTC thermistor sensor.',
@@ -938,6 +949,7 @@ export default {
         sizeWrap: 'Need {needed} · Box {box} · {lines} lines',
         widgetTypes: {
           text: 'Text',
+          character: 'Character',
           digital: 'Digital',
           bitmap: 'Bitmap',
           rect: 'Rectangle',

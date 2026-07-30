@@ -352,6 +352,8 @@ export default {
       analogInputChannel: 'Канал аналогового входа',
       lcd1602: 'Текстовый дисплей LCD1602',
       lcd2004: 'Текстовый дисплей LCD2004',
+      lcd1602Pin: 'Текстовый дисплей LCD1602 (прямые пины)',
+      lcd2004Pin: 'Текстовый дисплей LCD2004 (прямые пины)',
       tm1637: '4-разрядный дисплей TM1637',
       unknown: 'Неизвестный тип устройства',
     },
@@ -528,7 +530,7 @@ export default {
       lcd1602WiringPreset: 'Распайка',
       lcd1602WiringStandard: 'Стандартный переходник PCF8574',
       lcd1602WiringCustom: 'Своя распайка',
-      lcd1602Wiring: 'Каналы port-экспандера',
+      lcd1602Wiring: 'Каналы PCF8574',
       lcd1602RsChannel: 'Канал RS',
       lcd1602EChannel: 'Канал E',
       lcd1602D4Channel: 'Канал D4',
@@ -536,6 +538,13 @@ export default {
       lcd1602D6Channel: 'Канал D6',
       lcd1602D7Channel: 'Канал D7',
       lcd1602BacklightChannel: 'Канал подсветки',
+      lcd1602RsPin: 'Пин RS',
+      lcd1602EPin: 'Пин E',
+      lcd1602D4Pin: 'Пин D4',
+      lcd1602D5Pin: 'Пин D5',
+      lcd1602D6Pin: 'Пин D6',
+      lcd1602D7Pin: 'Пин D7',
+      lcd1602BacklightPin: 'Пин подсветки',
     },
     ha: {
       title: 'Home Assistant',
@@ -601,6 +610,7 @@ export default {
         placeholderInvalid: 'Синтаксис плейсхолдера метрики неверный.',
         widgetTypes: {
           text: 'Текст',
+          character: 'Символьный',
           digital: 'Цифровой',
           bitmap: 'Bitmap',
           rect: 'Прямоугольник',
@@ -747,11 +757,12 @@ export default {
         noDependency: 'Перед добавлением этого переключателя создайте зависимость от расширителя PCF8574 или PCF8575.',
       },
       lcd1602: {
-        noDependency: 'Перед добавлением этого дисплея создайте зависимость от расширителя PCF8574 или PCF8575.',
-        backlightChannelHint: 'Установите 255, если подсветка не подключена к каналу port-экспандера.',
+        noDependency: 'Перед добавлением этого дисплея создайте зависимость от шины I2C.',
+        backlightChannelHint: 'Установите 255, если подсветка не подключена к каналу PCF8574.',
+        backlightPinHint: 'Оставьте пустым, если подсветка не подключена к GPIO-пину.',
       },
       lcd2004: {
-        noDependency: 'Перед добавлением этого дисплея создайте зависимость от расширителя PCF8574 или PCF8575.',
+        noDependency: 'Перед добавлением этого дисплея создайте зависимость от шины I2C.',
       },
       ntcThermistor: {
         noDependency: 'Создайте зависимость аналогового входа, прежде чем добавлять NTC-термистор.',
@@ -913,6 +924,7 @@ export default {
         sizeWrap: 'Нужно {needed} · Поле {box} · {lines} строк',
         widgetTypes: {
           text: 'Текст',
+          character: 'Символьный',
           digital: 'Цифровой',
           bitmap: 'Bitmap',
           rect: 'Прямоугольник',

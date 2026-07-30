@@ -12,10 +12,6 @@ public:
 
     static DeviceTypeDescriptor descriptor();
     static std::unique_ptr<IDeviceRuntime> createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
-
-private:
-    uint8_t channelCountImpl() const override;
-    bool writeChannelStates(II2cBusDriver& driver, uint32_t states) const override;
 };
 
 } // namespace ewfm

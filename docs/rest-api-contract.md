@@ -120,6 +120,8 @@ Supported public `typeName` values:
 - `analog_input_channel`
 - `lcd1602`
 - `lcd2004`
+- `lcd1602_pin`
+- `lcd2004_pin`
 - `tm1637`
 
 ## Device Config And Runtime

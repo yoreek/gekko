@@ -18,8 +18,8 @@ constexpr uint8_t kFaultErrorThreshold = 3;
 constexpr uint32_t kDiagnosticsDebounceMs = 1000;
 } // namespace
 
-Pcf857xExpanderDeviceBase::Pcf857xExpanderDeviceBase(const Pcf857xExpanderConfigV2& config)
-    : Pcf857xExpanderRuntimeBase((PState)&Pcf857xExpanderDeviceBase::Idle), config_(config) {}
+Pcf857xExpanderDeviceBase::Pcf857xExpanderDeviceBase(const Pcf857xExpanderConfigV2& config, const uint8_t channelCount)
+    : Pcf857xExpanderRuntimeBase((PState)&Pcf857xExpanderDeviceBase::Idle), config_(config), driver_(channelCount) {}
 
 const Pcf857xExpanderConfigV2& Pcf857xExpanderDeviceBase::config() const {
     return config_;
@@ -55,25 +55,16 @@ const IPortExpanderRuntime* Pcf857xExpanderDeviceBase::portExpanderRuntime() con
 }
 
 uint8_t Pcf857xExpanderDeviceBase::channelCount() const {
-    return channelCountImpl();
+    return driver_.channelCount();
 }
 
 bool Pcf857xExpanderDeviceBase::isChannelOn(uint8_t channel) const {
-    if (channel >= channelCountImpl()) {
-        return false;
-    }
-    return (channelStates_ & (static_cast<uint32_t>(1) << channel)) != 0U;
+    return driver_.isChannelOn(channel);
 }
 
 bool Pcf857xExpanderDeviceBase::requestChannelState(uint8_t channel, bool on, uint32_t now) {
-    if (channel >= channelCountImpl()) {
+    if (!driver_.setChannel(channel, on)) {
         return false;
-    }
-
-    if (on) {
-        channelStates_ |= (static_cast<uint32_t>(1) << channel);
-    } else {
-        channelStates_ &= ~(static_cast<uint32_t>(1) << channel);
     }
     markRuntimeStateDirty();
 
@@ -94,7 +85,7 @@ bool Pcf857xExpanderDeviceBase::requestChannelState(uint8_t channel, bool on, ui
 }
 
 uint32_t Pcf857xExpanderDeviceBase::channelStatesBitmask() const {
-    return channelStates_;
+    return driver_.channelStates();
 }
 
 const BusRuntimeDiagnostics& Pcf857xExpanderDeviceBase::diagnostics() const {
@@ -136,17 +127,10 @@ DeviceValidationResult Pcf857xExpanderDeviceBase::validateConfig(const DeviceReg
     return validateI2cConfig<Pcf857xExpanderConfigV2>(record, configBlob, decodePcf857xExpanderConfig);
 }
 
-uint32_t Pcf857xExpanderDeviceBase::channelMask() const {
-    return (static_cast<uint32_t>(1) << channelCountImpl()) - 1U;
-}
-
 bool Pcf857xExpanderDeviceBase::writeCurrentStates(II2cBusDriver& driver) const {
-    const uint32_t prepared = (config_.inverted != 0U ? ~channelStates_ : channelStates_) & channelMask();
-    driver.beginTransmission(config_.i2cAddress);
-    if (!writeChannelStates(driver, prepared)) {
-        return false;
-    }
-    return driver.endTransmission(true) == 0U;
+    const uint32_t states = driver_.channelStates();
+    const uint32_t prepared = (config_.inverted != 0U ? ~states : states) & driver_.channelMask();
+    return driver_.writeState(driver, config_.i2cAddress, prepared);
 }
 
 void Pcf857xExpanderDeviceBase::recordSuccess() {

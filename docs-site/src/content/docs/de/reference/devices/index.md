@@ -1,6 +1,6 @@
 ---
 title: Geraetekatalog
-description: Alle 33 Geraetetypen, die in jedem Gekko-Firmware-Image eingebaut sind.
+description: Alle 35 Geraetetypen, die in jedem Gekko-Firmware-Image eingebaut sind.
 sidebar:
   order: 1
   label: Geraetekatalog
@@ -69,6 +69,8 @@ detaillierten Seiten, die nach und nach folgen.
 | --- | --- |
 | `ssd1306` | I2C-OLED mit dem [visuellen Layout-Designer](/gekko/de/guides/displays/) |
 | `st7735` | SPI-Farb-TFT, derselbe Layout-Designer |
-| `lcd1602` | HD44780-Zeichen-LCD mit 16 × 2 Zellen ueber einen PCF857x-Portexpander |
-| `lcd2004` | HD44780-Zeichen-LCD mit 20 × 4 Zellen ueber einen PCF857x-Portexpander |
+| `lcd1602` | HD44780-Zeichen-LCD mit 16 × 2 Zellen ueber ein eingebettetes PCF8574-I2C-Modul |
+| `lcd2004` | HD44780-Zeichen-LCD mit 20 × 4 Zellen ueber ein eingebettetes PCF8574-I2C-Modul |
+| `lcd1602_pin` | HD44780-Zeichen-LCD mit 16 × 2 Zellen, direkt an ESP32-GPIO-Pins angeschlossen |
+| `lcd2004_pin` | HD44780-Zeichen-LCD mit 20 × 4 Zellen, direkt an ESP32-GPIO-Pins angeschlossen |
 | `tm1637` | Vierstellige Siebensegmentanzeige mit Helligkeit und 180°-Drehung |

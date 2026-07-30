@@ -9,12 +9,7 @@ namespace ewfm {
 class Ssd1306DeviceApiAdapter final : public TypedDisplayDeviceApiAdapter<Ssd1306DeviceApiAdapter, Ssd1306Device, Ssd1306DeviceConfigV6> {
 public:
     static constexpr const char* kTypeName = "ssd1306";
-    static constexpr const char* kInvalidLayoutError = "ssd1306 layout is invalid";
-    static constexpr const char* kLayoutSizeError = "ssd1306 layout exceeds supported size";
-    static constexpr const char* kLayoutDependencyCountError = "ssd1306 layout exceeds supported dependency count";
-    static constexpr const char* kLayoutPlaceholderError = "ssd1306 layout placeholder is invalid";
     static constexpr const char* kBusDependencyError = kI2cBusDependencyRequiredError;
-    static constexpr const char* kMetricDependencyError = "ssd1306 metric source dependency is invalid";
 
     static const Ssd1306DeviceApiAdapter& instance();
     static bool decodeConfig(const uint8_t* input, size_t size, Ssd1306DeviceConfigV6& config);

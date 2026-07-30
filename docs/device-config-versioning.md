@@ -32,6 +32,17 @@ migration/decode sites; deleting now-dead `parseJson`/`writeJson` on the old str
 - `descriptor().currentConfigVersion` must match the latest struct version.
 - The binary marker, usually `kMagic`, identifies the real persisted layout. Do not rely on public JSON field names for binary compatibility.
 
+## Documented Exceptions
+
+`Lcd1602DeviceConfigV2`/`Lcd2004DeviceConfigV2` (`Hd44780DisplayDeviceConfigBase`,
+`src/devices/display/hd44780/Hd44780DisplayDeviceConfigBase.h`) were edited in place — channel
+fields and the base struct changed from a switch-dependency-slot model to embedded PCF8574 I2C
+channels — without a version bump, and `kMagic` ("LCD1602-2"/"LCD2004-2") stayed the same. This is
+a deliberate, one-time exception to the Core Rules above: the SPA never sent a create request the
+backend's old dependency validation would accept (it sent a single `port_expander` dependency where
+6-7 ordered `switch` deps were required), so no device of this shape was ever created end-to-end —
+there is no real persisted config to preserve or migrate from.
+
 ## Migration Pattern
 
 When changing a config format:

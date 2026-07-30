@@ -4,9 +4,9 @@ import type { DeviceRole } from '@/models/device-type-ids'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
 import { defaultLcd1602Layout, encodeLcd1602Layout, normalizeLcd1602Layout, type Lcd1602LayoutDraft } from './lcd1602/layout.ts'
 
-// Sentinel for backlightChannel meaning "not wired" -- mirrors kLcd1602ChannelUnset in
-// Lcd1602DeviceConfig.h. The one optional channel: some parallel-wired boards tie backlight
-// permanently high instead of giving it a PCF857x pin.
+// Sentinel for backlightChannel meaning "not wired" -- mirrors kHd44780ChannelUnset in
+// Hd44780DisplayDeviceConfigBase.h. The one optional channel: some parallel-wired boards tie
+// backlight permanently high instead of giving it a PCF8574 pin.
 export const LCD1602_CHANNEL_UNSET = 255
 
 type Lcd1602WiringChannels = Pick<
@@ -15,7 +15,8 @@ type Lcd1602WiringChannels = Pick<
 >
 
 export interface Lcd1602ConfigDraft extends BaseDeviceConfig {
-  expanderDeviceId: number
+  dependencyDeviceId: number
+  i2cAddress: number
   rsChannel: number
   eChannel: number
   d4Channel: number
@@ -28,18 +29,9 @@ export interface Lcd1602ConfigDraft extends BaseDeviceConfig {
 
 export interface Lcd1602CreateDraft extends DeviceCreateDraftBase, Lcd1602ConfigDraft {}
 
-function deviceIdFromDeps(deps: DeviceDependencyLink[] | undefined, role: DeviceRole): number {
-  return deps?.find(dep => dep.role === role)?.deviceId ?? 0
-}
-
-function normalizeDeviceId(value: unknown): number {
-  const numeric = Number(value)
-  return Number.isFinite(numeric) && numeric > 0 ? numeric : 0
-}
-
 function normalizeChannel(value: unknown, fallback: number): number {
   const numeric = Number(value)
-  return Number.isFinite(numeric) && numeric >= 0 && numeric <= 15 ? numeric : fallback
+  return Number.isFinite(numeric) && numeric >= 0 && numeric <= 7 ? numeric : fallback
 }
 
 function normalizeBacklightChannel(value: unknown, fallback: number): number {
@@ -71,12 +63,13 @@ export class Lcd1602Device extends BaseDevice<Lcd1602ConfigDraft, Lcd1602CreateD
 
   readonly typeName = Lcd1602Device.TYPE_NAME
   readonly typeId = Lcd1602Device.TYPE_ID
-  readonly dependencyRoles: DeviceRole[] = ['port_expander']
+  readonly dependencyRoles: DeviceRole[] = ['i2c_bus']
 
   static defaultConfig(): Lcd1602ConfigDraft {
     return {
       ...defaultBaseDeviceConfig(),
-      expanderDeviceId: 0,
+      dependencyDeviceId: 0,
+      i2cAddress: 0x27,
       ...standardLcd1602Wiring(),
       layout: defaultLcd1602Layout(),
     }
@@ -84,11 +77,12 @@ export class Lcd1602Device extends BaseDevice<Lcd1602ConfigDraft, Lcd1602CreateD
 
   static normalizeConfig(value: unknown, deps?: DeviceDependencyLink[]): Lcd1602ConfigDraft {
     const defaults = Lcd1602Device.defaultConfig()
+    const dependencyDeviceId = deps?.find(dep => dep.role === 'i2c_bus')?.deviceId ?? 0
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
       return {
         ...defaults,
         deps: Array.isArray(deps) ? deps : defaults.deps,
-        expanderDeviceId: deviceIdFromDeps(deps, 'port_expander'),
+        dependencyDeviceId,
       }
     }
     const raw = value as Record<string, unknown>
@@ -98,7 +92,10 @@ export class Lcd1602Device extends BaseDevice<Lcd1602ConfigDraft, Lcd1602CreateD
     return {
       ...normalizeBaseDeviceConfig(raw, defaults),
       deps: rawDeps,
-      expanderDeviceId: normalizeDeviceId(raw.expanderDeviceId ?? deviceIdFromDeps(deps ?? rawDeps, 'port_expander')),
+      dependencyDeviceId: deps?.find(dep => dep.role === 'i2c_bus')?.deviceId
+        ?? rawDeps.find(dep => dep.role === 'i2c_bus')?.deviceId
+        ?? 0,
+      i2cAddress: typeof raw.i2cAddress === 'number' ? raw.i2cAddress : defaults.i2cAddress,
       rsChannel: normalizeChannel(raw.rsChannel, defaults.rsChannel),
       eChannel: normalizeChannel(raw.eChannel, defaults.eChannel),
       d4Channel: normalizeChannel(raw.d4Channel, defaults.d4Channel),
@@ -113,6 +110,7 @@ export class Lcd1602Device extends BaseDevice<Lcd1602ConfigDraft, Lcd1602CreateD
   static encodeConfig(config: Lcd1602ConfigDraft): Record<string, unknown> {
     return {
       ...encodeBaseDeviceConfig(config),
+      i2cAddress: config.i2cAddress,
       rsChannel: config.rsChannel,
       eChannel: config.eChannel,
       d4Channel: config.d4Channel,
@@ -158,8 +156,8 @@ export class Lcd1602Device extends BaseDevice<Lcd1602ConfigDraft, Lcd1602CreateD
   protected override createCreateDeps(config: Lcd1602ConfigDraft): DeviceDependencyLink[] {
     return [
       {
-        role: 'port_expander',
-        deviceId: config.expanderDeviceId,
+        role: 'i2c_bus',
+        deviceId: config.dependencyDeviceId,
       },
     ]
   }

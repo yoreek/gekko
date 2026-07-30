@@ -37,10 +37,6 @@ Hd44780CharacterDisplayDeviceBase::PState Hd44780CharacterDisplayDeviceBase::ini
     return (PState)&Hd44780CharacterDisplayDeviceBase::Idle;
 }
 
-uint8_t Hd44780CharacterDisplayDeviceBase::dependencySlots(uint8_t* out, uint8_t maxOut) const {
-    return hd44780ConfigChannels(channelConfig(), out, maxOut);
-}
-
 DisplayLayoutProfile Hd44780CharacterDisplayDeviceBase::displayProfile() const {
     return characterCellDisplayLayoutProfile(columns_, rows_, 0x01U);
 }
@@ -63,85 +59,41 @@ void Hd44780CharacterDisplayDeviceBase::resetRenderedLines() {
     }
 }
 
-ISwitchOutputRuntime* Hd44780CharacterDisplayDeviceBase::dependencySwitch(const uint8_t slot) const {
-    const IDeviceRuntime* dependency = dependencyRuntimeAt(slot);
-    if (dependency == nullptr) {
-        return nullptr;
-    }
-    return const_cast<ISwitchOutputRuntime*>(dependency->switchOutputRuntime());
-}
-
-bool Hd44780CharacterDisplayDeviceBase::writeSwitchSlot(const uint8_t slot, const bool on, const uint32_t now) const {
-    ISwitchOutputRuntime* switchRuntime = dependencySwitch(slot);
-    return switchRuntime != nullptr && switchRuntime->requestOutputState(on, now);
-}
-
-bool Hd44780CharacterDisplayDeviceBase::writeNibble(const uint8_t rsSlot, const uint8_t dataSlot0, const uint8_t dataSlot1,
-                                                    const uint8_t dataSlot2, const uint8_t dataSlot3, const uint8_t eSlot,
-                                                    const uint8_t nibble, const bool rs, const uint32_t now) const {
-    bool ok = writeSwitchSlot(rsSlot, rs, now);
-    ok = writeSwitchSlot(dataSlot0, (nibble & 0x1U) != 0U, now) && ok;
-    ok = writeSwitchSlot(dataSlot1, (nibble & 0x2U) != 0U, now) && ok;
-    ok = writeSwitchSlot(dataSlot2, (nibble & 0x4U) != 0U, now) && ok;
-    ok = writeSwitchSlot(dataSlot3, (nibble & 0x8U) != 0U, now) && ok;
-    ok = writeSwitchSlot(eSlot, true, now) && ok;
+bool Hd44780CharacterDisplayDeviceBase::writeNibble(const uint8_t nibble, const bool rs, const uint32_t now) {
+    bool ok = setLine(kHd44780LineRs, rs, now);
+    ok = setLine(kHd44780LineD4, (nibble & 0x1U) != 0U, now) && ok;
+    ok = setLine(kHd44780LineD5, (nibble & 0x2U) != 0U, now) && ok;
+    ok = setLine(kHd44780LineD6, (nibble & 0x4U) != 0U, now) && ok;
+    ok = setLine(kHd44780LineD7, (nibble & 0x8U) != 0U, now) && ok;
+    ok = setLine(kHd44780LineE, true, now) && ok;
     hardwareSettleMicros(1U);
-    ok = writeSwitchSlot(eSlot, false, now) && ok;
+    ok = setLine(kHd44780LineE, false, now) && ok;
     hardwareSettleMicros(50U);
     return ok;
 }
 
-bool Hd44780CharacterDisplayDeviceBase::writeByte(const uint8_t rsSlot, const uint8_t dataSlot0, const uint8_t dataSlot1,
-                                                  const uint8_t dataSlot2, const uint8_t dataSlot3, const uint8_t eSlot,
-                                                  const uint8_t value, const bool rs, const uint32_t now) const {
-    const bool highOk = writeNibble(rsSlot, dataSlot0, dataSlot1, dataSlot2, dataSlot3, eSlot, static_cast<uint8_t>(value >> 4U), rs, now);
-    const bool lowOk = writeNibble(rsSlot, dataSlot0, dataSlot1, dataSlot2, dataSlot3, eSlot, static_cast<uint8_t>(value & 0x0FU), rs, now);
+bool Hd44780CharacterDisplayDeviceBase::writeByte(const uint8_t value, const bool rs, const uint32_t now) {
+    const bool highOk = writeNibble(static_cast<uint8_t>(value >> 4U), rs, now);
+    const bool lowOk = writeNibble(static_cast<uint8_t>(value & 0x0FU), rs, now);
     return highOk && lowOk;
 }
 
 bool Hd44780CharacterDisplayDeviceBase::runInitSequence(const uint32_t now) {
-    const Hd44780ChannelConfigV1& channels = channelConfig();
-    if (dependencySwitch(channels.rsChannel) == nullptr || dependencySwitch(channels.eChannel) == nullptr ||
-        dependencySwitch(channels.d4Channel) == nullptr || dependencySwitch(channels.d5Channel) == nullptr ||
-        dependencySwitch(channels.d6Channel) == nullptr || dependencySwitch(channels.d7Channel) == nullptr) {
-        return false;
-    }
+    bool ok = setLine(kHd44780LineBacklight, true, now);
 
-    bool ok = true;
-    const uint8_t backlightChannel = channelConfig().backlightChannel;
-    if (backlightChannel != kHd44780ChannelUnset) {
-        ok = writeSwitchSlot(backlightChannel, true, now) && ok;
-    }
-
-    ok = writeNibble(channels.rsChannel, channels.d4Channel, channels.d5Channel, channels.d6Channel, channels.d7Channel, channels.eChannel,
-                     0x03U, false, now) &&
-         ok;
+    ok = writeNibble(0x03U, false, now) && ok;
     hardwareSettleMillis(5U);
-    ok = writeNibble(channels.rsChannel, channels.d4Channel, channels.d5Channel, channels.d6Channel, channels.d7Channel, channels.eChannel,
-                     0x03U, false, now) &&
-         ok;
+    ok = writeNibble(0x03U, false, now) && ok;
     hardwareSettleMicros(150U);
-    ok = writeNibble(channels.rsChannel, channels.d4Channel, channels.d5Channel, channels.d6Channel, channels.d7Channel, channels.eChannel,
-                     0x03U, false, now) &&
-         ok;
+    ok = writeNibble(0x03U, false, now) && ok;
     hardwareSettleMicros(150U);
-    ok = writeNibble(channels.rsChannel, channels.d4Channel, channels.d5Channel, channels.d6Channel, channels.d7Channel, channels.eChannel,
-                     0x02U, false, now) &&
-         ok;
+    ok = writeNibble(0x02U, false, now) && ok;
     hardwareSettleMicros(150U);
 
-    ok = writeByte(channels.rsChannel, channels.d4Channel, channels.d5Channel, channels.d6Channel, channels.d7Channel, channels.eChannel,
-                   0x28U, false, now) &&
-         ok;
-    ok = writeByte(channels.rsChannel, channels.d4Channel, channels.d5Channel, channels.d6Channel, channels.d7Channel, channels.eChannel,
-                   0x0CU, false, now) &&
-         ok;
-    ok = writeByte(channels.rsChannel, channels.d4Channel, channels.d5Channel, channels.d6Channel, channels.d7Channel, channels.eChannel,
-                   0x06U, false, now) &&
-         ok;
-    ok = writeByte(channels.rsChannel, channels.d4Channel, channels.d5Channel, channels.d6Channel, channels.d7Channel, channels.eChannel,
-                   0x01U, false, now) &&
-         ok;
+    ok = writeByte(0x28U, false, now) && ok;
+    ok = writeByte(0x0CU, false, now) && ok;
+    ok = writeByte(0x06U, false, now) && ok;
+    ok = writeByte(0x01U, false, now) && ok;
     hardwareSettleMillis(2U);
     return ok;
 }
@@ -152,13 +104,10 @@ uint8_t Hd44780CharacterDisplayDeviceBase::rowAddress(const uint8_t row) const {
     return static_cast<uint8_t>(base + halfOffset);
 }
 
-bool Hd44780CharacterDisplayDeviceBase::writeLine(const uint8_t rsSlot, const uint8_t dataSlot0, const uint8_t dataSlot1,
-                                                  const uint8_t dataSlot2, const uint8_t dataSlot3, const uint8_t eSlot, const uint8_t row,
-                                                  const char* text, const uint32_t now) const {
-    bool ok =
-        writeByte(rsSlot, dataSlot0, dataSlot1, dataSlot2, dataSlot3, eSlot, static_cast<uint8_t>(0x80U | rowAddress(row)), false, now);
+bool Hd44780CharacterDisplayDeviceBase::writeLine(const uint8_t row, const char* text, const uint32_t now) {
+    bool ok = writeByte(static_cast<uint8_t>(0x80U | rowAddress(row)), false, now);
     for (uint8_t i = 0; i < columns_; ++i) {
-        ok = writeByte(rsSlot, dataSlot0, dataSlot1, dataSlot2, dataSlot3, eSlot, static_cast<uint8_t>(text[i]), true, now) && ok;
+        ok = writeByte(static_cast<uint8_t>(text[i]), true, now) && ok;
     }
     return ok;
 }
@@ -183,13 +132,6 @@ void Hd44780CharacterDisplayDeviceBase::releaseDisplayHardware(uint32_t now) {
 }
 
 void Hd44780CharacterDisplayDeviceBase::onDisplayFrameRendered(const DisplayLayoutRenderResult&) {
-    const Hd44780ChannelConfigV1& channels = channelConfig();
-    if (dependencySwitch(channels.rsChannel) == nullptr || dependencySwitch(channels.eChannel) == nullptr ||
-        dependencySwitch(channels.d4Channel) == nullptr || dependencySwitch(channels.d5Channel) == nullptr ||
-        dependencySwitch(channels.d6Channel) == nullptr || dependencySwitch(channels.d7Channel) == nullptr) {
-        return;
-    }
-
     bool changed = false;
     if (layout_.pages.empty()) {
         for (uint8_t row = 0U; row < rows_; ++row) {
@@ -199,8 +141,7 @@ void Hd44780CharacterDisplayDeviceBase::onDisplayFrameRendered(const DisplayLayo
             }
             blank[columns_] = '\0';
             if (!hasRenderedOnce_ || std::strcmp(blank, lastLines_[row]) != 0) {
-                if (!writeLine(channels.rsChannel, channels.d4Channel, channels.d5Channel, channels.d6Channel, channels.d7Channel,
-                               channels.eChannel, row, blank, uptime())) {
+                if (!writeLine(row, blank, uptime())) {
                     return;
                 }
                 std::memcpy(lastLines_[row], blank, columns_ + 1U);
@@ -215,8 +156,7 @@ void Hd44780CharacterDisplayDeviceBase::onDisplayFrameRendered(const DisplayLayo
     for (uint8_t row = 0U; row < rows_; ++row) {
         const char* resolved = renderSurface_.line(row);
         if (!hasRenderedOnce_ || std::strcmp(resolved, lastLines_[row]) != 0) {
-            if (!writeLine(channels.rsChannel, channels.d4Channel, channels.d5Channel, channels.d6Channel, channels.d7Channel,
-                           channels.eChannel, row, resolved, uptime())) {
+            if (!writeLine(row, resolved, uptime())) {
                 return;
             }
             std::memcpy(lastLines_[row], resolved, columns_ + 1U);

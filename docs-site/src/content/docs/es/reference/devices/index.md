@@ -1,6 +1,6 @@
 ---
 title: Catálogo de dispositivos
-description: Los 33 tipos de dispositivo incorporados en cada imagen de firmware de Gekko.
+description: Los 35 tipos de dispositivo incorporados en cada imagen de firmware de Gekko.
 sidebar:
   order: 1
   label: Catálogo de dispositivos
@@ -70,6 +70,8 @@ iterativamente.
 | --- | --- |
 | `ssd1306` | OLED I2C con el [diseñador visual de disposición](/gekko/es/guides/displays/) |
 | `st7735` | TFT a color SPI, el mismo diseñador de disposición |
-| `lcd1602` | LCD de caracteres HD44780 de 16 × 2 mediante expansor PCF857x |
-| `lcd2004` | LCD de caracteres HD44780 de 20 × 4 mediante expansor PCF857x |
+| `lcd1602` | LCD de caracteres HD44780 de 16 × 2 mediante un módulo I2C PCF8574 integrado |
+| `lcd2004` | LCD de caracteres HD44780 de 20 × 4 mediante un módulo I2C PCF8574 integrado |
+| `lcd1602_pin` | LCD de caracteres HD44780 de 16 × 2 cableado directamente a pines GPIO del ESP32 |
+| `lcd2004_pin` | LCD de caracteres HD44780 de 20 × 4 cableado directamente a pines GPIO del ESP32 |
 | `tm1637` | Pantalla de siete segmentos de cuatro dígitos con brillo y giro de 180° |

@@ -13,7 +13,8 @@ type Lcd2004WiringChannels = Pick<
 >
 
 export interface Lcd2004ConfigDraft extends BaseDeviceConfig {
-  expanderDeviceId: number
+  dependencyDeviceId: number
+  i2cAddress: number
   rsChannel: number
   eChannel: number
   d4Channel: number
@@ -26,18 +27,9 @@ export interface Lcd2004ConfigDraft extends BaseDeviceConfig {
 
 export interface Lcd2004CreateDraft extends DeviceCreateDraftBase, Lcd2004ConfigDraft {}
 
-function deviceIdFromDeps(deps: DeviceDependencyLink[] | undefined, role: DeviceRole): number {
-  return deps?.find(dep => dep.role === role)?.deviceId ?? 0
-}
-
-function normalizeDeviceId(value: unknown): number {
-  const numeric = Number(value)
-  return Number.isFinite(numeric) && numeric > 0 ? numeric : 0
-}
-
 function normalizeChannel(value: unknown, fallback: number): number {
   const numeric = Number(value)
-  return Number.isFinite(numeric) && numeric >= 0 && numeric <= 15 ? numeric : fallback
+  return Number.isFinite(numeric) && numeric >= 0 && numeric <= 7 ? numeric : fallback
 }
 
 function normalizeBacklightChannel(value: unknown, fallback: number): number {
@@ -60,12 +52,13 @@ export class Lcd2004Device extends BaseDevice<Lcd2004ConfigDraft, Lcd2004CreateD
 
   readonly typeName = Lcd2004Device.TYPE_NAME
   readonly typeId = Lcd2004Device.TYPE_ID
-  readonly dependencyRoles: DeviceRole[] = ['port_expander']
+  readonly dependencyRoles: DeviceRole[] = ['i2c_bus']
 
   static defaultConfig(): Lcd2004ConfigDraft {
     return {
       ...defaultBaseDeviceConfig(),
-      expanderDeviceId: 0,
+      dependencyDeviceId: 0,
+      i2cAddress: 0x27,
       ...standardLcd2004Wiring(),
       layout: defaultLcd2004Layout(),
     }
@@ -73,11 +66,12 @@ export class Lcd2004Device extends BaseDevice<Lcd2004ConfigDraft, Lcd2004CreateD
 
   static normalizeConfig(value: unknown, deps?: DeviceDependencyLink[]): Lcd2004ConfigDraft {
     const defaults = Lcd2004Device.defaultConfig()
+    const dependencyDeviceId = deps?.find(dep => dep.role === 'i2c_bus')?.deviceId ?? 0
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
       return {
         ...defaults,
         deps: Array.isArray(deps) ? deps : defaults.deps,
-        expanderDeviceId: deviceIdFromDeps(deps, 'port_expander'),
+        dependencyDeviceId,
       }
     }
     const raw = value as Record<string, unknown>
@@ -87,7 +81,10 @@ export class Lcd2004Device extends BaseDevice<Lcd2004ConfigDraft, Lcd2004CreateD
     return {
       ...normalizeBaseDeviceConfig(raw, defaults),
       deps: rawDeps,
-      expanderDeviceId: normalizeDeviceId(raw.expanderDeviceId ?? deviceIdFromDeps(deps ?? rawDeps, 'port_expander')),
+      dependencyDeviceId: deps?.find(dep => dep.role === 'i2c_bus')?.deviceId
+        ?? rawDeps.find(dep => dep.role === 'i2c_bus')?.deviceId
+        ?? 0,
+      i2cAddress: typeof raw.i2cAddress === 'number' ? raw.i2cAddress : defaults.i2cAddress,
       rsChannel: normalizeChannel(raw.rsChannel, defaults.rsChannel),
       eChannel: normalizeChannel(raw.eChannel, defaults.eChannel),
       d4Channel: normalizeChannel(raw.d4Channel, defaults.d4Channel),
@@ -102,6 +99,7 @@ export class Lcd2004Device extends BaseDevice<Lcd2004ConfigDraft, Lcd2004CreateD
   static encodeConfig(config: Lcd2004ConfigDraft): Record<string, unknown> {
     return {
       ...encodeBaseDeviceConfig(config),
+      i2cAddress: config.i2cAddress,
       rsChannel: config.rsChannel,
       eChannel: config.eChannel,
       d4Channel: config.d4Channel,
@@ -147,8 +145,8 @@ export class Lcd2004Device extends BaseDevice<Lcd2004ConfigDraft, Lcd2004CreateD
   protected override createCreateDeps(config: Lcd2004ConfigDraft): DeviceDependencyLink[] {
     return [
       {
-        role: 'port_expander',
-        deviceId: config.expanderDeviceId,
+        role: 'i2c_bus',
+        deviceId: config.dependencyDeviceId,
       },
     ]
   }

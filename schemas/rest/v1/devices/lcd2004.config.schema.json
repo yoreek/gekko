@@ -6,14 +6,15 @@
   "properties": {
     "name": { "type": "string", "minLength": 1, "maxLength": 32 },
     "enabled": { "type": "boolean", "default": true },
-    "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" }, "minItems": 6, "maxItems": 7 },
-    "rsChannel": { "type": "integer", "minimum": 0, "maximum": 15 },
-    "eChannel": { "type": "integer", "minimum": 0, "maximum": 15 },
-    "d4Channel": { "type": "integer", "minimum": 0, "maximum": 15 },
-    "d5Channel": { "type": "integer", "minimum": 0, "maximum": 15 },
-    "d6Channel": { "type": "integer", "minimum": 0, "maximum": 15 },
-    "d7Channel": { "type": "integer", "minimum": 0, "maximum": 15 },
-    "backlightChannel": { "type": "integer", "minimum": 0, "maximum": 15 }
+    "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" }, "default": [] },
+    "i2cAddress": { "type": "integer", "minimum": 0, "maximum": 255, "default": 39 },
+    "rsChannel": { "type": "integer", "minimum": 0, "maximum": 7 },
+    "eChannel": { "type": "integer", "minimum": 0, "maximum": 7 },
+    "d4Channel": { "type": "integer", "minimum": 0, "maximum": 7 },
+    "d5Channel": { "type": "integer", "minimum": 0, "maximum": 7 },
+    "d6Channel": { "type": "integer", "minimum": 0, "maximum": 7 },
+    "d7Channel": { "type": "integer", "minimum": 0, "maximum": 7 },
+    "backlightChannel": { "type": "integer", "minimum": 0, "maximum": 7 }
     ,"layout": { "$ref": "../common/display-layout.schema.json" }
   },
   "required": ["name"],

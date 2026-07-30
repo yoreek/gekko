@@ -12,12 +12,14 @@
 
     <v-col cols="12" sm="6">
       <v-select
-        :label="t('device.fields.portExpanderDeviceId')"
+        :label="t('device.fields.i2cBusDeviceId')"
         :items="dependencyItems"
-        :model-value="modelValue.expanderDeviceId"
+        :model-value="modelValue.dependencyDeviceId"
         :readonly="mode === 'view'"
         :disabled="(busy && mode !== 'view') || dependencyItems.length === 0"
-        @update:model-value="update('expanderDeviceId', Number($event))"
+        density="compact"
+        hide-details="auto"
+        @update:model-value="update('dependencyDeviceId', Number($event))"
       />
     </v-col>
     <v-col cols="12" sm="6">
@@ -28,6 +30,13 @@
         :readonly="mode === 'view'"
         :disabled="busy && mode !== 'view'"
         @update:model-value="applyWiringPreset($event)"
+      />
+    </v-col>
+    <v-col cols="12">
+      <I2cAddressPicker
+        :model-value="modelValue.i2cAddress"
+        :bus-device-id="modelValue.dependencyDeviceId"
+        @update:model-value="update('i2cAddress', $event)"
       />
     </v-col>
 
@@ -125,6 +134,7 @@ import type { Lcd2004ConfigDraft } from '@/models/devices/lcd2004'
 import { standardLcd2004Wiring } from '@/models/devices/lcd2004'
 import { dependencyOptionsForRole } from '@/models/devices/device-model-factory'
 import DisplayDeviceFieldsFrame from '@/components/devices/display/DisplayDeviceFieldsFrame.vue'
+import I2cAddressPicker from '@/components/devices/common/I2cAddressPicker.vue'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { useDraftModel } from '@/composables/useDraftModel'
 
@@ -142,7 +152,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
 
-const dependencyItems = computed(() => dependencyOptionsForRole(deviceStore.devices, 'port_expander'))
+const dependencyItems = computed(() => dependencyOptionsForRole(deviceStore.devices, 'i2c_bus'))
 
 const { update } = useDraftModel<Lcd2004ConfigDraft>(props, emit)
 

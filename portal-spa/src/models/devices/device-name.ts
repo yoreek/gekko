@@ -40,6 +40,8 @@ export const DEFAULT_DEVICE_NAMES: Record<DeviceTypeName, string> = {
   analog_input_channel: 'Analog channel',
   lcd1602: 'LCD1602',
   lcd2004: 'LCD2004',
+  lcd1602_pin: 'LCD1602',
+  lcd2004_pin: 'LCD2004',
   tm1637: 'TM1637',
 }
 

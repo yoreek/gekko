@@ -27,8 +27,7 @@ std::unique_ptr<IDeviceRuntime> Lcd1602Device::createRuntime(const DeviceRegistr
 }
 
 DeviceValidationResult Lcd1602Device::validateConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
-    return validateHd44780LeafDeviceConfig<Lcd1602DeviceConfigV2, decodeLcd1602DeviceConfig>(record, configBlob,
-                                                                                             "lcd1602 config is invalid");
+    return validateI2cConfig<Lcd1602DeviceConfigV2>(record, configBlob, decodeLcd1602DeviceConfig);
 }
 
 } // namespace ewfm

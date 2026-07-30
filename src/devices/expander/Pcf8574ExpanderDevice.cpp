@@ -16,7 +16,8 @@ Pcf8574ExpanderDevice::Pcf8574ExpanderDevice(const DeviceRegistryEntry& record, 
     bindDeviceIdentity(record, configBlob);
 }
 
-Pcf8574ExpanderDevice::Pcf8574ExpanderDevice(const Pcf857xExpanderConfigV2& config) : Pcf857xExpanderDeviceBase(config) {}
+Pcf8574ExpanderDevice::Pcf8574ExpanderDevice(const Pcf857xExpanderConfigV2& config)
+    : Pcf857xExpanderDeviceBase(config, kPcf8574ChannelCount) {}
 
 DeviceTypeDescriptor Pcf8574ExpanderDevice::descriptor() {
     DeviceTypeDescriptor descriptor;
@@ -38,14 +39,6 @@ DeviceTypeDescriptor Pcf8574ExpanderDevice::descriptor() {
 std::unique_ptr<IDeviceRuntime> Pcf8574ExpanderDevice::createRuntime(const DeviceRegistryEntry& record,
                                                                      const DeviceConfigBlob& configBlob) {
     return std::unique_ptr<IDeviceRuntime>(new Pcf8574ExpanderDevice(record, configBlob));
-}
-
-uint8_t Pcf8574ExpanderDevice::channelCountImpl() const {
-    return kPcf8574ChannelCount;
-}
-
-bool Pcf8574ExpanderDevice::writeChannelStates(II2cBusDriver& driver, uint32_t states) const {
-    return driver.write(static_cast<uint8_t>(states & 0xFFU)) == 1U;
 }
 
 } // namespace ewfm

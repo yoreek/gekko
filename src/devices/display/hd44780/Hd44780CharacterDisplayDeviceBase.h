@@ -2,7 +2,6 @@
 
 #include "devices/display/DisplayDeviceBase.h"
 #include "devices/display/DisplayLayoutRenderer.h"
-#include "devices/display/hd44780/Hd44780ChannelConfig.h"
 #include "devices/display/hd44780/Hd44780CharacterSurface.h"
 #include "devices/display/render/CharacterDisplayLayoutRenderer.h"
 
@@ -13,14 +12,25 @@ namespace ewfm {
 constexpr uint8_t kHd44780MaxColumns = 20U;
 constexpr uint8_t kHd44780MaxRows = 4U;
 
-// Shared runtime for HD44780 character displays driven through per-slot Switch dependencies.
-// The derived leaf supplies only geometry and dependency-slot wiring. Rendering goes through the
-// common display layout path and the layout is persisted separately from the hardware config.
+// Fixed logical line indices passed to setLine() - not dependency slots or hardware channel/pin
+// numbers. The concrete transport (Hd44780I2cCharacterDisplayDeviceBase /
+// Hd44780PinCharacterDisplayDeviceBase) maps each one to its own config field.
+constexpr uint8_t kHd44780LineRs = 0U;
+constexpr uint8_t kHd44780LineE = 1U;
+constexpr uint8_t kHd44780LineD4 = 2U;
+constexpr uint8_t kHd44780LineD5 = 3U;
+constexpr uint8_t kHd44780LineD6 = 4U;
+constexpr uint8_t kHd44780LineD7 = 5U;
+constexpr uint8_t kHd44780LineBacklight = 6U;
+
+// Shared runtime for HD44780 character displays. The derived leaf's transport (an embedded PCF8574
+// I2C backpack or direct ESP32 GPIOs) supplies only setLine() and geometry; this base owns the
+// HD44780 4-bit protocol timing, cooperative lifecycle, and the common display layout/rendering
+// path. The layout is persisted separately from the hardware config.
 class Hd44780CharacterDisplayDeviceBase : public DisplayDeviceBase {
 public:
     static PState initialState();
 
-    uint8_t dependencySlots(uint8_t* out, uint8_t maxOut) const override;
     DisplayLayoutProfile displayProfile() const override;
     bool renderText(const MetricValueResolver& resolver, uint32_t now);
     const char* renderedLine(uint8_t row) const;
@@ -28,7 +38,11 @@ public:
 protected:
     Hd44780CharacterDisplayDeviceBase(PState initialState, uint8_t columns, uint8_t rows);
 
-    virtual const Hd44780ChannelConfigV1& channelConfig() const = 0;
+    // lineIndex is one of the kHd44780Line* constants above. Returns false if the transport
+    // couldn't apply the level (I2C write failed, bus not ready, ...); callers abort the current
+    // byte/line write and the next render tick retries rather than assuming success. An unwired
+    // optional line (e.g. backlight) is a no-op that still returns true.
+    virtual bool setLine(uint8_t lineIndex, bool level, uint32_t now) = 0;
 
     void resetRenderedLines();
 
@@ -47,15 +61,10 @@ protected:
     State Deleting();
 
 private:
-    ISwitchOutputRuntime* dependencySwitch(uint8_t slot) const;
-    bool writeSwitchSlot(uint8_t slot, bool on, uint32_t now) const;
-    bool writeNibble(uint8_t rsSlot, uint8_t dataSlot0, uint8_t dataSlot1, uint8_t dataSlot2, uint8_t dataSlot3, uint8_t eSlot,
-                     uint8_t nibble, bool rs, uint32_t now) const;
-    bool writeByte(uint8_t rsSlot, uint8_t dataSlot0, uint8_t dataSlot1, uint8_t dataSlot2, uint8_t dataSlot3, uint8_t eSlot, uint8_t value,
-                   bool rs, uint32_t now) const;
+    bool writeNibble(uint8_t nibble, bool rs, uint32_t now);
+    bool writeByte(uint8_t value, bool rs, uint32_t now);
     bool runInitSequence(uint32_t now);
-    bool writeLine(uint8_t rsSlot, uint8_t dataSlot0, uint8_t dataSlot1, uint8_t dataSlot2, uint8_t dataSlot3, uint8_t eSlot, uint8_t row,
-                   const char* text, uint32_t now) const;
+    bool writeLine(uint8_t row, const char* text, uint32_t now);
     uint8_t rowAddress(uint8_t row) const;
 
     uint8_t columns_;

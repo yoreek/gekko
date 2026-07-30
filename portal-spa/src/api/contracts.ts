@@ -57,6 +57,10 @@ export type Lcd1602OutputSnapshot = Record<string, never>
 
 export type Lcd2004OutputSnapshot = Record<string, never>
 
+export type Lcd1602PinOutputSnapshot = Record<string, never>
+
+export type Lcd2004PinOutputSnapshot = Record<string, never>
+
 // Deliberately empty: the firmware never pushes a live "active"/"timeValid" value (ScheduleDevice
 // never marks itself runtime-dirty, so it would just be a stale snapshot from page load) - the
 // frontend instead computes an on/off preview client-side from the rule config, see
@@ -211,6 +215,8 @@ export type DeviceOutputSnapshot =
   | AnalogInputHubOutputSnapshot
   | Lcd1602OutputSnapshot
   | Lcd2004OutputSnapshot
+  | Lcd1602PinOutputSnapshot
+  | Lcd2004PinOutputSnapshot
 
 export type TemperatureUnit = 'celsius' | 'fahrenheit'
 

@@ -31,6 +31,8 @@ import { AnalogInputChannelDevice } from '@/models/devices/analog-input-channel'
 import { Cd74hc4067HubDevice } from '@/models/devices/cd74hc4067-hub'
 import { Lcd1602Device } from '@/models/devices/lcd1602'
 import { Lcd2004Device } from '@/models/devices/lcd2004'
+import { Lcd1602PinDevice } from '@/models/devices/lcd1602-pin'
+import { Lcd2004PinDevice } from '@/models/devices/lcd2004-pin'
 import { Tm1637Device } from '@/models/devices/tm1637'
 import DummyFields from '@/components/devices/dummy/DummyFields.vue'
 import DummyWidget from '@/components/devices/dummy/DummyWidget.vue'
@@ -92,6 +94,10 @@ import Lcd1602Fields from '@/components/devices/lcd1602/Lcd1602Fields.vue'
 import Lcd1602Widget from '@/components/devices/lcd1602/Lcd1602Widget.vue'
 import Lcd2004Fields from '@/components/devices/lcd2004/Lcd2004Fields.vue'
 import Lcd2004Widget from '@/components/devices/lcd2004/Lcd2004Widget.vue'
+import Lcd1602PinFields from '@/components/devices/lcd1602-pin/Lcd1602PinFields.vue'
+import Lcd1602PinWidget from '@/components/devices/lcd1602-pin/Lcd1602PinWidget.vue'
+import Lcd2004PinFields from '@/components/devices/lcd2004-pin/Lcd2004PinFields.vue'
+import Lcd2004PinWidget from '@/components/devices/lcd2004-pin/Lcd2004PinWidget.vue'
 import Tm1637Fields from '@/components/devices/tm1637/Tm1637Fields.vue'
 import Tm1637Widget from '@/components/devices/tm1637/Tm1637Widget.vue'
 import DisplayDesignerView from '@/views/DisplayDesignerView.vue'
@@ -464,6 +470,30 @@ const lcd2004Ui: DeviceUi = {
   designerComponent: DisplayDesignerView,
 }
 
+const lcd1602PinUi: DeviceUi = {
+  typeId: Lcd1602PinDevice.TYPE_ID,
+  typeName: Lcd1602PinDevice.TYPE_NAME,
+  labelKey: 'device.type.lcd1602Pin',
+  category: 'displays',
+  icon: 'display',
+  fieldsComponent: Lcd1602PinFields,
+  widgetComponent: Lcd1602PinWidget,
+  moreInfoMaxWidth: 720,
+  designerComponent: DisplayDesignerView,
+}
+
+const lcd2004PinUi: DeviceUi = {
+  typeId: Lcd2004PinDevice.TYPE_ID,
+  typeName: Lcd2004PinDevice.TYPE_NAME,
+  labelKey: 'device.type.lcd2004Pin',
+  category: 'displays',
+  icon: 'display',
+  fieldsComponent: Lcd2004PinFields,
+  widgetComponent: Lcd2004PinWidget,
+  moreInfoMaxWidth: 720,
+  designerComponent: DisplayDesignerView,
+}
+
 const tm1637Ui: DeviceUi = {
   typeId: Tm1637Device.TYPE_ID,
   typeName: Tm1637Device.TYPE_NAME,
@@ -509,6 +539,8 @@ const deviceUiV2ByTypeId: Record<number, DeviceUi> = {
   [analogInputChannelUi.typeId]: analogInputChannelUi,
   [lcd1602Ui.typeId]: lcd1602Ui,
   [lcd2004Ui.typeId]: lcd2004Ui,
+  [lcd1602PinUi.typeId]: lcd1602PinUi,
+  [lcd2004PinUi.typeId]: lcd2004PinUi,
   [tm1637Ui.typeId]: tm1637Ui,
 }
 

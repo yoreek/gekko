@@ -1,36 +1,23 @@
 #pragma once
 
+#include "devices/bus/i2c/I2cDeviceValidation.h"
 #include "devices/display/lcd2004/Lcd2004Device.h"
-#include "integrations/rest/hd44780/TypedHd44780DeviceApiAdapter.h"
+#include "integrations/rest/display/TypedDisplayDeviceApiAdapter.h"
 
 namespace ewfm {
 
-class Lcd2004DeviceApiAdapter final : public TypedHd44780DeviceApiAdapter<Lcd2004DeviceApiAdapter, Lcd2004Device, Lcd2004DeviceConfigV2> {
+class Lcd2004DeviceApiAdapter final : public TypedDisplayDeviceApiAdapter<Lcd2004DeviceApiAdapter, Lcd2004Device, Lcd2004DeviceConfigV2> {
 public:
     static constexpr const char* kTypeName = "lcd2004";
-    static constexpr const char* kInvalidLayoutError = "lcd2004 layout is invalid";
-    static constexpr const char* kLayoutSizeError = "lcd2004 layout exceeds supported size";
-    static constexpr const char* kLayoutDependencyCountError = "lcd2004 layout exceeds supported dependency count";
-    static constexpr const char* kLayoutPlaceholderError = "lcd2004 layout placeholder is invalid";
-    static constexpr const char* kDepsRequiredError = "switch dependency is required";
-    static constexpr const char* kDependencyCountError = "lcd2004 exceeds maximum dependency count";
+    static constexpr const char* kBusDependencyError = kI2cBusDependencyRequiredError;
 
-    static const Lcd2004DeviceApiAdapter& instance() {
-        static const Lcd2004DeviceApiAdapter adapter;
-        return adapter;
-    }
-
-    static bool decodeConfig(const uint8_t* blob, size_t size, Lcd2004DeviceConfigV2& config) {
-        return decodeLcd2004DeviceConfig(blob, size, config);
-    }
-
-    static const Hd44780ChannelConfigV1& channelsOf(const Lcd2004DeviceConfigV2& config) {
-        return config.channels;
-    }
-
-    static constexpr DisplayLayoutProfile layoutProfile() {
-        return characterCellDisplayLayoutProfile(20U, 4U, 0x01U);
-    }
+    static const Lcd2004DeviceApiAdapter& instance();
+    static bool decodeConfig(const uint8_t* input, size_t size, Lcd2004DeviceConfigV2& config);
+    static DeviceRole busRole();
+    static DeviceId configBusDeviceId(const Lcd2004DeviceConfigV2& config);
+    static void setConfigBusDeviceId(Lcd2004DeviceConfigV2& config, DeviceId busDeviceId);
+    static DeviceValidationResult validateBusDependency(const DeviceRegistry& registry, DeviceId busDeviceId,
+                                                        const Lcd2004DeviceConfigV2& config, const IDeviceRuntime* ignoreDependent);
 };
 
 } // namespace ewfm

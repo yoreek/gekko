@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-update-lcd2004_pin.request.schema.json",
+  "title": "Update lcd2004_pin request",
+  "type": "object",
+  "properties": { "config": { "$ref": "../devices/lcd2004_pin.config-update.schema.json" }, "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" } }, "layout": { "$ref": "../common/display-layout.schema.json" } },
+  "required": ["config"],
+  "additionalProperties": true
+}

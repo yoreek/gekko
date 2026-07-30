@@ -2,23 +2,31 @@
 
 #include "devices/core/ConfigCodec.h"
 #include "devices/core/DeviceBaseConfig.h"
-#include "devices/core/DeviceDependencyValidation.h"
 #include "devices/display/DisplayLayoutCodec.h"
 #include "devices/display/DisplayLayoutProfile.h"
 #include "devices/display/DisplayLayoutValidator.h"
 #include "devices/display/DisplayTextPlaceholderAst.h"
-#include "devices/display/hd44780/Hd44780ChannelConfig.h"
 #include "integrations/rest/display/DisplayDeviceApiAdapter.h"
+
+#include <array>
 
 namespace ewfm {
 
-// Shared REST adapter for character displays. Hardware dependencies remain ordered Switch links;
-// layout and metric-source dependencies are persisted through the common display API.
-template <typename Derived, typename Device, typename Config> class TypedHd44780DeviceApiAdapter : public DisplayDeviceApiAdapter {
+// Shared REST adapter for direct-GPIO HD44780 displays (lcd1602_pin, lcd2004_pin, ...): no
+// hardware dependency at all, only optional layout-derived MetricSource links. Generalizes
+// Tm1637DeviceApiAdapter's shape (another display that owns its pins outright) into a CRTP
+// template, the way TypedDisplayDeviceApiAdapter generalizes the I2C-bus display adapters.
+//
+// Error messages are generic ("display layout is invalid", ...), matching Tm1637DeviceApiAdapter's
+// own constants -- not type-specific, so they live here once instead of every concrete adapter
+// declaring its own copy.
+template <typename Derived, typename Device, typename Config> class TypedHd44780PinDeviceApiAdapter : public DisplayDeviceApiAdapter {
 public:
-    static constexpr const char* kConfigRequiredError = "device config is required";
-    static constexpr const char* kInvalidConfigError = "device config is invalid";
-    static constexpr const char* kEncodeError = "failed to encode device config";
+    static constexpr const char* kInvalidLayoutError = "display layout is invalid";
+    static constexpr const char* kLayoutSizeError = "display layout exceeds supported size";
+    static constexpr const char* kLayoutDependencyCountError = "display layout exceeds supported dependency count";
+    static constexpr const char* kLayoutPlaceholderError = "display layout placeholder is invalid";
+    static constexpr const char* kMetricDependencyError = "display metric dependency is invalid";
 
     DeviceTypeId typeId() const final {
         return Device::descriptor().typeId;
@@ -39,14 +47,14 @@ public:
 
         const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
         if (configInput.isNull()) {
-            error = kConfigRequiredError;
+            error = "device config is required";
             return false;
         }
 
         Config config{};
         if (!config.parseJson(configInput, error) || !config.validate().ok()) {
             if (error == nullptr) {
-                error = kInvalidConfigError;
+                error = "device config is invalid";
             }
             return false;
         }
@@ -54,14 +62,16 @@ public:
             error = "device base config is invalid";
             return false;
         }
-        return parseCreateExtras(input, configInput, config, request, error) && encodeConfig(config, request.configBlob, error);
+        if (!parseDeps(configInput, request.deps, request.depCount, error, false)) {
+            return false;
+        }
+        return encodeConfig(config, request.configBlob, error);
     }
 
     bool parseCreatePersistedStateRequest(const JsonObjectConst& input, DeviceCreateRequest& request,
                                           DeviceCreatePersistenceRequest& persistedRequest, const char*& error) const final {
         persistedRequest = {};
-        if (!encodeLayoutRequest(input, 0U, persistedRequest.persistedStateBlob, error, Derived::kInvalidLayoutError,
-                                 Derived::kLayoutSizeError)) {
+        if (!encodeLayoutRequest(input, 0U, persistedRequest.persistedStateBlob, error, kInvalidLayoutError, kLayoutSizeError)) {
             return false;
         }
         if (!collectLayoutDependencies(input, request.deps, request.depCount, error)) {
@@ -75,14 +85,14 @@ public:
                                   const char*& error) const final {
         const JsonObjectConst configInput = input["config"].as<JsonObjectConst>();
         if (configInput.isNull()) {
-            error = kConfigRequiredError;
+            error = "device config is required";
             return false;
         }
 
         Config config = static_cast<const Device&>(runtime).config();
         if (!config.parseJson(configInput, error) || !config.validate().ok()) {
             if (error == nullptr) {
-                error = kInvalidConfigError;
+                error = "device config is invalid";
             }
             return false;
         }
@@ -98,45 +108,25 @@ public:
         }
 
         const bool explicitDepsProvided = !input["deps"].isNull();
-        if (explicitDepsProvided) {
-            if (!IDeviceApiAdapter::parseDependenciesJson(input, request.deps, request.depCount, error)) {
-                return false;
-            }
-        } else {
-            const DeviceDependencyLink* currentDeps = runtime.dependencyLinks();
-            request.depCount = runtime.dependencyCount();
-            if (currentDeps == nullptr || request.depCount > kMaxDeviceDependencies) {
-                error = Derived::kDependencyCountError;
-                return false;
-            }
-            for (uint8_t index = 0U; index < request.depCount; ++index) {
-                request.deps[index] = currentDeps[index];
-            }
-        }
-
-        if (!collectLayoutDependencies(input, request.deps, request.depCount, error)) {
+        if (explicitDepsProvided && !parseDeps(input, request.deps, request.depCount, error, false)) {
             return false;
         }
-        request.depsProvided = explicitDepsProvided || request.depCount > runtime.dependencyCount();
-        if (!encodeLayoutRequest(input, runtime.deviceId(), request.persistedStateBlob, error, Derived::kInvalidLayoutError,
-                                 Derived::kLayoutSizeError)) {
+        if (!parseAndEncodeLayoutRequest(input, runtime.deviceId(), request.persistedStateBlob, request.deps, request.depCount, error,
+                                         kInvalidLayoutError, kLayoutSizeError, kLayoutDependencyCountError)) {
             return false;
         }
+        request.depsProvided = explicitDepsProvided || request.depCount > 0U;
         request.persistedStateProvided = !request.persistedStateBlob.empty();
         return true;
     }
 
     DeviceValidationResult validateCreateRequest(const DeviceCreateRequest& request, const DeviceRegistry& registry) const final {
         Config config{};
-        if (!decodeConfig(request.configBlob.data(), request.configBlob.size(), config)) {
-            return {DeviceError::InvalidConfig, kInvalidConfigError};
+        if (!Derived::decodeConfig(request.configBlob.data(), request.configBlob.size(), config)) {
+            return {DeviceError::InvalidConfig, "device config is invalid"};
         }
-        const DeviceValidationResult dependencyResult =
-            validateDependencies(registry, request.deps.data(), request.depCount, nullptr, config, nullptr, 0U);
-        if (!dependencyResult.ok()) {
-            return dependencyResult;
-        }
-        return config.validate();
+        const DeviceValidationResult depResult = validateDeps(registry, request.deps.data(), request.depCount, nullptr);
+        return depResult.ok() ? config.validate() : depResult;
     }
 
     DeviceValidationResult validateCreateRequest(const DeviceCreateRequest& request, const DeviceCreatePersistenceRequest& persistedRequest,
@@ -150,57 +140,70 @@ public:
     DeviceValidationResult validateUpdateConfigRequest(const IDeviceRuntime& runtime, const DeviceConfigUpdateRequest& request,
                                                        const DeviceRegistry& registry) const final {
         Config config{};
-        if (!decodeConfig(request.configBlob.data(), request.configBlob.size(), config)) {
-            return {DeviceError::InvalidConfig, kInvalidConfigError};
+        if (!Derived::decodeConfig(request.configBlob.data(), request.configBlob.size(), config)) {
+            return {DeviceError::InvalidConfig, "device config is invalid"};
         }
         const DeviceDependencyLink* deps = request.depsProvided ? request.deps.data() : runtime.dependencyLinks();
         const uint8_t depCount = request.depsProvided ? request.depCount : runtime.dependencyCount();
-        const DeviceValidationResult dependencyResult = validateDependencies(registry, deps, depCount, &runtime, config, nullptr, 0U);
-        if (!dependencyResult.ok()) {
-            return dependencyResult;
-        }
-        return validatePersistedLayout(request.persistedStateBlob, request.persistedStateProvided, registry);
+        const DeviceValidationResult depResult = validateDeps(registry, deps, depCount, &runtime);
+        return depResult.ok() ? validatePersistedLayout(request.persistedStateBlob, request.persistedStateProvided, registry) : depResult;
     }
 
     DeviceValidationResult validateSetDepsRequest(const IDeviceRuntime& runtime,
                                                   const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps,
                                                   const uint8_t depCount, const DeviceRegistry& registry) const final {
-        uint8_t slots[7U]{};
-        const uint8_t slotCount = runtime.dependencySlots(slots, 7U);
-        return validateDependencies(registry, deps.data(), depCount, &runtime, static_cast<const Device&>(runtime).config(), slots,
-                                    slotCount);
+        return validateDeps(registry, deps.data(), depCount, &runtime);
     }
 
     void writeDeviceJson(const IDeviceRuntime& runtime, const DeviceStatus effectiveStatus, JsonObject output) const final {
         writeCommonDeviceJson(runtime, effectiveStatus, typeName(), output);
         const Device& device = static_cast<const Device&>(runtime);
         device.config().writeJson(output["config"].as<JsonObject>());
-        JsonObject profile = output["runtime"].as<JsonObject>().createNestedObject("displayProfile");
-        writeDisplayLayoutProfileJson(device.displayProfile(), profile);
+        writeDisplayLayoutProfileJson(device.displayProfile(), output["runtime"].as<JsonObject>().createNestedObject("displayProfile"));
     }
 
     void writeConfigJson(const IDeviceRuntime& runtime, JsonObject config) const final {
         static_cast<const Device&>(runtime).config().writeJson(config);
     }
 
-protected:
-    static bool decodeConfig(const uint8_t* data, size_t size, Config& config) {
-        return Derived::decodeConfig(data, size, config);
-    }
-
-    static bool parseCreateExtras(const JsonObjectConst& input, const JsonObjectConst& configInput, Config& config,
-                                  DeviceCreateRequest& request, const char*& error) {
-        (void)input;
-        (void)config;
-        return IDeviceApiAdapter::parseDependenciesJson(configInput, request.deps, request.depCount, error);
-    }
-
 private:
+    static bool parseDeps(const JsonObjectConst& input, std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t& depCount,
+                          const char*& error, const bool required) {
+        if (!IDeviceApiAdapter::parseDependenciesJson(input, deps, depCount, error, required)) {
+            return false;
+        }
+        for (uint8_t index = 0U; index < depCount; ++index) {
+            if (deps[index].role != DeviceRole::MetricSource || deps[index].deviceId == 0U) {
+                error = kMetricDependencyError;
+                return false;
+            }
+        }
+        return true;
+    }
+
+    static DeviceValidationResult validateDeps(const DeviceRegistry& registry, const DeviceDependencyLink* deps, const uint8_t depCount,
+                                               const IDeviceRuntime* ignoreRuntime) {
+        (void)registry;
+        (void)ignoreRuntime;
+        if (depCount == 0U) {
+            return {};
+        }
+        if (deps == nullptr) {
+            return {DeviceError::InvalidRelationship, kMetricDependencyError};
+        }
+        for (uint8_t index = 0U; index < depCount; ++index) {
+            if (deps[index].role != DeviceRole::MetricSource || deps[index].deviceId == 0U) {
+                return {DeviceError::InvalidRelationship, kMetricDependencyError};
+            }
+        }
+        return {};
+    }
+
     template <typename Blob> static bool encodeConfig(const Config& config, Blob& blob, const char*& error) {
         uint8_t buffer[kMaxDeviceConfigBytes]{};
         const size_t size = fixedConfigBlobSize(Config::kMagic, config);
         if (!encodeFixedConfigBlob(Config::kMagic, config, buffer, size) || !blob.assign(buffer, size)) {
-            error = kEncodeError;
+            error = "failed to encode device config";
             return false;
         }
         return true;
@@ -215,43 +218,11 @@ private:
         }
         DisplayLayoutRecordV1 layout{};
         if (!parseDisplayLayoutJson(layoutInput, layout)) {
-            error = Derived::kInvalidLayoutError;
+            error = kInvalidLayoutError;
             return false;
         }
-        return collectLayoutMetricSourceDependencies(layout, dependencies, dependencyCount, error, Derived::kInvalidLayoutError,
-                                                     Derived::kLayoutDependencyCountError);
-    }
-
-    static DeviceValidationResult validateDependencies(const DeviceRegistry& registry, const DeviceDependencyLink* deps,
-                                                       const uint8_t depCount, const IDeviceRuntime* ignoreRuntime, const Config& config,
-                                                       const uint8_t* slots, uint8_t slotCount) {
-        uint8_t localSlots[7U]{};
-        if (slots == nullptr) {
-            slotCount = hd44780ConfigChannels(Derived::channelsOf(config), localSlots, 7U);
-            slots = localSlots;
-        }
-        if (deps == nullptr || slotCount == 0U || slotCount > depCount) {
-            return {DeviceError::InvalidRelationship, Derived::kDependencyCountError};
-        }
-        if (dependencyLinksHaveDuplicateDeviceIds(deps, slots, slotCount)) {
-            return {DeviceError::InvalidRelationship, "switch dependency device id is duplicated"};
-        }
-        for (uint8_t index = 0U; index < slotCount; ++index) {
-            const uint8_t slot = slots[index];
-            if (slot >= depCount || deps[slot].role != DeviceRole::Switch || deps[slot].deviceId == 0U) {
-                return {DeviceError::InvalidRelationship, Derived::kDepsRequiredError};
-            }
-            const IDeviceRuntime* dependency = registry.runtime(deps[slot].deviceId);
-            if (dependency == nullptr || dependency->switchOutputRuntime() == nullptr || dependency == ignoreRuntime) {
-                return {DeviceError::InvalidRelationship, "switch dependency is missing or invalid"};
-            }
-        }
-        for (uint8_t index = slotCount; index < depCount; ++index) {
-            if (deps[index].role != DeviceRole::MetricSource || deps[index].deviceId == 0U) {
-                return {DeviceError::InvalidRelationship, "display metric dependency is invalid"};
-            }
-        }
-        return {};
+        return collectLayoutMetricSourceDependencies(layout, dependencies, dependencyCount, error, kInvalidLayoutError,
+                                                     kLayoutDependencyCountError);
     }
 
     static DeviceValidationResult validatePersistedLayout(const BoundedBlob<kMaxDisplayLayoutBytes>& blob, const bool provided,
@@ -261,10 +232,10 @@ private:
         }
         DisplayLayoutRecordV1 layout{};
         if (!decodeDisplayLayoutBinary(blob.data(), blob.size(), layout) || !validateDisplayLayout(layout, Derived::layoutProfile()).ok()) {
-            return {DeviceError::InvalidConfig, Derived::kInvalidLayoutError};
+            return {DeviceError::InvalidConfig, kInvalidLayoutError};
         }
         if (!validateLayoutMetricPlaceholders(layout, registry)) {
-            return {DeviceError::InvalidRelationship, Derived::kLayoutPlaceholderError};
+            return {DeviceError::InvalidRelationship, kLayoutPlaceholderError};
         }
         const char* imageKeyError = nullptr;
         if (!validateLayoutImageKeys(layout, imageKeyError)) {

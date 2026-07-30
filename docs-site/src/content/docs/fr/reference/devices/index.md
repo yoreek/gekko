@@ -1,6 +1,6 @@
 ---
 title: Catalogue des périphériques
-description: Les 33 types de périphériques intégrés dans chaque image firmware Gekko.
+description: Les 35 types de périphériques intégrés dans chaque image firmware Gekko.
 sidebar:
   order: 1
   label: Catalogue des périphériques
@@ -69,6 +69,8 @@ ici brièvement, avec des pages détaillées ajoutées progressivement.
 | --- | --- |
 | `ssd1306` | OLED I2C avec le [concepteur visuel de mise en page](/gekko/fr/guides/displays/) |
 | `st7735` | TFT couleur SPI, même concepteur de mise en page |
-| `lcd1602` | LCD à caractères HD44780 de 16 × 2 via un expanseur PCF857x |
-| `lcd2004` | LCD à caractères HD44780 de 20 × 4 via un expanseur PCF857x |
+| `lcd1602` | LCD à caractères HD44780 de 16 × 2 via un module I2C PCF8574 intégré |
+| `lcd2004` | LCD à caractères HD44780 de 20 × 4 via un module I2C PCF8574 intégré |
+| `lcd1602_pin` | LCD à caractères HD44780 de 16 × 2 câblé directement sur les broches GPIO de l'ESP32 |
+| `lcd2004_pin` | LCD à caractères HD44780 de 20 × 4 câblé directement sur les broches GPIO de l'ESP32 |
 | `tm1637` | Afficheur sept segments à quatre chiffres avec luminosité et rotation à 180° |

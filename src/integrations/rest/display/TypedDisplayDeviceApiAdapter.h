@@ -10,6 +10,15 @@ namespace ewfm {
 
 template <typename Derived, typename Device, typename Config> class TypedDisplayDeviceApiAdapter : public DisplayDeviceApiAdapter {
 public:
+    // Generic on purpose: the response/request already carries typeName, so repeating it in the
+    // error text per adapter is pure duplication. Only kBusDependencyError stays per-adapter, since
+    // its wording genuinely differs (I2C vs SPI bus).
+    static constexpr const char* kInvalidLayoutError = "display layout is invalid";
+    static constexpr const char* kLayoutSizeError = "display layout exceeds supported size";
+    static constexpr const char* kLayoutDependencyCountError = "display layout exceeds supported dependency count";
+    static constexpr const char* kLayoutPlaceholderError = "display layout placeholder is invalid";
+    static constexpr const char* kMetricDependencyError = "display metric dependency is invalid";
+
     DeviceTypeId typeId() const final {
         return Device::descriptor().typeId;
     }
@@ -66,8 +75,7 @@ public:
     bool parseCreatePersistedStateRequest(const JsonObjectConst& input, DeviceCreateRequest& request,
                                           DeviceCreatePersistenceRequest& persistedRequest, const char*& error) const final {
         persistedRequest = {};
-        if (!encodeLayoutRequest(input, 0, persistedRequest.persistedStateBlob, error, Derived::kInvalidLayoutError,
-                                 Derived::kLayoutSizeError)) {
+        if (!encodeLayoutRequest(input, 0, persistedRequest.persistedStateBlob, error, kInvalidLayoutError, kLayoutSizeError)) {
             return false;
         }
         if (!collectLayoutDependencies(input, request.deps, request.depCount, error)) {
@@ -133,7 +141,7 @@ public:
             return false;
         }
         if (!parseAndEncodeLayoutRequest(input, runtime.deviceId(), request.persistedStateBlob, request.deps, request.depCount, error,
-                                         Derived::kInvalidLayoutError, Derived::kLayoutSizeError, Derived::kLayoutDependencyCountError)) {
+                                         kInvalidLayoutError, kLayoutSizeError, kLayoutDependencyCountError)) {
             return false;
         }
         request.depsProvided = explicitDepsProvided || request.depCount > 1U;
@@ -223,11 +231,11 @@ private:
         }
         DisplayLayoutRecordV1 layout{};
         if (!parseDisplayLayoutJson(layoutInput, layout)) {
-            error = Derived::kInvalidLayoutError;
+            error = kInvalidLayoutError;
             return false;
         }
-        return collectLayoutMetricSourceDependencies(layout, dependencies, dependencyCount, error, Derived::kInvalidLayoutError,
-                                                     Derived::kLayoutDependencyCountError);
+        return collectLayoutMetricSourceDependencies(layout, dependencies, dependencyCount, error, kInvalidLayoutError,
+                                                     kLayoutDependencyCountError);
     }
 
     static DeviceValidationResult validateDependencyShape(const DeviceDependencyLink* dependencies, const uint8_t dependencyCount) {
@@ -237,7 +245,7 @@ private:
         }
         for (uint8_t index = 1; index < dependencyCount; ++index) {
             if (dependencies[index].role != DeviceRole::MetricSource || dependencies[index].deviceId == 0U) {
-                return {DeviceError::InvalidRelationship, Derived::kMetricDependencyError};
+                return {DeviceError::InvalidRelationship, kMetricDependencyError};
             }
         }
         return {};
@@ -250,10 +258,10 @@ private:
         }
         DisplayLayoutRecordV1 layout{};
         if (!decodeDisplayLayoutBinary(blob.data(), blob.size(), layout)) {
-            return {DeviceError::InvalidConfig, Derived::kInvalidLayoutError};
+            return {DeviceError::InvalidConfig, kInvalidLayoutError};
         }
         if (!validateLayoutMetricPlaceholders(layout, registry)) {
-            return {DeviceError::InvalidRelationship, Derived::kLayoutPlaceholderError};
+            return {DeviceError::InvalidRelationship, kLayoutPlaceholderError};
         }
         const char* imageKeyError = nullptr;
         if (!validateLayoutImageKeys(layout, imageKeyError)) {

@@ -1225,19 +1225,18 @@ const seedDatabase: SeedDatabase = {
       name: 'Status Display',
       deps: [
         {
-          role: 'port_expander',
-          deviceId: 670845760,
+          role: 'i2c_bus',
+          deviceId: 670845754,
         },
       ],
-      // Channel 0 on this expander is already claimed by "Expander Channel 0" above -- the
-      // remaining channels 1-7 cover RS/E/D4-D7/backlight.
-      rsChannel: 1,
+      i2cAddress: 0x27,
+      rsChannel: 0,
       eChannel: 2,
-      d4Channel: 3,
-      d5Channel: 4,
-      d6Channel: 5,
-      d7Channel: 6,
-      backlightChannel: 7,
+      d4Channel: 4,
+      d5Channel: 5,
+      d6Channel: 6,
+      d7Channel: 7,
+      backlightChannel: 3,
       layout: {
         ...defaultLcd1602Layout(),
         pages: [
@@ -1279,19 +1278,18 @@ const seedDatabase: SeedDatabase = {
       name: 'Grow Room Display',
       deps: [
         {
-          role: 'port_expander',
-          deviceId: 670845761,
+          role: 'i2c_bus',
+          deviceId: 670845754,
         },
       ],
-      // Channel 0 on this expander is already claimed by "Grow Light Expander Channel 0" above --
-      // the remaining channels 1-7 cover RS/E/D4-D7/backlight.
-      rsChannel: 1,
+      i2cAddress: 0x26,
+      rsChannel: 0,
       eChannel: 2,
-      d4Channel: 3,
-      d5Channel: 4,
-      d6Channel: 5,
-      d7Channel: 6,
-      backlightChannel: 7,
+      d4Channel: 4,
+      d5Channel: 5,
+      d6Channel: 6,
+      d7Channel: 7,
+      backlightChannel: 3,
       layout: {
         ...defaultLcd2004Layout(),
         pages: [
@@ -1380,6 +1378,118 @@ const seedDatabase: SeedDatabase = {
       status: 'ready',
       lifecycleStatus: 'ready',
       effectiveStatus: 'ready',
+    }),
+    createDeviceRecord(670845806, 'lcd1602_pin', 1, {
+      enabled: true,
+      name: 'Sump Display',
+      deps: [],
+      rsPin: 25,
+      ePin: 26,
+      d4Pin: 27,
+      d5Pin: 14,
+      d6Pin: 12,
+      d7Pin: 13,
+      backlightPin: 32,
+      layout: {
+        ...defaultLcd1602Layout(),
+        pages: [
+          {
+            id: 'main',
+            name: 'Main',
+            order: 0,
+            widgets: [
+              {
+                ...defaultDisplayWidget(LCD1602_DISPLAY_LAYOUT_PROFILE, 'text', 0),
+                id: 'line-0',
+                x: 0,
+                y: 0,
+                width: 16,
+                height: 1,
+                text: 'Sump 24.1C',
+              },
+              {
+                ...defaultDisplayWidget(LCD1602_DISPLAY_LAYOUT_PROFILE, 'text', 1),
+                id: 'line-1',
+                x: 0,
+                y: 1,
+                width: 16,
+                height: 1,
+                text: 'Pump ok',
+              },
+            ],
+          },
+        ],
+      },
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: {},
+    }),
+    createDeviceRecord(670845807, 'lcd2004_pin', 1, {
+      enabled: true,
+      name: 'Greenhouse Display',
+      deps: [],
+      rsPin: 4,
+      ePin: 5,
+      d4Pin: 15,
+      d5Pin: 2,
+      d6Pin: 33,
+      d7Pin: 22,
+      backlightPin: 21,
+      layout: {
+        ...defaultLcd2004Layout(),
+        pages: [
+          {
+            id: 'main',
+            name: 'Main',
+            order: 0,
+            widgets: [
+              {
+                ...defaultDisplayWidget(LCD2004_DISPLAY_LAYOUT_PROFILE, 'text', 0),
+                id: 'line-0',
+                x: 0,
+                y: 0,
+                width: 20,
+                height: 1,
+                text: 'Vent: auto',
+              },
+              {
+                ...defaultDisplayWidget(LCD2004_DISPLAY_LAYOUT_PROFILE, 'text', 1),
+                id: 'line-1',
+                x: 0,
+                y: 1,
+                width: 20,
+                height: 1,
+                text: 'Temp 26.3C',
+              },
+              {
+                ...defaultDisplayWidget(LCD2004_DISPLAY_LAYOUT_PROFILE, 'text', 2),
+                id: 'line-2',
+                x: 0,
+                y: 2,
+                width: 20,
+                height: 1,
+                text: 'Humidity 58%',
+              },
+              {
+                ...defaultDisplayWidget(LCD2004_DISPLAY_LAYOUT_PROFILE, 'text', 3),
+                id: 'line-3',
+                x: 0,
+                y: 3,
+                width: 20,
+                height: 1,
+                text: 'CO2 ok',
+              },
+            ],
+          },
+        ],
+      },
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: {},
     }),
     createDeviceRecord(670845763, 'gpio_switch', 1, {
       enabled: true,
@@ -1933,9 +2043,9 @@ export function canonicalizeDeviceRecord(value: unknown): MockDeviceRecord {
     config.layout = normalizeSsd1306Layout(configSource.layout ?? defaultSsd1306Layout())
   } else if (typeName === 'st7735') {
     config.layout = normalizeSt7735Layout(configSource.layout ?? defaultSt7735Layout())
-  } else if (typeName === 'lcd1602') {
+  } else if (typeName === 'lcd1602' || typeName === 'lcd1602_pin') {
     config.layout = normalizeLcd1602Layout(configSource.layout ?? defaultLcd1602Layout())
-  } else if (typeName === 'lcd2004') {
+  } else if (typeName === 'lcd2004' || typeName === 'lcd2004_pin') {
     config.layout = normalizeLcd2004Layout(configSource.layout ?? defaultLcd2004Layout())
   } else if (typeName === 'tm1637') {
     config.layout = normalizeTm1637Layout(configSource.layout ?? defaultTm1637Layout())

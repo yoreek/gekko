@@ -1,6 +1,6 @@
 ---
 title: Device catalog
-description: All 33 device types built into every Gekko firmware image.
+description: All 35 device types built into every Gekko firmware image.
 sidebar:
   order: 1
   label: Device catalog
@@ -69,6 +69,8 @@ detailed pages coming iteratively.
 | --- | --- |
 | `ssd1306` | I2C OLED with the [visual layout designer](/gekko/guides/displays/) |
 | `st7735` | SPI color TFT, same layout designer |
-| `lcd1602` | HD44780 16 × 2 character LCD through a PCF857x port expander |
-| `lcd2004` | HD44780 20 × 4 character LCD through a PCF857x port expander |
+| `lcd1602` | HD44780 16 × 2 character LCD through an embedded PCF8574 I2C backpack |
+| `lcd2004` | HD44780 20 × 4 character LCD through an embedded PCF8574 I2C backpack |
+| `lcd1602_pin` | HD44780 16 × 2 character LCD wired directly to ESP32 GPIO pins |
+| `lcd2004_pin` | HD44780 20 × 4 character LCD wired directly to ESP32 GPIO pins |
 | `tm1637` | Four-digit seven-segment display with brightness and 180° rotation |

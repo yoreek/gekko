@@ -352,6 +352,8 @@ export default {
       analogInputChannel: "Canal d'entrée analogique",
       lcd1602: 'Afficheur texte LCD1602',
       lcd2004: 'Afficheur texte LCD2004',
+      lcd1602Pin: 'Afficheur texte LCD1602 (broches directes)',
+      lcd2004Pin: 'Afficheur texte LCD2004 (broches directes)',
       tm1637: 'Afficheur 4 chiffres TM1637',
       unknown: "Type d'appareil inconnu",
     },
@@ -528,7 +530,7 @@ export default {
       lcd1602WiringPreset: 'Câblage',
       lcd1602WiringStandard: 'Adaptateur PCF8574 standard',
       lcd1602WiringCustom: 'Câblage personnalisé',
-      lcd1602Wiring: "Canaux de l'extenseur de ports",
+      lcd1602Wiring: 'Canaux PCF8574',
       lcd1602RsChannel: 'Canal RS',
       lcd1602EChannel: 'Canal E',
       lcd1602D4Channel: 'Canal D4',
@@ -536,6 +538,13 @@ export default {
       lcd1602D6Channel: 'Canal D6',
       lcd1602D7Channel: 'Canal D7',
       lcd1602BacklightChannel: 'Canal de rétroéclairage',
+      lcd1602RsPin: 'Broche RS',
+      lcd1602EPin: 'Broche E',
+      lcd1602D4Pin: 'Broche D4',
+      lcd1602D5Pin: 'Broche D5',
+      lcd1602D6Pin: 'Broche D6',
+      lcd1602D7Pin: 'Broche D7',
+      lcd1602BacklightPin: 'Broche de rétroéclairage',
     },
     ha: {
       title: 'Home Assistant',
@@ -626,6 +635,7 @@ export default {
         placeholderInvalid: "La syntaxe de l'espace réservé de métrique est invalide.",
         widgetTypes: {
           text: 'Texte',
+          character: 'Caractère',
           digital: 'Numérique',
           bitmap: 'Bitmap',
           rect: 'Rectangle',
@@ -772,11 +782,12 @@ export default {
         noDependency: "Créez une dépendance d'extenseur de ports PCF8574 ou PCF8575 avant d'ajouter cet interrupteur.",
       },
       lcd1602: {
-        noDependency: "Créez une dépendance d'extenseur de ports PCF8574 ou PCF8575 avant d'ajouter cet afficheur.",
-        backlightChannelHint: "Réglez sur 255 si le rétroéclairage n'est pas câblé à un canal de l'extenseur de ports.",
+        noDependency: "Créez une dépendance de bus I2C avant d'ajouter cet afficheur.",
+        backlightChannelHint: "Réglez sur 255 si le rétroéclairage n'est pas câblé à un canal du PCF8574.",
+        backlightPinHint: "Laissez vide si le rétroéclairage n'est pas câblé à une broche GPIO.",
       },
       lcd2004: {
-        noDependency: "Créez une dépendance d'extenseur de ports PCF8574 ou PCF8575 avant d'ajouter cet afficheur.",
+        noDependency: "Créez une dépendance de bus I2C avant d'ajouter cet afficheur.",
       },
       ntcThermistor: {
         noDependency: "Créez une dépendance d'entrée analogique avant d'ajouter un capteur thermistance NTC.",
@@ -938,6 +949,7 @@ export default {
         sizeWrap: 'Requis {needed} · Boîte {box} · {lines} lignes',
         widgetTypes: {
           text: 'Texte',
+          character: 'Caractère',
           digital: 'Numérique',
           bitmap: 'Bitmap',
           rect: 'Rectangle',

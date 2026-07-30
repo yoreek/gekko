@@ -65,16 +65,14 @@ DisplayLayoutRecordV1 makeLcdLayout(const char* top, const char* bottom) {
     return layout;
 }
 
-void bindLcdDependency(Lcd1602Device& lcd, DeviceId lcdId, const std::array<DeviceId, 7U>& switchIds) {
+void bindLcdDependency(Lcd1602Device& lcd, DeviceId lcdId, DeviceId busId) {
     DeviceRegistryEntry record{};
     record.header.deviceId = lcdId;
     record.header.typeId = Lcd1602Device::descriptor().typeId;
     record.header.configVersion = Lcd1602Device::descriptor().currentConfigVersion;
     record.header.configRevision = 1;
-    record.depCount = static_cast<uint8_t>(switchIds.size());
-    for (uint8_t index = 0; index < switchIds.size(); ++index) {
-        record.deps[index] = {DeviceRole::Switch, switchIds[index]};
-    }
+    record.depCount = 1U;
+    record.deps[0] = {DeviceRole::I2CBus, busId};
     record.status = DeviceStatus::Ready;
     lcd.bindDeviceIdentity(record, DeviceConfigBlob{});
 }
@@ -86,15 +84,13 @@ void driveLcdUntilReady(Lcd1602Device& lcd, uint32_t startNow = 10U) {
     }
 }
 
-DeviceCreateRequest makeLcdCreateRequest(const char* name, const std::array<DeviceId, 7U>& switchIds) {
+DeviceCreateRequest makeLcdCreateRequest(const char* name, DeviceId busId) {
     DeviceCreateRequest request{};
     request.typeId = Lcd1602Device::descriptor().typeId;
     TEST_ASSERT_TRUE(request.assignName(name));
     request.setEnabled(true);
-    request.depCount = static_cast<uint8_t>(switchIds.size());
-    for (uint8_t index = 0; index < switchIds.size(); ++index) {
-        request.deps[index] = {DeviceRole::Switch, switchIds[index]};
-    }
+    request.depCount = 1U;
+    request.deps[0] = {DeviceRole::I2CBus, busId};
     request.configVersion = Lcd1602Device::descriptor().currentConfigVersion;
     request.configBlob = encodeLcdPayload(makeLcdConfig(name));
     return request;
@@ -109,17 +105,18 @@ void test_lcd1602_config_codec_json_and_validation() {
     StaticJsonDocument<512> doc;
     JsonObject json = doc.to<JsonObject>();
     config.writeJson(json);
+    TEST_ASSERT_EQUAL_UINT8(0x27U, json["i2cAddress"].as<uint8_t>());
     TEST_ASSERT_EQUAL_UINT8(0U, json["rsChannel"].as<uint8_t>());
-    TEST_ASSERT_EQUAL_UINT8(1U, json["eChannel"].as<uint8_t>());
-    TEST_ASSERT_EQUAL_UINT8(2U, json["d4Channel"].as<uint8_t>());
-    TEST_ASSERT_EQUAL_UINT8(6U, json["backlightChannel"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_UINT8(2U, json["eChannel"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_UINT8(4U, json["d4Channel"].as<uint8_t>());
+    TEST_ASSERT_EQUAL_UINT8(3U, json["backlightChannel"].as<uint8_t>());
     TEST_ASSERT_FALSE(json.containsKey("layout"));
 
-    json["rsChannel"] = 3U;
+    json["rsChannel"] = 1U;
     Lcd1602DeviceConfigV2 parsed{};
     const char* error = nullptr;
     TEST_ASSERT_TRUE(parsed.parseJson(json, error));
-    TEST_ASSERT_EQUAL_UINT8(3U, parsed.channels.rsChannel);
+    TEST_ASSERT_EQUAL_UINT8(1U, parsed.rsChannel);
 }
 
 void test_lcd1602_config_rejects_invalid_fields() {
@@ -133,21 +130,16 @@ void test_lcd1602_config_rejects_invalid_fields() {
     TEST_ASSERT_NOT_NULL(error);
 
     Lcd1602DeviceConfigV2 duplicateChannels = makeLcdConfig();
-    duplicateChannels.channels.rsChannel = duplicateChannels.channels.d4Channel; // collides with default d4Channel=4
+    duplicateChannels.rsChannel = duplicateChannels.d4Channel; // collides with default d4Channel=4
     TEST_ASSERT_FALSE(duplicateChannels.validate().ok());
 
     Lcd1602DeviceConfigV2 outOfRange = makeLcdConfig();
-    outOfRange.channels.eChannel = 20U; // PCF8575 tops out at channel 15
+    outOfRange.eChannel = 8U; // PCF8574 tops out at channel 7
     TEST_ASSERT_FALSE(outOfRange.validate().ok());
-}
 
-void test_lcd1602_config_channels_skip_unset_backlight() {
-    Lcd1602DeviceConfigV2 config = makeLcdConfig();
-    uint8_t channels[7]{};
-    TEST_ASSERT_EQUAL_UINT8(7U, hd44780ConfigChannels(config.channels, channels, 7U));
-
-    config.channels.backlightChannel = kHd44780ChannelUnset;
-    TEST_ASSERT_EQUAL_UINT8(6U, hd44780ConfigChannels(config.channels, channels, 7U));
+    Lcd1602DeviceConfigV2 badAddress = makeLcdConfig();
+    badAddress.i2cAddress = 0x80U; // out of the 7-bit I2C address space
+    TEST_ASSERT_FALSE(badAddress.validate().ok());
 }
 
 void test_lcd1602_type_and_api_adapter_are_registered() {
@@ -158,6 +150,14 @@ void test_lcd1602_type_and_api_adapter_are_registered() {
     TEST_ASSERT_NOT_NULL(descriptor);
     TEST_ASSERT_NOT_NULL(adapterRegistry.findByName("lcd1602"));
     TEST_ASSERT_EQUAL_STRING("lcd1602", Lcd1602DeviceApiAdapter::instance().typeName());
+
+    bool requiresI2cBus = false;
+    for (const auto& requirement : descriptor->dependencyRequirements) {
+        if (requirement.role == DeviceRole::I2CBus) {
+            requiresI2cBus = requirement.required;
+        }
+    }
+    TEST_ASSERT_TRUE(requiresI2cBus);
 
     Lcd1602Device lcd(makeLcdConfig());
     const DisplayLayoutProfile profile = lcd.displayProfile();
@@ -170,35 +170,18 @@ void test_lcd1602_type_and_api_adapter_are_registered() {
     TEST_ASSERT_FALSE(profile.supportsColor);
 }
 
-void test_lcd1602_reaches_ready_through_port_expander_and_renders_with_diffing() {
+void test_lcd1602_reaches_ready_through_i2c_bus_and_renders_with_diffing() {
     FakeI2cDriver driver;
     I2cBusDevice bus(makeBusConfig(), driver);
     driveBusReady(bus);
 
-    Pcf8574ExpanderDevice expander(makeExpanderConfig());
-    bindExpanderDependency(expander, 5001, bus.deviceId());
-    expander.setDependencyRuntime(DeviceRole::I2CBus, &bus);
-    driveExpanderUntilReady(expander);
-    TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(expander.status()));
-
-    const std::array<DeviceId, 7U> switchIds{5003U, 5004U, 5005U, 5006U, 5007U, 5008U, 5009U};
-    std::array<std::unique_ptr<PortExpanderSwitchDevice>, 7U> switches{};
-    switches[0] = makeSwitchRuntime("rs", switchIds[0], expander.deviceId(), 0U, expander);
-    switches[1] = makeSwitchRuntime("e", switchIds[1], expander.deviceId(), 1U, expander);
-    switches[2] = makeSwitchRuntime("d4", switchIds[2], expander.deviceId(), 2U, expander);
-    switches[3] = makeSwitchRuntime("d5", switchIds[3], expander.deviceId(), 3U, expander);
-    switches[4] = makeSwitchRuntime("d6", switchIds[4], expander.deviceId(), 4U, expander);
-    switches[5] = makeSwitchRuntime("d7", switchIds[5], expander.deviceId(), 5U, expander);
-    switches[6] = makeSwitchRuntime("backlight", switchIds[6], expander.deviceId(), 6U, expander);
-
     Lcd1602Device lcd(makeLcdConfig());
-    bindLcdDependency(lcd, 5002, switchIds);
-    for (uint8_t index = 0; index < switchIds.size(); ++index) {
-        lcd.setDependencyRuntimeAt(index, switches[index].get());
-    }
+    bindLcdDependency(lcd, 5002, bus.deviceId());
+    lcd.setDependencyRuntime(DeviceRole::I2CBus, &bus);
     driveLcdUntilReady(lcd);
     TEST_ASSERT_EQUAL_MESSAGE(static_cast<int>(DeviceStatus::Ready), static_cast<int>(lcd.status()),
-                              "lcd1602 should reach Ready once its switch dependencies and HD44780 init sequence succeed");
+                              "lcd1602 should reach Ready once its I2C bus dependency and HD44780 init sequence succeed");
+    TEST_ASSERT_EQUAL_UINT8(0x27U, driver.lastAddress);
 
     FakeWifiDriver wifi;
     const MetricValueResolver resolver(nullptr, wifi, 1000U);
@@ -219,7 +202,7 @@ void test_lcd1602_reaches_ready_through_port_expander_and_renders_with_diffing()
     TEST_ASSERT_TRUE(driver.writeCount > writesAfterFirstRender);
 }
 
-void test_lcd1602_adapter_rejects_duplicate_channel_on_same_expander_but_allows_distinct_channel() {
+void test_lcd1602_adapter_requires_bus_dependency_and_validates_address() {
     MemoryConfigStorage storage;
     DeviceRegistryStore store(storage);
     TEST_ASSERT_TRUE(store.begin(false));
@@ -232,32 +215,11 @@ void test_lcd1602_adapter_rejects_duplicate_channel_on_same_expander_but_allows_
     const DeviceCreateResult busResult = registry.create(test_support::makeBusCreateRequest("bus"), 10);
     TEST_ASSERT_TRUE_MESSAGE(busResult.ok(), busResult.validation.message);
 
-    const DeviceCreateResult expanderResult = registry.create(test_support::makeExpanderCreateRequest("expander", busResult.deviceId), 11);
-    TEST_ASSERT_TRUE_MESSAGE(expanderResult.ok(), expanderResult.validation.message);
+    const DeviceCreateRequest missingBus = makeLcdCreateRequest("lcd-no-bus", 0U);
+    const DeviceValidationResult missingBusValidation = Lcd1602DeviceApiAdapter::instance().validateCreateRequest(missingBus, registry);
+    TEST_ASSERT_FALSE(missingBusValidation.ok());
 
-    std::array<DeviceId, 7U> switchIds{};
-    for (uint8_t index = 0; index < switchIds.size(); ++index) {
-        const char* switchName = index == 0U   ? "rs"
-                                 : index == 1U ? "e"
-                                 : index == 2U ? "d4"
-                                 : index == 3U ? "d5"
-                                 : index == 4U ? "d6"
-                                 : index == 5U ? "d7"
-                                               : "backlight";
-        const DeviceCreateResult switchResult =
-            registry.create(test_support::makeSwitchCreateRequest(switchName, expanderResult.deviceId, static_cast<uint8_t>(index)),
-                            static_cast<uint32_t>(12U + index));
-        TEST_ASSERT_TRUE_MESSAGE(switchResult.ok(), switchResult.validation.message);
-        switchIds[index] = switchResult.deviceId;
-    }
-
-    std::array<DeviceId, 7U> duplicateSwitchIds = switchIds;
-    duplicateSwitchIds[6] = duplicateSwitchIds[0];
-    const DeviceCreateRequest collidingLcd = makeLcdCreateRequest("lcd-bad", duplicateSwitchIds);
-    const DeviceValidationResult collidingValidation = Lcd1602DeviceApiAdapter::instance().validateCreateRequest(collidingLcd, registry);
-    TEST_ASSERT_FALSE(collidingValidation.ok());
-
-    const DeviceCreateRequest okLcd = makeLcdCreateRequest("lcd-ok", switchIds);
+    const DeviceCreateRequest okLcd = makeLcdCreateRequest("lcd-ok", busResult.deviceId);
     const DeviceValidationResult okValidation = Lcd1602DeviceApiAdapter::instance().validateCreateRequest(okLcd, registry);
     TEST_ASSERT_TRUE_MESSAGE(okValidation.ok(), okValidation.message);
 }

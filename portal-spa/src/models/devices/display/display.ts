@@ -40,6 +40,10 @@ export abstract class BaseDisplay<TBitmapFormat extends RasterImageFormat> {
   readonly coordinateUnit: 'pixel' | 'cell' | 'digit' = 'pixel'
   readonly supportedWidgetTypes: readonly DisplayWidgetType[] = ['text', 'digital', 'bitmap', 'rect', 'line', 'circle', 'ellipse']
   readonly supportedRotations: readonly number[] = [0, 1, 2, 3]
+  // Character-cell width, set only by character-coordinate displays (lcd1602/lcd2004) -- clamps a
+  // new 'character' widget's default width so it fits the grid instead of a generic pixel-sized
+  // default. Undefined for pixel/digit displays, which don't support the 'character' widget type.
+  readonly logicalWidth?: number
 
   get displayCapabilities(): DisplayCapabilities {
     return {
@@ -77,6 +81,9 @@ export abstract class BaseDisplay<TBitmapFormat extends RasterImageFormat> {
     }
     return BaseWidget.createBase(type, index, {
       text: type === 'text' || type === 'character' || type === 'digital' ? this.defaultText : '',
+      ...(type === 'character' && this.logicalWidth !== undefined
+        ? { width: Math.min(this.logicalWidth, this.defaultText.length || 1), height: 1 }
+        : {}),
     }) as DisplayWidget
   }
 
