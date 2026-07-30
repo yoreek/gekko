@@ -17,7 +17,7 @@
 namespace ewfm {
 namespace {
 
-constexpr size_t kWidgetJsonCapacity = 5120;
+constexpr size_t kWidgetJsonCapacity = 1024;
 constexpr char kLayoutBeginKind[] = "layout_begin";
 constexpr char kLayoutPageKind[] = "layout_page";
 constexpr char kLayoutWidgetKind[] = "layout_widget";
