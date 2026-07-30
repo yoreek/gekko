@@ -550,6 +550,9 @@ export interface SystemStatusResponse {
     cpuFreqMhz: number
     flashSizeBytes: number
   }
+  capabilities: {
+    rmtPulseCapture: boolean
+  }
   uptimeSeconds: number
   resetReason: string
   heap: {

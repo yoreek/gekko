@@ -1,6 +1,7 @@
 #pragma once
 
 #include "devices/sensors/dht11/Dht11LineDriver.h"
+#include "devices/sensors/dht11/Dht11PulseDecoder.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -8,7 +9,6 @@
 namespace ewfm {
 
 constexpr uint32_t kDht11DefaultPowerOnDelayMs = 1000U;
-constexpr uint8_t kDht11FrameBytes = 5;
 constexpr uint32_t kDht11StartPulseMicros = 18000U;
 constexpr uint32_t kDht11ReleaseWaitMicros = 30U;
 constexpr uint32_t kDht11ResponseTimeoutMicros = 120U;

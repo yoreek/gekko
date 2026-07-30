@@ -22,6 +22,16 @@
           @update:model-value="update('internalPullup', Boolean($event))"
         />
       </v-col>
+      <v-col v-if="rmtPulseCaptureAvailable" cols="12" sm="6">
+        <v-select
+          :label="t('device.fields.captureMode')"
+          :items="captureModeItems"
+          :model-value="modelValue.captureMode"
+          :readonly="mode === 'view'"
+          :disabled="busy && mode !== 'view'"
+          @update:model-value="update('captureMode', $event as Dht11ConfigDraft['captureMode'])"
+        />
+      </v-col>
       <v-col cols="12" sm="6">
         <v-select
           :label="t('device.fields.temperatureUnit')"
@@ -106,13 +116,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { DeviceRecord, Dht11SensorOutputSnapshot, TemperatureUnit } from '@/api/contracts'
 import { Dht11Device, type Dht11ConfigDraft } from '@/models/devices/dht11'
 import SensorFilterFields from '@/components/devices/common/SensorFilterFields.vue'
 import { useDraftModel } from '@/composables/useDraftModel'
+import { useSystemStore } from '@/stores/system'
 
 const props = defineProps<{
   modelValue: Dht11ConfigDraft
@@ -126,10 +137,16 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const systemStore = useSystemStore()
 
 const temperatureUnitItems = computed(() =>
   Dht11Device.temperatureUnitOptions.map(value => ({ title: t(`device.dialog.temperatureUnit.${value}`), value })),
 )
+const captureModeItems = computed(() => [
+  { title: t('device.fields.nativePulseTiming'), value: 'native' },
+  { title: t('device.fields.rmt'), value: 'rmt' },
+])
+const rmtPulseCaptureAvailable = computed(() => systemStore.controllerStatus?.capabilities.rmtPulseCapture === true)
 
 const output = computed(() => (props.device?.runtime as { output?: Dht11SensorOutputSnapshot } | undefined)?.output)
 const temperature = computed(() => output.value?.temperature)
@@ -144,4 +161,10 @@ const humidityText = computed(() =>
 )
 
 const { update } = useDraftModel(props, emit)
+
+onMounted(() => {
+  if (systemStore.controllerStatus === null) {
+    void systemStore.loadControllerStatus()
+  }
+})
 </script>

@@ -11,6 +11,12 @@
 
 namespace ewfm {
 
+enum class TemperatureHumiditySampleResult : uint8_t {
+    Ready,
+    Pending,
+    Failed,
+};
+
 class PolledTemperatureHumiditySensorDeviceBase : public DeviceRuntimeBase,
                                                   public ITemperatureReadingRuntime,
                                                   public IHumidityReadingRuntime {
@@ -28,7 +34,8 @@ public:
     const IHumidityReadingRuntime* humidityReadingRuntime() const override;
 
 protected:
-    virtual bool sampleReading(uint32_t now, int32_t& milliCelsius, int32_t& milliPercent, const char*& invalidStatus) = 0;
+    virtual TemperatureHumiditySampleResult sampleReading(uint32_t now, int32_t& milliCelsius, int32_t& milliPercent,
+                                                          const char*& invalidStatus) = 0;
     virtual uint32_t pollIntervalMs() const = 0;
     virtual const SensorFilterConfigV1& temperatureFilterConfig() const = 0;
     virtual const SensorFilterConfigV1& humidityFilterConfig() const = 0;

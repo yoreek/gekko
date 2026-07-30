@@ -102,7 +102,7 @@ private:
                 const bool bitValue = (effectiveFrame[byteIndex] & (1U << (7U - bitIndex))) != 0U;
                 const uint32_t highMicros = bitValue ? 70U : 26U;
                 if (elapsedMicros < highMicros) {
-                    return bitValue;
+                    return true;
                 }
                 elapsedMicros -= highMicros;
             }
@@ -116,8 +116,8 @@ private:
     bool corruptChecksum{false};
 };
 
-Dht11SensorConfigV2 makeConfig() {
-    Dht11SensorConfigV2 config{};
+Dht11SensorConfigV3 makeConfig() {
+    Dht11SensorConfigV3 config{};
     config.enabled = 1U;
     std::snprintf(config.name, sizeof(config.name), "%s", "climate");
     config.gpioPin = 17U;
@@ -137,16 +137,16 @@ std::array<uint8_t, kDht11FrameBytes> makeFrame(uint8_t humidityInteger, uint8_t
     return {humidityInteger, humidityDecimal, temperatureInteger, temperatureDecimal, checksum};
 }
 
-BoundedBlob<kMaxDeviceConfigBytes> encodeConfigBlob(const Dht11SensorConfigV2& config) {
+BoundedBlob<kMaxDeviceConfigBytes> encodeConfigBlob(const Dht11SensorConfigV3& config) {
     BoundedBlob<kMaxDeviceConfigBytes> payload{};
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = dht11SensorConfigSize(config);
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Dht11SensorConfigV2::kMagic, config, buffer, size));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Dht11SensorConfigV3::kMagic, config, buffer, size));
     TEST_ASSERT_TRUE(payload.assign(buffer, size));
     return payload;
 }
 
-void bindIdentity(Dht11SensorDevice& device, DeviceId deviceId, const Dht11SensorConfigV2& config) {
+void bindIdentity(Dht11SensorDevice& device, DeviceId deviceId, const Dht11SensorConfigV3& config) {
     DeviceRegistryEntry record{};
     record.header.deviceId = deviceId;
     record.header.typeId = Dht11SensorDevice::descriptor().typeId;
@@ -203,9 +203,10 @@ void test_dht11_protocol_decodes_frame_and_checks_checksum() {
 }
 
 void test_dht11_config_codec_json_and_validation() {
-    Dht11SensorConfigV2 config = makeConfig();
+    Dht11SensorConfigV3 config = makeConfig();
     config.gpioPin = 27U;
     config.internalPullup = 1U;
+    config.captureMode = static_cast<uint8_t>(Dht11CaptureMode::Native);
     config.outputUnit = temperatureUnitToByte(TemperatureUnit::Fahrenheit);
     config.reportAlways = 1U;
     config.reportDeltaCentiCelsius = 25U;
@@ -215,10 +216,11 @@ void test_dht11_config_codec_json_and_validation() {
     config.humidityFilter.calibrationOffset = -750.0F;
 
     const BoundedBlob<kMaxDeviceConfigBytes> payload = encodeConfigBlob(config);
-    Dht11SensorConfigV2 decoded{};
+    Dht11SensorConfigV3 decoded{};
     TEST_ASSERT_TRUE(decodeDht11SensorConfig(payload.data(), payload.size(), decoded));
     TEST_ASSERT_EQUAL_UINT8(27U, decoded.gpioPin);
     TEST_ASSERT_EQUAL_UINT8(1U, decoded.internalPullup);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(Dht11CaptureMode::Native), decoded.captureMode);
     TEST_ASSERT_EQUAL_UINT8(temperatureUnitToByte(TemperatureUnit::Fahrenheit), decoded.outputUnit);
     TEST_ASSERT_EQUAL_UINT8(1U, decoded.reportAlways);
     TEST_ASSERT_EQUAL_UINT16(25U, decoded.reportDeltaCentiCelsius);
@@ -230,17 +232,39 @@ void test_dht11_config_codec_json_and_validation() {
 
     StaticJsonDocument<512> doc;
     decoded.writeJson(doc.to<JsonObject>());
-    Dht11SensorConfigV2 parsed{};
+    Dht11SensorConfigV3 parsed{};
     const char* error = nullptr;
     TEST_ASSERT_TRUE(parseDht11SensorConfigJson(doc.as<JsonObjectConst>(), parsed, error));
     TEST_ASSERT_NULL(error);
     TEST_ASSERT_EQUAL_UINT8(27U, parsed.gpioPin);
     TEST_ASSERT_EQUAL_UINT8(1U, parsed.internalPullup);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(Dht11CaptureMode::Native), parsed.captureMode);
     TEST_ASSERT_EQUAL_UINT32(15000U, parsed.pollMs);
 
-    Dht11SensorConfigV2 invalid = makeConfig();
+    Dht11SensorConfigV3 invalid = makeConfig();
     invalid.gpioPin = 6U;
     TEST_ASSERT_FALSE(invalid.validate().ok());
+}
+
+void test_dht11_config_migrates_v2_to_v3_native_mode() {
+    EWFM_LEGACY_CONFIG_USE_BEGIN
+    Dht11SensorConfigV2 legacy{};
+    legacy.enabled = 1U;
+    std::snprintf(legacy.name, sizeof(legacy.name), "%s", "climate");
+    legacy.gpioPin = 25U;
+    legacy.internalPullup = 1U;
+    legacy.pollMs = 7000U;
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = dht11SensorConfigSize(legacy);
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Dht11SensorConfigV2::kMagic, legacy, buffer, size));
+    EWFM_LEGACY_CONFIG_USE_END
+
+    Dht11SensorConfigV3 migrated{};
+    TEST_ASSERT_TRUE(decodeDht11SensorConfig(buffer, size, migrated));
+    TEST_ASSERT_EQUAL_UINT8(25U, migrated.gpioPin);
+    TEST_ASSERT_EQUAL_UINT8(1U, migrated.internalPullup);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(Dht11CaptureMode::Native), migrated.captureMode);
+    TEST_ASSERT_EQUAL_UINT32(7000U, migrated.pollMs);
 }
 
 void test_dht11_type_and_api_adapter_are_registered() {
@@ -321,7 +345,7 @@ void test_dht11_api_adapter_rejects_dependencies_and_writes_runtime_json() {
         Dht11SensorDeviceApiAdapter::instance().parseUpdateConfigRequest(updateDoc.as<JsonObjectConst>(), device, request, error));
     TEST_ASSERT_NOT_NULL(error);
 
-    StaticJsonDocument<1024> outputDoc;
+    StaticJsonDocument<1536> outputDoc;
     Dht11SensorDeviceApiAdapter::instance().writeDeviceJson(device, device.status(), outputDoc.to<JsonObject>());
     const JsonObjectConst root = outputDoc.as<JsonObjectConst>();
     TEST_ASSERT_TRUE(root["record"].is<JsonObjectConst>());
@@ -332,7 +356,7 @@ void test_dht11_api_adapter_rejects_dependencies_and_writes_runtime_json() {
 }
 
 void test_dht11_schema_contracts_cover_config_and_response_shapes() {
-    Dht11SensorConfigV2 config = makeConfig();
+    Dht11SensorConfigV3 config = makeConfig();
     StaticJsonDocument<512> configDoc;
     config.writeJson(configDoc.to<JsonObject>());
     assertMatchesJsonSchema("schemas/rest/v1/devices/dht11.config.schema.json", configDoc.as<JsonVariantConst>());
@@ -343,7 +367,7 @@ void test_dht11_schema_contracts_cover_config_and_response_shapes() {
     bindIdentity(device, 104U, device.config());
     tickUntilReading(device, 1000U);
 
-    StaticJsonDocument<1024> responseDoc;
+    StaticJsonDocument<1536> responseDoc;
     Dht11SensorDeviceApiAdapter::instance().writeDeviceJson(device, device.status(), responseDoc.to<JsonObject>());
     assertMatchesJsonSchema("schemas/rest/v1/responses/devices-dht11.response.schema.json", responseDoc.as<JsonVariantConst>());
 }

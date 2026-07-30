@@ -107,20 +107,17 @@ bool dht11CaptureMeasurement(IDht11LineDriver& driver, uint8_t pin, bool interna
         return false;
     }
 
-    uint8_t frame[kDht11FrameBytes]{};
+    PulseCaptureSample pulses[kDht11DataPulseCount]{};
     for (uint8_t bitIndex = 0U; bitIndex < 40U; ++bitIndex) {
-        const uint8_t byteIndex = bitIndex / 8U;
-        const uint8_t bitMask = static_cast<uint8_t>(1U << (7U - (bitIndex % 8U)));
         uint32_t lowMicros = 0U;
         uint32_t highMicros = 0U;
         if (!measurePulse(driver, pin, false, lowMicros, errorStatus) || !measurePulse(driver, pin, true, highMicros, errorStatus)) {
             return false;
         }
-        if (highMicros > lowMicros) {
-            frame[byteIndex] |= bitMask;
-        }
+        pulses[bitIndex * 2U] = {false, static_cast<uint16_t>(lowMicros)};
+        pulses[bitIndex * 2U + 1U] = {true, static_cast<uint16_t>(highMicros)};
     }
-    return dht11DecodeFrame(frame, milliCelsius, milliPercent, errorStatus);
+    return dht11DecodePulsePairs(pulses, kDht11DataPulseCount, milliCelsius, milliPercent, errorStatus);
 }
 
 } // namespace ewfm

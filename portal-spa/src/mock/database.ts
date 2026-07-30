@@ -1852,6 +1852,7 @@ const seedDatabase: SeedDatabase = {
   },
   systemStatus: {
     chip: { model: 'ESP32-D0WDQ6', revision: 3, cores: 2, cpuFreqMhz: 240, flashSizeBytes: 4194304 },
+    capabilities: { rmtPulseCapture: true },
     uptimeSeconds: 259200,
     resetReason: 'poweron',
     heap: { totalBytes: 327680, freeBytes: 148000, minFreeBytes: 92000, maxAllocBytes: 110000 },

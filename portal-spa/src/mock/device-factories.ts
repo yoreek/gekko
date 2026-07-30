@@ -1167,6 +1167,7 @@ export function normalizeDht11ConfigPayload(value: unknown, enabledFallback: boo
     enabled: typeof value.enabled === 'boolean' ? value.enabled : enabledFallback,
     gpioPin: Math.min(39, Math.max(0, Math.round(normalizeFiniteNumber(value.gpioPin, 17)))),
     internalPullup: typeof value.internalPullup === 'boolean' ? value.internalPullup : false,
+    captureMode: value.captureMode === 'rmt' ? 'rmt' : 'native',
     unit: normalizeDs18b20Unit(value.unit),
     pollMs: Math.max(1000, normalizeFiniteNumber(value.pollMs, 5000)),
     reportDeltaCelsius: Math.max(0.01, normalizeFiniteNumber(value.reportDeltaCelsius, 0.1)),

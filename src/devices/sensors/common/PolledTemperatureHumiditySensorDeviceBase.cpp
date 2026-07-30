@@ -96,7 +96,11 @@ void PolledTemperatureHumiditySensorDeviceBase::performReading(uint32_t now) {
     int32_t rawMilliCelsius = 0;
     int32_t rawMilliPercent = 0;
     const char* invalidStatus = kOutputNotReady;
-    if (!sampleReading(now, rawMilliCelsius, rawMilliPercent, invalidStatus)) {
+    const TemperatureHumiditySampleResult result = sampleReading(now, rawMilliCelsius, rawMilliPercent, invalidStatus);
+    if (result == TemperatureHumiditySampleResult::Pending) {
+        return;
+    }
+    if (result == TemperatureHumiditySampleResult::Failed) {
         invalidateReadings(invalidStatus);
         recordFailure(now);
         if (consecutiveErrors_ >= 3U) {

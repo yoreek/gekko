@@ -1,6 +1,7 @@
 #include "portal/controllers/SystemController.h"
 
 #include "debug/Debug.h"
+#include "devices/pulse/RmtPulseCapture.h"
 #include "devices/registry/DeviceRegistry.h"
 #include "generated/Version.h"
 #include "portal/SystemStatusFormat.h"
@@ -80,6 +81,9 @@ void SystemController::index() {
     chip["cores"] = ESP.getChipCores();
     chip["cpuFreqMhz"] = ESP.getCpuFreqMHz();
     chip["flashSizeBytes"] = ESP.getFlashChipSize();
+
+    JsonObject capabilities = doc->createNestedObject("capabilities");
+    capabilities["rmtPulseCapture"] = RmtPulseCapture::supported();
 
     (*doc)["uptimeSeconds"] = static_cast<uint64_t>(esp_timer_get_time() / 1000000LL);
     (*doc)["resetReason"] = resetReasonToString(static_cast<int>(esp_reset_reason()));

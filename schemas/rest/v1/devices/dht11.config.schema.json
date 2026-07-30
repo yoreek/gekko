@@ -9,6 +9,7 @@
     "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" }, "maxItems": 0, "default": [] },
     "gpioPin": { "type": "integer", "minimum": 0, "maximum": 39, "default": 17 },
     "internalPullup": { "type": "boolean", "default": false },
+    "captureMode": { "enum": ["native", "rmt"], "default": "native" },
     "unit": { "enum": ["celsius", "fahrenheit"], "default": "celsius" },
     "pollMs": { "type": "integer", "minimum": 1000, "maximum": 86400000, "default": 5000 },
     "reportAlways": { "type": "boolean", "default": false },

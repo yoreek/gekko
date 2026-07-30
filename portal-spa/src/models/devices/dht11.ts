@@ -12,6 +12,7 @@ import type {
 export interface Dht11ConfigDraft extends BaseDeviceConfig {
   gpioPin: number
   internalPullup: boolean
+  captureMode: 'native' | 'rmt'
   unit: TemperatureUnit
   pollMs: number
   reportDeltaCelsius: number
@@ -51,6 +52,7 @@ export class Dht11Device extends TemperatureSensorDevice<Dht11ConfigDraft, Dht11
       ...defaultBaseDeviceConfig(),
       gpioPin: 17,
       internalPullup: false,
+      captureMode: 'native',
       unit: 'celsius',
       pollMs: 5000,
       reportDeltaCelsius: 0.1,
@@ -73,6 +75,7 @@ export class Dht11Device extends TemperatureSensorDevice<Dht11ConfigDraft, Dht11
       deps: [],
       gpioPin: normalizeGpioPin(value.gpioPin, defaults.gpioPin),
       internalPullup: typeof value.internalPullup === 'boolean' ? value.internalPullup : defaults.internalPullup,
+      captureMode: value.captureMode === 'rmt' ? 'rmt' : 'native',
       unit: TemperatureSensorDevice.temperatureUnitOptions.includes(value.unit as TemperatureUnit)
         ? (value.unit as TemperatureUnit)
         : defaults.unit,
@@ -95,6 +98,7 @@ export class Dht11Device extends TemperatureSensorDevice<Dht11ConfigDraft, Dht11
       deps: [],
       gpioPin: config.gpioPin,
       internalPullup: config.internalPullup,
+      captureMode: config.captureMode,
       unit: config.unit,
       pollMs: config.pollMs,
       reportDeltaCelsius: config.reportDeltaCelsius,

@@ -3,6 +3,7 @@
 #include "devices/sensors/common/PolledTemperatureHumiditySensorDeviceBase.h"
 #include "devices/sensors/dht11/Dht11LineDriver.h"
 #include "devices/sensors/dht11/Dht11Protocol.h"
+#include "devices/sensors/dht11/Dht11RmtReader.h"
 #include "devices/sensors/dht11/Dht11SensorConfig.h"
 
 #include <ArduinoJson.h>
@@ -15,9 +16,9 @@ namespace ewfm {
 class Dht11SensorDevice final : public PolledTemperatureHumiditySensorDeviceBase {
 public:
     Dht11SensorDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
-    Dht11SensorDevice(const Dht11SensorConfigV2& config, IDht11LineDriver& lineDriver);
+    Dht11SensorDevice(const Dht11SensorConfigV3& config, IDht11LineDriver& lineDriver);
 
-    const Dht11SensorConfigV2& config() const;
+    const Dht11SensorConfigV3& config() const;
     void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const override;
@@ -29,7 +30,8 @@ public:
 
 private:
     const DeviceBaseConfigV1& baseConfig() const override;
-    bool sampleReading(uint32_t now, int32_t& milliCelsius, int32_t& milliPercent, const char*& invalidStatus) override;
+    TemperatureHumiditySampleResult sampleReading(uint32_t now, int32_t& milliCelsius, int32_t& milliPercent,
+                                                  const char*& invalidStatus) override;
     uint32_t pollIntervalMs() const override;
     const SensorFilterConfigV1& temperatureFilterConfig() const override;
     const SensorFilterConfigV1& humidityFilterConfig() const override;
@@ -38,8 +40,9 @@ private:
     uint16_t reportDeltaCentiPercent() const override;
     uint32_t startDelayMs() const override;
 
-    Dht11SensorConfigV2 config_{};
+    Dht11SensorConfigV3 config_{};
     IDht11LineDriver& lineDriver_;
+    Dht11RmtReader rmtReader_{};
 };
 
 } // namespace ewfm

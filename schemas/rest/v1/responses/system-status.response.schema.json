@@ -18,6 +18,14 @@
       "required": ["model", "revision", "cores", "cpuFreqMhz", "flashSizeBytes"],
       "additionalProperties": false
     },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "rmtPulseCapture": { "type": "boolean" }
+      },
+      "required": ["rmtPulseCapture"],
+      "additionalProperties": true
+    },
     "uptimeSeconds": { "type": "integer", "minimum": 0 },
     "resetReason": { "type": "string", "minLength": 1 },
     "heap": {
@@ -81,6 +89,6 @@
       "additionalProperties": false
     }
   },
-  "required": ["success", "status", "chip", "uptimeSeconds", "resetReason", "heap", "sketch", "partitions", "filesystems", "nvs"],
+  "required": ["success", "status", "chip", "capabilities", "uptimeSeconds", "resetReason", "heap", "sketch", "partitions", "filesystems", "nvs"],
   "additionalProperties": false
 }

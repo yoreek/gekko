@@ -69,6 +69,8 @@ void test_system_status_response_schema_smoke() {
     chip["cores"] = 2;
     chip["cpuFreqMhz"] = 240;
     chip["flashSizeBytes"] = 4194304;
+    JsonObject capabilities = doc.createNestedObject("capabilities");
+    capabilities["rmtPulseCapture"] = true;
     doc["uptimeSeconds"] = 1234;
     doc["resetReason"] = "poweron";
     JsonObject heap = doc.createNestedObject("heap");
