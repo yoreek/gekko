@@ -1,6 +1,7 @@
 #include "Hd44780TestSupport.h"
 #include "devices/core/ConfigCodec.h"
 #include "devices/core/DeviceIdGenerator.h"
+#include "devices/display/DisplayLayoutCodec.h"
 #include "devices/display/DisplayLayoutProfile.h"
 #include "devices/display/DisplayLayoutStore.h"
 #include "devices/display/DisplayTextEvaluator.h"
@@ -292,6 +293,58 @@ void test_tm1637_device_renders_digital_layout_and_diffing() {
     const size_t bytesWritten = bus.bytes.size();
     TEST_ASSERT_FALSE(device.renderDisplay(resolver, 1001U));
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint32_t>(bytesWritten), static_cast<uint32_t>(bus.bytes.size()));
+}
+
+void test_tm1637_update_config_persists_layout() {
+    FakeTm1637Bus bus;
+    Tm1637Device device(makeConfig(), bus);
+    bindTm1637Identity(device, 7106U);
+    driveTm1637Until(device, DeviceStatus::Ready);
+
+    StaticJsonDocument<1024> input;
+    JsonObject configInput = input.createNestedObject("config");
+    configInput["name"] = "tm1637";
+    configInput["enabled"] = true;
+    configInput["panel"] = "four_digit_decimal_036";
+    configInput["brightness"] = 7;
+    configInput["rotation"] = 0;
+    configInput["clkPin"] = kTestClkPin;
+    configInput["dioPin"] = kTestDioPin;
+    JsonObject layout = configInput.createNestedObject("layout");
+    layout["schemaVersion"] = 3;
+    layout["activePageId"] = "main";
+    JsonArray pages = layout.createNestedArray("pages");
+    JsonObject page = pages.createNestedObject();
+    page["id"] = "main";
+    page["name"] = "Main";
+    JsonArray widgets = page.createNestedArray("widgets");
+    JsonObject widget = widgets.createNestedObject();
+    widget["id"] = "digital-0";
+    widget["type"] = "digital";
+    widget["x"] = 0;
+    widget["y"] = 0;
+    widget["width"] = 4;
+    widget["height"] = 1;
+    widget["bindingKind"] = "unbound";
+    widget["text"] = "1234";
+
+    DeviceConfigUpdateRequest request{};
+    const char* error = nullptr;
+    // This is the bug the WS "updateConfig" command hit in practice: the adapter used to ignore
+    // config.layout entirely on update, so a saved layout silently came back empty on the next read.
+    TEST_ASSERT_TRUE_MESSAGE(
+        Tm1637DeviceApiAdapter::instance().parseUpdateConfigRequest(input.as<JsonObjectConst>(), device, request, error), error);
+    TEST_ASSERT_TRUE(request.persistedStateProvided);
+    TEST_ASSERT_FALSE(request.persistedStateBlob.empty());
+
+    DisplayLayoutRecordV1 decoded{};
+    TEST_ASSERT_TRUE(decodeDisplayLayoutBinary(request.persistedStateBlob.data(), request.persistedStateBlob.size(), decoded));
+    TEST_ASSERT_EQUAL_UINT32(1U, static_cast<uint32_t>(decoded.pages.size()));
+    TEST_ASSERT_EQUAL_UINT32(1U, static_cast<uint32_t>(decoded.pages[0].widgets.size()));
+    TEST_ASSERT_EQUAL_STRING("1234", decoded.pages[0].widgets[0].text);
+
+    // An unbound widget has no metric placeholders, so no deps should have been derived from it.
+    TEST_ASSERT_EQUAL_UINT8(0U, request.depCount);
 }
 
 void test_tm1637_unacknowledged_frame_retries_next_tick() {

@@ -159,6 +159,7 @@ void test_tm1637_config_rejects_invalid_fields();
 void test_tm1637_type_and_api_adapter_are_registered();
 void test_tm1637_segment_codec_applies_decimal_point_and_rotation();
 void test_tm1637_device_renders_digital_layout_and_diffing();
+void test_tm1637_update_config_persists_layout();
 void test_tm1637_unacknowledged_frame_retries_next_tick();
 void test_tm1637_migrated_config_without_pins_faults();
 void test_device_api_adapter_registry_resolves_gpio_switch();
@@ -707,6 +708,7 @@ int main(int, char**) {
     RUN_TEST(test_tm1637_type_and_api_adapter_are_registered);
     RUN_TEST(test_tm1637_segment_codec_applies_decimal_point_and_rotation);
     RUN_TEST(test_tm1637_device_renders_digital_layout_and_diffing);
+    RUN_TEST(test_tm1637_update_config_persists_layout);
     RUN_TEST(test_tm1637_unacknowledged_frame_retries_next_tick);
     RUN_TEST(test_tm1637_migrated_config_without_pins_faults);
     return UNITY_END();

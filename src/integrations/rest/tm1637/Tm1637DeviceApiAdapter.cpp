@@ -135,18 +135,18 @@ bool Tm1637DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& inp
         return false;
     }
 
-    request.depsProvided = !input["deps"].isNull();
-    if (request.depsProvided && !parseDeps(input, request.deps, request.depCount, error, false)) {
+    const bool explicitDepsProvided = !input["deps"].isNull();
+    if (explicitDepsProvided && !parseDeps(input, request.deps, request.depCount, error, false)) {
         return false;
     }
-    if (!request.depsProvided) {
-        const DeviceDependencyLink* links = runtime.dependencyLinks();
-        const uint8_t depCount = runtime.dependencyCount();
-        request.depCount = links == nullptr ? 0U : depCount;
-        for (uint8_t index = 0U; index < request.depCount; ++index) {
-            request.deps[index] = links[index];
-        }
+    // tm1637 has nothing else that would populate deps: metric-source dependencies come solely
+    // from the (possibly updated) layout's placeholders, same as at create time.
+    if (!parseAndEncodeLayoutRequest(input, runtime.deviceId(), request.persistedStateBlob, request.deps, request.depCount, error,
+                                     kInvalidLayoutError, kLayoutSizeError, kLayoutDependencyCountError)) {
+        return false;
     }
+    request.depsProvided = explicitDepsProvided || request.depCount > 0U;
+    request.persistedStateProvided = !request.persistedStateBlob.empty();
     return true;
 }
 
