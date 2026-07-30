@@ -18,6 +18,10 @@ protected:
 
     static bool encodeLayoutRequest(const JsonObjectConst& input, DeviceId deviceId, BoundedBlob<kMaxDisplayLayoutBytes>& blob,
                                     const char*& error, const char* invalidLayoutError, const char* layoutSizeError);
+    static bool parseAndEncodeLayoutRequest(const JsonObjectConst& input, DeviceId deviceId, BoundedBlob<kMaxDisplayLayoutBytes>& blob,
+                                            std::array<DeviceDependencyLink, kMaxDeviceDependencies>& dependencies,
+                                            uint8_t& dependencyCount, const char*& error, const char* invalidLayoutError,
+                                            const char* layoutSizeError, const char* dependencyCountError);
     static bool collectLayoutMetricSourceDependencies(const DisplayLayoutRecordV1& layout,
                                                       std::array<DeviceDependencyLink, kMaxDeviceDependencies>& dependencies,
                                                       uint8_t& dependencyCount, const char*& error, const char* invalidLayoutError,

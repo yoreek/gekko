@@ -132,14 +132,11 @@ public:
         if (!encodeConfig(config, request.configBlob, error)) {
             return false;
         }
-        if (!collectLayoutDependencies(input, request.deps, request.depCount, error)) {
+        if (!parseAndEncodeLayoutRequest(input, runtime.deviceId(), request.persistedStateBlob, request.deps, request.depCount, error,
+                                         Derived::kInvalidLayoutError, Derived::kLayoutSizeError, Derived::kLayoutDependencyCountError)) {
             return false;
         }
         request.depsProvided = explicitDepsProvided || request.depCount > 1U;
-        if (!encodeLayoutRequest(input, runtime.deviceId(), request.persistedStateBlob, error, Derived::kInvalidLayoutError,
-                                 Derived::kLayoutSizeError)) {
-            return false;
-        }
         request.persistedStateProvided = !request.persistedStateBlob.empty();
         return true;
     }

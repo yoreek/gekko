@@ -511,6 +511,37 @@ bool DisplayDeviceApiAdapter::encodeLayoutRequest(const JsonObjectConst& input, 
     return true;
 }
 
+bool DisplayDeviceApiAdapter::parseAndEncodeLayoutRequest(const JsonObjectConst& input, const DeviceId deviceId,
+                                                          BoundedBlob<kMaxDisplayLayoutBytes>& blob,
+                                                          std::array<DeviceDependencyLink, kMaxDeviceDependencies>& dependencies,
+                                                          uint8_t& dependencyCount, const char*& error, const char* invalidLayoutError,
+                                                          const char* layoutSizeError, const char* dependencyCountError) {
+    blob.clear();
+    const JsonObjectConst layoutInput = input["config"]["layout"].as<JsonObjectConst>();
+    if (layoutInput.isNull()) {
+        error = nullptr;
+        return true;
+    }
+
+    DisplayLayoutRecordV1 layout{};
+    if (!parseDisplayLayoutJson(layoutInput, layout)) {
+        error = invalidLayoutError;
+        return false;
+    }
+    layout.deviceId = deviceId;
+    if (!collectLayoutMetricSourceDependencies(layout, dependencies, dependencyCount, error, invalidLayoutError, dependencyCountError)) {
+        return false;
+    }
+
+    std::vector<uint8_t> encoded;
+    if (!encodeDisplayLayoutBinary(layout, encoded) || !blob.assign(encoded)) {
+        error = layoutSizeError;
+        return false;
+    }
+    error = nullptr;
+    return true;
+}
+
 bool DisplayDeviceApiAdapter::collectLayoutMetricSourceDependencies(const DisplayLayoutRecordV1& layout,
                                                                     std::array<DeviceDependencyLink, kMaxDeviceDependencies>& dependencies,
                                                                     uint8_t& dependencyCount, const char*& error,

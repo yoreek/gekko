@@ -134,7 +134,8 @@ public:
     DeviceMutationResult updateConfigAndDeps(DeviceId deviceId, const BoundedBlob<kMaxDeviceConfigBytes>& configBlob,
                                              uint32_t configVersion, const DeviceBaseConfigV1& baseConfig, bool depsProvided,
                                              const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t depCount,
-                                             uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed);
+                                             uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Delayed,
+                                             const uint8_t* persistedStateData = nullptr, size_t persistedStateSize = 0U);
     DeviceMutationResult setDeps(DeviceId deviceId, const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps, uint8_t depCount,
                                  uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Immediate);
     DeviceMutationResult remove(DeviceId deviceId, uint32_t now, DevicePersistencePolicy policy = DevicePersistencePolicy::Immediate);

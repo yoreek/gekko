@@ -858,6 +858,17 @@ void test_ssd1306_layout_update_survives_flush_landing_between_config_and_layout
     DisplayLayoutRecordV1 storedLayout{};
     TEST_ASSERT_TRUE(layoutStore.load(createResult.deviceId, storedLayout).ok());
     TEST_ASSERT_EQUAL_STRING("{{system.wifi.station_ip}} {{system.time}}", storedLayout.pages[0].widgets[0].text);
+
+    // The controller now uses the combined registry operation. Verify that an immediate
+    // dependency/config flush persists the layout sidecar in the same operation.
+    const DeviceMutationResult atomicUpdate = registry.updateConfigAndDeps(
+        createResult.deviceId, updateRequest.configBlob, updateRequest.configVersion, updateRequest.baseConfig, updateRequest.depsProvided,
+        updateRequest.deps, updateRequest.depCount, 10U, DevicePersistencePolicy::Immediate, updateRequest.persistedStateBlob.data(),
+        updateRequest.persistedStateBlob.size());
+    TEST_ASSERT_TRUE(atomicUpdate.ok());
+    DisplayLayoutRecordV1 atomicallyStoredLayout{};
+    TEST_ASSERT_TRUE(layoutStore.load(createResult.deviceId, atomicallyStoredLayout).ok());
+    TEST_ASSERT_EQUAL_STRING("{{system.wifi.station_ip}} {{system.time}}", atomicallyStoredLayout.pages[0].widgets[0].text);
 }
 
 DisplayLayoutProfile buildSsd1306ProfileForRotation(uint8_t rotation) {

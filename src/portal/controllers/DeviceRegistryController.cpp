@@ -520,6 +520,10 @@ void DeviceRegistryController::create() {
         return;
     }
 
+    // Create parsing is complete; keep only the owned binary request while the registry allocates
+    // and persists the new runtime.
+    releaseParsedBody();
+
     const uint32_t now = ArduinoClock::millis();
     const DeviceCreateResult result = registry_.command(createRequest, now);
     if (!result.ok()) {
@@ -706,25 +710,22 @@ void DeviceRegistryController::cmd() {
             renderError(400, "BAD_ARGS", error);
             return;
         }
+        // The adapter now owns all values needed by the mutation in binary form. Drop the raw
+        // HTTP body and DynamicJsonDocument before registry validation/snapshot work begins.
+        releaseParsedBody();
         const DeviceValidationResult updateValidation = adapter->validateUpdateConfigRequest(*runtime, *updateRequest, registry_);
         if (!updateValidation.ok()) {
             renderError(400, errorCodeForDeviceError(updateValidation.error), updateValidation.message);
             return;
         }
-        mutationResult =
-            registry_.updateConfigAndDeps(deviceId_, updateRequest->configBlob, updateRequest->configVersion, updateRequest->baseConfig,
-                                          updateRequest->depsProvided, updateRequest->deps, updateRequest->depCount, now);
+        mutationResult = registry_.updateConfigAndDeps(
+            deviceId_, updateRequest->configBlob, updateRequest->configVersion, updateRequest->baseConfig, updateRequest->depsProvided,
+            updateRequest->deps, updateRequest->depCount, now, DevicePersistencePolicy::Delayed,
+            updateRequest->persistedStateProvided ? updateRequest->persistedStateBlob.data() : nullptr,
+            updateRequest->persistedStateProvided ? updateRequest->persistedStateBlob.size() : 0U);
         if (!mutationResult.ok()) {
             renderError(400, errorCodeForDeviceError(mutationResult.validation.error), mutationResult.validation.message);
             return;
-        }
-        if (updateRequest->persistedStateProvided) {
-            const DeviceValidationResult persistedResult = registry_.applyPersistedStateUpdate(
-                deviceId_, updateRequest->persistedStateBlob.data(), updateRequest->persistedStateBlob.size(), now);
-            if (!persistedResult.ok()) {
-                renderError(400, errorCodeForDeviceError(persistedResult.error), persistedResult.message);
-                return;
-            }
         }
     } else if (std::strcmp(commandName, "setHaSettings") == 0) {
 #if defined(WITH_HOME_ASSISTANT)

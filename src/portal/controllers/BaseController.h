@@ -126,6 +126,11 @@ protected:
 
     bool parseBody(size_t size = 1024);
 
+    // Release the request body and JSON document as soon as a command has been converted to
+    // owned binary data. This keeps the large HTTP buffer and DynamicJsonDocument out of the
+    // registry mutation/WebSocket peak.
+    void releaseParsedBody();
+
     void renderError(int httpCode, const char* errCode, const char* message);
     void renderOk(JsonDocument& doc);
     void renderOk();

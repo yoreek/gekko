@@ -581,7 +581,8 @@ DeviceMutationResult DeviceRegistry::updateConfig(DeviceId deviceId, const Bound
 DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, const BoundedBlob<kMaxDeviceConfigBytes>& configBlob,
                                                          uint32_t configVersion, const DeviceBaseConfigV1& baseConfig, bool depsProvided,
                                                          const std::array<DeviceDependencyLink, kMaxDeviceDependencies>& deps,
-                                                         uint8_t depCount, uint32_t now, DevicePersistencePolicy policy) {
+                                                         uint8_t depCount, uint32_t now, DevicePersistencePolicy policy,
+                                                         const uint8_t* persistedStateData, size_t persistedStateSize) {
     DeviceRegistryLockGuard guard(mutex_);
     DeviceMutationResult result{};
     if (configBlob.size() > kMaxDeviceConfigBytes) {
@@ -700,6 +701,24 @@ DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, cons
         if (auto* childRuntime = runtime(childId); childRuntime != nullptr) {
             childRuntime->requestReconfigure();
         }
+    }
+
+    // Apply an optional persisted-state sidecar before the persistence policy is evaluated. The
+    // controller has already validated this opaque payload, so config, dependencies and layout
+    // become dirty together and an immediate dependency flush cannot persist a half-updated
+    // display.
+    if (persistedStateData != nullptr || persistedStateSize != 0U) {
+        IDevicePersistedState* persistedRuntime = persistedStateRuntime(deviceId);
+        if (persistedRuntime == nullptr) {
+            result.validation = {DeviceError::InvalidConfig, "device type does not support persisted state"};
+            return result;
+        }
+        const DeviceValidationResult persistedResult = persistedRuntime->applyPersistedStateUpdate(persistedStateData, persistedStateSize);
+        if (!persistedResult.ok()) {
+            result.validation = persistedResult;
+            return result;
+        }
+        persistence_.markConfigDirty(deviceId, now);
     }
 
     if (effectivePolicy == DevicePersistencePolicy::Immediate) {

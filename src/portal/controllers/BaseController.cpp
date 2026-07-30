@@ -258,6 +258,16 @@ bool BaseController::parseBody(const size_t size) {
     return true;
 }
 
+void BaseController::releaseParsedBody() {
+    delete doc_;
+    doc_ = nullptr;
+    if (request_ != nullptr) {
+        clearRequestBody(request_);
+    }
+    body_ = nullptr;
+    bodyLen_ = 0U;
+}
+
 bool BaseController::appendRequestBody(AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
 #if defined(ARDUINO) || defined(UNIT_TEST)
     if (request == nullptr)
