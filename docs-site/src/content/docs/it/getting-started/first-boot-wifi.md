@@ -40,7 +40,7 @@ all'AP e correggi le impostazioni.
 
 ## Alternativa: provisioning BLE
 
-Il firmware **Standard** può ricevere i parametri WiFi anche tramite
+Il firmware **Con BLE** può ricevere i parametri WiFi anche tramite
 **Bluetooth LE** usando un'app compatibile con Espressif per Android o iOS.
 Collega un pulsante normalmente aperto tra GPIO 32 e GND e tienilo premuto per
 3 secondi per avviare la modalità di configurazione BLE. Puoi avviarla anche
@@ -48,7 +48,7 @@ dalla pagina WiFi del portale web o tramite API. La sessione ha un timeout e i
 parametri salvati cambiano solo dopo che l'app ha inviato correttamente i nuovi
 valori.
 
-Il firmware **Without BLE** non contiene il codice di provisioning BLE e non
+Il firmware **Consigliato** non contiene il codice di provisioning BLE e non
 riserva GPIO 32. L'access point e il portale web restano disponibili in
 entrambe le varianti.
 

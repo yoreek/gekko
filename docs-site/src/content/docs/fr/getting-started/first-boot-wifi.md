@@ -41,7 +41,7 @@ le temps — reconnectez-vous à l'AP et corrigez les réglages.
 
 ## Alternative : provisionnement BLE
 
-Le firmware **Standard** peut aussi recevoir les paramètres WiFi via
+Le firmware **Avec BLE** peut aussi recevoir les paramètres WiFi via
 **Bluetooth LE** avec une application compatible Espressif pour Android ou
 iOS. Branchez un bouton normalement ouvert entre GPIO 32 et GND, puis
 maintenez-le pendant 3 secondes pour démarrer le mode de configuration BLE.
@@ -49,7 +49,7 @@ Vous pouvez aussi démarrer ce mode depuis la page WiFi du portail web ou via
 l'API. La session expire après un délai et les paramètres enregistrés ne
 changent qu'après l'envoi réussi des nouvelles valeurs par l'application.
 
-Le firmware **Without BLE** ne contient aucun code de provisionnement BLE et
+Le firmware **Recommandé** ne contient aucun code de provisionnement BLE et
 ne réserve pas GPIO 32. Le point d'accès et le portail web restent disponibles
 avec les deux variantes.
 

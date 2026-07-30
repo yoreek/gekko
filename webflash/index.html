@@ -48,20 +48,20 @@
 
   <div class="variants">
     <section class="variant">
-      <h2>Standard</h2>
-      <p>Includes BLE WiFi provisioning and the setup button on GPIO 32.</p>
+      <h2>Recommended</h2>
+      <p>No BLE provisioning or its setup-button GPIO reservation. WiFi setup through the access point and web portal remains available. Install this unless you specifically need BLE.</p>
       <esp-web-install-button manifest="manifest.json">
-        <button slot="activate">Install standard firmware</button>
+        <button slot="activate">Install firmware</button>
         <span slot="unsupported">Your browser doesn't support Web Serial. Open this page in Chrome or Edge.</span>
         <span slot="not-allowed">This page must be served over HTTPS or localhost.</span>
       </esp-web-install-button>
     </section>
 
     <section class="variant">
-      <h2>Without BLE</h2>
-      <p>Smaller build without Bluetooth provisioning. WiFi setup through the access point and web portal remains available.</p>
-      <esp-web-install-button manifest="no-ble/manifest.json">
-        <button slot="activate">Install firmware without BLE</button>
+      <h2>With BLE</h2>
+      <p>Adds BLE WiFi provisioning and the setup button on GPIO 32, at the cost of flash/RAM most users don't need.</p>
+      <esp-web-install-button manifest="ble/manifest.json">
+        <button slot="activate">Install firmware with BLE</button>
         <span slot="unsupported">Your browser doesn't support Web Serial. Open this page in Chrome or Edge.</span>
         <span slot="not-allowed">This page must be served over HTTPS or localhost.</span>
       </esp-web-install-button>

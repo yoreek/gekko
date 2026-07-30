@@ -21,7 +21,7 @@ These checks require a real ESP32 device and are intentionally not part of the h
 
 ## BLE WiFi Config Mode
 
-- Enable mobile provisioning in the build/configuration.
+- Build and flash `esp32dev_ble` — BLE provisioning is not compiled into the default `esp32dev` build.
 - Confirm BLE config mode starts only after an explicit portal/API request or
   the activation-button hold.
 - Hold the GPIO configured by `BLE_PROVISIONING_BUTTON_PIN` low for three
@@ -33,7 +33,7 @@ These checks require a real ESP32 device and are intentionally not part of the h
 - Confirm a BLE config timeout stops and deinitializes provisioning without changing stored credentials.
 - Record transport, security mode, phone OS, app version, discovery result, credential submission result, and memory/build-size impact.
 - Confirm HTTP portal provisioning remains available when BLE config mode is disabled.
-- Build `esp32dev_no_ble` and confirm the API reports BLE provisioning as
+- Build the default `esp32dev` and confirm the API reports BLE provisioning as
   unsupported, the SPA does not offer it, and AP/portal provisioning still
   works.
 

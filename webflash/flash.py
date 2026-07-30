@@ -2,7 +2,7 @@
 """Flashes the complete Gekko image or one selected ESP32 partition.
 
 Requires: pip install esptool
-Usage:    python3 flash.py [standard|no-ble] [PORT] [all|bootloader|partitions|firmware|littlefs]
+Usage:    python3 flash.py [default|ble] [PORT] [all|bootloader|partitions|firmware|littlefs]
 If no port is given, esptool will try to auto-detect it.
 """
 import json
@@ -13,12 +13,12 @@ import esptool
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TARGETS = {"all", "bootloader", "partitions", "firmware", "littlefs"}
-VARIANTS = {"standard": "", "no-ble": "no-ble"}
+VARIANTS = {"default": "", "ble": "ble"}
 
 
 def parse_arguments():
     arguments = sys.argv[1:]
-    variant = "standard"
+    variant = "default"
     if arguments and arguments[0] in VARIANTS:
         variant = arguments.pop(0)
     if len(arguments) > 2:

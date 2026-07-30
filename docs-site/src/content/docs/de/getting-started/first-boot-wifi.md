@@ -40,7 +40,7 @@ einfach erneut mit dem AP und korrigiere die Einstellungen.
 
 ## Alternative: BLE-Provisionierung
 
-Die **Standard**-Firmware kann WiFi-Zugangsdaten auch ueber **Bluetooth LE**
+Die **Mit BLE**-Firmware kann WiFi-Zugangsdaten auch ueber **Bluetooth LE**
 mit einer Espressif-kompatiblen App fuer Android oder iOS empfangen. Schliesse
 einen Schliesser zwischen GPIO 32 und GND an und halte ihn 3 Sekunden gedrueckt,
 um den BLE-Konfigurationsmodus zu starten. Der Modus kann auch auf der
@@ -48,7 +48,7 @@ WiFi-Seite im Webportal oder per API gestartet werden. Die Sitzung hat einen
 Timeout; gespeicherte Zugangsdaten werden erst nach erfolgreicher Uebertragung
 neuer Werte geaendert.
 
-Die **Without BLE**-Firmware enthaelt keinen BLE-Provisioning-Code und
+Die **Empfohlen**-Firmware enthaelt keinen BLE-Provisioning-Code und
 reserviert GPIO 32 nicht. Setup-Access-Point und Webportal sind bei beiden
 Firmware-Varianten verfuegbar.
 

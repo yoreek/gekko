@@ -34,7 +34,7 @@ jobs:
       - name: Lint + native unit tests
         run: scripts/test.sh
 
-  no-ble-build:
+  ble-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -57,55 +57,55 @@ jobs:
       - name: Prepare PlatformIO home dirs
         run: mkdir -p ~/.platformio/packages ~/.platformio/platforms
 
-      - name: Build firmware bundle without BLE provisioning
+      - name: Build firmware bundle with BLE provisioning
         run: |
-          pio run -e esp32dev_no_ble
-          mkdir -p .pio/no-ble-staging
-          cp .pio/build/esp32dev_no_ble/bootloader.bin \
-             .pio/build/esp32dev_no_ble/partitions.bin \
-             .pio/build/esp32dev_no_ble/firmware.bin \
-             .pio/no-ble-staging/
-          pio run -e esp32dev_no_ble -t buildfs
-          cp .pio/build/esp32dev_no_ble/littlefs.bin .pio/no-ble-staging/
-          mkdir -p .pio/no-ble-distribution/no-ble
+          pio run -e esp32dev_ble
+          mkdir -p .pio/ble-staging
+          cp .pio/build/esp32dev_ble/bootloader.bin \
+             .pio/build/esp32dev_ble/partitions.bin \
+             .pio/build/esp32dev_ble/firmware.bin \
+             .pio/ble-staging/
+          pio run -e esp32dev_ble -t buildfs
+          cp .pio/build/esp32dev_ble/littlefs.bin .pio/ble-staging/
+          mkdir -p .pio/ble-distribution/ble
           python3 scripts/collect_webflash.py \
-            --build-dir .pio/no-ble-staging \
-            --output-dir .pio/no-ble-distribution/no-ble \
+            --build-dir .pio/ble-staging \
+            --output-dir .pio/ble-distribution/ble \
             --partitions my_partitions.csv
           cp webflash/flash.sh webflash/flash.bat webflash/flash.py \
-            .pio/no-ble-distribution/
+            .pio/ble-distribution/
 
-      - name: Upload no-BLE firmware bundle
+      - name: Upload BLE firmware bundle
         uses: actions/upload-artifact@v4
         with:
-          name: gekko-esp32-no-ble-${{ github.sha }}
-          path: .pio/no-ble-distribution
+          name: gekko-esp32-ble-${{ github.sha }}
+          path: .pio/ble-distribution
           if-no-files-found: error
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [test, no-ble-build]
+    needs: [test, ble-build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download no-BLE firmware bundle
+      - name: Download BLE firmware bundle
         uses: actions/download-artifact@v4
         with:
-          name: gekko-esp32-no-ble-${{ github.sha }}
-          path: .pio/release/no-ble-source
+          name: gekko-esp32-ble-${{ github.sha }}
+          path: .pio/release/ble-source
 
       - name: Package release firmware
         shell: bash
         run: |
           set -euo pipefail
           release_root=".pio/release"
-          standard_name="gekko-esp32-standard-${GITHUB_REF_NAME}"
-          no_ble_name="gekko-esp32-no-ble-${GITHUB_REF_NAME}"
+          default_name="gekko-esp32-${GITHUB_REF_NAME}"
+          ble_name="gekko-esp32-ble-${GITHUB_REF_NAME}"
 
-          mkdir -p "${release_root}/${standard_name}"
+          mkdir -p "${release_root}/${default_name}"
           cp webflash/bootloader.bin \
              webflash/partitions.bin \
              webflash/firmware.bin \
@@ -116,16 +116,16 @@ jobs:
              webflash/flash.sh \
              webflash/flash.bat \
              webflash/flash.py \
-             "${release_root}/${standard_name}/"
+             "${release_root}/${default_name}/"
 
-          mkdir -p "${release_root}/${no_ble_name}"
-          cp -R "${release_root}/no-ble-source/." \
-                "${release_root}/${no_ble_name}/"
+          mkdir -p "${release_root}/${ble_name}"
+          cp -R "${release_root}/ble-source/." \
+                "${release_root}/${ble_name}/"
 
           cd "${release_root}"
-          zip -qr "${standard_name}.zip" "${standard_name}"
-          zip -qr "${no_ble_name}.zip" "${no_ble_name}"
-          sha256sum "${standard_name}.zip" "${no_ble_name}.zip" > SHA256SUMS
+          zip -qr "${default_name}.zip" "${default_name}"
+          zip -qr "${ble_name}.zip" "${ble_name}"
+          sha256sum "${default_name}.zip" "${ble_name}.zip" > SHA256SUMS
 
       - name: Publish GitHub Release
         env:
@@ -133,18 +133,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          standard_zip=".pio/release/gekko-esp32-standard-${GITHUB_REF_NAME}.zip"
-          no_ble_zip=".pio/release/gekko-esp32-no-ble-${GITHUB_REF_NAME}.zip"
+          default_zip=".pio/release/gekko-esp32-${GITHUB_REF_NAME}.zip"
+          ble_zip=".pio/release/gekko-esp32-ble-${GITHUB_REF_NAME}.zip"
           checksums=".pio/release/SHA256SUMS"
 
           if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             gh release upload "${GITHUB_REF_NAME}" \
-              "${standard_zip}" "${no_ble_zip}" "${checksums}" \
+              "${default_zip}" "${ble_zip}" "${checksums}" \
               --clobber \
               --repo "${GITHUB_REPOSITORY}"
           else
             gh release create "${GITHUB_REF_NAME}" \
-              "${standard_zip}" "${no_ble_zip}" "${checksums}" \
+              "${default_zip}" "${ble_zip}" "${checksums}" \
               --verify-tag \
               --generate-notes \
               --title "Gekko ${GITHUB_REF_NAME}" \

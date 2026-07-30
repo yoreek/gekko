@@ -9,8 +9,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```sh
 scripts/test.sh               # lint + native unit tests (run before committing)
 scripts/lint.sh               # clang-format dry-run + pio check (esp32dev + native)
-pio run -e esp32dev           # compile firmware
+pio run -e esp32dev           # compile firmware (recommended, no BLE)
 pio run -e esp32dev -t upload # flash via serial
+pio run -e esp32dev_ble       # compile firmware with BLE provisioning
 pio run -e esp32dev_ota -t upload  # flash via OTA (192.168.1.240)
 pio run -t uploadfs           # upload LittleFS (data/) to device
 pio test -e native            # run Unity unit tests on host

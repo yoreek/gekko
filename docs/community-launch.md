@@ -56,7 +56,7 @@ Home Assistant, OTA, backup/restore, and browser flashing are included.
 
 ## Publishing checklist
 
-1. Publish a tagged GitHub Release with standard and no-BLE firmware ZIPs.
+1. Publish a tagged GitHub Release with the default and BLE firmware ZIPs.
 2. Upload `.github/social-preview.png` in **Settings → General → Social
    preview**.
 3. Include one screenshot and one concrete use case in each post.

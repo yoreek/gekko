@@ -15,12 +15,12 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 
 | Варіант | Налаштування WiFi через BLE | GPIO 32 | Точка доступу та вебпортал |
 | --- | --- | --- | --- |
-| **Standard** | Увімкнено | Зарезервовано для кнопки активації BLE | Доступні |
-| **Without BLE** | Код BLE не компілюється у прошивку | Доступний для іншого пристрою | Доступні |
+| **Рекомендований** | Код BLE не компілюється у прошивку | Доступний для іншого пристрою | Доступні |
+| **З BLE** | Увімкнено | Зарезервовано для кнопки активації BLE | Доступні |
 
-Вибирайте **Standard**, лише якщо потрібне налаштування WiFi з мобільного
-BLE-додатка. Вибирайте **Without BLE**, якщо достатньо точки доступу та
-вебпорталу: ця прошивка менша й не резервує GPIO 32.
+Вибирайте **Рекомендований**, якщо не потрібне налаштування WiFi з мобільного
+BLE-додатка: ця прошивка менша й не резервує GPIO 32. Вибирайте **З BLE**,
+лише якщо потрібне налаштування через мобільний BLE-додаток.
 
 ## Варіант 1 — вебінсталятор (найпростіше)
 
@@ -36,7 +36,7 @@ BLE-додатка. Вибирайте **Without BLE**, якщо достатн�
    комп’ютері (Web Serial недоступний у Firefox/Safari та на мобільних
    пристроях).
 
-3. Виберіть **Standard** або **Without BLE**, натисніть відповідну кнопку,
+3. Виберіть **Рекомендований** або **З BLE**, натисніть відповідну кнопку,
    виберіть послідовний порт і підтвердьте.
 
 4. Дочекайтеся завершення індикатора прогресу, а потім перейдіть до
@@ -63,15 +63,15 @@ BLE-додатка. Вибирайте **Without BLE**, якщо достатн�
     3. Запустіть `webflash/flash.sh [PORT]` (macOS/Linux) або
        `webflash/flash.bat [PORT]` (Windows). Якщо порт не вказано, esptool
        визначить його автоматично.
-       Для no-BLE пакета з CI використовуйте `flash.sh no-ble [PORT]` або
-       `flash.bat no-ble [PORT]`.
+       Для BLE-пакета з CI використовуйте `flash.sh ble [PORT]` або
+       `flash.bat ble [PORT]`.
 
   </TabItem>
   <TabItem label="Python">
 
     ```sh
     pip install esptool
-    python3 webflash/flash.py [standard|no-ble] [PORT]
+    python3 webflash/flash.py [default|ble] [PORT]
     ```
 
   </TabItem>
@@ -82,13 +82,13 @@ BLE-додатка. Вибирайте **Without BLE**, якщо достатн�
 Якщо збираєте з вихідного коду:
 
 ```sh
-# Standard
+# Рекомендований (без BLE)
 pio run -e esp32dev -t upload
 pio run -e esp32dev -t uploadfs
 
-# Without BLE
-pio run -e esp32dev_no_ble -t upload
-pio run -e esp32dev_no_ble -t uploadfs
+# З BLE
+pio run -e esp32dev_ble -t upload
+pio run -e esp32dev_ble -t uploadfs
 ```
 
 Дивіться `CLAUDE.md` у корені репозиторію та

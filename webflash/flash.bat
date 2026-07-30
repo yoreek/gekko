@@ -1,18 +1,20 @@
 @echo off
 REM Flashes the firmware via standalone esptool.exe (no Python, no browser needed).
+REM "default" is the recommended build (no BLE provisioning); "ble" adds BLE WiFi
+REM provisioning and its setup-button GPIO reservation, at the cost of flash/RAM.
 REM Download esptool.exe and place it next to this file:
 REM   https://github.com/espressif/esptool/releases
 REM
-REM Usage: flash.bat [standard^|no-ble] [PORT] [all^|bootloader^|partitions^|firmware^|littlefs]
+REM Usage: flash.bat [default^|ble] [PORT] [all^|bootloader^|partitions^|firmware^|littlefs]
 REM The target can be passed without a port, for example: flash.bat littlefs
 
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
 set "BUNDLE_DIR=."
-if /i "%~1"=="standard" shift
-if /i "%~1"=="no-ble" (
-  set "BUNDLE_DIR=no-ble"
+if /i "%~1"=="default" shift
+if /i "%~1"=="ble" (
+  set "BUNDLE_DIR=ble"
   shift
 )
 

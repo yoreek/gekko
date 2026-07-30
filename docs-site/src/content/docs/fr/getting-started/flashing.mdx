@@ -15,12 +15,13 @@ fois le firmware et les ressources du portail web.
 
 | Variante | Configuration WiFi par BLE | GPIO 32 | Point d'accès et portail web |
 | --- | --- | --- | --- |
-| **Standard** | Incluse | Réservé au bouton d'activation BLE | Disponibles |
-| **Without BLE** | Le code BLE n'est pas compilé | Disponible pour un autre périphérique | Disponibles |
+| **Recommandée** | Le code BLE n'est pas compilé | Disponible pour un autre périphérique | Disponibles |
+| **Avec BLE** | Incluse | Réservé au bouton d'activation BLE | Disponibles |
 
-Choisissez **Standard** uniquement si vous devez configurer le WiFi depuis une
-application BLE mobile. Choisissez **Without BLE** si le point d'accès et le
-portail web suffisent : ce firmware est plus compact et ne réserve pas GPIO 32.
+Choisissez **Recommandée** sauf si vous devez configurer le WiFi depuis une
+application BLE mobile : ce firmware est plus compact et ne réserve pas
+GPIO 32. Choisissez **Avec BLE** uniquement si cette configuration par
+application vous est nécessaire.
 
 ## Option 1 — Installateur web (le plus simple)
 
@@ -36,7 +37,7 @@ Flashez directement depuis le navigateur, sans logiciel à installer :
 2. Ouvrez l'installateur dans **Chrome**, **Edge** ou **Opera** sur ordinateur
    (Web Serial n'est pas disponible dans Firefox/Safari ni sur mobile).
 
-3. Choisissez **Standard** ou **Without BLE**, cliquez sur son bouton
+3. Choisissez **Recommandée** ou **Avec BLE**, cliquez sur son bouton
    d'installation, sélectionnez le port série, puis confirmez.
 
 4. Attendez la fin de la barre de progression, puis continuez avec
@@ -63,15 +64,15 @@ elles flashent exactement les mêmes binaires.
     3. Exécutez `webflash/flash.sh [PORT]` (macOS/Linux) ou `webflash/flash.bat
        [PORT]` (Windows). Sans argument de port, esptool le détecte
        automatiquement.
-       Pour le paquet no-BLE de CI, utilisez `flash.sh no-ble [PORT]` ou
-       `flash.bat no-ble [PORT]`.
+       Pour le paquet BLE de CI, utilisez `flash.sh ble [PORT]` ou
+       `flash.bat ble [PORT]`.
 
   </TabItem>
   <TabItem label="Python">
 
     ```sh
     pip install esptool
-    python3 webflash/flash.py [standard|no-ble] [PORT]
+    python3 webflash/flash.py [default|ble] [PORT]
     ```
 
   </TabItem>
@@ -82,13 +83,13 @@ elles flashent exactement les mêmes binaires.
 Si vous compilez depuis les sources :
 
 ```sh
-# Standard
+# Recommandée (sans BLE)
 pio run -e esp32dev -t upload
 pio run -e esp32dev -t uploadfs
 
-# Without BLE
-pio run -e esp32dev_no_ble -t upload
-pio run -e esp32dev_no_ble -t uploadfs
+# Avec BLE
+pio run -e esp32dev_ble -t upload
+pio run -e esp32dev_ble -t uploadfs
 ```
 
 Voir `CLAUDE.md` et `docs/platformio-environments.md` dans le dépôt pour le

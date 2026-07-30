@@ -37,13 +37,13 @@ images, creates `merged-firmware.bin`, and regenerates `manifest.json` and
 regenerated `data/` and `webflash/` artifacts for the commit — you do not stage
 them by hand.
 
-The hook builds only the standard `esp32dev` bundle. GitHub Actions builds
-`esp32dev_no_ble` separately, runs the same collector into a `no-ble/`
-subdirectory, and publishes the complete result as a workflow artifact. The
-Pages workflow also creates `install/no-ble/manifest.json`, which is selected
-by the second button in `webflash/index.html`. Do not add the no-BLE build to
-the pre-commit hook: it would duplicate the firmware and LittleFS build on
-every local commit without adding another test path.
+The hook builds only the default `esp32dev` bundle (no BLE provisioning).
+GitHub Actions builds `esp32dev_ble` separately, runs the same collector into
+a `ble/` subdirectory, and publishes the complete result as a workflow
+artifact. The Pages workflow also creates `install/ble/manifest.json`, which
+is selected by the second button in `webflash/index.html`. Do not add the BLE
+build to the pre-commit hook: it would duplicate the firmware and LittleFS
+build on every local commit without adding another test path.
 
 Because the hook rebuilds and re-stages on every commit, the SPA build **must be
 reproducible**: the same source at the same commit must produce byte-identical

@@ -1,22 +1,24 @@
 #!/usr/bin/env bash
 # Flashes the firmware via standalone esptool (no Python, no browser needed).
+# "default" is the recommended build (no BLE provisioning); "ble" adds BLE WiFi
+# provisioning and its setup-button GPIO reservation, at the cost of flash/RAM.
 # Download the esptool binary for your OS and place it next to this script:
 #   https://github.com/espressif/esptool/releases
 # (the file is named esptool or esptool-macos/esptool-linux -- rename it to esptool)
 #
-# Usage: ./flash.sh [standard|no-ble] [PORT] [all|bootloader|partitions|firmware|littlefs]
+# Usage: ./flash.sh [default|ble] [PORT] [all|bootloader|partitions|firmware|littlefs]
 # The target can be passed without a port, for example: ./flash.sh littlefs
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VARIANT="standard"
+VARIANT="default"
 BUNDLE_DIR="."
-if [ "${1-}" = "standard" ] || [ "${1-}" = "no-ble" ]; then
+if [ "${1-}" = "default" ] || [ "${1-}" = "ble" ]; then
   VARIANT="$1"
   shift
 fi
-if [ "$VARIANT" = "no-ble" ]; then
-  BUNDLE_DIR="./no-ble"
+if [ "$VARIANT" = "ble" ]; then
+  BUNDLE_DIR="./ble"
 fi
 
 if [ ! -f "$BUNDLE_DIR/flash-layout.env" ]; then

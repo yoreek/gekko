@@ -15,12 +15,12 @@ tanto el firmware como los assets del portal web.
 
 | Variante | Configuración WiFi por BLE | GPIO 32 | Punto de acceso y portal web |
 | --- | --- | --- | --- |
-| **Standard** | Incluida | Reservado para el botón de activación BLE | Disponibles |
-| **Without BLE** | El código BLE no se compila | Disponible para otro dispositivo | Disponibles |
+| **Recomendada** | El código BLE no se compila | Disponible para otro dispositivo | Disponibles |
+| **Con BLE** | Incluida | Reservado para el botón de activación BLE | Disponibles |
 
-Elige **Standard** solo si necesitas configurar WiFi desde una aplicación BLE
-móvil. Elige **Without BLE** si bastan el punto de acceso y el portal web: este
-firmware es más pequeño y no reserva GPIO 32.
+Elige **Recomendada** salvo que necesites configurar WiFi desde una aplicación
+BLE móvil: este firmware es más pequeño y no reserva GPIO 32. Elige **Con
+BLE** solo si necesitas esa configuración por app.
 
 ## Opción 1 - Instalador web (la más fácil)
 
@@ -35,7 +35,7 @@ Flashea directamente desde el navegador, sin instalar software adicional:
 2. Abre el instalador en **Chrome**, **Edge** u **Opera** en escritorio (Web
    Serial no está disponible en Firefox/Safari ni en móviles).
 
-3. Elige **Standard** o **Without BLE**, pulsa su botón de instalación,
+3. Elige **Recomendada** o **Con BLE**, pulsa su botón de instalación,
    selecciona el puerto serie y confirma.
 
 4. Espera a que termine la barra de progreso y continúa con
@@ -62,15 +62,15 @@ binarios.
     3. Ejecuta `webflash/flash.sh [PORT]` (macOS/Linux) o
        `webflash/flash.bat [PORT]` (Windows). Sin argumento de puerto,
        esptool lo detecta automáticamente.
-       Para el paquete no-BLE de CI usa `flash.sh no-ble [PORT]` o
-       `flash.bat no-ble [PORT]`.
+       Para el paquete BLE de CI usa `flash.sh ble [PORT]` o
+       `flash.bat ble [PORT]`.
 
   </TabItem>
   <TabItem label="Python">
 
     ```sh
     pip install esptool
-    python3 webflash/flash.py [standard|no-ble] [PORT]
+    python3 webflash/flash.py [default|ble] [PORT]
     ```
 
   </TabItem>
@@ -81,13 +81,13 @@ binarios.
 Si compilas desde el código fuente:
 
 ```sh
-# Standard
+# Recomendada (sin BLE)
 pio run -e esp32dev -t upload
 pio run -e esp32dev -t uploadfs
 
-# Without BLE
-pio run -e esp32dev_no_ble -t upload
-pio run -e esp32dev_no_ble -t uploadfs
+# Con BLE
+pio run -e esp32dev_ble -t upload
+pio run -e esp32dev_ble -t uploadfs
 ```
 
 Consulta `CLAUDE.md` y `docs/platformio-environments.md` en el repositorio

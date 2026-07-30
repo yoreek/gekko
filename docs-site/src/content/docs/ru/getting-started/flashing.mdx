@@ -15,12 +15,13 @@ import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 
 | Вариант | Настройка WiFi через BLE | GPIO 32 | Точка доступа и веб-портал |
 | --- | --- | --- | --- |
-| **Standard** | Включена | Зарезервирован для кнопки активации BLE | Доступны |
-| **Without BLE** | Код BLE не компилируется в прошивку | Доступен для другого устройства | Доступны |
+| **Рекомендуемый** | Код BLE не компилируется в прошивку | Доступен для другого устройства | Доступны |
+| **С BLE** | Включена | Зарезервирован для кнопки активации BLE | Доступны |
 
-Выбирайте **Standard**, только если нужна настройка WiFi из мобильного
-BLE-приложения. Выбирайте **Without BLE**, если достаточно настройки через
-точку доступа и веб-портал: эта прошивка меньше и не резервирует GPIO 32.
+Выбирайте **Рекомендуемый** вариант, если не нужна настройка WiFi из
+мобильного BLE-приложения: эта прошивка меньше и не резервирует GPIO 32.
+Выбирайте **С BLE**, только если нужна настройка через мобильное
+BLE-приложение.
 
 ## Вариант 1 — веб-установщик (проще всего)
 
@@ -35,7 +36,7 @@ BLE-приложения. Выбирайте **Without BLE**, если дост�
 2. Откройте установщик в **Chrome**, **Edge** или **Opera** на рабочем столе
    (Web Serial недоступен в Firefox/Safari и на мобильных браузерах).
 
-3. Выберите **Standard** или **Without BLE**, нажмите соответствующую кнопку
+3. Выберите **Рекомендуемый** или **С BLE**, нажмите соответствующую кнопку
    установки, выберите serial port платы в диалоге браузера и подтвердите.
    При первой установке предлагается стереть устройство.
 
@@ -63,15 +64,15 @@ BLE-приложения. Выбирайте **Without BLE**, если дост�
     3. Запустите `webflash/flash.sh [PORT]` (macOS/Linux) или
        `webflash/flash.bat [PORT]` (Windows). Если порт не указан, esptool
        попытается найти его сам.
-       Для скачанного из CI no-BLE комплекта используйте
-       `flash.sh no-ble [PORT]` или `flash.bat no-ble [PORT]`.
+       Для скачанного из CI BLE-комплекта используйте
+       `flash.sh ble [PORT]` или `flash.bat ble [PORT]`.
 
   </TabItem>
   <TabItem label="Python">
 
     ```sh
     pip install esptool
-    python3 webflash/flash.py [standard|no-ble] [PORT]
+    python3 webflash/flash.py [default|ble] [PORT]
     ```
 
   </TabItem>
@@ -82,13 +83,13 @@ BLE-приложения. Выбирайте **Without BLE**, если дост�
 Если вы собираете из исходников:
 
 ```sh
-# Standard
+# Рекомендуемый (без BLE)
 pio run -e esp32dev -t upload
 pio run -e esp32dev -t uploadfs
 
-# Without BLE
-pio run -e esp32dev_no_ble -t upload
-pio run -e esp32dev_no_ble -t uploadfs
+# С BLE
+pio run -e esp32dev_ble -t upload
+pio run -e esp32dev_ble -t uploadfs
 ```
 
 Смотрите `CLAUDE.md` и `docs/platformio-environments.md` в репозитории для
