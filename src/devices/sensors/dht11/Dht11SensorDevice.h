@@ -15,9 +15,9 @@ namespace ewfm {
 class Dht11SensorDevice final : public PolledTemperatureHumiditySensorDeviceBase {
 public:
     Dht11SensorDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
-    Dht11SensorDevice(const Dht11SensorConfigV1& config, IDht11LineDriver& lineDriver);
+    Dht11SensorDevice(const Dht11SensorConfigV2& config, IDht11LineDriver& lineDriver);
 
-    const Dht11SensorConfigV1& config() const;
+    const Dht11SensorConfigV2& config() const;
     void bindDeviceIdentity(const DeviceRegistryEntry& record, const DeviceConfigBlob& config) override;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const override;
@@ -38,7 +38,7 @@ private:
     uint16_t reportDeltaCentiPercent() const override;
     uint32_t startDelayMs() const override;
 
-    Dht11SensorConfigV1 config_{};
+    Dht11SensorConfigV2 config_{};
     IDht11LineDriver& lineDriver_;
 };
 

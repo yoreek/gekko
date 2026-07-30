@@ -13,6 +13,16 @@
         />
       </v-col>
       <v-col cols="12" sm="6">
+        <v-switch
+          :label="t('device.fields.internalPullup')"
+          :model-value="modelValue.internalPullup"
+          :readonly="mode === 'view'"
+          :disabled="busy && mode !== 'view'"
+          inset
+          @update:model-value="update('internalPullup', Boolean($event))"
+        />
+      </v-col>
+      <v-col cols="12" sm="6">
         <v-select
           :label="t('device.fields.temperatureUnit')"
           :items="temperatureUnitItems"

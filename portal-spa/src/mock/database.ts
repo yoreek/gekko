@@ -1005,6 +1005,7 @@ const seedDatabase: SeedDatabase = {
       enabled: true,
       name: 'Seed DHT11 Climate',
       gpioPin: 17,
+      internalPullup: false,
       deps: [],
       unit: 'celsius',
       pollMs: 5000,

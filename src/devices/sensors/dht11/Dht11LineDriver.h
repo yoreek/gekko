@@ -12,7 +12,7 @@ public:
     virtual ~IDht11LineDriver() = default;
 
     virtual bool driveLow(uint8_t pin) = 0;
-    virtual bool release(uint8_t pin) = 0;
+    virtual bool release(uint8_t pin, bool internalPullup) = 0;
     virtual bool read(uint8_t pin, bool& level) = 0;
     virtual void waitMicros(uint32_t microseconds) = 0;
 };
@@ -20,7 +20,7 @@ public:
 class ArduinoDht11LineDriver final : public IDht11LineDriver {
 public:
     bool driveLow(uint8_t pin) override;
-    bool release(uint8_t pin) override;
+    bool release(uint8_t pin, bool internalPullup) override;
     bool read(uint8_t pin, bool& level) override;
     void waitMicros(uint32_t microseconds) override;
 };

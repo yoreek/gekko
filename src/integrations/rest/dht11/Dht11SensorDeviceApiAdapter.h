@@ -6,13 +6,13 @@
 namespace ewfm {
 
 class Dht11SensorDeviceApiAdapter final
-    : public TypedDeviceApiAdapter<Dht11SensorDeviceApiAdapter, Dht11SensorDevice, Dht11SensorConfigV1> {
+    : public TypedDeviceApiAdapter<Dht11SensorDeviceApiAdapter, Dht11SensorDevice, Dht11SensorConfigV2> {
 public:
     static constexpr const char* kTypeName = "dht11";
 
-    bool parseCreateExtras(const JsonObjectConst& input, const JsonObjectConst& configInput, Dht11SensorConfigV1& config,
+    bool parseCreateExtras(const JsonObjectConst& input, const JsonObjectConst& configInput, Dht11SensorConfigV2& config,
                            DeviceCreateRequest& request, const char*& error) const;
-    bool parseUpdateExtras(const JsonObjectConst& input, const JsonObjectConst& configInput, Dht11SensorConfigV1& config,
+    bool parseUpdateExtras(const JsonObjectConst& input, const JsonObjectConst& configInput, Dht11SensorConfigV2& config,
                            DeviceConfigUpdateRequest& request, const char*& error) const;
     void writeRuntimeJson(const Dht11SensorDevice& device, JsonObject runtimeJson) const;
 

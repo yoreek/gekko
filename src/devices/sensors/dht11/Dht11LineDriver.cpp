@@ -17,12 +17,13 @@ bool ArduinoDht11LineDriver::driveLow(uint8_t pin) {
 #endif
 }
 
-bool ArduinoDht11LineDriver::release(uint8_t pin) {
+bool ArduinoDht11LineDriver::release(uint8_t pin, bool internalPullup) {
 #if defined(ARDUINO)
-    pinMode(pin, INPUT);
+    pinMode(pin, internalPullup ? INPUT_PULLUP : INPUT);
     return true;
 #else
     (void)pin;
+    (void)internalPullup;
     return true;
 #endif
 }

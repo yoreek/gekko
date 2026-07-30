@@ -8,6 +8,7 @@
     "enabled": { "type": "boolean" },
     "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" }, "maxItems": 0 },
     "gpioPin": { "type": "integer", "minimum": 0, "maximum": 39 },
+    "internalPullup": { "type": "boolean" },
     "unit": { "enum": ["celsius", "fahrenheit"] },
     "pollMs": { "type": "integer", "minimum": 1000, "maximum": 86400000 },
     "reportAlways": { "type": "boolean" },

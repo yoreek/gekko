@@ -1,9 +1,28 @@
 #include "devices/sensors/dht11/Dht11Protocol.h"
 
+#if defined(ARDUINO)
+#include <Arduino.h>
+#endif
+
 namespace ewfm {
 
 namespace {
 constexpr uint32_t kPollStepMicros = 2U;
+
+class Dht11TimingGuard final {
+public:
+    Dht11TimingGuard() {
+#if defined(ARDUINO)
+        noInterrupts();
+#endif
+    }
+
+    ~Dht11TimingGuard() {
+#if defined(ARDUINO)
+        interrupts();
+#endif
+    }
+};
 
 bool waitForLevel(IDht11LineDriver& driver, uint8_t pin, bool expected, uint32_t timeoutMicros, const char*& errorStatus) {
     for (uint32_t waited = 0U; waited < timeoutMicros; waited += kPollStepMicros) {
@@ -21,34 +40,21 @@ bool waitForLevel(IDht11LineDriver& driver, uint8_t pin, bool expected, uint32_t
     return false;
 }
 
-bool readBit(IDht11LineDriver& driver, uint8_t pin, uint8_t& byte, uint8_t bitMask, const char*& errorStatus) {
-    if (!waitForLevel(driver, pin, false, kDht11ResponseTimeoutMicros, errorStatus)) {
-        return false;
-    }
-    if (!waitForLevel(driver, pin, true, kDht11ResponseTimeoutMicros, errorStatus)) {
-        return false;
-    }
-
-    uint32_t highMicros = 0U;
-    for (; highMicros < (kDht11ResponseTimeoutMicros * 4U); highMicros += kPollStepMicros) {
+bool measurePulse(IDht11LineDriver& driver, uint8_t pin, bool expected, uint32_t& pulseMicros, const char*& errorStatus) {
+    pulseMicros = 0U;
+    for (; pulseMicros < kDht11ResponseTimeoutMicros; pulseMicros += kPollStepMicros) {
         bool level = false;
         if (!driver.read(pin, level)) {
             errorStatus = "not_found";
             return false;
         }
-        if (!level) {
-            break;
+        if (level != expected) {
+            return true;
         }
         driver.waitMicros(kPollStepMicros);
     }
-    if (highMicros >= (kDht11ResponseTimeoutMicros * 4U)) {
-        errorStatus = "timeout";
-        return false;
-    }
-    if (highMicros > kDht11BitThresholdMicros) {
-        byte |= bitMask;
-    }
-    return true;
+    errorStatus = "timeout";
+    return false;
 }
 } // namespace
 
@@ -76,14 +82,14 @@ bool dht11DecodeFrame(const uint8_t* frame, int32_t& milliCelsius, int32_t& mill
     return true;
 }
 
-bool dht11CaptureMeasurement(IDht11LineDriver& driver, uint8_t pin, int32_t& milliCelsius, int32_t& milliPercent,
+bool dht11CaptureMeasurement(IDht11LineDriver& driver, uint8_t pin, bool internalPullup, int32_t& milliCelsius, int32_t& milliPercent,
                              const char*& errorStatus) {
     if (!driver.driveLow(pin)) {
         errorStatus = "not_found";
         return false;
     }
     driver.waitMicros(kDht11StartPulseMicros);
-    if (!driver.release(pin)) {
+    if (!driver.release(pin, internalPullup)) {
         errorStatus = "not_found";
         return false;
     }
@@ -92,7 +98,12 @@ bool dht11CaptureMeasurement(IDht11LineDriver& driver, uint8_t pin, int32_t& mil
     if (!waitForLevel(driver, pin, false, kDht11ResponseTimeoutMicros, errorStatus)) {
         return false;
     }
+
+    Dht11TimingGuard timingGuard;
     if (!waitForLevel(driver, pin, true, kDht11ResponseTimeoutMicros, errorStatus)) {
+        return false;
+    }
+    if (!waitForLevel(driver, pin, false, kDht11ResponseTimeoutMicros, errorStatus)) {
         return false;
     }
 
@@ -100,8 +111,13 @@ bool dht11CaptureMeasurement(IDht11LineDriver& driver, uint8_t pin, int32_t& mil
     for (uint8_t bitIndex = 0U; bitIndex < 40U; ++bitIndex) {
         const uint8_t byteIndex = bitIndex / 8U;
         const uint8_t bitMask = static_cast<uint8_t>(1U << (7U - (bitIndex % 8U)));
-        if (!readBit(driver, pin, frame[byteIndex], bitMask, errorStatus)) {
+        uint32_t lowMicros = 0U;
+        uint32_t highMicros = 0U;
+        if (!measurePulse(driver, pin, false, lowMicros, errorStatus) || !measurePulse(driver, pin, true, highMicros, errorStatus)) {
             return false;
+        }
+        if (highMicros > lowMicros) {
+            frame[byteIndex] |= bitMask;
         }
     }
     return dht11DecodeFrame(frame, milliCelsius, milliPercent, errorStatus);

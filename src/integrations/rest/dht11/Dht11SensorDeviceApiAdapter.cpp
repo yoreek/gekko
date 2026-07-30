@@ -16,7 +16,7 @@ bool parseNoDeps(const JsonObjectConst& input, const char*& error) {
 } // namespace
 
 bool Dht11SensorDeviceApiAdapter::parseCreateExtras(const JsonObjectConst& input, const JsonObjectConst& configInput,
-                                                    Dht11SensorConfigV1& config, DeviceCreateRequest& request, const char*& error) const {
+                                                    Dht11SensorConfigV2& config, DeviceCreateRequest& request, const char*& error) const {
     (void)configInput;
     (void)config;
     request.depCount = 0U;
@@ -25,7 +25,7 @@ bool Dht11SensorDeviceApiAdapter::parseCreateExtras(const JsonObjectConst& input
 }
 
 bool Dht11SensorDeviceApiAdapter::parseUpdateExtras(const JsonObjectConst& input, const JsonObjectConst& configInput,
-                                                    Dht11SensorConfigV1& config, DeviceConfigUpdateRequest& request,
+                                                    Dht11SensorConfigV2& config, DeviceConfigUpdateRequest& request,
                                                     const char*& error) const {
     (void)configInput;
     (void)config;
@@ -38,7 +38,7 @@ bool Dht11SensorDeviceApiAdapter::parseUpdateExtras(const JsonObjectConst& input
 DeviceValidationResult Dht11SensorDeviceApiAdapter::validateCreateRequest(const DeviceCreateRequest& request,
                                                                           const DeviceRegistry& registry) const {
     (void)registry;
-    Dht11SensorConfigV1 config{};
+    Dht11SensorConfigV2 config{};
     if (!decodeDht11SensorConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, kInvalidConfigError};
     }
@@ -50,7 +50,7 @@ DeviceValidationResult Dht11SensorDeviceApiAdapter::validateUpdateConfigRequest(
                                                                                 const DeviceRegistry& registry) const {
     (void)runtime;
     (void)registry;
-    Dht11SensorConfigV1 config{};
+    Dht11SensorConfigV2 config{};
     if (!decodeDht11SensorConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, kInvalidConfigError};
     }

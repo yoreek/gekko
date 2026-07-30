@@ -31,8 +31,9 @@ public:
         return driveLowResult;
     }
 
-    bool release(uint8_t pin) override {
+    bool release(uint8_t pin, bool internalPullup) override {
         releasePin = pin;
+        releaseInternalPullup = internalPullup;
         ++releaseCalls;
         captureActive = true;
         captureMicros = 0U;
@@ -69,6 +70,7 @@ public:
     bool readResult{true};
     uint8_t driveLowPin{0xFF};
     uint8_t releasePin{0xFF};
+    bool releaseInternalPullup{false};
     uint8_t readPin{0xFF};
     int driveLowCalls{0};
     int releaseCalls{0};
@@ -114,8 +116,8 @@ private:
     bool corruptChecksum{false};
 };
 
-Dht11SensorConfigV1 makeConfig() {
-    Dht11SensorConfigV1 config{};
+Dht11SensorConfigV2 makeConfig() {
+    Dht11SensorConfigV2 config{};
     config.enabled = 1U;
     std::snprintf(config.name, sizeof(config.name), "%s", "climate");
     config.gpioPin = 17U;
@@ -135,16 +137,16 @@ std::array<uint8_t, kDht11FrameBytes> makeFrame(uint8_t humidityInteger, uint8_t
     return {humidityInteger, humidityDecimal, temperatureInteger, temperatureDecimal, checksum};
 }
 
-BoundedBlob<kMaxDeviceConfigBytes> encodeConfigBlob(const Dht11SensorConfigV1& config) {
+BoundedBlob<kMaxDeviceConfigBytes> encodeConfigBlob(const Dht11SensorConfigV2& config) {
     BoundedBlob<kMaxDeviceConfigBytes> payload{};
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = dht11SensorConfigSize(config);
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Dht11SensorConfigV1::kMagic, config, buffer, size));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(Dht11SensorConfigV2::kMagic, config, buffer, size));
     TEST_ASSERT_TRUE(payload.assign(buffer, size));
     return payload;
 }
 
-void bindIdentity(Dht11SensorDevice& device, DeviceId deviceId, const Dht11SensorConfigV1& config) {
+void bindIdentity(Dht11SensorDevice& device, DeviceId deviceId, const Dht11SensorConfigV2& config) {
     DeviceRegistryEntry record{};
     record.header.deviceId = deviceId;
     record.header.typeId = Dht11SensorDevice::descriptor().typeId;
@@ -201,8 +203,9 @@ void test_dht11_protocol_decodes_frame_and_checks_checksum() {
 }
 
 void test_dht11_config_codec_json_and_validation() {
-    Dht11SensorConfigV1 config = makeConfig();
+    Dht11SensorConfigV2 config = makeConfig();
     config.gpioPin = 27U;
+    config.internalPullup = 1U;
     config.outputUnit = temperatureUnitToByte(TemperatureUnit::Fahrenheit);
     config.reportAlways = 1U;
     config.reportDeltaCentiCelsius = 25U;
@@ -212,9 +215,10 @@ void test_dht11_config_codec_json_and_validation() {
     config.humidityFilter.calibrationOffset = -750.0F;
 
     const BoundedBlob<kMaxDeviceConfigBytes> payload = encodeConfigBlob(config);
-    Dht11SensorConfigV1 decoded{};
+    Dht11SensorConfigV2 decoded{};
     TEST_ASSERT_TRUE(decodeDht11SensorConfig(payload.data(), payload.size(), decoded));
     TEST_ASSERT_EQUAL_UINT8(27U, decoded.gpioPin);
+    TEST_ASSERT_EQUAL_UINT8(1U, decoded.internalPullup);
     TEST_ASSERT_EQUAL_UINT8(temperatureUnitToByte(TemperatureUnit::Fahrenheit), decoded.outputUnit);
     TEST_ASSERT_EQUAL_UINT8(1U, decoded.reportAlways);
     TEST_ASSERT_EQUAL_UINT16(25U, decoded.reportDeltaCentiCelsius);
@@ -226,14 +230,15 @@ void test_dht11_config_codec_json_and_validation() {
 
     StaticJsonDocument<512> doc;
     decoded.writeJson(doc.to<JsonObject>());
-    Dht11SensorConfigV1 parsed{};
+    Dht11SensorConfigV2 parsed{};
     const char* error = nullptr;
     TEST_ASSERT_TRUE(parseDht11SensorConfigJson(doc.as<JsonObjectConst>(), parsed, error));
     TEST_ASSERT_NULL(error);
     TEST_ASSERT_EQUAL_UINT8(27U, parsed.gpioPin);
+    TEST_ASSERT_EQUAL_UINT8(1U, parsed.internalPullup);
     TEST_ASSERT_EQUAL_UINT32(15000U, parsed.pollMs);
 
-    Dht11SensorConfigV1 invalid = makeConfig();
+    Dht11SensorConfigV2 invalid = makeConfig();
     invalid.gpioPin = 6U;
     TEST_ASSERT_FALSE(invalid.validate().ok());
 }
@@ -327,7 +332,7 @@ void test_dht11_api_adapter_rejects_dependencies_and_writes_runtime_json() {
 }
 
 void test_dht11_schema_contracts_cover_config_and_response_shapes() {
-    Dht11SensorConfigV1 config = makeConfig();
+    Dht11SensorConfigV2 config = makeConfig();
     StaticJsonDocument<512> configDoc;
     config.writeJson(configDoc.to<JsonObject>());
     assertMatchesJsonSchema("schemas/rest/v1/devices/dht11.config.schema.json", configDoc.as<JsonVariantConst>());

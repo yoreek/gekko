@@ -12,7 +12,7 @@ namespace ewfm {
 Dht11SensorDevice::Dht11SensorDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob)
     : Dht11SensorDevice(
           [&configBlob]() {
-              Dht11SensorConfigV1 config{};
+              Dht11SensorConfigV2 config{};
               (void)decodeDht11SensorConfig(configBlob.data(), configBlob.size(), config);
               return config;
           }(),
@@ -20,10 +20,10 @@ Dht11SensorDevice::Dht11SensorDevice(const DeviceRegistryEntry& record, const De
     bindDeviceIdentity(record, configBlob);
 }
 
-Dht11SensorDevice::Dht11SensorDevice(const Dht11SensorConfigV1& config, IDht11LineDriver& lineDriver)
+Dht11SensorDevice::Dht11SensorDevice(const Dht11SensorConfigV2& config, IDht11LineDriver& lineDriver)
     : PolledTemperatureHumiditySensorDeviceBase(), config_(config), lineDriver_(lineDriver) {}
 
-const Dht11SensorConfigV1& Dht11SensorDevice::config() const {
+const Dht11SensorConfigV2& Dht11SensorDevice::config() const {
     return config_;
 }
 
@@ -38,22 +38,22 @@ void Dht11SensorDevice::bindDeviceIdentity(const DeviceRegistryEntry& record, co
 bool Dht11SensorDevice::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = dht11SensorConfigSize(config_);
-    return encodeFixedConfigBlob(Dht11SensorConfigV1::kMagic, config_, buffer, size) && configBlob.assign(buffer, size);
+    return encodeFixedConfigBlob(Dht11SensorConfigV2::kMagic, config_, buffer, size) && configBlob.assign(buffer, size);
 }
 
 DeviceConfigUpdatePlan Dht11SensorDevice::planConfigUpdate(const DeviceConfigBlob& configBlob) const {
-    Dht11SensorConfigV1 config{};
+    Dht11SensorConfigV2 config{};
     if (!decodeDht11SensorConfig(configBlob.data(), configBlob.size(), config)) {
         return {};
     }
     DeviceConfigUpdatePlan plan{};
-    plan.endOldConfig = config.gpioPin != config_.gpioPin;
+    plan.endOldConfig = config.gpioPin != config_.gpioPin || config.internalPullup != config_.internalPullup;
     plan.resetStateMachine = plan.endOldConfig;
     return plan;
 }
 
 bool Dht11SensorDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
-    Dht11SensorConfigV1 config{};
+    Dht11SensorConfigV2 config{};
     if (!decodeDht11SensorConfig(configBlob.data(), configBlob.size(), config)) {
         return false;
     }
@@ -90,7 +90,7 @@ DeviceValidationResult Dht11SensorDevice::validateConfig(const DeviceRegistryEnt
     if (configBlob.size() > kMaxDeviceConfigBytes) {
         return {DeviceError::BoundsExceeded, "dht11 config exceeds supported size"};
     }
-    Dht11SensorConfigV1 config{};
+    Dht11SensorConfigV2 config{};
     if (!decodeDht11SensorConfig(configBlob.data(), configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "dht11 config is invalid"};
     }
@@ -99,7 +99,7 @@ DeviceValidationResult Dht11SensorDevice::validateConfig(const DeviceRegistryEnt
 
 bool Dht11SensorDevice::sampleReading(uint32_t now, int32_t& milliCelsius, int32_t& milliPercent, const char*& invalidStatus) {
     (void)now;
-    return dht11CaptureMeasurement(lineDriver_, config_.gpioPin, milliCelsius, milliPercent, invalidStatus);
+    return dht11CaptureMeasurement(lineDriver_, config_.gpioPin, config_.internalPullup != 0U, milliCelsius, milliPercent, invalidStatus);
 }
 
 uint32_t Dht11SensorDevice::pollIntervalMs() const {
