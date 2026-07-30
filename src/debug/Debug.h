@@ -128,6 +128,14 @@ DebugLogger& debugLogger();
 #define EWFM_DS18B20_LOG_DEBUG(fmt, ...)
 #endif
 
+#if defined(WITH_DHT11_SENSOR_DEBUG)
+#define EWFM_DHT11_LOG_INFO(fmt, ...) EWFM_LOG_INFO("dht11", fmt, ##__VA_ARGS__)
+#define EWFM_DHT11_LOG_WARN(fmt, ...) EWFM_LOG_WARN("dht11", fmt, ##__VA_ARGS__)
+#else
+#define EWFM_DHT11_LOG_INFO(fmt, ...)
+#define EWFM_DHT11_LOG_WARN(fmt, ...)
+#endif
+
 #if defined(WITH_MQTT_DEBUG)
 #define EWFM_MQTT_LOG_INFO(fmt, ...) EWFM_LOG_INFO("mqtt", fmt, ##__VA_ARGS__)
 #define EWFM_MQTT_LOG_WARN(fmt, ...) EWFM_LOG_WARN("mqtt", fmt, ##__VA_ARGS__)

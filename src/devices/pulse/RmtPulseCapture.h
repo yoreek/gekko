@@ -42,6 +42,7 @@ public:
         return EWFM_HAS_RMT_PULSE_CAPTURE != 0;
     }
 
+    bool prepare(uint8_t pin);
     bool start(uint8_t pin);
     PulseCaptureResult poll(PulseCaptureSample* samples, size_t maxSamples, size_t& sampleCount);
     void cancel();

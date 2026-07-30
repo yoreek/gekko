@@ -68,29 +68,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         entryFileNames: 'assets/i-[hash].js',
-        chunkFileNames: 'assets/c-[hash].js',
         assetFileNames: 'assets/a-[hash][extname]',
-        manualChunks(id) {
-          if (!id.includes('node_modules')) {
-            return undefined
-          }
-
-          if (id.includes('/vuetify/')) {
-            return 'vendor-vuetify'
-          }
-
-          if (
-            id.includes('/vue/') ||
-            id.includes('/vue-router/') ||
-            id.includes('/vue-i18n/') ||
-            id.includes('/pinia/') ||
-            id.includes('/vue-grid-layout-v3/')
-          ) {
-            return 'vendor-vue'
-          }
-
-          return 'vendor'
-        },
+        inlineDynamicImports: true,
       },
     },
   },

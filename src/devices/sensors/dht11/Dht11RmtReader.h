@@ -5,12 +5,19 @@
 #include "devices/sensors/dht11/Dht11PulseDecoder.h"
 
 #include <cstdint>
+#include <memory>
 
 namespace ewfm {
 
 // DHT11-specific asynchronous transaction around the reusable RMT pulse receiver.
 class Dht11RmtReader final {
 public:
+    Dht11RmtReader();
+    ~Dht11RmtReader();
+
+    Dht11RmtReader(const Dht11RmtReader&) = delete;
+    Dht11RmtReader& operator=(const Dht11RmtReader&) = delete;
+
     enum class Result : uint8_t {
         Pending,
         Ready,
@@ -24,6 +31,8 @@ public:
     void reset();
 
 private:
+    struct Session;
+
     enum class Phase : uint8_t {
         Idle,
         StartLow,
@@ -32,8 +41,7 @@ private:
 
     Phase phase_{Phase::Idle};
     uint32_t startLowAt_{0U};
-    RmtPulseCapture capture_{};
-    PulseCaptureSample pulses_[kDht11DataPulseCount + 2U]{};
+    std::unique_ptr<Session> session_;
 };
 
 } // namespace ewfm

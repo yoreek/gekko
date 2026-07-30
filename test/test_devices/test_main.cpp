@@ -82,6 +82,8 @@ void test_aht10_runtime_reinitializes_on_dependency_generation_change();
 void test_aht10_adapter_partial_update_preserves_unit_and_deltas();
 void test_aht10_adapter_rejects_duplicate_0x38_dependent_on_same_bus();
 void test_dht11_protocol_decodes_frame_and_checks_checksum();
+void test_dht11_rmt_preamble_skips_controller_start_pulse();
+void test_dht11_rmt_decoder_recovers_final_checksum_bit_omitted_by_idle_threshold();
 void test_dht11_config_codec_json_and_validation();
 void test_dht11_config_migrates_v2_to_v3_native_mode();
 void test_dht11_type_and_api_adapter_are_registered();
@@ -434,6 +436,8 @@ int main(int, char**) {
     RUN_TEST(test_aht10_adapter_partial_update_preserves_unit_and_deltas);
     RUN_TEST(test_aht10_adapter_rejects_duplicate_0x38_dependent_on_same_bus);
     RUN_TEST(test_dht11_protocol_decodes_frame_and_checks_checksum);
+    RUN_TEST(test_dht11_rmt_preamble_skips_controller_start_pulse);
+    RUN_TEST(test_dht11_rmt_decoder_recovers_final_checksum_bit_omitted_by_idle_threshold);
     RUN_TEST(test_dht11_config_codec_json_and_validation);
     RUN_TEST(test_dht11_config_migrates_v2_to_v3_native_mode);
     RUN_TEST(test_dht11_type_and_api_adapter_are_registered);

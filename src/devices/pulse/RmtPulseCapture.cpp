@@ -8,10 +8,10 @@ RmtPulseCapture::~RmtPulseCapture() {
     release();
 }
 
-bool RmtPulseCapture::start(uint8_t pin) {
+bool RmtPulseCapture::prepare(uint8_t pin) {
 #if EWFM_HAS_RMT_PULSE_CAPTURE
-    cancel();
     if (handle_ == nullptr || pin_ != pin) {
+        cancel();
         if (handle_ != nullptr) {
             (void)rmtDeinit(handle_);
         }
@@ -22,6 +22,19 @@ bool RmtPulseCapture::start(uint8_t pin) {
         }
         (void)rmtSetTick(handle_, 1000.0F);
         (void)rmtSetRxThreshold(handle_, 150U);
+    }
+    return true;
+#else
+    (void)pin;
+    return false;
+#endif
+}
+
+bool RmtPulseCapture::start(uint8_t pin) {
+#if EWFM_HAS_RMT_PULSE_CAPTURE
+    cancel();
+    if (!prepare(pin)) {
+        return false;
     }
     std::memset(items_, 0, sizeof(items_));
     pending_ = rmtReadAsync(handle_, items_, kRmtItems, nullptr, false, 0U);

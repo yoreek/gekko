@@ -3,6 +3,7 @@
 #include "devices/core/DeviceTypes.h"
 #include "devices/registry/DeviceRegistry.h"
 #include "devices/sensors/dht11/Dht11Protocol.h"
+#include "devices/sensors/dht11/Dht11PulseDecoder.h"
 #include "devices/sensors/dht11/Dht11SensorConfig.h"
 #include "devices/sensors/dht11/Dht11SensorDevice.h"
 #include "integrations/common/DeviceApiAdapter.h"
@@ -200,6 +201,52 @@ void test_dht11_protocol_decodes_frame_and_checks_checksum() {
     TEST_ASSERT_FALSE(dht11ChecksumValid(badFrame.data()));
     TEST_ASSERT_FALSE(dht11DecodeFrame(badFrame.data(), milliCelsius, milliPercent, error));
     TEST_ASSERT_EQUAL_STRING("checksum_error", error);
+}
+
+void test_dht11_rmt_preamble_skips_controller_start_pulse() {
+    std::array<PulseCaptureSample, kDht11DataPulseCount + 4U> pulses{};
+    pulses[0] = {false, 18000U};
+    pulses[1] = {true, 30U};
+    pulses[2] = {false, 80U};
+    pulses[3] = {true, 80U};
+    const std::array<uint8_t, kDht11FrameBytes> frame = makeFrame(55U, 0U, 24U, 0U);
+    for (uint8_t bitIndex = 0U; bitIndex < 40U; ++bitIndex) {
+        const bool bit = (frame[bitIndex / 8U] & (1U << (7U - (bitIndex % 8U)))) != 0U;
+        const size_t index = 4U + bitIndex * 2U;
+        pulses[index] = {false, 50U};
+        pulses[index + 1U] = {true, static_cast<uint16_t>(bit ? 70U : 26U)};
+    }
+
+    TEST_ASSERT_EQUAL_UINT32(4U, dht11DataPulseStart(pulses.data(), pulses.size()));
+    int32_t milliCelsius = 0;
+    int32_t milliPercent = 0;
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(dht11DecodeFramedPulsePairs(pulses.data(), pulses.size(), milliCelsius, milliPercent, error));
+    TEST_ASSERT_EQUAL_INT32(24000, milliCelsius);
+    TEST_ASSERT_EQUAL_INT32(55000, milliPercent);
+}
+
+void test_dht11_rmt_decoder_recovers_final_checksum_bit_omitted_by_idle_threshold() {
+    std::array<PulseCaptureSample, kDht11DataPulseCount + 2U> pulses{};
+    pulses[0] = {true, 13U};
+    pulses[1] = {false, 84U};
+    pulses[2] = {true, 85U};
+
+    const std::array<uint8_t, kDht11FrameBytes> frame = makeFrame(65U, 0U, 29U, 4U);
+    for (uint8_t bitIndex = 0U; bitIndex < 39U; ++bitIndex) {
+        const bool bit = (frame[bitIndex / 8U] & (1U << (7U - (bitIndex % 8U)))) != 0U;
+        const size_t index = 3U + bitIndex * 2U;
+        pulses[index] = {false, 53U};
+        pulses[index + 1U] = {true, static_cast<uint16_t>(bit ? 70U : 24U)};
+    }
+    pulses.back() = {false, 53U};
+
+    int32_t milliCelsius = 0;
+    int32_t milliPercent = 0;
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(dht11DecodeFramedPulsePairs(pulses.data(), pulses.size(), milliCelsius, milliPercent, error));
+    TEST_ASSERT_EQUAL_INT32(29400, milliCelsius);
+    TEST_ASSERT_EQUAL_INT32(65000, milliPercent);
 }
 
 void test_dht11_config_codec_json_and_validation() {
