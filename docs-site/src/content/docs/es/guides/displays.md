@@ -24,7 +24,7 @@ vista previa; las coordenadas y widgets se adaptan a la pantalla.
    - un [**bus SPI**](/gekko/es/reference/devices/spi-bus/) para ST7735;
    - un [**expansor de puertos**](/gekko/es/reference/devices/port-expanders/)
      PCF8574/PCF8575 para LCD1602/LCD2004;
-   - dos dispositivos `gpio_switch` para CLK y DIO del TM1637.
+   - nada para TM1637: controla sus pines CLK y DIO directamente.
 2. Crea la pantalla, selecciona esos dispositivos como dependencias y
    configura dirección, cableado, pines de control, brillo o rotación.
 3. Abre el dispositivo y haz clic en **Design** para entrar en el diseñador de

@@ -9,16 +9,20 @@ export interface Tm1637ConfigDraft extends BaseDeviceConfig {
   panel: string
   brightness: number
   rotation: 0 | 180
-  clockSwitchDeviceId: number
-  dataSwitchDeviceId: number
+  clkPin: number
+  dioPin: number
   layout: Tm1637LayoutDraft
 }
 
 export interface Tm1637CreateDraft extends DeviceCreateDraftBase, Tm1637ConfigDraft {}
 
-function normalizeDeviceId(value: unknown): number {
+// 255 is the firmware's "unset" marker, carried by configs migrated from the switch-dependency
+// layout. It reaches the UI as an empty pin field the user has to fill in before saving.
+export const TM1637_UNSET_PIN = 255
+
+function normalizePin(value: unknown, fallback: number): number {
   const numeric = Number(value)
-  return Number.isFinite(numeric) && numeric > 0 ? numeric : 0
+  return Number.isInteger(numeric) && numeric >= 0 && numeric <= 255 ? numeric : fallback
 }
 
 function normalizeBrightness(value: unknown, fallback: number): number {
@@ -28,10 +32,6 @@ function normalizeBrightness(value: unknown, fallback: number): number {
 
 function normalizeRotation(value: unknown, fallback: 0 | 180): 0 | 180 {
   return value === 180 || value === '180' ? 180 : fallback
-}
-
-function deviceIdFromDeps(deps: DeviceDependencyLink[] | undefined, index: number): number {
-  return deps?.[index]?.deviceId ?? 0
 }
 
 function normalizePanel(value: unknown): string {
@@ -52,8 +52,8 @@ export class Tm1637Device extends BaseDevice<Tm1637ConfigDraft, Tm1637CreateDraf
       panel: TM1637_PANEL,
       brightness: 7,
       rotation: 0,
-      clockSwitchDeviceId: 0,
-      dataSwitchDeviceId: 0,
+      clkPin: TM1637_UNSET_PIN,
+      dioPin: TM1637_UNSET_PIN,
       layout: defaultTm1637Layout(),
     }
   }
@@ -64,8 +64,6 @@ export class Tm1637Device extends BaseDevice<Tm1637ConfigDraft, Tm1637CreateDraf
       return {
         ...defaults,
         deps: Array.isArray(deps) ? deps : defaults.deps,
-        clockSwitchDeviceId: deviceIdFromDeps(deps, 0),
-        dataSwitchDeviceId: deviceIdFromDeps(deps, 1),
       }
     }
     const raw = value as Record<string, unknown>
@@ -78,8 +76,8 @@ export class Tm1637Device extends BaseDevice<Tm1637ConfigDraft, Tm1637CreateDraf
       panel: normalizePanel(raw.panel),
       brightness: normalizeBrightness(raw.brightness, defaults.brightness),
       rotation: normalizeRotation(raw.rotation, defaults.rotation),
-      clockSwitchDeviceId: normalizeDeviceId(raw.clockSwitchDeviceId ?? deviceIdFromDeps(deps ?? rawDeps, 0)),
-      dataSwitchDeviceId: normalizeDeviceId(raw.dataSwitchDeviceId ?? deviceIdFromDeps(deps ?? rawDeps, 1)),
+      clkPin: normalizePin(raw.clkPin, defaults.clkPin),
+      dioPin: normalizePin(raw.dioPin, defaults.dioPin),
       layout: normalizeTm1637Layout(raw.layout ?? defaults.layout),
     }
   }
@@ -90,6 +88,8 @@ export class Tm1637Device extends BaseDevice<Tm1637ConfigDraft, Tm1637CreateDraf
       panel: config.panel,
       brightness: config.brightness,
       rotation: config.rotation,
+      clkPin: config.clkPin,
+      dioPin: config.dioPin,
       layout: encodeTm1637Layout(config.layout),
     }
   }
@@ -125,16 +125,9 @@ export class Tm1637Device extends BaseDevice<Tm1637ConfigDraft, Tm1637CreateDraf
     return Tm1637Device.encodeConfig(config)
   }
 
-  protected override createCreateDeps(config: Tm1637ConfigDraft): DeviceDependencyLink[] {
-    return [
-      {
-        role: 'switch',
-        deviceId: config.clockSwitchDeviceId,
-      },
-      {
-        role: 'switch',
-        deviceId: config.dataSwitchDeviceId,
-      },
-    ]
+  // CLK/DIO are config pins, so the only dependencies left are the metric sources the firmware
+  // derives from layout placeholders - nothing for the create/edit forms to send.
+  protected override createCreateDeps(): DeviceDependencyLink[] {
+    return []
   }
 }

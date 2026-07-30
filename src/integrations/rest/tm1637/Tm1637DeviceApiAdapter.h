@@ -13,13 +13,12 @@ namespace ewfm {
 class Tm1637DeviceApiAdapter final : public DisplayDeviceApiAdapter {
 public:
     static constexpr const char* kTypeName = "tm1637";
-    static constexpr const char* kInvalidConfigError = "tm1637 config is invalid";
-    static constexpr const char* kDependencyError = "tm1637 requires clk and dio switch dependencies";
-    static constexpr const char* kDependencyCountError = "tm1637 requires exactly two deps";
-    static constexpr const char* kInvalidLayoutError = "tm1637 layout is invalid";
-    static constexpr const char* kLayoutSizeError = "tm1637 layout exceeds supported size";
-    static constexpr const char* kLayoutDependencyCountError = "tm1637 layout exceeds supported dependency count";
-    static constexpr const char* kLayoutPlaceholderError = "tm1637 layout placeholder is invalid";
+    static constexpr const char* kInvalidConfigError = "device config is invalid";
+    static constexpr const char* kMetricDependencyError = "display metric dependency is invalid";
+    static constexpr const char* kInvalidLayoutError = "display layout is invalid";
+    static constexpr const char* kLayoutSizeError = "display layout exceeds supported size";
+    static constexpr const char* kLayoutDependencyCountError = "display layout exceeds supported dependency count";
+    static constexpr const char* kLayoutPlaceholderError = "display layout placeholder is invalid";
 
     static const Tm1637DeviceApiAdapter& instance();
     static DisplayLayoutProfile layoutProfile();

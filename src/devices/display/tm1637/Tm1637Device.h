@@ -1,6 +1,5 @@
 #pragma once
 
-#include "devices/core/DeviceDependencyValidation.h"
 #include "devices/display/DisplayDeviceBase.h"
 #include "devices/display/render/SegmentDisplayLayoutRenderer.h"
 #include "devices/display/tm1637/Tm1637DeviceConfig.h"
@@ -13,13 +12,16 @@
 
 namespace ewfm {
 
+// TM1637 owns its CLK/DIO pins outright (like Ds1302RtcDevice) rather than borrowing them from
+// switch devices: the protocol needs the DIO direction switched mid-byte to read the ACK bit, which
+// a switch runtime cannot express.
 class Tm1637Device final : public DisplayDeviceBase {
 public:
     Tm1637Device(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
-    explicit Tm1637Device(const Tm1637DeviceConfigV1& config);
+    Tm1637Device(const Tm1637DeviceConfigV2& config, ITm1637LineDriver& lineDriver);
     ~Tm1637Device() override;
 
-    const Tm1637DeviceConfigV1& config() const;
+    const Tm1637DeviceConfigV2& config() const;
     DisplayLayoutProfile displayProfile() const override;
     bool serializeConfigBlob(DeviceConfigBlob& configBlob) const override;
     DeviceConfigUpdatePlan planConfigUpdate(const DeviceConfigBlob& configBlob) const override;
@@ -36,19 +38,15 @@ public:
 
 private:
     const DeviceBaseConfigV1& baseConfig() const override;
-    void setDependencyRuntime(DeviceRole role, IDeviceRuntime* dependencyRuntime) override;
-    void setDependencyRuntimeAt(uint8_t index, IDeviceRuntime* dependencyRuntime) override;
-    void refreshLineCache();
-    bool dependenciesReady() const;
-    bool writeDisplayFrame(uint32_t now);
+    bool writeDisplayFrame();
     uint8_t digitCount() const;
 
-    Tm1637DeviceConfigV1 config_{};
+    Tm1637DeviceConfigV2 config_{};
+    ITm1637LineDriver& lines_;
     Tm1637SegmentSurface surface_;
-    ISwitchOutputRuntime* clockLine_{nullptr};
-    ISwitchOutputRuntime* dataLine_{nullptr};
     std::array<uint8_t, Tm1637SegmentCodec::kDigitCount> lastFrameBytes_{};
     bool lastFrameValid_{false};
+    bool pinsAcquired_{false};
 };
 
 } // namespace ewfm

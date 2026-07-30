@@ -1346,24 +1346,15 @@ const seedDatabase: SeedDatabase = {
       effectiveStatus: 'ready',
       output: {},
     }),
-    createDeviceRecord(670845805, 'tm1637', 1, {
+    createDeviceRecord(670845805, 'tm1637', 2, {
       enabled: true,
       name: 'Temperature Display',
-      deps: [
-        {
-          role: 'switch',
-          deviceId: 670845750,
-        },
-        {
-          role: 'switch',
-          deviceId: 670845763,
-        },
-      ],
+      deps: [],
       panel: TM1637_PANEL,
       brightness: 5,
       rotation: 0,
-      clockSwitchDeviceId: 670845750,
-      dataSwitchDeviceId: 670845763,
+      clkPin: 18,
+      dioPin: 19,
       layout: {
         ...defaultTm1637Layout(),
         pages: [

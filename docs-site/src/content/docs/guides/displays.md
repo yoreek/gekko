@@ -24,7 +24,7 @@ available coordinates and widgets adapt to the selected display.
    - an [**SPI bus**](/gekko/reference/devices/spi-bus/) for ST7735;
    - a PCF8574/PCF8575 [**port expander**](/gekko/reference/devices/port-expanders/)
      for LCD1602/LCD2004;
-   - two `gpio_switch` devices for the TM1637 CLK and DIO lines.
+   - nothing for TM1637: it drives its CLK and DIO pins directly.
 2. Create the display and select those devices as its dependencies, then set
    its address, wiring channels, control pins, brightness, or rotation as
    applicable.

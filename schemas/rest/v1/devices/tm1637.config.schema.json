@@ -6,12 +6,14 @@
   "properties": {
     "name": { "type": "string", "minLength": 1, "maxLength": 32 },
     "enabled": { "type": "boolean", "default": true },
-    "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" }, "minItems": 2, "maxItems": 2 },
+    "deps": { "type": "array", "items": { "$ref": "../common/dependency.schema.json" } },
     "panel": { "type": "string", "enum": ["four_digit_decimal_036"] },
     "brightness": { "type": "integer", "minimum": 0, "maximum": 7 },
     "rotation": { "type": "integer", "enum": [0, 180] },
+    "clkPin": { "type": "integer", "minimum": 0, "maximum": 255 },
+    "dioPin": { "type": "integer", "minimum": 0, "maximum": 255 },
     "layout": { "$ref": "../common/display-layout.schema.json" }
   },
-  "required": ["name"],
+  "required": ["name", "clkPin", "dioPin"],
   "additionalProperties": true
 }

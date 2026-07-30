@@ -6,29 +6,31 @@
     :designer-label="t('device.dialog.openDesigner')"
   >
     <template #notice>
-      <v-alert v-if="switchItems.length < 2" type="warning" variant="tonal">
-        TM1637 needs two switch dependencies.
+      <v-alert v-if="pinsMissing" type="warning" variant="tonal">
+        {{ t('device.fields.gpioPin') }}: CLK, DIO
       </v-alert>
     </template>
 
     <v-col cols="12" sm="6">
-      <v-select
-        :model-value="modelValue.clockSwitchDeviceId"
-        :items="clockSwitchItems"
-        label="Clock switch"
+      <v-text-field
+        type="number"
+        :model-value="pinFieldValue(modelValue.clkPin)"
+        label="CLK pin"
+        :hint="t('device.dialog.gpioPinHint')"
         density="compact"
         hide-details="auto"
-        @update:model-value="update('clockSwitchDeviceId', Number($event))"
+        @update:model-value="update('clkPin', Number($event))"
       />
     </v-col>
     <v-col cols="12" sm="6">
-      <v-select
-        :model-value="modelValue.dataSwitchDeviceId"
-        :items="dataSwitchItems"
-        label="Data switch"
+      <v-text-field
+        type="number"
+        :model-value="pinFieldValue(modelValue.dioPin)"
+        label="DIO pin"
+        :hint="t('device.dialog.gpioPinHint')"
         density="compact"
         hide-details="auto"
-        @update:model-value="update('dataSwitchDeviceId', Number($event))"
+        @update:model-value="update('dioPin', Number($event))"
       />
     </v-col>
     <v-col cols="12" sm="6">
@@ -68,10 +70,8 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DeviceRecord } from '@/api/contracts'
 import type { Tm1637ConfigDraft } from '@/models/devices/tm1637'
-import { TM1637_PANEL } from '@/models/devices/tm1637'
-import { dependencyOptionsForRole } from '@/models/devices/device-model-factory'
+import { TM1637_PANEL, TM1637_UNSET_PIN } from '@/models/devices/tm1637'
 import DisplayDeviceFieldsFrame from '@/components/devices/display/DisplayDeviceFieldsFrame.vue'
-import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { useDraftModel } from '@/composables/useDraftModel'
 
 const props = defineProps<{
@@ -84,17 +84,14 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const deviceStore = useDeviceRegistryStore()
 const { update } = useDraftModel<Tm1637ConfigDraft>(props, emit)
 
-const switchItems = computed(() => dependencyOptionsForRole(deviceStore.devices, 'switch'))
+// A config migrated from the old switch-dependency layout arrives with both pins unset; show an
+// empty field so the user fills them in rather than a bare 255.
+const pinFieldValue = (pin: number): number | null => (pin === TM1637_UNSET_PIN ? null : pin)
 
-const clockSwitchItems = computed(() =>
-  switchItems.value.filter(option => option.value !== props.modelValue.dataSwitchDeviceId || option.value === props.modelValue.clockSwitchDeviceId),
-)
-
-const dataSwitchItems = computed(() =>
-  switchItems.value.filter(option => option.value !== props.modelValue.clockSwitchDeviceId || option.value === props.modelValue.dataSwitchDeviceId),
+const pinsMissing = computed(
+  () => props.modelValue.clkPin === TM1637_UNSET_PIN || props.modelValue.dioPin === TM1637_UNSET_PIN,
 )
 
 const brightnessItems = Array.from({ length: 8 }, (_, brightness) => ({

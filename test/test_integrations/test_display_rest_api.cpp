@@ -91,15 +91,17 @@ void assertCommonResponseSchema(const char* path, const char* typeName, JsonObje
     config["name"] = sourceConfig["name"];
     config["enabled"] = true;
     JsonArray deps = config.createNestedArray("deps");
-    const uint8_t dependencyCount = typeName[0] == 't' ? 2U : 7U;
-    for (uint8_t index = 0; index < dependencyCount; ++index) {
-        addDependency(deps, "switch", 100U + index);
-    }
     if (typeName[0] == 't') {
+        // tm1637 owns its pins outright, so it reports no switch dependencies.
         config["panel"] = "four_digit_decimal_036";
         config["brightness"] = 5;
         config["rotation"] = 0;
+        config["clkPin"] = 18;
+        config["dioPin"] = 19;
     } else {
+        for (uint8_t index = 0; index < 7U; ++index) {
+            addDependency(deps, "switch", 100U + index);
+        }
         config["rsChannel"] = 0;
         config["eChannel"] = 1;
         config["d4Channel"] = 2;
@@ -159,9 +161,8 @@ void test_new_display_rest_api_schemas_and_parsers() {
     tmConfig["panel"] = "four_digit_decimal_036";
     tmConfig["brightness"] = 5;
     tmConfig["rotation"] = 0;
-    JsonArray tmDeps = tmConfig.createNestedArray("deps");
-    addDependency(tmDeps, "switch", 201);
-    addDependency(tmDeps, "switch", 202);
+    tmConfig["clkPin"] = 18;
+    tmConfig["dioPin"] = 19;
     addDigitalLayout(tmConfig);
     assertSchema("schemas/rest/v1/requests/devices-create-tm1637.request.schema.json", tm1637.as<JsonVariantConst>());
     StaticJsonDocument<1024> tmUpdate;

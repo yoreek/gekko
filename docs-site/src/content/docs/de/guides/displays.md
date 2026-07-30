@@ -24,7 +24,7 @@ konfiguriert; Koordinaten und Widgets passen sich dem Display an.
    - einen [**SPI-Bus**](/gekko/de/reference/devices/spi-bus/) fuer ST7735;
    - einen [**Portexpander**](/gekko/de/reference/devices/port-expanders/)
      PCF8574/PCF8575 fuer LCD1602/LCD2004;
-   - zwei `gpio_switch`-Geraete fuer CLK und DIO des TM1637.
+   - nichts fuer TM1637: es steuert seine CLK- und DIO-Pins direkt.
 2. Erstelle das Display, waehle diese Geraete als Abhaengigkeiten und
    konfiguriere Adresse, Verdrahtung, Steuerpins, Helligkeit oder Drehung.
 3. Oeffne das Geraet und klicke auf **Design**, um in den Layout-Designer zu

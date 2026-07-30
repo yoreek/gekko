@@ -24,7 +24,7 @@ widget si adattano al display.
    - un [**bus SPI**](/gekko/it/reference/devices/spi-bus/) per ST7735;
    - un [**espansore di porte**](/gekko/it/reference/devices/port-expanders/)
      PCF8574/PCF8575 per LCD1602/LCD2004;
-   - due dispositivi `gpio_switch` per CLK e DIO del TM1637.
+   - niente per TM1637: pilota direttamente i suoi pin CLK e DIO.
 2. Crea il display, seleziona questi dispositivi come dipendenze e configura
    indirizzo, cablaggio, pin di controllo, luminosità o rotazione.
 3. Apri il dispositivo e fai clic su **Design** per entrare nel designer di

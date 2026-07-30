@@ -24,7 +24,7 @@ un aperçu ; les coordonnées et widgets s'adaptent à l'affichage.
    - un [**bus SPI**](/gekko/fr/reference/devices/spi-bus/) pour ST7735 ;
    - un [**expanseur de ports**](/gekko/fr/reference/devices/port-expanders/)
      PCF8574/PCF8575 pour LCD1602/LCD2004 ;
-   - deux périphériques `gpio_switch` pour CLK et DIO du TM1637.
+   - rien pour le TM1637 : il pilote directement ses broches CLK et DIO.
 2. Créez l'affichage, sélectionnez ces périphériques comme dépendances, puis
    configurez adresse, câblage, broches de contrôle, luminosité ou rotation.
 3. Ouvrez le périphérique et cliquez sur **Design** pour entrer dans le

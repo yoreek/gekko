@@ -4,7 +4,7 @@
 
 namespace ewfm {
 namespace {
-bool configFromJson(const JsonObjectConst& input, Tm1637DeviceConfigV1& config, const char*& error) {
+bool configFromJson(const JsonObjectConst& input, Tm1637DeviceConfigV2& config, const char*& error) {
     if (!config.parseJson(input, error)) {
         return false;
     }
@@ -15,10 +15,10 @@ bool configFromJson(const JsonObjectConst& input, Tm1637DeviceConfigV1& config, 
     return true;
 }
 
-bool encodeConfigBlob(const Tm1637DeviceConfigV1& config, BoundedBlob<kMaxDeviceConfigBytes>& blob, const char*& error) {
+bool encodeConfigBlob(const Tm1637DeviceConfigV2& config, BoundedBlob<kMaxDeviceConfigBytes>& blob, const char*& error) {
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = tm1637DeviceConfigSize(config);
-    if (!encodeFixedConfigBlob(Tm1637DeviceConfigV1::kMagic, config, buffer, size) || !blob.assign(buffer, size)) {
+    if (!encodeFixedConfigBlob(Tm1637DeviceConfigV2::kMagic, config, buffer, size) || !blob.assign(buffer, size)) {
         error = "failed to encode device config";
         return false;
     }
@@ -52,24 +52,10 @@ bool Tm1637DeviceApiAdapter::parseDeps(const JsonObjectConst& input, std::array<
     if (!IDeviceApiAdapter::parseDependenciesJson(input, deps, depCount, error, required)) {
         return false;
     }
-    if (!required && depCount == 0U) {
-        return true;
-    }
-    if (depCount < 2U) {
-        error = kDependencyCountError;
-        return false;
-    }
-    if (deps[0].role != DeviceRole::Switch || deps[1].role != DeviceRole::Switch) {
-        error = kDependencyError;
-        return false;
-    }
-    if (deps[0].deviceId == deps[1].deviceId) {
-        error = "tm1637 switch dependency device id is duplicated";
-        return false;
-    }
-    for (uint8_t index = 2U; index < depCount; ++index) {
+    // CLK/DIO are config pins now, so every remaining dependency comes from layout placeholders.
+    for (uint8_t index = 0U; index < depCount; ++index) {
         if (deps[index].role != DeviceRole::MetricSource || deps[index].deviceId == 0U) {
-            error = "tm1637 metric dependency is invalid";
+            error = kMetricDependencyError;
             return false;
         }
     }
@@ -87,7 +73,7 @@ bool Tm1637DeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, De
         return false;
     }
 
-    Tm1637DeviceConfigV1 config{};
+    Tm1637DeviceConfigV2 config{};
     if (!configFromJson(configInput, config, error)) {
         return false;
     }
@@ -95,7 +81,7 @@ bool Tm1637DeviceApiAdapter::parseCreateRequest(const JsonObjectConst& input, De
         error = "device base config is invalid";
         return false;
     }
-    if (!parseDeps(configInput, request.deps, request.depCount, error, true)) {
+    if (!parseDeps(configInput, request.deps, request.depCount, error, false)) {
         return false;
     }
     if (!encodeConfigBlob(config, request.configBlob, error)) {
@@ -131,7 +117,7 @@ bool Tm1637DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& inp
         return false;
     }
 
-    Tm1637DeviceConfigV1 config = device(runtime).config();
+    Tm1637DeviceConfigV2 config = device(runtime).config();
     if (!config.parseJson(configInput, error) || !config.validate().ok()) {
         if (error == nullptr) {
             error = kInvalidConfigError;
@@ -150,20 +136,14 @@ bool Tm1637DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& inp
     }
 
     request.depsProvided = !input["deps"].isNull();
-    if (request.depsProvided && !parseDeps(input, request.deps, request.depCount, error, true)) {
+    if (request.depsProvided && !parseDeps(input, request.deps, request.depCount, error, false)) {
         return false;
     }
     if (!request.depsProvided) {
         const DeviceDependencyLink* links = runtime.dependencyLinks();
         const uint8_t depCount = runtime.dependencyCount();
-        if (links == nullptr || depCount < 2U || links[0].role != DeviceRole::Switch || links[1].role != DeviceRole::Switch) {
-            error = kDependencyError;
-            return false;
-        }
-        request.deps[0] = links[0];
-        request.deps[1] = links[1];
-        request.depCount = depCount;
-        for (uint8_t index = 2U; index < depCount; ++index) {
+        request.depCount = links == nullptr ? 0U : depCount;
+        for (uint8_t index = 0U; index < request.depCount; ++index) {
             request.deps[index] = links[index];
         }
     }
@@ -172,21 +152,17 @@ bool Tm1637DeviceApiAdapter::parseUpdateConfigRequest(const JsonObjectConst& inp
 
 DeviceValidationResult Tm1637DeviceApiAdapter::validateDeps(const DeviceRegistry& registry, const DeviceDependencyLink* deps,
                                                             const uint8_t depCount, const IDeviceRuntime* ignoreRuntime) {
-    if (deps == nullptr || depCount < 2U) {
-        return {DeviceError::InvalidRelationship, kDependencyCountError};
+    (void)registry;
+    (void)ignoreRuntime;
+    if (depCount == 0U) {
+        return {};
     }
-    if (deps[0].role != DeviceRole::Switch || deps[1].role != DeviceRole::Switch || deps[0].deviceId == deps[1].deviceId) {
-        return {DeviceError::InvalidRelationship, kDependencyError};
+    if (deps == nullptr) {
+        return {DeviceError::InvalidRelationship, kMetricDependencyError};
     }
-    for (uint8_t index = 0U; index < 2U; ++index) {
-        const IDeviceRuntime* dependency = registry.runtime(deps[index].deviceId);
-        if (dependency == nullptr || dependency == ignoreRuntime || dependency->switchOutputRuntime() == nullptr) {
-            return {DeviceError::InvalidRelationship, "tm1637 switch dependency is missing or invalid"};
-        }
-    }
-    for (uint8_t index = 2U; index < depCount; ++index) {
+    for (uint8_t index = 0U; index < depCount; ++index) {
         if (deps[index].role != DeviceRole::MetricSource || deps[index].deviceId == 0U) {
-            return {DeviceError::InvalidRelationship, "tm1637 metric dependency is invalid"};
+            return {DeviceError::InvalidRelationship, kMetricDependencyError};
         }
     }
     return {};
@@ -194,7 +170,7 @@ DeviceValidationResult Tm1637DeviceApiAdapter::validateDeps(const DeviceRegistry
 
 DeviceValidationResult Tm1637DeviceApiAdapter::validateCreateRequest(const DeviceCreateRequest& request,
                                                                      const DeviceRegistry& registry) const {
-    Tm1637DeviceConfigV1 config{};
+    Tm1637DeviceConfigV2 config{};
     if (!decodeTm1637DeviceConfig(request.configBlob.data(), request.configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, kInvalidConfigError};
     }
@@ -213,7 +189,7 @@ DeviceValidationResult Tm1637DeviceApiAdapter::validateCreateRequest(const Devic
 DeviceValidationResult Tm1637DeviceApiAdapter::validateUpdateConfigRequest(const IDeviceRuntime& runtime,
                                                                            const DeviceConfigUpdateRequest& request,
                                                                            const DeviceRegistry& registry) const {
-    Tm1637DeviceConfigV1 config{};
+    Tm1637DeviceConfigV2 config{};
     if (!decodeTm1637DeviceConfig(request.configBlob.data(), request.configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, kInvalidConfigError};
     }
