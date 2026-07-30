@@ -62,7 +62,9 @@ Work through every item. Missing one usually fails at runtime, not at build.
    dense + expanded). Vuetify only — see the UI rules in `CLAUDE.md`.
 10. **Mock seed** — a fully-configured instance in `src/mock/database.ts`
     (`seedDatabase.devices`) so `?mockMode=1&mockReset=1` exercises the type.
-11. **i18n** — a `device.type.<x>` label key (and any field labels).
+11. **i18n** — a `device.type.<x>` label key (and any field labels). See
+    `docs/spa-localization.md` for reusing an existing sibling type's field
+    keys instead of duplicating them.
 
 Keep the same `typeName` string and `typeId` value across the adapter, the C++
 descriptor, and the TS model — that identity is the contract.

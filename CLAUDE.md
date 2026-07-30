@@ -83,6 +83,8 @@ Vue 3 + Vuetify 4 SPA. Uses `pnpm`. State is managed with Pinia. Real-time updat
 
 **UI rules:** Use Vuetify components, props, slots, and layout classes (`v-container`/`v-row`/`v-col`, `ma-*`, `pa-*`, `ga-*`, `d-flex`). Do not write `<style>` blocks or inline `style=` attributes. Do not override colors, opacity, or typography locally — use theme tokens. If a change would deviate from a standard Vuetify pattern, state that before editing and confirm first.
 
+**Localization:** All user-facing strings go through the `portal-spa/src/i18n/locales/*.ts` key tree (7 languages), never hardcoded literals in a component. Reuse an existing key across device forms/languages whenever the underlying field or message is the same concept — see `docs/spa-localization.md` for how to tell "same concept, reuse the key" apart from "looks similar, needs its own key," and for keeping widget-type-style dictionaries in sync with their TS union.
+
 **Vuetify 4 props:** Use `density="comfortable"` instead of deprecated `dense` prop on `v-row`, `v-alert`, and other Vuetify components. Never use bare `dense` attribute — it triggers upgrade warnings and is not supported.
 
 **Mock seed data:** Every device type must have at least one seeded instance in `portal-spa/src/mock/database.ts`'s `seedDatabase.devices`, fully configured (deps wired up, a realistic config, a non-empty `runtime.output`) rather than left at defaults. This is what makes `?mockMode=1&mockReset=1` immediately useful for manual/Playwright testing of a type without first clicking through its create flow. When adding a new device type, add its seed instance in the same change.
@@ -109,3 +111,4 @@ Vue 3 + Vuetify 4 SPA. Uses `pnpm`. State is managed with Pinia. Real-time updat
 - `docs/analog-output.md` — shared `AbstractOutputDevice<T>` output runtime, analog-output decorator chain (LEDC/fade/scheduled/composer), SPA schedule graph
 - `docs/analog-input.md` — `AnalogInput`/`AnalogInputHub` roles, hub-and-channel pattern (ADS1115, CD74HC4067), non-blocking hub arbitration, NTC thermistor presets/formulas built on top
 - `docs/blob-store.md` — generic key→blob object store on the `devdata` partition, REST API (`/api/blobs/...`), prefix-based bulk delete, server-generated upload keys; not yet wired to any feature
+- `docs/spa-localization.md` — i18n key structure, reusing keys across device forms without duplicating phrases, keeping widget-type-style dictionaries in sync with their TS union
