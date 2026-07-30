@@ -395,6 +395,7 @@ export function mockFetchMetricPlaceholders(): MetricPlaceholderCatalogResponse 
         'float',
         Boolean(temperature?.valid),
         temperature?.valid ? `${temperature.value.toFixed(2)} ${temperature.unitSymbol}` : '',
+        temperature?.valid ? temperature.value : undefined,
       ))
     }
     if (device.record.typeName === 'htu21') {
@@ -410,6 +411,7 @@ export function mockFetchMetricPlaceholders(): MetricPlaceholderCatalogResponse 
         'float',
         Boolean(temperature?.valid),
         temperature?.valid ? `${temperature.value.toFixed(2)} ${temperature.unitSymbol}` : '',
+        temperature?.valid ? temperature.value : undefined,
       ))
       const humidity = output?.humidity
       placeholders.push(metricDescriptor(
@@ -422,6 +424,7 @@ export function mockFetchMetricPlaceholders(): MetricPlaceholderCatalogResponse 
         'float',
         Boolean(humidity?.valid),
         humidity?.valid ? `${humidity.value.toFixed(1)} ${humidity.unitSymbol}` : '',
+        humidity?.valid ? humidity.value : undefined,
       ))
     }
     if (device.record.typeName === 'gpio_switch') {
@@ -453,6 +456,7 @@ export function mockFetchMetricPlaceholders(): MetricPlaceholderCatalogResponse 
         'float',
         Boolean(temperature?.valid),
         temperature?.valid ? `${temperature.value.toFixed(2)} ${temperature.unitSymbol}` : '',
+        temperature?.valid ? temperature.value : undefined,
       ))
       const humidity = output?.humidity
       placeholders.push(metricDescriptor(
@@ -465,6 +469,7 @@ export function mockFetchMetricPlaceholders(): MetricPlaceholderCatalogResponse 
         'float',
         Boolean(humidity?.valid),
         humidity?.valid ? `${humidity.value.toFixed(1)} ${humidity.unitSymbol}` : '',
+        humidity?.valid ? humidity.value : undefined,
       ))
     }
     if (device.record.typeName === 'analog_output') {

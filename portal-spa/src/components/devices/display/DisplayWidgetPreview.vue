@@ -155,11 +155,28 @@ type DigitalDigit = {
   segments: Array<{ id: string; x: number; y: number; width: number; height: number; rx: number; active: boolean }>
 }
 
+// Mirrors DisplayDigitalFormatter.cpp's buildDisplayDigitalFrame(): a value that doesn't resolve
+// (empty) or doesn't fit the cell count is replaced by a fallback pattern rather than silently
+// truncated - firmware calls this "----" (digitalMissing/digitalOverflow aren't modeled in the SPA
+// layout yet, so this always uses firmware's own struct default for both). A value that fits is
+// right-aligned, matching the widget's DisplayDigitalAlign::Right struct default (also not yet
+// exposed as an editable field here).
+const kDigitalFallbackPattern = '----'
+
+function fillDigitalPattern(cellCount: number, pattern: string): Array<{ glyph: string; dot: boolean }> {
+  const source = pattern.length > 0 ? pattern : kDigitalFallbackPattern
+  return Array.from({ length: cellCount }, (_, index) => ({ glyph: source[index % source.length] ?? '-', dot: false }))
+}
+
 const digitalDigits = computed<DigitalDigit[]>(() => {
+  const cellCount = Math.max(1, props.widget.width)
   const parsed = parseDigitalPreviewText(digitalText.value)
-  const segments = parsed.slice(0, Math.max(1, props.widget.width))
-  while (segments.length < Math.max(1, props.widget.width)) {
-    segments.push({ glyph: ' ', dot: false })
+  let segments: Array<{ glyph: string; dot: boolean }>
+  if (digitalText.value.length === 0 || parsed.length > cellCount) {
+    segments = fillDigitalPattern(cellCount, kDigitalFallbackPattern)
+  } else {
+    const padCount = cellCount - parsed.length
+    segments = [...Array.from({ length: padCount }, () => ({ glyph: ' ', dot: false })), ...parsed]
   }
   return segments.map((cell, index) => {
     const x = index + 0.04
