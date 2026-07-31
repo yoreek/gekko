@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-Gekko supporta cinque tipi di display tramite un **designer visuale di layout**
+Gekko supporta sette tipi di display tramite un **designer visuale di layout**
 condiviso. Configuri pagine e widget nel browser con anteprima; coordinate e
 widget si adattano al display.
 
@@ -15,6 +15,8 @@ widget si adattano al display.
 | `st7735` | TFT SPI a colori | Pixel | Testo, forme e bitmap RGB565 |
 | `lcd1602` | HD44780 16 × 2 tramite PCF857x | Celle carattere | Character |
 | `lcd2004` | HD44780 20 × 4 tramite PCF857x | Celle carattere | Character |
+| `lcd1602_pin` | HD44780 16 × 2 collegato direttamente a pin GPIO | Celle carattere | Character |
+| `lcd2004_pin` | HD44780 20 × 4 collegato direttamente a pin GPIO | Celle carattere | Character |
 | `tm1637` | Modulo a sette segmenti a quattro cifre | Posizioni cifra | Digital |
 
 ## Configurare un display
@@ -24,9 +26,15 @@ widget si adattano al display.
    - un [**bus SPI**](/gekko/it/reference/devices/spi-bus/) per ST7735;
    - un [**espansore di porte**](/gekko/it/reference/devices/port-expanders/)
      PCF8574/PCF8575 per LCD1602/LCD2004;
-   - niente per TM1637: pilota direttamente i suoi pin CLK e DIO.
+   - niente per TM1637: pilota direttamente i suoi pin CLK e DIO;
+   - niente nemmeno per LCD1602_PIN/LCD2004_PIN: possiedono direttamente i
+     loro 6 pin dati/controllo, senza modulo I2C né espansore di porte —
+     scegli queste varianti se preferisci collegare l'LCD direttamente
+     all'ESP32 invece di aggiungere un espansore PCF857x.
 2. Crea il display, seleziona questi dispositivi come dipendenze e configura
    indirizzo, cablaggio, pin di controllo, luminosità o rotazione.
+   LCD1602_PIN/LCD2004_PIN chiedono invece direttamente i loro pin `rs`,
+   `e`, `d4`–`d7` e, opzionalmente, `backlight`.
 3. Apri il dispositivo e fai clic su **Design** per entrare nel designer di
    layout.
 

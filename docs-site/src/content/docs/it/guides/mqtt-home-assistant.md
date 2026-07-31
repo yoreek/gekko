@@ -20,6 +20,10 @@ fluisce in entrambe le direzioni in tempo reale:
 | Gekko device | In Home Assistant | You can |
 | --- | --- | --- |
 | Switch GPIO / espansore di porte / auto switch | `switch` | togglarlo da qualsiasi dashboard HA, usarlo nelle automazioni |
+| Uscita analogica (fade / scheduled) | `light` (luminosità) | attenuarla da HA, inserirla nelle scene |
+| Pixel strip | `light` (luminosità) | controllare alimentazione e luminosità di una striscia indirizzabile |
+| Pixel effect solid | `light` (RGB) | scegliere il colore della striscia dalla ruota colori di HA |
+| Pixel effect alert | `binary_sensor` | sapere da HA se l'allarme sta lampeggiando |
 | DS18B20, termistore NTC | `sensor` | tracciare lo storico, attivare automazioni sulla temperatura |
 | HTU21 | due `sensor` (temperatura + umidità) | idem, separatamente |
 | Binary sensor | `binary_sensor` | alert fughe/porte via notifiche HA |

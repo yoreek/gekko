@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-Gekko supports five display types through one shared **visual layout
+Gekko supports seven display types through one shared **visual layout
 designer**. You compose pages and widgets in the browser with a preview; the
 available coordinates and widgets adapt to the selected display.
 
@@ -15,6 +15,8 @@ available coordinates and widgets adapt to the selected display.
 | `st7735` | SPI color TFT | Pixels | Text, shapes, and RGB565 bitmaps |
 | `lcd1602` | HD44780 16 × 2 through PCF857x | Character cells | Character |
 | `lcd2004` | HD44780 20 × 4 through PCF857x | Character cells | Character |
+| `lcd1602_pin` | HD44780 16 × 2 wired directly to GPIO pins | Character cells | Character |
+| `lcd2004_pin` | HD44780 20 × 4 wired directly to GPIO pins | Character cells | Character |
 | `tm1637` | Four-digit seven-segment module | Digit positions | Digital |
 
 ## Setting up a display
@@ -24,10 +26,15 @@ available coordinates and widgets adapt to the selected display.
    - an [**SPI bus**](/gekko/reference/devices/spi-bus/) for ST7735;
    - a PCF8574/PCF8575 [**port expander**](/gekko/reference/devices/port-expanders/)
      for LCD1602/LCD2004;
-   - nothing for TM1637: it drives its CLK and DIO pins directly.
+   - nothing for TM1637: it drives its CLK and DIO pins directly;
+   - nothing for LCD1602_PIN/LCD2004_PIN either: they own their 6 data/control
+     GPIO pins outright, with no I2C backpack or port-expander dependency at
+     all — pick these variants when you'd rather wire the LCD straight to the
+     ESP32 than add a PCF857x expander.
 2. Create the display and select those devices as its dependencies, then set
    its address, wiring channels, control pins, brightness, or rotation as
-   applicable.
+   applicable. LCD1602_PIN/LCD2004_PIN instead ask directly for their `rs`,
+   `e`, `d4`–`d7`, and optional `backlight` GPIO pins.
 3. Open the device and click **Design** to enter the layout designer.
 
 ![Display layout designer](../../../assets/screenshots/portal-display-designer.png)

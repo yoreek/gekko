@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-Gekko admite cinco tipos de pantalla mediante un **diseñador visual de
+Gekko admite siete tipos de pantalla mediante un **diseñador visual de
 disposición** compartido. Configuras páginas y widgets en el navegador con
 vista previa; las coordenadas y widgets se adaptan a la pantalla.
 
@@ -15,6 +15,8 @@ vista previa; las coordenadas y widgets se adaptan a la pantalla.
 | `st7735` | TFT SPI a color | Píxeles | Texto, formas y bitmaps RGB565 |
 | `lcd1602` | HD44780 16 × 2 mediante PCF857x | Celdas de caracteres | Character |
 | `lcd2004` | HD44780 20 × 4 mediante PCF857x | Celdas de caracteres | Character |
+| `lcd1602_pin` | HD44780 16 × 2 cableado directamente a pines GPIO | Celdas de caracteres | Character |
+| `lcd2004_pin` | HD44780 20 × 4 cableado directamente a pines GPIO | Celdas de caracteres | Character |
 | `tm1637` | Módulo de siete segmentos de cuatro dígitos | Posiciones de dígitos | Digital |
 
 ## Configurar una pantalla
@@ -24,9 +26,15 @@ vista previa; las coordenadas y widgets se adaptan a la pantalla.
    - un [**bus SPI**](/gekko/es/reference/devices/spi-bus/) para ST7735;
    - un [**expansor de puertos**](/gekko/es/reference/devices/port-expanders/)
      PCF8574/PCF8575 para LCD1602/LCD2004;
-   - nada para TM1637: controla sus pines CLK y DIO directamente.
+   - nada para TM1637: controla sus pines CLK y DIO directamente;
+   - nada para LCD1602_PIN/LCD2004_PIN tampoco: poseen directamente sus 6
+     pines de datos/control, sin módulo I2C ni expansor de puertos de por
+     medio — elige estas variantes cuando prefieras cablear el LCD
+     directamente al ESP32 en lugar de añadir un expansor PCF857x.
 2. Crea la pantalla, selecciona esos dispositivos como dependencias y
    configura dirección, cableado, pines de control, brillo o rotación.
+   LCD1602_PIN/LCD2004_PIN piden en cambio directamente sus pines `rs`,
+   `e`, `d4`–`d7` y, opcionalmente, `backlight`.
 3. Abre el dispositivo y haz clic en **Design** para entrar en el diseñador de
    disposición.
 

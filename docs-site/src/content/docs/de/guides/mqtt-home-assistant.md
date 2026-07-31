@@ -20,6 +20,10 @@ Steuerung laeuft in beide Richtungen in Echtzeit:
 | Gekko-Geraet | In Home Assistant | Du kannst ... |
 | --- | --- | --- |
 | GPIO / Portexpander / Auto-Switch | `switch` | es aus jedem HA-Dashboard schalten und in Automationen nutzen |
+| Analoger Ausgang (fade / scheduled) | `light` (Helligkeit) | von HA aus dimmen, in Szenen einbinden |
+| Pixel Strip | `light` (Helligkeit) | Stromversorgung und Helligkeit eines adressierbaren Streifens steuern |
+| Pixel Effect Solid | `light` (RGB) | die Farbe des Streifens aus dem HA-Farbrad waehlen |
+| Pixel Effect Alert | `binary_sensor` | aus HA sehen, ob der Alarm gerade blinkt |
 | DS18B20, NTC-Thermistor | `sensor` | Historie charten, Automationen auf Temperatur ausloesen |
 | HTU21 | zwei `sensor`s (Temperatur + Luftfeuchte) | das gleiche, unabhaengig |
 | Binarsensor | `binary_sensor` | Leck-/Tuerenalarme per HA-Benachrichtigung erhalten |

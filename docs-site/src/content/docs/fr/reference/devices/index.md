@@ -38,9 +38,9 @@ ici brièvement, avec des pages détaillées ajoutées progressivement.
 
 | Type | Fonction |
 | --- | --- |
-| `pixel_strip` | Ruban RGB adressable WS2812B sur un GPIO — backend matériel Adafruit NeoPixel |
-| `pixel_effect_solid` | Remplit un `pixel_strip` cible d'une couleur unie |
-| `pixel_effect_alert` | Fait clignoter un `pixel_strip` cible tant que les conditions (ET) sont remplies — ex. indicateur de débordement/alarme |
+| [`pixel_strip`](/gekko/fr/reference/devices/pixel-strip/) | Ruban RGB adressable WS2812B sur un GPIO — backend matériel Adafruit NeoPixel |
+| [`pixel_effect_solid`](/gekko/fr/reference/devices/pixel-strip/) | Remplit un `pixel_strip` cible d'une couleur unie |
+| [`pixel_effect_alert`](/gekko/fr/reference/devices/pixel-strip/) | Fait clignoter un `pixel_strip` cible tant que les conditions (ET) sont remplies — ex. indicateur de débordement/alarme |
 
 ## Entrées analogiques
 
@@ -79,6 +79,6 @@ ici brièvement, avec des pages détaillées ajoutées progressivement.
 | `st7735` | TFT couleur SPI, même concepteur de mise en page |
 | `lcd1602` | LCD à caractères HD44780 de 16 × 2 via un module I2C PCF8574 intégré |
 | `lcd2004` | LCD à caractères HD44780 de 20 × 4 via un module I2C PCF8574 intégré |
-| `lcd1602_pin` | LCD à caractères HD44780 de 16 × 2 câblé directement sur les broches GPIO de l'ESP32 |
-| `lcd2004_pin` | LCD à caractères HD44780 de 20 × 4 câblé directement sur les broches GPIO de l'ESP32 |
+| `lcd1602_pin` | LCD à caractères HD44780 de 16 × 2 câblé directement sur les broches GPIO de l'ESP32, voir le [guide des affichages](/gekko/fr/guides/displays/) |
+| `lcd2004_pin` | LCD à caractères HD44780 de 20 × 4 câblé directement sur les broches GPIO de l'ESP32, voir le [guide des affichages](/gekko/fr/guides/displays/) |
 | `tm1637` | Afficheur sept segments à quatre chiffres avec luminosité et rotation à 180° |

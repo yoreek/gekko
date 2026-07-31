@@ -20,6 +20,10 @@ MQTT-брокеру один раз, а затем публикуйте любо
 | Устройство Gekko | В Home Assistant | Можно |
 | --- | --- | --- |
 | GPIO / port-expander / auto switch | `switch` | переключать с любой панели HA, использовать в автоматизациях |
+| Аналоговый выход (fade / scheduled) | `light` (яркость) | диммировать из HA, добавлять в сценарии |
+| Pixel strip | `light` (яркость) | управлять питанием и яркостью адресной ленты |
+| Pixel effect solid | `light` (RGB) | выбирать цвет ленты на цветовом круге HA |
+| Pixel effect alert | `binary_sensor` | видеть в HA, мигает ли сейчас аварийный индикатор |
 | DS18B20, NTC thermistor | `sensor` | строить график истории, запускать автоматизации по температуре |
 | HTU21 | два `sensor` (temperature + humidity) | то же самое, независимо |
 | Binary sensor | `binary_sensor` | уведомления о протечке/двери через HA |

@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-Gekko prend en charge cinq types d'affichage avec un **concepteur visuel de
+Gekko prend en charge sept types d'affichage avec un **concepteur visuel de
 mise en page** commun. Vous configurez pages et widgets dans le navigateur avec
 un aperçu ; les coordonnées et widgets s'adaptent à l'affichage.
 
@@ -15,6 +15,8 @@ un aperçu ; les coordonnées et widgets s'adaptent à l'affichage.
 | `st7735` | TFT SPI couleur | Pixels | Texte, formes et bitmaps RGB565 |
 | `lcd1602` | HD44780 16 × 2 via PCF857x | Cellules de caractères | Character |
 | `lcd2004` | HD44780 20 × 4 via PCF857x | Cellules de caractères | Character |
+| `lcd1602_pin` | HD44780 16 × 2 câblé directement sur des broches GPIO | Cellules de caractères | Character |
+| `lcd2004_pin` | HD44780 20 × 4 câblé directement sur des broches GPIO | Cellules de caractères | Character |
 | `tm1637` | Module sept segments à quatre chiffres | Positions de chiffres | Digital |
 
 ## Configuration d'un affichage
@@ -24,9 +26,15 @@ un aperçu ; les coordonnées et widgets s'adaptent à l'affichage.
    - un [**bus SPI**](/gekko/fr/reference/devices/spi-bus/) pour ST7735 ;
    - un [**expanseur de ports**](/gekko/fr/reference/devices/port-expanders/)
      PCF8574/PCF8575 pour LCD1602/LCD2004 ;
-   - rien pour le TM1637 : il pilote directement ses broches CLK et DIO.
+   - rien pour le TM1637 : il pilote directement ses broches CLK et DIO ;
+   - rien non plus pour LCD1602_PIN/LCD2004_PIN : ils possèdent directement
+     leurs 6 broches de données/contrôle, sans module I2C ni expanseur de
+     ports — choisissez ces variantes si vous préférez câbler le LCD
+     directement à l'ESP32 plutôt que d'ajouter un expanseur PCF857x.
 2. Créez l'affichage, sélectionnez ces périphériques comme dépendances, puis
    configurez adresse, câblage, broches de contrôle, luminosité ou rotation.
+   LCD1602_PIN/LCD2004_PIN demandent à la place directement leurs broches
+   `rs`, `e`, `d4`–`d7` et, en option, `backlight`.
 3. Ouvrez le périphérique et cliquez sur **Design** pour entrer dans le
    concepteur de mise en page.
 

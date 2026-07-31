@@ -39,9 +39,9 @@ iterativamente.
 
 | Tipo | Función |
 | --- | --- |
-| `pixel_strip` | Tira RGB direccionable WS2812B en un GPIO — backend de hardware Adafruit NeoPixel |
-| `pixel_effect_solid` | Rellena una `pixel_strip` objetivo con un color sólido |
-| `pixel_effect_alert` | Hace parpadear una `pixel_strip` objetivo mientras se cumplen las condiciones (Y) — p. ej. indicador de desbordamiento/alarma |
+| [`pixel_strip`](/gekko/es/reference/devices/pixel-strip/) | Tira RGB direccionable WS2812B en un GPIO — backend de hardware Adafruit NeoPixel |
+| [`pixel_effect_solid`](/gekko/es/reference/devices/pixel-strip/) | Rellena una `pixel_strip` objetivo con un color sólido |
+| [`pixel_effect_alert`](/gekko/es/reference/devices/pixel-strip/) | Hace parpadear una `pixel_strip` objetivo mientras se cumplen las condiciones (Y) — p. ej. indicador de desbordamiento/alarma |
 
 ## Entradas analógicas
 
@@ -80,6 +80,6 @@ iterativamente.
 | `st7735` | TFT a color SPI, el mismo diseñador de disposición |
 | `lcd1602` | LCD de caracteres HD44780 de 16 × 2 mediante un módulo I2C PCF8574 integrado |
 | `lcd2004` | LCD de caracteres HD44780 de 20 × 4 mediante un módulo I2C PCF8574 integrado |
-| `lcd1602_pin` | LCD de caracteres HD44780 de 16 × 2 cableado directamente a pines GPIO del ESP32 |
-| `lcd2004_pin` | LCD de caracteres HD44780 de 20 × 4 cableado directamente a pines GPIO del ESP32 |
+| `lcd1602_pin` | LCD de caracteres HD44780 de 16 × 2 cableado directamente a pines GPIO del ESP32, ver la [guía de pantallas](/gekko/es/guides/displays/) |
+| `lcd2004_pin` | LCD de caracteres HD44780 de 20 × 4 cableado directamente a pines GPIO del ESP32, ver la [guía de pantallas](/gekko/es/guides/displays/) |
 | `tm1637` | Pantalla de siete segmentos de cuatro dígitos con brillo y giro de 180° |

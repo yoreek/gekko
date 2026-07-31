@@ -20,6 +20,10 @@ el control funciona en ambos sentidos en tiempo real:
 | Dispositivo Gekko | En Home Assistant | Puedes... |
 | --- | --- | --- |
 | GPIO / port-expander / auto switch | `switch` | conmutarlo desde cualquier panel de HA y usarlo en automatizaciones |
+| Salida analógica (fade / scheduled) | `light` (brillo) | atenuarla desde HA, incluirla en escenas |
+| Pixel strip | `light` (brillo) | controlar la alimentación y el brillo de una tira direccionable |
+| Pixel effect solid | `light` (RGB) | elegir el color de la tira desde la rueda de color de HA |
+| Pixel effect alert | `binary_sensor` | saber desde HA si la alerta está parpadeando |
 | DS18B20, termistor NTC | `sensor` | trazar el historial, disparar automatizaciones por temperatura |
 | HTU21 | dos `sensor`s (temperatura + humedad) | lo mismo, por separado |
 | Sensor binario | `binary_sensor` | recibir alertas de fuga/puerta por notificaciones de HA |

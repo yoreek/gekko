@@ -38,9 +38,9 @@ detailed pages coming iteratively.
 
 | Type | Purpose |
 | --- | --- |
-| `pixel_strip` | WS2812B addressable RGB strip on one GPIO — Adafruit NeoPixel hardware backend |
-| `pixel_effect_solid` | Fills a target `pixel_strip` with one static color |
-| `pixel_effect_alert` | Blinks a target `pixel_strip` while ANDed conditions are satisfied — e.g. an overflow/alarm indicator |
+| [`pixel_strip`](/gekko/reference/devices/pixel-strip/) | WS2812B addressable RGB strip on one GPIO — Adafruit NeoPixel hardware backend |
+| [`pixel_effect_solid`](/gekko/reference/devices/pixel-strip/) | Fills a target `pixel_strip` with one static color |
+| [`pixel_effect_alert`](/gekko/reference/devices/pixel-strip/) | Blinks a target `pixel_strip` while ANDed conditions are satisfied — e.g. an overflow/alarm indicator |
 
 ## Analog inputs
 
@@ -79,6 +79,6 @@ detailed pages coming iteratively.
 | `st7735` | SPI color TFT, same layout designer |
 | `lcd1602` | HD44780 16 × 2 character LCD through an embedded PCF8574 I2C backpack |
 | `lcd2004` | HD44780 20 × 4 character LCD through an embedded PCF8574 I2C backpack |
-| `lcd1602_pin` | HD44780 16 × 2 character LCD wired directly to ESP32 GPIO pins |
-| `lcd2004_pin` | HD44780 20 × 4 character LCD wired directly to ESP32 GPIO pins |
+| `lcd1602_pin` | HD44780 16 × 2 character LCD wired directly to ESP32 GPIO pins, see the [displays guide](/gekko/guides/displays/) |
+| `lcd2004_pin` | HD44780 20 × 4 character LCD wired directly to ESP32 GPIO pins, see the [displays guide](/gekko/guides/displays/) |
 | `tm1637` | Four-digit seven-segment display with brightness and 180° rotation |

@@ -38,9 +38,9 @@ detaillierten Seiten, die nach und nach folgen.
 
 | Typ | Zweck |
 | --- | --- |
-| `pixel_strip` | WS2812B adressierbarer RGB-Streifen an einem GPIO — Adafruit-NeoPixel-Hardware-Backend |
-| `pixel_effect_solid` | Füllt einen Ziel-`pixel_strip` mit einer einzigen Farbe |
-| `pixel_effect_alert` | Lässt einen Ziel-`pixel_strip` blinken, solange UND-verknüpfte Bedingungen erfüllt sind — z. B. Überlauf-/Alarmanzeige |
+| [`pixel_strip`](/gekko/de/reference/devices/pixel-strip/) | WS2812B adressierbarer RGB-Streifen an einem GPIO — Adafruit-NeoPixel-Hardware-Backend |
+| [`pixel_effect_solid`](/gekko/de/reference/devices/pixel-strip/) | Füllt einen Ziel-`pixel_strip` mit einer einzigen Farbe |
+| [`pixel_effect_alert`](/gekko/de/reference/devices/pixel-strip/) | Lässt einen Ziel-`pixel_strip` blinken, solange UND-verknüpfte Bedingungen erfüllt sind — z. B. Überlauf-/Alarmanzeige |
 
 ## Analoge Eingaenge
 
@@ -79,6 +79,6 @@ detaillierten Seiten, die nach und nach folgen.
 | `st7735` | SPI-Farb-TFT, derselbe Layout-Designer |
 | `lcd1602` | HD44780-Zeichen-LCD mit 16 × 2 Zellen ueber ein eingebettetes PCF8574-I2C-Modul |
 | `lcd2004` | HD44780-Zeichen-LCD mit 20 × 4 Zellen ueber ein eingebettetes PCF8574-I2C-Modul |
-| `lcd1602_pin` | HD44780-Zeichen-LCD mit 16 × 2 Zellen, direkt an ESP32-GPIO-Pins angeschlossen |
-| `lcd2004_pin` | HD44780-Zeichen-LCD mit 20 × 4 Zellen, direkt an ESP32-GPIO-Pins angeschlossen |
+| `lcd1602_pin` | HD44780-Zeichen-LCD mit 16 × 2 Zellen, direkt an ESP32-GPIO-Pins angeschlossen, siehe den [Displays-Leitfaden](/gekko/de/guides/displays/) |
+| `lcd2004_pin` | HD44780-Zeichen-LCD mit 20 × 4 Zellen, direkt an ESP32-GPIO-Pins angeschlossen, siehe den [Displays-Leitfaden](/gekko/de/guides/displays/) |
 | `tm1637` | Vierstellige Siebensegmentanzeige mit Helligkeit und 180°-Drehung |

@@ -21,6 +21,10 @@ fonctionne dans les deux sens en temps réel :
 | Gekko device | In Home Assistant | You can |
 | --- | --- | --- |
 | Interrupteur GPIO / expanseur de ports / automatique | `switch` | le basculer depuis n'importe quel tableau de bord HA, l'utiliser dans des automatisations |
+| Sortie analogique (fade / scheduled) | `light` (luminosité) | la faire varier depuis HA, l'intégrer à des scènes |
+| Pixel strip | `light` (luminosité) | contrôler l'alimentation et la luminosité d'un ruban adressable |
+| Pixel effect solid | `light` (RGB) | choisir la couleur du ruban depuis la roue chromatique de HA |
+| Pixel effect alert | `binary_sensor` | savoir depuis HA si l'alerte clignote actuellement |
 | DS18B20, thermistance NTC | `sensor` | tracer l'historique, déclencher des automatisations sur la température |
 | HTU21 | deux `sensor`s (température + humidité) | idem, indépendamment |
 | Capteur binaire | `binary_sensor` | alertes fuite/porte via les notifications HA |

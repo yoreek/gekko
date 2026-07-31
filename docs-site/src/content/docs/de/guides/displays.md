@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-Gekko unterstuetzt fuenf Displaytypen ueber einen gemeinsamen **visuellen
+Gekko unterstuetzt sieben Displaytypen ueber einen gemeinsamen **visuellen
 Layout-Designer**. Seiten und Widgets werden mit Vorschau im Browser
 konfiguriert; Koordinaten und Widgets passen sich dem Display an.
 
@@ -15,6 +15,8 @@ konfiguriert; Koordinaten und Widgets passen sich dem Display an.
 | `st7735` | SPI-Farb-TFT | Pixel | Text, Formen und RGB565-Bitmaps |
 | `lcd1602` | HD44780 16 × 2 ueber PCF857x | Zeichenzellen | Character |
 | `lcd2004` | HD44780 20 × 4 ueber PCF857x | Zeichenzellen | Character |
+| `lcd1602_pin` | HD44780 16 × 2 direkt an GPIO-Pins | Zeichenzellen | Character |
+| `lcd2004_pin` | HD44780 20 × 4 direkt an GPIO-Pins | Zeichenzellen | Character |
 | `tm1637` | Vierstellige Siebensegmentanzeige | Ziffernpositionen | Digital |
 
 ## Ein Display einrichten
@@ -24,9 +26,15 @@ konfiguriert; Koordinaten und Widgets passen sich dem Display an.
    - einen [**SPI-Bus**](/gekko/de/reference/devices/spi-bus/) fuer ST7735;
    - einen [**Portexpander**](/gekko/de/reference/devices/port-expanders/)
      PCF8574/PCF8575 fuer LCD1602/LCD2004;
-   - nichts fuer TM1637: es steuert seine CLK- und DIO-Pins direkt.
+   - nichts fuer TM1637: es steuert seine CLK- und DIO-Pins direkt;
+   - nichts fuer LCD1602_PIN/LCD2004_PIN: sie besitzen ihre 6 Daten-/
+     Steuerpins direkt, ohne I2C-Modul oder Portexpander-Abhaengigkeit -
+     nimm diese Varianten, wenn du das LCD lieber direkt an den ESP32
+     anschliessen willst statt einen PCF857x-Expander dazwischenzuschalten.
 2. Erstelle das Display, waehle diese Geraete als Abhaengigkeiten und
    konfiguriere Adresse, Verdrahtung, Steuerpins, Helligkeit oder Drehung.
+   LCD1602_PIN/LCD2004_PIN fragen stattdessen direkt nach ihren Pins `rs`,
+   `e`, `d4`-`d7` und optional `backlight`.
 3. Oeffne das Geraet und klicke auf **Design**, um in den Layout-Designer zu
    wechseln.
 

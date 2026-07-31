@@ -20,6 +20,10 @@ ways in real time:
 | Gekko device | In Home Assistant | You can |
 | --- | --- | --- |
 | GPIO / port-expander / auto switch | `switch` | toggle it from any HA dashboard, use it in automations |
+| Analog output (fade / scheduled) | `light` (brightness) | dim it from HA, drop it into scenes |
+| Pixel strip | `light` (brightness) | control an addressable strip's power and brightness |
+| Pixel effect solid | `light` (RGB) | pick the strip's color from HA's color wheel |
+| Pixel effect alert | `binary_sensor` | know from HA whether the alert is currently blinking |
 | DS18B20, NTC thermistor | `sensor` | chart history, trigger automations on temperature |
 | HTU21 | two `sensor`s (temperature + humidity) | same, independently |
 | Binary sensor | `binary_sensor` | leak/door alerts through HA notifications |

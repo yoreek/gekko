@@ -38,9 +38,9 @@ sidebar:
 
 | Тип | Призначення |
 | --- | --- |
-| `pixel_strip` | Адресна RGB-стрічка WS2812B на одному GPIO — апаратний backend на Adafruit NeoPixel |
-| `pixel_effect_solid` | Заливає цільову `pixel_strip` одним суцільним кольором |
-| `pixel_effect_alert` | Блимає цільовою `pixel_strip`, поки виконуються умови (І) — наприклад, індикатор переливу/аварії |
+| [`pixel_strip`](/gekko/uk/reference/devices/pixel-strip/) | Адресна RGB-стрічка WS2812B на одному GPIO — апаратний backend на Adafruit NeoPixel |
+| [`pixel_effect_solid`](/gekko/uk/reference/devices/pixel-strip/) | Заливає цільову `pixel_strip` одним суцільним кольором |
+| [`pixel_effect_alert`](/gekko/uk/reference/devices/pixel-strip/) | Блимає цільовою `pixel_strip`, поки виконуються умови (І) — наприклад, індикатор переливу/аварії |
 
 ## Аналогові входи
 
@@ -79,6 +79,6 @@ sidebar:
 | `st7735` | Кольоровий SPI TFT, той самий дизайнер розкладки |
 | `lcd1602` | Символьний HD44780 LCD 16 × 2 через вбудований I2C-модуль PCF8574 |
 | `lcd2004` | Символьний HD44780 LCD 20 × 4 через вбудований I2C-модуль PCF8574 |
-| `lcd1602_pin` | Символьний HD44780 LCD 16 × 2, підключений напряму до GPIO-пінів ESP32 |
-| `lcd2004_pin` | Символьний HD44780 LCD 20 × 4, підключений напряму до GPIO-пінів ESP32 |
+| `lcd1602_pin` | Символьний HD44780 LCD 16 × 2, підключений напряму до GPIO-пінів ESP32, див. [гайд з дисплеїв](/gekko/uk/guides/displays/) |
+| `lcd2004_pin` | Символьний HD44780 LCD 20 × 4, підключений напряму до GPIO-пінів ESP32, див. [гайд з дисплеїв](/gekko/uk/guides/displays/) |
 | `tm1637` | Чотирирозрядний семисегментний дисплей із яскравістю та поворотом на 180° |
