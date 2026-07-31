@@ -65,7 +65,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { commandDevice } from '@/api'
-import type { DeviceCommandRequest, I2cBusRuntimeSnapshot } from '@/api/contracts'
+import type { DeviceCommandRequest, DeviceRecord, I2cBusRuntimeSnapshot } from '@/api/contracts'
 import { formatI2cAddress, parseI2cAddress } from '@/models/devices/i2c-address'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 
@@ -92,23 +92,53 @@ const scanInProgress = computed(() => scan.value?.inProgress === true)
 const scanReady = computed(() => scan.value?.ready === true)
 const scanTruncated = computed(() => scan.value?.truncated === true)
 
+// Every I2C-consumer device config shares these two field names (see docs/rest-api-contract.md),
+// regardless of concrete type, so occupancy can be resolved generically without a per-type list.
+function deviceI2cAddress(device: DeviceRecord): number | undefined {
+  const address = (device.config as unknown as Record<string, unknown>).i2cAddress
+  return typeof address === 'number' ? address : undefined
+}
+
+function deviceI2cBusId(device: DeviceRecord): number | undefined {
+  const busId = (device.config as unknown as Record<string, unknown>).dependencyDeviceId
+  return typeof busId === 'number' ? busId : undefined
+}
+
+// Config-level occupancy: works even before any scan has run (a not-yet-wired sensor, or a
+// physically absent device) - unlike the firmware's scan-derived ownerDeviceId, which can only
+// name an owner for addresses that actually showed up in the last bus scan.
+function configOwnerDeviceId(address: number): number {
+  const owner = deviceStore.devices.find(
+    device =>
+      device.record.id !== props.currentDeviceId &&
+      deviceI2cBusId(device) === props.busDeviceId &&
+      deviceI2cAddress(device) === address,
+  )
+  return owner?.record.id ?? 0
+}
+
+function ownerIdForAddress(address: number, scanOwnerId?: number): number {
+  if (scanOwnerId && scanOwnerId !== props.currentDeviceId) return scanOwnerId
+  return configOwnerDeviceId(address)
+}
+
 function ownerName(ownerDeviceId: number): string | undefined {
   if (ownerDeviceId === 0 || ownerDeviceId === props.currentDeviceId) return undefined
   return deviceStore.devices.find(device => device.record.id === ownerDeviceId)?.config.name
 }
 
+function itemProps(ownerDeviceId: number): { disabled: boolean; subtitle: string } | undefined {
+  const occupant = ownerName(ownerDeviceId)
+  return occupant ? { disabled: true, subtitle: t('device.dialog.addressOccupiedBy', { name: occupant, id: ownerDeviceId }) } : undefined
+}
+
 // Firmware already sends addressHex with a "0x" prefix (I2cBusDevice::writeDeviceJson) -
 // prepending another one here used to produce "0x0x3C".
-const scanCandidateItems = computed(() => (scan.value?.devices ?? []).map(candidate => {
-  const occupant = ownerName(candidate.ownerDeviceId)
-  return {
-    title: candidate.addressHex,
-    value: candidate.address,
-    props: occupant
-      ? { disabled: true, subtitle: t('device.dialog.addressOccupiedBy', { name: occupant, id: candidate.ownerDeviceId }) }
-      : undefined,
-  }
-}))
+const scanCandidateItems = computed(() => (scan.value?.devices ?? []).map(candidate => ({
+  title: candidate.addressHex,
+  value: candidate.address,
+  props: itemProps(ownerIdForAddress(candidate.address, candidate.ownerDeviceId)),
+})))
 
 // The currently configured address may not be in the last scan's results (no scan run yet, or the
 // device wasn't found last time) - without a matching item, Vuetify's v-select falls back to
@@ -125,15 +155,14 @@ const scanDisplayItems = computed(() => {
     {
       title: `0x${formatI2cAddress(props.modelValue)}`,
       value: props.modelValue,
-      props: undefined,
+      props: itemProps(configOwnerDeviceId(props.modelValue)),
     },
     ...items,
   ]
 })
 
-const currentAddressOwner = computed(() => scan.value?.devices.find(candidate => candidate.address === props.modelValue))
-const currentAddressOwnerId = computed(() => currentAddressOwner.value?.ownerDeviceId ?? 0)
-const currentAddressOwnerName = computed(() => (currentAddressOwner.value ? ownerName(currentAddressOwner.value.ownerDeviceId) : undefined))
+const currentAddressOwnerId = computed(() => ownerIdForAddress(props.modelValue, scan.value?.devices.find(candidate => candidate.address === props.modelValue)?.ownerDeviceId))
+const currentAddressOwnerName = computed(() => ownerName(currentAddressOwnerId.value))
 
 function updateAddress(value: string | number): void {
   const numeric = parseI2cAddress(value)

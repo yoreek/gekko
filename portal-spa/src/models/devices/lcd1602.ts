@@ -1,6 +1,5 @@
 import type { DeviceRecord, DeviceDependencyLink, BaseDeviceConfig, Lcd1602OutputSnapshot } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
-import type { DeviceRole } from '@/models/device-type-ids'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
 import { defaultLcd1602Layout, encodeLcd1602Layout, normalizeLcd1602Layout, type Lcd1602LayoutDraft } from './lcd1602/layout.ts'
 
@@ -63,7 +62,6 @@ export class Lcd1602Device extends BaseDevice<Lcd1602ConfigDraft, Lcd1602CreateD
 
   readonly typeName = Lcd1602Device.TYPE_NAME
   readonly typeId = Lcd1602Device.TYPE_ID
-  readonly dependencyRoles: DeviceRole[] = ['i2c_bus']
 
   static defaultConfig(): Lcd1602ConfigDraft {
     return {

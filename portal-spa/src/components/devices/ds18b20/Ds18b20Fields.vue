@@ -210,8 +210,11 @@ const { update } = useDraftModel(props, emit)
 // the scan command's own HTTP response), so watch the derived candidate list rather than reacting
 // only right after the command resolves. Never overwrites an address the user already set.
 watch(scanCandidateItems, candidates => {
-  if (props.modelValue.address.trim().length === 0 && candidates.length > 0) {
-    update('address', candidates[0].value)
+  if (props.modelValue.address.trim().length === 0) {
+    const firstAvailable = candidates.find(candidate => !candidate.props?.disabled)
+    if (firstAvailable) {
+      update('address', firstAvailable.value)
+    }
   }
 })
 

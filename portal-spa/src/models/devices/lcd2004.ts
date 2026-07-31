@@ -1,6 +1,5 @@
 import type { DeviceRecord, DeviceDependencyLink, BaseDeviceConfig, Lcd2004OutputSnapshot } from '@/api/contracts'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
-import type { DeviceRole } from '@/models/device-type-ids'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
 import { defaultLcd2004Layout, encodeLcd2004Layout, normalizeLcd2004Layout, type Lcd2004LayoutDraft } from './lcd2004/layout.ts'
 import { standardLcd1602Wiring } from './lcd1602.ts'
@@ -52,7 +51,6 @@ export class Lcd2004Device extends BaseDevice<Lcd2004ConfigDraft, Lcd2004CreateD
 
   readonly typeName = Lcd2004Device.TYPE_NAME
   readonly typeId = Lcd2004Device.TYPE_ID
-  readonly dependencyRoles: DeviceRole[] = ['i2c_bus']
 
   static defaultConfig(): Lcd2004ConfigDraft {
     return {
