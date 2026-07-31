@@ -53,6 +53,9 @@
       <v-alert v-if="scanTruncated" type="warning" variant="tonal" density="comfortable">
         {{ t('device.dialog.i2cScanTruncated') }}
       </v-alert>
+      <v-alert v-if="currentAddressOwnerName" type="warning" variant="tonal" density="comfortable">
+        {{ t('device.dialog.addressOccupiedBy', { name: currentAddressOwnerName, id: currentAddressOwnerId }) }}
+      </v-alert>
     </v-col>
   </v-row>
 </template>
@@ -69,6 +72,7 @@ import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 const props = defineProps<{
   modelValue: number
   busDeviceId: number
+  currentDeviceId?: number
 }>()
 
 const emit = defineEmits<{
@@ -87,12 +91,24 @@ const scan = computed(() => (selectedDependency.value?.runtime as I2cBusRuntimeS
 const scanInProgress = computed(() => scan.value?.inProgress === true)
 const scanReady = computed(() => scan.value?.ready === true)
 const scanTruncated = computed(() => scan.value?.truncated === true)
+
+function ownerName(ownerDeviceId: number): string | undefined {
+  if (ownerDeviceId === 0 || ownerDeviceId === props.currentDeviceId) return undefined
+  return deviceStore.devices.find(device => device.record.id === ownerDeviceId)?.config.name
+}
+
 // Firmware already sends addressHex with a "0x" prefix (I2cBusDevice::writeDeviceJson) -
 // prepending another one here used to produce "0x0x3C".
-const scanCandidateItems = computed(() => (scan.value?.devices ?? []).map(candidate => ({
-  title: candidate.addressHex,
-  value: candidate.address,
-})))
+const scanCandidateItems = computed(() => (scan.value?.devices ?? []).map(candidate => {
+  const occupant = ownerName(candidate.ownerDeviceId)
+  return {
+    title: candidate.addressHex,
+    value: candidate.address,
+    props: occupant
+      ? { disabled: true, subtitle: t('device.dialog.addressOccupiedBy', { name: occupant, id: candidate.ownerDeviceId }) }
+      : undefined,
+  }
+}))
 
 // The currently configured address may not be in the last scan's results (no scan run yet, or the
 // device wasn't found last time) - without a matching item, Vuetify's v-select falls back to
@@ -109,10 +125,15 @@ const scanDisplayItems = computed(() => {
     {
       title: `0x${formatI2cAddress(props.modelValue)}`,
       value: props.modelValue,
+      props: undefined,
     },
     ...items,
   ]
 })
+
+const currentAddressOwner = computed(() => scan.value?.devices.find(candidate => candidate.address === props.modelValue))
+const currentAddressOwnerId = computed(() => currentAddressOwner.value?.ownerDeviceId ?? 0)
+const currentAddressOwnerName = computed(() => (currentAddressOwner.value ? ownerName(currentAddressOwner.value.ownerDeviceId) : undefined))
 
 function updateAddress(value: string | number): void {
   const numeric = parseI2cAddress(value)

@@ -16,6 +16,7 @@
     <I2cAddressPicker
       :model-value="modelValue.i2cAddress"
       :bus-device-id="modelValue.dependencyDeviceId"
+      :current-device-id="device?.record.id"
       @update:model-value="update('i2cAddress', $event)"
     />
 

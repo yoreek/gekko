@@ -62,6 +62,7 @@ public:
 
     bool handleCommand(const DeviceCommand& command) override;
     bool hasDuplicateDependentRomAddress(const OneWireRomAddress& address, const IDeviceRuntime* ignoreDependent = nullptr) const override;
+    DeviceId dependentOwnerForAddress(const OneWireRomAddress& address) const;
 
 private:
     const DeviceBaseConfigV1& baseConfig() const override;

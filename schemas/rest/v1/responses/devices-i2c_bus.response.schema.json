@@ -52,9 +52,10 @@
                 "type": "object",
                 "properties": {
                   "address": { "type": "integer", "minimum": 0, "maximum": 127 },
-                  "addressHex": { "type": "string", "pattern": "^0x[0-9A-F]{2}$" }
+                  "addressHex": { "type": "string", "pattern": "^0x[0-9A-F]{2}$" },
+                  "ownerDeviceId": { "type": "integer", "minimum": 0 }
                 },
-                "required": ["address", "addressHex"],
+                "required": ["address", "addressHex", "ownerDeviceId"],
                 "additionalProperties": false
               },
               "maxItems": 16

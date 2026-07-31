@@ -742,6 +742,7 @@ export default {
       i2cScanAddress: 'Address: {value}',
       i2cAddressNoDependency: 'Create an I2C bus dependency before adding this device.',
       i2cAddressHint: '0x00-0x7F',
+      addressOccupiedBy: 'Occupied by {name} (#{id})',
       scanResults: 'Scan results',
       spiGeneration: 'Generation: {value}',
       spiTransactionActive: 'Transaction active',

@@ -20,6 +20,7 @@ void OneWireBusDeviceApiAdapter::writeRuntimeJson(const OneWireBusDevice& device
         family[2] = '\0';
         item["address"] = rom;
         item["familyCode"] = family;
+        item["ownerDeviceId"] = device.dependentOwnerForAddress(device.scan().devices[index]);
     }
 }
 

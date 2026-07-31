@@ -801,6 +801,9 @@ void test_onewire_bus_detects_duplicate_dependent_rom_address() {
     TEST_ASSERT_TRUE(bus.hasDuplicateDependentRomAddress(first.config().address, &first));
     TEST_ASSERT_TRUE(bus.hasDuplicateDependentRomAddress(second.config().address, &second));
     TEST_ASSERT_FALSE(bus.hasDuplicateDependentRomAddress(makeSensorConfig(0x22).address));
+
+    TEST_ASSERT_EQUAL_UINT32(first.deviceId(), bus.dependentOwnerForAddress(first.config().address));
+    TEST_ASSERT_EQUAL_UINT32(0U, bus.dependentOwnerForAddress(makeSensorConfig(0x22).address));
 }
 
 void test_ds18b20_adapter_rejects_duplicate_address_on_same_dependency() {

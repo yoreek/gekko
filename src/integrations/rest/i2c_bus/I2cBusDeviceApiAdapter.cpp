@@ -21,6 +21,7 @@ void I2cBusDeviceApiAdapter::writeRuntimeJson(const I2cBusDevice& device, JsonOb
         std::snprintf(addressHex, sizeof(addressHex), "0x%02X", device.scan().devices[index]);
         item["address"] = device.scan().devices[index];
         item["addressHex"] = addressHex;
+        item["ownerDeviceId"] = device.dependentOwnerForAddress(device.scan().devices[index]);
     }
 }
 

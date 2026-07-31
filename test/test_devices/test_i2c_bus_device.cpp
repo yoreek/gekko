@@ -97,7 +97,10 @@ public:
 
 class FakeI2cDependentRuntime final : public DeviceRuntimeBase {
 public:
-    explicit FakeI2cDependentRuntime(uint8_t address) : DeviceRuntimeBase((PState)&FakeI2cDependentRuntime::Idle), address_(address) {}
+    explicit FakeI2cDependentRuntime(uint8_t address, DeviceId deviceId = 0)
+        : DeviceRuntimeBase((PState)&FakeI2cDependentRuntime::Idle), address_(address) {
+        deviceId_ = deviceId;
+    }
 
     bool i2cAddress(uint8_t& address) const override {
         address = address_;
@@ -254,13 +257,17 @@ void test_i2c_bus_runtime_lifecycle_and_duplicate_address_detection() {
     first.release();
     TEST_ASSERT_FALSE(bus.dependencyTransactionActive());
 
-    FakeI2cDependentRuntime dependentA(0x3CU);
-    FakeI2cDependentRuntime dependentB(0x27U);
+    FakeI2cDependentRuntime dependentA(0x3CU, 101U);
+    FakeI2cDependentRuntime dependentB(0x27U, 102U);
     bus.attachDependentRuntime(&dependentA);
     bus.attachDependentRuntime(&dependentB);
     TEST_ASSERT_TRUE(bus.hasDuplicateDependentI2cAddress(0x3CU, nullptr));
     TEST_ASSERT_FALSE(bus.hasDuplicateDependentI2cAddress(0x28U, nullptr));
     TEST_ASSERT_FALSE(bus.hasDuplicateDependentI2cAddress(0x3CU, &dependentA));
+
+    TEST_ASSERT_EQUAL_UINT32(101U, bus.dependentOwnerForAddress(0x3CU));
+    TEST_ASSERT_EQUAL_UINT32(102U, bus.dependentOwnerForAddress(0x27U));
+    TEST_ASSERT_EQUAL_UINT32(0U, bus.dependentOwnerForAddress(0x28U));
 }
 
 void test_i2c_bus_runtime_reconfigures_and_advances_generation() {

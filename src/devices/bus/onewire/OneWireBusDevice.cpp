@@ -171,6 +171,23 @@ bool OneWireBusDevice::hasDuplicateDependentRomAddress(const OneWireRomAddress& 
     return false;
 }
 
+DeviceId OneWireBusDevice::dependentOwnerForAddress(const OneWireRomAddress& address) const {
+    for (const IDeviceRuntime* dependent : dependentRuntimes()) {
+        if (dependent == nullptr) {
+            continue;
+        }
+
+        OneWireRomAddress dependentAddress{};
+        if (!dependent->oneWireRomAddress(dependentAddress)) {
+            continue;
+        }
+        if (sameRomAddress(address, dependentAddress)) {
+            return dependent->deviceId();
+        }
+    }
+    return 0;
+}
+
 DeviceTypeDescriptor OneWireBusDevice::descriptor() {
     DeviceTypeDescriptor descriptor;
     descriptor.typeId = kOneWireBusDeviceTypeId;

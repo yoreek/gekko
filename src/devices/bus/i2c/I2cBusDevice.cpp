@@ -194,6 +194,26 @@ bool I2cBusDevice::hasDuplicateDependentI2cAddress(uint8_t address, const IDevic
     return false;
 }
 
+DeviceId I2cBusDevice::dependentOwnerForAddress(uint8_t address) const {
+    if (address > 0x7FU) {
+        return 0;
+    }
+    for (const IDeviceRuntime* dependent : dependentRuntimes()) {
+        if (dependent == nullptr) {
+            continue;
+        }
+
+        uint8_t dependentAddress{0};
+        if (!dependent->i2cAddress(dependentAddress)) {
+            continue;
+        }
+        if (dependentAddress == address) {
+            return dependent->deviceId();
+        }
+    }
+    return 0;
+}
+
 DeviceTypeDescriptor I2cBusDevice::descriptor() {
     DeviceTypeDescriptor descriptor;
     descriptor.typeId = kI2cBusDeviceTypeId;

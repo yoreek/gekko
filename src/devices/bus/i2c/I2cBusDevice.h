@@ -69,6 +69,7 @@ public:
 
     bool handleCommand(const DeviceCommand& command) override;
     bool hasDuplicateDependentI2cAddress(uint8_t address, const IDeviceRuntime* ignoreDependent = nullptr) const override;
+    DeviceId dependentOwnerForAddress(uint8_t address) const;
 
 private:
     const DeviceBaseConfigV1& baseConfig() const override;

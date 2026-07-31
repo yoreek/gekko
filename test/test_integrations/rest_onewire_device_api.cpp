@@ -184,6 +184,7 @@ void test_onewire_api_adapter_serializes_runtime_scan_snapshot() {
     TEST_ASSERT_EQUAL_UINT8(1, output["runtime"]["scan"]["deviceCount"].as<uint8_t>());
     TEST_ASSERT_EQUAL_STRING("28FF641D621603AD", output["runtime"]["scan"]["devices"][0]["address"].as<const char*>());
     TEST_ASSERT_EQUAL_STRING("28", output["runtime"]["scan"]["devices"][0]["familyCode"].as<const char*>());
+    TEST_ASSERT_EQUAL_UINT32(0U, output["runtime"]["scan"]["devices"][0]["ownerDeviceId"].as<uint32_t>());
     TEST_ASSERT_FALSE(output["runtime"]["scan"]["invalidCrcSeen"].as<bool>());
 }
 

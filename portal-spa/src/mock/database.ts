@@ -540,10 +540,12 @@ const seedDatabase: SeedDatabase = {
           {
             address: '28FF641D621603AD',
             familyCode: '28',
+            ownerDeviceId: 670845752,
           },
           {
             address: '10FFAA0000000001',
             familyCode: '10',
+            ownerDeviceId: 0,
           },
         ],
       },

@@ -349,6 +349,7 @@ interface OneWireBusConfig extends BaseDeviceConfig {
 interface OneWireScanDeviceSnapshot {
   address: string
   familyCode: string
+  ownerDeviceId: number // 0 if no configured device claims this ROM address, else the owning device's id
 }
 
 interface OneWireScanSnapshot {
@@ -364,6 +365,13 @@ interface OneWireBusRuntime extends BaseDeviceRuntime {
   scan?: OneWireScanSnapshot
 }
 ```
+
+`I2cBusScanDeviceSnapshot` (returned by the `i2c_bus` runtime's own `scan.devices`, see `I2cBusDeviceApiAdapter`) carries the
+same `ownerDeviceId` convention: `{ address: number, addressHex: string, ownerDeviceId: number }`, where `ownerDeviceId` is
+`0` when no dependent device is configured at that address. Both bus types compute this by walking their own dependent
+runtimes (`I2cBusDevice::dependentOwnerForAddress` / `OneWireBusDevice::dependentOwnerForAddress`), so it reflects live
+configured dependents rather than a client-side guess — the SPA resolves the owner's display name locally from the
+already-loaded device registry store using this id.
 
 ### DS18B20 Temperature Sensor
 

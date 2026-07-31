@@ -271,6 +271,7 @@ export interface HumidityOutputSnapshot {
 export interface OneWireScanDeviceSnapshot {
   address: string
   familyCode: string
+  ownerDeviceId: number
 }
 
 export interface OneWireScanSnapshot {
@@ -315,6 +316,7 @@ export interface BusRuntimeDiagnosticsSnapshot {
 export interface I2cBusScanDeviceSnapshot {
   address: number
   addressHex: string
+  ownerDeviceId: number
 }
 
 export interface I2cBusScanSnapshot {

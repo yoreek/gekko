@@ -138,7 +138,14 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { commandDevice } from '@/api'
-import type { DeviceCommandRequest, DeviceRecord, Ds18b20TemperatureSensorOutputSnapshot, TemperatureOutputSnapshot, TemperatureUnit } from '@/api/contracts'
+import type {
+  DeviceCommandRequest,
+  DeviceRecord,
+  Ds18b20TemperatureSensorOutputSnapshot,
+  OneWireScanDeviceSnapshot,
+  TemperatureOutputSnapshot,
+  TemperatureUnit,
+} from '@/api/contracts'
 import { Ds18b20Device, type Ds18b20ConfigDraft } from '@/models/devices/ds18b20'
 import { devicesForDependencyRole, dependencyOptionsForRole } from '@/models/devices/device-model-factory'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
@@ -168,12 +175,25 @@ const selectedDependencyScanInProgress = computed(() => {
   const scan = selectedDependency.value ? (selectedDependency.value.runtime as { scan?: { inProgress?: boolean } }).scan : undefined
   return scan?.inProgress === true
 })
+function ownerName(ownerDeviceId: number): string | undefined {
+  if (ownerDeviceId === 0 || ownerDeviceId === props.device?.record.id) return undefined
+  return deviceStore.devices.find(candidate => candidate.record.id === ownerDeviceId)?.config.name
+}
+
 const scanCandidateItems = computed(() => {
-  const devices = (selectedDependency.value ? (selectedDependency.value.runtime as { scan?: { devices?: Array<{ address: string; familyCode: string }> } }).scan?.devices : undefined) ?? []
-  return devices.filter(Ds18b20Device.isScanCandidate).map(candidate => ({
-    title: `${candidate.address} · ${t('device.dialog.onewireFamilyCode', { family: candidate.familyCode })}`,
-    value: candidate.address,
-  }))
+  const devices = (selectedDependency.value
+    ? (selectedDependency.value.runtime as { scan?: { devices?: OneWireScanDeviceSnapshot[] } }).scan?.devices
+    : undefined) ?? []
+  return devices.filter(Ds18b20Device.isScanCandidate).map(candidate => {
+    const occupant = ownerName(candidate.ownerDeviceId)
+    return {
+      title: `${candidate.address} · ${t('device.dialog.onewireFamilyCode', { family: candidate.familyCode })}`,
+      value: candidate.address,
+      props: occupant
+        ? { disabled: true, subtitle: t('device.dialog.addressOccupiedBy', { name: occupant, id: candidate.ownerDeviceId }) }
+        : undefined,
+    }
+  })
 })
 
 const resolutionItems = computed(() => Ds18b20Device.resolutionOptions.map(value => ({ title: t('device.dialog.ds18b20.resolution', { value }), value })))

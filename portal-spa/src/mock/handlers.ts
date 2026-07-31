@@ -213,10 +213,12 @@ function completeOneWireScan(deviceId: number): void {
       {
         address: '28FF641D621603AD',
         familyCode: '28',
+        ownerDeviceId: 670845752,
       },
       {
         address: '10FFAA0000000001',
         familyCode: '10',
+        ownerDeviceId: 0,
       },
     ],
   }
@@ -1314,8 +1316,8 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
             truncated: false,
             nextAddress: 0x77,
             devices: [
-              { address: 0x3C, addressHex: '0x3C' },
-              { address: 0x68, addressHex: '0x68' },
+              { address: 0x3C, addressHex: '0x3C', ownerDeviceId: 670845755 },
+              { address: 0x68, addressHex: '0x68', ownerDeviceId: 670845759 },
             ],
           }
           break

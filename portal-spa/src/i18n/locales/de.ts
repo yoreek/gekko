@@ -741,6 +741,7 @@ export default {
       i2cScanTruncated: 'Die Scan-Ergebnisse wurden gekürzt.',
       i2cScanAddress: 'Adresse: {value}',
       i2cAddressNoDependency: 'Erstellen Sie eine I2C-Bus-Abhängigkeit, bevor Sie dieses Gerät hinzufügen.',
+      addressOccupiedBy: 'Belegt von {name} (#{id})',
       i2cAddressHint: '0x00-0x7F',
       scanResults: 'Scan-Ergebnisse',
       spiGeneration: 'Generation: {value}',

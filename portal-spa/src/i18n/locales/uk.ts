@@ -741,6 +741,7 @@ export default {
       i2cScanTruncated: 'Результати сканування обрізано.',
       i2cScanAddress: 'Адреса: {value}',
       i2cAddressNoDependency: 'Створіть залежність шини I2C перед додаванням цього пристрою.',
+      addressOccupiedBy: 'Зайнято пристроєм {name} (#{id})',
       i2cAddressHint: '0x00-0x7F',
       scanResults: 'Результати сканування',
       spiGeneration: 'Покоління: {value}',
