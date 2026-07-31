@@ -1,5 +1,5 @@
 <template>
-  <v-menu v-model="menuOpen" :close-on-content-click="false" @update:model-value="onMenuToggle">
+  <v-menu v-model="menuOpen" :close-on-content-click="false" min-width="0" @update:model-value="onMenuToggle">
     <template #activator="{ props: activatorProps }">
       <v-text-field
         v-bind="activatorProps"
@@ -16,20 +16,12 @@
         </template>
       </v-text-field>
     </template>
-    <v-card>
-      <v-color-picker
-        v-model="stagedHex"
-        mode="hex"
-        :modes="['hex']"
-        :disabled="readonly || disabled"
-        flat
-      />
-      <v-card-actions>
-        <v-spacer />
+    <v-color-picker v-model="stagedHex" mode="hex" :modes="['hex']" :disabled="readonly || disabled" elevation="4" rounded="sm">
+      <template #actions>
         <v-btn variant="text" @click="cancel">{{ t('actions.cancel') }}</v-btn>
         <v-btn variant="tonal" color="primary" @click="apply">{{ t('actions.apply') }}</v-btn>
-      </v-card-actions>
-    </v-card>
+      </template>
+    </v-color-picker>
   </v-menu>
 </template>
 

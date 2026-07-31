@@ -21,7 +21,6 @@ import type { BaseDeviceRuntime, DeviceCommandRequest, DeviceRecord, PixelColor,
 import DeviceWidgetBase from '@/components/devices/common/DeviceWidgetBase.vue'
 import SwitchPowerButton from '@/components/devices/common/SwitchPowerButton.vue'
 import PixelColorFields from './PixelColorFields.vue'
-import type { PixelEffectSolidConfigDraft } from '@/models/devices/pixel-effects'
 
 interface PixelEffectSolidRuntime extends BaseDeviceRuntime {
   output?: PixelEffectSolidOutputSnapshot
@@ -29,7 +28,7 @@ interface PixelEffectSolidRuntime extends BaseDeviceRuntime {
 
 const props = withDefaults(
   defineProps<{
-    device: DeviceRecord<PixelEffectSolidConfigDraft, PixelEffectSolidRuntime>
+    device: DeviceRecord<any, PixelEffectSolidRuntime>
     editable?: boolean
     dense?: boolean
   }>(),

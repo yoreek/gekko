@@ -22,15 +22,22 @@
       inset
       @update:model-value="update('restorePreviousState', Boolean($event))"
     />
+
+    <template v-if="device">
+      <v-divider />
+      <div class="text-label-small text-medium-emphasis">{{ t('device.dialog.quickCommands') }}</div>
+      <PixelEffectSolidWidget :device="device" :dense="false" @command="emit('command', $event)" />
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import type { DeviceRecord } from '@/api/contracts'
+import type { DeviceCommandRequest, DeviceRecord } from '@/api/contracts'
 import type { PixelEffectSolidConfigDraft } from '@/models/devices/pixel-effects'
 import PixelStripTargetSelect from './PixelStripTargetSelect.vue'
 import PixelColorFields from './PixelColorFields.vue'
+import PixelEffectSolidWidget from './PixelEffectSolidWidget.vue'
 import { useDraftModel } from '@/composables/useDraftModel'
 
 const props = defineProps<{
@@ -39,7 +46,10 @@ const props = defineProps<{
   mode: 'view' | 'edit' | 'create'
   busy?: boolean
 }>()
-const emit = defineEmits<{ 'update:modelValue': [value: PixelEffectSolidConfigDraft] }>()
+const emit = defineEmits<{
+  'update:modelValue': [value: PixelEffectSolidConfigDraft]
+  command: [payload: DeviceCommandRequest]
+}>()
 const { t } = useI18n()
 const { update } = useDraftModel<PixelEffectSolidConfigDraft>(props, emit)
 </script>
