@@ -28,6 +28,9 @@
 #include "integrations/rest/lcd2004_pin/Lcd2004PinDeviceApiAdapter.h"
 #include "integrations/rest/ntc_thermistor/NtcThermistorTemperatureSensorDeviceApiAdapter.h"
 #include "integrations/rest/onewire_bus/OneWireBusDeviceApiAdapter.h"
+#include "integrations/rest/pixel_strip/PixelEffectAlertDeviceApiAdapter.h"
+#include "integrations/rest/pixel_strip/PixelEffectSolidDeviceApiAdapter.h"
+#include "integrations/rest/pixel_strip/PixelStripDeviceApiAdapter.h"
 #include "integrations/rest/rtc_ds1302/Ds1302RtcDeviceApiAdapter.h"
 #include "integrations/rest/rtc_ds3231/Ds3231RtcDeviceApiAdapter.h"
 #include "integrations/rest/schedule/ScheduleDeviceApiAdapter.h"
@@ -298,6 +301,9 @@ DeviceApiAdapterRegistry DeviceApiAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(Lcd1602PinDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Lcd2004PinDeviceApiAdapter::instance());
     (void)registry.registerAdapter(Tm1637DeviceApiAdapter::instance());
+    (void)registry.registerAdapter(PixelStripDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(PixelEffectSolidDeviceApiAdapter::instance());
+    (void)registry.registerAdapter(PixelEffectAlertDeviceApiAdapter::instance());
     return registry;
 }
 

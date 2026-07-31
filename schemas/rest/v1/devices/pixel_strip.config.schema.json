@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/pixel_strip.config.schema.json",
+  "title": "pixel_strip configuration",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean", "default": true },
+    "pin": { "type": "integer", "minimum": 0, "maximum": 255, "default": 255 },
+    "pixelCount": { "type": "integer", "minimum": 1, "maximum": 300, "default": 1 },
+    "restorePreviousState": { "type": "boolean", "default": false },
+    "startupBrightness": { "type": "integer", "minimum": 0, "maximum": 100, "default": 50 }
+  },
+  "required": ["name"],
+  "additionalProperties": true
+}

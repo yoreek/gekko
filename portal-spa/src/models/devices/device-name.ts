@@ -43,6 +43,9 @@ export const DEFAULT_DEVICE_NAMES: Record<DeviceTypeName, string> = {
   lcd1602_pin: 'LCD1602',
   lcd2004_pin: 'LCD2004',
   tm1637: 'TM1637',
+  pixel_strip: 'Pixel strip',
+  pixel_effect_solid: 'Solid color',
+  pixel_effect_alert: 'Alert blink',
 }
 
 export function deviceNameByteLength(value: string): number {

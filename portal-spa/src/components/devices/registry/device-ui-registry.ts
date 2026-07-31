@@ -34,6 +34,8 @@ import { Lcd2004Device } from '@/models/devices/lcd2004'
 import { Lcd1602PinDevice } from '@/models/devices/lcd1602-pin'
 import { Lcd2004PinDevice } from '@/models/devices/lcd2004-pin'
 import { Tm1637Device } from '@/models/devices/tm1637'
+import { PixelStripDevice } from '@/models/devices/pixel-strip'
+import { PixelEffectAlertDevice, PixelEffectSolidDevice } from '@/models/devices/pixel-effects'
 import DummyFields from '@/components/devices/dummy/DummyFields.vue'
 import DummyWidget from '@/components/devices/dummy/DummyWidget.vue'
 import GpioSwitchFields from '@/components/devices/gpio-switch/GpioSwitchFields.vue'
@@ -101,6 +103,12 @@ import Lcd2004PinWidget from '@/components/devices/lcd2004-pin/Lcd2004PinWidget.
 import Tm1637Fields from '@/components/devices/tm1637/Tm1637Fields.vue'
 import Tm1637Widget from '@/components/devices/tm1637/Tm1637Widget.vue'
 import DisplayDesignerView from '@/views/DisplayDesignerView.vue'
+import PixelStripFields from '@/components/devices/pixel-strip/PixelStripFields.vue'
+import PixelStripWidget from '@/components/devices/pixel-strip/PixelStripWidget.vue'
+import PixelEffectSolidFields from '@/components/devices/pixel-strip/PixelEffectSolidFields.vue'
+import PixelEffectSolidWidget from '@/components/devices/pixel-strip/PixelEffectSolidWidget.vue'
+import PixelEffectAlertFields from '@/components/devices/pixel-strip/PixelEffectAlertFields.vue'
+import PixelEffectAlertWidget from '@/components/devices/pixel-strip/PixelEffectAlertWidget.vue'
 
 const unknownUi: DeviceUi = {
   typeId: 0,
@@ -506,6 +514,39 @@ const tm1637Ui: DeviceUi = {
   designerComponent: DisplayDesignerView,
 }
 
+const pixelStripUi: DeviceUi = {
+  typeId: PixelStripDevice.TYPE_ID,
+  typeName: PixelStripDevice.TYPE_NAME,
+  labelKey: 'device.type.pixelStrip',
+  category: 'outputs',
+  searchAliases: ['ws2812', 'neopixel', 'led'],
+  icon: 'pixel-strip',
+  fieldsComponent: PixelStripFields,
+  widgetComponent: PixelStripWidget,
+}
+
+const pixelEffectSolidUi: DeviceUi = {
+  typeId: PixelEffectSolidDevice.TYPE_ID,
+  typeName: PixelEffectSolidDevice.TYPE_NAME,
+  labelKey: 'device.type.pixelEffectSolid',
+  category: 'outputs',
+  searchAliases: ['ws2812', 'neopixel', 'led'],
+  icon: 'pixel-strip',
+  fieldsComponent: PixelEffectSolidFields,
+  widgetComponent: PixelEffectSolidWidget,
+}
+
+const pixelEffectAlertUi: DeviceUi = {
+  typeId: PixelEffectAlertDevice.TYPE_ID,
+  typeName: PixelEffectAlertDevice.TYPE_NAME,
+  labelKey: 'device.type.pixelEffectAlert',
+  category: 'automation',
+  searchAliases: ['ws2812', 'neopixel', 'led', 'blink'],
+  icon: 'pixel-strip',
+  fieldsComponent: PixelEffectAlertFields,
+  widgetComponent: PixelEffectAlertWidget,
+}
+
 const deviceUiV2ByTypeId: Record<number, DeviceUi> = {
   [dummyUi.typeId]: dummyUi,
   [gpioSwitchUi.typeId]: gpioSwitchUi,
@@ -542,6 +583,9 @@ const deviceUiV2ByTypeId: Record<number, DeviceUi> = {
   [lcd1602PinUi.typeId]: lcd1602PinUi,
   [lcd2004PinUi.typeId]: lcd2004PinUi,
   [tm1637Ui.typeId]: tm1637Ui,
+  [pixelStripUi.typeId]: pixelStripUi,
+  [pixelEffectSolidUi.typeId]: pixelEffectSolidUi,
+  [pixelEffectAlertUi.typeId]: pixelEffectAlertUi,
 }
 
 export const allDeviceUis: DeviceUi[] = Object.values(deviceUiV2ByTypeId)

@@ -20,6 +20,9 @@
 #include "integrations/mqtt/binary/BinarySensorHaEntityAdapter.h"
 #include "integrations/mqtt/dosing/DosingPumpHaEntityAdapters.h"
 #include "integrations/mqtt/humidity/HumiditySensorHaEntityAdapter.h"
+#include "integrations/mqtt/pixel_strip/PixelEffectAlertHaEntityAdapter.h"
+#include "integrations/mqtt/pixel_strip/PixelEffectSolidHaEntityAdapter.h"
+#include "integrations/mqtt/pixel_strip/PixelStripHaEntityAdapter.h"
 #include "integrations/mqtt/switch/SwitchOutputHaEntityAdapter.h"
 #include "integrations/mqtt/temperature/TemperatureSensorHaEntityAdapter.h"
 #include "integrations/mqtt/thermostat/ThermostatHaEntityAdapter.h"
@@ -136,6 +139,12 @@ HaEntityAdapterRegistry HaEntityAdapterRegistry::withDefaults() {
     (void)registry.registerAdapter(kDosingAutoModeAdapter);
     (void)registry.registerAdapter(kAnalogPortInputAdapter);
     (void)registry.registerAdapter(kAnalogInputChannelAdapter);
+    // Each pixel_* device type manages only the fields it actually owns: pixel_strip is a
+    // brightness-only light, pixel_effect_solid is a color-only light, pixel_effect_alert is a
+    // read-only binary_sensor -- no unified cross-device light entity (see docs/pixel-strip.md).
+    (void)registry.registerAdapter(PixelStripHaEntityAdapter::instance());
+    (void)registry.registerAdapter(PixelEffectSolidHaEntityAdapter::instance());
+    (void)registry.registerAdapter(PixelEffectAlertHaEntityAdapter::instance());
     return registry;
 }
 

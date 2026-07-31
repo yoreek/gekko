@@ -1,6 +1,6 @@
 ---
 title: Catalogue des périphériques
-description: Les 35 types de périphériques intégrés dans chaque image firmware Gekko.
+description: Les 38 types de périphériques intégrés dans chaque image firmware Gekko.
 sidebar:
   order: 1
   label: Catalogue des périphériques
@@ -33,6 +33,14 @@ ici brièvement, avec des pages détaillées ajoutées progressivement.
 | [`fade_analog_output`](/gekko/fr/reference/devices/analog-outputs/) | Transitions progressives pour une sortie analogique |
 | [`scheduled_analog_output`](/gekko/fr/reference/devices/analog-outputs/) | Courbe de niveau quotidienne pilotant une sortie analogique |
 | [`analog_output_composer`](/gekko/fr/reference/devices/analog-outputs/) | Regroupe des canaux analogiques en un seul ensemble — voir l'[exemple d'éclairage d'aquarium](/gekko/fr/reference/devices/analog-outputs/#exemple-complet--un-éclairage-daquarium-à-cinq-canaux) |
+
+## Effets lumineux
+
+| Type | Fonction |
+| --- | --- |
+| `pixel_strip` | Ruban RGB adressable WS2812B sur un GPIO — backend matériel Adafruit NeoPixel |
+| `pixel_effect_solid` | Remplit un `pixel_strip` cible d'une couleur unie |
+| `pixel_effect_alert` | Fait clignoter un `pixel_strip` cible tant que les conditions (ET) sont remplies — ex. indicateur de débordement/alarme |
 
 ## Entrées analogiques
 

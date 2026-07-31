@@ -266,6 +266,75 @@ function seedComposableAnalogOutputDevices(): MockDeviceRecord[] {
   return devices
 }
 
+const kSeedPixelAccentStripId = 670845808
+const kSeedPixelAlarmStripId = 670845810
+
+// Two independent WS2812B strips, each with its own exclusive effect decorator (docs/pixel-strip.md):
+// one held solid for accent lighting, the other blinking red while the (pre-existing) grow-light
+// schedule condition is active -- a stand-in for the "indicate something" use case (e.g. an
+// overflow/alarm strip) without inventing a new condition source just for the seed.
+function seedPixelStripDevices(): MockDeviceRecord[] {
+  return [
+    createDeviceRecord(kSeedPixelAccentStripId, 'pixel_strip', 1, {
+      enabled: true,
+      name: 'Aquarium accent strip',
+      deps: [],
+      pin: 27,
+      pixelCount: 60,
+      restorePreviousState: true,
+      startupBrightness: 70,
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: { pixelCount: 60, brightness: 70, on: true },
+    }),
+    createDeviceRecord(670845809, 'pixel_effect_solid', 1, {
+      enabled: true,
+      name: 'Accent color',
+      deps: [{ role: 'pixel_strip', deviceId: kSeedPixelAccentStripId }],
+      restorePreviousState: true,
+      startupColor: { r: 0, g: 120, b: 255 },
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: { color: { r: 0, g: 120, b: 255 }, on: true },
+    }),
+    createDeviceRecord(kSeedPixelAlarmStripId, 'pixel_strip', 1, {
+      enabled: true,
+      name: 'Overflow alarm strip',
+      deps: [],
+      pin: 32,
+      pixelCount: 20,
+      restorePreviousState: true,
+      startupBrightness: 100,
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: { pixelCount: 20, brightness: 100, on: true },
+    }),
+    createDeviceRecord(670845811, 'pixel_effect_alert', 1, {
+      enabled: true,
+      name: 'Overflow alert',
+      // Reuses the existing "Grow Light Schedule" as its condition source, purely as a
+      // demonstrably-live seed value - a real setup would point this at an overflow/level sensor.
+      deps: [
+        { role: 'pixel_strip', deviceId: kSeedPixelAlarmStripId },
+        { role: 'condition', deviceId: 670845764 },
+      ],
+      color: { r: 255, g: 0, b: 0 },
+      blinkIntervalMs: 500,
+    }, {
+      status: 'ready',
+      lifecycleStatus: 'ready',
+      effectiveStatus: 'ready',
+      output: { active: true },
+    }),
+  ]
+}
+
 // A few days of realistic history for the seeded "Calcium" pump: the daily scheduled doses plus
 // an occasional manual top-up, newest last (the handler sorts newest-first on read).
 function seedDoseJournalEntries(): MockDoseJournalEntry[] {
@@ -390,9 +459,20 @@ const seedDatabase: SeedDatabase = {
         ],
       },
       {
+        id: 'pixel-strip',
+        name: 'Pixel strip',
+        order: 7,
+        widgets: [
+          [kSeedPixelAccentStripId, 0, 0, 1, 1],
+          [670845809, 1, 0, 1, 1],
+          [kSeedPixelAlarmStripId, 2, 0, 1, 1],
+          [670845811, 3, 0, 1, 1],
+        ],
+      },
+      {
         id: 'misc',
         name: 'Misc',
-        order: 7,
+        order: 8,
         widgets: [
           [670845748, 0, 0, 1, 1],
           [670845749, 1, 0, 1, 1],
@@ -1913,6 +1993,7 @@ const seedDatabase: SeedDatabase = {
       },
     }),
     ...seedComposableAnalogOutputDevices(),
+    ...seedPixelStripDevices(),
   ],
   doseJournal: seedDoseJournalEntries(),
   // One ready-made preset on the first seeded scheduled_analog_output channel (id from

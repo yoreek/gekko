@@ -1365,6 +1365,52 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
           }
           break
         }
+        if (device.record.typeName === 'pixel_strip') {
+          // Mirrors PixelStripDevice::handleCommand(): live brightness (0..100 percent) OR the
+          // explicit {"on": bool} gate -- both live/retained, independent of each other, never
+          // written to config -- see docs/pixel-strip.md.
+          const currentOutput = (isRecordPayload(device.runtime.output) ? device.runtime.output : {}) as Record<string, unknown>
+          if (isRecordPayload(payload.state) && 'on' in payload.state) {
+            if (typeof payload.state.on !== 'boolean') {
+              throw new ApiClientError('state.on must be boolean', 'BAD_ARGS', 400, null)
+            }
+            device.runtime.output = { ...currentOutput, on: payload.state.on }
+            break
+          }
+          if (typeof payload.state !== 'number' || !Number.isFinite(payload.state) || payload.state < 0 || payload.state > 100) {
+            throw new ApiClientError('state must be numeric and in range [0, 100]', 'BAD_ARGS', 400, null)
+          }
+          device.runtime.output = { ...currentOutput, brightness: Math.round(payload.state) }
+          break
+        }
+        if (device.record.typeName === 'pixel_effect_solid') {
+          // Mirrors PixelEffectSolidDevice::handleCommand(): live {r,g,b} color OR the explicit
+          // {"on": bool} gate -- both live/retained, independent of each other, never written to
+          // config.
+          const currentOutput = (isRecordPayload(device.runtime.output) ? device.runtime.output : {}) as Record<string, unknown>
+          if (isRecordPayload(payload.state) && 'on' in payload.state) {
+            if (typeof payload.state.on !== 'boolean') {
+              throw new ApiClientError('state.on must be boolean', 'BAD_ARGS', 400, null)
+            }
+            device.runtime.output = { ...currentOutput, on: payload.state.on }
+            break
+          }
+          const color = payload.state
+          if (
+            !isRecordPayload(color) ||
+            typeof color.r !== 'number' ||
+            typeof color.g !== 'number' ||
+            typeof color.b !== 'number' ||
+            [color.r, color.g, color.b].some(channel => !Number.isFinite(channel) || channel < 0 || channel > 255)
+          ) {
+            throw new ApiClientError('state must be a {r,g,b} color with channels in [0, 255]', 'BAD_ARGS', 400, null)
+          }
+          device.runtime.output = {
+            ...currentOutput,
+            color: { r: Math.round(color.r), g: Math.round(color.g), b: Math.round(color.b) },
+          }
+          break
+        }
         if (typeof payload.state !== 'boolean') {
           throw new ApiClientError('state must be boolean', 'BAD_ARGS', 400, null)
         }

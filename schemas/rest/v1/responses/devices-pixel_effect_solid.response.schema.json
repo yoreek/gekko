@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/devices-pixel_effect_solid.response.schema.json",
+  "title": "pixel_effect_solid device response",
+  "type": "object",
+  "properties": {
+    "record": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "typeName": { "const": "pixel_effect_solid" },
+        "configRevision": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["id", "typeName", "configRevision"],
+      "additionalProperties": false
+    },
+    "config": { "$ref": "../devices/pixel_effect_solid.config.schema.json" },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": ["creating", "starting", "ready", "disabled", "faulted", "dependency_blocked", "reconfiguring", "stopping", "deleting", "unknown"]
+        },
+        "effectiveStatus": {
+          "enum": ["creating", "starting", "ready", "disabled", "faulted", "dependency_blocked", "reconfiguring", "stopping", "deleting", "unknown"]
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "type": "object",
+              "properties": {
+                "r": { "type": "integer", "minimum": 0, "maximum": 255 },
+                "g": { "type": "integer", "minimum": 0, "maximum": 255 },
+                "b": { "type": "integer", "minimum": 0, "maximum": 255 }
+              },
+              "required": ["r", "g", "b"],
+              "additionalProperties": false
+            },
+            "on": { "type": "boolean" }
+          },
+          "required": ["color", "on"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["status", "effectiveStatus", "output"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["record", "config", "runtime"],
+  "additionalProperties": false
+}

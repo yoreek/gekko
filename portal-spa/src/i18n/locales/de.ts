@@ -355,6 +355,9 @@ export default {
       lcd1602Pin: 'LCD1602-Textdisplay (direkte Pins)',
       lcd2004Pin: 'LCD2004-Textdisplay (direkte Pins)',
       tm1637: 'TM1637 4-stellige Anzeige',
+      pixelStrip: 'Pixel-Streifen (WS2812B)',
+      pixelEffectSolid: 'Pixel-Streifen Vollfarbe',
+      pixelEffectAlert: 'Pixel-Streifen Alarmblinken',
       unknown: 'Unbekannter Gerätetyp',
     },
     mode: {
@@ -462,6 +465,14 @@ export default {
       calibrationOffset: 'Kalibrier-Offset',
       analogOutputHint: 'Verwenden Sie die Live-Steuerung im Gerätedialog, um Ausgangspegel zu ändern.',
       targetAnalogOutput: 'Ziel-Analogausgang',
+      targetPixelStrip: 'Ziel-Pixel-Streifen',
+      pixelStripPin: 'Datenpin',
+      pixelStripPixelCount: 'Pixelanzahl',
+      pixelStripBrightness: 'Helligkeit',
+      pixelStripStartupBrightness: 'Helligkeit beim Start',
+      pixelColor: 'Farbe',
+      pixelEffectSolidStartupColor: 'Farbe beim Start',
+      pixelEffectAlertBlinkIntervalMs: 'Blinkintervall (ms)',
       targetOutput: 'Zielausgang',
       requestedOutput: 'Angeforderter Ausgang',
       fadeMaxStep: 'Maximale Schrittweite',
@@ -585,6 +596,7 @@ export default {
     },
     dialog: {
       noAnalogOutputDependency: 'Erstellen Sie einen Analogausgang, bevor Sie dieses Gerät konfigurieren.',
+      noPixelStripDependency: 'Erstellen Sie einen Pixel-Streifen, bevor Sie dieses Gerät konfigurieren.',
       scheduleSaveFailed: 'Zeitpläne konnten nicht gespeichert werden für: {channels}. Andere Kanäle wurden gespeichert.',
       display: {
         widgetFallback: 'Display',
@@ -1172,6 +1184,14 @@ export default {
           paused: 'Pausiert',
         },
       },
+      pixelEffectAlert: {
+        noConditions: 'Keine Bedingungen (blinkt nie)',
+        addCondition: 'Bedingung hinzufügen',
+        removeCondition: 'Bedingung entfernen',
+        conditionsMaxReached: 'Maximale Anzahl an Bedingungen erreicht',
+        active: 'Aktiv',
+        inactive: 'Inaktiv',
+      },
       temperatureUnit: {
         celsius: 'Celsius',
         fahrenheit: 'Fahrenheit',
@@ -1220,6 +1240,7 @@ export default {
     cancel: 'Abbrechen',
     close: 'Schließen',
     save: 'Speichern',
+    apply: 'Übernehmen',
   },
   notifications: {
     deviceCreated: 'Gerät "{name}" erstellt',

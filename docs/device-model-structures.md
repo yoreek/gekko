@@ -23,9 +23,10 @@ one entry per supported `typeName`, in the same order:
 `pcf8575_expander`, `analog_output`, `fade_analog_output`, `scheduled_analog_output`,
 `analog_output_composer`, `port_expander_switch`, `schedule`, `auto_switch`,
 `binary_sensor`, `dosing_pump`, `analog_port_input`, `cd74hc4067_hub`, `ads1115_hub`,
-`analog_input_channel`, `lcd1602`, `lcd2004`, `lcd1602_pin`, `lcd2004_pin`, `tm1637`.
+`analog_input_channel`, `lcd1602`, `lcd2004`, `lcd1602_pin`, `lcd2004_pin`, `tm1637`,
+`pixel_strip`, `pixel_effect_solid`, `pixel_effect_alert`.
 
-`portal-spa/src/models/devices/device-model-factory.ts::allDeviceModels` mirrors the same 35 types
+`portal-spa/src/models/devices/device-model-factory.ts::allDeviceModels` mirrors the same 38 types
 one-to-one (plus an `UnknownDevice` fallback for an unrecognized `typeName`, which is never
 registered). This document uses DS18B20 as the running worked example throughout, since it's the
 simplest complete sensor family; HTU21 and the PCF857x expanders are called out separately below
@@ -39,7 +40,12 @@ family (the AnalogInput role NTC thermistor now depends on instead of owning ADC
 is likewise a separate worked example in [Analog Input](analog-input.md), since its hub-and-channel
 dependency shape mirrors the PCF857x expanders below but adds a second multi-implementor hub role
 - and unlike PCF857x (two typeIds, one shared config), the channel leaf collapses to a *single*
-typeId because it has no per-hub state of its own at all, not even a channel-count constant.
+typeId because it has no per-hub state of its own at all, not even a channel-count constant. The
+`pixel_strip`/`pixel_effect_solid`/`pixel_effect_alert` family (one addressable-LED-strip hardware
+backend plus its effect decorators) is a fourth separate worked example in
+[Pixel Strip](pixel-strip.md): it mirrors the `analog_output` family's hardware-backend-plus-
+decorator shape, but its `PixelStrip` role is a new, sibling role rather than a reuse of
+`AnalogOutput` -- a strip is an array of pixel colors, not one scalar.
 
 ## Canonical Config Hierarchy
 

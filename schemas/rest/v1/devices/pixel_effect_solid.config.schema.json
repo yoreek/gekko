@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/devices/pixel_effect_solid.config.schema.json",
+  "title": "pixel_effect_solid configuration",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "enabled": { "type": "boolean", "default": true },
+    "deps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": { "const": "pixel_strip" },
+          "deviceId": { "type": "integer", "minimum": 1 },
+          "invert": { "type": "boolean", "default": false }
+        },
+        "required": ["role", "deviceId"],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 1,
+      "default": []
+    },
+    "restorePreviousState": { "type": "boolean", "default": false },
+    "startupColor": {
+      "type": "object",
+      "properties": {
+        "r": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "g": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "b": { "type": "integer", "minimum": 0, "maximum": 255 }
+      },
+      "required": ["r", "g", "b"],
+      "additionalProperties": false,
+      "default": { "r": 0, "g": 0, "b": 0 }
+    }
+  },
+  "required": ["name", "deps"],
+  "additionalProperties": true
+}

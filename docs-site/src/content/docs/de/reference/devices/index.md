@@ -1,6 +1,6 @@
 ---
 title: Geraetekatalog
-description: Alle 35 Geraetetypen, die in jedem Gekko-Firmware-Image eingebaut sind.
+description: Alle 38 Geraetetypen, die in jedem Gekko-Firmware-Image eingebaut sind.
 sidebar:
   order: 1
   label: Geraetekatalog
@@ -33,6 +33,14 @@ detaillierten Seiten, die nach und nach folgen.
 | [`fade_analog_output`](/gekko/de/reference/devices/analog-outputs/) | Sanfte Uebergaenge fuer einen Analogausgang |
 | [`scheduled_analog_output`](/gekko/de/reference/devices/analog-outputs/) | Tagesprofil, das einen Analogausgang steuert |
 | [`analog_output_composer`](/gekko/de/reference/devices/analog-outputs/) | Gruppiert Analogkanäle zu einer Leuchte - siehe das [Aquarienlicht-Beispiel](/gekko/de/reference/devices/analog-outputs/#beispiel-ein-fuenfkanaliges-aquariumlicht) |
+
+## Lichteffekte
+
+| Typ | Zweck |
+| --- | --- |
+| `pixel_strip` | WS2812B adressierbarer RGB-Streifen an einem GPIO — Adafruit-NeoPixel-Hardware-Backend |
+| `pixel_effect_solid` | Füllt einen Ziel-`pixel_strip` mit einer einzigen Farbe |
+| `pixel_effect_alert` | Lässt einen Ziel-`pixel_strip` blinken, solange UND-verknüpfte Bedingungen erfüllt sind — z. B. Überlauf-/Alarmanzeige |
 
 ## Analoge Eingaenge
 

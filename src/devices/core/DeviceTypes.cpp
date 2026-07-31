@@ -22,6 +22,9 @@
 #include "devices/dummy/DummyDevice.h"
 #include "devices/expander/Pcf8574ExpanderDevice.h"
 #include "devices/expander/Pcf8575ExpanderDevice.h"
+#include "devices/pixel/PixelStripDevice.h"
+#include "devices/pixel/effects/PixelEffectAlertDevice.h"
+#include "devices/pixel/effects/PixelEffectSolidDevice.h"
 #include "devices/rtc/ds1302/Ds1302RtcDevice.h"
 #include "devices/rtc/ds3231/Ds3231RtcDevice.h"
 #include "devices/schedule/ScheduleDevice.h"
@@ -40,9 +43,9 @@ namespace ewfm {
 
 namespace {
 constexpr const char* kDeviceRoleNames[] = {
-    "unknown",       "onewire_bus",         "temperature_sensor", "switch",           "i2c_bus",  "ssd1306",
-    "spi_bus",       "metric_source",       "real_time_clock",    "port_expander",    "schedule", "condition",
-    "analog_output", "analog_output_group", "analog_input",       "analog_input_hub",
+    "unknown",       "onewire_bus",         "temperature_sensor", "switch",           "i2c_bus",     "ssd1306",
+    "spi_bus",       "metric_source",       "real_time_clock",    "port_expander",    "schedule",    "condition",
+    "analog_output", "analog_output_group", "analog_input",       "analog_input_hub", "pixel_strip",
 };
 
 constexpr const char* kDeviceEventKindNames[] = {
@@ -129,6 +132,10 @@ bool parseDeviceRole(std::string_view value, DeviceRole& role) {
         role = DeviceRole::AnalogInputHub;
         return true;
     }
+    if (value == "pixel_strip") {
+        role = DeviceRole::PixelStrip;
+        return true;
+    }
     role = DeviceRole::Unknown;
     return false;
 }
@@ -212,6 +219,9 @@ DeviceTypeRegistry DeviceTypeRegistry::withDefaults() {
     (void)registry.registerDescriptor(Lcd1602PinDevice::descriptor());
     (void)registry.registerDescriptor(Lcd2004PinDevice::descriptor());
     (void)registry.registerDescriptor(Tm1637Device::descriptor());
+    (void)registry.registerDescriptor(PixelStripDevice::descriptor());
+    (void)registry.registerDescriptor(PixelEffectSolidDevice::descriptor());
+    (void)registry.registerDescriptor(PixelEffectAlertDevice::descriptor());
     return registry;
 }
 

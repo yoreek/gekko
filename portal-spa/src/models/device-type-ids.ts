@@ -31,6 +31,8 @@ import { Lcd2004Device } from './devices/lcd2004.ts'
 import { Lcd1602PinDevice } from './devices/lcd1602-pin.ts'
 import { Lcd2004PinDevice } from './devices/lcd2004-pin.ts'
 import { Tm1637Device } from './devices/tm1637.ts'
+import { PixelStripDevice } from './devices/pixel-strip.ts'
+import { PixelEffectSolidDevice, PixelEffectAlertDevice } from './devices/pixel-effects.ts'
 
 export const DUMMY_DEVICE_TYPE_ID = DummyDevice.TYPE_ID
 export const GPIO_SWITCH_DEVICE_TYPE_ID = GpioSwitchDevice.TYPE_ID
@@ -67,6 +69,9 @@ export const LCD2004_DEVICE_TYPE_ID = Lcd2004Device.TYPE_ID
 export const LCD1602_PIN_DEVICE_TYPE_ID = Lcd1602PinDevice.TYPE_ID
 export const LCD2004_PIN_DEVICE_TYPE_ID = Lcd2004PinDevice.TYPE_ID
 export const TM1637_DEVICE_TYPE_ID = Tm1637Device.TYPE_ID
+export const PIXEL_STRIP_DEVICE_TYPE_ID = PixelStripDevice.TYPE_ID
+export const PIXEL_EFFECT_SOLID_DEVICE_TYPE_ID = PixelEffectSolidDevice.TYPE_ID
+export const PIXEL_EFFECT_ALERT_DEVICE_TYPE_ID = PixelEffectAlertDevice.TYPE_ID
 
 export type DeviceTypeName =
   | typeof DummyDevice.TYPE_NAME
@@ -104,6 +109,9 @@ export type DeviceTypeName =
   | typeof Lcd1602PinDevice.TYPE_NAME
   | typeof Lcd2004PinDevice.TYPE_NAME
   | typeof Tm1637Device.TYPE_NAME
+  | typeof PixelStripDevice.TYPE_NAME
+  | typeof PixelEffectSolidDevice.TYPE_NAME
+  | typeof PixelEffectAlertDevice.TYPE_NAME
 export type DeviceTypeId = number
 
 const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
@@ -142,6 +150,9 @@ const deviceTypeIds: Record<DeviceTypeName, DeviceTypeId> = {
   [Lcd1602PinDevice.TYPE_NAME]: Lcd1602PinDevice.TYPE_ID,
   [Lcd2004PinDevice.TYPE_NAME]: Lcd2004PinDevice.TYPE_ID,
   [Tm1637Device.TYPE_NAME]: Tm1637Device.TYPE_ID,
+  [PixelStripDevice.TYPE_NAME]: PixelStripDevice.TYPE_ID,
+  [PixelEffectSolidDevice.TYPE_NAME]: PixelEffectSolidDevice.TYPE_ID,
+  [PixelEffectAlertDevice.TYPE_NAME]: PixelEffectAlertDevice.TYPE_ID,
 }
 
 const deviceTypeNames: Record<DeviceTypeId, DeviceTypeName> = {
@@ -180,6 +191,9 @@ const deviceTypeNames: Record<DeviceTypeId, DeviceTypeName> = {
   [Lcd1602PinDevice.TYPE_ID]: Lcd1602PinDevice.TYPE_NAME,
   [Lcd2004PinDevice.TYPE_ID]: Lcd2004PinDevice.TYPE_NAME,
   [Tm1637Device.TYPE_ID]: Tm1637Device.TYPE_NAME,
+  [PixelStripDevice.TYPE_ID]: PixelStripDevice.TYPE_NAME,
+  [PixelEffectSolidDevice.TYPE_ID]: PixelEffectSolidDevice.TYPE_NAME,
+  [PixelEffectAlertDevice.TYPE_ID]: PixelEffectAlertDevice.TYPE_NAME,
 }
 
 // Mirrors the firmware's DeviceDependencyRole wire names (kDeviceDependencyRoleNames in
@@ -202,6 +216,7 @@ export type DeviceRole =
   | 'analog_output_group'
   | 'analog_input'
   | 'analog_input_hub'
+  | 'pixel_strip'
 
 export function deviceTypeIdFromName(typeName: string | undefined | null): DeviceTypeId {
   return typeName && typeName in deviceTypeIds ? deviceTypeIds[typeName as DeviceTypeName] : 0

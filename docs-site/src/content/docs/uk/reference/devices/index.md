@@ -1,6 +1,6 @@
 ---
 title: Каталог пристроїв
-description: Усі 35 типів пристроїв, вбудовані в кожен образ прошивки Gekko.
+description: Усі 38 типів пристроїв, вбудовані в кожен образ прошивки Gekko.
 sidebar:
   order: 1
   label: Каталог пристроїв
@@ -33,6 +33,14 @@ sidebar:
 | [`fade_analog_output`](/gekko/uk/reference/devices/analog-outputs/) | Плавні переходи для аналогового виходу |
 | [`scheduled_analog_output`](/gekko/uk/reference/devices/analog-outputs/) | Добова крива рівня для аналогового виходу |
 | [`analog_output_composer`](/gekko/uk/reference/devices/analog-outputs/) | Об’єднує аналогові канали в одну люстру — див. [приклад з акваріумним світлом](/gekko/uk/reference/devices/analog-outputs/#робочий-приклад-пятиканальне-акваріумне-світло) |
+
+## Світлові ефекти
+
+| Тип | Призначення |
+| --- | --- |
+| `pixel_strip` | Адресна RGB-стрічка WS2812B на одному GPIO — апаратний backend на Adafruit NeoPixel |
+| `pixel_effect_solid` | Заливає цільову `pixel_strip` одним суцільним кольором |
+| `pixel_effect_alert` | Блимає цільовою `pixel_strip`, поки виконуються умови (І) — наприклад, індикатор переливу/аварії |
 
 ## Аналогові входи
 

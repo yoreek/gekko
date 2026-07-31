@@ -148,6 +148,33 @@ strings instead, precisely to avoid this collision.
   `setMode` command uses, via `DeviceRegistry::command()`. Dose start/stop is
   deliberately **not** exposed to Home Assistant — dosing is chemistry and
   run control stays in the portal UI.
+- `src/integrations/mqtt/pixel_strip/` — three separate adapters, one per
+  `pixel_*` device type, each managing only the fields that type actually
+  owns rather than one unified cross-device light entity:
+  `PixelStripHaEntityAdapter` (`light`, brightness-only, mirrors
+  `AnalogOutputHaEntityAdapter`'s `brightness_state_topic`/
+  `brightness_command_topic` pair but with `brightness_scale: 255` matching
+  the strip's own internal `0..255` scale 1:1 — no unit conversion on
+  publish, only on the incoming command, which still goes out as the
+  `SetOutput` `0..100` percent contract every pixel/analog device shares),
+  `PixelEffectSolidHaEntityAdapter` (`light`, RGB-only via
+  `rgb_state_topic`/`rgb_command_topic`, HA's standard `"R,G,B"` CSV
+  payload), and `PixelEffectAlertHaEntityAdapter` (`binary_sensor`,
+  read-only, publishes `conditionsSatisfied()`). See
+  [Pixel Strip](pixel-strip.md) for why brightness and color are live
+  `SetOutput`/retained state rather than persisted config, and why the
+  alert's `color`/`blinkIntervalMs` stay config-only and unpublished.
+  Unlike `AnalogOutputHaEntityAdapter` (which still derives its light's
+  on/off from `level == 0`), the two pixel `light` entities' on/off comes
+  from an explicit `liveOn()` field on the device (a second live/retained
+  value, alongside brightness/color, restored the same way) — deriving it
+  from brightness/color instead was tried first and rejected, because it
+  meant the brightness slider (or picking black in the color picker)
+  silently flipped an unrelated toggle with no way to remember what to
+  restore on the next "on". The main `command_topic`'s `ON`/`OFF` maps
+  directly to a `{"on": true/false}` `SetOutput` payload, a sibling shape
+  to the brightness percent / RGB object payloads, not a translation
+  through either of them.
 - `src/config/MqttConfigStore` / `src/config/MqttConfig.h` — scalar settings
   persisted the same way as WiFi credentials (`ConfigStore`); the CA
   certificate is a variable-length blob stored via raw `putBlob`/`getBlob`
@@ -308,6 +335,21 @@ event bus fan-out to both sinks) is identical either way.
 <haDiscoveryPrefix>/switch/<haNodeId>/<haNodeId>_dosing_pump_auto_mode_<deviceId>/config          discovery (retained)
 <haNodeId>/dosing_auto_mode/<deviceId>/state                                     auto mode state (retained, "ON"/"OFF")
 <haNodeId>/dosing_auto_mode/<deviceId>/set                                       auto mode command ("ON" -> auto, "OFF" -> manual)
+
+<haDiscoveryPrefix>/light/<haNodeId>/<haNodeId>_pixel_strip_<deviceId>/config      discovery (retained)
+<haNodeId>/light/<deviceId>/state                                              on/off state (retained, "ON"/"OFF")
+<haNodeId>/light/<deviceId>/set                                                on/off command ("ON"/"OFF")
+<haNodeId>/light_brightness/<deviceId>/state                                   brightness state (retained, "0".."255")
+<haNodeId>/light_brightness/<deviceId>/set                                     brightness command ("0".."255")
+
+<haDiscoveryPrefix>/light/<haNodeId>/<haNodeId>_pixel_effect_solid_<deviceId>/config   discovery (retained)
+<haNodeId>/light/<deviceId>/state                                              on/off state (retained, derived from color != black)
+<haNodeId>/light/<deviceId>/set                                                on/off command ("ON" -> white, "OFF" -> black)
+<haNodeId>/light_rgb/<deviceId>/state                                          color state (retained, e.g. "0,120,255")
+<haNodeId>/light_rgb/<deviceId>/set                                            color command (e.g. "0,120,255")
+
+<haDiscoveryPrefix>/binary_sensor/<haNodeId>/<haNodeId>_pixel_effect_alert_<deviceId>/config   discovery (retained)
+<haNodeId>/binary_sensor/<deviceId>/state                                      state (retained, "ON" = condition list satisfied)
 
 # each system sensor has its own <haDiscoveryPrefix>/sensor/<haNodeId>/<haNodeId>_system_<key>/config
 <haNodeId>/system/uptime/state                                                  seconds since boot (retained, e.g. "3600")
@@ -475,6 +517,25 @@ The following device types are published to Home Assistant in this iteration:
     `icon: "mdi:calendar-sync"`. `ON`/`OFF` from HA becomes the same
     `DeviceCommandType::Custom` `"auto"`/`"manual"` command the REST
     `setMode` uses. Dose start/stop is deliberately not exposed to HA.
+
+- Pixel strip family (`pixel_strip`, `pixel_effect_solid`,
+  `pixel_effect_alert`) — three independent HA entities, each device type
+  managing only what it owns (see "Architecture" above and
+  [Pixel Strip](pixel-strip.md)):
+  - `pixel_strip` — `light`, `icon: "mdi:led-strip-variant"`,
+    brightness-only (no color — a strip has no color of its own, only
+    whichever `pixel_effect_*` currently fills it). `ON`/`OFF` maps to an
+    explicit `{"on": true/false}` `SetOutput` payload — a live/retained
+    field independent of brightness, not a translation to `100`/`0`.
+  - `pixel_effect_solid` — `light`, `icon: "mdi:palette"`, RGB-only (no
+    brightness — that's the strip's). `ON`/`OFF` maps to the same explicit
+    `{"on": true/false}` payload, independent of color — not full white /
+    black.
+  - `pixel_effect_alert` — `binary_sensor`, `icon: "mdi:alarm-light-outline"`,
+    no `device_class` (same reasoning as the generic binary sensor above).
+    Publishes `ON` while its ANDed `Condition` list is satisfied. Read-only:
+    `color`/`blinkIntervalMs` are persisted config, not a live control
+    surface, so they are never published or accepted as commands.
 
 Other device types (displays) are out of scope for now, but the
 adapter/registry seam (`IHaEntityAdapter`/`HaEntityAdapterRegistry`) is

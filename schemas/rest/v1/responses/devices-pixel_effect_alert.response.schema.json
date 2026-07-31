@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/devices-pixel_effect_alert.response.schema.json",
+  "title": "pixel_effect_alert device response",
+  "type": "object",
+  "properties": {
+    "record": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "typeName": { "const": "pixel_effect_alert" },
+        "configRevision": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["id", "typeName", "configRevision"],
+      "additionalProperties": false
+    },
+    "config": { "$ref": "../devices/pixel_effect_alert.config.schema.json" },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": ["creating", "starting", "ready", "disabled", "faulted", "dependency_blocked", "reconfiguring", "stopping", "deleting", "unknown"]
+        },
+        "effectiveStatus": {
+          "enum": ["creating", "starting", "ready", "disabled", "faulted", "dependency_blocked", "reconfiguring", "stopping", "deleting", "unknown"]
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "active": { "type": "boolean" }
+          },
+          "required": ["active"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["status", "effectiveStatus", "output"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["record", "config", "runtime"],
+  "additionalProperties": false
+}

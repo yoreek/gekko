@@ -640,7 +640,7 @@ void DeviceRegistryController::cmd() {
             return;
         }
     } else if (std::strcmp(commandName, "setOutput") == 0) {
-        char payloadText[16]{};
+        char payloadText[64]{};
         const JsonVariantConst state = input["state"];
         if (currentRuntime->analogOutputRuntime() != nullptr) {
             if ((!state.is<unsigned long>() && !state.is<long>() && !state.is<int>()) || state.as<long>() < 0L ||
@@ -655,6 +655,36 @@ void DeviceRegistryController::cmd() {
                 return;
             }
             std::snprintf(payloadText, sizeof(payloadText), "%s", state.as<bool>() ? "true" : "false");
+        } else if (currentRuntime->pixelStripRuntime() != nullptr) {
+            // pixel_strip accepts either a bare 0..100 percent (live brightness, same contract as
+            // analogOutputRuntime above -- see docs/pixel-strip.md) or a JSON object (the explicit
+            // {"on": bool} gate) -- the device's own handleCommand() owns parsing/validating the
+            // object shape, this layer only re-serializes it.
+            if (state.is<unsigned long>() || state.is<long>() || state.is<int>()) {
+                if (state.as<long>() < 0L || state.as<unsigned long>() > 100UL) {
+                    renderError(400, "BAD_ARGS", "state must be numeric and in range [0, 100]");
+                    return;
+                }
+                std::snprintf(payloadText, sizeof(payloadText), "%lu", state.as<unsigned long>());
+            } else if (state.is<JsonObjectConst>()) {
+                const size_t written = serializeJson(state, payloadText, sizeof(payloadText));
+                if (written == 0 || written >= sizeof(payloadText)) {
+                    renderError(400, "BAD_ARGS", "state is too large");
+                    return;
+                }
+            } else {
+                renderError(400, "BAD_ARGS", "state must be numeric [0, 100] or an object");
+                return;
+            }
+        } else if (state.is<JsonObjectConst>()) {
+            // Generic passthrough for object-shaped output commands (e.g. pixel_effect_solid's
+            // live {r,g,b} color) -- the device's own handleCommand() owns parsing/validating the
+            // shape; this layer only re-serializes it into the DeviceCommand payload text.
+            const size_t written = serializeJson(state, payloadText, sizeof(payloadText));
+            if (written == 0 || written >= sizeof(payloadText)) {
+                renderError(400, "BAD_ARGS", "state is too large");
+                return;
+            }
         } else {
             renderError(400, "BAD_ARGS", "device does not provide an output");
             return;

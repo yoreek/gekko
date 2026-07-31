@@ -355,6 +355,9 @@ export default {
       lcd1602Pin: 'Текстовий дисплей LCD1602 (прямі піни)',
       lcd2004Pin: 'Текстовий дисплей LCD2004 (прямі піни)',
       tm1637: '4-розрядний дисплей TM1637',
+      pixelStrip: 'Адресна стрічка (WS2812B)',
+      pixelEffectSolid: 'Суцільний колір стрічки',
+      pixelEffectAlert: 'Блимання-індикація стрічки',
       unknown: 'Невідомий тип пристрою',
     },
     mode: {
@@ -462,6 +465,14 @@ export default {
       calibrationOffset: 'Зсув калібрування',
       analogOutputHint: 'Використовуйте живе керування в діалозі пристрою, щоб змінювати рівень виходу.',
       targetAnalogOutput: 'Цільовий аналоговий вихід',
+      targetPixelStrip: 'Цільова стрічка',
+      pixelStripPin: 'Пін даних',
+      pixelStripPixelCount: 'Кількість пікселів',
+      pixelStripBrightness: 'Яскравість',
+      pixelStripStartupBrightness: 'Яскравість при запуску',
+      pixelColor: 'Колір',
+      pixelEffectSolidStartupColor: 'Колір при запуску',
+      pixelEffectAlertBlinkIntervalMs: 'Інтервал блимання (мс)',
       targetOutput: 'Цільовий вихід',
       requestedOutput: 'Запитаний вихід',
       fadeMaxStep: 'Максимальний крок',
@@ -585,6 +596,7 @@ export default {
     },
     dialog: {
       noAnalogOutputDependency: 'Створіть аналоговий вихід перед налаштуванням цього пристрою.',
+      noPixelStripDependency: 'Створіть адресну стрічку перед налаштуванням цього пристрою.',
       scheduleSaveFailed: 'Не вдалося зберегти розклади для: {channels}. Інші канали збережено.',
       display: {
         widgetFallback: 'Дисплей',
@@ -1172,6 +1184,14 @@ export default {
           paused: 'Пауза',
         },
       },
+      pixelEffectAlert: {
+        noConditions: 'Немає умов (ніколи не блимає)',
+        addCondition: 'Додати умову',
+        removeCondition: 'Видалити умову',
+        conditionsMaxReached: 'Досягнуто максимальної кількості умов',
+        active: 'Активно',
+        inactive: 'Неактивно',
+      },
       temperatureUnit: {
         celsius: 'Цельсій',
         fahrenheit: 'Фаренгейт',
@@ -1220,6 +1240,7 @@ export default {
     cancel: 'Скасувати',
     close: 'Закрити',
     save: 'Зберегти',
+    apply: 'Застосувати',
   },
   notifications: {
     deviceCreated: 'Пристрій "{name}" створено',

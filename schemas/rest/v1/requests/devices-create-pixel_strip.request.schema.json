@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/requests/devices-create-pixel_strip.request.schema.json",
+  "title": "Create pixel_strip request",
+  "type": "object",
+  "properties": {
+    "typeName": { "const": "pixel_strip" },
+    "config": { "$ref": "../devices/pixel_strip.config.schema.json" }
+  },
+  "required": ["typeName", "config"],
+  "additionalProperties": true
+}

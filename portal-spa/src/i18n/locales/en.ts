@@ -355,6 +355,9 @@ export default {
       lcd1602Pin: 'LCD1602 character display (direct pins)',
       lcd2004Pin: 'LCD2004 character display (direct pins)',
       tm1637: 'TM1637 4-digit display',
+      pixelStrip: 'Pixel strip (WS2812B)',
+      pixelEffectSolid: 'Pixel strip solid color',
+      pixelEffectAlert: 'Pixel strip alert blink',
       unknown: 'Unknown device type',
     },
     mode: {
@@ -462,6 +465,14 @@ export default {
       calibrationOffset: 'Calibration offset',
       analogOutputHint: 'Use the live control in the device dialog to change output levels.',
       targetAnalogOutput: 'Target analog output',
+      targetPixelStrip: 'Target pixel strip',
+      pixelStripPin: 'Data pin',
+      pixelStripPixelCount: 'Pixel count',
+      pixelStripBrightness: 'Brightness',
+      pixelStripStartupBrightness: 'Startup brightness',
+      pixelColor: 'Color',
+      pixelEffectSolidStartupColor: 'Startup color',
+      pixelEffectAlertBlinkIntervalMs: 'Blink interval (ms)',
       targetOutput: 'Target output',
       requestedOutput: 'Requested output',
       fadeMaxStep: 'Maximum step',
@@ -585,6 +596,7 @@ export default {
     },
     dialog: {
       noAnalogOutputDependency: 'Create an analog output before configuring this device.',
+      noPixelStripDependency: 'Create a pixel strip before configuring this device.',
       scheduleSaveFailed: 'Could not save schedules for: {channels}. Other channels were saved.',
       display: {
         widgetFallback: 'Display',
@@ -1172,6 +1184,14 @@ export default {
           paused: 'Paused',
         },
       },
+      pixelEffectAlert: {
+        noConditions: 'No conditions (never blinks)',
+        addCondition: 'Add condition',
+        removeCondition: 'Remove condition',
+        conditionsMaxReached: 'Maximum number of conditions reached',
+        active: 'Active',
+        inactive: 'Inactive',
+      },
       temperatureUnit: {
         celsius: 'Celsius',
         fahrenheit: 'Fahrenheit',
@@ -1220,6 +1240,7 @@ export default {
     cancel: 'Cancel',
     close: 'Close',
     save: 'Save',
+    apply: 'Apply',
   },
   notifications: {
     deviceCreated: 'Device "{name}" created',

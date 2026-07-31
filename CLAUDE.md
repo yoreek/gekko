@@ -110,5 +110,6 @@ Vue 3 + Vuetify 4 SPA. Uses `pnpm`. State is managed with Pinia. Real-time updat
 - `docs/dosing-pump.md` — dosing run execution model (non-blocking commands, backend timing), collision/busy rules, grace window and drop-don't-dose-late policy, calibration flow, LittleFS dose-journal ring layout
 - `docs/analog-output.md` — shared `AbstractOutputDevice<T>` output runtime, analog-output decorator chain (LEDC/fade/scheduled/composer), SPA schedule graph
 - `docs/analog-input.md` — `AnalogInput`/`AnalogInputHub` roles, hub-and-channel pattern (ADS1115, CD74HC4067), non-blocking hub arbitration, NTC thermistor presets/formulas built on top
+- `docs/pixel-strip.md` — WS2812B addressable-strip `PixelStrip` role, Adafruit NeoPixel hardware backend, effect decorator chain (`pixel_effect_solid`/`pixel_effect_alert`), why WS2812FX was rejected as the runtime engine
 - `docs/blob-store.md` — generic key→blob object store on the `devdata` partition, REST API (`/api/blobs/...`), prefix-based bulk delete, server-generated upload keys; not yet wired to any feature
 - `docs/spa-localization.md` — i18n key structure, reusing keys across device forms without duplicating phrases, keeping widget-type-style dictionaries in sync with their TS union

@@ -160,6 +160,34 @@ export interface AnalogInputOutputSnapshot {
 // -- so their runtime envelope's "output" object is always empty.
 export type AnalogInputHubOutputSnapshot = Record<string, never>
 
+// WS2812B pixel color -- RGB only, no `w`. Shared by pixel_strip's own config and every
+// pixel_effect_* decorator's `color` field (see docs/pixel-strip.md).
+export interface PixelColor {
+  r: number
+  g: number
+  b: number
+}
+
+export interface PixelStripOutputSnapshot {
+  pixelCount?: number
+  brightness?: number
+  // Explicit on/off gate -- live/retained state, independent of brightness (see
+  // docs/pixel-strip.md's "on/off is an explicit gate, not derived from brightness").
+  on?: boolean
+}
+
+// The live, currently-shown color -- runtime state, not config (see docs/pixel-strip.md's
+// "SetOutput, not persisted config" split). config.startupColor is only what it powers up to.
+export interface PixelEffectSolidOutputSnapshot {
+  color?: PixelColor
+  // Explicit on/off gate -- live/retained state, independent of color.
+  on?: boolean
+}
+
+export interface PixelEffectAlertOutputSnapshot {
+  active?: boolean
+}
+
 export interface DoseJournalEntry {
   at: number
   type: 'schedule' | 'manual'
@@ -217,6 +245,9 @@ export type DeviceOutputSnapshot =
   | Lcd2004OutputSnapshot
   | Lcd1602PinOutputSnapshot
   | Lcd2004PinOutputSnapshot
+  | PixelStripOutputSnapshot
+  | PixelEffectSolidOutputSnapshot
+  | PixelEffectAlertOutputSnapshot
 
 export type TemperatureUnit = 'celsius' | 'fahrenheit'
 
@@ -397,7 +428,12 @@ export interface DeviceCommandRequest {
     | 'stopDose'
     | 'setVolume'
     | 'skipNext'
-  state?: boolean | number
+  // 'setOutput' only: boolean/number for switch/analog-style live values, or an object for
+  // richer live outputs (e.g. pixel_effect_solid's {r,g,b} color, or the {on} explicit on/off
+  // gate shared by pixel_strip/pixel_effect_solid) -- the firmware's REST controller passes an
+  // object through verbatim to the device's own handleCommand(), which owns parsing/validating
+  // its shape (see docs/pixel-strip.md).
+  state?: boolean | number | PixelColor | { on: boolean }
   config?: Record<string, unknown>
   deps?: DeviceDependencyLink[]
   csPin?: number

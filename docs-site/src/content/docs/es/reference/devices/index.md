@@ -1,6 +1,6 @@
 ---
 title: Catálogo de dispositivos
-description: Los 35 tipos de dispositivo incorporados en cada imagen de firmware de Gekko.
+description: Los 38 tipos de dispositivo incorporados en cada imagen de firmware de Gekko.
 sidebar:
   order: 1
   label: Catálogo de dispositivos
@@ -34,6 +34,14 @@ iterativamente.
 | [`fade_analog_output`](/gekko/es/reference/devices/analog-outputs/) | Transiciones suaves para una salida analógica |
 | [`scheduled_analog_output`](/gekko/es/reference/devices/analog-outputs/) | Curva diaria de nivel que gobierna una salida analógica |
 | [`analog_output_composer`](/gekko/es/reference/devices/analog-outputs/) | Agrupa varios canales analógicos en una sola luminaria - ver el [ejemplo de luz de acuario](/gekko/es/reference/devices/analog-outputs/#ejemplo-completo-una-luz-de-acuario-de-cinco-canales) |
+
+## Efectos de iluminación
+
+| Tipo | Función |
+| --- | --- |
+| `pixel_strip` | Tira RGB direccionable WS2812B en un GPIO — backend de hardware Adafruit NeoPixel |
+| `pixel_effect_solid` | Rellena una `pixel_strip` objetivo con un color sólido |
+| `pixel_effect_alert` | Hace parpadear una `pixel_strip` objetivo mientras se cumplen las condiciones (Y) — p. ej. indicador de desbordamiento/alarma |
 
 ## Entradas analógicas
 

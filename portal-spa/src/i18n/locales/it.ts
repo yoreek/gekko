@@ -355,6 +355,9 @@ export default {
       lcd1602Pin: 'Display di testo LCD1602 (pin diretti)',
       lcd2004Pin: 'Display di testo LCD2004 (pin diretti)',
       tm1637: 'Display a 4 cifre TM1637',
+      pixelStrip: 'Striscia LED indirizzabile (WS2812B)',
+      pixelEffectSolid: 'Colore fisso della striscia',
+      pixelEffectAlert: 'Lampeggio di allarme della striscia',
       unknown: 'Tipo di dispositivo sconosciuto',
     },
     mode: {
@@ -462,6 +465,14 @@ export default {
       calibrationOffset: 'Offset di calibrazione',
       analogOutputHint: "Usa il controllo live nella finestra del dispositivo per modificare i livelli di uscita.",
       targetAnalogOutput: 'Uscita analogica target',
+      targetPixelStrip: 'Striscia di destinazione',
+      pixelStripPin: 'Pin dati',
+      pixelStripPixelCount: 'Numero di pixel',
+      pixelStripBrightness: 'Luminosità',
+      pixelStripStartupBrightness: 'Luminosità di avvio',
+      pixelColor: 'Colore',
+      pixelEffectSolidStartupColor: 'Colore di avvio',
+      pixelEffectAlertBlinkIntervalMs: 'Intervallo di lampeggio (ms)',
       targetOutput: 'Uscita target',
       requestedOutput: 'Uscita richiesta',
       fadeMaxStep: 'Passo massimo',
@@ -585,6 +596,7 @@ export default {
     },
     dialog: {
       noAnalogOutputDependency: 'Crea un\'uscita analogica prima di configurare questo dispositivo.',
+      noPixelStripDependency: 'Crea una striscia LED prima di configurare questo dispositivo.',
       scheduleSaveFailed: 'Impossibile salvare le pianificazioni per: {channels}. Gli altri canali sono stati salvati.',
       display: {
         widgetFallback: 'Display',
@@ -1172,6 +1184,14 @@ export default {
           paused: 'In pausa',
         },
       },
+      pixelEffectAlert: {
+        noConditions: 'Nessuna condizione (non lampeggia mai)',
+        addCondition: 'Aggiungi condizione',
+        removeCondition: 'Rimuovi condizione',
+        conditionsMaxReached: 'Numero massimo di condizioni raggiunto',
+        active: 'Attivo',
+        inactive: 'Inattivo',
+      },
       temperatureUnit: {
         celsius: 'Celsius',
         fahrenheit: 'Fahrenheit',
@@ -1220,6 +1240,7 @@ export default {
     cancel: 'Annulla',
     close: 'Chiudi',
     save: 'Salva',
+    apply: 'Applica',
   },
   notifications: {
     deviceCreated: 'Dispositivo "{name}" creato',

@@ -34,6 +34,8 @@ import { Lcd2004Device } from './lcd2004.ts'
 import { Lcd1602PinDevice } from './lcd1602-pin.ts'
 import { Lcd2004PinDevice } from './lcd2004-pin.ts'
 import { Tm1637Device } from './tm1637.ts'
+import { PixelStripDevice } from './pixel-strip.ts'
+import { PixelEffectAlertDevice, PixelEffectSolidDevice } from './pixel-effects.ts'
 import { UnknownDevice } from './unknown-device.ts'
 
 const fallbackDevice = new UnknownDevice()
@@ -74,6 +76,9 @@ const allDeviceModels: BaseDevice<any, any, any>[] = [
   new Lcd1602PinDevice(),
   new Lcd2004PinDevice(),
   new Tm1637Device(),
+  new PixelStripDevice(),
+  new PixelEffectSolidDevice(),
+  new PixelEffectAlertDevice(),
 ]
 
 const deviceModelsByTypeId: Record<number, BaseDevice<any, any, any>> = Object.fromEntries(
@@ -136,4 +141,24 @@ export function exclusiveAnalogOutputDependencyOptions(
 // conditioning on itself).
 export function conditionDependencyOptions(devices: DeviceRecord[], excludeDeviceId?: number): { title: string; value: number }[] {
   return dependencyOptionsForRole(devices, 'condition').filter(option => option.value !== excludeDeviceId)
+}
+
+// pixel_strip's equivalent of exclusiveAnalogOutputDependencyOptions: a pixel_strip already
+// claimed by one pixel_effect_* decorator (the registry's exclusive-controller rule, see
+// docs/pixel-strip.md) is hidden from every other decorator's picker except its own current owner.
+export function exclusivePixelStripDependencyOptions(
+  devices: DeviceRecord[],
+  currentOwnerId = 0,
+): { title: string; value: number }[] {
+  const ownerTypes = new Set<string>([PixelEffectSolidDevice.TYPE_NAME, PixelEffectAlertDevice.TYPE_NAME])
+  const ownedTargets = new Map<number, number>()
+  for (const device of devices) {
+    if (!ownerTypes.has(device.record.typeName)) continue
+    for (const dependency of device.config.deps ?? []) {
+      if (dependency.role === 'pixel_strip') ownedTargets.set(dependency.deviceId, device.record.id)
+    }
+  }
+  return dependencyOptionsForRole(devices, 'pixel_strip')
+    .filter(option => option.value !== currentOwnerId)
+    .filter(option => !ownedTargets.has(option.value) || ownedTargets.get(option.value) === currentOwnerId)
 }

@@ -1,6 +1,6 @@
 ---
 title: Device catalog
-description: All 35 device types built into every Gekko firmware image.
+description: All 38 device types built into every Gekko firmware image.
 sidebar:
   order: 1
   label: Device catalog
@@ -33,6 +33,14 @@ detailed pages coming iteratively.
 | [`fade_analog_output`](/gekko/reference/devices/analog-outputs/) | Smooth fade transitions for an analog output |
 | [`scheduled_analog_output`](/gekko/reference/devices/analog-outputs/) | Daily level curve driving an analog output |
 | [`analog_output_composer`](/gekko/reference/devices/analog-outputs/) | Groups analog channels into one fixture — see the [aquarium light example](/gekko/reference/devices/analog-outputs/#worked-example-a-five-channel-aquarium-light) |
+
+## Lighting effects
+
+| Type | Purpose |
+| --- | --- |
+| `pixel_strip` | WS2812B addressable RGB strip on one GPIO — Adafruit NeoPixel hardware backend |
+| `pixel_effect_solid` | Fills a target `pixel_strip` with one static color |
+| `pixel_effect_alert` | Blinks a target `pixel_strip` while ANDed conditions are satisfied — e.g. an overflow/alarm indicator |
 
 ## Analog inputs
 

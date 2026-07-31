@@ -42,6 +42,10 @@ constexpr size_t kMaxDeviceDependencies = 16;
 constexpr size_t kMaxProvidedRoles = 3;
 constexpr uint16_t kAnalogOutputLevelMax = 4095U;
 constexpr uint16_t kAnalogInputResolutionMax = 4095U;
+// A bound, not a per-device default: caps the static (no-heap) pixel buffer every
+// PixelStripDevice instance owns. 300 * sizeof(PixelColor) = 900 B/device, well inside
+// ESP32 RAM even with several strips configured at once.
+constexpr size_t kMaxPixelStripLength = 300;
 
 enum class DeviceRole : uint8_t {
     Unknown = 0,
@@ -60,6 +64,7 @@ enum class DeviceRole : uint8_t {
     AnalogOutputGroup = 13,
     AnalogInput = 14,
     AnalogInputHub = 15,
+    PixelStrip = 16,
 };
 
 struct DeviceDependencyLink {
@@ -321,6 +326,47 @@ public:
     // Releases a channel's claim on the hub (disable/delete/reconfigure of the requesting leaf), so
     // a stuck in-flight request can't wedge the hub against every other channel forever.
     virtual void releaseChannelRequest(uint8_t channel, DeviceId requester) = 0;
+};
+
+// One pixel's color on an addressable RGB strip (WS2812B and compatible). Deliberately RGB only -
+// WS2812B has no dedicated white channel, so there is no `w` field to leave unused; a future RGBW
+// chip family (SK6812) would be a new, additive config version, not a field added here on
+// speculation.
+struct PixelColor {
+    uint8_t r{0};
+    uint8_t g{0};
+    uint8_t b{0};
+
+    bool operator==(const PixelColor& other) const {
+        return r == other.r && g == other.g && b == other.b;
+    }
+    bool operator!=(const PixelColor& other) const {
+        return !(*this == other);
+    }
+};
+
+// One physical addressable-LED strip: a pin, a pixel count, and a color buffer. Deliberately not
+// `IOutputRuntime<T>` -- a strip is an array of colors, not one scalar `0..kAnalogOutputLevelMax`,
+// so the "one output = one scalar" rule the AnalogOutput family relies on (see
+// docs/analog-output.md) does not apply here. `setPixel`/`fill` only stage the buffer; `show`
+// pushes it to hardware, mirroring Adafruit_NeoPixel's own buffer-then-show split so a decorator
+// can write a whole frame before paying for one bus transaction.
+class IPixelStripRuntime {
+public:
+    static constexpr DeviceRole kProvidedRole = DeviceRole::PixelStrip;
+
+    IPixelStripRuntime() = default;
+    IPixelStripRuntime(const IPixelStripRuntime&) = delete;
+    IPixelStripRuntime& operator=(const IPixelStripRuntime&) = delete;
+    IPixelStripRuntime(IPixelStripRuntime&&) = delete;
+    IPixelStripRuntime& operator=(IPixelStripRuntime&&) = delete;
+    virtual ~IPixelStripRuntime() = default;
+
+    virtual uint16_t pixelCount() const = 0;
+    virtual bool setPixel(uint16_t index, PixelColor color) = 0;
+    virtual bool fill(PixelColor color) = 0;
+    virtual bool show(uint32_t now) = 0;
+    virtual PixelColor currentPixel(uint16_t index) const = 0;
 };
 
 // A hardware RTC (e.g. DS3231) that can be read for its current time, written to keep it aligned
@@ -833,6 +879,9 @@ public:
         return nullptr;
     }
     virtual const IAnalogInputHubRuntime* analogInputHubRuntime() const {
+        return nullptr;
+    }
+    virtual const IPixelStripRuntime* pixelStripRuntime() const {
         return nullptr;
     }
     virtual const IRealTimeClockRuntime* realTimeClockRuntime() const {
