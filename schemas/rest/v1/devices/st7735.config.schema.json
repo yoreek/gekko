@@ -10,7 +10,7 @@
     "spiBusDeviceId": { "type": "integer", "minimum": 1, "default": 0 },
     "chipSelectPin": { "type": "integer", "minimum": 0, "maximum": 255, "default": 5 },
     "dcPin": { "type": "integer", "minimum": 0, "maximum": 255, "default": 2 },
-    "resetPin": { "type": "integer", "minimum": -1, "maximum": 255, "default": -1 },
+    "resetPin": { "type": "integer", "minimum": 0, "maximum": 255, "default": 255 },
     "rotation": { "type": "integer", "minimum": 0, "maximum": 3, "default": 0 },
     "panel": {
       "type": "string",

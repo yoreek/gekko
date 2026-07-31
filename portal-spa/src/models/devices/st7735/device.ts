@@ -54,7 +54,7 @@ export class St7735Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraf
       spiBusDeviceId: 0,
       chipSelectPin: 5,
       dcPin: 2,
-      resetPin: -1,
+      resetPin: 255,
       rotation: 0,
       layout: defaultSt7735Layout(),
     }

@@ -9,7 +9,7 @@ const St7735DeviceApiAdapter& St7735DeviceApiAdapter::instance() {
     return adapter;
 }
 
-bool St7735DeviceApiAdapter::decodeConfig(const uint8_t* input, const size_t size, St7735DeviceConfigV5& config) {
+bool St7735DeviceApiAdapter::decodeConfig(const uint8_t* input, const size_t size, St7735DeviceConfigV6& config) {
     return decodeSt7735DeviceConfig(input, size, config);
 }
 
@@ -17,16 +17,16 @@ DeviceRole St7735DeviceApiAdapter::busRole() {
     return DeviceRole::SpiBus;
 }
 
-DeviceId St7735DeviceApiAdapter::configBusDeviceId(const St7735DeviceConfigV5& config) {
+DeviceId St7735DeviceApiAdapter::configBusDeviceId(const St7735DeviceConfigV6& config) {
     return config.spiBusDeviceId;
 }
 
-void St7735DeviceApiAdapter::setConfigBusDeviceId(St7735DeviceConfigV5& config, const DeviceId busDeviceId) {
+void St7735DeviceApiAdapter::setConfigBusDeviceId(St7735DeviceConfigV6& config, const DeviceId busDeviceId) {
     config.spiBusDeviceId = busDeviceId;
 }
 
 DeviceValidationResult St7735DeviceApiAdapter::validateBusDependency(const DeviceRegistry& registry, const DeviceId busDeviceId,
-                                                                     const St7735DeviceConfigV5& config,
+                                                                     const St7735DeviceConfigV6& config,
                                                                      const IDeviceRuntime* ignoreDependent) {
     const IDeviceRuntime* busRuntime = registry.runtime(busDeviceId);
     if (busRuntime == nullptr || busRuntime->typeId() != SpiBusDevice::descriptor().typeId) {

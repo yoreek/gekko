@@ -1,6 +1,7 @@
 #include "devices/display/st7735/St7735DeviceConfig.h"
 
 #include "devices/core/ConfigCodec.h"
+#include "devices/switch/gpio/GpioSwitchDeviceConfig.h"
 
 #include <cstring>
 #include <type_traits>
@@ -68,6 +69,9 @@ static_assert(sizeof(St7735DeviceConfigV3::kMagic) - 1U + sizeof(St7735DeviceCon
 static_assert(std::is_trivially_copyable<St7735DeviceConfigV4>::value, "St7735DeviceConfigV4 must be POD");
 static_assert(sizeof(St7735DeviceConfigV4::kMagic) - 1U + sizeof(St7735DeviceConfigV4) <= kMaxDeviceConfigBytes,
               "St7735DeviceConfigV4 exceeds device config bound");
+static_assert(std::is_trivially_copyable<St7735DeviceConfigV5>::value, "St7735DeviceConfigV5 must be POD");
+static_assert(sizeof(St7735DeviceConfigV5::kMagic) - 1U + sizeof(St7735DeviceConfigV5) <= kMaxDeviceConfigBytes,
+              "St7735DeviceConfigV5 exceeds device config bound");
 
 DeviceValidationResult St7735DeviceConfigV4::validate() const {
     const DeviceValidationResult baseValidation = DeviceBaseConfigV1::validate();
@@ -85,17 +89,43 @@ DeviceValidationResult St7735DeviceConfigV4::validate() const {
     }
     return {};
 }
+
+DeviceValidationResult St7735DeviceConfigV5::validate() const {
+    const DeviceValidationResult baseValidation = DeviceBaseConfigV1::validate();
+    if (!baseValidation.ok()) {
+        return baseValidation;
+    }
+    if (spiBusDeviceId == 0U) {
+        return {DeviceError::InvalidConfig, "st7735 spi bus device id is required"};
+    }
+    if (rotation > 3U) {
+        return {DeviceError::InvalidConfig, "st7735 rotation is out of bounds"};
+    }
+    St7735Panel parsedPanel{};
+    if (!st7735PanelFromByte(panel, parsedPanel)) {
+        return {DeviceError::InvalidConfig, "st7735 panel is invalid"};
+    }
+    if (width == 0U || height == 0U) {
+        return {DeviceError::InvalidConfig, "st7735 layout dimensions must be positive"};
+    }
+    return {};
+}
 EWFM_LEGACY_CONFIG_USE_END
 
-static_assert(std::is_trivially_copyable<St7735DeviceConfigV5>::value, "St7735DeviceConfigV5 must be POD");
-static_assert(sizeof(St7735DeviceConfigV5::kMagic) - 1U + sizeof(St7735DeviceConfigV5) <= kMaxDeviceConfigBytes,
-              "St7735DeviceConfigV5 exceeds device config bound");
+static_assert(std::is_trivially_copyable<St7735DeviceConfigV6>::value, "St7735DeviceConfigV6 must be POD");
+static_assert(sizeof(St7735DeviceConfigV6::kMagic) - 1U + sizeof(St7735DeviceConfigV6) <= kMaxDeviceConfigBytes,
+              "St7735DeviceConfigV6 exceeds device config bound");
 
-bool decodeSt7735DeviceConfig(const uint8_t* blob, size_t size, St7735DeviceConfigV5& config) {
-    if (decodeFixedConfigBlob(St7735DeviceConfigV5::kMagic, blob, size, config) && config.validate().ok()) {
+bool decodeSt7735DeviceConfig(const uint8_t* blob, size_t size, St7735DeviceConfigV6& config) {
+    if (decodeFixedConfigBlob(St7735DeviceConfigV6::kMagic, blob, size, config) && config.validate().ok()) {
         return true;
     }
     EWFM_LEGACY_CONFIG_USE_BEGIN
+    St7735DeviceConfigV5 legacyV5{};
+    if (decodeFixedConfigBlob(St7735DeviceConfigV5::kMagic, blob, size, legacyV5) && legacyV5.validate().ok()) {
+        config.migrateFrom(legacyV5);
+        return config.validate().ok();
+    }
     St7735DeviceConfigV4 legacyV4{};
     if (decodeFixedConfigBlob(St7735DeviceConfigV4::kMagic, blob, size, legacyV4) && legacyV4.validate().ok()) {
         config.migrateFrom(legacyV4);
@@ -121,52 +151,65 @@ bool decodeSt7735DeviceConfig(const uint8_t* blob, size_t size, St7735DeviceConf
 }
 
 EWFM_LEGACY_CONFIG_USE_BEGIN
-void St7735DeviceConfigV5::migrateFrom(const St7735DeviceConfigV1& origState) {
+void St7735DeviceConfigV6::migrateFrom(const St7735DeviceConfigV1& origState) {
     enabled = origState.enabled;
     std::memcpy(name, origState.name, sizeof(name));
     spiBusDeviceId = origState.spiBusDeviceId;
     chipSelectPin = origState.chipSelectPin;
     dcPin = 2U;
-    resetPin = -1;
+    resetPin = kSt7735ResetPinUnset;
     rotation = 0U;
     panel = static_cast<uint8_t>(St7735Panel::Black18);
     st7735PanelGeometry(St7735Panel::Black18, width, height);
 }
 
-void St7735DeviceConfigV5::migrateFrom(const St7735DeviceConfigV2& origState) {
+void St7735DeviceConfigV6::migrateFrom(const St7735DeviceConfigV2& origState) {
     enabled = origState.enabled;
     std::memcpy(name, origState.name, sizeof(name));
     spiBusDeviceId = origState.spiBusDeviceId;
     chipSelectPin = origState.chipSelectPin;
     dcPin = origState.dcPin;
-    resetPin = origState.resetPin;
+    resetPin = origState.resetPin >= 0 ? static_cast<uint8_t>(origState.resetPin) : kSt7735ResetPinUnset;
     rotation = 0U;
     panel = static_cast<uint8_t>(St7735Panel::Black18);
     st7735PanelGeometry(St7735Panel::Black18, width, height);
 }
 
-void St7735DeviceConfigV5::migrateFrom(const St7735DeviceConfigV3& origState) {
+void St7735DeviceConfigV6::migrateFrom(const St7735DeviceConfigV3& origState) {
     enabled = origState.enabled;
     std::memcpy(name, origState.name, sizeof(name));
     spiBusDeviceId = origState.spiBusDeviceId;
     chipSelectPin = origState.chipSelectPin;
     dcPin = origState.dcPin;
-    resetPin = origState.resetPin;
+    resetPin = origState.resetPin >= 0 ? static_cast<uint8_t>(origState.resetPin) : kSt7735ResetPinUnset;
     rotation = 0U;
     panel = static_cast<uint8_t>(St7735Panel::Black18);
     st7735PanelGeometry(St7735Panel::Black18, width, height);
 }
 
-void St7735DeviceConfigV5::migrateFrom(const St7735DeviceConfigV4& origState) {
+void St7735DeviceConfigV6::migrateFrom(const St7735DeviceConfigV4& origState) {
     enabled = origState.enabled;
     std::memcpy(name, origState.name, sizeof(name));
     spiBusDeviceId = origState.spiBusDeviceId;
     chipSelectPin = origState.chipSelectPin;
     dcPin = origState.dcPin;
-    resetPin = origState.resetPin;
+    resetPin = origState.resetPin >= 0 ? static_cast<uint8_t>(origState.resetPin) : kSt7735ResetPinUnset;
     rotation = origState.rotation;
     panel = static_cast<uint8_t>(St7735Panel::Black18);
     st7735PanelGeometry(St7735Panel::Black18, width, height);
+}
+
+void St7735DeviceConfigV6::migrateFrom(const St7735DeviceConfigV5& origState) {
+    enabled = origState.enabled;
+    std::memcpy(name, origState.name, sizeof(name));
+    spiBusDeviceId = origState.spiBusDeviceId;
+    chipSelectPin = origState.chipSelectPin;
+    dcPin = origState.dcPin;
+    resetPin = origState.resetPin >= 0 ? static_cast<uint8_t>(origState.resetPin) : kSt7735ResetPinUnset;
+    rotation = origState.rotation;
+    panel = origState.panel;
+    width = origState.width;
+    height = origState.height;
 }
 EWFM_LEGACY_CONFIG_USE_END
 
@@ -253,7 +296,7 @@ void st7735PanelGeometry(St7735Panel panel, uint16_t& width, uint16_t& height) {
     height = 160U;
 }
 
-bool St7735DeviceConfigV5::parseJson(const JsonObjectConst& input, const char*& error) {
+bool St7735DeviceConfigV6::parseJson(const JsonObjectConst& input, const char*& error) {
     if (!DeviceBaseConfigV1::parseJson(input, error)) {
         return false;
     }
@@ -307,11 +350,11 @@ bool St7735DeviceConfigV5::parseJson(const JsonObjectConst& input, const char*& 
             return false;
         }
         const long parsed = resetVariant.as<long>();
-        if (parsed < -1 || parsed > 0x7F) {
+        if (parsed < 0 || parsed > 0xFF) {
             error = "st7735 reset pin is out of bounds";
             return false;
         }
-        resetPin = static_cast<int8_t>(parsed);
+        resetPin = static_cast<uint8_t>(parsed);
     }
 
     if (!input["layoutWidth"].isNull() || !input["layoutHeight"].isNull()) {
@@ -375,13 +418,22 @@ bool St7735DeviceConfigV5::parseJson(const JsonObjectConst& input, const char*& 
     return true;
 }
 
-DeviceValidationResult St7735DeviceConfigV5::validate() const {
+DeviceValidationResult St7735DeviceConfigV6::validate() const {
     const DeviceValidationResult baseValidation = DeviceBaseConfigV1::validate();
     if (!baseValidation.ok()) {
         return baseValidation;
     }
     if (spiBusDeviceId == 0U) {
         return {DeviceError::InvalidConfig, "st7735 spi bus device id is required"};
+    }
+    if (!gpioSwitchPinIsValid(chipSelectPin)) {
+        return {DeviceError::InvalidConfig, "st7735 chip select pin is invalid"};
+    }
+    if (!gpioSwitchPinIsValid(dcPin)) {
+        return {DeviceError::InvalidConfig, "st7735 dc pin is invalid"};
+    }
+    if (resetPin != kSt7735ResetPinUnset && !gpioSwitchPinIsValid(resetPin)) {
+        return {DeviceError::InvalidConfig, "st7735 reset pin is invalid"};
     }
     if (rotation > 3U) {
         return {DeviceError::InvalidConfig, "st7735 rotation is out of bounds"};
@@ -396,7 +448,7 @@ DeviceValidationResult St7735DeviceConfigV5::validate() const {
     return {};
 }
 
-void St7735DeviceConfigV5::writeJson(JsonObject output) const {
+void St7735DeviceConfigV6::writeJson(JsonObject output) const {
     DeviceBaseConfigV1::writeJson(output);
     output["spiBusDeviceId"] = spiBusDeviceId;
     output["chipSelectPin"] = chipSelectPin;

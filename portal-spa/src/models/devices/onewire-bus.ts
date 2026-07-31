@@ -22,7 +22,7 @@ export class OneWireBusDevice extends BaseDevice<OneWireBusConfigDraft, OneWireB
   static defaultConfig(): OneWireBusConfigDraft {
     return {
       ...defaultBaseDeviceConfig(),
-      gpioPin: 4,
+      gpioPin: 255,
       internalPullup: false,
     }
   }

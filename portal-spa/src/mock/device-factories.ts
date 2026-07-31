@@ -523,7 +523,7 @@ function normalizeSpiBusConfigPayload(value: unknown, enabledFallback: boolean):
     host: normalizeFiniteNumber(value.host, 2),
     sckPin: normalizeFiniteNumber(value.sckPin, 18),
     mosiPin: normalizeFiniteNumber(value.mosiPin, 23),
-    misoPin: normalizeFiniteNumber(value.misoPin, -1),
+    misoPin: normalizeFiniteNumber(value.misoPin, 255),
   }
 }
 
@@ -761,7 +761,7 @@ export function createSt7735Device(
     spiBusDeviceId: dependencyDeviceId,
     chipSelectPin: normalizeFiniteNumber(configSource.chipSelectPin, 5),
     dcPin: normalizeFiniteNumber(configSource.dcPin, 2),
-    resetPin: normalizeFiniteNumber(configSource.resetPin, -1),
+    resetPin: normalizeFiniteNumber(configSource.resetPin, 255),
     rotation: normalizeDisplayRotation(configSource.rotation, 0),
     panel,
     width: geometry?.width ?? 128,

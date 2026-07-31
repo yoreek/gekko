@@ -34,7 +34,7 @@ export class AnalogPortInputDevice extends BaseDevice<AnalogPortInputConfigDraft
   static defaultConfig(): AnalogPortInputConfigDraft {
     return {
       ...defaultBaseDeviceConfig(),
-      gpioPin: 34,
+      gpioPin: 255,
       attenuation: '11db',
       adcSamples: 8,
       reportAlways: false,

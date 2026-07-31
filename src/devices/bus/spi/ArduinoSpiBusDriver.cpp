@@ -26,12 +26,12 @@ uint8_t spiHostToArduinoHost(uint8_t host) {
 
 class ArduinoSpiBusDriver final : public ISpiBusDriver {
 public:
-    bool begin(uint8_t host, uint8_t sckPin, uint8_t mosiPin, int16_t misoPin) override {
+    bool begin(uint8_t host, uint8_t sckPin, uint8_t mosiPin, uint8_t misoPin) override {
         bus_.reset(new SPIClass(spiHostToArduinoHost(host)));
         if (bus_ == nullptr) {
             return false;
         }
-        const int8_t miso = misoPin >= 0 ? static_cast<int8_t>(misoPin) : static_cast<int8_t>(-1);
+        const int8_t miso = misoPin != kSpiBusMisoUnset ? static_cast<int8_t>(misoPin) : static_cast<int8_t>(-1);
         bus_->begin(static_cast<int8_t>(sckPin), miso, static_cast<int8_t>(mosiPin), static_cast<int8_t>(-1));
         begun_ = true;
         return true;
@@ -111,7 +111,7 @@ std::unique_ptr<ISpiBusDriver> createArduinoSpiBusDriver() {
 #else
 class NullSpiBusDriver final : public ISpiBusDriver {
 public:
-    bool begin(uint8_t, uint8_t, uint8_t, int16_t) override {
+    bool begin(uint8_t, uint8_t, uint8_t, uint8_t) override {
         return false;
     }
 

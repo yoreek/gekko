@@ -16,7 +16,9 @@ constexpr uint16_t kBinarySensorMaxDebounceMs = 60000U;
 #pragma pack(push, 1)
 struct BinarySensorDeviceConfigV1 : DeviceBaseConfigV1 {
     static constexpr char kMagic[] = "BINSEN-1";
-    uint8_t gpioPin{4};
+    // No real default GPIO exists for a generic digital sensor; 0xFF forces the user to pick one
+    // explicitly (binarySensorPinIsValid() rejects it). See docs/pin-configuration-conventions.md.
+    uint8_t gpioPin{0xFFU};
     uint8_t pullMode{static_cast<uint8_t>(GpioInputPullMode::PullUp)};
     uint8_t inverted{0};
     uint16_t debounceMs{50};

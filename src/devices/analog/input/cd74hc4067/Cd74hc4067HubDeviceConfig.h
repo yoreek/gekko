@@ -20,7 +20,9 @@ struct Cd74hc4067HubDeviceConfigV1 : DeviceBaseConfigV1 {
 
     uint8_t selectPins[4]{16, 17, 18, 19};   // S0..S3
     uint8_t enablePin{kCd74hc4067UnusedPin}; // 0xFF = not wired (tied to GND on the module)
-    uint8_t sigPin{34};
+    // No single canonical default among the 8 valid ADC1 pins; 0xFF forces the user to pick one
+    // explicitly (analogPortInputGpioPinIsValid() rejects it). See docs/pin-configuration-conventions.md.
+    uint8_t sigPin{0xFFU};
     uint8_t sigAttenuation{static_cast<uint8_t>(AdcAttenuation::Db11)};
 
     bool parseJson(const JsonObjectConst& input, const char*& error);

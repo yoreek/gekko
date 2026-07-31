@@ -148,6 +148,7 @@ Cd74hc4067HubDeviceConfigV1 makeCd74hc4067HubConfig() {
     Cd74hc4067HubDeviceConfigV1 config{};
     config.enabled = 1;
     std::snprintf(config.name, sizeof(config.name), "%s", "mux hub");
+    config.sigPin = 34U;
     return config;
 }
 

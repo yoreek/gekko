@@ -216,6 +216,7 @@ void test_onewire_runtime_truncates_results_and_clears_on_disable_and_reconfigur
 void test_onewire_registry_create_scan_reconfigure_disable_and_delete();
 void test_onewire_registry_update_config_restarts_bus_and_advances_generation();
 void test_spi_bus_config_codec_json_and_validation();
+void test_spi_bus_config_migrates_legacy_v1_blob();
 void test_spi_bus_api_adapter_partial_update_preserves_pins();
 void test_spi_default_registries_include_bus();
 void test_spi_runtime_lifecycle_transactions_and_duplicate_cs_detection();
@@ -251,6 +252,7 @@ void test_st7735_config_codec_round_trip();
 void test_st7735_config_codec_accepts_legacy_blob();
 void test_st7735_config_codec_migrates_v2_blob();
 void test_st7735_config_codec_migrates_v4_blob();
+void test_st7735_config_codec_migrates_v5_blob();
 void test_st7735_config_rejects_legacy_layout_dimension_fields();
 void test_st7735_registry_migrates_legacy_blob_on_begin();
 void test_st7735_default_registries_include_display();
@@ -580,6 +582,7 @@ int main(int, char**) {
     RUN_TEST(test_onewire_registry_create_scan_reconfigure_disable_and_delete);
     RUN_TEST(test_onewire_registry_update_config_restarts_bus_and_advances_generation);
     RUN_TEST(test_spi_bus_config_codec_json_and_validation);
+    RUN_TEST(test_spi_bus_config_migrates_legacy_v1_blob);
     RUN_TEST(test_spi_bus_api_adapter_partial_update_preserves_pins);
     RUN_TEST(test_spi_default_registries_include_bus);
     RUN_TEST(test_spi_runtime_lifecycle_transactions_and_duplicate_cs_detection);
@@ -615,6 +618,7 @@ int main(int, char**) {
     RUN_TEST(test_st7735_config_codec_accepts_legacy_blob);
     RUN_TEST(test_st7735_config_codec_migrates_v2_blob);
     RUN_TEST(test_st7735_config_codec_migrates_v4_blob);
+    RUN_TEST(test_st7735_config_codec_migrates_v5_blob);
     RUN_TEST(test_st7735_config_rejects_legacy_layout_dimension_fields);
     RUN_TEST(test_st7735_registry_migrates_legacy_blob_on_begin);
     RUN_TEST(test_st7735_default_registries_include_display);

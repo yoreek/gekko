@@ -1,6 +1,7 @@
 #include "devices/bus/onewire/OneWireBusConfig.h"
 
 #include "devices/core/ConfigCodec.h"
+#include "devices/switch/gpio/GpioSwitchDeviceConfig.h"
 
 #include <cstring>
 #include <type_traits>
@@ -49,6 +50,9 @@ DeviceValidationResult OneWireBusDeviceConfigV1::validate() const {
     const DeviceValidationResult baseValidation = DeviceBaseConfigV1::validate();
     if (!baseValidation.ok()) {
         return baseValidation;
+    }
+    if (!gpioSwitchPinIsValid(gpioPin)) {
+        return {DeviceError::InvalidConfig, "onewire bus pin is invalid"};
     }
     return {};
 }

@@ -16,12 +16,18 @@ constexpr uint8_t kHd44780PinUnset = 0xFFU; // backlightPin sentinel: not wired
 
 #pragma pack(push, 1)
 template <typename Derived> struct Hd44780PinDisplayDeviceConfigBase : DeviceBaseConfigV1 {
-    uint8_t rsPin{0U};
-    uint8_t ePin{0U};
-    uint8_t d4Pin{0U};
-    uint8_t d5Pin{0U};
-    uint8_t d6Pin{0U};
-    uint8_t d7Pin{0U};
+    // No real defaults exist for 6 independently-wired data/control lines, and defaulting them all
+    // to the same value (formerly 0) meant a freshly-created device failed the "pins must be
+    // distinct" check below on its own compiled-in defaults. 0xFF forces the user to pick 6 real,
+    // distinct pins explicitly -- matches the SPA's lcd1602-pin.ts/lcd2004-pin.ts, which already
+    // default here to LCD1602_PIN_UNSET/LCD2004_PIN_UNSET (255). See
+    // docs/pin-configuration-conventions.md.
+    uint8_t rsPin{kHd44780PinUnset};
+    uint8_t ePin{kHd44780PinUnset};
+    uint8_t d4Pin{kHd44780PinUnset};
+    uint8_t d5Pin{kHd44780PinUnset};
+    uint8_t d6Pin{kHd44780PinUnset};
+    uint8_t d7Pin{kHd44780PinUnset};
     uint8_t backlightPin{kHd44780PinUnset};
 
     DeviceValidationResult validate() const {

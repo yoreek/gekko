@@ -31,9 +31,10 @@ void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& val
     TEST_ASSERT_TRUE_MESSAGE(json_schema_smoke::validateFile(schemaPath, value, error), error.c_str());
 }
 
-St7735DeviceConfigV5 makeConfig(uint32_t spiBusDeviceId = 12, uint8_t chipSelectPin = 5, uint8_t dcPin = 2, int8_t resetPin = -1,
-                                uint8_t rotation = 1U, uint16_t width = 128, uint16_t height = 160) {
-    St7735DeviceConfigV5 config{};
+St7735DeviceConfigV6 makeConfig(uint32_t spiBusDeviceId = 12, uint8_t chipSelectPin = 5, uint8_t dcPin = 2,
+                                uint8_t resetPin = kSt7735ResetPinUnset, uint8_t rotation = 1U, uint16_t width = 128,
+                                uint16_t height = 160) {
+    St7735DeviceConfigV6 config{};
     config.enabled = 1U;
     std::snprintf(config.name, sizeof(config.name), "%s", "st7735");
     config.spiBusDeviceId = spiBusDeviceId;
@@ -47,7 +48,7 @@ St7735DeviceConfigV5 makeConfig(uint32_t spiBusDeviceId = 12, uint8_t chipSelect
     return config;
 }
 
-void fillSpiBusDocument(StaticJsonDocument<512>& doc, const char* name, uint8_t sckPin, uint8_t mosiPin, int16_t misoPin) {
+void fillSpiBusDocument(StaticJsonDocument<512>& doc, const char* name, uint8_t sckPin, uint8_t mosiPin, uint8_t misoPin) {
     doc.clear();
     doc["typeName"] = "spi_bus";
     JsonObject config = doc.createNestedObject("config");
@@ -68,7 +69,7 @@ void fillDisplayDocument(StaticJsonDocument<1024>& doc, uint32_t spiBusDeviceId,
     config["spiBusDeviceId"] = spiBusDeviceId;
     config["chipSelectPin"] = chipSelectPin;
     config["dcPin"] = 2;
-    config["resetPin"] = -1;
+    config["resetPin"] = kSt7735ResetPinUnset;
     config["rotation"] = 1;
     config["panel"] = "black18";
     config["width"] = 128;
@@ -109,16 +110,16 @@ DeviceCreateRequest makeCreateRequest(uint32_t spiBusDeviceId, uint8_t chipSelec
 } // namespace
 
 void test_st7735_config_codec_round_trip() {
-    const St7735DeviceConfigV5 config = makeConfig();
+    const St7735DeviceConfigV6 config = makeConfig();
     uint8_t buffer[kMaxDeviceConfigBytes]{};
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV5::kMagic, config, buffer, st7735DeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV6::kMagic, config, buffer, st7735DeviceConfigSize(config)));
 
-    St7735DeviceConfigV5 decoded{};
+    St7735DeviceConfigV6 decoded{};
     TEST_ASSERT_TRUE(decodeSt7735DeviceConfig(buffer, st7735DeviceConfigSize(config), decoded));
     TEST_ASSERT_EQUAL_UINT32(config.spiBusDeviceId, decoded.spiBusDeviceId);
     TEST_ASSERT_EQUAL_UINT8(config.chipSelectPin, decoded.chipSelectPin);
     TEST_ASSERT_EQUAL_UINT8(config.dcPin, decoded.dcPin);
-    TEST_ASSERT_EQUAL_INT8(config.resetPin, decoded.resetPin);
+    TEST_ASSERT_EQUAL_UINT8(config.resetPin, decoded.resetPin);
     TEST_ASSERT_EQUAL_UINT8(config.rotation, decoded.rotation);
     TEST_ASSERT_EQUAL_UINT8(config.panel, decoded.panel);
     TEST_ASSERT_EQUAL_UINT16(config.width, decoded.width);
@@ -126,7 +127,7 @@ void test_st7735_config_codec_round_trip() {
 }
 
 void test_st7735_config_codec_accepts_legacy_blob() {
-    const St7735DeviceConfigV5 config = makeConfig();
+    const St7735DeviceConfigV6 config = makeConfig();
     EWFM_LEGACY_CONFIG_USE_BEGIN
     St7735DeviceConfigV3 legacyV3{};
     legacyV3.enabled = config.enabled;
@@ -142,7 +143,7 @@ void test_st7735_config_codec_accepts_legacy_blob() {
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV3::kMagic, legacyV3, legacyV3Buffer, legacyV3Size));
     EWFM_LEGACY_CONFIG_USE_END
 
-    St7735DeviceConfigV5 decodedV3{};
+    St7735DeviceConfigV6 decodedV3{};
     TEST_ASSERT_TRUE(decodeSt7735DeviceConfig(legacyV3Buffer, legacyV3Size, decodedV3));
     TEST_ASSERT_EQUAL_UINT8(0U, decodedV3.rotation);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(St7735Panel::Black18), decodedV3.panel);
@@ -162,12 +163,12 @@ void test_st7735_config_codec_accepts_legacy_blob() {
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV1::kMagic, legacy, buffer, st7735DeviceConfigV1Size()));
     EWFM_LEGACY_CONFIG_USE_END
 
-    St7735DeviceConfigV5 decoded{};
+    St7735DeviceConfigV6 decoded{};
     TEST_ASSERT_TRUE(decodeSt7735DeviceConfig(buffer, st7735DeviceConfigV1Size(), decoded));
     TEST_ASSERT_EQUAL_UINT32(config.spiBusDeviceId, decoded.spiBusDeviceId);
     TEST_ASSERT_EQUAL_UINT8(config.chipSelectPin, decoded.chipSelectPin);
     TEST_ASSERT_EQUAL_UINT8(2U, decoded.dcPin);
-    TEST_ASSERT_EQUAL_INT8(-1, decoded.resetPin);
+    TEST_ASSERT_EQUAL_UINT8(kSt7735ResetPinUnset, decoded.resetPin);
     TEST_ASSERT_EQUAL_UINT8(0U, decoded.rotation);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(St7735Panel::Black18), decoded.panel);
     TEST_ASSERT_EQUAL_UINT16(128U, decoded.width);
@@ -175,7 +176,7 @@ void test_st7735_config_codec_accepts_legacy_blob() {
 }
 
 void test_st7735_config_codec_migrates_v2_blob() {
-    const St7735DeviceConfigV5 config = makeConfig(12, 5, 4, 3, 1U, 128, 160);
+    const St7735DeviceConfigV6 config = makeConfig(12, 5, 4, 3, 1U, 128, 160);
     EWFM_LEGACY_CONFIG_USE_BEGIN
     St7735DeviceConfigV2 legacy{};
     legacy.enabled = config.enabled;
@@ -191,12 +192,12 @@ void test_st7735_config_codec_migrates_v2_blob() {
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV2::kMagic, legacy, buffer, st7735DeviceConfigV2Size()));
     EWFM_LEGACY_CONFIG_USE_END
 
-    St7735DeviceConfigV5 decoded{};
+    St7735DeviceConfigV6 decoded{};
     TEST_ASSERT_TRUE(decodeSt7735DeviceConfig(buffer, st7735DeviceConfigV2Size(), decoded));
     TEST_ASSERT_EQUAL_UINT32(config.spiBusDeviceId, decoded.spiBusDeviceId);
     TEST_ASSERT_EQUAL_UINT8(config.chipSelectPin, decoded.chipSelectPin);
     TEST_ASSERT_EQUAL_UINT8(config.dcPin, decoded.dcPin);
-    TEST_ASSERT_EQUAL_INT8(config.resetPin, decoded.resetPin);
+    TEST_ASSERT_EQUAL_UINT8(config.resetPin, decoded.resetPin);
     TEST_ASSERT_EQUAL_UINT8(0U, decoded.rotation);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(St7735Panel::Black18), decoded.panel);
     TEST_ASSERT_EQUAL_UINT16(config.width, decoded.width);
@@ -222,16 +223,60 @@ void test_st7735_config_codec_migrates_v4_blob() {
     TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV4::kMagic, legacy, buffer, st7735DeviceConfigSize(legacy)));
     EWFM_LEGACY_CONFIG_USE_END
 
-    St7735DeviceConfigV5 decoded{};
+    St7735DeviceConfigV6 decoded{};
     TEST_ASSERT_TRUE(decodeSt7735DeviceConfig(buffer, st7735DeviceConfigSize(legacy), decoded));
     TEST_ASSERT_EQUAL_UINT32(12U, decoded.spiBusDeviceId);
     TEST_ASSERT_EQUAL_UINT8(5U, decoded.chipSelectPin);
     TEST_ASSERT_EQUAL_UINT8(4U, decoded.dcPin);
-    TEST_ASSERT_EQUAL_INT8(3, decoded.resetPin);
+    TEST_ASSERT_EQUAL_UINT8(3U, decoded.resetPin);
     TEST_ASSERT_EQUAL_UINT8(2U, decoded.rotation);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(St7735Panel::Black18), decoded.panel);
     TEST_ASSERT_EQUAL_UINT16(128U, decoded.width);
     TEST_ASSERT_EQUAL_UINT16(160U, decoded.height);
+}
+
+void test_st7735_config_codec_migrates_v5_blob() {
+    EWFM_LEGACY_CONFIG_USE_BEGIN
+    St7735DeviceConfigV5 legacy{};
+    legacy.enabled = 1U;
+    std::snprintf(legacy.name, sizeof(legacy.name), "%s", "st7735");
+    legacy.spiBusDeviceId = 12U;
+    legacy.chipSelectPin = 5U;
+    legacy.dcPin = 4U;
+    legacy.resetPin = 3;
+    legacy.rotation = 2U;
+    legacy.panel = static_cast<uint8_t>(St7735Panel::Green144);
+    legacy.width = 128U;
+    legacy.height = 128U;
+
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV5::kMagic, legacy, buffer, st7735DeviceConfigSize(legacy)));
+    EWFM_LEGACY_CONFIG_USE_END
+
+    St7735DeviceConfigV6 decoded{};
+    TEST_ASSERT_TRUE(decodeSt7735DeviceConfig(buffer, st7735DeviceConfigSize(legacy), decoded));
+    TEST_ASSERT_EQUAL_UINT32(12U, decoded.spiBusDeviceId);
+    TEST_ASSERT_EQUAL_UINT8(5U, decoded.chipSelectPin);
+    TEST_ASSERT_EQUAL_UINT8(4U, decoded.dcPin);
+    TEST_ASSERT_EQUAL_UINT8(3U, decoded.resetPin);
+    TEST_ASSERT_EQUAL_UINT8(2U, decoded.rotation);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(St7735Panel::Green144), decoded.panel);
+    TEST_ASSERT_EQUAL_UINT16(128U, decoded.width);
+    TEST_ASSERT_EQUAL_UINT16(128U, decoded.height);
+
+    EWFM_LEGACY_CONFIG_USE_BEGIN
+    St7735DeviceConfigV5 legacyUnset{};
+    legacyUnset.enabled = 1U;
+    std::snprintf(legacyUnset.name, sizeof(legacyUnset.name), "%s", "st7735-unset");
+    legacyUnset.spiBusDeviceId = 12U;
+    legacyUnset.resetPin = -1;
+    uint8_t bufferUnset[kMaxDeviceConfigBytes]{};
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV5::kMagic, legacyUnset, bufferUnset, st7735DeviceConfigSize(legacyUnset)));
+    EWFM_LEGACY_CONFIG_USE_END
+
+    St7735DeviceConfigV6 decodedUnset{};
+    TEST_ASSERT_TRUE(decodeSt7735DeviceConfig(bufferUnset, st7735DeviceConfigSize(legacyUnset), decodedUnset));
+    TEST_ASSERT_EQUAL_UINT8(kSt7735ResetPinUnset, decodedUnset.resetPin);
 }
 
 void test_st7735_config_rejects_legacy_layout_dimension_fields() {
@@ -260,13 +305,13 @@ void test_st7735_registry_migrates_legacy_blob_on_begin() {
     DeviceRegistrySnapshot snapshot{};
     DeviceConfigBlobMap configBlobs{};
 
-    SpiBusDeviceConfigV1 spiConfig{};
+    SpiBusDeviceConfigV2 spiConfig{};
     spiConfig.enabled = 1U;
     std::snprintf(spiConfig.name, sizeof(spiConfig.name), "%s", "spi");
     spiConfig.host = kSpiBusHostVspi;
     spiConfig.sckPin = 18U;
     spiConfig.mosiPin = 23U;
-    spiConfig.misoPin = -1;
+    spiConfig.misoPin = kSpiBusMisoUnset;
 
     DeviceRegistryEntry spiRecord{};
     spiRecord.header.recordVersion = kDeviceRecordHeaderVersion;
@@ -279,11 +324,11 @@ void test_st7735_registry_migrates_legacy_blob_on_begin() {
     spiRecord.status = DeviceStatus::Ready;
 
     uint8_t spiBuffer[kMaxDeviceConfigBytes]{};
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(SpiBusDeviceConfigV1::kMagic, spiConfig, spiBuffer, spiBusDeviceConfigSize(spiConfig)));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(SpiBusDeviceConfigV2::kMagic, spiConfig, spiBuffer, spiBusDeviceConfigSize(spiConfig)));
     BoundedBlob<kMaxDeviceConfigBytes> spiBlob{};
     TEST_ASSERT_TRUE(spiBlob.assign(spiBuffer, spiBusDeviceConfigSize(spiConfig)));
 
-    St7735DeviceConfigV5 legacyDisplayConfig = makeConfig(spiRecord.header.deviceId);
+    St7735DeviceConfigV6 legacyDisplayConfig = makeConfig(spiRecord.header.deviceId);
     uint8_t legacyBuffer[kMaxDeviceConfigBytes]{};
     EWFM_LEGACY_CONFIG_USE_BEGIN
     St7735DeviceConfigV1 legacy{};
@@ -326,14 +371,14 @@ void test_st7735_registry_migrates_legacy_blob_on_begin() {
     TEST_ASSERT_NOT_NULL(runtime);
     TEST_ASSERT_EQUAL_UINT32(St7735Device::descriptor().currentConfigVersion, runtime->configVersion());
     TEST_ASSERT_EQUAL_UINT8(2U, runtime->config().dcPin);
-    TEST_ASSERT_EQUAL_INT8(-1, runtime->config().resetPin);
+    TEST_ASSERT_EQUAL_UINT8(kSt7735ResetPinUnset, runtime->config().resetPin);
     TEST_ASSERT_EQUAL_UINT8(0U, runtime->config().rotation);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(St7735Panel::Black18), runtime->config().panel);
     TEST_ASSERT_TRUE(registry.hasPendingPersistence());
 }
 
 void test_st7735_api_adapter_partial_update_preserves_bus_and_pins() {
-    St7735DeviceConfigV5 config{};
+    St7735DeviceConfigV6 config{};
     config.enabled = 1U;
     std::snprintf(config.name, sizeof(config.name), "%s", "st7735");
     config.spiBusDeviceId = 12;
@@ -350,7 +395,7 @@ void test_st7735_api_adapter_partial_update_preserves_bus_and_pins() {
 
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = st7735DeviceConfigSize(config);
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV5::kMagic, config, buffer, size));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(St7735DeviceConfigV6::kMagic, config, buffer, size));
     DeviceConfigBlob configBlob{};
     TEST_ASSERT_TRUE(configBlob.assign(buffer, size));
 
@@ -382,13 +427,13 @@ void test_st7735_api_adapter_partial_update_preserves_bus_and_pins() {
     TEST_ASSERT_EQUAL_UINT8(1U, request.depCount);
     TEST_ASSERT_EQUAL_UINT32(12U, request.deps[0].deviceId);
 
-    St7735DeviceConfigV5 parsed{};
+    St7735DeviceConfigV6 parsed{};
     TEST_ASSERT_TRUE(
         decodeSt7735DeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
     TEST_ASSERT_EQUAL_UINT8(1, parsed.rotation);
     TEST_ASSERT_EQUAL_UINT8(15, parsed.chipSelectPin);
     TEST_ASSERT_EQUAL_UINT8(16, parsed.dcPin);
-    TEST_ASSERT_EQUAL_INT8(4, parsed.resetPin);
+    TEST_ASSERT_EQUAL_UINT8(4U, parsed.resetPin);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(St7735Panel::Green144), parsed.panel);
     TEST_ASSERT_EQUAL_UINT16(128, parsed.width);
     TEST_ASSERT_EQUAL_UINT16(128, parsed.height);
@@ -420,7 +465,7 @@ void test_st7735_requires_spi_bus_and_rejects_duplicate_chip_select() {
     TEST_ASSERT_TRUE(registry.begin(0).ok());
 
     StaticJsonDocument<512> busDoc;
-    fillSpiBusDocument(busDoc, "spi", 18U, 23U, -1);
+    fillSpiBusDocument(busDoc, "spi", 18U, 23U, kSpiBusMisoUnset);
     DeviceCreateRequest busRequest{};
     const char* error = nullptr;
     TEST_ASSERT_TRUE(SpiBusDeviceApiAdapter::instance().parseCreateRequest(busDoc.as<JsonObjectConst>(), busRequest, error));
@@ -457,7 +502,7 @@ void test_st7735_update_round_trip_includes_layout() {
     TEST_ASSERT_TRUE(registry.begin(0).ok());
 
     StaticJsonDocument<512> busDoc;
-    fillSpiBusDocument(busDoc, "spi", 18U, 23U, -1);
+    fillSpiBusDocument(busDoc, "spi", 18U, 23U, kSpiBusMisoUnset);
     DeviceCreateRequest busRequest{};
     const char* error = nullptr;
     TEST_ASSERT_TRUE(SpiBusDeviceApiAdapter::instance().parseCreateRequest(busDoc.as<JsonObjectConst>(), busRequest, error));
@@ -501,7 +546,7 @@ void test_st7735_update_round_trip_includes_layout() {
     TEST_ASSERT_EQUAL_UINT32(busResult.deviceId, reloadedRuntime->config().spiBusDeviceId);
     TEST_ASSERT_EQUAL_UINT8(5U, reloadedRuntime->config().chipSelectPin);
     TEST_ASSERT_EQUAL_UINT8(2U, reloadedRuntime->config().dcPin);
-    TEST_ASSERT_EQUAL_INT8(-1, reloadedRuntime->config().resetPin);
+    TEST_ASSERT_EQUAL_UINT8(kSt7735ResetPinUnset, reloadedRuntime->config().resetPin);
     TEST_ASSERT_EQUAL_UINT8(1U, reloadedRuntime->layout().pages.size());
     TEST_ASSERT_EQUAL_UINT8(1U, reloadedRuntime->layout().pages[0].widgets.size());
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayLayoutWidgetType::Bitmap), reloadedRuntime->layout().pages[0].widgets[0].type);
@@ -518,7 +563,7 @@ void test_st7735_update_round_trip_includes_layout() {
     TEST_ASSERT_EQUAL_UINT16(160U, output["config"]["height"].as<uint16_t>());
     TEST_ASSERT_EQUAL_STRING("black18", output["config"]["panel"].as<const char*>());
     TEST_ASSERT_EQUAL_UINT8(2U, output["config"]["dcPin"].as<uint8_t>());
-    TEST_ASSERT_EQUAL_INT8(-1, output["config"]["resetPin"].as<int8_t>());
+    TEST_ASSERT_EQUAL_UINT8(kSt7735ResetPinUnset, output["config"]["resetPin"].as<uint8_t>());
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DisplayCoordinateUnit::Pixel),
                             output["runtime"]["displayProfile"]["coordinateUnit"].as<uint8_t>());
     // fillDisplayDocument sets rotation=1 (90 degrees) on a native 128x160 panel, so the
@@ -529,10 +574,10 @@ void test_st7735_update_round_trip_includes_layout() {
 }
 
 DisplayLayoutProfile buildSt7735ProfileForRotation(uint8_t rotation) {
-    const St7735DeviceConfigV5 config = makeConfig(12, 5, 2, -1, rotation, 128, 160);
+    const St7735DeviceConfigV6 config = makeConfig(12, 5, 2, kSt7735ResetPinUnset, rotation, 128, 160);
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = st7735DeviceConfigSize(config);
-    encodeFixedConfigBlob(St7735DeviceConfigV5::kMagic, config, buffer, size);
+    encodeFixedConfigBlob(St7735DeviceConfigV6::kMagic, config, buffer, size);
     DeviceConfigBlob configBlob{};
     configBlob.assign(buffer, size);
 

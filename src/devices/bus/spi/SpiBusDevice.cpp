@@ -12,17 +12,13 @@ namespace ewfm {
 
 namespace {
 constexpr DeviceTypeId kSpiBusDeviceTypeId = 8;
-constexpr uint32_t kSpiBusDeviceConfigVersion = 1;
+constexpr uint32_t kSpiBusDeviceConfigVersion = 2;
 constexpr uint32_t kSpiDiagnosticsDebounceMs = 1000U;
 
 bool samePin(const uint8_t left, const uint8_t right) {
     return left == right;
 }
 } // namespace
-
-static_assert(std::is_trivially_copyable<SpiBusDeviceConfigV1>::value, "SpiBusDeviceConfigV1 must be POD");
-static_assert(sizeof(SpiBusDeviceConfigV1::kMagic) - 1U + sizeof(SpiBusDeviceConfigV1) <= kMaxDeviceConfigBytes,
-              "SpiBusDeviceConfigV1 exceeds device config bound");
 
 SpiBusDevice::DependencyTransaction::DependencyTransaction(SpiBusDevice* bus, ISpiBusDriver* driver, uint32_t generation)
     : bus_(bus), driver_(driver), generation_(generation) {}
@@ -77,25 +73,25 @@ void SpiBusDevice::DependencyTransaction::release() {
 SpiBusDevice::SpiBusDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob)
     : SpiBusDevice(
           [&configBlob]() {
-              SpiBusDeviceConfigV1 config{};
-              (void)decodeValidatedFixedConfigBlob(SpiBusDeviceConfigV1::kMagic, configBlob.data(), configBlob.size(), config);
+              SpiBusDeviceConfigV2 config{};
+              (void)decodeSpiBusDeviceConfig(configBlob.data(), configBlob.size(), config);
               return config;
           }(),
           createArduinoSpiBusDriver()) {
     bindDeviceIdentity(record, configBlob);
 }
 
-SpiBusDevice::SpiBusDevice(const SpiBusDeviceConfigV1& config, ISpiBusDriver& driver)
+SpiBusDevice::SpiBusDevice(const SpiBusDeviceConfigV2& config, ISpiBusDriver& driver)
     : DeviceRuntimeBase((PState)&SpiBusDevice::Idle), config_(config), driver_(driver), csProbeDriver_(defaultArduinoSpiCsProbeDriver()) {}
 
-SpiBusDevice::SpiBusDevice(const SpiBusDeviceConfigV1& config, ISpiBusDriver& driver, ISpiCsProbeDriver& csProbeDriver)
+SpiBusDevice::SpiBusDevice(const SpiBusDeviceConfigV2& config, ISpiBusDriver& driver, ISpiCsProbeDriver& csProbeDriver)
     : DeviceRuntimeBase((PState)&SpiBusDevice::Idle), config_(config), driver_(driver), csProbeDriver_(csProbeDriver) {}
 
-SpiBusDevice::SpiBusDevice(const SpiBusDeviceConfigV1& config, std::unique_ptr<ISpiBusDriver> ownedDriver)
+SpiBusDevice::SpiBusDevice(const SpiBusDeviceConfigV2& config, std::unique_ptr<ISpiBusDriver> ownedDriver)
     : DeviceRuntimeBase((PState)&SpiBusDevice::Idle), config_(config), ownedDriver_(std::move(ownedDriver)),
       driver_(ownedDriver_ != nullptr ? *ownedDriver_ : defaultArduinoSpiBusDriver()), csProbeDriver_(defaultArduinoSpiCsProbeDriver()) {}
 
-const SpiBusDeviceConfigV1& SpiBusDevice::config() const {
+const SpiBusDeviceConfigV2& SpiBusDevice::config() const {
     return config_;
 }
 
@@ -140,12 +136,12 @@ void SpiBusDevice::bindDeviceIdentity(const DeviceRegistryEntry& record, const D
 bool SpiBusDevice::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = spiBusDeviceConfigSize(config_);
-    return encodeFixedConfigBlob(SpiBusDeviceConfigV1::kMagic, config_, buffer, size) && configBlob.assign(buffer, size);
+    return encodeFixedConfigBlob(SpiBusDeviceConfigV2::kMagic, config_, buffer, size) && configBlob.assign(buffer, size);
 }
 
 DeviceConfigUpdatePlan SpiBusDevice::planConfigUpdate(const DeviceConfigBlob& configBlob) const {
-    SpiBusDeviceConfigV1 config{};
-    if (!decodeValidatedFixedConfigBlob(SpiBusDeviceConfigV1::kMagic, configBlob.data(), configBlob.size(), config)) {
+    SpiBusDeviceConfigV2 config{};
+    if (!decodeSpiBusDeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return {};
     }
 
@@ -160,8 +156,8 @@ DeviceConfigUpdatePlan SpiBusDevice::planConfigUpdate(const DeviceConfigBlob& co
 
 bool SpiBusDevice::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
     (void)now;
-    SpiBusDeviceConfigV1 config{};
-    if (!decodeValidatedFixedConfigBlob(SpiBusDeviceConfigV1::kMagic, configBlob.data(), configBlob.size(), config)) {
+    SpiBusDeviceConfigV2 config{};
+    if (!decodeSpiBusDeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return false;
     }
     config_ = config;
@@ -224,8 +220,8 @@ DeviceValidationResult SpiBusDevice::validateConfig(const DeviceRegistryEntry& r
     if (configBlob.size() > kMaxDeviceConfigBytes) {
         return {DeviceError::BoundsExceeded, "spi bus config exceeds supported size"};
     }
-    SpiBusDeviceConfigV1 config{};
-    if (!decodeValidatedFixedConfigBlob(SpiBusDeviceConfigV1::kMagic, configBlob.data(), configBlob.size(), config)) {
+    SpiBusDeviceConfigV2 config{};
+    if (!decodeSpiBusDeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "spi bus config is invalid"};
     }
     return {};
@@ -281,7 +277,7 @@ bool SpiBusDevice::probeChipSelect(uint8_t csPin) {
     SpiProbeMethod method = SpiProbeMethod::None;
 
     // Try MISO-activity first
-    if (config_.misoPin >= 0) {
+    if (config_.misoPin != kSpiBusMisoUnset) {
         outcome = probeViaMisoActivity(csPin);
         method = SpiProbeMethod::MisoActivity;
     } else {

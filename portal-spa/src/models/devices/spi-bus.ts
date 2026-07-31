@@ -31,7 +31,7 @@ export class SpiBusDevice extends BaseDevice<SpiBusConfigDraft, SpiBusCreateDraf
       host: 2,
       sckPin: 18,
       mosiPin: 23,
-      misoPin: -1,
+      misoPin: 255,
     }
   }
 

@@ -20,7 +20,7 @@ test('normalizes spi bus defaults and st7735 dependency fields', () => {
     spiBusDeviceId: 12,
     chipSelectPin: 5,
     dcPin: 4,
-    resetPin: -1,
+    resetPin: 255,
     rotation: 1,
     layout: {
       schemaVersion: 1,
@@ -32,18 +32,18 @@ test('normalizes spi bus defaults and st7735 dependency fields', () => {
   assert.deepEqual(spiBus, SpiBusDevice.defaultConfig())
   assert.equal(spiBus.sckPin, 18)
   assert.equal(spiBus.mosiPin, 23)
-  assert.equal(spiBus.misoPin, -1)
+  assert.equal(spiBus.misoPin, 255)
   assert.equal(st7735.spiBusDeviceId, 12)
   assert.equal(st7735.chipSelectPin, 5)
   assert.equal(st7735.dcPin, 4)
-  assert.equal(st7735.resetPin, -1)
+  assert.equal(st7735.resetPin, 255)
   assert.equal(st7735.rotation, 1)
   assert.equal(st7735.panel, 'black18')
   assert.equal(st7735.layout.colorMode, 'rgb565')
 
   const encoded = St7735Device.encodeConfig(st7735)
   assert.equal(encoded.dcPin, 4)
-  assert.equal(encoded.resetPin, -1)
+  assert.equal(encoded.resetPin, 255)
   assert.equal(encoded.rotation, 1)
   assert.equal(encoded.panel, 'black18')
   assert.equal(encoded.width, 128)

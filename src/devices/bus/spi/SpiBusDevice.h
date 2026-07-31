@@ -55,10 +55,10 @@ public:
     };
 
     SpiBusDevice(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
-    SpiBusDevice(const SpiBusDeviceConfigV1& config, ISpiBusDriver& driver);
-    SpiBusDevice(const SpiBusDeviceConfigV1& config, ISpiBusDriver& driver, ISpiCsProbeDriver& csProbeDriver);
+    SpiBusDevice(const SpiBusDeviceConfigV2& config, ISpiBusDriver& driver);
+    SpiBusDevice(const SpiBusDeviceConfigV2& config, ISpiBusDriver& driver, ISpiCsProbeDriver& csProbeDriver);
 
-    const SpiBusDeviceConfigV1& config() const;
+    const SpiBusDeviceConfigV2& config() const;
     uint32_t generation() const;
     bool dependencyTransactionActive() const;
     const BusRuntimeDiagnostics& diagnostics() const;
@@ -87,7 +87,7 @@ public:
 private:
     const DeviceBaseConfigV1& baseConfig() const override;
 
-    SpiBusDevice(const SpiBusDeviceConfigV1& config, std::unique_ptr<ISpiBusDriver> ownedDriver);
+    SpiBusDevice(const SpiBusDeviceConfigV2& config, std::unique_ptr<ISpiBusDriver> ownedDriver);
 
     State Idle();
     State Starting();
@@ -102,7 +102,7 @@ private:
     void releaseDependencyTransaction();
     DeviceValidationResult initializeHardware(uint32_t now);
 
-    SpiBusDeviceConfigV1 config_{};
+    SpiBusDeviceConfigV2 config_{};
     std::unique_ptr<ISpiBusDriver> ownedDriver_{};
     ISpiBusDriver& driver_;
     ISpiCsProbeDriver& csProbeDriver_;

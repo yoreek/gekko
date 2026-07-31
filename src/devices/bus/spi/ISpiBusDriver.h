@@ -17,7 +17,7 @@ public:
     ISpiBusDriver& operator=(ISpiBusDriver&&) = delete;
     virtual ~ISpiBusDriver() = default;
 
-    virtual bool begin(uint8_t host, uint8_t sckPin, uint8_t mosiPin, int16_t misoPin) = 0;
+    virtual bool begin(uint8_t host, uint8_t sckPin, uint8_t mosiPin, uint8_t misoPin) = 0;
     virtual bool end() = 0;
     virtual bool beginTransaction(uint32_t clockHz, uint8_t dataMode, uint8_t bitOrder) = 0;
     virtual void endTransaction() = 0;

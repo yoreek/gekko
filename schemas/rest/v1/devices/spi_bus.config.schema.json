@@ -9,7 +9,7 @@
     "host": { "type": "integer", "minimum": 0, "maximum": 255, "default": 2 },
     "sckPin": { "type": "integer", "minimum": 0, "maximum": 255, "default": 18 },
     "mosiPin": { "type": "integer", "minimum": 0, "maximum": 255, "default": 23 },
-    "misoPin": { "type": "integer", "minimum": -1, "maximum": 255, "default": -1 }
+    "misoPin": { "type": "integer", "minimum": 0, "maximum": 255, "default": 255 }
   },
   "required": ["name"],
   "additionalProperties": true

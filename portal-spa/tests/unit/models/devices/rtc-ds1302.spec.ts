@@ -3,11 +3,11 @@ import test from 'node:test'
 
 import { RtcDs1302Device } from '../../../../src/models/devices/rtc-ds1302.ts'
 
-test('rtc_ds1302: default config uses the documented default pins and no dependencies', () => {
+test('rtc_ds1302: default config has no real default pins and no dependencies', () => {
   const defaults = RtcDs1302Device.defaultConfig()
-  assert.equal(defaults.clkPin, 25)
-  assert.equal(defaults.dataPin, 26)
-  assert.equal(defaults.rstPin, 27)
+  assert.equal(defaults.clkPin, 255)
+  assert.equal(defaults.dataPin, 255)
+  assert.equal(defaults.rstPin, 255)
   assert.equal(defaults.useForSystemTimeSync, false)
   assert.deepEqual(defaults.deps, [])
 })
@@ -31,9 +31,9 @@ test('rtc_ds1302: normalizes pin fields and the sync flag from a partial payload
 
 test('rtc_ds1302: missing/invalid pin fields fall back to defaults', () => {
   const normalized = RtcDs1302Device.normalizeConfig({ name: 'Legacy RTC', enabled: true, clkPin: -1 })
-  assert.equal(normalized.clkPin, 25)
-  assert.equal(normalized.dataPin, 26)
-  assert.equal(normalized.rstPin, 27)
+  assert.equal(normalized.clkPin, 255)
+  assert.equal(normalized.dataPin, 255)
+  assert.equal(normalized.rstPin, 255)
 })
 
 test('rtc_ds1302: encodeConfig round-trips pins and never includes a dependency', () => {

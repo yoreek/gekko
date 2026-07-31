@@ -585,7 +585,7 @@ const seedDatabase: SeedDatabase = {
       host: 2,
       sckPin: 18,
       mosiPin: 23,
-      misoPin: -1,
+      misoPin: 255,
     }, {
       status: 'ready',
       lifecycleStatus: 'ready',
@@ -686,7 +686,7 @@ const seedDatabase: SeedDatabase = {
       spiBusDeviceId: 670845757,
       chipSelectPin: 5,
       dcPin: 2,
-      resetPin: -1,
+      resetPin: 255,
       rotation: 0,
       panel: 'black18',
       width: 128,

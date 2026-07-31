@@ -31,7 +31,10 @@ EWFM_LEGACY_CONFIG_USE_END
 
 struct GpioSwitchDeviceConfigV3 : SwitchDeviceConfigV2 {
     static constexpr char kMagic[] = "GSW3";
-    uint8_t gpioPin{2};
+    // No real default GPIO exists for a plain switch; 0xFF forces the user to pick one explicitly
+    // (gpioSwitchPinIsValid() rejects it) rather than silently defaulting to some real pin. See
+    // docs/pin-configuration-conventions.md.
+    uint8_t gpioPin{0xFFU};
 
     bool parseJson(const JsonObjectConst& input, const char*& error);
     DeviceValidationResult validate() const;

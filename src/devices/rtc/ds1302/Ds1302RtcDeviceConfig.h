@@ -10,9 +10,11 @@ namespace ewfm {
 
 constexpr DeviceTypeId kDs1302RtcTypeId = 32;
 constexpr uint32_t kDs1302RtcConfigVersion = 1;
-constexpr uint8_t kDs1302DefaultClkPin = 25;
-constexpr uint8_t kDs1302DefaultDataPin = 26;
-constexpr uint8_t kDs1302DefaultRstPin = 27;
+// No real default GPIOs exist for a DS1302's 3 bit-banged wires; 0xFF forces the user to pick
+// them explicitly (gpioSwitchPinIsValid() rejects it). See docs/pin-configuration-conventions.md.
+constexpr uint8_t kDs1302DefaultClkPin = 0xFFU;
+constexpr uint8_t kDs1302DefaultDataPin = 0xFFU;
+constexpr uint8_t kDs1302DefaultRstPin = 0xFFU;
 
 #pragma pack(push, 1)
 // DS1302 is a bit-banged 3-wire RTC (CLK/DAT/RST-CE), not an I2C device - no bus dependency, just

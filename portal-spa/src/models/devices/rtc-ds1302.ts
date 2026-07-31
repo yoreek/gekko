@@ -30,9 +30,9 @@ export class RtcDs1302Device extends BaseDevice<RtcDs1302ConfigDraft, RtcDs1302C
   static defaultConfig(): RtcDs1302ConfigDraft {
     return {
       ...defaultBaseDeviceConfig(),
-      clkPin: 25,
-      dataPin: 26,
-      rstPin: 27,
+      clkPin: 255,
+      dataPin: 255,
+      rstPin: 255,
       useForSystemTimeSync: false,
     }
   }

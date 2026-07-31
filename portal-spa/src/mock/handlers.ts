@@ -893,7 +893,7 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
             spiBusDeviceId: dependencyDeviceId,
             chipSelectPin: normalizeFiniteNumber(payload.config.chipSelectPin, normalizeFiniteNumber(currentConfig['chipSelectPin'], 5)),
             dcPin: normalizeFiniteNumber(payload.config.dcPin, normalizeFiniteNumber(currentConfig['dcPin'], 2)),
-            resetPin: normalizeFiniteNumber(payload.config.resetPin, normalizeFiniteNumber(currentConfig['resetPin'], -1)),
+            resetPin: normalizeFiniteNumber(payload.config.resetPin, normalizeFiniteNumber(currentConfig['resetPin'], 255)),
             rotation: normalizeDisplayRotation(payload.config.rotation, normalizeFiniteNumber(currentConfig['rotation'], 0)),
             panel: st7735Panel,
             width: st7735Geometry?.width ?? 128,
@@ -954,7 +954,7 @@ export function mockCommandDevice(deviceId: number, payload: DeviceCommandReques
             host: normalizeFiniteNumber(payload.config.host, normalizeFiniteNumber(currentConfig['host'], 2)),
             sckPin: normalizeFiniteNumber(payload.config.sckPin, normalizeFiniteNumber(currentConfig['sckPin'], 18)),
             mosiPin: normalizeFiniteNumber(payload.config.mosiPin, normalizeFiniteNumber(currentConfig['mosiPin'], 23)),
-            misoPin: normalizeFiniteNumber(payload.config.misoPin, normalizeFiniteNumber(currentConfig['misoPin'], -1)),
+            misoPin: normalizeFiniteNumber(payload.config.misoPin, normalizeFiniteNumber(currentConfig['misoPin'], 255)),
           }
           device.runtime.lifecycleStatus = 'ready'
           device.runtime.effectiveStatus = 'ready'

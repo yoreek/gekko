@@ -15,7 +15,7 @@ namespace ewfm {
 
 namespace {
 constexpr DeviceTypeId kSt7735DeviceTypeId = 9;
-constexpr uint32_t kSt7735DeviceConfigVersion = 5;
+constexpr uint32_t kSt7735DeviceConfigVersion = 6;
 } // namespace
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
@@ -231,9 +231,9 @@ private:
 };
 #endif
 
-static_assert(std::is_trivially_copyable<St7735DeviceConfigV5>::value, "St7735DeviceConfigV5 must be POD");
-static_assert(sizeof(St7735DeviceConfigV5::kMagic) - 1U + sizeof(St7735DeviceConfigV5) <= kMaxDeviceConfigBytes,
-              "St7735DeviceConfigV5 exceeds device config bound");
+static_assert(std::is_trivially_copyable<St7735DeviceConfigV6>::value, "St7735DeviceConfigV6 must be POD");
+static_assert(sizeof(St7735DeviceConfigV6::kMagic) - 1U + sizeof(St7735DeviceConfigV6) <= kMaxDeviceConfigBytes,
+              "St7735DeviceConfigV6 exceeds device config bound");
 
 St7735Device::St7735Device(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob)
     : DisplayDeviceBase(DisplayDeviceBase::initialState()) {
@@ -243,7 +243,7 @@ St7735Device::St7735Device(const DeviceRegistryEntry& record, const DeviceConfig
 
 St7735Device::~St7735Device() = default;
 
-const St7735DeviceConfigV5& St7735Device::config() const {
+const St7735DeviceConfigV6& St7735Device::config() const {
     return config_;
 }
 
@@ -270,11 +270,11 @@ bool St7735Device::spiChipSelectPin(uint8_t& pin) const {
 bool St7735Device::serializeConfigBlob(DeviceConfigBlob& configBlob) const {
     uint8_t buffer[kMaxDeviceConfigBytes]{};
     const size_t size = st7735DeviceConfigSize(config_);
-    return encodeFixedConfigBlob(St7735DeviceConfigV5::kMagic, config_, buffer, size) && configBlob.assign(buffer, size);
+    return encodeFixedConfigBlob(St7735DeviceConfigV6::kMagic, config_, buffer, size) && configBlob.assign(buffer, size);
 }
 
 DeviceConfigUpdatePlan St7735Device::planConfigUpdate(const DeviceConfigBlob& configBlob) const {
-    St7735DeviceConfigV5 config{};
+    St7735DeviceConfigV6 config{};
     if (!decodeSt7735DeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return {};
     }
@@ -288,7 +288,7 @@ DeviceConfigUpdatePlan St7735Device::planConfigUpdate(const DeviceConfigBlob& co
 
 bool St7735Device::applyConfig(const DeviceConfigBlob& configBlob, uint32_t now) {
     (void)now;
-    St7735DeviceConfigV5 config{};
+    St7735DeviceConfigV6 config{};
     if (!decodeSt7735DeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return false;
     }
@@ -316,8 +316,9 @@ bool St7735Device::initializeDisplayHardware(uint32_t now) {
     if (spi == nullptr) {
         return false;
     }
+    const int8_t resetPin = config_.resetPin != kSt7735ResetPinUnset ? static_cast<int8_t>(config_.resetPin) : static_cast<int8_t>(-1);
     std::unique_ptr<::Adafruit_ST7735> display(
-        new ::Adafruit_ST7735(spi, static_cast<int8_t>(config_.chipSelectPin), static_cast<int8_t>(config_.dcPin), config_.resetPin));
+        new ::Adafruit_ST7735(spi, static_cast<int8_t>(config_.chipSelectPin), static_cast<int8_t>(config_.dcPin), resetPin));
     if (display == nullptr) {
         return false;
     }
@@ -406,7 +407,7 @@ DeviceValidationResult St7735Device::validateConfig(const DeviceRegistryEntry& r
     if (configBlob.size() > kMaxDeviceConfigBytes) {
         return {DeviceError::BoundsExceeded, "st7735 config exceeds supported size"};
     }
-    St7735DeviceConfigV5 config{};
+    St7735DeviceConfigV6 config{};
     if (!decodeSt7735DeviceConfig(configBlob.data(), configBlob.size(), config)) {
         return {DeviceError::InvalidConfig, "st7735 config is invalid"};
     }

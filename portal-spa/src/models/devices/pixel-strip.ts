@@ -40,7 +40,7 @@ export class PixelStripDevice extends BaseDevice<PixelStripConfigDraft, PixelStr
   static defaultConfig(): PixelStripConfigDraft {
     return {
       ...defaultBaseDeviceConfig(),
-      pin: 255,
+      pin: 4,
       pixelCount: 30,
       restorePreviousState: false,
       startupBrightness: 50,

@@ -26,7 +26,7 @@ void assertMatchesJsonSchema(const char* schemaPath, const JsonVariantConst& val
 
 class FakeSpiBusDriver final : public ISpiBusDriver {
 public:
-    bool begin(uint8_t host, uint8_t sckPin, uint8_t mosiPin, int16_t misoPin) override {
+    bool begin(uint8_t host, uint8_t sckPin, uint8_t mosiPin, uint8_t misoPin) override {
         began = true;
         ++beginCount;
         lastHost = host;
@@ -87,7 +87,7 @@ public:
     uint8_t lastHost{0};
     uint8_t lastSckPin{0};
     uint8_t lastMosiPin{0};
-    int16_t lastMisoPin{-1};
+    uint8_t lastMisoPin{kSpiBusMisoUnset};
     uint32_t lastClockHz{0};
     uint8_t lastDataMode{0};
     uint8_t lastBitOrder{0};
@@ -134,8 +134,9 @@ struct FixedDeviceIdSource final : public IDeviceIdSource {
     size_t index_{0};
 };
 
-SpiBusDeviceConfigV1 makeConfig(uint8_t host = kSpiBusHostVspi, uint8_t sckPin = 18U, uint8_t mosiPin = 23U, int16_t misoPin = -1) {
-    SpiBusDeviceConfigV1 config{};
+SpiBusDeviceConfigV2 makeConfig(uint8_t host = kSpiBusHostVspi, uint8_t sckPin = 18U, uint8_t mosiPin = 23U,
+                                uint8_t misoPin = kSpiBusMisoUnset) {
+    SpiBusDeviceConfigV2 config{};
     config.enabled = 1U;
     std::snprintf(config.name, sizeof(config.name), "%s", "spi-bus");
     config.host = host;
@@ -145,10 +146,10 @@ SpiBusDeviceConfigV1 makeConfig(uint8_t host = kSpiBusHostVspi, uint8_t sckPin =
     return config;
 }
 
-BoundedBlob<kMaxDeviceConfigBytes> encodePayload(const SpiBusDeviceConfigV1& config) {
+BoundedBlob<kMaxDeviceConfigBytes> encodePayload(const SpiBusDeviceConfigV2& config) {
     BoundedBlob<kMaxDeviceConfigBytes> payload{};
     uint8_t buffer[kMaxDeviceConfigBytes]{};
-    TEST_ASSERT_TRUE(encodeFixedConfigBlob(SpiBusDeviceConfigV1::kMagic, config, buffer, spiBusDeviceConfigSize(config)));
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(SpiBusDeviceConfigV2::kMagic, config, buffer, spiBusDeviceConfigSize(config)));
     TEST_ASSERT_TRUE(payload.assign(buffer, spiBusDeviceConfigSize(config)));
     return payload;
 }
@@ -157,8 +158,6 @@ void driveBusToReady(SpiBusDevice& bus, uint32_t startNow = 10U) {
     bus.begin(startNow);
     bus.tick100ms(startNow + 1U);
 }
-
-BoundedBlob<kMaxDeviceConfigBytes> encodePayload(const SpiBusDeviceConfigV1& config);
 
 void bindBusIdentity(SpiBusDevice& bus, DeviceId busId) {
     DeviceRegistryEntry record{};
@@ -179,7 +178,7 @@ void writeTextFile(const char* path, const std::string& text) {
 }
 
 DeviceCreateRequest makeCreateRequest() {
-    SpiBusDeviceConfigV1 config = makeConfig();
+    SpiBusDeviceConfigV2 config = makeConfig();
     DeviceCreateRequest request{};
     request.typeId = SpiBusDevice::descriptor().typeId;
     request.configVersion = SpiBusDevice::descriptor().currentConfigVersion;
@@ -192,33 +191,73 @@ DeviceCreateRequest makeCreateRequest() {
 } // namespace
 
 void test_spi_bus_config_codec_json_and_validation() {
-    const SpiBusDeviceConfigV1 config = makeConfig(kSpiBusHostHspi, 18U, 23U, -1);
+    const SpiBusDeviceConfigV2 config = makeConfig(kSpiBusHostHspi, 18U, 23U, kSpiBusMisoUnset);
     const BoundedBlob<kMaxDeviceConfigBytes> payload = encodePayload(config);
 
-    SpiBusDeviceConfigV1 decoded{};
-    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(SpiBusDeviceConfigV1::kMagic, payload.data(), payload.size(), decoded));
+    SpiBusDeviceConfigV2 decoded{};
+    TEST_ASSERT_TRUE(decodeSpiBusDeviceConfig(payload.data(), payload.size(), decoded));
     TEST_ASSERT_EQUAL_UINT8(config.host, decoded.host);
     TEST_ASSERT_EQUAL_UINT8(config.sckPin, decoded.sckPin);
     TEST_ASSERT_EQUAL_UINT8(config.mosiPin, decoded.mosiPin);
-    TEST_ASSERT_EQUAL_INT16(config.misoPin, decoded.misoPin);
+    TEST_ASSERT_EQUAL_UINT8(config.misoPin, decoded.misoPin);
 
     StaticJsonDocument<256> doc;
     JsonObject json = doc.to<JsonObject>();
-    writeSpiBusDeviceConfigJson(config, json);
+    config.writeJson(json);
     assertMatchesJsonSchema("schemas/rest/v1/devices/spi_bus.config.schema.json", doc.as<JsonVariantConst>());
 
-    SpiBusDeviceConfigV1 parsed{};
+    SpiBusDeviceConfigV2 parsed{};
     const char* error = nullptr;
-    TEST_ASSERT_TRUE(parseSpiBusDeviceConfigJson(json, parsed, error));
+    TEST_ASSERT_TRUE(parsed.parseJson(json, error));
     TEST_ASSERT_TRUE(parsed.validate().ok());
 
-    SpiBusDeviceConfigV1 invalidHost = config;
+    SpiBusDeviceConfigV2 invalidHost = config;
     invalidHost.host = 9U;
     TEST_ASSERT_FALSE(invalidHost.validate().ok());
 
-    SpiBusDeviceConfigV1 invalidPins = config;
+    SpiBusDeviceConfigV2 invalidPins = config;
     invalidPins.sckPin = invalidPins.mosiPin;
     TEST_ASSERT_FALSE(invalidPins.validate().ok());
+}
+
+void test_spi_bus_config_migrates_legacy_v1_blob() {
+    EWFM_LEGACY_CONFIG_USE_BEGIN
+    SpiBusDeviceConfigV1 legacy{};
+    std::snprintf(legacy.name, sizeof(legacy.name), "%s", "legacy-spi");
+    legacy.enabled = 1U;
+    legacy.host = kSpiBusHostHspi;
+    legacy.sckPin = 14U;
+    legacy.mosiPin = 13U;
+    legacy.misoPin = 27; // real pin, was int16_t
+    uint8_t buffer[kMaxDeviceConfigBytes]{};
+    const size_t size = spiBusDeviceConfigSize(legacy);
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(SpiBusDeviceConfigV1::kMagic, legacy, buffer, size));
+    EWFM_LEGACY_CONFIG_USE_END
+
+    SpiBusDeviceConfigV2 migrated{};
+    TEST_ASSERT_TRUE(decodeSpiBusDeviceConfig(buffer, size, migrated));
+    TEST_ASSERT_EQUAL_STRING("legacy-spi", migrated.name);
+    TEST_ASSERT_EQUAL_UINT8(kSpiBusHostHspi, migrated.host);
+    TEST_ASSERT_EQUAL_UINT8(14U, migrated.sckPin);
+    TEST_ASSERT_EQUAL_UINT8(13U, migrated.mosiPin);
+    TEST_ASSERT_EQUAL_UINT8(27U, migrated.misoPin);
+
+    EWFM_LEGACY_CONFIG_USE_BEGIN
+    SpiBusDeviceConfigV1 legacyUnset{};
+    std::snprintf(legacyUnset.name, sizeof(legacyUnset.name), "%s", "legacy-spi-unset");
+    legacyUnset.enabled = 1U;
+    legacyUnset.host = kSpiBusHostVspi;
+    legacyUnset.sckPin = 18U;
+    legacyUnset.mosiPin = 23U;
+    legacyUnset.misoPin = -1;
+    uint8_t bufferUnset[kMaxDeviceConfigBytes]{};
+    const size_t sizeUnset = spiBusDeviceConfigSize(legacyUnset);
+    TEST_ASSERT_TRUE(encodeFixedConfigBlob(SpiBusDeviceConfigV1::kMagic, legacyUnset, bufferUnset, sizeUnset));
+    EWFM_LEGACY_CONFIG_USE_END
+
+    SpiBusDeviceConfigV2 migratedUnset{};
+    TEST_ASSERT_TRUE(decodeSpiBusDeviceConfig(bufferUnset, sizeUnset, migratedUnset));
+    TEST_ASSERT_EQUAL_UINT8(kSpiBusMisoUnset, migratedUnset.misoPin);
 }
 
 void test_spi_bus_api_adapter_schema_smoke_and_runtime_serialization() {
@@ -231,7 +270,7 @@ void test_spi_bus_api_adapter_schema_smoke_and_runtime_serialization() {
     JsonObject createJson = createDoc.to<JsonObject>();
     createJson["typeName"] = "spi_bus";
     JsonObject createConfig = createJson.createNestedObject("config");
-    writeSpiBusDeviceConfigJson(makeConfig(), createConfig);
+    makeConfig().writeJson(createConfig);
     assertMatchesJsonSchema("schemas/rest/v1/requests/devices-create-spi_bus.request.schema.json", createDoc.as<JsonVariantConst>());
 
     DeviceCreateRequest createRequest{};
@@ -264,17 +303,17 @@ void test_spi_bus_api_adapter_partial_update_preserves_pins() {
     // assertions cannot pass by accident if the merge fix regresses and the fields are silently
     // reset to their struct defaults instead of the runtime's current pins.
     FakeSpiBusDriver driver;
-    SpiBusDevice runtime(makeConfig(kSpiBusHostHspi, 14U, 13U, -1), driver);
+    SpiBusDevice runtime(makeConfig(kSpiBusHostHspi, 14U, 13U, kSpiBusMisoUnset), driver);
 
     DeviceConfigUpdateRequest request{};
     const char* error = nullptr;
     TEST_ASSERT_TRUE_MESSAGE(
         SpiBusDeviceApiAdapter::instance().parseUpdateConfigRequest(doc.as<JsonObjectConst>(), runtime, request, error), error);
 
-    SpiBusDeviceConfigV1 parsed{};
-    TEST_ASSERT_TRUE(decodeValidatedFixedConfigBlob(
-        SpiBusDeviceConfigV1::kMagic, reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
-    TEST_ASSERT_EQUAL_INT16(27, parsed.misoPin);
+    SpiBusDeviceConfigV2 parsed{};
+    TEST_ASSERT_TRUE(
+        decodeSpiBusDeviceConfig(reinterpret_cast<const uint8_t*>(request.configBlob.data()), request.configBlob.size(), parsed));
+    TEST_ASSERT_EQUAL_UINT8(27U, parsed.misoPin);
     TEST_ASSERT_EQUAL_UINT8(kSpiBusHostHspi, parsed.host);
     TEST_ASSERT_EQUAL_UINT8(14U, parsed.sckPin);
     TEST_ASSERT_EQUAL_UINT8(13U, parsed.mosiPin);
@@ -298,7 +337,7 @@ void test_spi_runtime_lifecycle_transactions_and_duplicate_cs_detection() {
     TEST_ASSERT_EQUAL_UINT8(kSpiBusHostVspi, driver.lastHost);
     TEST_ASSERT_EQUAL_UINT8(18U, driver.lastSckPin);
     TEST_ASSERT_EQUAL_UINT8(23U, driver.lastMosiPin);
-    TEST_ASSERT_EQUAL_INT16(-1, driver.lastMisoPin);
+    TEST_ASSERT_EQUAL_UINT8(kSpiBusMisoUnset, driver.lastMisoPin);
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(bus.status()));
     TEST_ASSERT_EQUAL_UINT32(1U, bus.generation());
 
@@ -333,7 +372,7 @@ void test_spi_runtime_reconfigures_and_advances_generation() {
     const uint32_t generationBefore = bus.generation();
     SpiBusDevice::DependencyTransaction stale = bus.beginDependencyTransaction();
     TEST_ASSERT_TRUE(stale);
-    SpiBusDeviceConfigV1 updated = makeConfig(kSpiBusHostHspi, 25U, 26U, 27);
+    SpiBusDeviceConfigV2 updated = makeConfig(kSpiBusHostHspi, 25U, 26U, 27U);
     const BoundedBlob<kMaxDeviceConfigBytes> payload = encodePayload(updated);
     const DeviceConfigUpdatePlan plan = bus.planConfigUpdate(payload);
     TEST_ASSERT_TRUE(plan.endOldConfig);
@@ -350,7 +389,7 @@ void test_spi_runtime_reconfigures_and_advances_generation() {
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(bus.status()));
     TEST_ASSERT_EQUAL_UINT8(25U, driver.lastSckPin);
     TEST_ASSERT_EQUAL_UINT8(26U, driver.lastMosiPin);
-    TEST_ASSERT_EQUAL_INT16(27, driver.lastMisoPin);
+    TEST_ASSERT_EQUAL_UINT8(27U, driver.lastMisoPin);
     TEST_ASSERT_FALSE(stale);
     TEST_ASSERT_NULL(stale.driver());
 }

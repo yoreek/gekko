@@ -50,7 +50,7 @@ export class Dht11Device extends TemperatureSensorDevice<Dht11ConfigDraft, Dht11
   static defaultConfig(): Dht11ConfigDraft {
     return {
       ...defaultBaseDeviceConfig(),
-      gpioPin: 17,
+      gpioPin: 255,
       internalPullup: false,
       captureMode: 'native',
       unit: 'celsius',

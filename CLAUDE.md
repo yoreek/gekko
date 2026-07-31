@@ -113,3 +113,4 @@ Vue 3 + Vuetify 4 SPA. Uses `pnpm`. State is managed with Pinia. Real-time updat
 - `docs/pixel-strip.md` — WS2812B addressable-strip `PixelStrip` role, Adafruit NeoPixel hardware backend, effect decorator chain (`pixel_effect_solid`/`pixel_effect_alert`), why WS2812FX was rejected as the runtime engine
 - `docs/blob-store.md` — generic key→blob object store on the `devdata` partition, REST API (`/api/blobs/...`), prefix-based bulk delete, server-generated upload keys; not yet wired to any feature
 - `docs/spa-localization.md` — i18n key structure, reusing keys across device forms without duplicating phrases, keeping widget-type-style dictionaries in sync with their TS union
+- `docs/pin-configuration-conventions.md` — audit of every GPIO/channel field across device configs; target `uint8_t`/`255` "not configured" sentinel convention, three categories (fixed hardware default / genuinely optional / mandatory-but-arbitrary), planned fixes not yet implemented

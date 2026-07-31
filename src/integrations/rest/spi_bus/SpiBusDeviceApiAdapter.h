@@ -5,7 +5,7 @@
 
 namespace ewfm {
 
-class SpiBusDeviceApiAdapter final : public TypedDeviceApiAdapter<SpiBusDeviceApiAdapter, SpiBusDevice, SpiBusDeviceConfigV1> {
+class SpiBusDeviceApiAdapter final : public TypedDeviceApiAdapter<SpiBusDeviceApiAdapter, SpiBusDevice, SpiBusDeviceConfigV2> {
 public:
     static constexpr const char* kTypeName = "spi_bus";
 

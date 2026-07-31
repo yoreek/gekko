@@ -12,7 +12,9 @@ namespace ewfm {
 
 constexpr DeviceTypeId kDht11SensorTypeId = 31;
 constexpr uint32_t kDht11SensorConfigVersion = 3;
-constexpr uint8_t kDht11DefaultGpioPin = 17;
+// No real default GPIO exists for a DHT11 sensor; 0xFF forces the user to pick one explicitly
+// (gpioSwitchPinIsValid() rejects it). See docs/pin-configuration-conventions.md.
+constexpr uint8_t kDht11DefaultGpioPin = 0xFFU;
 constexpr uint32_t kDht11DefaultPollMs = 5000;
 constexpr uint32_t kDht11MinPollMs = 1000;
 constexpr uint32_t kDht11MaxPollMs = 86400000UL;

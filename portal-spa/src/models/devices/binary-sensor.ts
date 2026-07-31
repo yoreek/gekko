@@ -51,7 +51,7 @@ export class BinarySensorDevice extends BaseDevice<BinarySensorConfigDraft, Bina
   static defaultConfig(): BinarySensorConfigDraft {
     return {
       ...defaultBaseDeviceConfig(),
-      gpioPin: 4,
+      gpioPin: 255,
       pullMode: 'pullup',
       inverted: false,
       debounceMs: 50,

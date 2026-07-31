@@ -44,7 +44,7 @@ export class Cd74hc4067HubDevice extends BaseDevice<Cd74hc4067HubConfigDraft, Cd
       ...defaultBaseDeviceConfig(),
       selectPins: [16, 17, 18, 19],
       enablePin: CD74HC4067_UNUSED_PIN,
-      sigPin: 34,
+      sigPin: 255,
       sigAttenuation: '11db',
     }
   }

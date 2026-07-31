@@ -24,7 +24,9 @@ struct AnalogPortInputDeviceConfigV1 : DeviceBaseConfigV1 {
         poll.adcSamples = kAnalogPortInputDefaultAdcSamples;
     }
 
-    uint8_t gpioPin{34};
+    // No single canonical default among the 8 valid ADC1 pins; 0xFF forces the user to pick one
+    // explicitly (analogPortInputGpioPinIsValid() rejects it). See docs/pin-configuration-conventions.md.
+    uint8_t gpioPin{0xFFU};
     uint8_t attenuation{static_cast<uint8_t>(AdcAttenuation::Db11)};
     AnalogInputPollConfigV1 poll{};
 
