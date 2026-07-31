@@ -113,9 +113,13 @@ const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
 const { update } = useDraftModel<PixelEffectAlertConfigDraft>(props, emit)
 
-// Excludes the currently-selected target strip, so it can't also be picked as a condition source
-// (mirrors AutoSwitchFields excluding its own target switch from the condition picker).
-const conditionItems = computed(() => conditionDependencyOptions(deviceStore.devices, props.modelValue.targetDeviceId))
+// Excludes the currently-selected target strip and the device being edited itself (mirrors
+// AutoSwitchFields; PixelEffectAlertDevice doesn't currently provide the Condition role itself,
+// so self-selection isn't reachable today, but this keeps both pickers consistent and safe if
+// that ever changes).
+const conditionItems = computed(() =>
+  conditionDependencyOptions(deviceStore.devices, props.modelValue.targetDeviceId, props.device?.record.id),
+)
 
 function conditionItemsFor(rowIndex: number): { title: string; value: number }[] {
   const selectedDeviceId = props.modelValue.conditions[rowIndex]?.deviceId ?? 0

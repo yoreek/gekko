@@ -135,8 +135,12 @@ const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
 
 const switchItems = computed(() => dependencyOptionsForRole(deviceStore.devices, 'switch'))
-// Excludes the currently-selected target switch, so it can't also be picked as its own condition.
-const conditionItems = computed(() => conditionDependencyOptions(deviceStore.devices, props.modelValue.targetSwitchDeviceId))
+// Excludes the currently-selected target switch and the device being edited itself, so an
+// auto_switch can't be wired to condition on its own state (AutoSwitchDevice provides the
+// Condition role, so its own id would otherwise be a selectable option).
+const conditionItems = computed(() =>
+  conditionDependencyOptions(deviceStore.devices, props.modelValue.targetSwitchDeviceId, props.device?.record.id),
+)
 
 // Excludes devices already picked by *other* condition rows, so the same device can't be added
 // twice (mirrors the firmware/mock's "duplicate dependency device id" rejection). A row's own

@@ -136,11 +136,14 @@ export function exclusiveAnalogOutputDependencyOptions(
     .filter(option => !ownedTargets.has(option.value) || ownedTargets.get(option.value) === currentOwnerId)
 }
 
-// Condition-role picker options (e.g. AutoSwitchDevice's AND-condition list), excluding a device
-// already used elsewhere in the same config (typically the target switch, to avoid a device
-// conditioning on itself).
-export function conditionDependencyOptions(devices: DeviceRecord[], excludeDeviceId?: number): { title: string; value: number }[] {
-  return dependencyOptionsForRole(devices, 'condition').filter(option => option.value !== excludeDeviceId)
+// Condition-role picker options (e.g. AutoSwitchDevice's AND-condition list), excluding devices
+// already used elsewhere in the same config (typically the target switch/strip, to avoid a device
+// conditioning on itself) and the device being edited itself -- some Condition-role providers
+// (e.g. AutoSwitchDevice, via IStatusRuntime) can otherwise list their own id as a valid option,
+// which the registry's self-dependency check would then reject at save time.
+export function conditionDependencyOptions(devices: DeviceRecord[], ...excludeDeviceIds: (number | undefined)[]): { title: string; value: number }[] {
+  const excluded = new Set(excludeDeviceIds.filter((id): id is number => typeof id === 'number' && id > 0))
+  return dependencyOptionsForRole(devices, 'condition').filter(option => !excluded.has(option.value))
 }
 
 // pixel_strip's equivalent of exclusiveAnalogOutputDependencyOptions: a pixel_strip already
