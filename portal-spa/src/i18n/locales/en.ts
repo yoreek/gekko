@@ -53,6 +53,7 @@ export default {
       title: 'Device dependencies',
       fit: 'Fit graph',
       layout: 'Relayout graph',
+      showController: 'Show controller',
       empty: 'No devices are available.',
       invalid: 'Unresolved dependencies',
       inverted: 'inverted',

@@ -53,6 +53,7 @@ export default {
       title: 'Geräteabhängigkeiten',
       fit: 'Gesamten Graphen anzeigen',
       layout: 'Graph neu anordnen',
+      showController: 'Controller anzeigen',
       empty: 'Keine Geräte verfügbar.',
       invalid: 'Nicht aufgelöste Abhängigkeiten',
       inverted: 'invertiert',

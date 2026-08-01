@@ -88,7 +88,10 @@ export interface DeviceGraphPosition {
 
 /** Run Dagre using measured card dimensions and return top-left positions. */
 export function layoutDeviceDependencyGraph(
-  graph: Pick<DeviceDependencyGraphModel, 'nodes' | 'edges'>,
+  graph: {
+    nodes: readonly { id: string }[]
+    edges: readonly Pick<DeviceDependencyGraphEdge, 'id' | 'source' | 'target'>[]
+  },
   dimensions: Readonly<Record<string, DeviceGraphNodeDimensions>>,
   options: DeviceDependencyGraphLayoutOptions = {},
 ): Record<string, DeviceGraphPosition> {

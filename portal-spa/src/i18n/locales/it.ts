@@ -53,6 +53,7 @@ export default {
       title: 'Dipendenze dei dispositivi',
       fit: 'Mostra tutto il grafo',
       layout: 'Riorganizza grafo',
+      showController: 'Mostra controller',
       empty: 'Nessun dispositivo disponibile.',
       invalid: 'Dipendenze non risolte',
       inverted: 'invertita',

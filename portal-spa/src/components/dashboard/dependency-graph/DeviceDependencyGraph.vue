@@ -3,6 +3,14 @@
     <v-toolbar density="compact" color="transparent">
       <v-toolbar-title class="text-body-1">{{ title }}</v-toolbar-title>
       <v-spacer />
+      <v-checkbox
+        v-if="controller"
+        v-model="showController"
+        class="mr-2"
+        density="compact"
+        hide-details
+        :label="showControllerLabel"
+      />
       <v-btn-toggle v-model="layoutDirection" class="mr-2" density="compact" mandatory variant="outlined">
         <v-btn value="LR" :aria-label="directionHorizontalLabel" :title="directionHorizontalLabel">↔</v-btn>
         <v-btn value="TB" :aria-label="directionVerticalLabel" :title="directionVerticalLabel">↕</v-btn>
@@ -54,6 +62,12 @@
           @command="onNodeCommand"
         />
       </template>
+      <template #node-controller="nodeProps">
+        <ControllerGraphNode v-bind="nodeProps" />
+      </template>
+      <template #edge-physical="edgeProps">
+        <PhysicalConnectionEdge v-bind="edgeProps" />
+      </template>
     </VueFlow>
 
     <v-menu v-model="contextMenuOpen" :target="contextMenuTarget" :close-on-content-click="true">
@@ -86,13 +100,19 @@ import {
   layoutDeviceDependencyGraph,
   type DeviceDependencyGraphModel,
 } from '@/models/devices/dependency-graph'
-import DeviceDependencyGraphNode, { type DeviceDependencyNodeData } from './DeviceDependencyGraphNode.vue'
+import { extractDeviceHardwarePins } from '@/models/devices/physical-connections'
+import { buildControllerSvgModel } from '@/models/devices/controller-svg'
+import ControllerGraphNode, { type ControllerGraphNodeData } from './ControllerGraphNode.vue'
+import DeviceDependencyGraphNode from './DeviceDependencyGraphNode.vue'
+import PhysicalConnectionEdge from './PhysicalConnectionEdge.vue'
 
 const props = withDefaults(defineProps<{
   devices: DeviceRecord[]
+  controller?: ControllerGraphNodeData
   title?: string
   fitLabel?: string
   layoutLabel?: string
+  showControllerLabel?: string
   emptyLabel?: string
   diagnosticsLabel?: string
   invertedLabel?: string
@@ -108,6 +128,7 @@ const props = withDefaults(defineProps<{
   title: 'Dependencies',
   fitLabel: 'Fit graph',
   layoutLabel: 'Relayout graph',
+  showControllerLabel: 'Show controller',
   emptyLabel: 'No devices',
   diagnosticsLabel: 'Unresolved dependencies',
   invertedLabel: 'inverted',
@@ -127,13 +148,18 @@ const emit = defineEmits<{
   layout: []
 }>()
 
-const flowNodes = ref<Node<DeviceDependencyNodeData>[]>([])
+const flowNodes = ref<Node[]>([])
 const flowEdges = ref<Edge[]>([])
 const { fitView } = useVueFlow()
 const measuredDimensions = ref<Record<string, { width: number; height: number }>>({})
 const graphModel = ref<DeviceDependencyGraphModel>({ nodes: [], edges: [], diagnostics: [], topologyKey: '' })
 const topologyKey = computed(() => buildDeviceDependencyGraph(props.devices).topologyKey)
+const hardwareKey = computed(() => JSON.stringify({
+  boardId: props.controller?.boardId ?? '',
+  pins: props.devices.map(device => ({ id: device.record.id, config: device.config })),
+}))
 const layoutDirection = ref(props.direction)
+const showController = ref(true)
 const hiddenNodeIds = ref<Set<string>>(new Set())
 const contextDeviceId = ref<number | null>(null)
 const contextMenuOpen = ref(false)
@@ -159,16 +185,29 @@ function edgeColor(role: string): string {
 
 function buildGraph(): void {
   graphModel.value = buildDeviceDependencyGraph(props.devices)
-  const nodes: Node<DeviceDependencyNodeData>[] = graphModel.value.nodes.flatMap(node => {
+  const nodes: Node[] = graphModel.value.nodes.flatMap(node => {
     if (hiddenNodeIds.value.has(node.id)) return []
+    const device = props.devices.find(entry => entry.record.id === node.deviceId)
     return [{
       id: node.id,
       type: 'device',
-      data: { deviceId: node.deviceId, direction: layoutDirection.value },
+      data: {
+        deviceId: node.deviceId,
+        direction: layoutDirection.value,
+        hardwarePins: device ? extractDeviceHardwarePins(device) : [],
+      },
       position: { x: 0, y: 0 },
       dimensions: { width: 220, height: 110 },
     }]
   })
+  if (props.controller && showController.value) {
+    nodes.unshift({
+      id: 'controller',
+      type: 'controller',
+      data: props.controller,
+      position: { x: 0, y: 0 },
+    })
+  }
   const edges: Edge[] = graphModel.value.edges
     .filter(edge => !hiddenNodeIds.value.has(edge.source) && !hiddenNodeIds.value.has(edge.target))
     .map(edge => {
@@ -187,6 +226,40 @@ function buildGraph(): void {
       label: `${edge.role}${edge.invert ? ` (${props.invertedLabel})` : ''}`,
     }
   })
+  if (props.controller && showController.value) {
+    const controllerSvg = buildControllerSvgModel(props.controller.pins, props.controller.layout)
+    const anchors = new Map(
+      controllerSvg.anchors
+        .filter(anchor => anchor.gpio !== undefined)
+        .map(anchor => [anchor.gpio as number, anchor]),
+    )
+    const laneCounts = { left: 0, right: 0 }
+    for (const device of props.devices) {
+      for (const pin of extractDeviceHardwarePins(device)) {
+        const anchor = anchors.get(pin.gpio)
+        if (!anchor) continue
+        const laneOffset = laneCounts[anchor.side] * 4
+        laneCounts[anchor.side] += 1
+        edges.push({
+          id: `controller->${device.record.id}:${pin.gpio}:${pin.label}`,
+          source: 'controller',
+          sourceHandle: `gpio-${pin.gpio}`,
+          target: String(device.record.id),
+          targetHandle: `gpio-${pin.gpio}-${pin.label}`,
+          type: 'physical',
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#546E7A' },
+          style: { stroke: '#546E7A', strokeWidth: 2 },
+          ariaLabel: `GPIO${pin.gpio} ${pin.label}`,
+          data: {
+            anchor: { x: anchor.x, y: anchor.y, side: anchor.side },
+            controllerBody: controllerSvg.body,
+            controllerBounds: { x: 0, y: 0, width: controllerSvg.width, height: controllerSvg.height },
+            laneOffset,
+          },
+        })
+      }
+    }
+  }
   flowNodes.value = nodes
   flowEdges.value = edges
   layoutGraph()
@@ -198,7 +271,7 @@ function layoutGraph(): void {
   flowNodes.value.forEach(node => {
     dimensions[node.id] = measuredDimensions.value[node.id] ?? { width: 220, height: 110 }
   })
-  const positions = layoutDeviceDependencyGraph(graphModel.value, dimensions, {
+  const positions = layoutDeviceDependencyGraph({ nodes: flowNodes.value, edges: flowEdges.value }, dimensions, {
     direction: layoutDirection.value,
     // Keep sibling branches compact vertically while giving dependency ranks
     // enough horizontal breathing room for the cards to read as a flow.
@@ -238,6 +311,7 @@ function onNodeCommand(deviceId: number, payload: DeviceCommandRequest): void {
 }
 
 function onNodeContextMenu({ event, node }: NodeMouseEvent): void {
+  if (node.id === 'controller') return
   event.preventDefault()
   contextDeviceId.value = Number(node.id)
   const point = 'touches' in event ? event.touches[0] : event
@@ -296,6 +370,8 @@ function expandBranch(): void {
 }
 
 watch(topologyKey, buildGraph, { immediate: true })
+watch(hardwareKey, buildGraph)
+watch(showController, buildGraph)
 watch(() => props.direction, direction => {
   layoutDirection.value = direction
 })

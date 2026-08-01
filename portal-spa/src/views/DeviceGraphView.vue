@@ -6,9 +6,11 @@
       <DeviceDependencyGraph
         class="flex-grow-1"
         :devices="deviceStore.devices"
+        :controller="controller"
         :title="t('dashboard.graph.title')"
         :fit-label="t('dashboard.graph.fit')"
         :layout-label="t('dashboard.graph.layout')"
+        :show-controller-label="t('dashboard.graph.showController')"
         :empty-label="t('dashboard.graph.empty')"
         :diagnostics-label="t('dashboard.graph.invalid')"
         :inverted-label="t('dashboard.graph.inverted')"
@@ -36,19 +38,27 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { commandDevice, type DeviceCommandRequest, type DeviceRecord } from '@/api'
+import { commandDevice, fetchBoardSettings, type DeviceCommandRequest, type DeviceRecord } from '@/api'
+import { BOARD_CATALOG } from '@/data/board-pin-capabilities'
 import DashboardModeTabs from '@/components/dashboard/DashboardModeTabs.vue'
 import DeviceDependencyGraph from '@/components/dashboard/dependency-graph/DeviceDependencyGraph.vue'
 import DeviceMoreInfoDialog from '@/components/devices/common/DeviceMoreInfoDialog.vue'
 import PageContainer from '@/components/layout/PageContainer.vue'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
+import { useBoardStore } from '@/stores/board'
 
 const { t } = useI18n()
 const deviceStore = useDeviceRegistryStore()
+const boardStore = useBoardStore()
 const moreInfoOpen = ref(false)
 const moreInfoDeviceId = ref<number | null>(null)
 
 const moreInfoDevice = computed(() => deviceStore.devices.find(device => device.record.id === moreInfoDeviceId.value) ?? null)
+const controller = computed(() => {
+  const board = BOARD_CATALOG[boardStore.selectedBoardId]
+  if (!board) return undefined
+  return { label: board.label, boardId: board.boardId, pins: board.pins, layout: board.layout }
+})
 
 function openMoreInfo(deviceId: number): void {
   moreInfoDeviceId.value = deviceId
@@ -72,6 +82,9 @@ async function submitDeviceCommand(deviceId: number, payload: DeviceCommandReque
 }
 
 onMounted(() => {
-  void deviceStore.initialize()
+  void Promise.all([
+    deviceStore.initialize(),
+    fetchBoardSettings().then(settings => boardStore.replaceFromSettings(settings)),
+  ])
 })
 </script>

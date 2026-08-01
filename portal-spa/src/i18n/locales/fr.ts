@@ -53,6 +53,7 @@ export default {
       title: 'Dépendances des appareils',
       fit: 'Afficher tout le graphe',
       layout: 'Réorganiser le graphe',
+      showController: 'Afficher le contrôleur',
       empty: 'Aucun appareil disponible.',
       invalid: 'Dépendances non résolues',
       inverted: 'inversée',
