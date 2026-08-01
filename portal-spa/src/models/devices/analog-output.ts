@@ -2,6 +2,7 @@ import type { AnalogOutputOutputSnapshot, BaseDeviceConfig, DeviceRecord } from 
 import type { DeviceRole } from '@/models/device-type-ids'
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import { BaseDevice, defaultBaseDeviceConfig, encodeBaseDeviceConfig, normalizeBaseDeviceConfig } from './base-device.ts'
+import { normalizePin, PIN_UNSET } from './shared/pin.ts'
 
 export interface AnalogOutputConfigDraft extends BaseDeviceConfig {
   restorePreviousState: boolean
@@ -44,7 +45,7 @@ export class AnalogOutputDevice extends BaseDevice<AnalogOutputConfigDraft, Anal
       restorePreviousState: false,
       startupState: 0,
       safeState: 0,
-      pin: 4,
+      pin: PIN_UNSET,
       ledcChannel: 0,
       frequencyHz: 5000,
       dutyBits: 12,
@@ -63,7 +64,7 @@ export class AnalogOutputDevice extends BaseDevice<AnalogOutputConfigDraft, Anal
         typeof value.restorePreviousState === 'boolean' ? value.restorePreviousState : defaults.restorePreviousState,
       startupState: normalizePercent(value.startupState, defaults.startupState),
       safeState: normalizePercent(value.safeState, defaults.safeState),
-      pin: Math.round(normalizeNumber(value.pin, defaults.pin)),
+      pin: normalizePin(value.pin, defaults.pin, 'output'),
       ledcChannel: Math.round(normalizeNumber(value.ledcChannel, defaults.ledcChannel)),
       frequencyHz: Math.max(1, Math.round(normalizeNumber(value.frequencyHz, defaults.frequencyHz))),
       dutyBits: Math.max(1, Math.round(normalizeNumber(value.dutyBits, defaults.dutyBits))),

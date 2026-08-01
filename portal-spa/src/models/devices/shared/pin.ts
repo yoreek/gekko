@@ -49,6 +49,17 @@ export function isValidBoardPin(value: number, role?: PinRole, chip: ChipId = DE
   return boardPins(role, chip).some(pin => pin.gpio === value)
 }
 
+// A device's defaultConfig() suggests a conventional pin (e.g. i2c_bus's sdaPin=21/sclPin=22 --
+// ESP32's usual I2C pins) rather than forcing every new device through PIN_UNSET. But that literal
+// default can already be claimed by another device (see docs/gpio-pin-occupancy.md) -- called once,
+// right after a fresh create-draft is built, to fall back to PIN_UNSET rather than silently
+// pre-filling an already-occupied pin. `owners` is usePinOccupancyStore().owners; never call this
+// against an existing device's own persisted config (its own default is "occupied" by itself, which
+// this cannot distinguish from a real conflict).
+export function clearDefaultIfOccupied(pin: number, owners: Record<number, number>): number {
+  return owners[pin] !== undefined ? PIN_UNSET : pin
+}
+
 // Shared normalizer for every pin field's normalizeConfig(): accepts PIN_UNSET as-is (mirrors the
 // firmware's Category 2/3 sentinel handling) and any real chip GPIO with the required role;
 // anything else -- wrong type, out of range, wrong role -- falls back. Mirrors

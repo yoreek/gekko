@@ -9,6 +9,7 @@
           required-role="output"
           :model-value="modelValue.sdaPin"
           :sibling-pins="[modelValue.sclPin]"
+          allow-unset
           :readonly="mode === 'view'"
           :disabled="busy && mode !== 'view'"
           @update:model-value="update('sdaPin', $event)"
@@ -22,6 +23,7 @@
           required-role="output"
           :model-value="modelValue.sclPin"
           :sibling-pins="[modelValue.sdaPin]"
+          allow-unset
           :readonly="mode === 'view'"
           :disabled="busy && mode !== 'view'"
           @update:model-value="update('sclPin', $event)"

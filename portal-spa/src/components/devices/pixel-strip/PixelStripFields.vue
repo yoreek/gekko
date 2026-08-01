@@ -1,15 +1,14 @@
 <template>
   <v-row>
     <v-col cols="12" sm="4">
-      <v-text-field
-        type="number"
-        min="0"
-        max="255"
+      <PinPicker
+        :current-device-id="device?.record.id"
         :label="t('device.fields.pixelStripPin')"
+        required-role="output"
         :model-value="modelValue.pin"
         :readonly="mode === 'view'"
         :disabled="busy && mode !== 'view'"
-        @update:model-value="update('pin', Number($event))"
+        @update:model-value="update('pin', $event)"
       />
     </v-col>
     <v-col cols="12" sm="4">
@@ -53,10 +52,17 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import type { DeviceRecord } from '@/api/contracts'
 import type { PixelStripConfigDraft } from '@/models/devices/pixel-strip'
+import PinPicker from '@/components/devices/common/PinPicker.vue'
 import { useDraftModel } from '@/composables/useDraftModel'
 
-const props = defineProps<{ modelValue: PixelStripConfigDraft; mode: 'view' | 'edit' | 'create'; busy?: boolean }>()
+const props = defineProps<{
+  modelValue: PixelStripConfigDraft
+  device?: DeviceRecord
+  mode: 'view' | 'edit' | 'create'
+  busy?: boolean
+}>()
 const emit = defineEmits<{ 'update:modelValue': [value: PixelStripConfigDraft] }>()
 const { t } = useI18n()
 const { update } = useDraftModel<PixelStripConfigDraft>(props, emit)

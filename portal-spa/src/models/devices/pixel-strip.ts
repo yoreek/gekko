@@ -2,6 +2,7 @@ import type { BaseDeviceConfig, DeviceRecord, PixelStripOutputSnapshot } from '@
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import type { DeviceRole } from '@/models/device-type-ids'
 import { BaseDevice, defaultBaseDeviceConfig, encodeBaseDeviceConfig, normalizeBaseDeviceConfig } from './base-device.ts'
+import { normalizePin, PIN_UNSET } from './shared/pin.ts'
 
 export interface PixelStripConfigDraft extends BaseDeviceConfig {
   pin: number
@@ -40,7 +41,7 @@ export class PixelStripDevice extends BaseDevice<PixelStripConfigDraft, PixelStr
   static defaultConfig(): PixelStripConfigDraft {
     return {
       ...defaultBaseDeviceConfig(),
-      pin: 4,
+      pin: PIN_UNSET,
       pixelCount: 30,
       restorePreviousState: false,
       startupBrightness: 50,
@@ -52,7 +53,7 @@ export class PixelStripDevice extends BaseDevice<PixelStripConfigDraft, PixelStr
     if (!isRecord(value)) return defaults
     return {
       ...normalizeBaseDeviceConfig(value, defaults),
-      pin: clampInt(value.pin, defaults.pin, 0, 255),
+      pin: normalizePin(value.pin, defaults.pin, 'output'),
       pixelCount: clampInt(value.pixelCount, defaults.pixelCount, 1, 300),
       restorePreviousState: typeof value.restorePreviousState === 'boolean' ? value.restorePreviousState : defaults.restorePreviousState,
       startupBrightness: clampInt(value.startupBrightness, defaults.startupBrightness, 0, 100),

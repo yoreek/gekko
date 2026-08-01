@@ -12,7 +12,7 @@ import {
   type St7735LayoutDraft,
   type St7735WidgetNormalizationOptions,
 } from './layout.ts'
-import { normalizePin } from '../shared/pin.ts'
+import { normalizePin, PIN_UNSET } from '../shared/pin.ts'
 
 export interface St7735ConfigDraft extends BaseDeviceConfig, DisplayBaseConfig {
   spiBusDeviceId: number
@@ -53,9 +53,9 @@ export class St7735Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraf
       width: 128,
       height: 160,
       spiBusDeviceId: 0,
-      chipSelectPin: 5,
-      dcPin: 2,
-      resetPin: 255,
+      chipSelectPin: PIN_UNSET,
+      dcPin: PIN_UNSET,
+      resetPin: PIN_UNSET,
       rotation: 0,
       layout: defaultSt7735Layout(),
     }

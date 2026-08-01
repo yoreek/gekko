@@ -12,13 +12,14 @@
 
     <v-row>
       <v-col cols="12" sm="6">
-        <v-text-field
-          type="number"
+        <PinPicker
+          :current-device-id="device?.record.id"
           :label="t('device.fields.analogPin')"
+          required-role="output"
           :model-value="modelValue.pin"
           :readonly="mode === 'view'"
           :disabled="busy && mode !== 'view'"
-          @update:model-value="update('pin', Number($event))"
+          @update:model-value="update('pin', $event)"
         />
       </v-col>
       <v-col cols="12" sm="6">
@@ -119,6 +120,7 @@ import { useI18n } from 'vue-i18n'
 
 import type { AnalogOutputOutputSnapshot, DeviceCommandRequest, DeviceRecord } from '@/api/contracts'
 import AnalogOutputLevelControl from '@/components/devices/analog-output/AnalogOutputLevelControl.vue'
+import PinPicker from '@/components/devices/common/PinPicker.vue'
 import type { AnalogOutputConfigDraft } from '@/models/devices/analog-output'
 
 const props = defineProps<{

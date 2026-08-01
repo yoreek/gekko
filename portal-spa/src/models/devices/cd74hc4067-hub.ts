@@ -3,7 +3,7 @@ import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeB
 import type { AnalogInputHubOutputSnapshot, BaseDeviceConfig, DeviceRecord } from '@/api/contracts'
 import type { AdcAttenuation } from './analog-port-input.ts'
 import type { DeviceRole } from '@/models/device-type-ids'
-import { normalizePin } from './shared/pin.ts'
+import { normalizePin, PIN_UNSET } from './shared/pin.ts'
 
 export interface Cd74hc4067HubConfigDraft extends BaseDeviceConfig {
   selectPins: [number, number, number, number]
@@ -43,9 +43,9 @@ export class Cd74hc4067HubDevice extends BaseDevice<Cd74hc4067HubConfigDraft, Cd
   static defaultConfig(): Cd74hc4067HubConfigDraft {
     return {
       ...defaultBaseDeviceConfig(),
-      selectPins: [16, 17, 18, 19],
+      selectPins: [PIN_UNSET, PIN_UNSET, PIN_UNSET, PIN_UNSET],
       enablePin: CD74HC4067_UNUSED_PIN,
-      sigPin: 255,
+      sigPin: PIN_UNSET,
       sigAttenuation: '11db',
     }
   }

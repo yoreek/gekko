@@ -7,6 +7,7 @@
           :current-device-id="device?.record.id"
           :label="`S${index}`"
           required-role="output"
+          allow-unset
           :model-value="pin"
           :sibling-pins="selectPinSiblings(index)"
           :readonly="mode === 'view'"

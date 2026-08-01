@@ -27,6 +27,7 @@
         :sibling-pins="[modelValue.dcPin, modelValue.resetPin]"
         :label="t('device.fields.chipSelectPin')"
         required-role="output"
+        allow-unset
         @update:model-value="update('chipSelectPin', $event)"
       />
     </v-col>
@@ -45,6 +46,7 @@
         :sibling-pins="[modelValue.chipSelectPin, modelValue.resetPin]"
         :label="t('device.fields.dcPin')"
         required-role="output"
+        allow-unset
         @update:model-value="update('dcPin', $event)"
       />
     </v-col>

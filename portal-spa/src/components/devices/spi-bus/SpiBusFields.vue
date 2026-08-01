@@ -16,6 +16,7 @@
           :current-device-id="device?.record.id"
           :label="t('device.fields.spiSckPin')"
           required-role="output"
+          allow-unset
           :model-value="modelValue.sckPin"
           :sibling-pins="[modelValue.mosiPin, modelValue.misoPin]"
           :readonly="mode === 'view'"
@@ -29,6 +30,7 @@
           :current-device-id="device?.record.id"
           :label="t('device.fields.spiMosiPin')"
           required-role="output"
+          allow-unset
           :model-value="modelValue.mosiPin"
           :sibling-pins="[modelValue.sckPin, modelValue.misoPin]"
           :readonly="mode === 'view'"

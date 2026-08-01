@@ -55,8 +55,10 @@ import {
   nextAvailableDeviceName,
 } from '@/models/devices/device-name'
 import { deviceTypeName } from '@/models/device-type-ids'
+import { clearDefaultIfOccupied } from '@/models/devices/shared/pin'
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore } from '@/stores/panels'
+import { usePinOccupancyStore } from '@/stores/pinOccupancy'
 import {
   allDeviceUis,
   resolveDeviceUi,
@@ -75,6 +77,7 @@ const router = useRouter()
 const deviceStore = useDeviceRegistryStore()
 const panelStore = usePanelStore()
 const notifications = useNotificationsStore()
+const pinOccupancyStore = usePinOccupancyStore()
 
 const targetPanelId = computed(() => {
   const value = route.query.panelId
@@ -94,9 +97,29 @@ const canCreate = computed(() =>
   && draft.value.typeName.length > 0
   && !isDuplicateDeviceName(draft.value.name))
 
+// A device type's defaultConfig() may suggest a conventional pin (e.g. i2c_bus's sdaPin=21) that's
+// already claimed by another device -- clearDefaultIfOccupied() falls back to PIN_UNSET rather than
+// silently pre-filling an occupied pin. Only meaningful for types whose default is a real GPIO
+// number, not PIN_UNSET already (see docs/gpio-pin-occupancy.md).
+function clearOccupiedDefaultPins(target: DeviceCreateDraft): void {
+  const owners = pinOccupancyStore.owners
+  const config = target as Record<string, unknown>
+  switch (target.typeName) {
+    case 'i2c_bus':
+      config.sdaPin = clearDefaultIfOccupied(config.sdaPin as number, owners)
+      config.sclPin = clearDefaultIfOccupied(config.sclPin as number, owners)
+      break
+    case 'spi_bus':
+      config.sckPin = clearDefaultIfOccupied(config.sckPin as number, owners)
+      config.mosiPin = clearDefaultIfOccupied(config.mosiPin as number, owners)
+      break
+  }
+}
+
 onBeforeMount(async () => {
-  await deviceStore.initialize()
+  await Promise.all([deviceStore.initialize(), pinOccupancyStore.refresh()])
   draft.value.name = createDefaultName(draft.value.typeName)
+  clearOccupiedDefaultPins(draft.value)
 })
 
 function onBaseUpdate(value: DeviceCreateDraft): void {
@@ -104,6 +127,7 @@ function onBaseUpdate(value: DeviceCreateDraft): void {
     draft.value = createDefaultDeviceDraft(value.typeName)
     draft.value.name = createDefaultName(value.typeName)
     draft.value.enabled = value.enabled
+    clearOccupiedDefaultPins(draft.value)
     return
   }
   draft.value = value
