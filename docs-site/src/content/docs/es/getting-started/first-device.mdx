@@ -14,14 +14,22 @@ primera prueba.
 
 <Steps>
 
-1. Abre **Dispositivos** en el portal y pulsa el botón para añadir un
+1. Antes de cablear nada, abre **Ajustes → Placa del controlador** y elige el
+   modelo exacto de tu placa/chip (ESP32 clásico, S2, S3, C3 o C6, y la
+   variante concreta si aparece en la lista). La disponibilidad de pines —
+   qué GPIO existen, cuáles son ADC/de arranque/solo entrada, cuáles están
+   reservados — varía según la placa, y el selector de pines de cada
+   formulario de dispositivo usa esta selección para mostrar solo los pines
+   que tu placa realmente tiene.
+
+2. Abre **Dispositivos** en el portal y pulsa el botón para añadir un
    dispositivo.
 
    ![Selección del tipo de dispositivo](../../../../assets/screenshots/portal-device-create.png)
 
-2. Elige **Interruptor GPIO** en el catálogo.
+3. Elige **Interruptor GPIO** en el catálogo.
 
-3. Completa los ajustes:
+4. Completa los ajustes:
 
    ![Ajustes del interruptor GPIO](../../../../assets/screenshots/device-gpio-switch.png)
 
@@ -36,10 +44,10 @@ primera prueba.
    - **Estado seguro** — el estado al que vuelve la salida si el dispositivo
      que la controla deja de estar disponible.
 
-4. Guarda. El dispositivo aparecerá en la lista, alcanzará el estado
+5. Guarda. El dispositivo aparecerá en la lista, alcanzará el estado
    **listo** y mostrará un interruptor en vivo; púlsalo y el relé conmutará.
 
-5. Fíjalo en el panel: abre **Paneles**, añade un widget de interruptor para el
+6. Fíjalo en el panel: abre **Paneles**, añade un widget de interruptor para el
    nuevo dispositivo y colócalo donde quieras. A partir de entonces estará a un
    toque de la página de inicio.
 

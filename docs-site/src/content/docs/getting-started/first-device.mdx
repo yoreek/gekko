@@ -13,13 +13,20 @@ MOSFET module, or just the board's LED for a first test.
 
 <Steps>
 
-1. Open **Devices** in the portal and click the add-device button.
+1. Before wiring anything, open **Settings → Controller board** and pick your
+   exact board/chip model (classic ESP32, S2, S3, C3, or C6, and the specific
+   variant if it's listed). Pin availability — which GPIOs exist, which are
+   ADC/strapping/input-only, which are reserved — differs per board, and every
+   device form's pin picker uses this selection to show only pins your board
+   actually has.
+
+2. Open **Devices** in the portal and click the add-device button.
 
    ![Device type selection](../../../assets/screenshots/portal-device-create.png)
 
-2. Pick **GPIO Switch** from the catalog.
+3. Pick **GPIO Switch** from the catalog.
 
-3. Fill in the settings:
+4. Fill in the settings:
 
    ![GPIO switch settings](../../../assets/screenshots/device-gpio-switch.png)
 
@@ -33,10 +40,10 @@ MOSFET module, or just the board's LED for a first test.
    - **Safe state** — the state the output falls back to if the device that
      controls it becomes unavailable.
 
-4. Save. The device appears in the list, reaches **ready**, and shows a live
+5. Save. The device appears in the list, reaches **ready**, and shows a live
    on/off toggle — click it and your relay clicks.
 
-5. Pin it to the dashboard: open **Panels**, add a switch widget for your new
+6. Pin it to the dashboard: open **Panels**, add a switch widget for your new
    device, and place it where you want. From now on it is one tap from the
    landing page.
 

@@ -14,13 +14,21 @@ primo test.
 
 <Steps>
 
-1. Apri **Devices** nel portale e fai clic sul pulsante add-device.
+1. Prima di cablare qualsiasi cosa, apri **Impostazioni → Scheda controller**
+   e scegli il modello esatto della tua scheda/chip (ESP32 classico, S2, S3,
+   C3 o C6, e la variante specifica se elencata). La disponibilità dei pin —
+   quali GPIO esistono, quali sono ADC/strapping/solo input, quali sono
+   riservati — cambia da scheda a scheda, e il selettore di pin di ogni form
+   dispositivo usa questa selezione per mostrare solo i pin che la tua scheda
+   ha davvero.
+
+2. Apri **Devices** nel portale e fai clic sul pulsante add-device.
 
    ![Device type selection](../../../../assets/screenshots/portal-device-create.png)
 
-2. Scegli **GPIO Switch** dal catalogo.
+3. Scegli **GPIO Switch** dal catalogo.
 
-3. Compila le impostazioni:
+4. Compila le impostazioni:
 
    ![GPIO switch settings](../../../../assets/screenshots/device-gpio-switch.png)
 
@@ -34,10 +42,10 @@ primo test.
    - **Safe state** — lo stato a cui torna l'uscita se il dispositivo che la
      controlla diventa indisponibile.
 
-4. Salva. Il dispositivo appare nella lista, raggiunge **ready** e mostra un
+5. Salva. Il dispositivo appare nella lista, raggiunge **ready** e mostra un
    toggle on/off live — cliccalo e il tuo relè scatta.
 
-5. Fissalo alla dashboard: apri **Panels**, aggiungi un widget switch per il
+6. Fissalo alla dashboard: apri **Panels**, aggiungi un widget switch per il
    tuo nuovo dispositivo e posizionalo dove vuoi. Da quel momento è a un tap
    dalla pagina iniziale.
 

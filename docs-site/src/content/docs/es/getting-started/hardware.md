@@ -60,5 +60,10 @@ lista completa de los 33 tipos incorporados.
 
 :::tip
 Empieza solo con la placa desnuda. Flashea, conéctala a WiFi y explora el
-portal: podrás añadir hardware real más adelante, uno por uno.
+portal: podrás añadir hardware real más adelante, uno por uno. Una vez
+conectada, configura el modelo exacto de tu placa en la página de ajustes
+**Placa del controlador** *antes* de añadir cualquier dispositivo que use
+pines — la disponibilidad de GPIO (ADC, pines de arranque, solo entrada,
+reservados) varía según la placa, y el selector de pines de cada formulario
+de dispositivo se rige por esta selección.
 :::

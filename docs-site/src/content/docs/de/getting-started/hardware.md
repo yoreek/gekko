@@ -59,4 +59,9 @@ der 33 eingebauten Geraetetypen.
 :::tip
 Starte nur mit dem nackten Board. Flashen, mit WiFi verbinden und im Portal
 umsehen - echtes Geraet kannst du spaeter eines nach dem anderen hinzufuegen.
+Sobald du verbunden bist, lege auf der Einstellungsseite **Controller-Board**
+dein genaues Board-Modell fest, *bevor* du ein pinbesitzendes Geraet
+hinzufuegst - die GPIO-Verfuegbarkeit (ADC, Strapping, nur Eingang, reservierte
+Pins) unterscheidet sich je nach Board, und die Pin-Auswahl in jedem
+Geraeteformular richtet sich nach dieser Auswahl.
 :::

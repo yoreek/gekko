@@ -64,5 +64,9 @@ complète des 33 types de périphériques intégrés.
 :::tip
 Commencez avec la carte nue. Flashez-la, connectez-la au WiFi, puis explorez le
 portail — vous pourrez ajouter le matériel réel un périphérique à la fois
-ensuite.
+ensuite. Une fois connecté, réglez votre modèle exact de carte sur la page de
+réglages **Carte contrôleur** *avant* d'ajouter tout périphérique possédant
+des broches — la disponibilité des GPIO (ADC, strapping, entrée seule, broches
+réservées) diffère selon la carte, et le sélecteur de broches de chaque
+formulaire de périphérique est piloté par ce choix.
 :::

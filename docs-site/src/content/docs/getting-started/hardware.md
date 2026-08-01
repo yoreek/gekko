@@ -58,5 +58,9 @@ built-in device types.
 
 :::tip
 Start with just the bare board. Flash it, connect it to WiFi, and click around
-the portal — you can add real hardware one device at a time later.
+the portal — you can add real hardware one device at a time later. Once
+connected, set your exact board model on the **Controller board** settings
+page *before* adding any pin-owning device — GPIO availability (ADC,
+strapping, input-only, reserved pins) differs per board, and every device
+form's pin picker is driven by this selection.
 :::

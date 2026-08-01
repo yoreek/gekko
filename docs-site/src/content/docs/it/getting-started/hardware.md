@@ -58,4 +58,9 @@ completa dei 33 tipi integrati.
 :::tip
 Parti con la scheda nuda. Flasha, connettila al WiFi e fai un giro nel
 portale — potrai aggiungere l'hardware reale un dispositivo alla volta dopo.
+Una volta connessa, imposta il modello esatto della tua scheda nella pagina
+impostazioni **Scheda controller** *prima* di aggiungere qualsiasi
+dispositivo che occupa un pin — la disponibilità dei GPIO (ADC, strapping,
+solo input, pin riservati) cambia da scheda a scheda, e il selettore di pin
+di ogni form dispositivo si basa su questa selezione.
 :::

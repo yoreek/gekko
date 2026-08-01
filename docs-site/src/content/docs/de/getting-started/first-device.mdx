@@ -14,14 +14,22 @@ des Boards.
 
 <Steps>
 
-1. Öffne im Portal **Geräte** und klicke auf die Schaltfläche zum Hinzufügen
+1. Bevor du irgendetwas verdrahtest, öffne **Einstellungen → Controller-Board**
+   und wähle dein genaues Board-/Chip-Modell (klassischer ESP32, S2, S3, C3
+   oder C6, sowie die konkrete Variante, falls sie gelistet ist). Welche
+   GPIOs verfügbar sind, welche ADC/Strapping/nur-Eingang sind und welche
+   reserviert sind, unterscheidet sich je nach Board — und die Pin-Auswahl in
+   jedem Geräteformular zeigt nur die Pins an, die dein Board tatsächlich hat,
+   basierend auf dieser Auswahl.
+
+2. Öffne im Portal **Geräte** und klicke auf die Schaltfläche zum Hinzufügen
    eines Geräts.
 
    ![Auswahl des Gerätetyps](../../../../assets/screenshots/portal-device-create.png)
 
-2. Wähle **GPIO-Schalter** aus dem Katalog.
+3. Wähle **GPIO-Schalter** aus dem Katalog.
 
-3. Fülle die Einstellungen aus:
+4. Fülle die Einstellungen aus:
 
    ![Einstellungen des GPIO-Schalters](../../../../assets/screenshots/device-gpio-switch.png)
 
@@ -36,10 +44,10 @@ des Boards.
    - **Sicherer Zustand** — der Zustand, auf den der Ausgang zurückfällt, wenn
      das steuernde Gerät nicht verfügbar ist.
 
-4. Speichere. Das Gerät erscheint in der Liste, erreicht den Status **bereit**
+5. Speichere. Das Gerät erscheint in der Liste, erreicht den Status **bereit**
    und zeigt einen Live-Schalter — betätige ihn und das Relais schaltet.
 
-5. Hefte es an das Dashboard: Öffne **Panels**, füge ein Schalter-Widget für
+6. Hefte es an das Dashboard: Öffne **Panels**, füge ein Schalter-Widget für
    dein neues Gerät hinzu und platziere es an der gewünschten Stelle. Von nun
    an ist es mit einem Fingertipp von der Startseite erreichbar.
 
