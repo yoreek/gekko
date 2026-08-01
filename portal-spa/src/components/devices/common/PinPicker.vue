@@ -30,8 +30,8 @@ const props = defineProps<{
   // Required capability for this field (e.g. 'output', 'adc1', 'input'). Pins lacking it are
   // shown disabled rather than hidden, so an already-saved-but-now-invalid value stays visible.
   requiredRole: PinRole
-  // Lets the field accept the "not configured" sentinel (Category 2 fields such as
-  // spi_bus.misoPin/st7735.resetPin -- see docs/pin-configuration-conventions.md).
+  // Allows the user to explicitly choose the firmware's "not configured" sentinel. Mandatory
+  // fields still render their initial sentinel value, but do not offer it as a selectable option.
   allowUnset?: boolean
   // The device this field belongs to (undefined while creating a new device). Excludes that
   // device's own already-claimed pins from being reported as occupied by themselves.
@@ -83,7 +83,7 @@ const items = computed(() => {
     const badge = roleBadge(pin.roles)
     const fixedHint = pin.fixedDefaultFor ? ` (${t(`device.dialog.pinRole.fixedDefault`)})` : ''
     const occupant = compatible ? occupantName(pin.gpio) : undefined
-    let itemProps: { disabled: boolean; subtitle: string } | undefined
+    let itemProps: { disabled: boolean; subtitle?: string } | undefined
     if (!compatible) {
       itemProps = { disabled: true, subtitle: t('device.dialog.pinRole.incompatible') }
     } else if (occupant !== undefined) {
@@ -97,8 +97,14 @@ const items = computed(() => {
       props: itemProps,
     }
   })
-  if (props.allowUnset) {
-    pins.unshift({ title: t('device.dialog.pinRole.unset'), value: PIN_UNSET, props: undefined })
+  // Keep an initial mandatory 255 value visible without making "not configured" selectable.
+  // Optional fields opt in via allowUnset and get the same item enabled for user selection.
+  if (props.allowUnset || props.modelValue === PIN_UNSET) {
+    pins.unshift({
+      title: t('device.dialog.pinRole.unset'),
+      value: PIN_UNSET,
+      props: props.allowUnset ? undefined : { disabled: true },
+    })
   }
   return pins
 })
