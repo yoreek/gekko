@@ -35,13 +35,17 @@ anything. All of that moved to `.github/workflows/build.yml`:
 
 - **`test`** — `scripts/test.sh` (lint + native unit tests).
 - **`spa`** — `pnpm test:unit`, then `pnpm deploy:data` (SPA build + `data/`), uploaded as the `gekko-spa-dist-<sha>` and `gekko-data-<sha>` workflow artifacts.
-- **`firmware`** (matrix, needs `spa`'s `data/` artifact) — builds every chip env from `platformio.ini` (`esp32dev[_ble]`, `esp32s3[_ble]`, `esp32c3[_ble]`, `esp32s2`, `esp32c6`) plus `buildfs`, uploaded per-env as `gekko-firmware-<env>-<sha>`. `esp32dev_ota` is excluded (upload-only alias, nothing new to build).
-- **`webflash`** (matrix over the default and BLE firmware) — runs `scripts/collect_webflash.py` against the downloaded firmware artifact, copies the static flasher tool (`webflash/index.html`, `flash.sh`/`flash.bat`/`flash.py`, which stay git-tracked), uploads `gekko-webflash-default-<sha>` / `gekko-webflash-ble-<sha>`.
+- **`firmware`** (matrix, needs `spa`'s `data/` artifact) — builds every chip env from `platformio.ini` (`esp32dev[_ble]`, `esp32s3[_ble]`, `esp32c3[_ble]`, `esp32s2`, `esp32c6`) plus `buildfs`, uploaded per-env as `gekko-firmware-<env>-<sha>`. `esp32dev_ota` is excluded (upload-only alias, nothing new to build). `bootloader.bin`/`partitions.bin`/`firmware.bin` are copied out of `.pio/build/<env>/` right after the firmware build, *before* running `-t buildfs` — running `buildfs` as a second, separate `pio run` afterward has been observed to leave those three files missing from the build dir, so the artifact upload must not read them from there after the fact.
+- **`webflash`** (matrix over the default and BLE firmware) — runs `scripts/collect_webflash.py` per chip against the downloaded firmware artifacts, merges the per-chip manifests with `scripts/merge_webflash_manifests.py`, copies the static flasher tool (`webflash/index.html`, `flash.sh`/`flash.bat`/`flash.py`, which stay git-tracked), uploads `gekko-webflash-default-<sha>` / `gekko-webflash-ble-<sha>`.
 - **`release`** (tag pushes only) — packages both webflash bundles into the GitHub Release zips.
 
-`.github/workflows/docs.yml` builds `data/` and both webflash bundles the same
-way (from source, in CI) before publishing the Pages web installer — it does
-not depend on anything being committed either.
+`.github/workflows/docs.yml` does **not** rebuild any of this — it triggers on
+`workflow_run` completion of `Test` (or manual `workflow_dispatch`, which
+looks up the latest successful `Test` run on `master` instead) and downloads
+`gekko-webflash-default-<sha>` / `gekko-webflash-ble-<sha>` straight from that
+run before publishing the Pages web installer. Rebuilding the same firmware a
+second time just to publish it was wasted CI time and had the same
+buildfs-clobbers-partition-files failure mode described above.
 
 Since nothing is rebuilt or re-staged at commit time, the SPA build no longer
 needs to be byte-reproducible for `git status` to stay clean. `vite.config.ts`

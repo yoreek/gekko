@@ -133,18 +133,21 @@ jobs:
 
       - name: Build firmware (${{ matrix.env }})
         run: |
+          set -euo pipefail
           pio run -e ${{ matrix.env }}
+          mkdir -p .pio/firmware-out/${{ matrix.env }}
+          cp .pio/build/${{ matrix.env }}/bootloader.bin \
+             .pio/build/${{ matrix.env }}/partitions.bin \
+             .pio/build/${{ matrix.env }}/firmware.bin \
+             .pio/firmware-out/${{ matrix.env }}/
           pio run -e ${{ matrix.env }} -t buildfs
+          cp .pio/build/${{ matrix.env }}/littlefs.bin .pio/firmware-out/${{ matrix.env }}/
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: gekko-firmware-${{ matrix.env }}-${{ github.sha }}
-          path: |
-            .pio/build/${{ matrix.env }}/bootloader.bin
-            .pio/build/${{ matrix.env }}/partitions.bin
-            .pio/build/${{ matrix.env }}/firmware.bin
-            .pio/build/${{ matrix.env }}/littlefs.bin
+          path: .pio/firmware-out/${{ matrix.env }}
           if-no-files-found: error
 
   webflash:
