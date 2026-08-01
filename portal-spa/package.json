@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "@mdi/js": "^7.4.47",
+    "@dagrejs/dagre": "^3.0.0",
+    "@vue-flow/core": "^1.48.2",
     "gridstack": "^12.6.0",
     "pinia": "^3.0.4",
     "uplot": "^1.6.32",

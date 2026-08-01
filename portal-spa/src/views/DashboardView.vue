@@ -1,5 +1,6 @@
 <template>
   <PageContainer dense>
+    <DashboardModeTabs class="px-3 pt-2" />
     <div class="d-flex flex-column h-100">
       <v-row no-gutters align="center" class="ga-2 pa-3 pb-0">
         <v-col v-if="canMoveActivePanel(-1) || panelStore.panels.length > 1" cols="auto">
@@ -161,6 +162,7 @@ import { commandDevice, type DeviceCommandRequest, type DeviceRecord } from '@/a
 import { useDeviceRegistryStore } from '@/stores/deviceRegistry'
 import { usePanelStore, type DashboardPanelWidget } from '@/stores/panels'
 import DashboardGrid from '@/components/dashboard/DashboardGrid.vue'
+import DashboardModeTabs from '@/components/dashboard/DashboardModeTabs.vue'
 import DeviceMoreInfoDialog from '@/components/devices/common/DeviceMoreInfoDialog.vue'
 import PageContainer from '@/components/layout/PageContainer.vue'
 

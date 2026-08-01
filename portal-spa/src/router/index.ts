@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import DashboardView from '@/views/DashboardView.vue'
+import DeviceGraphView from '@/views/DeviceGraphView.vue'
 import DevicesView from '@/views/DevicesView.vue'
 import DeviceCreateView from '@/views/DeviceCreateView.vue'
 import DeviceDetailView from '@/views/DeviceDetailView.vue'
@@ -23,6 +24,11 @@ const router = createRouter({
       path: '/',
       name: 'dashboard',
       component: DashboardView,
+    },
+    {
+      path: '/device-graph',
+      name: 'device-graph',
+      component: DeviceGraphView,
     },
     {
       path: '/devices',
