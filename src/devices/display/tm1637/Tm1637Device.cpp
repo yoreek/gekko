@@ -178,6 +178,16 @@ DeviceTypeDescriptor Tm1637Device::descriptor() {
     return descriptor;
 }
 
+void Tm1637Device::claimGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.clkPin, deviceId());
+    setGpioPinOwner(pins, config_.dioPin, deviceId());
+}
+
+void Tm1637Device::releaseGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.clkPin, 0);
+    setGpioPinOwner(pins, config_.dioPin, 0);
+}
+
 std::unique_ptr<IDeviceRuntime> Tm1637Device::createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
     return std::unique_ptr<IDeviceRuntime>(new Tm1637Device(record, configBlob));
 }

@@ -1,4 +1,5 @@
 import type {
+  BoardSettingsResponse,
   DashboardLayoutRecord,
   DashboardLayoutWidgetRecord,
   DashboardLayoutResponse,
@@ -17,6 +18,7 @@ import type {
   MqttStatusResponse,
   OtaStatusResponse,
   PersistenceSettingsRecord,
+  PinOccupancyResponse,
   SystemRestartResponse,
   SystemStatusResponse,
   SystemVersionResponse,
@@ -1874,6 +1876,66 @@ export function mockUpdateTimeSettings(settings: Partial<TimeSettingsRecord>): P
   })
   publishTimeStatus(loadMockDatabase())
   return Promise.resolve(response)
+}
+
+export function mockFetchBoardSettings(): BoardSettingsResponse {
+  const db = loadMockDatabase()
+  return ok({
+    chip: db.board.chip,
+    selectedBoardId: db.board.selectedBoardId,
+    supportedBoardIds: db.board.supportedBoardIds,
+  })
+}
+
+export function mockUpdateBoardSettings(boardId: string): Promise<BoardSettingsResponse> {
+  const response = mutateRegistry(db => {
+    if (db.board.supportedBoardIds.includes(boardId)) {
+      db.board.selectedBoardId = boardId
+    }
+    return mockFetchBoardSettings()
+  })
+  return Promise.resolve(response)
+}
+
+// Mirrors which config fields are GPIO pins per device type, on the firmware side established by
+// each type's claimGpioPins()/releaseGpioPins() override (src/devices/**, see
+// docs/gpio-pin-occupancy.md) -- kept in sync by hand here purely to simulate that firmware
+// behavior for mockMode/Playwright, the same way HA_SUPPORTED_TYPE_NAMES above mirrors
+// HaEntityAdapterRegistry::withDefaults().
+const PIN_FIELDS_BY_TYPE_NAME: Record<string, string[]> = {
+  gpio_switch: ['gpioPin'],
+  binary_sensor: ['gpioPin'],
+  onewire_bus: ['gpioPin'],
+  analog_port_input: ['gpioPin'],
+  dht11: ['gpioPin'],
+  cd74hc4067_hub: ['enablePin', 'sigPin'],
+  rtc_ds1302: ['clkPin', 'dataPin', 'rstPin'],
+  tm1637: ['clkPin', 'dioPin'],
+  i2c_bus: ['sdaPin', 'sclPin'],
+  spi_bus: ['sckPin', 'mosiPin', 'misoPin'],
+  lcd1602_pin: ['rsPin', 'ePin', 'd4Pin', 'd5Pin', 'd6Pin', 'd7Pin', 'backlightPin'],
+  lcd2004_pin: ['rsPin', 'ePin', 'd4Pin', 'd5Pin', 'd6Pin', 'd7Pin', 'backlightPin'],
+  st7735: ['chipSelectPin', 'dcPin', 'resetPin'],
+  pixel_strip: ['pin'],
+  analog_output: ['pin'],
+}
+
+const PIN_UNSET = 255
+
+export function mockFetchPinOccupancy(): PinOccupancyResponse {
+  const db = loadMockDatabase()
+  const pins: { gpio: number; deviceId: number }[] = []
+  for (const device of db.devices) {
+    const fields = PIN_FIELDS_BY_TYPE_NAME[device.record.typeName]
+    if (!fields) continue
+    for (const field of fields) {
+      const gpio = device.config[field]
+      if (typeof gpio === 'number' && gpio !== PIN_UNSET) {
+        pins.push({ gpio, deviceId: device.record.id })
+      }
+    }
+  }
+  return ok({ pins })
 }
 
 export function mockFetchPersistenceSettings(): PersistenceSettingsRecord {

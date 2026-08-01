@@ -33,7 +33,7 @@ bool pinsOverlap(const Cd74hc4067HubDeviceConfigV1& config) {
         pins[count++] = select;
     }
     pins[count++] = config.sigPin;
-    const bool hasEnable = config.enablePin != kCd74hc4067UnusedPin;
+    const bool hasEnable = config.enablePin != kGpioPinUnset;
     if (hasEnable) {
         pins[count++] = config.enablePin;
     }
@@ -63,7 +63,7 @@ DeviceValidationResult Cd74hc4067HubDeviceConfigV1::validate() const {
             return {DeviceError::InvalidConfig, "cd74hc4067 select pin is invalid"};
         }
     }
-    if (enablePin != kCd74hc4067UnusedPin && !gpioSwitchPinIsValid(enablePin)) {
+    if (enablePin != kGpioPinUnset && !gpioSwitchPinIsValid(enablePin)) {
         return {DeviceError::InvalidConfig, "cd74hc4067 enable pin is invalid"};
     }
     if (!analogPortInputGpioPinIsValid(sigPin)) {

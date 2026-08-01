@@ -104,6 +104,14 @@ DeviceTypeDescriptor AnalogPortInputDevice::descriptor() {
     return descriptor;
 }
 
+void AnalogPortInputDevice::claimGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.gpioPin, deviceId());
+}
+
+void AnalogPortInputDevice::releaseGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.gpioPin, 0);
+}
+
 std::unique_ptr<IDeviceRuntime> AnalogPortInputDevice::createRuntime(const DeviceRegistryEntry& record,
                                                                      const DeviceConfigBlob& configBlob) {
     return std::unique_ptr<IDeviceRuntime>(new AnalogPortInputDevice(record, configBlob));

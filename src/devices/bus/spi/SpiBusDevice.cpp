@@ -211,6 +211,18 @@ DeviceTypeDescriptor SpiBusDevice::descriptor() {
     return descriptor;
 }
 
+void SpiBusDevice::claimGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.sckPin, deviceId());
+    setGpioPinOwner(pins, config_.mosiPin, deviceId());
+    setGpioPinOwner(pins, config_.misoPin, deviceId());
+}
+
+void SpiBusDevice::releaseGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.sckPin, 0);
+    setGpioPinOwner(pins, config_.mosiPin, 0);
+    setGpioPinOwner(pins, config_.misoPin, 0);
+}
+
 std::unique_ptr<IDeviceRuntime> SpiBusDevice::createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
     return std::unique_ptr<IDeviceRuntime>(new SpiBusDevice(record, configBlob));
 }
@@ -277,7 +289,7 @@ bool SpiBusDevice::probeChipSelect(uint8_t csPin) {
     SpiProbeMethod method = SpiProbeMethod::None;
 
     // Try MISO-activity first
-    if (config_.misoPin != kSpiBusMisoUnset) {
+    if (config_.misoPin != kGpioPinUnset) {
         outcome = probeViaMisoActivity(csPin);
         method = SpiProbeMethod::MisoActivity;
     } else {

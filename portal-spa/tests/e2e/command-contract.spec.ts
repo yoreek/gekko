@@ -1,7 +1,14 @@
 import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { storageKey } from '../../src/mock/database.ts'
 
 const mockPath = '/devices?mockMode=1&mockReset=1'
+
+async function selectOption(page: Page, name: string, option: string | RegExp): Promise<void> {
+  const input = page.getByRole('combobox', { name, exact: true })
+  await input.locator('xpath=ancestor::*[contains(@class, "v-field")][1]').click()
+  await page.getByRole('option', { name: option, exact: true }).click()
+}
 
 test('switch commands use structured output state fields', async ({ page }) => {
   await page.goto(mockPath)
@@ -68,8 +75,7 @@ test('onewire edit flows persist JSON config objects', async ({ page }) => {
 
   await page.getByText('Sensor Bus').click()
 
-  const pinInput = page.getByLabel('GPIO pin')
-  await pinInput.fill('19')
+  await selectOption(page, 'GPIO pin', 'GPIO1')
   await page.getByRole('button', { name: 'Save' }).click()
 
   await expect.poll(async () => {
@@ -82,7 +88,7 @@ test('onewire edit flows persist JSON config objects', async ({ page }) => {
       }
       return device.config.gpioPin || 0
     }, storageKey)
-  }).toBe(19)
+  }).toBe(1)
 })
 
 test('dummy device has no command UI and creates only base config', async ({ page }) => {

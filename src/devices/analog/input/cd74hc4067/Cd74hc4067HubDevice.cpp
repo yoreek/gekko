@@ -100,14 +100,14 @@ AnalogInputHubPollResult Cd74hc4067HubDevice::pollChannelReading(uint8_t channel
     outReading.valid = true;
     outStatus = "ok";
 
-    ownerChannel_ = kCd74hc4067UnusedPin;
+    ownerChannel_ = kCd74hc4067ChannelUnset;
     ownerRequester_ = 0U;
     return AnalogInputHubPollResult::Ready;
 }
 
 void Cd74hc4067HubDevice::releaseChannelRequest(uint8_t channel, DeviceId requester) {
     if (ownerChannel_ == channel && ownerRequester_ == requester) {
-        ownerChannel_ = kCd74hc4067UnusedPin;
+        ownerChannel_ = kCd74hc4067ChannelUnset;
         ownerRequester_ = 0U;
     }
 }
@@ -158,7 +158,7 @@ bool Cd74hc4067HubDevice::configureHardware() {
     for (uint8_t pin : config_.selectPins) {
         ok = gpioDriver_.configureOutput(pin, false) && ok;
     }
-    if (config_.enablePin != kCd74hc4067UnusedPin) {
+    if (config_.enablePin != kGpioPinUnset) {
         ok = gpioDriver_.configureOutput(config_.enablePin, false) && ok; // active-low enable
     }
     AdcAttenuation attenuation{};
@@ -168,8 +168,8 @@ bool Cd74hc4067HubDevice::configureHardware() {
     if (ok) {
         bumpGeneration();
     }
-    muxSelectedChannel_ = kCd74hc4067UnusedPin;
-    ownerChannel_ = kCd74hc4067UnusedPin;
+    muxSelectedChannel_ = kCd74hc4067ChannelUnset;
+    ownerChannel_ = kCd74hc4067ChannelUnset;
     ownerRequester_ = 0U;
     return ok;
 }
@@ -178,12 +178,12 @@ void Cd74hc4067HubDevice::releaseHardware() {
     for (uint8_t pin : config_.selectPins) {
         gpioDriver_.release(pin);
     }
-    if (config_.enablePin != kCd74hc4067UnusedPin) {
+    if (config_.enablePin != kGpioPinUnset) {
         gpioDriver_.release(config_.enablePin);
     }
     adcDriver_.release(config_.sigPin);
-    muxSelectedChannel_ = kCd74hc4067UnusedPin;
-    ownerChannel_ = kCd74hc4067UnusedPin;
+    muxSelectedChannel_ = kCd74hc4067ChannelUnset;
+    ownerChannel_ = kCd74hc4067ChannelUnset;
     ownerRequester_ = 0U;
 }
 
@@ -208,6 +208,16 @@ DeviceTypeDescriptor Cd74hc4067HubDevice::descriptor() {
     descriptor.createRuntime = &Cd74hc4067HubDevice::createRuntime;
     descriptor.validateConfig = &Cd74hc4067HubDevice::validateConfig;
     return descriptor;
+}
+
+void Cd74hc4067HubDevice::claimGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.enablePin, deviceId());
+    setGpioPinOwner(pins, config_.sigPin, deviceId());
+}
+
+void Cd74hc4067HubDevice::releaseGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.enablePin, 0);
+    setGpioPinOwner(pins, config_.sigPin, 0);
 }
 
 std::unique_ptr<IDeviceRuntime> Cd74hc4067HubDevice::createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {

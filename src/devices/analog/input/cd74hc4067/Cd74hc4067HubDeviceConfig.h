@@ -12,14 +12,13 @@ namespace ewfm {
 constexpr DeviceTypeId kCd74hc4067HubTypeId = 27;
 constexpr uint32_t kCd74hc4067HubConfigVersion = 1;
 constexpr uint8_t kCd74hc4067ChannelCount = 16;
-constexpr uint8_t kCd74hc4067UnusedPin = 0xFFU;
 
 #pragma pack(push, 1)
 struct Cd74hc4067HubDeviceConfigV1 : DeviceBaseConfigV1 {
     static constexpr char kMagic[] = "CD74-HUB-1";
 
-    uint8_t selectPins[4]{16, 17, 18, 19};   // S0..S3
-    uint8_t enablePin{kCd74hc4067UnusedPin}; // 0xFF = not wired (tied to GND on the module)
+    uint8_t selectPins[4]{16, 17, 18, 19}; // S0..S3
+    uint8_t enablePin{kGpioPinUnset};      // 0xFF = not wired (tied to GND on the module)
     // No single canonical default among the 8 valid ADC1 pins; 0xFF forces the user to pick one
     // explicitly (analogPortInputGpioPinIsValid() rejects it). See docs/pin-configuration-conventions.md.
     uint8_t sigPin{0xFFU};

@@ -88,6 +88,14 @@ DeviceTypeDescriptor GpioSwitchDevice::descriptor() {
     return descriptor;
 }
 
+void GpioSwitchDevice::claimGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.gpioPin, deviceId());
+}
+
+void GpioSwitchDevice::releaseGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.gpioPin, 0);
+}
+
 std::unique_ptr<IDeviceRuntime> GpioSwitchDevice::createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
     return std::unique_ptr<IDeviceRuntime>(new GpioSwitchDevice(record, configBlob));
 }

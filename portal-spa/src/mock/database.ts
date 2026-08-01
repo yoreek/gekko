@@ -151,6 +151,11 @@ export interface MockDatabase {
     debounceMs: number
     maxDelayMs: number
   }
+  board: {
+    chip: string
+    selectedBoardId: string
+    supportedBoardIds: string[]
+  }
   // Generic blob store (docs/blob-store.md), keyed exactly like the real backend
   // ("dev/<deviceId hex>/<suffix>") so seeded display bitmap widgets can reference a key here
   // instead of embedding bytes inline.
@@ -2078,6 +2083,14 @@ const seedDatabase: SeedDatabase = {
     timezoneId: 'Etc/GMT',
     syncIntervalSeconds: 3600,
     lastSyncEpochUtc: Math.floor(Date.now() / 1000),
+  },
+  board: {
+    chip: 'esp32',
+    selectedBoardId: 'nodemcu-32s',
+    supportedBoardIds: [
+      'd1-mini32', 'esp32-cam', 'esp32-devkit-v1', 'heltec-wifi-kit-32', 'huzzah32-feather',
+      'lolin32', 'lolin32-lite', 'nodemcu-32s', 'ttgo-t-display', 'wt32-eth01',
+    ],
   },
   persistence: {
     debounceMs: 500,

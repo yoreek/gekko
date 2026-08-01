@@ -115,7 +115,7 @@ const otaStore = useOtaStore()
 const drawerOpen = ref(false)
 
 interface MenuItem {
-  name: 'dashboard' | 'panels' | 'devices' | 'device-events' | 'wifi' | 'ota' | 'mqtt' | 'time' | 'system' | 'overview'
+  name: 'dashboard' | 'panels' | 'devices' | 'device-events' | 'wifi' | 'ota' | 'mqtt' | 'time' | 'board' | 'system' | 'overview'
   to: RouteLocationRaw
   label: string
   icon: PortalIconName
@@ -131,6 +131,7 @@ const allMenuItems: MenuItem[] = [
   { name: 'ota', to: { name: 'ota' }, label: 'navigation.ota', icon: 'ota', exact: true },
   { name: 'mqtt', to: { name: 'mqtt' }, label: 'navigation.mqtt', icon: 'mqtt', exact: true },
   { name: 'time', to: { name: 'time' }, label: 'navigation.time', icon: 'time', exact: true },
+  { name: 'board', to: { name: 'board' }, label: 'navigation.board', icon: 'system', exact: true },
   { name: 'system', to: { name: 'system' }, label: 'navigation.system', icon: 'system', exact: true },
   { name: 'overview', to: { name: 'overview' }, label: 'navigation.overview', icon: 'portal', exact: true },
 ]

@@ -3,6 +3,7 @@ import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import type { DeviceRole } from '@/models/device-type-ids'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig } from './base-device.ts'
 import type { BaseDeviceConfig } from '@/api/contracts'
+import { normalizePin } from './shared/pin.ts'
 
 export interface OneWireBusConfigDraft extends BaseDeviceConfig {
   gpioPin: number
@@ -35,7 +36,7 @@ export class OneWireBusDevice extends BaseDevice<OneWireBusConfigDraft, OneWireB
     const raw = value as Record<string, unknown>
     return {
       ...normalizeBaseDeviceConfig(raw, defaults),
-      gpioPin: typeof raw.gpioPin === 'number' && Number.isFinite(raw.gpioPin) ? raw.gpioPin : defaults.gpioPin,
+      gpioPin: normalizePin(raw.gpioPin, defaults.gpioPin, 'output'),
       internalPullup: typeof raw.internalPullup === 'boolean' ? raw.internalPullup : defaults.internalPullup,
     }
   }

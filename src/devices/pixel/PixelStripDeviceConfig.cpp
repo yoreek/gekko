@@ -2,6 +2,7 @@
 
 #include "devices/core/ConfigCodec.h"
 #include "devices/core/DeviceTypes.h"
+#include "platform/BoardPinCapabilities.h"
 
 #include <type_traits>
 
@@ -13,19 +14,9 @@ static_assert(sizeof(PixelStripDeviceConfigV1::kMagic) - 1U + sizeof(PixelStripD
               "PixelStripDeviceConfigV1 exceeds device config bound");
 
 namespace {
-// Same output-capable-pin rule LedcAnalogOutputDeviceConfig uses: excludes input-only ADC2 pins
-// (34-39) and the flash-strapping pins (6-11) on the classic ESP32.
+// Same output-capable-pin rule LedcAnalogOutputDeviceConfig uses (board table drives both).
 bool isPixelStripPinValid(const uint8_t pin) {
-    if (pin == 0xFFU) {
-        return false;
-    }
-    if (pin >= 34U && pin <= 39U) {
-        return false;
-    }
-    if (pin >= 6U && pin <= 11U) {
-        return false;
-    }
-    return pin <= 48U;
+    return boardPinHasRole(pin, kPinRoleOutput);
 }
 
 bool parseUnsignedJson(const JsonVariantConst& input, const char*& error, const char* typeError, const char* rangeError,

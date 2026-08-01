@@ -11,8 +11,6 @@ namespace ewfm {
 
 constexpr uint8_t kSpiBusHostHspi = 1U;
 constexpr uint8_t kSpiBusHostVspi = 2U;
-// Sentinel for misoPin meaning "not wired" -- write-only SPI peripherals don't need MISO.
-constexpr uint8_t kSpiBusMisoUnset = 0xFFU;
 
 #pragma pack(push, 1)
 // Legacy persisted layout: kept only so old blobs can be decoded and migrated to V2. misoPin was
@@ -33,7 +31,7 @@ struct SpiBusDeviceConfigV2 : DeviceBaseConfigV1 {
     uint8_t host{kSpiBusHostVspi};
     uint8_t sckPin{18};
     uint8_t mosiPin{23};
-    uint8_t misoPin{kSpiBusMisoUnset};
+    uint8_t misoPin{kGpioPinUnset};
 
     bool parseJson(const JsonObjectConst& input, const char*& error);
     DeviceValidationResult validate() const;

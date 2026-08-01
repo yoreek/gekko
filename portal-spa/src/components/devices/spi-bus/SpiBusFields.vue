@@ -12,34 +12,41 @@
         />
       </v-col>
       <v-col cols="12" sm="6">
-        <v-text-field
-          type="number"
+        <PinPicker
+          :current-device-id="device?.record.id"
           :label="t('device.fields.spiSckPin')"
+          required-role="output"
           :model-value="modelValue.sckPin"
+          :sibling-pins="[modelValue.mosiPin, modelValue.misoPin]"
           :readonly="mode === 'view'"
           :disabled="busy && mode !== 'view'"
-          @update:model-value="update('sckPin', Number($event))"
+          @update:model-value="update('sckPin', $event)"
         />
       </v-col>
 
       <v-col cols="12" sm="6">
-        <v-text-field
-          type="number"
+        <PinPicker
+          :current-device-id="device?.record.id"
           :label="t('device.fields.spiMosiPin')"
+          required-role="output"
           :model-value="modelValue.mosiPin"
+          :sibling-pins="[modelValue.sckPin, modelValue.misoPin]"
           :readonly="mode === 'view'"
           :disabled="busy && mode !== 'view'"
-          @update:model-value="update('mosiPin', Number($event))"
+          @update:model-value="update('mosiPin', $event)"
         />
       </v-col>
       <v-col cols="12" sm="6">
-        <v-text-field
-          type="number"
+        <PinPicker
+          :current-device-id="device?.record.id"
           :label="t('device.fields.spiMisoPin')"
+          required-role="input"
+          allow-unset
           :model-value="modelValue.misoPin"
+          :sibling-pins="[modelValue.sckPin, modelValue.mosiPin]"
           :readonly="mode === 'view'"
           :disabled="busy && mode !== 'view'"
-          @update:model-value="update('misoPin', Number($event))"
+          @update:model-value="update('misoPin', $event)"
         />
       </v-col>
     </v-row>
@@ -86,6 +93,7 @@ import { useI18n } from 'vue-i18n'
 
 import type { BusRuntimeDiagnosticsSnapshot, DeviceCommandRequest, DeviceRecord, SpiBusRuntimeSnapshot } from '@/api/contracts'
 import type { SpiBusConfigDraft } from '@/models/devices/spi-bus'
+import PinPicker from '@/components/devices/common/PinPicker.vue'
 import { useDraftModel } from '@/composables/useDraftModel'
 
 const props = defineProps<{

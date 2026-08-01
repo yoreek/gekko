@@ -2,6 +2,7 @@ import type { BaseDeviceConfig, DeviceDependencyLink, DeviceRecord, BinarySensor
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import type { DeviceRole } from '@/models/device-type-ids'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig } from './base-device.ts'
+import { isValidBoardPin, normalizePin } from './shared/pin.ts'
 
 export type BinarySensorPullMode = 'none' | 'pullup' | 'pulldown'
 
@@ -22,20 +23,16 @@ function normalizePullMode(value: unknown, fallback: BinarySensorPullMode): Bina
   return value === 'none' || value === 'pullup' || value === 'pulldown' ? value : fallback
 }
 
-function normalizeGpioPin(value: unknown, fallback: number): number {
-  const numeric = Number(value)
-  return Number.isFinite(numeric) && numeric >= 0 && numeric <= 39 ? Math.round(numeric) : fallback
-}
-
 function normalizeDebounceMs(value: unknown, fallback: number): number {
   const numeric = Number(value)
   return Number.isFinite(numeric) && numeric >= 0 && numeric <= 60000 ? Math.round(numeric) : fallback
 }
 
-// GPIO 34-39 are input-only pins without internal pull resistors on the ESP32 (mirrors
-// binarySensorPinSupportsPull() in the firmware).
+// GPIO 34-39 are input-only pins without internal pull resistors on the ESP32 -- exactly the
+// pins that lack output capability in the board table (mirrors binarySensorPinSupportsPull() in
+// the firmware, which uses the same equivalence).
 export function binarySensorPinSupportsPull(pin: number): boolean {
-  return pin < 34
+  return isValidBoardPin(pin, 'output')
 }
 
 export class BinarySensorDevice extends BaseDevice<BinarySensorConfigDraft, BinarySensorCreateDraft, BinarySensorOutputSnapshot> {
@@ -65,7 +62,7 @@ export class BinarySensorDevice extends BaseDevice<BinarySensorConfigDraft, Bina
     }
     return {
       ...normalizeBaseDeviceConfig(value, defaults),
-      gpioPin: normalizeGpioPin(value.gpioPin, defaults.gpioPin),
+      gpioPin: normalizePin(value.gpioPin, defaults.gpioPin, 'input'),
       pullMode: normalizePullMode(value.pullMode, defaults.pullMode),
       inverted: value.inverted === true,
       debounceMs: normalizeDebounceMs(value.debounceMs, defaults.debounceMs),

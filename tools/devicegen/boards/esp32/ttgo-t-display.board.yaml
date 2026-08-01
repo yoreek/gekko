@@ -1,0 +1,25 @@
+# Classic ESP32 (Xtensa LX6). TTGO/LilyGO T-Display, built-in 1.14" ST7789
+# LCD. Six GPIO are permanently dedicated to the onboard display -- listed
+# here with notes rather than omitted, since they remain electrically usable
+# as GPIO, just not wise to reassign. See docs/esp32-board-models.md.
+chip: esp32
+boardId: ttgo-t-display
+label: "TTGO/LilyGO T-Display (built-in ST7789 LCD)"
+
+pins:
+  - { gpio: 0,  roles: [output, input, adc2, strapping], note: "wired to BUTTON1, also the boot-mode select button" }
+  - { gpio: 2,  roles: [output, input, adc2, strapping] }
+  - { gpio: 4,  roles: [output, input, adc2], note: "onboard display TFT_BL (backlight) -- dedicated, do not reassign" }
+  - { gpio: 5,  roles: [output, input, strapping], note: "onboard display TFT_CS -- dedicated, do not reassign" }
+  - { gpio: 12, roles: [output, input, adc2, strapping] }
+  - { gpio: 13, roles: [output, input, adc2] }
+  - { gpio: 14, roles: [output, input, adc2], note: "controls power to external analog components on this board" }
+  - { gpio: 15, roles: [output, input, adc2, strapping] }
+  - { gpio: 16, roles: [output, input], note: "onboard display TFT_DC -- dedicated, do not reassign" }
+  - { gpio: 17, roles: [output, input] }
+  - { gpio: 18, roles: [output, input], note: "onboard display TFT_SCLK -- dedicated, do not reassign" }
+  - { gpio: 19, roles: [output, input], note: "onboard display TFT_MOSI -- dedicated, do not reassign" }
+  - { gpio: 21, roles: [output, input], fixedDefaultFor: i2cSda }
+  - { gpio: 22, roles: [output, input], fixedDefaultFor: i2cScl }
+  - { gpio: 23, roles: [output, input], note: "onboard display TFT_RST -- dedicated, do not reassign" }
+  - { gpio: 35, roles: [input, adc1], note: "wired to BUTTON2; input-only, so button-only use, cannot drive it" }

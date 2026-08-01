@@ -32,6 +32,8 @@ public:
     static DeviceTypeDescriptor descriptor();
     static std::unique_ptr<IDeviceRuntime> createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
     static DeviceValidationResult validateConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
+    void claimGpioPins(DeviceId* pins) const override;
+    void releaseGpioPins(DeviceId* pins) const override;
 
 private:
     State Idle();

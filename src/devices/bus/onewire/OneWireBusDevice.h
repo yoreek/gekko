@@ -59,6 +59,9 @@ public:
     static DeviceTypeDescriptor descriptor();
     static std::unique_ptr<IDeviceRuntime> createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
     static DeviceValidationResult validateConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
+    void claimGpioPins(DeviceId* pins) const override;
+    void releaseGpioPins(DeviceId* pins) const override;
+    static size_t collectGpioPins(const DeviceConfigBlob& configBlob, uint8_t* out, size_t maxOut);
 
     bool handleCommand(const DeviceCommand& command) override;
     bool hasDuplicateDependentRomAddress(const OneWireRomAddress& address, const IDeviceRuntime* ignoreDependent = nullptr) const override;

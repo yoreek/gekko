@@ -11,6 +11,7 @@ import WifiView from '@/views/WifiView.vue'
 import OtaView from '@/views/OtaView.vue'
 import MqttView from '@/views/MqttView.vue'
 import TimeView from '@/views/TimeView.vue'
+import BoardView from '@/views/BoardView.vue'
 import SystemView from '@/views/SystemView.vue'
 import OverviewView from '@/views/OverviewView.vue'
 import NotFoundView from '@/views/NotFoundView.vue'
@@ -74,6 +75,11 @@ const router = createRouter({
       path: '/time',
       name: 'time',
       component: TimeView,
+    },
+    {
+      path: '/board',
+      name: 'board',
+      component: BoardView,
     },
     {
       path: '/system',

@@ -1,0 +1,23 @@
+# Classic ESP32 (Xtensa LX6), AI-Thinker ESP32-CAM. Most GPIOs are consumed
+# internally by the camera interface and (optional) microSD card, so ADC2 is
+# entirely unavailable and only a handful of pins remain genuinely free. See
+# docs/esp32-board-models.md.
+chip: esp32
+boardId: esp32-cam
+label: "ESP32-CAM (AI-Thinker)"
+
+pins:
+  - { gpio: 0,  roles: [output, input, strapping] }
+  - { gpio: 1,  roles: [output, input], note: "UART TX -- also the only way to flash/log without an external FTDI adapter (no onboard USB-serial chip)" }
+  - { gpio: 3,  roles: [output, input], note: "UART RX -- also the only way to flash/log without an external FTDI adapter (no onboard USB-serial chip)" }
+  - { gpio: 4,  roles: [output, input], note: "shared with the onboard flash LED; also microSD D1 if the SD slot is used" }
+  - { gpio: 12, roles: [output, input, strapping], note: "microSD D2 if the SD slot is used" }
+  - { gpio: 13, roles: [output, input], note: "microSD D3 if the SD slot is used" }
+  - { gpio: 14, roles: [output, input], note: "microSD CLK if the SD slot is used" }
+  - { gpio: 15, roles: [output, input, strapping], note: "microSD CMD if the SD slot is used" }
+  - { gpio: 16, roles: [output, input], note: "only pin left free if the microSD slot is in use; not an RTC-capable pin (cannot be used for deep-sleep wake)" }
+  # GPIO2/5/18/19/21/22/23/25/26/27/32/33/34/35/36/39 and all camera-interface
+  # pins (Y0-Y9, VSYNC, HREF, PCLK, XCLK, SIOD, SIOC) are consumed internally
+  # by the camera module and not exposed as general-purpose GPIO on this board.
+  # No ADC2 available at all (camera peripheral occupies it); GPIO33 drives a
+  # fixed onboard red LED (active-low), also not general-purpose in practice.

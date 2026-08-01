@@ -31,7 +31,7 @@ public:
         if (bus_ == nullptr) {
             return false;
         }
-        const int8_t miso = misoPin != kSpiBusMisoUnset ? static_cast<int8_t>(misoPin) : static_cast<int8_t>(-1);
+        const int8_t miso = misoPin != kGpioPinUnset ? static_cast<int8_t>(misoPin) : static_cast<int8_t>(-1);
         bus_->begin(static_cast<int8_t>(sckPin), miso, static_cast<int8_t>(mosiPin), static_cast<int8_t>(-1));
         begun_ = true;
         return true;

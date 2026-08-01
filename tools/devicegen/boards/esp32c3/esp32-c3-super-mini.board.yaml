@@ -1,0 +1,26 @@
+# ESP32-C3 (RISC-V, single-core). Extremely cheap (~$2), tiny generic C3
+# board; very popular for compact/wearable projects. See
+# docs/esp32-board-models.md.
+chip: esp32c3
+boardId: esp32-c3-super-mini
+label: "ESP32-C3 Super Mini"
+
+pins:
+  - { gpio: 0,  roles: [output, input, adc1] }
+  - { gpio: 1,  roles: [output, input, adc1], note: "U0 UART TX" }
+  - { gpio: 2,  roles: [output, input, adc1, strapping] }
+  - { gpio: 3,  roles: [output, input, adc1], note: "U0 UART RX" }
+  - { gpio: 4,  roles: [output, input, adc1] }
+  - { gpio: 5,  roles: [output, input, adc2] }
+  - { gpio: 6,  roles: [output, input] }
+  - { gpio: 7,  roles: [output, input] }
+  - { gpio: 8,  roles: [output, input, strapping], note: "onboard blue status LED -- effectively unavailable for general use" }
+  - { gpio: 9,  roles: [output, input, strapping], note: "onboard BOOT button -- effectively unavailable for general use" }
+  - { gpio: 10, roles: [output, input] }
+  - { gpio: 20, roles: [output, input] }
+  - { gpio: 21, roles: [output, input] }
+
+# Physical top-to-bottom header order. Source: espboards.dev/esp32/esp32-c3-super-mini/
+layout:
+  left:  ["5V", GND, "3V3", 0, 1, 2, 3, 4]
+  right: [5, 6, 7, 8, 9, 10, 21, 20]

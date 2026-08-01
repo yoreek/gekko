@@ -1,0 +1,27 @@
+# ESP32-C6 (RISC-V, single-core, WiFi 6 + Thread/Zigbee 802.15.4 + BLE 5).
+# Seeed Studio XIAO ESP32-C6, thumb-sized form factor, positioned by Seeed as
+# Matter-friendly. See docs/esp32-board-models.md.
+chip: esp32c6
+boardId: xiao-esp32c6
+label: "Seeed Studio XIAO ESP32-C6"
+
+pins:
+  - { gpio: 0,  roles: [output, input, adc1] }
+  - { gpio: 1,  roles: [output, input, adc1] }
+  - { gpio: 2,  roles: [output, input, adc1] }
+  - { gpio: 3,  roles: [output, input, adc1] }
+  - { gpio: 16, roles: [output, input], note: "U0 UART TX" }
+  - { gpio: 17, roles: [output, input], note: "U0 UART RX" }
+  - { gpio: 18, roles: [output, input] }
+  - { gpio: 19, roles: [output, input] }
+  - { gpio: 20, roles: [output, input] }
+  - { gpio: 21, roles: [output, input] }
+  - { gpio: 22, roles: [output, input] }
+  - { gpio: 23, roles: [output, input] }
+  # Only 11 GPIO exposed on the 14-pin header, same reduced-pin-count pattern
+  # as every other XIAO board regardless of chip.
+
+# Physical top-to-bottom header order. Source: espboards.dev/esp32/xiao-esp32c6/
+layout:
+  left:  [0, 1, 2, 21, 22, 23, 16]
+  right: ["5V", GND, "3V3", 18, 20, 19, 17]

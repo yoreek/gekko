@@ -1,5 +1,7 @@
 #pragma once
 
+#include "platform/BoardPinCapabilities.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -87,6 +89,10 @@ struct DeviceConfig {
     TimeConfig time{};
     PersistenceConfig persistence{};
     size_t maxJsonBytes{kDefaultMaxJsonBytes};
+    // Which physical board model the user selected for this chip -- see
+    // src/platform/BoardPinCapabilities.h. Purely informational for the pin-picker UI; pin
+    // *validity* is checked at the chip level regardless of this value.
+    BoardModel boardModel{kDefaultBoardModel};
 };
 
 enum class ConfigError {

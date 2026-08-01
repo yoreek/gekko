@@ -52,8 +52,8 @@ accept it, not just tolerate it as a migration artifact.
 |---|---|---|---|---|
 | `spi_bus.misoPin` | `int16_t` | `-1` | `uint8_t`, `255` | Write-only SPI peripherals don't wire MISO. **Type change required** (see Planned Fixes). |
 | `st7735.resetPin` | `int8_t` | `-1` | `uint8_t`, `255` | Many ST7735 modules tie RESET to EN/3.3V instead of a GPIO. **Type change required.** |
-| `hd44780` (direct-pin) `backlightPin` | `uint8_t` | `kHd44780PinUnset` (`0xFF`) | unchanged | Already correct. Confirmed genuinely optional: some HD44780 boards have no separate backlight control line at all (tied permanently high), so there's nothing to set even in principle — not every board *can* offer this pin, matching the confirmed intent. |
-| `cd74hc4067.enablePin` | `uint8_t` | `kCd74hc4067UnusedPin` (`0xFF`) | unchanged | Already correct — module's `~E` pin is commonly tied to GND. |
+| `hd44780` (direct-pin) `backlightPin` | `uint8_t` | `kGpioPinUnset` (`0xFF`) | unchanged | Already correct. Confirmed genuinely optional: some HD44780 boards have no separate backlight control line at all (tied permanently high), so there's nothing to set even in principle — not every board *can* offer this pin, matching the confirmed intent. |
+| `cd74hc4067.enablePin` | `uint8_t` | `kGpioPinUnset` (`0xFF`) | unchanged | Already correct — module's `~E` pin is commonly tied to GND. |
 
 ### Category 3 — Mandatory, but today's default is an arbitrary "junk" number
 
@@ -74,7 +74,7 @@ one — different from Category 2 even though it reuses the same literal value.
 | `analog_port_input.gpioPin` | `uint8_t` | `34` | `analogPortInputGpioPinIsValid()` (exact ADC1 pin whitelist) already rejects `255` | none |
 | `cd74hc4067.sigPin` | `uint8_t` | `34` | same ADC1 whitelist, already rejects `255` | none |
 | `st7735.chipSelectPin` / `dcPin` | `uint8_t` ×2 | `5` / `2` | **V5's `validate()` doesn't check these at all** (dropped somewhere between V1-V4 and V5 — V1-V4 had `validateSt7735DeviceConfigV*` helpers, V5 only checks `spiBusDeviceId`/`rotation`/`panel`/dimensions) | real gap — needs the range check reinstated |
-| `hd44780` (direct-pin) `rsPin`/`ePin`/`d4Pin`/`d5Pin`/`d6Pin`/`d7Pin` | `uint8_t` ×6 | **`0` for all six** | `gpioSwitchPinIsValid()` per pin, plus a distinctness check across all 7 (incl. `backlightPin`) | **currently broken by construction**: all six defaults are equal (`0`), so a freshly-created device with untouched defaults fails the "pins must be distinct" check immediately. Target: all six default to `255` (matches the SPA's `lcd1602-pin.ts`/`lcd2004-pin.ts`, which already send `255` for these — the SPA got ahead of the firmware default here). The distinctness check already treats `kHd44780PinUnset` as "skip," so 6×`255` passes cleanly through `validate()` up front and simply requires the user to fill in 6 distinct real pins before save, same as `gpio_switch` et al. |
+| `hd44780` (direct-pin) `rsPin`/`ePin`/`d4Pin`/`d5Pin`/`d6Pin`/`d7Pin` | `uint8_t` ×6 | **`0` for all six** | `gpioSwitchPinIsValid()` per pin, plus a distinctness check across all 7 (incl. `backlightPin`) | **currently broken by construction**: all six defaults are equal (`0`), so a freshly-created device with untouched defaults fails the "pins must be distinct" check immediately. Target: all six default to `255` (matches the SPA's `lcd1602-pin.ts`/`lcd2004-pin.ts`, which already send `255` for these — the SPA got ahead of the firmware default here). The distinctness check already treats `kGpioPinUnset` as "skip," so 6×`255` passes cleanly through `validate()` up front and simply requires the user to fill in 6 distinct real pins before save, same as `gpio_switch` et al. |
 
 ## Planned fixes (next pass, not yet implemented)
 

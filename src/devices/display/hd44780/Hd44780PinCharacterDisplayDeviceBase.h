@@ -15,7 +15,7 @@ struct Hd44780PinLineChannels {
     uint8_t d5Pin;
     uint8_t d6Pin;
     uint8_t d7Pin;
-    uint8_t backlightPin; // kHd44780PinUnset = not wired
+    uint8_t backlightPin; // kGpioPinUnset = not wired
 };
 
 // Direct-GPIO transport for HD44780 displays wired straight to ESP32 pins - no I2C, no dependency,

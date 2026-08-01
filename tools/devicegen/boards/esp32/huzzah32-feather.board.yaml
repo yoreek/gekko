@@ -1,0 +1,33 @@
+# Classic ESP32 (Xtensa LX6). Adafruit HUZZAH32 Feather. Note the I2C pins
+# are the REVERSE of the SDA=21/SCL=22 convention every other classic-ESP32
+# board here uses -- a board-specific gotcha. See docs/esp32-board-models.md.
+chip: esp32
+boardId: huzzah32-feather
+label: "Adafruit HUZZAH32 Feather"
+
+pins:
+  - { gpio: 0,  roles: [output, input, adc2, strapping], note: "wired to an onboard boot-mode tactile button" }
+  - { gpio: 1,  roles: [output, input] }
+  - { gpio: 3,  roles: [output, input] }
+  - { gpio: 4,  roles: [output, input, adc2] }
+  - { gpio: 5,  roles: [output, input, strapping] }
+  - { gpio: 12, roles: [output, input, adc2, strapping], note: "has a built-in pull-down resistor -- recommended output-only, avoid letting it float during boot" }
+  - { gpio: 13, roles: [output, input, adc2] }
+  - { gpio: 14, roles: [output, input, adc2] }
+  - { gpio: 15, roles: [output, input, adc2, strapping] }
+  - { gpio: 16, roles: [output, input] }
+  - { gpio: 17, roles: [output, input] }
+  - { gpio: 18, roles: [output, input], fixedDefaultFor: spiSck }
+  - { gpio: 19, roles: [output, input] }
+  - { gpio: 21, roles: [output, input] }
+  - { gpio: 22, roles: [output, input], fixedDefaultFor: i2cScl, note: "board convention is reversed vs most classic-ESP32 boards: SCL=22, SDA=23" }
+  - { gpio: 23, roles: [output, input], fixedDefaultFor: i2cSda, note: "board convention is reversed vs most classic-ESP32 boards: SCL=22, SDA=23" }
+  - { gpio: 25, roles: [output, input, adc2] }
+  - { gpio: 26, roles: [output, input, adc2] }
+  - { gpio: 27, roles: [output, input, adc2] }
+  - { gpio: 32, roles: [output, input, adc1] }
+  - { gpio: 33, roles: [output, input, adc1] }
+  - { gpio: 34, roles: [input, adc1] }
+  - { gpio: 35, roles: [input, adc1], note: "internally wired to a battery-voltage divider (VBAT) -- read-only, do not drive as output" }
+  - { gpio: 36, roles: [input, adc1] }
+  - { gpio: 39, roles: [input, adc1] }

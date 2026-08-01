@@ -1,6 +1,7 @@
 #include "devices/sensors/binary/BinarySensorDeviceConfig.h"
 
 #include "devices/core/ConfigCodec.h"
+#include "platform/BoardPinCapabilities.h"
 
 #include <cstring>
 #include <type_traits>
@@ -8,13 +9,6 @@
 namespace ewfm {
 
 namespace {
-// Same flash-pin exclusion as gpioSwitchPinIsValid, but inputs may also use the input-only pins
-// 34-39 (which the switch validator caps out at 33).
-constexpr uint8_t kMaxEsp32InputPin = 39;
-constexpr uint8_t kFirstInputOnlyPin = 34;
-constexpr uint8_t kFlashPinStart = 6;
-constexpr uint8_t kFlashPinEnd = 11;
-
 bool gpioInputPullModeFromByte(uint8_t value, GpioInputPullMode& pullMode) {
     switch (value) {
     case static_cast<uint8_t>(GpioInputPullMode::None):
@@ -65,15 +59,13 @@ const char* gpioInputPullModeName(GpioInputPullMode pullMode) {
 }
 
 bool binarySensorPinIsValid(uint8_t pin) {
-    if (pin > kMaxEsp32InputPin) {
-        return false;
-    }
-    return pin < kFlashPinStart || pin > kFlashPinEnd;
+    return boardPinHasRole(pin, kPinRoleInput);
 }
 
-// GPIO 34-39 are input-only pins without internal pull resistors on the ESP32.
+// GPIO 34-39 are input-only pins without internal pull resistors on the ESP32 -- exactly the
+// pins that lack output capability in the board table.
 bool binarySensorPinSupportsPull(uint8_t pin) {
-    return pin < kFirstInputOnlyPin;
+    return boardPinHasRole(pin, kPinRoleOutput);
 }
 
 bool BinarySensorDeviceConfigV1::parseJson(const JsonObjectConst& input, const char*& error) {

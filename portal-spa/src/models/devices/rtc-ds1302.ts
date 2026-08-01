@@ -1,6 +1,7 @@
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
 import type { BaseDeviceConfig, DeviceRecord, RtcDs1302OutputSnapshot } from '@/api/contracts'
+import { normalizePin } from './shared/pin.ts'
 
 export interface RtcDs1302ConfigDraft extends BaseDeviceConfig {
   clkPin: number
@@ -13,11 +14,6 @@ export interface RtcDs1302CreateDraft extends DeviceCreateDraftBase, RtcDs1302Co
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function normalizePin(value: unknown, fallback: number): number {
-  const numeric = Number(value)
-  return Number.isFinite(numeric) && numeric >= 0 ? numeric : fallback
 }
 
 export class RtcDs1302Device extends BaseDevice<RtcDs1302ConfigDraft, RtcDs1302CreateDraft, RtcDs1302OutputSnapshot> {
@@ -45,9 +41,9 @@ export class RtcDs1302Device extends BaseDevice<RtcDs1302ConfigDraft, RtcDs1302C
     return {
       ...normalizeBaseDeviceConfig(value, defaults),
       deps: [],
-      clkPin: normalizePin(value.clkPin, defaults.clkPin),
-      dataPin: normalizePin(value.dataPin, defaults.dataPin),
-      rstPin: normalizePin(value.rstPin, defaults.rstPin),
+      clkPin: normalizePin(value.clkPin, defaults.clkPin, 'output'),
+      dataPin: normalizePin(value.dataPin, defaults.dataPin, 'output'),
+      rstPin: normalizePin(value.rstPin, defaults.rstPin, 'output'),
       useForSystemTimeSync: typeof value.useForSystemTimeSync === 'boolean' ? value.useForSystemTimeSync : defaults.useForSystemTimeSync,
     }
   }

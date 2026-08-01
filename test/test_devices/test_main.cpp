@@ -254,6 +254,7 @@ void test_st7735_config_codec_migrates_v2_blob();
 void test_st7735_config_codec_migrates_v4_blob();
 void test_st7735_config_codec_migrates_v5_blob();
 void test_st7735_config_rejects_legacy_layout_dimension_fields();
+void test_st7735_config_rejects_duplicate_pins();
 void test_st7735_registry_migrates_legacy_blob_on_begin();
 void test_st7735_default_registries_include_display();
 void test_st7735_api_adapter_partial_update_preserves_bus_and_pins();
@@ -620,6 +621,7 @@ int main(int, char**) {
     RUN_TEST(test_st7735_config_codec_migrates_v4_blob);
     RUN_TEST(test_st7735_config_codec_migrates_v5_blob);
     RUN_TEST(test_st7735_config_rejects_legacy_layout_dimension_fields);
+    RUN_TEST(test_st7735_config_rejects_duplicate_pins);
     RUN_TEST(test_st7735_registry_migrates_legacy_blob_on_begin);
     RUN_TEST(test_st7735_default_registries_include_display);
     RUN_TEST(test_st7735_api_adapter_partial_update_preserves_bus_and_pins);

@@ -386,8 +386,8 @@ void test_tm1637_migrated_config_without_pins_faults() {
     TEST_ASSERT_EQUAL_STRING("legacy", migrated.name);
     TEST_ASSERT_EQUAL_UINT8(3U, migrated.brightness);
     TEST_ASSERT_EQUAL_UINT8(180U, migrated.rotation);
-    TEST_ASSERT_EQUAL_UINT8(kTm1637UnsetPin, migrated.clkPin);
-    TEST_ASSERT_EQUAL_UINT8(kTm1637UnsetPin, migrated.dioPin);
+    TEST_ASSERT_EQUAL_UINT8(kGpioPinUnset, migrated.clkPin);
+    TEST_ASSERT_EQUAL_UINT8(kGpioPinUnset, migrated.dioPin);
     TEST_ASSERT_FALSE(migrated.pinsConfigured());
     TEST_ASSERT_TRUE(migrated.validate().ok());
 

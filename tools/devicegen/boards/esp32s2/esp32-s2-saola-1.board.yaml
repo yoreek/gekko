@@ -1,0 +1,54 @@
+# ESP32-S2 (Xtensa LX7, single-core, native USB, NO BLE/Bluetooth radio).
+# Espressif's official S2 dev board (WROVER module). This chip cannot run
+# this project's WITH_BLE_PROVISIONING path at all -- see
+# docs/esp32-board-models.md.
+chip: esp32s2
+boardId: esp32-s2-saola-1
+label: "ESP32-S2-Saola-1"
+isDefault: true
+
+pins:
+  - { gpio: 0,  roles: [output, input, strapping] }
+  - { gpio: 1,  roles: [output, input, adc1] }
+  - { gpio: 2,  roles: [output, input, adc1] }
+  - { gpio: 3,  roles: [output, input, adc1] }
+  - { gpio: 4,  roles: [output, input, adc1] }
+  - { gpio: 5,  roles: [output, input, adc1] }
+  - { gpio: 6,  roles: [output, input, adc1] }
+  - { gpio: 7,  roles: [output, input, adc1] }
+  - { gpio: 8,  roles: [output, input, adc1] }
+  - { gpio: 9,  roles: [output, input, adc1] }
+  - { gpio: 10, roles: [output, input, adc1] }
+  - { gpio: 11, roles: [output, input, adc2] }
+  - { gpio: 12, roles: [output, input, adc2] }
+  - { gpio: 13, roles: [output, input, adc2] }
+  - { gpio: 14, roles: [output, input, adc2] }
+  - { gpio: 15, roles: [output, input, adc2] }
+  - { gpio: 16, roles: [output, input, adc2] }
+  - { gpio: 17, roles: [output, input, adc2] }
+  - { gpio: 18, roles: [output, input, adc2] }
+  - { gpio: 19, roles: [output, input] }
+  - { gpio: 20, roles: [output, input] }
+  - { gpio: 21, roles: [output, input] }
+  - { gpio: 26, roles: [reservedFlash], note: "physically present on the J3 header per Espressif's own user guide, but wired to internal flash/PSRAM -- do not use" }
+  - { gpio: 33, roles: [output, input] }
+  - { gpio: 34, roles: [output, input] }
+  - { gpio: 35, roles: [output, input] }
+  - { gpio: 36, roles: [output, input] }
+  - { gpio: 37, roles: [output, input] }
+  - { gpio: 38, roles: [output, input] }
+  - { gpio: 43, roles: [output, input] }
+  - { gpio: 44, roles: [output, input] }
+  - { gpio: 39, roles: [output, input], note: "usable as GPIO if the built-in JTAG debug interface (GPIO39-42) is not needed" }
+  - { gpio: 40, roles: [output, input], note: "usable as GPIO if the built-in JTAG debug interface (GPIO39-42) is not needed" }
+  - { gpio: 41, roles: [output, input], note: "usable as GPIO if the built-in JTAG debug interface (GPIO39-42) is not needed" }
+  - { gpio: 42, roles: [output, input], note: "usable as GPIO if the built-in JTAG debug interface (GPIO39-42) is not needed" }
+  - { gpio: 45, roles: [output, input, strapping] }
+  - { gpio: 46, roles: [input, strapping], note: "input-only, fixed pull-down" }
+  # GPIO27-32 reserved for internal flash/PSRAM, omitted (GPIO26 is physically present on the
+  # header per the official user guide -- see note above -- so it's kept, marked reservedFlash).
+
+# Physical top-to-bottom header order. Source: docs.espressif.com ESP32-S2-Saola-1 user guide (J2/J3).
+layout:
+  left:  ["3V3", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, "5V", GND]
+  right: [GND, EN, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 26, 21, 20, 19, 18]

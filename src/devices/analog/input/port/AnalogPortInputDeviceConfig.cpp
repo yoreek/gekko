@@ -2,6 +2,7 @@
 
 #include "devices/analog/adc/AdcAttenuationCodec.h"
 #include "devices/core/ConfigCodec.h"
+#include "platform/BoardPinCapabilities.h"
 
 #include <type_traits>
 
@@ -40,22 +41,9 @@ static_assert(sizeof(AnalogPortInputDeviceConfigV1::kMagic) - 1U + sizeof(Analog
               "AnalogPortInputDeviceConfigV1 exceeds device config bound");
 
 bool analogPortInputGpioPinIsValid(uint8_t pin) {
-    // ADC1-capable input-only pins on the original ESP32 (esp32dev). ADC2 pins are excluded
-    // because the ADC2 peripheral is unusable while WiFi is active, and WiFi is always active on
-    // this project.
-    switch (pin) {
-    case 32:
-    case 33:
-    case 34:
-    case 35:
-    case 36:
-    case 37:
-    case 38:
-    case 39:
-        return true;
-    default:
-        return false;
-    }
+    // ADC1-capable pins on the board. ADC2 pins are excluded because the ADC2 peripheral is
+    // unusable while WiFi is active, and WiFi is always active on this project.
+    return boardPinHasRole(pin, kPinRoleAdc1);
 }
 
 DeviceValidationResult AnalogPortInputDeviceConfigV1::validate() const {

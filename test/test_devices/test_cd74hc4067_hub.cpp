@@ -70,7 +70,7 @@ Cd74hc4067HubDeviceConfigV1 makeHubConfig() {
     config.selectPins[1] = 17;
     config.selectPins[2] = 18;
     config.selectPins[3] = 19;
-    config.enablePin = kCd74hc4067UnusedPin;
+    config.enablePin = kGpioPinUnset;
     config.sigPin = 34;
     config.sigAttenuation = static_cast<uint8_t>(AdcAttenuation::Db11);
     return config;

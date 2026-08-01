@@ -226,6 +226,14 @@ DeviceTypeDescriptor PixelStripDevice::descriptor() {
     return descriptor;
 }
 
+void PixelStripDevice::claimGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.pin, deviceId());
+}
+
+void PixelStripDevice::releaseGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.pin, 0);
+}
+
 std::unique_ptr<IDeviceRuntime> PixelStripDevice::createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
     return std::unique_ptr<IDeviceRuntime>(new PixelStripDevice(record, configBlob));
 }

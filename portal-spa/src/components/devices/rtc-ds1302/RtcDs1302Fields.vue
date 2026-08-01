@@ -2,33 +2,39 @@
   <div class="d-flex flex-column ga-4">
     <v-row>
       <v-col cols="12" sm="4">
-        <v-text-field
-          type="number"
+        <PinPicker
+          :current-device-id="device?.record.id"
           :label="t('device.fields.ds1302ClkPin')"
+          required-role="output"
           :model-value="modelValue.clkPin"
+          :sibling-pins="[modelValue.dataPin, modelValue.rstPin]"
           :readonly="mode === 'view'"
           :disabled="busy && mode !== 'view'"
-          @update:model-value="update('clkPin', Number($event))"
+          @update:model-value="update('clkPin', $event)"
         />
       </v-col>
       <v-col cols="12" sm="4">
-        <v-text-field
-          type="number"
+        <PinPicker
+          :current-device-id="device?.record.id"
           :label="t('device.fields.ds1302DataPin')"
+          required-role="output"
           :model-value="modelValue.dataPin"
+          :sibling-pins="[modelValue.clkPin, modelValue.rstPin]"
           :readonly="mode === 'view'"
           :disabled="busy && mode !== 'view'"
-          @update:model-value="update('dataPin', Number($event))"
+          @update:model-value="update('dataPin', $event)"
         />
       </v-col>
       <v-col cols="12" sm="4">
-        <v-text-field
-          type="number"
+        <PinPicker
+          :current-device-id="device?.record.id"
           :label="t('device.fields.ds1302RstPin')"
+          required-role="output"
           :model-value="modelValue.rstPin"
+          :sibling-pins="[modelValue.clkPin, modelValue.dataPin]"
           :readonly="mode === 'view'"
           :disabled="busy && mode !== 'view'"
-          @update:model-value="update('rstPin', Number($event))"
+          @update:model-value="update('rstPin', $event)"
         />
       </v-col>
     </v-row>
@@ -71,6 +77,7 @@ import { useI18n } from 'vue-i18n'
 
 import type { DeviceRecord, RtcDs1302OutputSnapshot } from '@/api/contracts'
 import type { RtcDs1302ConfigDraft } from '@/models/devices/rtc-ds1302'
+import PinPicker from '@/components/devices/common/PinPicker.vue'
 import { useDraftModel } from '@/composables/useDraftModel'
 
 const props = defineProps<{

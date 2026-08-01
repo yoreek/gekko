@@ -1,0 +1,39 @@
+# ESP32-C6 (RISC-V, single-core, WiFi 6 + Thread/Zigbee 802.15.4 + BLE 5).
+# Cheapest (~$5) way to get Zigbee 3.0/Thread/Matter-over-Thread; same "Super
+# Mini" niche as the C3 version, same chip facts as the DevKitC-1. See
+# docs/esp32-board-models.md.
+chip: esp32c6
+boardId: esp32-c6-super-mini
+label: "ESP32-C6 Super Mini"
+
+pins:
+  - { gpio: 0,  roles: [output, input, adc1] }
+  - { gpio: 1,  roles: [output, input, adc1] }
+  - { gpio: 2,  roles: [output, input, adc1] }
+  - { gpio: 3,  roles: [output, input, adc1] }
+  - { gpio: 4,  roles: [output, input, adc1, strapping] }
+  - { gpio: 5,  roles: [output, input, adc1, strapping] }
+  - { gpio: 6,  roles: [output, input, adc1] }
+  - { gpio: 7,  roles: [output, input] }
+  - { gpio: 8,  roles: [output, input, strapping], note: "onboard addressable RGB LED (WS2812)" }
+  - { gpio: 9,  roles: [output, input, strapping] }
+  - { gpio: 10, roles: [output, input] }
+  - { gpio: 11, roles: [output, input] }
+  - { gpio: 12, roles: [output, input], note: "native USB D- -- avoid reassigning if the native USB port is used" }
+  - { gpio: 13, roles: [output, input], note: "native USB D+ -- avoid reassigning if the native USB port is used" }
+  - { gpio: 14, roles: [output, input] }
+  - { gpio: 15, roles: [output, input, strapping] }
+  - { gpio: 18, roles: [output, input] }
+  - { gpio: 19, roles: [output, input] }
+  - { gpio: 20, roles: [output, input] }
+  - { gpio: 21, roles: [output, input] }
+  - { gpio: 22, roles: [output, input], note: "U0 UART TX" }
+  - { gpio: 23, roles: [output, input], note: "U0 UART RX" }
+
+# Physical top-to-bottom header order. Source: espboards.dev/esp32/esp32-c6-super-mini/
+# TX/RX left as fixed labels rather than a specific gpio number -- the source didn't state
+# which GPIO they alias to on this specific board, and the DevKitC-1 (same chip) uses
+# GPIO16/17 for its silkscreen TX/RX, not GPIO22/23, so guessing would risk a duplicate.
+layout:
+  left:  ["5V", GND, "3V3", TX, RX, 0, 1, 2, 3, 4, 5, 6, 7]
+  right: [8, 9, 12, 13, 14, 15, 18, 19, 20, 21, 22, 23]

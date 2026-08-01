@@ -11,8 +11,7 @@ namespace ewfm {
 // HD44780 character displays wired directly to ESP32 GPIOs -- no I2C, no dependency at all beyond
 // the optional layout-derived MetricSource list (mirrors Tm1637Device/Ds1302RtcDevice: the display
 // owns its pins outright). Sibling of Hd44780DisplayDeviceConfigBase, which is the I2C/PCF8574
-// variant.
-constexpr uint8_t kHd44780PinUnset = 0xFFU; // backlightPin sentinel: not wired
+// variant. Uses the project-wide kGpioPinUnset sentinel (DeviceTypes.h) for all 7 pin fields.
 
 #pragma pack(push, 1)
 template <typename Derived> struct Hd44780PinDisplayDeviceConfigBase : DeviceBaseConfigV1 {
@@ -22,13 +21,13 @@ template <typename Derived> struct Hd44780PinDisplayDeviceConfigBase : DeviceBas
     // distinct pins explicitly -- matches the SPA's lcd1602-pin.ts/lcd2004-pin.ts, which already
     // default here to LCD1602_PIN_UNSET/LCD2004_PIN_UNSET (255). See
     // docs/pin-configuration-conventions.md.
-    uint8_t rsPin{kHd44780PinUnset};
-    uint8_t ePin{kHd44780PinUnset};
-    uint8_t d4Pin{kHd44780PinUnset};
-    uint8_t d5Pin{kHd44780PinUnset};
-    uint8_t d6Pin{kHd44780PinUnset};
-    uint8_t d7Pin{kHd44780PinUnset};
-    uint8_t backlightPin{kHd44780PinUnset};
+    uint8_t rsPin{kGpioPinUnset};
+    uint8_t ePin{kGpioPinUnset};
+    uint8_t d4Pin{kGpioPinUnset};
+    uint8_t d5Pin{kGpioPinUnset};
+    uint8_t d6Pin{kGpioPinUnset};
+    uint8_t d7Pin{kGpioPinUnset};
+    uint8_t backlightPin{kGpioPinUnset};
 
     DeviceValidationResult validate() const {
         const DeviceValidationResult baseResult = DeviceBaseConfigV1::validate();
@@ -39,16 +38,16 @@ template <typename Derived> struct Hd44780PinDisplayDeviceConfigBase : DeviceBas
             !gpioSwitchPinIsValid(d6Pin) || !gpioSwitchPinIsValid(d7Pin)) {
             return {DeviceError::InvalidConfig, "hd44780 pin is invalid"};
         }
-        if (backlightPin != kHd44780PinUnset && !gpioSwitchPinIsValid(backlightPin)) {
+        if (backlightPin != kGpioPinUnset && !gpioSwitchPinIsValid(backlightPin)) {
             return {DeviceError::InvalidConfig, "hd44780 backlight pin is invalid"};
         }
         const uint8_t pins[7] = {rsPin, ePin, d4Pin, d5Pin, d6Pin, d7Pin, backlightPin};
         for (size_t i = 0; i < 7U; ++i) {
-            if (pins[i] == kHd44780PinUnset) {
+            if (pins[i] == kGpioPinUnset) {
                 continue;
             }
             for (size_t j = i + 1U; j < 7U; ++j) {
-                if (pins[j] != kHd44780PinUnset && pins[i] == pins[j]) {
+                if (pins[j] != kGpioPinUnset && pins[i] == pins[j]) {
                     return {DeviceError::InvalidConfig, "hd44780 pins must be distinct"};
                 }
             }

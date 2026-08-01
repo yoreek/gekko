@@ -63,6 +63,26 @@ public:
         return true;
     }
 
+    void claimGpioPins(DeviceId* pins) const override {
+        setGpioPinOwner(pins, config_.rsPin, this->deviceId());
+        setGpioPinOwner(pins, config_.ePin, this->deviceId());
+        setGpioPinOwner(pins, config_.d4Pin, this->deviceId());
+        setGpioPinOwner(pins, config_.d5Pin, this->deviceId());
+        setGpioPinOwner(pins, config_.d6Pin, this->deviceId());
+        setGpioPinOwner(pins, config_.d7Pin, this->deviceId());
+        setGpioPinOwner(pins, config_.backlightPin, this->deviceId());
+    }
+
+    void releaseGpioPins(DeviceId* pins) const override {
+        setGpioPinOwner(pins, config_.rsPin, 0);
+        setGpioPinOwner(pins, config_.ePin, 0);
+        setGpioPinOwner(pins, config_.d4Pin, 0);
+        setGpioPinOwner(pins, config_.d5Pin, 0);
+        setGpioPinOwner(pins, config_.d6Pin, 0);
+        setGpioPinOwner(pins, config_.d7Pin, 0);
+        setGpioPinOwner(pins, config_.backlightPin, 0);
+    }
+
 protected:
     Hd44780PinLeafDeviceBase(PState initialState, uint8_t columns, uint8_t rows, const Config& config)
         : Hd44780PinCharacterDisplayDeviceBase(initialState, columns, rows), config_(config) {}

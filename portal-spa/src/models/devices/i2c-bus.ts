@@ -3,6 +3,7 @@ import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import type { DeviceRole } from '@/models/device-type-ids'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig } from './base-device.ts'
 import type { BaseDeviceConfig } from '@/api/contracts'
+import { normalizePin } from './shared/pin.ts'
 
 export interface I2cBusConfigDraft extends BaseDeviceConfig {
   sdaPin: number
@@ -39,8 +40,8 @@ export class I2cBusDevice extends BaseDevice<I2cBusConfigDraft, I2cBusCreateDraf
     const raw = value as Record<string, unknown>
     return {
       ...normalizeBaseDeviceConfig(raw, defaults),
-      sdaPin: typeof raw.sdaPin === 'number' && Number.isFinite(raw.sdaPin) ? raw.sdaPin : defaults.sdaPin,
-      sclPin: typeof raw.sclPin === 'number' && Number.isFinite(raw.sclPin) ? raw.sclPin : defaults.sclPin,
+      sdaPin: normalizePin(raw.sdaPin, defaults.sdaPin, 'output'),
+      sclPin: normalizePin(raw.sclPin, defaults.sclPin, 'output'),
       internalPullup: typeof raw.internalPullup === 'boolean' ? raw.internalPullup : defaults.internalPullup,
       frequencyHz:
         typeof raw.frequencyHz === 'number' && Number.isFinite(raw.frequencyHz)

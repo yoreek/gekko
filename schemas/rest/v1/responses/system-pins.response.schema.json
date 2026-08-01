@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yoreek.github.io/gekko/schemas/rest/v1/responses/system-pins.response.schema.json",
+  "title": "GPIO pin occupancy response",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "status": { "const": "ok" },
+    "pins": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "gpio": { "type": "integer", "minimum": 0, "maximum": 255 },
+          "deviceId": { "type": "integer", "minimum": 1 }
+        },
+        "required": ["gpio", "deviceId"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["success", "status", "pins"],
+  "additionalProperties": false
+}

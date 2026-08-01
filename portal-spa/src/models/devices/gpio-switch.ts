@@ -4,6 +4,7 @@ import type { DeviceRole } from '@/models/device-type-ids'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig } from './base-device.ts'
 import type { SwitchConfigDraft } from '@/models/devices/switch-config'
 import type { BaseDeviceConfig } from '@/api/contracts'
+import { normalizePin } from './shared/pin.ts'
 
 export interface GpioSwitchConfigDraft extends BaseDeviceConfig, SwitchConfigDraft {
   gpioPin: number
@@ -49,7 +50,7 @@ export class GpioSwitchDevice extends BaseDevice<GpioSwitchConfigDraft, GpioSwit
       startupState: readSwitchState(raw.startupState, defaults.startupState),
       safeState: readSwitchState(raw.safeState, defaults.safeState),
       inverted: typeof raw.inverted === 'boolean' ? raw.inverted : defaults.inverted,
-      gpioPin: typeof raw.gpioPin === 'number' && Number.isFinite(raw.gpioPin) ? raw.gpioPin : defaults.gpioPin,
+      gpioPin: normalizePin(raw.gpioPin, defaults.gpioPin, 'output'),
     }
   }
 

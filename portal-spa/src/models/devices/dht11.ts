@@ -2,6 +2,7 @@ import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import { defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
 import { TemperatureSensorDevice } from './temperature-sensor-device.ts'
 import { defaultSensorFilterConfig, normalizeSensorFilterConfig, type SensorFilterConfig } from './sensor-filter.ts'
+import { normalizePin } from './shared/pin.ts'
 import type {
   BaseDeviceConfig,
   DeviceRecord,
@@ -26,11 +27,6 @@ export interface Dht11CreateDraft extends DeviceCreateDraftBase, Dht11ConfigDraf
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function normalizeGpioPin(value: unknown, fallback: number): number {
-  const numeric = Number(value)
-  return Number.isFinite(numeric) && numeric >= 0 && numeric <= 39 ? Math.round(numeric) : fallback
 }
 
 export class Dht11Device extends TemperatureSensorDevice<Dht11ConfigDraft, Dht11CreateDraft, Dht11SensorOutputSnapshot> {
@@ -73,7 +69,7 @@ export class Dht11Device extends TemperatureSensorDevice<Dht11ConfigDraft, Dht11
     return {
       ...normalizeBaseDeviceConfig(value, defaults),
       deps: [],
-      gpioPin: normalizeGpioPin(value.gpioPin, defaults.gpioPin),
+      gpioPin: normalizePin(value.gpioPin, defaults.gpioPin, 'output'),
       internalPullup: typeof value.internalPullup === 'boolean' ? value.internalPullup : defaults.internalPullup,
       captureMode: value.captureMode === 'rmt' ? 'rmt' : 'native',
       unit: TemperatureSensorDevice.temperatureUnitOptions.includes(value.unit as TemperatureUnit)

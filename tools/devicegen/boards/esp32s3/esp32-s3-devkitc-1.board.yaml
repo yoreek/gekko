@@ -1,0 +1,60 @@
+# ESP32-S3 (Xtensa LX7, dual-core, native USB). Espressif's official S3 dev
+# board. GPIO26-32 reservedFlash only applies to Octal-PSRAM module variants;
+# treated as reserved here as the conservative default. See
+# docs/esp32-board-models.md.
+chip: esp32s3
+boardId: esp32-s3-devkitc-1
+label: "ESP32-S3-DevKitC-1"
+isDefault: true
+
+pins:
+  - { gpio: 0,  roles: [output, input, strapping] }
+  - { gpio: 1,  roles: [output, input, adc1] }
+  - { gpio: 2,  roles: [output, input, adc1] }
+  - { gpio: 3,  roles: [output, input, adc1, strapping] }
+  - { gpio: 4,  roles: [output, input, adc1] }
+  - { gpio: 5,  roles: [output, input, adc1] }
+  - { gpio: 6,  roles: [output, input, adc1] }
+  - { gpio: 7,  roles: [output, input, adc1] }
+  - { gpio: 8,  roles: [output, input, adc1] }
+  - { gpio: 9,  roles: [output, input, adc1] }
+  - { gpio: 10, roles: [output, input, adc1] }
+  - { gpio: 11, roles: [output, input, adc2] }
+  - { gpio: 12, roles: [output, input, adc2] }
+  - { gpio: 13, roles: [output, input, adc2] }
+  - { gpio: 14, roles: [output, input, adc2] }
+  - { gpio: 15, roles: [output, input, adc2] }
+  - { gpio: 16, roles: [output, input, adc2] }
+  - { gpio: 17, roles: [output, input, adc2] }
+  - { gpio: 18, roles: [output, input, adc2] }
+  - { gpio: 19, roles: [output, input], note: "native USB D- -- avoid reassigning if the native USB port is used" }
+  - { gpio: 20, roles: [output, input], note: "native USB D+ -- avoid reassigning if the native USB port is used" }
+  - { gpio: 21, roles: [output, input] }
+  - { gpio: 26, roles: [reservedFlash], note: "reserved for internal flash/PSRAM on Octal-SPI module variants; may be free on Quad-SPI/no-PSRAM variants -- verify per module" }
+  - { gpio: 27, roles: [reservedFlash], note: "reserved for internal flash/PSRAM on Octal-SPI module variants; may be free on Quad-SPI/no-PSRAM variants -- verify per module" }
+  - { gpio: 28, roles: [reservedFlash], note: "reserved for internal flash/PSRAM on Octal-SPI module variants; may be free on Quad-SPI/no-PSRAM variants -- verify per module" }
+  - { gpio: 29, roles: [reservedFlash], note: "reserved for internal flash/PSRAM on Octal-SPI module variants; may be free on Quad-SPI/no-PSRAM variants -- verify per module" }
+  - { gpio: 30, roles: [reservedFlash], note: "reserved for internal flash/PSRAM on Octal-SPI module variants; may be free on Quad-SPI/no-PSRAM variants -- verify per module" }
+  - { gpio: 31, roles: [reservedFlash], note: "reserved for internal flash/PSRAM on Octal-SPI module variants; may be free on Quad-SPI/no-PSRAM variants -- verify per module" }
+  - { gpio: 32, roles: [reservedFlash], note: "reserved for internal flash/PSRAM on Octal-SPI module variants; may be free on Quad-SPI/no-PSRAM variants -- verify per module" }
+  - { gpio: 33, roles: [output, input] }
+  - { gpio: 34, roles: [output, input] }
+  - { gpio: 35, roles: [output, input] }
+  - { gpio: 36, roles: [output, input] }
+  - { gpio: 37, roles: [output, input] }
+  - { gpio: 38, roles: [output, input] }
+  - { gpio: 39, roles: [output, input] }
+  - { gpio: 40, roles: [output, input] }
+  - { gpio: 41, roles: [output, input] }
+  - { gpio: 42, roles: [output, input] }
+  - { gpio: 43, roles: [output, input] }
+  - { gpio: 44, roles: [output, input] }
+  - { gpio: 45, roles: [output, input, strapping] }
+  - { gpio: 46, roles: [input] }
+  - { gpio: 47, roles: [output, input] }
+  - { gpio: 48, roles: [output, input] }
+
+# Physical top-to-bottom header order. Source: espboards.dev/esp32/esp32-s3-devkitc-1/
+layout:
+  left:  ["3V3", "3V3", EN, 4, 5, 6, 7, 15, 16, 17, 18, 8, 3, 46, 9, 10, 11, 12, 13, 14, "5V", GND]
+  right: [GND, GND, 43, 44, 1, 2, 42, 41, 40, 39, 38, 37, 36, 35, 0, 45, 48, 47, 21, 20, 19, GND]

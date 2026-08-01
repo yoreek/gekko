@@ -84,13 +84,13 @@ void Tm1637DeviceConfigV2::migrateFrom(const Tm1637DeviceConfigV1& legacy) {
     rotation = legacy.rotation;
     // V1 kept CLK/DIO as switch dependencies, which this struct cannot see: leave both unset so the
     // device faults visibly instead of driving whichever pins happened to be the defaults.
-    clkPin = kTm1637UnsetPin;
-    dioPin = kTm1637UnsetPin;
+    clkPin = kGpioPinUnset;
+    dioPin = kGpioPinUnset;
 }
 EWFM_LEGACY_CONFIG_USE_END
 
 bool Tm1637DeviceConfigV2::pinsConfigured() const {
-    return clkPin != kTm1637UnsetPin && dioPin != kTm1637UnsetPin;
+    return clkPin != kGpioPinUnset && dioPin != kGpioPinUnset;
 }
 
 bool Tm1637DeviceConfigV2::parseJson(const JsonObjectConst& input, const char*& error) {
@@ -171,7 +171,7 @@ DeviceValidationResult Tm1637DeviceConfigV2::validate() const {
     if (rotation != 0U && rotation != 180U) {
         return {DeviceError::InvalidConfig, "display rotation is out of bounds"};
     }
-    if (clkPin == kTm1637UnsetPin && dioPin == kTm1637UnsetPin) {
+    if (clkPin == kGpioPinUnset && dioPin == kGpioPinUnset) {
         // Migrated from V1: valid as stored, unusable until the portal supplies the pins.
         return {};
     }

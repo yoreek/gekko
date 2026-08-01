@@ -1,16 +1,11 @@
 #include "devices/switch/gpio/GpioSwitchDeviceConfig.h"
 
 #include "devices/core/ConfigCodec.h"
+#include "platform/BoardPinCapabilities.h"
 
 #include <type_traits>
 
 namespace ewfm {
-
-namespace {
-constexpr uint8_t kMaxEsp32OutputPin = 33;
-constexpr uint8_t kFlashPinStart = 6;
-constexpr uint8_t kFlashPinEnd = 11;
-} // namespace
 
 EWFM_LEGACY_CONFIG_USE_BEGIN
 static_assert(std::is_trivially_copyable<SwitchDeviceConfigV1>::value, "SwitchDeviceConfigV1 must be POD");
@@ -93,10 +88,7 @@ void GpioSwitchDeviceConfigV3::migrateFrom(const GpioSwitchDeviceConfigV2& legac
 EWFM_LEGACY_CONFIG_USE_END
 
 bool gpioSwitchPinIsValid(uint8_t pin) {
-    if (pin > kMaxEsp32OutputPin) {
-        return false;
-    }
-    return pin < kFlashPinStart || pin > kFlashPinEnd;
+    return boardPinHasRole(pin, kPinRoleOutput);
 }
 
 } // namespace ewfm

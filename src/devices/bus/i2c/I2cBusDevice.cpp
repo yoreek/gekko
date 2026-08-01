@@ -230,6 +230,16 @@ DeviceTypeDescriptor I2cBusDevice::descriptor() {
     return descriptor;
 }
 
+void I2cBusDevice::claimGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.sdaPin, deviceId());
+    setGpioPinOwner(pins, config_.sclPin, deviceId());
+}
+
+void I2cBusDevice::releaseGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.sdaPin, 0);
+    setGpioPinOwner(pins, config_.sclPin, 0);
+}
+
 std::unique_ptr<IDeviceRuntime> I2cBusDevice::createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
     return std::unique_ptr<IDeviceRuntime>(new I2cBusDevice(record, configBlob));
 }

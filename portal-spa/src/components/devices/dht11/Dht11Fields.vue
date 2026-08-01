@@ -2,14 +2,15 @@
   <div class="d-flex flex-column ga-4">
     <v-row>
       <v-col cols="12" sm="6">
-        <v-text-field
-          type="number"
+        <PinPicker
+          :current-device-id="device?.record.id"
           :label="t('device.fields.gpioPin')"
           :hint="t('device.dialog.gpioPinHint')"
+          required-role="output"
           :model-value="modelValue.gpioPin"
           :readonly="mode === 'view'"
           :disabled="busy && mode !== 'view'"
-          @update:model-value="update('gpioPin', Number($event))"
+          @update:model-value="update('gpioPin', $event)"
         />
       </v-col>
       <v-col cols="12" sm="6">
@@ -122,6 +123,7 @@ import { useI18n } from 'vue-i18n'
 import type { DeviceRecord, Dht11SensorOutputSnapshot, TemperatureUnit } from '@/api/contracts'
 import { Dht11Device, type Dht11ConfigDraft } from '@/models/devices/dht11'
 import SensorFilterFields from '@/components/devices/common/SensorFilterFields.vue'
+import PinPicker from '@/components/devices/common/PinPicker.vue'
 import { useDraftModel } from '@/composables/useDraftModel'
 import { useSystemStore } from '@/stores/system'
 

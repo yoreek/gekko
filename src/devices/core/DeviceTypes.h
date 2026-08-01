@@ -2,6 +2,7 @@
 
 #include "devices/sensors/humidity/HumiditySensorTypes.h"
 #include "devices/sensors/temperature/TemperatureSensorTypes.h"
+#include "platform/BoardPinCapabilities.h"
 
 #include <array>
 #include <cstddef>
@@ -42,6 +43,37 @@ constexpr size_t kMaxDeviceDependencies = 16;
 constexpr size_t kMaxProvidedRoles = 3;
 constexpr uint16_t kAnalogOutputLevelMax = 4095U;
 constexpr uint16_t kAnalogInputResolutionMax = 4095U;
+// The one project-wide "not configured" sentinel for uint8_t GPIO pin fields (not channel/bit
+// fields, which have their own separate namespace -- see docs/pin-configuration-conventions.md).
+// Single shared constant so every genuinely-optional pin field means exactly the same thing,
+// instead of each device type declaring its own identically-valued but separately-named constant.
+constexpr uint8_t kGpioPinUnset = 0xFFU;
+
+constexpr uint8_t maxChipGpioNumber() {
+    uint8_t maxGpio = 0U;
+    for (size_t i = 0; i < kChipPinCount; ++i) {
+        if (kChipPins[i].gpio > maxGpio) {
+            maxGpio = kChipPins[i].gpio;
+        }
+    }
+    return maxGpio;
+}
+
+// Sized by the compiled chip's highest raw GPIO number (not kChipPinCount, which counts only the
+// chip's valid/breakout-worthy pins and is sparse) -- DeviceRegistry's occupancy table is indexed
+// directly by GPIO number, so it must cover every number up to the max, gaps included. Fixed per
+// compiled chip, independent of the selected BoardModel (see docs/gpio-pin-occupancy.md).
+constexpr size_t kGpioPinTableSize = static_cast<size_t>(maxChipGpioNumber()) + 1U;
+
+// Shared by every claimGpioPins()/releaseGpioPins() override: skips the "not configured" sentinel
+// and any pin outside kGpioPinTableSize, uniformly, whether or not this particular field is ever
+// actually allowed to be unset -- callers never need to reason per-field about which pins can
+// legitimately hold the sentinel.
+inline void setGpioPinOwner(DeviceId* pins, uint8_t gpio, DeviceId owner) {
+    if (gpio != kGpioPinUnset && gpio < kGpioPinTableSize) {
+        pins[gpio] = owner;
+    }
+}
 // A bound, not a per-device default: caps the static (no-heap) pixel buffer every
 // PixelStripDevice instance owns. 300 * sizeof(PixelColor) = 900 B/device, well inside
 // ESP32 RAM even with several strips configured at once.
@@ -1025,6 +1057,17 @@ public:
         (void)channel;
         (void)ignoreDependent;
         return false;
+    }
+    // Writes this runtime's own deviceId() into `pins[gpio]` for each GPIO its already-live config
+    // uses (skipping "not configured" sentinels). `pins` is always kGpioPinTableSize long. Default:
+    // no physical GPIO pins (buses/hubs addressed purely via dependency, etc), so this is a no-op.
+    virtual void claimGpioPins(DeviceId* pins) const {
+        (void)pins;
+    }
+    // Writes 0 (free) into `pins[gpio]` for each GPIO this runtime's already-live config uses.
+    // Default: no-op.
+    virtual void releaseGpioPins(DeviceId* pins) const {
+        (void)pins;
     }
 };
 

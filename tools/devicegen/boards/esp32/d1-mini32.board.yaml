@@ -1,0 +1,41 @@
+# Classic ESP32 (Xtensa LX6). Wemos/LOLIN D1 Mini ESP32, same tiny D1-Mini
+# form factor as the popular ESP8266 board. CH340C USB-serial onboard. See
+# docs/esp32-board-models.md.
+chip: esp32
+boardId: d1-mini32
+label: "Wemos/LOLIN D1 Mini ESP32"
+
+pins:
+  - { gpio: 0,  roles: [output, input, adc2, strapping] }
+  - { gpio: 1,  roles: [output, input], note: "U0 UART TX, wired to onboard CH340C" }
+  - { gpio: 2,  roles: [output, input, adc2, strapping] }
+  - { gpio: 3,  roles: [output, input], note: "U0 UART RX, wired to onboard CH340C" }
+  - { gpio: 4,  roles: [output, input, adc2] }
+  - { gpio: 5,  roles: [output, input, strapping], fixedDefaultFor: spiChipSelect }
+  - { gpio: 12, roles: [output, input, adc2, strapping] }
+  - { gpio: 13, roles: [output, input, adc2] }
+  - { gpio: 14, roles: [output, input, adc2] }
+  - { gpio: 15, roles: [output, input, adc2, strapping] }
+  - { gpio: 16, roles: [output, input] }
+  - { gpio: 17, roles: [output, input] }
+  - { gpio: 18, roles: [output, input], fixedDefaultFor: spiSck }
+  - { gpio: 19, roles: [output, input], fixedDefaultFor: spiMiso }
+  - { gpio: 21, roles: [output, input], fixedDefaultFor: i2cSda }
+  - { gpio: 22, roles: [output, input], fixedDefaultFor: i2cScl }
+  - { gpio: 23, roles: [output, input], fixedDefaultFor: spiMosi }
+  - { gpio: 25, roles: [output, input, adc2] }
+  - { gpio: 26, roles: [output, input, adc2] }
+  - { gpio: 27, roles: [output, input, adc2] }
+  - { gpio: 32, roles: [output, input, adc1] }
+  - { gpio: 33, roles: [output, input, adc1] }
+  - { gpio: 34, roles: [input, adc1] }
+  - { gpio: 35, roles: [input, adc1] }
+  - { gpio: 36, roles: [input, adc1] }
+  - { gpio: 39, roles: [input, adc1] }
+
+# Physical top-to-bottom header order (GPIO positions only -- source didn't confirm
+# exact power/ground pin positions, so those are omitted rather than guessed).
+# Source: espboards.dev/esp32/d1-mini32/
+layout:
+  left:  [2, 3, 1, 21, 22, 5, 23, 19, 18, 36, 39, 32, 33]
+  right: [25, 26, 27, 14, 12, 13, 15, 4, 16, 17, 0, 34, 35]

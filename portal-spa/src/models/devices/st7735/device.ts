@@ -12,6 +12,7 @@ import {
   type St7735LayoutDraft,
   type St7735WidgetNormalizationOptions,
 } from './layout.ts'
+import { normalizePin } from '../shared/pin.ts'
 
 export interface St7735ConfigDraft extends BaseDeviceConfig, DisplayBaseConfig {
   spiBusDeviceId: number
@@ -83,9 +84,9 @@ export class St7735Device extends BaseDevice<St7735ConfigDraft, St7735CreateDraf
       width: geometry?.width ?? defaults.width,
       height: geometry?.height ?? defaults.height,
       spiBusDeviceId: normalizeNumber(raw.spiBusDeviceId ?? dependencyDeviceIdFromDeps(deps, 'spi_bus'), defaults.spiBusDeviceId),
-      chipSelectPin: normalizeNumber(raw.chipSelectPin, defaults.chipSelectPin),
-      dcPin: normalizeNumber(raw.dcPin, defaults.dcPin),
-      resetPin: normalizeNumber(raw.resetPin, defaults.resetPin),
+      chipSelectPin: normalizePin(raw.chipSelectPin, defaults.chipSelectPin, 'output'),
+      dcPin: normalizePin(raw.dcPin, defaults.dcPin, 'output'),
+      resetPin: normalizePin(raw.resetPin, defaults.resetPin, 'output'),
       rotation: normalizeDisplayRotation(raw.rotation, defaults.rotation),
       layout: normalizeSt7735Layout(raw.layout, layoutOptions),
     }

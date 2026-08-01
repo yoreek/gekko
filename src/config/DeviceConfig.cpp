@@ -79,6 +79,14 @@ ValidationResult validateConfig(const DeviceConfig& config, bool requireWifiCred
 }
 
 ValidationResult migrateConfig(DeviceConfig& config) {
+    // Not gated behind a schemaVersion bump (see ConfigStore::load()/save(), which persists this
+    // field as its own NVS key, not part of a versioned blob): a stray/out-of-range byte can still
+    // show up after a firmware downgrade that shrank kSupportedBoardIdCount, so guard it
+    // unconditionally rather than only on the schemaVersion-mismatch migration path below.
+    if (static_cast<size_t>(config.boardModel) >= kSupportedBoardIdCount) {
+        config.boardModel = kDefaultBoardModel;
+    }
+
     if (config.schemaVersion == kCurrentConfigSchemaVersion) {
         return validateConfig(config, false);
     }

@@ -23,6 +23,7 @@ constexpr const char* kTimezoneId = "tz_id";
 constexpr const char* kNtpSyncInterval = "ntp_sync_int";
 constexpr const char* kPersistDebounceMs = "persist_deb_ms";
 constexpr const char* kPersistMaxDelayMs = "persist_max_ms";
+constexpr const char* kBoardModel = "board_model";
 } // namespace
 
 bool ConfigStore::begin() {
@@ -48,6 +49,10 @@ ValidationResult ConfigStore::load() {
     storage_.getUInt(kNtpSyncInterval, config_.time.syncIntervalSeconds);
     storage_.getUInt(kPersistDebounceMs, config_.persistence.debounceMs);
     storage_.getUInt(kPersistMaxDelayMs, config_.persistence.maxDelayMs);
+    uint32_t boardModel{static_cast<uint32_t>(config_.boardModel)};
+    if (storage_.getUInt(kBoardModel, boardModel)) {
+        config_.boardModel = static_cast<BoardModel>(boardModel);
+    }
 
     const ValidationResult migrated = migrateConfig(config_);
     if (!migrated.ok()) {
@@ -76,7 +81,8 @@ ValidationResult ConfigStore::save(const DeviceConfig& config) {
                        storage_.putString(kTimezoneId, config.time.timezoneId) &&
                        storage_.putUInt(kNtpSyncInterval, config.time.syncIntervalSeconds) &&
                        storage_.putUInt(kPersistDebounceMs, config.persistence.debounceMs) &&
-                       storage_.putUInt(kPersistMaxDelayMs, config.persistence.maxDelayMs);
+                       storage_.putUInt(kPersistMaxDelayMs, config.persistence.maxDelayMs) &&
+                       storage_.putUInt(kBoardModel, static_cast<uint32_t>(config.boardModel));
 
     if (!saved) {
         EWFM_CONFIG_LOG_WARN("failed to save configuration");

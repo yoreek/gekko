@@ -178,3 +178,35 @@ void test_config_store_rejects_invalid_persistence_config() {
     TEST_ASSERT_FALSE(result.ok());
     TEST_ASSERT_EQUAL_UINT32(kDefaultPersistenceDebounceMs, store.config().persistence.debounceMs);
 }
+
+void test_default_config_has_default_board_model() {
+    DeviceConfig config = defaultConfig();
+    TEST_ASSERT_EQUAL(static_cast<int>(kDefaultBoardModel), static_cast<int>(config.boardModel));
+}
+
+void test_config_store_save_board_model_persists_across_reload() {
+    MemoryConfigStorage storage;
+    ConfigStore store(storage);
+    TEST_ASSERT_TRUE(store.begin());
+    TEST_ASSERT_TRUE(store.load().ok());
+
+    DeviceConfig next = store.config();
+    next.boardModel = static_cast<BoardModel>((static_cast<size_t>(kDefaultBoardModel) + 1U) % kSupportedBoardIdCount);
+    TEST_ASSERT_TRUE(store.save(next).ok());
+
+    TEST_ASSERT_TRUE(store.load().ok());
+    TEST_ASSERT_EQUAL(static_cast<int>(next.boardModel), static_cast<int>(store.config().boardModel));
+}
+
+void test_config_store_resets_out_of_range_board_model_to_default() {
+    MemoryConfigStorage storage;
+    ConfigStore store(storage);
+    TEST_ASSERT_TRUE(store.begin());
+    TEST_ASSERT_TRUE(store.load().ok());
+
+    DeviceConfig corrupted = store.config();
+    corrupted.boardModel = static_cast<BoardModel>(kSupportedBoardIdCount + 10U);
+    ValidationResult migrated = migrateConfig(corrupted);
+    TEST_ASSERT_TRUE(migrated.ok());
+    TEST_ASSERT_EQUAL(static_cast<int>(kDefaultBoardModel), static_cast<int>(corrupted.boardModel));
+}

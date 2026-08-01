@@ -2,6 +2,7 @@ import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
 import type { AnalogInputOutputSnapshot, BaseDeviceConfig, DeviceRecord } from '@/api/contracts'
 import type { DeviceRole } from '@/models/device-type-ids'
+import { normalizePin } from './shared/pin.ts'
 
 export type AdcAttenuation = '0db' | '2_5db' | '6db' | '11db'
 
@@ -50,7 +51,7 @@ export class AnalogPortInputDevice extends BaseDevice<AnalogPortInputConfigDraft
     }
     return {
       ...normalizeBaseDeviceConfig(value, defaults),
-      gpioPin: typeof value.gpioPin === 'number' && Number.isFinite(value.gpioPin) ? value.gpioPin : defaults.gpioPin,
+      gpioPin: normalizePin(value.gpioPin, defaults.gpioPin, 'adc1'),
       attenuation: AnalogPortInputDevice.attenuationOptions.includes(value.attenuation as AdcAttenuation)
         ? (value.attenuation as AdcAttenuation)
         : defaults.attenuation,

@@ -9,6 +9,10 @@
 
 namespace ewfm {
 
+// Mux channel index sentinel (0-15 range) -- a different concept from the GPIO pin sentinel
+// (kGpioPinUnset, DeviceTypes.h) even though both happen to be 0xFF.
+constexpr uint8_t kCd74hc4067ChannelUnset = 0xFFU;
+
 // A CD74HC4067 16-channel analog multiplexer, presented as an AnalogInputHub: one shared SIG line
 // (read through IAdcInputDriver) selected by 4 address lines S0-S3 (+ an optional active-low EN,
 // through IGpioOutputDriver). Only one channel can be electrically selected at a time, so
@@ -40,6 +44,8 @@ public:
     static DeviceTypeDescriptor descriptor();
     static std::unique_ptr<IDeviceRuntime> createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
     static DeviceValidationResult validateConfig(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob);
+    void claimGpioPins(DeviceId* pins) const override;
+    void releaseGpioPins(DeviceId* pins) const override;
 
 private:
     const DeviceBaseConfigV1& baseConfig() const override;
@@ -59,8 +65,8 @@ private:
     Cd74hc4067HubDeviceConfigV1 config_{};
     IGpioOutputDriver& gpioDriver_;
     IAdcInputDriver& adcDriver_;
-    uint8_t muxSelectedChannel_{kCd74hc4067UnusedPin};
-    uint8_t ownerChannel_{kCd74hc4067UnusedPin};
+    uint8_t muxSelectedChannel_{kCd74hc4067ChannelUnset};
+    uint8_t ownerChannel_{kCd74hc4067ChannelUnset};
     DeviceId ownerRequester_{0};
     uint32_t generation_{0};
 };

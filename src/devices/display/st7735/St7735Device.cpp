@@ -316,7 +316,7 @@ bool St7735Device::initializeDisplayHardware(uint32_t now) {
     if (spi == nullptr) {
         return false;
     }
-    const int8_t resetPin = config_.resetPin != kSt7735ResetPinUnset ? static_cast<int8_t>(config_.resetPin) : static_cast<int8_t>(-1);
+    const int8_t resetPin = config_.resetPin != kGpioPinUnset ? static_cast<int8_t>(config_.resetPin) : static_cast<int8_t>(-1);
     std::unique_ptr<::Adafruit_ST7735> display(
         new ::Adafruit_ST7735(spi, static_cast<int8_t>(config_.chipSelectPin), static_cast<int8_t>(config_.dcPin), resetPin));
     if (display == nullptr) {
@@ -396,6 +396,18 @@ DeviceTypeDescriptor St7735Device::descriptor() {
     descriptor.createRuntime = &St7735Device::createRuntime;
     descriptor.validateConfig = &St7735Device::validateConfig;
     return descriptor;
+}
+
+void St7735Device::claimGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.chipSelectPin, deviceId());
+    setGpioPinOwner(pins, config_.dcPin, deviceId());
+    setGpioPinOwner(pins, config_.resetPin, deviceId());
+}
+
+void St7735Device::releaseGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.chipSelectPin, 0);
+    setGpioPinOwner(pins, config_.dcPin, 0);
+    setGpioPinOwner(pins, config_.resetPin, 0);
 }
 
 std::unique_ptr<IDeviceRuntime> St7735Device::createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {

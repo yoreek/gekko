@@ -2,17 +2,15 @@
   <div class="d-flex flex-column ga-4">
     <v-row>
       <v-col cols="12" sm="6">
-        <v-text-field
-          type="number"
-          min="0"
-          max="39"
+        <PinPicker
+          :current-device-id="device?.record.id"
           :label="t('device.fields.gpioPin')"
           :hint="t('device.dialog.binarySensor.gpioPinHint')"
-          persistent-hint
+          required-role="input"
           :model-value="modelValue.gpioPin"
           :readonly="mode === 'view'"
           :disabled="busy && mode !== 'view'"
-          @update:model-value="updateGpioPin(Number($event))"
+          @update:model-value="updateGpioPin"
         />
       </v-col>
       <v-col cols="12" sm="6">
@@ -72,6 +70,7 @@ import { useI18n } from 'vue-i18n'
 
 import type { BinarySensorOutputSnapshot, DeviceCommandRequest, DeviceRecord } from '@/api/contracts'
 import { binarySensorPinSupportsPull, type BinarySensorConfigDraft, type BinarySensorPullMode } from '@/models/devices/binary-sensor'
+import PinPicker from '@/components/devices/common/PinPicker.vue'
 import { useDraftModel } from '@/composables/useDraftModel'
 
 const props = defineProps<{

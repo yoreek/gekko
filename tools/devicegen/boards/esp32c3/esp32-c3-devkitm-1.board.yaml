@@ -1,0 +1,29 @@
+# ESP32-C3 (RISC-V, single-core). Espressif's official C3 dev board;
+# built-in USB/JTAG debugging (no external debug probe needed). All GPIOs are
+# 3.3V only, not 5V-tolerant. See docs/esp32-board-models.md.
+chip: esp32c3
+boardId: esp32-c3-devkitm-1
+label: "ESP32-C3-DevKitM-1"
+isDefault: true
+
+pins:
+  - { gpio: 0,  roles: [output, input, adc1] }
+  - { gpio: 1,  roles: [output, input, adc1] }
+  - { gpio: 2,  roles: [output, input, adc1, strapping] }
+  - { gpio: 3,  roles: [output, input, adc1] }
+  - { gpio: 4,  roles: [output, input, adc1] }
+  - { gpio: 5,  roles: [output, input, adc2] }
+  - { gpio: 6,  roles: [output, input] }
+  - { gpio: 7,  roles: [output, input] }
+  - { gpio: 8,  roles: [output, input, strapping] }
+  - { gpio: 9,  roles: [output, input, strapping] }
+  - { gpio: 10, roles: [output, input] }
+  - { gpio: 18, roles: [output, input] }
+  - { gpio: 19, roles: [output, input] }
+  - { gpio: 20, roles: [output, input], note: "U0 UART RX" }
+  - { gpio: 21, roles: [output, input], note: "U0 UART TX" }
+
+# Physical top-to-bottom header order. Source: espboards.dev/esp32/esp32-c3-devkitm-1/
+layout:
+  left:  [GND, "3V3", "3V3", 2, 3, GND, EN, GND, 0, 1, 10, GND, "5V", "5V", GND]
+  right: [GND, 21, 20, GND, 9, 8, GND, 7, 6, 5, 4, GND, 18, 19, GND]

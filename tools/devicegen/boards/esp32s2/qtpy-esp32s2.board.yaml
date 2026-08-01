@@ -1,0 +1,31 @@
+# ESP32-S2 (Xtensa LX7, single-core, native USB, NO BLE/Bluetooth radio).
+# Adafruit QT Py ESP32-S2, tiny Seeed-XIAO-compatible footprint, popular for
+# compact WiFi-only projects. Pin numbers/positions confirmed via a detailed
+# per-pin pinout table (see source below) -- supersedes an earlier lower-
+# confidence guess at this board's GPIO set. See docs/esp32-board-models.md.
+chip: esp32s2
+boardId: qtpy-esp32s2
+label: "Adafruit QT Py ESP32-S2"
+
+pins:
+  - { gpio: 5,  roles: [output, input, adc1] }
+  - { gpio: 6,  roles: [output, input, adc1], fixedDefaultFor: i2cScl }
+  - { gpio: 7,  roles: [output, input, adc1], fixedDefaultFor: i2cSda }
+  - { gpio: 8,  roles: [output, input, adc1] }
+  - { gpio: 9,  roles: [output, input, adc1] }
+  - { gpio: 16, roles: [output, input, adc2] }
+  - { gpio: 17, roles: [output, input, adc2] }
+  - { gpio: 18, roles: [output, input, adc2] }
+  - { gpio: 35, roles: [output, input], fixedDefaultFor: spiMosi }
+  - { gpio: 36, roles: [output, input], fixedDefaultFor: spiSck }
+  - { gpio: 37, roles: [output, input], fixedDefaultFor: spiMiso }
+  - { gpio: 38, roles: [output, input], note: "onboard RGB NeoPixel power-enable" }
+  - { gpio: 39, roles: [output, input], note: "onboard RGB NeoPixel data line" }
+  - { gpio: 40, roles: [output, input], fixedDefaultFor: i2cScl }
+  - { gpio: 41, roles: [output, input], fixedDefaultFor: i2cSda }
+  - { gpio: 42, roles: [output, input] }
+
+# Physical top-to-bottom header order. Source: espboards.dev/esp32/adafruit-qtpy-esp32s2/
+layout:
+  left:  [5, 6, 7, 8, 9, 16, 17, 18]
+  right: [35, 36, 37, 38, 39, 40, 41, 42]

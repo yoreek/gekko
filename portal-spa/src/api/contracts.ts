@@ -677,6 +677,27 @@ export interface SetTimeRequest {
   iso8601: string
 }
 
+/** GET/PUT /api/system/board -- selected controller board model (pin-picker UI hints only; pin
+ * validity is always checked at the chip level regardless of this selection). */
+export interface BoardSettingsResponse {
+  chip: string
+  selectedBoardId: string
+  supportedBoardIds: string[]
+  success?: boolean
+}
+
+/** GET /api/system/pins -- which GPIO is currently claimed by which device (firmware-authoritative,
+ * see docs/gpio-pin-occupancy.md). Only occupied pins are listed; anything absent is free. */
+export interface PinOccupancyEntry {
+  gpio: number
+  deviceId: number
+}
+
+export interface PinOccupancyResponse {
+  pins: PinOccupancyEntry[]
+  success?: boolean
+}
+
 /** GET/PUT /api/system/persistence/settings -- device-registry flush debounce/max-delay. */
 export interface PersistenceSettingsRecord {
   debounceMs: number

@@ -96,6 +96,14 @@ DeviceTypeDescriptor BinarySensorDevice::descriptor() {
     return descriptor;
 }
 
+void BinarySensorDevice::claimGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.gpioPin, deviceId());
+}
+
+void BinarySensorDevice::releaseGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.gpioPin, 0);
+}
+
 std::unique_ptr<IDeviceRuntime> BinarySensorDevice::createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
     return std::unique_ptr<IDeviceRuntime>(new BinarySensorDevice(record, configBlob));
 }

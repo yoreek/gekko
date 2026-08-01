@@ -2,27 +2,29 @@
   <div class="d-flex flex-column ga-4">
     <v-row>
       <v-col cols="12" sm="6">
-        <v-text-field
-          type="number"
+        <PinPicker
+          :current-device-id="device?.record.id"
           :label="t('device.fields.i2cSdaPin')"
           :hint="t('device.dialog.i2cSdaHint')"
-          persistent-hint
+          required-role="output"
           :model-value="modelValue.sdaPin"
+          :sibling-pins="[modelValue.sclPin]"
           :readonly="mode === 'view'"
           :disabled="busy && mode !== 'view'"
-          @update:model-value="update('sdaPin', Number($event))"
+          @update:model-value="update('sdaPin', $event)"
         />
       </v-col>
       <v-col cols="12" sm="6">
-        <v-text-field
-          type="number"
+        <PinPicker
+          :current-device-id="device?.record.id"
           :label="t('device.fields.i2cSclPin')"
           :hint="t('device.dialog.i2cSclHint')"
-          persistent-hint
+          required-role="output"
           :model-value="modelValue.sclPin"
+          :sibling-pins="[modelValue.sdaPin]"
           :readonly="mode === 'view'"
           :disabled="busy && mode !== 'view'"
-          @update:model-value="update('sclPin', Number($event))"
+          @update:model-value="update('sclPin', $event)"
         />
       </v-col>
 
@@ -118,6 +120,7 @@ import type {
   I2cBusScanSnapshot,
 } from '@/api/contracts'
 import type { I2cBusConfigDraft } from '@/models/devices/i2c-bus'
+import PinPicker from '@/components/devices/common/PinPicker.vue'
 import { useDraftModel } from '@/composables/useDraftModel'
 
 const props = defineProps<{

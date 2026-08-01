@@ -157,7 +157,7 @@ void St7735DeviceConfigV6::migrateFrom(const St7735DeviceConfigV1& origState) {
     spiBusDeviceId = origState.spiBusDeviceId;
     chipSelectPin = origState.chipSelectPin;
     dcPin = 2U;
-    resetPin = kSt7735ResetPinUnset;
+    resetPin = kGpioPinUnset;
     rotation = 0U;
     panel = static_cast<uint8_t>(St7735Panel::Black18);
     st7735PanelGeometry(St7735Panel::Black18, width, height);
@@ -169,7 +169,7 @@ void St7735DeviceConfigV6::migrateFrom(const St7735DeviceConfigV2& origState) {
     spiBusDeviceId = origState.spiBusDeviceId;
     chipSelectPin = origState.chipSelectPin;
     dcPin = origState.dcPin;
-    resetPin = origState.resetPin >= 0 ? static_cast<uint8_t>(origState.resetPin) : kSt7735ResetPinUnset;
+    resetPin = origState.resetPin >= 0 ? static_cast<uint8_t>(origState.resetPin) : kGpioPinUnset;
     rotation = 0U;
     panel = static_cast<uint8_t>(St7735Panel::Black18);
     st7735PanelGeometry(St7735Panel::Black18, width, height);
@@ -181,7 +181,7 @@ void St7735DeviceConfigV6::migrateFrom(const St7735DeviceConfigV3& origState) {
     spiBusDeviceId = origState.spiBusDeviceId;
     chipSelectPin = origState.chipSelectPin;
     dcPin = origState.dcPin;
-    resetPin = origState.resetPin >= 0 ? static_cast<uint8_t>(origState.resetPin) : kSt7735ResetPinUnset;
+    resetPin = origState.resetPin >= 0 ? static_cast<uint8_t>(origState.resetPin) : kGpioPinUnset;
     rotation = 0U;
     panel = static_cast<uint8_t>(St7735Panel::Black18);
     st7735PanelGeometry(St7735Panel::Black18, width, height);
@@ -193,7 +193,7 @@ void St7735DeviceConfigV6::migrateFrom(const St7735DeviceConfigV4& origState) {
     spiBusDeviceId = origState.spiBusDeviceId;
     chipSelectPin = origState.chipSelectPin;
     dcPin = origState.dcPin;
-    resetPin = origState.resetPin >= 0 ? static_cast<uint8_t>(origState.resetPin) : kSt7735ResetPinUnset;
+    resetPin = origState.resetPin >= 0 ? static_cast<uint8_t>(origState.resetPin) : kGpioPinUnset;
     rotation = origState.rotation;
     panel = static_cast<uint8_t>(St7735Panel::Black18);
     st7735PanelGeometry(St7735Panel::Black18, width, height);
@@ -205,7 +205,7 @@ void St7735DeviceConfigV6::migrateFrom(const St7735DeviceConfigV5& origState) {
     spiBusDeviceId = origState.spiBusDeviceId;
     chipSelectPin = origState.chipSelectPin;
     dcPin = origState.dcPin;
-    resetPin = origState.resetPin >= 0 ? static_cast<uint8_t>(origState.resetPin) : kSt7735ResetPinUnset;
+    resetPin = origState.resetPin >= 0 ? static_cast<uint8_t>(origState.resetPin) : kGpioPinUnset;
     rotation = origState.rotation;
     panel = origState.panel;
     width = origState.width;
@@ -432,8 +432,11 @@ DeviceValidationResult St7735DeviceConfigV6::validate() const {
     if (!gpioSwitchPinIsValid(dcPin)) {
         return {DeviceError::InvalidConfig, "st7735 dc pin is invalid"};
     }
-    if (resetPin != kSt7735ResetPinUnset && !gpioSwitchPinIsValid(resetPin)) {
+    if (resetPin != kGpioPinUnset && !gpioSwitchPinIsValid(resetPin)) {
         return {DeviceError::InvalidConfig, "st7735 reset pin is invalid"};
+    }
+    if (chipSelectPin == dcPin || (resetPin != kGpioPinUnset && (resetPin == chipSelectPin || resetPin == dcPin))) {
+        return {DeviceError::InvalidConfig, "st7735 pins must be distinct"};
     }
     if (rotation > 3U) {
         return {DeviceError::InvalidConfig, "st7735 rotation is out of bounds"};

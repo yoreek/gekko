@@ -84,6 +84,14 @@ DeviceTypeDescriptor Dht11SensorDevice::descriptor() {
     return descriptor;
 }
 
+void Dht11SensorDevice::claimGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.gpioPin, deviceId());
+}
+
+void Dht11SensorDevice::releaseGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.gpioPin, 0);
+}
+
 std::unique_ptr<IDeviceRuntime> Dht11SensorDevice::createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
     return std::unique_ptr<IDeviceRuntime>(new Dht11SensorDevice(record, configBlob));
 }

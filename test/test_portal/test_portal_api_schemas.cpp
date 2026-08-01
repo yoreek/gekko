@@ -258,6 +258,17 @@ void test_device_response_schema_smoke() {
     assertMatchesJsonSchema("schemas/rest/v1/responses/device-response.schema.json", doc.as<JsonVariantConst>());
 }
 
+void test_system_pins_response_schema_smoke() {
+    StaticJsonDocument<256> doc;
+    doc["success"] = true;
+    doc["status"] = "ok";
+    JsonArray pins = doc.createNestedArray("pins");
+    JsonObject entry = pins.createNestedObject();
+    entry["gpio"] = 5;
+    entry["deviceId"] = 12;
+    assertMatchesJsonSchema("schemas/rest/v1/responses/system-pins.response.schema.json", doc.as<JsonVariantConst>());
+}
+
 void test_device_revision_response_schema_smoke() {
     StaticJsonDocument<128> doc;
     doc["success"] = true;

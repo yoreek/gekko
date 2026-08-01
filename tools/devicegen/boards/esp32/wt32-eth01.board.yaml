@@ -1,0 +1,34 @@
+# Classic ESP32 (Xtensa LX6). Wireless-Tag WT32-ETH01 Ethernet module -- far
+# fewer usable pins than a typical dev board because the LAN8720A PHY and the
+# factory MAC-address EEPROM consume most of them internally. See
+# docs/esp32-board-models.md.
+chip: esp32
+boardId: wt32-eth01
+label: "Wireless-Tag WT32-ETH01 (Ethernet module)"
+
+pins:
+  - { gpio: 0,  roles: [output, input, adc2, strapping], note: "boot-mode strap; avoid for general use" }
+  - { gpio: 1,  roles: [output, input], note: "U0 UART TX" }
+  - { gpio: 2,  roles: [output, input, adc2, strapping], note: "onboard green Ethernet link/activity LED -- effectively unavailable for general use" }
+  - { gpio: 3,  roles: [output, input], note: "U0 UART RX" }
+  - { gpio: 4,  roles: [output, input, adc2] }
+  - { gpio: 5,  roles: [output, input, strapping] }
+  - { gpio: 12, roles: [output, input, adc2, strapping] }
+  - { gpio: 14, roles: [output, input, adc2] }
+  - { gpio: 15, roles: [output, input, adc2, strapping], note: "onboard red power-status LED -- effectively unavailable for general use" }
+  - { gpio: 17, roles: [output, input] }
+  - { gpio: 32, roles: [output, input, adc1] }
+  - { gpio: 33, roles: [output, input, adc1] }
+  - { gpio: 35, roles: [input, adc1] }
+  - { gpio: 36, roles: [input, adc1] }
+  - { gpio: 39, roles: [input, adc1] }
+  # GPIO21/22 (the usual I2C pins) are present but share PCB traces with the
+  # factory-programmed MAC-address EEPROM -- deliberately omitted rather than
+  # offered as a normal i2cSda/i2cScl default, since reusing them risks
+  # corrupting calibration data. GPIO6-11, 16, and the ETH_* pins are
+  # internally wired to the LAN8720A PHY and not exposed as general GPIO.
+
+# Physical top-to-bottom header order. Source: espboards.dev/esp32/wt32-eth01/
+layout:
+  left:  [EN, GND, "3V3", EN, 32, 33, 5, 17, GND, "3V3", GND, "5V", LINK, NC]
+  right: [1, 3, 0, GND, 39, 36, 15, 14, 12, 35, 4, 2, GND, NC]

@@ -20,10 +20,10 @@ enum class St7735Panel : uint8_t {
     Mini096Plugin = 4, // 0.96" 80x160, plugin variant (INITR_MINI160x80_PLUGIN)
 };
 
-// Sentinel for resetPin meaning "not wired" -- many ST7735 modules tie RESET to EN/3.3V instead of
-// a GPIO. V5 used int8_t{-1} for this; V6 narrows to the project-wide uint8_t/0xFF sentinel, which
-// is why this needs a version bump rather than an in-place edit (see docs/pin-configuration-conventions.md).
-constexpr uint8_t kSt7735ResetPinUnset = 0xFFU;
+// resetPin uses the project-wide kGpioPinUnset sentinel (DeviceTypes.h) meaning "not wired" --
+// many ST7735 modules tie RESET to EN/3.3V instead of a GPIO. V5 used int8_t{-1} for this; V6
+// narrows to uint8_t/0xFF, which is why this needed a version bump rather than an in-place edit
+// (see docs/pin-configuration-conventions.md).
 
 #pragma pack(push, 1)
 // Legacy persisted layouts (V1-V5): kept only so old blobs can be decoded and migrated to V6.
@@ -87,7 +87,7 @@ struct St7735DeviceConfigV6 : DeviceBaseConfigV1 {
     uint32_t spiBusDeviceId{0};
     uint8_t chipSelectPin{5};
     uint8_t dcPin{2};
-    uint8_t resetPin{kSt7735ResetPinUnset};
+    uint8_t resetPin{kGpioPinUnset};
     uint8_t rotation{0};
     uint8_t panel{static_cast<uint8_t>(St7735Panel::Black18)};
     uint16_t width{128};

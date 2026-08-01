@@ -282,7 +282,7 @@ Cd74hc4067HubDeviceConfigV1 makeCd74hc4067HubConfig() {
     config.selectPins[1] = 17U;
     config.selectPins[2] = 18U;
     config.selectPins[3] = 19U;
-    config.enablePin = kCd74hc4067UnusedPin;
+    config.enablePin = kGpioPinUnset;
     config.sigPin = 34U;
     config.sigAttenuation = static_cast<uint8_t>(AdcAttenuation::Db11);
     return config;
@@ -790,7 +790,7 @@ public:
     uint8_t lastHost{0};
     uint8_t lastSckPin{0};
     uint8_t lastMosiPin{0};
-    uint8_t lastMisoPin{kSpiBusMisoUnset};
+    uint8_t lastMisoPin{kGpioPinUnset};
     uint32_t lastClockHz{0};
     uint8_t lastDataMode{0};
     uint8_t lastBitOrder{0};
@@ -1016,7 +1016,7 @@ SpiBusDeviceConfigV2 makeSpiBusConfig() {
     config.host = kSpiBusHostVspi;
     config.sckPin = 18U;
     config.mosiPin = 23U;
-    config.misoPin = kSpiBusMisoUnset;
+    config.misoPin = kGpioPinUnset;
     return config;
 }
 
@@ -1053,7 +1053,7 @@ St7735DeviceConfigV6 makeSt7735Config() {
     config.spiBusDeviceId = 11U;
     config.chipSelectPin = 5U;
     config.dcPin = 2U;
-    config.resetPin = kSt7735ResetPinUnset;
+    config.resetPin = kGpioPinUnset;
     config.rotation = 0U;
     config.panel = static_cast<uint8_t>(St7735Panel::Black18);
     config.width = 128U;
@@ -1928,7 +1928,7 @@ void test_spi_bus_api_adapter_parses_create_request() {
     TEST_ASSERT_EQUAL_UINT8(kSpiBusHostVspi, parsed.host);
     TEST_ASSERT_EQUAL_UINT8(18U, parsed.sckPin);
     TEST_ASSERT_EQUAL_UINT8(23U, parsed.mosiPin);
-    TEST_ASSERT_EQUAL_UINT8(kSpiBusMisoUnset, parsed.misoPin);
+    TEST_ASSERT_EQUAL_UINT8(kGpioPinUnset, parsed.misoPin);
 }
 
 void test_spi_bus_api_adapter_partial_update_preserves_other_fields() {
@@ -2017,7 +2017,7 @@ void test_st7735_api_adapter_parses_create_request() {
     TEST_ASSERT_EQUAL_UINT32(11U, parsed.spiBusDeviceId);
     TEST_ASSERT_EQUAL_UINT8(5U, parsed.chipSelectPin);
     TEST_ASSERT_EQUAL_UINT8(2U, parsed.dcPin);
-    TEST_ASSERT_EQUAL_UINT8(kSt7735ResetPinUnset, parsed.resetPin);
+    TEST_ASSERT_EQUAL_UINT8(kGpioPinUnset, parsed.resetPin);
     TEST_ASSERT_EQUAL_UINT8(128U, parsed.width);
     TEST_ASSERT_EQUAL_UINT8(160U, parsed.height);
 }
@@ -2049,7 +2049,7 @@ void test_st7735_api_adapter_partial_update_preserves_other_fields() {
     TEST_ASSERT_EQUAL_UINT32(11U, parsed.spiBusDeviceId);
     TEST_ASSERT_EQUAL_UINT8(15U, parsed.chipSelectPin);
     TEST_ASSERT_EQUAL_UINT8(2U, parsed.dcPin);
-    TEST_ASSERT_EQUAL_UINT8(kSt7735ResetPinUnset, parsed.resetPin);
+    TEST_ASSERT_EQUAL_UINT8(kGpioPinUnset, parsed.resetPin);
     TEST_ASSERT_EQUAL_UINT8(1U, parsed.rotation);
     TEST_ASSERT_EQUAL_UINT16(128U, parsed.width);
     TEST_ASSERT_EQUAL_UINT16(160U, parsed.height);
@@ -2486,7 +2486,7 @@ void test_cd74hc4067_hub_api_adapter_parses_create_request() {
     TEST_ASSERT_EQUAL_UINT8(17U, parsed.selectPins[1]);
     TEST_ASSERT_EQUAL_UINT8(18U, parsed.selectPins[2]);
     TEST_ASSERT_EQUAL_UINT8(19U, parsed.selectPins[3]);
-    TEST_ASSERT_EQUAL_UINT8(kCd74hc4067UnusedPin, parsed.enablePin);
+    TEST_ASSERT_EQUAL_UINT8(kGpioPinUnset, parsed.enablePin);
     TEST_ASSERT_EQUAL_UINT8(34U, parsed.sigPin);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(AdcAttenuation::Db11), parsed.sigAttenuation);
 }

@@ -1,6 +1,7 @@
 #include "devices/analog/ledc/LedcAnalogOutputDeviceConfig.h"
 
 #include "devices/core/ConfigCodec.h"
+#include "platform/BoardPinCapabilities.h"
 
 #include <type_traits>
 
@@ -35,16 +36,7 @@ bool parseUnsignedJson(const JsonVariantConst& input, const char*& error, const 
 }
 
 bool isOutputCapablePin(const uint8_t pin) {
-    if (pin == 0xFFU) {
-        return false;
-    }
-    if (pin >= 34U && pin <= 39U) {
-        return false;
-    }
-    if (pin >= 6U && pin <= 11U) {
-        return false;
-    }
-    return pin <= 48U;
+    return boardPinHasRole(pin, kPinRoleOutput);
 }
 
 bool parseOptionalUnsignedJson(const JsonVariantConst& input, const char*& error, const char* typeError, const char* rangeError,

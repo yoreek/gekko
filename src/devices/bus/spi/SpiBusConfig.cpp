@@ -81,7 +81,7 @@ void SpiBusDeviceConfigV2::migrateFrom(const SpiBusDeviceConfigV1& legacy) {
     host = legacy.host;
     sckPin = legacy.sckPin;
     mosiPin = legacy.mosiPin;
-    misoPin = legacy.misoPin >= 0 ? static_cast<uint8_t>(legacy.misoPin) : kSpiBusMisoUnset;
+    misoPin = legacy.misoPin >= 0 ? static_cast<uint8_t>(legacy.misoPin) : kGpioPinUnset;
 }
 EWFM_LEGACY_CONFIG_USE_END
 
@@ -109,7 +109,7 @@ DeviceValidationResult SpiBusDeviceConfigV2::validate() const {
     if (sckPin == mosiPin) {
         return {DeviceError::InvalidConfig, "spi bus sck and mosi pins must differ"};
     }
-    if (misoPin != kSpiBusMisoUnset && (misoPin == sckPin || misoPin == mosiPin)) {
+    if (misoPin != kGpioPinUnset && (misoPin == sckPin || misoPin == mosiPin)) {
         return {DeviceError::InvalidConfig, "spi bus miso pin must differ from sck and mosi"};
     }
     return {};
@@ -120,7 +120,7 @@ void SpiBusDeviceConfigV2::writeJson(JsonObject output) const {
     output["host"] = host;
     output["sckPin"] = sckPin;
     output["mosiPin"] = mosiPin;
-    if (misoPin != kSpiBusMisoUnset) {
+    if (misoPin != kGpioPinUnset) {
         output["misoPin"] = misoPin;
     }
 }

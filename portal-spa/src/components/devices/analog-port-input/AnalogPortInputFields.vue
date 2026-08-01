@@ -2,13 +2,14 @@
   <div class="d-flex flex-column ga-4">
     <v-row density="comfortable">
       <v-col cols="12" sm="6">
-        <v-text-field
-          type="number"
+        <PinPicker
+          :current-device-id="device?.record.id"
           :label="t('device.fields.gpioPin')"
+          required-role="adc1"
           :model-value="modelValue.gpioPin"
           :readonly="mode === 'view'"
           :disabled="busy && mode !== 'view'"
-          @update:model-value="update('gpioPin', Number($event))"
+          @update:model-value="update('gpioPin', $event)"
         />
       </v-col>
       <v-col cols="12" sm="6">
@@ -82,6 +83,7 @@ import { useI18n } from 'vue-i18n'
 
 import type { AnalogInputOutputSnapshot, DeviceRecord } from '@/api/contracts'
 import { AnalogPortInputDevice, type AdcAttenuation, type AnalogPortInputConfigDraft } from '@/models/devices/analog-port-input'
+import PinPicker from '@/components/devices/common/PinPicker.vue'
 import { useDraftModel } from '@/composables/useDraftModel'
 
 const props = defineProps<{

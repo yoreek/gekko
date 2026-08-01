@@ -3,6 +3,7 @@ import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeB
 import type { AnalogInputHubOutputSnapshot, BaseDeviceConfig, DeviceRecord } from '@/api/contracts'
 import type { AdcAttenuation } from './analog-port-input.ts'
 import type { DeviceRole } from '@/models/device-type-ids'
+import { normalizePin } from './shared/pin.ts'
 
 export interface Cd74hc4067HubConfigDraft extends BaseDeviceConfig {
   selectPins: [number, number, number, number]
@@ -18,13 +19,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function normalizeSelectPins(value: unknown, defaults: [number, number, number, number]): [number, number, number, number] {
-  if (!Array.isArray(value) || value.length !== 4 || !value.every(pin => typeof pin === 'number' && Number.isFinite(pin))) {
+  if (!Array.isArray(value) || value.length !== 4) {
     return defaults
   }
-  return value as [number, number, number, number]
+  return value.map((pin, index) => normalizePin(pin, defaults[index], 'output')) as [number, number, number, number]
 }
 
-// 0xFF = not wired (tied to GND on the module), matching kCd74hc4067UnusedPin in firmware.
+// 0xFF = not wired (tied to GND on the module), matching kGpioPinUnset in firmware.
 export const CD74HC4067_UNUSED_PIN = 0xff
 
 // A CD74HC4067 16-channel analog multiplexer, presented as an AnalogInputHub -- no bus
@@ -57,8 +58,8 @@ export class Cd74hc4067HubDevice extends BaseDevice<Cd74hc4067HubConfigDraft, Cd
     return {
       ...normalizeBaseDeviceConfig(value, defaults),
       selectPins: normalizeSelectPins(value.selectPins, defaults.selectPins),
-      enablePin: typeof value.enablePin === 'number' && Number.isFinite(value.enablePin) ? value.enablePin : defaults.enablePin,
-      sigPin: typeof value.sigPin === 'number' && Number.isFinite(value.sigPin) ? value.sigPin : defaults.sigPin,
+      enablePin: normalizePin(value.enablePin, defaults.enablePin, 'output'),
+      sigPin: normalizePin(value.sigPin, defaults.sigPin, 'adc1'),
       sigAttenuation: (['0db', '2_5db', '6db', '11db'] as AdcAttenuation[]).includes(value.sigAttenuation as AdcAttenuation)
         ? (value.sigAttenuation as AdcAttenuation)
         : defaults.sigAttenuation,

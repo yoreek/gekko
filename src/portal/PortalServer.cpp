@@ -5,6 +5,7 @@
 #include "devices/dosing/journal/DoseJournal.h"
 #include "platform/LittleFsBlobStore.h"
 #include "portal/controllers/BlobController.h"
+#include "portal/controllers/BoardController.h"
 #include "portal/controllers/DashboardLayoutController.h"
 #include "portal/controllers/DeviceRegistryController.h"
 #include "portal/controllers/DeviceSetupTransferController.h"
@@ -13,6 +14,7 @@
 #include "portal/controllers/MqttController.h"
 #include "portal/controllers/OtaController.h"
 #include "portal/controllers/PersistenceController.h"
+#include "portal/controllers/PinOccupancyController.h"
 #include "portal/controllers/PortalAssetController.h"
 #include "portal/controllers/SchedulePresetController.h"
 #include "portal/controllers/SystemController.h"
@@ -125,7 +127,9 @@ private:
         SystemController::registerRoutes(*server_, deviceRegistry_);
         MqttController::registerRoutes(*server_, mqttConfigStore_, mqttManager_, haDiscoveryBridge_);
         TimeController::registerRoutes(*server_, ntpManager_);
+        BoardController::registerRoutes(*server_, configStore_);
         PersistenceController::registerRoutes(*server_, configStore_, deviceRegistry_);
+        PinOccupancyController::registerRoutes(*server_, deviceRegistry_);
         DoseJournalController::registerRoutes(*server_, defaultDoseJournal());
         SchedulePresetController::registerRoutes(*server_, defaultSchedulePresetStorage());
         BlobController::registerRoutes(*server_, defaultBlobStore());

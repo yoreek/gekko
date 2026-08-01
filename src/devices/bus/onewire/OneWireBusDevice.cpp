@@ -204,6 +204,14 @@ DeviceTypeDescriptor OneWireBusDevice::descriptor() {
     return descriptor;
 }
 
+void OneWireBusDevice::claimGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.gpioPin, deviceId());
+}
+
+void OneWireBusDevice::releaseGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.gpioPin, 0);
+}
+
 std::unique_ptr<IDeviceRuntime> OneWireBusDevice::createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
     return std::unique_ptr<IDeviceRuntime>(new OneWireBusDevice(record, configBlob));
 }

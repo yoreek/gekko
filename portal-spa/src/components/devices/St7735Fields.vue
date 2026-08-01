@@ -21,13 +21,13 @@
       />
     </v-col>
     <v-col cols="12" sm="6">
-      <v-text-field
+      <PinPicker
+        :current-device-id="device?.record.id"
         :model-value="modelValue.chipSelectPin"
-        type="number"
+        :sibling-pins="[modelValue.dcPin, modelValue.resetPin]"
         :label="t('device.fields.chipSelectPin')"
-        density="compact"
-        hide-details="auto"
-        @update:model-value="update('chipSelectPin', Number($event))"
+        required-role="output"
+        @update:model-value="update('chipSelectPin', $event)"
       />
     </v-col>
 
@@ -39,23 +39,24 @@
     </v-col>
 
     <v-col cols="12" sm="6">
-      <v-text-field
+      <PinPicker
+        :current-device-id="device?.record.id"
         :model-value="modelValue.dcPin"
-        type="number"
+        :sibling-pins="[modelValue.chipSelectPin, modelValue.resetPin]"
         :label="t('device.fields.dcPin')"
-        density="compact"
-        hide-details="auto"
-        @update:model-value="update('dcPin', Number($event))"
+        required-role="output"
+        @update:model-value="update('dcPin', $event)"
       />
     </v-col>
     <v-col cols="12" sm="6">
-      <v-text-field
+      <PinPicker
+        :current-device-id="device?.record.id"
         :model-value="modelValue.resetPin"
-        type="number"
+        :sibling-pins="[modelValue.chipSelectPin, modelValue.dcPin]"
         :label="t('device.fields.resetPin')"
-        density="compact"
-        hide-details="auto"
-        @update:model-value="update('resetPin', Number($event))"
+        required-role="output"
+        allow-unset
+        @update:model-value="update('resetPin', $event)"
       />
     </v-col>
 
@@ -118,6 +119,7 @@ import { useI18n } from 'vue-i18n'
 import type { DeviceRecord } from '@/api/contracts'
 import type { St7735ConfigDraft } from '@/models/devices/st7735/device'
 import SpiChipSelectProbe from '@/components/devices/common/SpiChipSelectProbe.vue'
+import PinPicker from '@/components/devices/common/PinPicker.vue'
 import DisplayDeviceFieldsFrame from '@/components/devices/display/DisplayDeviceFieldsFrame.vue'
 import DisplayOrientationPreview from '@/components/devices/display/DisplayOrientationPreview.vue'
 import { dependencyOptionsForRole } from '@/models/devices/device-model-factory'

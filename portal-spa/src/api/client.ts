@@ -1,4 +1,6 @@
 import type {
+  BoardSettingsResponse,
+  PinOccupancyResponse,
   DeviceCommandRequest,
   DeviceDetailResponse,
   DeviceLayoutResponse,
@@ -304,6 +306,33 @@ export function updateTimeSettings(settings: Partial<TimeSettingsRecord>): Promi
       'Content-Type': 'application/json',
     },
   })
+}
+
+export function fetchBoardSettings(): Promise<BoardSettingsResponse> {
+  if (useMockTransport()) {
+    return import('@/mock/handlers').then(m => m.mockFetchBoardSettings())
+  }
+  return requestJson<BoardSettingsResponse>('/api/system/board')
+}
+
+export function updateBoardSettings(boardId: string): Promise<BoardSettingsResponse> {
+  if (useMockTransport()) {
+    return import('@/mock/handlers').then(m => m.mockUpdateBoardSettings(boardId))
+  }
+  return requestJson<BoardSettingsResponse>('/api/system/board', {
+    method: 'PUT',
+    body: JSON.stringify({ boardId }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+}
+
+export function fetchPinOccupancy(): Promise<PinOccupancyResponse> {
+  if (useMockTransport()) {
+    return import('@/mock/handlers').then(m => m.mockFetchPinOccupancy())
+  }
+  return requestJson<PinOccupancyResponse>('/api/system/pins')
 }
 
 export function fetchPersistenceSettings(): Promise<PersistenceSettingsRecord> {

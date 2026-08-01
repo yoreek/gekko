@@ -1,0 +1,42 @@
+# Classic ESP32 (Xtensa LX6). Heltec WiFi Kit 32, built-in SSD1306 OLED. The
+# OLED's I2C pins are NOT the usual SDA=21/SCL=22 convention -- another
+# board-specific gotcha, distinct from HUZZAH32's. See
+# docs/esp32-board-models.md.
+chip: esp32
+boardId: heltec-wifi-kit-32
+label: "Heltec WiFi Kit 32 (built-in SSD1306 OLED)"
+
+pins:
+  - { gpio: 0,  roles: [output, input, adc2, strapping] }
+  - { gpio: 1,  roles: [output, input] }
+  - { gpio: 2,  roles: [output, input, adc2, strapping] }
+  - { gpio: 3,  roles: [output, input] }
+  - { gpio: 4,  roles: [output, input, adc2], fixedDefaultFor: oledSda, note: "onboard OLED I2C SDA -- dedicated, not the general 21/22 convention" }
+  - { gpio: 5,  roles: [output, input, strapping] }
+  - { gpio: 12, roles: [output, input, adc2, strapping] }
+  - { gpio: 13, roles: [output, input, adc2] }
+  - { gpio: 14, roles: [output, input, adc2] }
+  - { gpio: 15, roles: [output, input, adc2, strapping], fixedDefaultFor: oledScl, note: "onboard OLED I2C SCL -- dedicated, not the general 21/22 convention" }
+  - { gpio: 16, roles: [output, input], note: "onboard OLED hardware reset line -- dedicated, do not reassign" }
+  - { gpio: 17, roles: [output, input] }
+  - { gpio: 18, roles: [output, input], fixedDefaultFor: spiSck }
+  - { gpio: 19, roles: [output, input] }
+  - { gpio: 21, roles: [output, input] }
+  - { gpio: 22, roles: [output, input] }
+  - { gpio: 23, roles: [output, input], fixedDefaultFor: spiMosi }
+  - { gpio: 25, roles: [output, input, adc2] }
+  - { gpio: 26, roles: [output, input, adc2] }
+  - { gpio: 27, roles: [output, input, adc2] }
+  - { gpio: 32, roles: [output, input, adc1] }
+  - { gpio: 33, roles: [output, input, adc1] }
+  - { gpio: 34, roles: [input, adc1] }
+  - { gpio: 35, roles: [input, adc1] }
+  - { gpio: 36, roles: [input, adc1] }
+  - { gpio: 37, roles: [output, input] }
+  - { gpio: 38, roles: [output, input] }
+  - { gpio: 39, roles: [input, adc1] }
+
+# Physical top-to-bottom header order. Source: espboards.dev/esp32/heltec-wifi-kit-32/
+layout:
+  left:  [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 18, 19, 21]
+  right: [22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 37, 38, 39]

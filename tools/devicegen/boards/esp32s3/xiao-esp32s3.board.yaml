@@ -1,0 +1,30 @@
+# ESP32-S3 (Xtensa LX7, dual-core, native USB). Seeed Studio XIAO ESP32-S3
+# (Sense variant adds camera+mic on 2 extra reserved GPIO, not listed here).
+# Thumb-sized (21x17.5mm) -- far fewer usable pins than the DevKitC-1 despite
+# the same chip, purely a form-factor consequence. See
+# docs/esp32-board-models.md.
+chip: esp32s3
+boardId: xiao-esp32s3
+label: "Seeed Studio XIAO ESP32-S3"
+
+pins:
+  - { gpio: 1,  roles: [output, input, adc1] }
+  - { gpio: 2,  roles: [output, input, adc1] }
+  - { gpio: 3,  roles: [output, input, adc1] }
+  - { gpio: 4,  roles: [output, input, adc1], fixedDefaultFor: i2cSda }
+  - { gpio: 5,  roles: [output, input, adc1], fixedDefaultFor: i2cScl }
+  - { gpio: 6,  roles: [output, input, adc1] }
+  - { gpio: 7,  roles: [output, input, adc1] }
+  - { gpio: 8,  roles: [output, input, adc1] }
+  - { gpio: 9,  roles: [output, input, adc1] }
+  - { gpio: 43, roles: [output, input], note: "U0 UART TX" }
+  - { gpio: 44, roles: [output, input], note: "U0 UART RX" }
+  # Only 11 GPIO exposed on the 14-pin header; UART/I2C/SPI/I2S all multiplex
+  # over the same pins rather than having separate dedicated lines. Onboard
+  # user LED, charge LED, reset button, and boot button are fixed and not
+  # exposed as usable GPIO at all.
+
+# Physical top-to-bottom header order. Source: espboards.dev/esp32/xiao-esp32s3/
+layout:
+  left:  [1, 2, 3, 4, 5, 6, 43]
+  right: ["5V", GND, "3V3", 9, 8, 7, 44]

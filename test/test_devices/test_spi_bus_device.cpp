@@ -87,7 +87,7 @@ public:
     uint8_t lastHost{0};
     uint8_t lastSckPin{0};
     uint8_t lastMosiPin{0};
-    uint8_t lastMisoPin{kSpiBusMisoUnset};
+    uint8_t lastMisoPin{kGpioPinUnset};
     uint32_t lastClockHz{0};
     uint8_t lastDataMode{0};
     uint8_t lastBitOrder{0};
@@ -135,7 +135,7 @@ struct FixedDeviceIdSource final : public IDeviceIdSource {
 };
 
 SpiBusDeviceConfigV2 makeConfig(uint8_t host = kSpiBusHostVspi, uint8_t sckPin = 18U, uint8_t mosiPin = 23U,
-                                uint8_t misoPin = kSpiBusMisoUnset) {
+                                uint8_t misoPin = kGpioPinUnset) {
     SpiBusDeviceConfigV2 config{};
     config.enabled = 1U;
     std::snprintf(config.name, sizeof(config.name), "%s", "spi-bus");
@@ -191,7 +191,7 @@ DeviceCreateRequest makeCreateRequest() {
 } // namespace
 
 void test_spi_bus_config_codec_json_and_validation() {
-    const SpiBusDeviceConfigV2 config = makeConfig(kSpiBusHostHspi, 18U, 23U, kSpiBusMisoUnset);
+    const SpiBusDeviceConfigV2 config = makeConfig(kSpiBusHostHspi, 18U, 23U, kGpioPinUnset);
     const BoundedBlob<kMaxDeviceConfigBytes> payload = encodePayload(config);
 
     SpiBusDeviceConfigV2 decoded{};
@@ -257,7 +257,7 @@ void test_spi_bus_config_migrates_legacy_v1_blob() {
 
     SpiBusDeviceConfigV2 migratedUnset{};
     TEST_ASSERT_TRUE(decodeSpiBusDeviceConfig(bufferUnset, sizeUnset, migratedUnset));
-    TEST_ASSERT_EQUAL_UINT8(kSpiBusMisoUnset, migratedUnset.misoPin);
+    TEST_ASSERT_EQUAL_UINT8(kGpioPinUnset, migratedUnset.misoPin);
 }
 
 void test_spi_bus_api_adapter_schema_smoke_and_runtime_serialization() {
@@ -303,7 +303,7 @@ void test_spi_bus_api_adapter_partial_update_preserves_pins() {
     // assertions cannot pass by accident if the merge fix regresses and the fields are silently
     // reset to their struct defaults instead of the runtime's current pins.
     FakeSpiBusDriver driver;
-    SpiBusDevice runtime(makeConfig(kSpiBusHostHspi, 14U, 13U, kSpiBusMisoUnset), driver);
+    SpiBusDevice runtime(makeConfig(kSpiBusHostHspi, 14U, 13U, kGpioPinUnset), driver);
 
     DeviceConfigUpdateRequest request{};
     const char* error = nullptr;
@@ -337,7 +337,7 @@ void test_spi_runtime_lifecycle_transactions_and_duplicate_cs_detection() {
     TEST_ASSERT_EQUAL_UINT8(kSpiBusHostVspi, driver.lastHost);
     TEST_ASSERT_EQUAL_UINT8(18U, driver.lastSckPin);
     TEST_ASSERT_EQUAL_UINT8(23U, driver.lastMosiPin);
-    TEST_ASSERT_EQUAL_UINT8(kSpiBusMisoUnset, driver.lastMisoPin);
+    TEST_ASSERT_EQUAL_UINT8(kGpioPinUnset, driver.lastMisoPin);
     TEST_ASSERT_EQUAL(static_cast<int>(DeviceStatus::Ready), static_cast<int>(bus.status()));
     TEST_ASSERT_EQUAL_UINT32(1U, bus.generation());
 

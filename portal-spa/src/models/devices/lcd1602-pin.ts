@@ -2,6 +2,7 @@ import type { DeviceRecord, DeviceDependencyLink, BaseDeviceConfig, Lcd1602PinOu
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
 import { defaultLcd1602Layout, encodeLcd1602Layout, normalizeLcd1602Layout, type Lcd1602LayoutDraft } from './lcd1602/layout.ts'
+import { normalizePin } from './shared/pin.ts'
 
 // 255 is the firmware's "unset" marker for direct-GPIO HD44780 pins (kHd44780PinUnset), same
 // convention as TM1637_UNSET_PIN.
@@ -19,11 +20,6 @@ export interface Lcd1602PinConfigDraft extends BaseDeviceConfig {
 }
 
 export interface Lcd1602PinCreateDraft extends DeviceCreateDraftBase, Lcd1602PinConfigDraft {}
-
-function normalizePin(value: unknown, fallback: number): number {
-  const numeric = Number(value)
-  return Number.isInteger(numeric) && numeric >= 0 && numeric <= 255 ? numeric : fallback
-}
 
 export class Lcd1602PinDevice extends BaseDevice<Lcd1602PinConfigDraft, Lcd1602PinCreateDraft, Lcd1602PinOutputSnapshot> {
   static readonly TYPE_ID = 34 as const
@@ -61,13 +57,13 @@ export class Lcd1602PinDevice extends BaseDevice<Lcd1602PinConfigDraft, Lcd1602P
     return {
       ...normalizeBaseDeviceConfig(raw, defaults),
       deps: rawDeps,
-      rsPin: normalizePin(raw.rsPin, defaults.rsPin),
-      ePin: normalizePin(raw.ePin, defaults.ePin),
-      d4Pin: normalizePin(raw.d4Pin, defaults.d4Pin),
-      d5Pin: normalizePin(raw.d5Pin, defaults.d5Pin),
-      d6Pin: normalizePin(raw.d6Pin, defaults.d6Pin),
-      d7Pin: normalizePin(raw.d7Pin, defaults.d7Pin),
-      backlightPin: normalizePin(raw.backlightPin, defaults.backlightPin),
+      rsPin: normalizePin(raw.rsPin, defaults.rsPin, 'output'),
+      ePin: normalizePin(raw.ePin, defaults.ePin, 'output'),
+      d4Pin: normalizePin(raw.d4Pin, defaults.d4Pin, 'output'),
+      d5Pin: normalizePin(raw.d5Pin, defaults.d5Pin, 'output'),
+      d6Pin: normalizePin(raw.d6Pin, defaults.d6Pin, 'output'),
+      d7Pin: normalizePin(raw.d7Pin, defaults.d7Pin, 'output'),
+      backlightPin: normalizePin(raw.backlightPin, defaults.backlightPin, 'output'),
       layout: normalizeLcd1602Layout(raw.layout ?? defaults.layout),
     }
   }

@@ -679,10 +679,12 @@ DeviceMutationResult DeviceRegistry::updateConfigAndDeps(DeviceId deviceId, cons
     if (updatePlan.endOldConfig) {
         currentRuntime->end(now);
     }
+    currentRuntime->releaseGpioPins(pinOwner_);
     if (!currentRuntime->applyConfig(configBlob, now)) {
         result.validation = {DeviceError::InvalidConfig, "device config is invalid"};
         return result;
     }
+    currentRuntime->claimGpioPins(pinOwner_);
     currentRuntime->bindDeviceIdentity(record, configBlob);
     if (dependenciesChanged) {
         for (uint8_t index = 0; index < oldDependencyCount; ++index) {
@@ -930,6 +932,7 @@ DeviceMutationResult DeviceRegistry::remove(DeviceId deviceId, uint32_t now, Dev
             }
         }
     }
+    currentRuntime->releaseGpioPins(pinOwner_);
     clearRuntime(deviceId);
 
     if (policy == DevicePersistencePolicy::Immediate) {
@@ -1831,7 +1834,9 @@ DeviceValidationResult DeviceRegistry::reloadRuntimeFor(DeviceRuntimeMap& target
             }
         }
     }
+    IDeviceRuntime* loadedRuntime = entry.runtime.get();
     target[record.header.deviceId] = std::move(entry);
+    loadedRuntime->claimGpioPins(pinOwner_);
     return {};
 }
 

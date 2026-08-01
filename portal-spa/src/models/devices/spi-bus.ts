@@ -2,6 +2,7 @@ import type { BaseDeviceConfig, DeviceRecord, SpiBusRuntimeSnapshot } from '../.
 import type { DeviceCreateDraftBase } from './base.ts'
 import type { DeviceRole } from '../device-type-ids.ts'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig } from './base-device.ts'
+import { normalizePin } from './shared/pin.ts'
 
 export interface SpiBusConfigDraft extends BaseDeviceConfig {
   host: number
@@ -44,9 +45,9 @@ export class SpiBusDevice extends BaseDevice<SpiBusConfigDraft, SpiBusCreateDraf
     return {
       ...normalizeBaseDeviceConfig(raw, defaults),
       host: normalizeNumber(raw.host, defaults.host),
-      sckPin: normalizeNumber(raw.sckPin, defaults.sckPin),
-      mosiPin: normalizeNumber(raw.mosiPin, defaults.mosiPin),
-      misoPin: normalizeNumber(raw.misoPin, defaults.misoPin),
+      sckPin: normalizePin(raw.sckPin, defaults.sckPin, 'output'),
+      mosiPin: normalizePin(raw.mosiPin, defaults.mosiPin, 'output'),
+      misoPin: normalizePin(raw.misoPin, defaults.misoPin, 'input'),
     }
   }
 

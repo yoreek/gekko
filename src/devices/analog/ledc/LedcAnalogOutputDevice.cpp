@@ -70,6 +70,14 @@ DeviceTypeDescriptor LedcAnalogOutputDevice::descriptor() {
     return descriptor;
 }
 
+void LedcAnalogOutputDevice::claimGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.pin, deviceId());
+}
+
+void LedcAnalogOutputDevice::releaseGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.pin, 0);
+}
+
 std::unique_ptr<IDeviceRuntime> LedcAnalogOutputDevice::createRuntime(const DeviceRegistryEntry& record,
                                                                       const DeviceConfigBlob& configBlob) {
     return std::unique_ptr<IDeviceRuntime>(new LedcAnalogOutputDevice(record, configBlob));

@@ -2,6 +2,7 @@ import type { DeviceRecord, DeviceDependencyLink, BaseDeviceConfig, Lcd2004PinOu
 import type { DeviceCreateDraftBase } from '@/models/devices/base'
 import { BaseDevice, defaultBaseDeviceConfig, normalizeBaseDeviceConfig, encodeBaseDeviceConfig } from './base-device.ts'
 import { defaultLcd2004Layout, encodeLcd2004Layout, normalizeLcd2004Layout, type Lcd2004LayoutDraft } from './lcd2004/layout.ts'
+import { normalizePin } from './shared/pin.ts'
 
 // 255 is the firmware's "unset" marker for direct-GPIO HD44780 pins (kHd44780PinUnset), same
 // convention as TM1637_UNSET_PIN / LCD1602_PIN_UNSET.
@@ -19,11 +20,6 @@ export interface Lcd2004PinConfigDraft extends BaseDeviceConfig {
 }
 
 export interface Lcd2004PinCreateDraft extends DeviceCreateDraftBase, Lcd2004PinConfigDraft {}
-
-function normalizePin(value: unknown, fallback: number): number {
-  const numeric = Number(value)
-  return Number.isInteger(numeric) && numeric >= 0 && numeric <= 255 ? numeric : fallback
-}
 
 export class Lcd2004PinDevice extends BaseDevice<Lcd2004PinConfigDraft, Lcd2004PinCreateDraft, Lcd2004PinOutputSnapshot> {
   static readonly TYPE_ID = 35 as const
@@ -61,13 +57,13 @@ export class Lcd2004PinDevice extends BaseDevice<Lcd2004PinConfigDraft, Lcd2004P
     return {
       ...normalizeBaseDeviceConfig(raw, defaults),
       deps: rawDeps,
-      rsPin: normalizePin(raw.rsPin, defaults.rsPin),
-      ePin: normalizePin(raw.ePin, defaults.ePin),
-      d4Pin: normalizePin(raw.d4Pin, defaults.d4Pin),
-      d5Pin: normalizePin(raw.d5Pin, defaults.d5Pin),
-      d6Pin: normalizePin(raw.d6Pin, defaults.d6Pin),
-      d7Pin: normalizePin(raw.d7Pin, defaults.d7Pin),
-      backlightPin: normalizePin(raw.backlightPin, defaults.backlightPin),
+      rsPin: normalizePin(raw.rsPin, defaults.rsPin, 'output'),
+      ePin: normalizePin(raw.ePin, defaults.ePin, 'output'),
+      d4Pin: normalizePin(raw.d4Pin, defaults.d4Pin, 'output'),
+      d5Pin: normalizePin(raw.d5Pin, defaults.d5Pin, 'output'),
+      d6Pin: normalizePin(raw.d6Pin, defaults.d6Pin, 'output'),
+      d7Pin: normalizePin(raw.d7Pin, defaults.d7Pin, 'output'),
+      backlightPin: normalizePin(raw.backlightPin, defaults.backlightPin, 'output'),
       layout: normalizeLcd2004Layout(raw.layout ?? defaults.layout),
     }
   }

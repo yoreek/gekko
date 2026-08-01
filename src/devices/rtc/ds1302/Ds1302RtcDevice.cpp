@@ -84,6 +84,18 @@ DeviceTypeDescriptor Ds1302RtcDevice::descriptor() {
     return descriptor;
 }
 
+void Ds1302RtcDevice::claimGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.clkPin, deviceId());
+    setGpioPinOwner(pins, config_.dataPin, deviceId());
+    setGpioPinOwner(pins, config_.rstPin, deviceId());
+}
+
+void Ds1302RtcDevice::releaseGpioPins(DeviceId* pins) const {
+    setGpioPinOwner(pins, config_.clkPin, 0);
+    setGpioPinOwner(pins, config_.dataPin, 0);
+    setGpioPinOwner(pins, config_.rstPin, 0);
+}
+
 std::unique_ptr<IDeviceRuntime> Ds1302RtcDevice::createRuntime(const DeviceRegistryEntry& record, const DeviceConfigBlob& configBlob) {
     return std::unique_ptr<IDeviceRuntime>(new Ds1302RtcDevice(record, configBlob));
 }

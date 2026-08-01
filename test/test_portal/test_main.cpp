@@ -42,6 +42,7 @@ void test_schedulepresets_request_schema_smoke();
 void test_devices_index_response_schema_smoke();
 void test_device_response_schema_smoke();
 void test_device_revision_response_schema_smoke();
+void test_system_pins_response_schema_smoke();
 void test_ws_message_builders_create_compact_envelopes();
 void test_ws_manager_attaches_and_detaches_from_dispatcher();
 void test_ws_manager_receives_device_events_when_attached();
@@ -101,6 +102,7 @@ int main(int, char**) {
     RUN_TEST(test_devices_index_response_schema_smoke);
     RUN_TEST(test_device_response_schema_smoke);
     RUN_TEST(test_device_revision_response_schema_smoke);
+    RUN_TEST(test_system_pins_response_schema_smoke);
     RUN_TEST(test_ws_message_builders_create_compact_envelopes);
     RUN_TEST(test_ws_manager_attaches_and_detaches_from_dispatcher);
     RUN_TEST(test_ws_manager_receives_device_events_when_attached);

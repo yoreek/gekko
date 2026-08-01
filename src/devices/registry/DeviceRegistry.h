@@ -114,6 +114,10 @@ public:
     uint32_t registryRevision() const;
     bool hasPendingPersistence() const;
 
+    const DeviceId* pinOwners() const {
+        return pinOwner_;
+    }
+
     std::vector<DeviceRegistryEntry> list() const;
     template <typename Fn> void forEachRuntime(Fn&& visitor) const {
         DeviceRegistryLockGuard guard(mutex_);
@@ -195,6 +199,10 @@ private:
     DeviceRuntimeMap runtimes_{};
     uint32_t registryRevision_{0};
     mutable DeviceRegistryMutex mutex_{};
+    // 0 = free, else the owning DeviceId. Indexed directly by raw GPIO number, rebuilt from
+    // scratch by reloadRuntimeFor() on every device load (including controller boot), kept in
+    // sync incrementally on config update and removal. See docs/gpio-pin-occupancy.md.
+    DeviceId pinOwner_[kGpioPinTableSize]{};
 };
 
 } // namespace ewfm
