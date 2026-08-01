@@ -12,6 +12,12 @@ pins:
   - { gpio: 3,  roles: [output, input], note: "U0 UART RX, wired to onboard CH340C" }
   - { gpio: 4,  roles: [output, input, adc2] }
   - { gpio: 5,  roles: [output, input, strapping], fixedDefaultFor: spiChipSelect }
+  - { gpio: 6,  roles: [reservedFlash], note: "physically present on this board's bonus-pin inner header but wired to internal SPI flash -- do not use" }
+  - { gpio: 7,  roles: [reservedFlash], note: "physically present on this board's bonus-pin inner header but wired to internal SPI flash -- do not use" }
+  - { gpio: 8,  roles: [reservedFlash], note: "physically present on this board's bonus-pin inner header but wired to internal SPI flash -- do not use" }
+  - { gpio: 9,  roles: [reservedFlash], note: "physically present on this board's bonus-pin inner header but wired to internal SPI flash -- do not use" }
+  - { gpio: 10, roles: [reservedFlash], note: "physically present on this board's bonus-pin inner header but wired to internal SPI flash -- do not use" }
+  - { gpio: 11, roles: [reservedFlash], note: "physically present on this board's bonus-pin inner header but wired to internal SPI flash -- do not use" }
   - { gpio: 12, roles: [output, input, adc2, strapping] }
   - { gpio: 13, roles: [output, input, adc2] }
   - { gpio: 14, roles: [output, input, adc2] }
@@ -33,9 +39,8 @@ pins:
   - { gpio: 36, roles: [input, adc1] }
   - { gpio: 39, roles: [input, adc1] }
 
-# Physical top-to-bottom header order (GPIO positions only -- source didn't confirm
-# exact power/ground pin positions, so those are omitted rather than guessed).
-# Source: espboards.dev/esp32/d1-mini32/
-layout:
-  left:  [2, 3, 1, 21, 22, 5, 23, 19, 18, 36, 39, 32, 33]
-  right: [25, 26, 27, 14, 12, 13, 15, 4, 16, 17, 0, 34, 35]
+# No layout: section -- espboards.dev/esp32/d1-mini32/'s own pinout diagram shows this
+# board has FOUR physical pin columns per side (an outer row matching the ESP8266 D1
+# Mini footprint, plus an inner row of "bonus" ESP32-only GPIOs), not the simple two
+# columns BoardPinoutDiagram.vue can render -- forcing it into left/right would
+# misrepresent which pins are physically adjacent.

@@ -31,7 +31,9 @@ pins:
   - { gpio: 22, roles: [output, input] }
   - { gpio: 23, roles: [output, input] }
 
-# Physical top-to-bottom header order. Source: espboards.dev/esp32/esp32-c6-devkitc-1/
+# Physical top-to-bottom header order, cross-checked against Espressif's own official
+# pinout diagram -- one correction from the espboards.dev text version: the board
+# silkscreen says RST, not EN.
 layout:
-  left:  ["3V3", EN, 4, 5, 6, 7, 0, 1, 8, 10, 11, 2, 3, "5V", GND, NC]
+  left:  ["3V3", RST, 4, 5, 6, 7, 0, 1, 8, 10, 11, 2, 3, "5V", GND, NC]
   right: [GND, 16, 17, 15, 23, 22, 21, 20, 19, 18, 9, GND, 13, 12, GND, NC]

@@ -45,6 +45,12 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 3, roles: ['output', 'input'], note: 'U0 UART RX, wired to onboard CH340C' },
       { gpio: 4, roles: ['output', 'input', 'adc2'] },
       { gpio: 5, roles: ['output', 'input', 'strapping'], fixedDefaultFor: 'spiChipSelect' },
+      { gpio: 6, roles: ['reservedFlash'], note: 'physically present on this board\'s bonus-pin inner header but wired to internal SPI flash -- do not use' },
+      { gpio: 7, roles: ['reservedFlash'], note: 'physically present on this board\'s bonus-pin inner header but wired to internal SPI flash -- do not use' },
+      { gpio: 8, roles: ['reservedFlash'], note: 'physically present on this board\'s bonus-pin inner header but wired to internal SPI flash -- do not use' },
+      { gpio: 9, roles: ['reservedFlash'], note: 'physically present on this board\'s bonus-pin inner header but wired to internal SPI flash -- do not use' },
+      { gpio: 10, roles: ['reservedFlash'], note: 'physically present on this board\'s bonus-pin inner header but wired to internal SPI flash -- do not use' },
+      { gpio: 11, roles: ['reservedFlash'], note: 'physically present on this board\'s bonus-pin inner header but wired to internal SPI flash -- do not use' },
       { gpio: 12, roles: ['output', 'input', 'adc2', 'strapping'] },
       { gpio: 13, roles: ['output', 'input', 'adc2'] },
       { gpio: 14, roles: ['output', 'input', 'adc2'] },
@@ -66,10 +72,6 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 36, roles: ['input', 'adc1'] },
       { gpio: 39, roles: ['input', 'adc1'] },
     ],
-    layout: {
-      left: [2, 3, 1, 21, 22, 5, 23, 19, 18, 36, 39, 32, 33],
-      right: [25, 26, 27, 14, 12, 13, 15, 4, 16, 17, 0, 34, 35],
-    },
   },
   'esp32-cam': {
     chip: 'esp32',
@@ -78,6 +80,7 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
     pins: [
       { gpio: 0, roles: ['output', 'input', 'strapping'] },
       { gpio: 1, roles: ['output', 'input'], note: 'UART TX -- also the only way to flash/log without an external FTDI adapter (no onboard USB-serial chip)' },
+      { gpio: 2, roles: ['output', 'input', 'strapping'], note: 'microSD D0 if the SD slot is used' },
       { gpio: 3, roles: ['output', 'input'], note: 'UART RX -- also the only way to flash/log without an external FTDI adapter (no onboard USB-serial chip)' },
       { gpio: 4, roles: ['output', 'input'], note: 'shared with the onboard flash LED; also microSD D1 if the SD slot is used' },
       { gpio: 12, roles: ['output', 'input', 'strapping'], note: 'microSD D2 if the SD slot is used' },
@@ -86,6 +89,10 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 15, roles: ['output', 'input', 'strapping'], note: 'microSD CMD if the SD slot is used' },
       { gpio: 16, roles: ['output', 'input'], note: 'only pin left free if the microSD slot is in use; not an RTC-capable pin (cannot be used for deep-sleep wake)' },
     ],
+    layout: {
+      left: ['5V', 'GND', 12, 13, 15, 14, 2, 4],
+      right: ['3V3', 16, 0, 'GND', 'VCC', 3, 1, 'GND'],
+    },
   },
   'esp32-devkit-v1': {
     chip: 'esp32',
@@ -120,8 +127,8 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 39, roles: ['input', 'adc1'] },
     ],
     layout: {
-      left: ['EN', 'GND', '5V', 'GND', '3V3', 1, 2, 3, 4, 5, 12, 13, 14, 15, 16],
-      right: [17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 39],
+      left: ['EN', 36, 39, 34, 35, 32, 33, 25, 26, 27, 14, 12, 13, 'GND', 'VIN'],
+      right: [23, 22, 1, 3, 21, 19, 18, 5, 17, 16, 4, 2, 15, 'GND', '3V3'],
     },
   },
   'heltec-wifi-kit-32': {
@@ -159,8 +166,8 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 39, roles: ['input', 'adc1'] },
     ],
     layout: {
-      left: [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 18, 19, 21],
-      right: [22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 37, 38, 39],
+      left: ['GND', '3V3', 'Vext', 'RST', 13, 12, 14, 27, 26, 25, 33, 32, 35, 34, 39, 38, 37, 36],
+      right: ['GND', '5V', '3V3', 'Vext', 1, 3, 15, 2, 0, 4, 16, 17, 5, 18, 23, 19, 22, 21],
     },
   },
   'huzzah32-feather': {
@@ -194,6 +201,10 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 36, roles: ['input', 'adc1'] },
       { gpio: 39, roles: ['input', 'adc1'] },
     ],
+    layout: {
+      left: ['RST', '3V3', 'NC', 'GND', 26, 25, 34, 39, 36, 4, 5, 18, 19, 16, 17, 21],
+      right: ['VBAT', 'EN', 'VBUS', 13, 12, 27, 33, 15, 32, 14, 22, 23],
+    },
   },
   'lolin32': {
     chip: 'esp32',
@@ -228,8 +239,8 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 39, roles: ['input', 'adc1'] },
     ],
     layout: {
-      left: [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 'GND', 'VIN'],
-      right: ['3V3', 'EN', 18, 19, 21, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 39],
+      left: [36, 39, 'EN', 34, 35, 32, 33, 25, 26, 27, 14, 12, 'GND'],
+      right: ['3V3', 22, 19, 23, 18, 5, 17, 16, 4, 0, 2, 15, 13],
     },
   },
   'lolin32-lite': {
@@ -265,8 +276,8 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 39, roles: ['input', 'adc1'] },
     ],
     layout: {
-      left: ['5V', 'GND', '3V3', 0, 2, 4, 5, 12, 13, 14, 15, 16, 17],
-      right: [18, 19, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 39],
+      left: [36, 39, 'EN', 34, 35, 32, 33, 25, 26, 27, 14, 12, 'GND'],
+      right: ['3V3', 22, 19, 23, 18, 5, 17, 16, 4, 0, 2, 15, 13],
     },
   },
   'nodemcu-32s': {
@@ -308,8 +319,8 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 39, roles: ['input', 'adc1'] },
     ],
     layout: {
-      left: ['3V3', 'EN', 'GND', 9, 10, 11, '5V', 'GND', 'GND', 8, 7, 6, 2, 3, 1, 21, 22, 5, 23],
-      right: [19, 18, 36, 39, 32, 33, 25, 26, 27, 14, 12, 13, 15, 4, 16, 17, 0, 34, 35],
+      left: ['3V3', 'EN', 36, 39, 34, 35, 32, 33, 25, 26, 27, 14, 12, 'GND', 13, 9, 10, 11, '5V'],
+      right: ['GND', 23, 22, 1, 3, 21, 'GND', 19, 18, 5, 17, 16, 4, 0, 2, 15, 8, 7, 6],
     },
   },
   'ttgo-t-display': {
@@ -332,8 +343,21 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 21, roles: ['output', 'input'], fixedDefaultFor: 'i2cSda' },
       { gpio: 22, roles: ['output', 'input'], fixedDefaultFor: 'i2cScl' },
       { gpio: 23, roles: ['output', 'input'], note: 'onboard display TFT_RST -- dedicated, do not reassign' },
+      { gpio: 25, roles: ['output', 'input', 'adc2'] },
+      { gpio: 26, roles: ['output', 'input', 'adc2'] },
+      { gpio: 27, roles: ['output', 'input', 'adc2'] },
+      { gpio: 32, roles: ['output', 'input', 'adc1'] },
+      { gpio: 33, roles: ['output', 'input', 'adc1'] },
       { gpio: 35, roles: ['input', 'adc1'], note: 'wired to BUTTON2; input-only, so button-only use, cannot drive it' },
+      { gpio: 36, roles: ['input', 'adc1'] },
+      { gpio: 37, roles: ['input', 'adc1'] },
+      { gpio: 38, roles: ['input', 'adc1'] },
+      { gpio: 39, roles: ['input', 'adc1'] },
     ],
+    layout: {
+      left: ['GND', 'GND', 21, 22, 17, 2, 15, 13, 12, 'GND', 'GND', '3V3'],
+      right: ['3V3', 36, 37, 38, 39, 32, 33, 25, 26, 27, 'GND', '5V'],
+    },
   },
   'wt32-eth01': {
     chip: 'esp32',
@@ -407,8 +431,8 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 21, roles: ['output', 'input'] },
     ],
     layout: {
-      left: ['5V', 'GND', '3V3', 0, 1, 2, 3, 4],
-      right: [5, 6, 7, 8, 9, 10, 21, 20],
+      left: [5, 6, 7, 8, 9, 10, 20, 21],
+      right: ['5V', 'GND', '3V3', 4, 3, 2, 1, 0],
     },
   },
   'xiao-esp32c3': {
@@ -463,7 +487,7 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 23, roles: ['output', 'input'] },
     ],
     layout: {
-      left: ['3V3', 'EN', 4, 5, 6, 7, 0, 1, 8, 10, 11, 2, 3, '5V', 'GND', 'NC'],
+      left: ['3V3', 'RST', 4, 5, 6, 7, 0, 1, 8, 10, 11, 2, 3, '5V', 'GND', 'NC'],
       right: ['GND', 16, 17, 15, 23, 22, 21, 20, 19, 18, 9, 'GND', 13, 12, 'GND', 'NC'],
     },
   },
@@ -495,10 +519,6 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 22, roles: ['output', 'input'], note: 'U0 UART TX' },
       { gpio: 23, roles: ['output', 'input'], note: 'U0 UART RX' },
     ],
-    layout: {
-      left: ['5V', 'GND', '3V3', 'TX', 'RX', 0, 1, 2, 3, 4, 5, 6, 7],
-      right: [8, 9, 12, 13, 14, 15, 18, 19, 20, 21, 22, 23],
-    },
   },
   'xiao-esp32c6': {
     chip: 'esp32c6',
@@ -568,7 +588,7 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
     ],
     layout: {
       left: ['3V3', 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, '5V', 'GND'],
-      right: ['GND', 'EN', 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 26, 21, 20, 19, 18],
+      right: ['GND', 'RST', 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 26, 21, 20, 19, 18],
     },
   },
   'qtpy-esp32s2': {
@@ -594,8 +614,8 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 42, roles: ['output', 'input'] },
     ],
     layout: {
-      left: [5, 6, 7, 8, 9, 16, 17, 18],
-      right: [35, 36, 37, 38, 39, 40, 41, 42],
+      left: [18, 17, 9, 8, 7, 6, 5],
+      right: ['5V', 'GND', '3V3', 35, 37, 36, 16],
     },
   },
   'esp32-s3-devkitc-1': {
@@ -650,8 +670,8 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 48, roles: ['output', 'input'] },
     ],
     layout: {
-      left: ['3V3', '3V3', 'EN', 4, 5, 6, 7, 15, 16, 17, 18, 8, 3, 46, 9, 10, 11, 12, 13, 14, '5V', 'GND'],
-      right: ['GND', 'GND', 43, 44, 1, 2, 42, 41, 40, 39, 38, 37, 36, 35, 0, 45, 48, 47, 21, 20, 19, 'GND'],
+      left: ['3V3', '3V3', 'RST', 4, 5, 6, 7, 15, 16, 17, 18, 8, 3, 46, 9, 10, 11, 12, 13, 14, '5V', 'GND'],
+      right: ['GND', 43, 44, 1, 2, 42, 41, 40, 39, 38, 37, 36, 35, 0, 45, 48, 47, 21, 20, 19, 'GND', 'GND'],
     },
   },
   'freenove-esp32-s3-wroom': {
@@ -659,6 +679,7 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
     boardId: 'freenove-esp32-s3-wroom',
     label: 'Freenove ESP32-S3-WROOM',
     pins: [
+      { gpio: 0, roles: ['output', 'input', 'strapping'] },
       { gpio: 1, roles: ['output', 'input', 'adc1'] },
       { gpio: 2, roles: ['output', 'input', 'adc1'] },
       { gpio: 3, roles: ['output', 'input', 'adc1', 'strapping'] },
@@ -677,11 +698,28 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 16, roles: ['output', 'input', 'adc2'] },
       { gpio: 17, roles: ['output', 'input', 'adc2'] },
       { gpio: 18, roles: ['output', 'input', 'adc2'] },
+      { gpio: 19, roles: ['output', 'input'], note: 'native USB D- -- avoid reassigning if the native USB port is used' },
+      { gpio: 20, roles: ['output', 'input'], note: 'native USB D+ -- avoid reassigning if the native USB port is used' },
       { gpio: 21, roles: ['output', 'input'] },
       { gpio: 35, roles: ['output', 'input'], note: 'unavailable if the module\'s OPI PSRAM is in use; free on Quad-SPI/no-PSRAM variants -- verify per module' },
       { gpio: 36, roles: ['output', 'input'], note: 'unavailable if the module\'s OPI PSRAM is in use; free on Quad-SPI/no-PSRAM variants -- verify per module' },
       { gpio: 37, roles: ['output', 'input'], note: 'unavailable if the module\'s OPI PSRAM is in use; free on Quad-SPI/no-PSRAM variants -- verify per module' },
+      { gpio: 38, roles: ['output', 'input'], note: 'onboard microSD card SD_CMD -- dedicated, do not reassign if the SD slot is used' },
+      { gpio: 39, roles: ['output', 'input'], note: 'onboard microSD card SD_CLK -- dedicated, do not reassign if the SD slot is used' },
+      { gpio: 40, roles: ['output', 'input'], note: 'onboard microSD card SD_DATA -- dedicated, do not reassign if the SD slot is used' },
+      { gpio: 41, roles: ['output', 'input'] },
+      { gpio: 42, roles: ['output', 'input'] },
+      { gpio: 43, roles: ['output', 'input'], note: 'U0 UART TX -- also drives the onboard LED' },
+      { gpio: 44, roles: ['output', 'input'], note: 'U0 UART RX -- also drives the onboard LED' },
+      { gpio: 45, roles: ['output', 'input', 'strapping'] },
+      { gpio: 46, roles: ['input'], note: 'input-only, fixed pull-down' },
+      { gpio: 47, roles: ['output', 'input'] },
+      { gpio: 48, roles: ['output', 'input'], note: 'onboard addressable RGB LED (WS2812)' },
     ],
+    layout: {
+      left: ['3V3', 'RST', 4, 5, 6, 7, 15, 16, 17, 18, 8, 3, 46, 9, 10, 11, 12, 13, 14, '5V'],
+      right: [43, 44, 1, 2, 42, 41, 40, 39, 38, 37, 36, 35, 0, 45, 48, 47, 21, 20, 19, 'GND'],
+    },
   },
   'lilygo-t-display-s3': {
     chip: 'esp32s3',
@@ -705,8 +743,8 @@ export const BOARD_CATALOG: Record<string, BoardDefinition> = {
       { gpio: 44, roles: ['output', 'input'], note: 'U0 UART RX' },
     ],
     layout: {
-      left: ['3V3', 1, 2, 3, 10, 11, 12, 13, 'GND', '5V'],
-      right: ['GND', 'GND', 43, 44, 18, 17, 21, 16, 'GND', '3V3'],
+      left: ['3V3', 1, 2, 3, 10, 11, 12, 13, 'NC', 'NC', 'GND', '5V'],
+      right: ['GND', 'GND', 43, 44, 18, 17, 21, 16, 'NC', 'GND', 'GND', '3V3'],
     },
   },
   'xiao-esp32s3': {

@@ -60,8 +60,8 @@ constexpr BoardPinCapability kChipPins[] = {
     {34U, kPinRoleInput | kPinRoleAdc1},
     {35U, kPinRoleInput | kPinRoleAdc1},
     {36U, kPinRoleInput | kPinRoleAdc1},
-    {37U, kPinRoleOutput | kPinRoleInput},
-    {38U, kPinRoleOutput | kPinRoleInput},
+    {37U, kPinRoleOutput | kPinRoleInput | kPinRoleAdc1},
+    {38U, kPinRoleOutput | kPinRoleInput | kPinRoleAdc1},
     {39U, kPinRoleInput | kPinRoleAdc1},
 };
 

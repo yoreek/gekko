@@ -22,4 +22,21 @@ pins:
   - { gpio: 21, roles: [output, input], fixedDefaultFor: i2cSda }
   - { gpio: 22, roles: [output, input], fixedDefaultFor: i2cScl }
   - { gpio: 23, roles: [output, input], note: "onboard display TFT_RST -- dedicated, do not reassign" }
+  - { gpio: 25, roles: [output, input, adc2] }
+  - { gpio: 26, roles: [output, input, adc2] }
+  - { gpio: 27, roles: [output, input, adc2] }
+  - { gpio: 32, roles: [output, input, adc1] }
+  - { gpio: 33, roles: [output, input, adc1] }
   - { gpio: 35, roles: [input, adc1], note: "wired to BUTTON2; input-only, so button-only use, cannot drive it" }
+  - { gpio: 36, roles: [input, adc1] }
+  - { gpio: 37, roles: [input, adc1] }
+  - { gpio: 38, roles: [input, adc1] }
+  - { gpio: 39, roles: [input, adc1] }
+
+# Physical top-to-bottom header order, from the espboards.dev/esp32/lilygo-ttgo-t-display-1-14/
+# pinout diagram image -- GPIO25/26/27/32/33/36/37/38/39 above were missing from this file
+# entirely until cross-checking against that image (the onboard-display SPI pin notes below
+# confirmed it's the same board revision).
+layout:
+  left:  [GND, GND, 21, 22, 17, 2, 15, 13, 12, GND, GND, "3V3"]
+  right: ["3V3", 36, 37, 38, 39, 32, 33, 25, 26, 27, GND, "5V"]

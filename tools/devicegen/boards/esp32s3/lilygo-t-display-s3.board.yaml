@@ -24,7 +24,9 @@ pins:
   # The remaining chip GPIO are consumed internally by the onboard display
   # interface and not exposed as general-purpose pins on this board.
 
-# Physical top-to-bottom header order. Source: espboards.dev/esp32/lilygo-t-display-s3/
+# Physical top-to-bottom header order, read directly off the espboards.dev pinout
+# diagram image -- the text version was missing three unpopulated (NC) header
+# positions present in the real image.
 layout:
-  left:  ["3V3", 1, 2, 3, 10, 11, 12, 13, GND, "5V"]
-  right: [GND, GND, 43, 44, 18, 17, 21, 16, GND, "3V3"]
+  left:  ["3V3", 1, 2, 3, 10, 11, 12, 13, NC, NC, GND, "5V"]
+  right: [GND, GND, 43, 44, 18, 17, 21, 16, NC, GND, GND, "3V3"]

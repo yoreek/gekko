@@ -84,11 +84,13 @@ function rowY(index: number): number {
   return 18 + index * rowHeight
 }
 
-// Sequential physical pin numbers, left column top-to-bottom then continuing down the right
-// column -- the numbering convention used by the reference pinout sites this diagram is modeled
-// on (e.g. mischianti.org, lastminuteengineers.com).
+// Sequential physical pin numbers, going around the header like the silkscreen does on
+// every real board checked so far: left column top-to-bottom, then wrapping around the
+// bottom to continue up the right column bottom-to-top (confirmed against official
+// vendor pinout diagrams, e.g. Espressif's ESP32-S2-Saola-1 and ESP32-S3-DevKitC-1).
 function pinNumber(index: number, side: 'left' | 'right'): number {
-  return side === 'left' ? index + 1 : leftEntries.value.length + index + 1
+  if (side === 'left') return index + 1
+  return leftEntries.value.length + rightEntries.value.length - index
 }
 
 function entryLabel(entry: LayoutEntry): string {

@@ -31,3 +31,12 @@ pins:
   - { gpio: 35, roles: [input, adc1], note: "internally wired to a battery-voltage divider (VBAT) -- read-only, do not drive as output" }
   - { gpio: 36, roles: [input, adc1] }
   - { gpio: 39, roles: [input, adc1] }
+
+# Physical top-to-bottom header order, from Adafruit's own official pinout diagram
+# (adafruit.com/products/3405). Standard Feather footprint: 16 pins on one side, 12 on
+# the other. GPIO0/1/3/35 stay in `pins` above but are absent here -- they're not
+# broken out to either header (0/1/3 are used internally by boot button/USB-UART,
+# 35 is a dedicated VBAT-sense pin).
+layout:
+  left:  [RST, "3V3", NC, GND, 26, 25, 34, 39, 36, 4, 5, 18, 19, 16, 17, 21]
+  right: [VBAT, EN, VBUS, 13, 12, 27, 33, 15, 32, 14, 22, 23]

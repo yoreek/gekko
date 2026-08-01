@@ -25,7 +25,11 @@ pins:
   - { gpio: 41, roles: [output, input], fixedDefaultFor: i2cSda }
   - { gpio: 42, roles: [output, input] }
 
-# Physical top-to-bottom header order. Source: espboards.dev/esp32/adafruit-qtpy-esp32s2/
+# Physical top-to-bottom header order, from Adafruit's own official pinout diagram
+# (adafruit.com/5325). GPIO38/39 are wired only to the onboard NeoPixel (not the pin
+# header) and GPIO40/41 only to the STEMMA QT connector -- none of the four are on
+# the 14-pin edge header, so they're correctly absent from this layout (they stay
+# in `pins` above since they're still usable, just not via this header).
 layout:
-  left:  [5, 6, 7, 8, 9, 16, 17, 18]
-  right: [35, 36, 37, 38, 39, 40, 41, 42]
+  left:  [18, 17, 9, 8, 7, 6, 5]
+  right: ["5V", GND, "3V3", 35, 37, 36, 16]

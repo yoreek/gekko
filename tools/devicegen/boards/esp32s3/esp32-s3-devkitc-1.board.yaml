@@ -54,7 +54,10 @@ pins:
   - { gpio: 47, roles: [output, input] }
   - { gpio: 48, roles: [output, input] }
 
-# Physical top-to-bottom header order. Source: espboards.dev/esp32/esp32-s3-devkitc-1/
+# Physical top-to-bottom header order, cross-checked against Espressif's own official
+# v1.1 pinout diagram. Two corrections from the espboards.dev text version: the board
+# silkscreen says RST (not EN), and the right column's double-GND sits at the bottom
+# (near 5V0/GND on the left), not the top.
 layout:
-  left:  ["3V3", "3V3", EN, 4, 5, 6, 7, 15, 16, 17, 18, 8, 3, 46, 9, 10, 11, 12, 13, 14, "5V", GND]
-  right: [GND, GND, 43, 44, 1, 2, 42, 41, 40, 39, 38, 37, 36, 35, 0, 45, 48, 47, 21, 20, 19, GND]
+  left:  ["3V3", "3V3", RST, 4, 5, 6, 7, 15, 16, 17, 18, 8, 3, 46, 9, 10, 11, 12, 13, 14, "5V", GND]
+  right: [GND, 43, 44, 1, 2, 42, 41, 40, 39, 38, 37, 36, 35, 0, 45, 48, 47, 21, 20, 19, GND, GND]
