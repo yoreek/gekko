@@ -168,7 +168,8 @@ void test_device_setup_export_includes_metadata_and_redacts_secret_strings() {
     TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("Aquarium Lamp"), 0).ok());
 
     std::string bundle;
-    TEST_ASSERT_TRUE(DeviceSetupTransferCodec::writeBundle(bundle, registry, transferAdapters(), registry.registryRevision()));
+    TEST_ASSERT_TRUE(
+        DeviceSetupTransferCodec::writeBundle(bundle, registry, transferAdapters(), registry.registryRevision(), "nodemcu-32s"));
     size_t firstLineEnd = bundle.find('\n');
     TEST_ASSERT_TRUE(firstLineEnd != std::string::npos);
     DynamicJsonDocument envelopeDoc(512);
@@ -185,6 +186,38 @@ void test_device_setup_export_includes_metadata_and_redacts_secret_strings() {
     TEST_ASSERT_EQUAL(std::string::npos, bundle.find("password"));
 }
 
+void test_device_setup_transfer_round_trips_chip_and_board_id() {
+    MemoryConfigStorage storage;
+    FixedDeviceIdSource idSource{1001};
+    DeviceTypeRegistry typeRegistry = DeviceTypeRegistry::withDefaults();
+    DeviceRegistryStore registryStore(storage);
+    DeviceRegistry registry(registryStore, typeRegistry, idSource);
+    TEST_ASSERT_TRUE(registry.begin(0).ok());
+    TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("Aquarium Lamp"), 0).ok());
+
+    std::string bundle;
+    TEST_ASSERT_TRUE(
+        DeviceSetupTransferCodec::writeBundle(bundle, registry, transferAdapters(), registry.registryRevision(), "heltec-wifi-kit-32"));
+    TEST_ASSERT_TRUE(bundle.find("\"boardId\":\"heltec-wifi-kit-32\"") != std::string::npos);
+
+    const char* path = "/tmp/device_setup_transfer_board_id.ndjson";
+    writeTextFile(path, bundle);
+    const DeviceSetupTransferCodec::ParseResult parsed = DeviceSetupTransferCodec::parseFile(path, bundle.size(), transferAdapters());
+    TEST_ASSERT_TRUE_MESSAGE(parsed.ok(), parsed.errorMessage());
+    TEST_ASSERT_EQUAL_STRING("heltec-wifi-kit-32", parsed.boardId.c_str());
+    TEST_ASSERT_FALSE(parsed.chip.empty());
+}
+
+void test_device_setup_transfer_defaults_board_id_when_bundle_predates_field() {
+    const std::string bundle = "{\"kind\":\"transfer_envelope\",\"transferSchemaVersion\":2,\"deviceCount\":0}\n";
+    const char* path = "/tmp/device_setup_transfer_no_board_id.ndjson";
+    writeTextFile(path, bundle);
+    const DeviceSetupTransferCodec::ParseResult parsed = DeviceSetupTransferCodec::parseFile(path, bundle.size(), transferAdapters());
+    TEST_ASSERT_TRUE_MESSAGE(parsed.ok(), parsed.errorMessage());
+    TEST_ASSERT_TRUE(parsed.boardId.empty());
+    TEST_ASSERT_TRUE(parsed.chip.empty());
+}
+
 void test_device_setup_export_round_trips_back_into_registry() {
     MemoryConfigStorage storage;
     FixedDeviceIdSource idSource{1001};
@@ -195,7 +228,8 @@ void test_device_setup_export_round_trips_back_into_registry() {
     TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("Aquarium Lamp"), 0).ok());
 
     std::string bundle;
-    TEST_ASSERT_TRUE(DeviceSetupTransferCodec::writeBundle(bundle, registry, transferAdapters(), registry.registryRevision()));
+    TEST_ASSERT_TRUE(
+        DeviceSetupTransferCodec::writeBundle(bundle, registry, transferAdapters(), registry.registryRevision(), "nodemcu-32s"));
 
     const char* path = "/tmp/device_setup_transfer_bundle.ndjson";
     writeTextFile(path, bundle);
@@ -257,7 +291,8 @@ void test_device_setup_transfer_round_trips_previously_missing_types() {
     const DeviceId displayId = createFromJson(registry, "ssd1306", displayJson.c_str());
 
     std::string bundle;
-    TEST_ASSERT_TRUE(DeviceSetupTransferCodec::writeBundle(bundle, registry, transferAdapters(), registry.registryRevision()));
+    TEST_ASSERT_TRUE(
+        DeviceSetupTransferCodec::writeBundle(bundle, registry, transferAdapters(), registry.registryRevision(), "nodemcu-32s"));
     TEST_ASSERT_TRUE(bundle.find("\"typeName\":\"schedule\"") != std::string::npos);
     TEST_ASSERT_TRUE(bundle.find("\"typeName\":\"auto_switch\"") != std::string::npos);
     TEST_ASSERT_TRUE(bundle.find("\"typeName\":\"ssd1306\"") != std::string::npos);
@@ -307,7 +342,8 @@ void test_device_setup_transfer_round_trips_previously_missing_types() {
 
     // Full fidelity check: re-exporting the restored registry yields the same bundle.
     std::string restoredBundle;
-    TEST_ASSERT_TRUE(DeviceSetupTransferCodec::writeBundle(restoredBundle, restored, transferAdapters(), parsed.registryRevision));
+    TEST_ASSERT_TRUE(
+        DeviceSetupTransferCodec::writeBundle(restoredBundle, restored, transferAdapters(), parsed.registryRevision, "nodemcu-32s"));
     TEST_ASSERT_EQUAL_STRING(bundle.c_str(), restoredBundle.c_str());
 }
 
@@ -396,7 +432,8 @@ void test_device_setup_transfer_v3_bounds_each_max_bitmap_record() {
     (void)createFromJson(registry, "ssd1306", displayJson.c_str());
 
     std::string bundle;
-    TEST_ASSERT_TRUE(DeviceSetupTransferCodec::writeBundle(bundle, registry, transferAdapters(), registry.registryRevision()));
+    TEST_ASSERT_TRUE(
+        DeviceSetupTransferCodec::writeBundle(bundle, registry, transferAdapters(), registry.registryRevision(), "nodemcu-32s"));
     TEST_ASSERT_TRUE(bundle.find("\"kind\":\"layout_widget\"") != std::string::npos);
 
     size_t offset = 0U;
@@ -556,7 +593,8 @@ void test_device_setup_restore_failure_leaves_live_registry_unchanged() {
     TEST_ASSERT_TRUE(registry.create(makeDummyCreateRequest("Aquarium Lamp"), 0).ok());
 
     std::string bundle;
-    TEST_ASSERT_TRUE(DeviceSetupTransferCodec::writeBundle(bundle, registry, transferAdapters(), registry.registryRevision()));
+    TEST_ASSERT_TRUE(
+        DeviceSetupTransferCodec::writeBundle(bundle, registry, transferAdapters(), registry.registryRevision(), "nodemcu-32s"));
 
     const char* path = "/tmp/device_setup_transfer_restore_failure.ndjson";
     writeTextFile(path, bundle);
@@ -589,7 +627,7 @@ void test_device_setup_restore_rejects_persisted_state_before_swapping_registry(
     TEST_ASSERT_TRUE(source.create(makeDummyCreateRequest("Imported Lamp"), 0).ok());
 
     std::string bundle;
-    TEST_ASSERT_TRUE(DeviceSetupTransferCodec::writeBundle(bundle, source, transferAdapters(), source.registryRevision()));
+    TEST_ASSERT_TRUE(DeviceSetupTransferCodec::writeBundle(bundle, source, transferAdapters(), source.registryRevision(), "nodemcu-32s"));
     const char* path = "/tmp/device_setup_transfer_invalid_state.ndjson";
     writeTextFile(path, bundle);
     const DeviceSetupTransferCodec::ParseResult parsed = DeviceSetupTransferCodec::parseFile(path, bundle.size(), transferAdapters());

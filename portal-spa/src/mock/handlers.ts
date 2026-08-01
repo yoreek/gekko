@@ -2438,6 +2438,8 @@ export function mockExportDeviceSetupBundle(): string {
     registrySchemaVersion: 1,
     registryRevision: db.registryRevision,
     deviceCount: db.devices.length,
+    chip: db.board.chip,
+    boardId: db.board.selectedBoardId,
   }))
 
   for (const device of db.devices) {
@@ -2638,6 +2640,9 @@ export function mockImportDeviceSetupBundle(file: File): Promise<DeviceSetupTran
       throw new ApiClientError('display layout is incomplete', 'BAD_ARGS', 400, null)
     }
 
+    const warnings: string[] = []
+    const boardId = typeof envelope.boardId === 'string' ? envelope.boardId : ''
+
     mutateRegistry(db => {
       db.devices = devices
       db.registryRevision = Number(envelope.registryRevision ?? db.registryRevision)
@@ -2650,6 +2655,13 @@ export function mockImportDeviceSetupBundle(file: File): Promise<DeviceSetupTran
         }
         db.dashboardLayout = nextLayout
       }
+      if (boardId !== '') {
+        if (db.board.supportedBoardIds.includes(boardId)) {
+          db.board.selectedBoardId = boardId
+        } else {
+          warnings.push('board model skipped: unsupported board id for this chip')
+        }
+      }
       refreshMockDerivedDeviceState(db)
       return null
     })
@@ -2657,7 +2669,7 @@ export function mockImportDeviceSetupBundle(file: File): Promise<DeviceSetupTran
     return ok({
       registryRevision: Number(envelope.registryRevision ?? 0),
       deviceCount: devices.length,
-      warnings: [],
+      warnings,
     })
   })
 }

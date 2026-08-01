@@ -23,7 +23,7 @@ registered without a REST adapter.
 One JSON object per line:
 
 ```
-{"kind":"transfer_envelope","transferSchemaVersion":3,"registrySchemaVersion":1,"registryRevision":42,"deviceCount":3}
+{"kind":"transfer_envelope","transferSchemaVersion":3,"registrySchemaVersion":1,"registryRevision":42,"deviceCount":3,"chip":"esp32","boardId":"nodemcu-32s"}
 {"kind":"device","record":{"id":1001,"typeName":"i2c_bus","configVersion":1,"configRevision":5},"config":{"deps":[],"enabled":true,"name":"Main I2C","sdaPin":21,"sclPin":22,"frequencyHz":400000}}
 {"kind":"device","record":{"id":1002,"typeName":"ssd1306","configVersion":4,"configRevision":2},"config":{"deps":[{"role":"i2c_bus","deviceId":1001}],"enabled":true,"name":"OLED","i2cAddress":60}}
 {"kind":"layout_begin","deviceId":1002,"schemaVersion":1,"activePageId":"main","pageCount":1}
@@ -50,6 +50,10 @@ One JSON object per line:
   bytes are written into the importing controller's blob store under a freshly generated
   key — the exported `imageKey` itself is never reused as-is.
 - The `dashboard_layout` line is optional and holds the free-placement dashboard.
+- `chip` and `boardId` record the exporting controller's compiled chip (`kChipId`, e.g.
+  `esp32`) and its **System → Board** selection (`Settings → Controller Board`, see
+  `GET/PUT /api/system/board`). Both are informational plus the source for restoring the
+  board selection on import.
 
 ## Hand-editing rules
 
@@ -91,6 +95,13 @@ One JSON object per line:
    layout state and the optional `dashboard_layout` are applied after a successful registry
    restore. Runtime application problems are reported in the response `warnings` array.
    Dashboard widgets referencing unknown devices are pruned.
+4. If the bundle carries a `boardId`, it is applied to the importing controller's own
+   **Controller Board** setting after a successful registry restore — the bundle's `chip`
+   is not checked separately; `boardId` is simply looked up against the importing
+   controller's own supported board list (`kSupportedBoardIds` for its compiled chip). A
+   `boardId` from a different chip family, or an unrecognized id, cannot match and is
+   skipped with a `warnings` entry rather than failing the import. A bundle exported before
+   this field existed has no `boardId` and leaves the board selection untouched.
 
 ## Automatic backups (external pull)
 
@@ -137,6 +148,8 @@ curl -fsS -F "bundle=@device-setup-2026-07-11.ndjson" \
 
 ## Scope
 
-Included: device registry (all types, deps, display layouts) and the dashboard layout.
+Included: device registry (all types, deps, display layouts), the dashboard layout, and
+the Controller Board selection (`boardId`, applied best-effort — see "Restore behavior"
+above).
 Not included: WiFi credentials, MQTT settings, retained/persisted runtime state (kept
 separate from config by design), and OTA/firmware state.

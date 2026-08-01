@@ -8,7 +8,9 @@
     "transferSchemaVersion": { "type": "integer", "minimum": 1 },
     "registrySchemaVersion": { "type": "integer", "minimum": 1 },
     "registryRevision": { "type": "integer", "minimum": 0 },
-    "deviceCount": { "type": "integer", "minimum": 0 }
+    "deviceCount": { "type": "integer", "minimum": 0 },
+    "chip": { "type": "string" },
+    "boardId": { "type": "string" }
   },
   "required": ["kind", "transferSchemaVersion", "registrySchemaVersion", "registryRevision", "deviceCount"],
   "additionalProperties": false

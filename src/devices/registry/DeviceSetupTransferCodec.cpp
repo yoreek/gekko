@@ -1,6 +1,7 @@
 #include "devices/registry/DeviceSetupTransferCodec.h"
 
 #include "integrations/common/DeviceApiAdapter.h"
+#include "platform/BoardPinCapabilities.h"
 
 #include <cstring>
 #include <memory>
@@ -163,12 +164,14 @@ struct PendingDeviceImport {
 
 template <typename Writer>
 bool writeBundleImpl(Writer& writer, const DeviceRegistry& registry, const DeviceApiAdapterRegistry& adapters,
-                     const uint32_t registryRevision) {
+                     const uint32_t registryRevision, const char* boardId) {
     StaticJsonDocument<256> envelope;
     envelope["kind"] = kRecordKindEnvelope;
     envelope["transferSchemaVersion"] = DeviceSetupTransferCodec::kTransferSchemaVersion;
     envelope["registrySchemaVersion"] = kDeviceRegistrySchemaVersion;
     envelope["registryRevision"] = registryRevision;
+    envelope["chip"] = kChipId;
+    envelope["boardId"] = boardId;
 
     size_t deviceCount = 0;
     registry.forEachRuntime([&](const IDeviceRuntime& runtime) {
@@ -291,10 +294,10 @@ void DeviceSetupTransferCodec::writeDeviceRecordConfig(JsonObject output, const 
 }
 
 bool DeviceSetupTransferCodec::writeBundle(std::string& out, const DeviceRegistry& registry, const DeviceApiAdapterRegistry& adapters,
-                                           uint32_t registryRevision) {
+                                           uint32_t registryRevision, const char* boardId) {
     StringWriter writer{out};
     out.clear();
-    return writeBundleImpl(writer, registry, adapters, registryRevision);
+    return writeBundleImpl(writer, registry, adapters, registryRevision, boardId);
 }
 
 DeviceSetupTransferCodec::ParseResult DeviceSetupTransferCodec::parseFile(const char* path, const size_t fileSize,
@@ -417,6 +420,8 @@ DeviceSetupTransferCodec::ParseResult DeviceSetupTransferCodec::parseFile(const 
                 return result;
             }
             result.registryRevision = object["registryRevision"] | 0U;
+            result.chip = std::string(object["chip"] | "");
+            result.boardId = std::string(object["boardId"] | "");
             deviceCountProvided = !object["deviceCount"].isNull();
             expectedDeviceCount = object["deviceCount"] | 0U;
             envelopeSeen = true;

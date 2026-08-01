@@ -423,7 +423,7 @@ void test_spi_setup_transfer_round_trip_and_api_serialization() {
 
     const DeviceApiAdapterRegistry adapters = DeviceApiAdapterRegistry::withDefaults();
     std::string bundle;
-    TEST_ASSERT_TRUE(DeviceSetupTransferCodec::writeBundle(bundle, registry, adapters, registry.registryRevision()));
+    TEST_ASSERT_TRUE(DeviceSetupTransferCodec::writeBundle(bundle, registry, adapters, registry.registryRevision(), "nodemcu-32s"));
     TEST_ASSERT_TRUE(bundle.find("\"typeName\":\"spi_bus\"") != std::string::npos);
 
     const char* path = "/tmp/spi_bus_device_bundle.ndjson";

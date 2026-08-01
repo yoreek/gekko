@@ -42,6 +42,12 @@ public:
         std::vector<PersistedStateEntry> persistedStateBlobs{};
         // Serialized dashboard layout object from the dashboard_layout line ("" when absent).
         std::string dashboardLayoutJson{};
+        // Chip/board the bundle was exported from ("" when absent, e.g. bundles predating this
+        // field). Informational plus the source for restoring the controller board selection;
+        // applying it is the controller's job since only it knows the compiled chip's supported
+        // board ids (see BoardController).
+        std::string chip{};
+        std::string boardId{};
 
         bool ok() const {
             return validation.ok();
@@ -53,7 +59,7 @@ public:
     };
 
     static bool writeBundle(std::string& out, const DeviceRegistry& registry, const DeviceApiAdapterRegistry& adapters,
-                            uint32_t registryRevision);
+                            uint32_t registryRevision, const char* boardId);
     static ParseResult parseFile(const char* path, size_t fileSize, const DeviceApiAdapterRegistry& adapters);
 
     static void writeDeviceRecordConfig(JsonObject output, const IDeviceRuntime& runtime, const IDeviceApiAdapter& adapter);

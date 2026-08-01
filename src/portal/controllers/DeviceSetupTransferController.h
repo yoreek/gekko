@@ -12,14 +12,17 @@ namespace ewfm {
 
 class DeviceApiAdapterRegistry;
 class DashboardLayoutStore;
+class ConfigStore;
 
 class DeviceSetupTransferController : public BaseController {
 public:
     DeviceSetupTransferController(AsyncWebServerRequest* request, Action action, DeviceRegistry& registry,
-                                  const DeviceApiAdapterRegistry& adapters, DashboardLayoutStore* dashboardLayoutStore);
+                                  const DeviceApiAdapterRegistry& adapters, DashboardLayoutStore* dashboardLayoutStore,
+                                  ConfigStore* configStore);
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
-    static void registerRoutes(AsyncWebServer& server, DeviceRegistry& registry, DashboardLayoutStore* dashboardLayoutStore);
+    static void registerRoutes(AsyncWebServer& server, DeviceRegistry& registry, DashboardLayoutStore* dashboardLayoutStore,
+                               ConfigStore* configStore);
 #endif
 
 protected:
@@ -32,6 +35,7 @@ private:
     DeviceRegistry& registry_;
     const DeviceApiAdapterRegistry& adapters_;
     DashboardLayoutStore* dashboardLayoutStore_{nullptr};
+    ConfigStore* configStore_{nullptr};
 };
 
 } // namespace ewfm

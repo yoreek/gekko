@@ -118,7 +118,7 @@ private:
         MetricsController::registerRoutes(*server_, deviceRegistry_, wifiDriver_);
         if (deviceRegistry_ != nullptr) {
             DeviceRegistryController::registerRoutes(*server_, *deviceRegistry_, haSettingsStore_, haDiscoveryBridge_);
-            DeviceSetupTransferController::registerRoutes(*server_, *deviceRegistry_, dashboardLayoutStore_);
+            DeviceSetupTransferController::registerRoutes(*server_, *deviceRegistry_, dashboardLayoutStore_, configStore_);
         }
         if (dashboardLayoutStore_ != nullptr) {
             DashboardLayoutController::registerRoutes(*server_, *dashboardLayoutStore_);

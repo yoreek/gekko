@@ -1,7 +1,9 @@
 #include "portal/controllers/DeviceSetupTransferController.h"
 
+#include "config/ConfigStore.h"
 #include "devices/registry/DeviceSetupTransferCodec.h"
 #include "integrations/common/DeviceApiAdapter.h"
+#include "platform/BoardPinCapabilities.h"
 #include "portal/DashboardLayoutStore.h"
 
 #include <memory>
@@ -66,6 +68,7 @@ struct ExportProducerState {
     DeviceRegistry* registry = nullptr;
     const DeviceApiAdapterRegistry* adapters = nullptr;
     DashboardLayoutStore* dashboardLayoutStore = nullptr;
+    ConfigStore* configStore = nullptr;
     uint32_t registryRevision = 0;
 
     std::vector<DeviceId> deviceIds; // snapshot taken up front
@@ -107,6 +110,8 @@ bool produceDeviceSetupExportPiece(ExportProducerState& s, BaseController::Chunk
         envelope["registrySchemaVersion"] = kDeviceRegistrySchemaVersion;
         envelope["registryRevision"] = s.registryRevision;
         envelope["deviceCount"] = s.deviceIds.size();
+        envelope["chip"] = kChipId;
+        envelope["boardId"] = (s.configStore != nullptr) ? boardModelName(s.configStore->config().boardModel) : "";
         s.scratch.clear();
         serializeJson(envelope, s.scratch);
         s.scratch += "\n";
@@ -187,20 +192,21 @@ bool produceDeviceSetupExportPiece(ExportProducerState& s, BaseController::Chunk
 
 DeviceSetupTransferController::DeviceSetupTransferController(AsyncWebServerRequest* request, const Action action, DeviceRegistry& registry,
                                                              const DeviceApiAdapterRegistry& adapters,
-                                                             DashboardLayoutStore* dashboardLayoutStore)
-    : BaseController(request, action), registry_(registry), adapters_(adapters), dashboardLayoutStore_(dashboardLayoutStore) {}
+                                                             DashboardLayoutStore* dashboardLayoutStore, ConfigStore* configStore)
+    : BaseController(request, action), registry_(registry), adapters_(adapters), dashboardLayoutStore_(dashboardLayoutStore),
+      configStore_(configStore) {}
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 void DeviceSetupTransferController::registerRoutes(AsyncWebServer& server, DeviceRegistry& registry,
-                                                   DashboardLayoutStore* dashboardLayoutStore) {
+                                                   DashboardLayoutStore* dashboardLayoutStore, ConfigStore* configStore) {
     static const DeviceApiAdapterRegistry adapters = DeviceApiAdapterRegistry::withDefaults();
-    server.on("/api/device-setup/export", HTTP_GET, [&registry, dashboardLayoutStore](AsyncWebServerRequest* request) {
-        DeviceSetupTransferController(request, Action::Show, registry, adapters, dashboardLayoutStore).dispatch();
+    server.on("/api/device-setup/export", HTTP_GET, [&registry, dashboardLayoutStore, configStore](AsyncWebServerRequest* request) {
+        DeviceSetupTransferController(request, Action::Show, registry, adapters, dashboardLayoutStore, configStore).dispatch();
     });
     server.on(
         "/api/device-setup/import", HTTP_POST,
-        [&registry, dashboardLayoutStore](AsyncWebServerRequest* request) {
-            DeviceSetupTransferController(request, Action::Create, registry, adapters, dashboardLayoutStore).dispatch();
+        [&registry, dashboardLayoutStore, configStore](AsyncWebServerRequest* request) {
+            DeviceSetupTransferController(request, Action::Create, registry, adapters, dashboardLayoutStore, configStore).dispatch();
         },
         [](AsyncWebServerRequest* request, const String& filename, size_t index, uint8_t* data, size_t len, bool final) {
             size_t fileIndex = 0U;
@@ -219,11 +225,11 @@ void DeviceSetupTransferController::registerRoutes(AsyncWebServer& server, Devic
             }
         },
         nullptr);
-    server.on("/api/device-setup/export", HTTP_OPTIONS, [&registry, dashboardLayoutStore](AsyncWebServerRequest* request) {
-        DeviceSetupTransferController(request, Action::Options, registry, adapters, dashboardLayoutStore).dispatch();
+    server.on("/api/device-setup/export", HTTP_OPTIONS, [&registry, dashboardLayoutStore, configStore](AsyncWebServerRequest* request) {
+        DeviceSetupTransferController(request, Action::Options, registry, adapters, dashboardLayoutStore, configStore).dispatch();
     });
-    server.on("/api/device-setup/import", HTTP_OPTIONS, [&registry, dashboardLayoutStore](AsyncWebServerRequest* request) {
-        DeviceSetupTransferController(request, Action::Options, registry, adapters, dashboardLayoutStore).dispatch();
+    server.on("/api/device-setup/import", HTTP_OPTIONS, [&registry, dashboardLayoutStore, configStore](AsyncWebServerRequest* request) {
+        DeviceSetupTransferController(request, Action::Options, registry, adapters, dashboardLayoutStore, configStore).dispatch();
     });
 }
 #endif
@@ -249,6 +255,7 @@ void DeviceSetupTransferController::show() {
     state->registry = &registry_;
     state->adapters = &adapters_;
     state->dashboardLayoutStore = dashboardLayoutStore_;
+    state->configStore = configStore_;
     state->registryRevision = registry_.registryRevision();
     registry_.forEachRuntime([&state](const IDeviceRuntime& runtime) { state->deviceIds.push_back(runtime.deviceId()); });
 
@@ -322,6 +329,28 @@ void DeviceSetupTransferController::create() {
                     std::string warning = "dashboard layout skipped: ";
                     warning += saveResult.validation.message;
                     warnings.add(warning);
+                }
+            }
+        }
+    }
+
+    if (!parsed.boardId.empty()) {
+        if (configStore_ == nullptr) {
+            warnings.add("board model skipped: config store unavailable");
+        } else {
+            BoardModel parsedBoardModel{};
+            if (!boardModelFromString(parsed.boardId.c_str(), parsedBoardModel)) {
+                warnings.add("board model skipped: unsupported board id for this chip");
+            } else {
+                DeviceConfig next = configStore_->config();
+                if (next.boardModel != parsedBoardModel) {
+                    next.boardModel = parsedBoardModel;
+                    const ValidationResult boardSaveResult = configStore_->save(next);
+                    if (!boardSaveResult.ok()) {
+                        std::string warning = "board model skipped: ";
+                        warning += boardSaveResult.message;
+                        warnings.add(warning);
+                    }
                 }
             }
         }

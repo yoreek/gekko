@@ -60,6 +60,8 @@ void test_validator_rejects_dependency_whose_provided_role_does_not_match_requir
 void test_validator_accepts_condition_role_dependency_via_secondary_provided_role();
 void test_validator_rejects_second_exclusive_analog_output_owner();
 void test_device_setup_export_includes_metadata_and_redacts_secret_strings();
+void test_device_setup_transfer_round_trips_chip_and_board_id();
+void test_device_setup_transfer_defaults_board_id_when_bundle_predates_field();
 void test_device_setup_export_round_trips_back_into_registry();
 void test_device_setup_transfer_covers_all_registered_types();
 void test_device_setup_transfer_round_trips_previously_missing_types();
@@ -162,6 +164,8 @@ int main(int, char**) {
     RUN_TEST(test_validator_accepts_condition_role_dependency_via_secondary_provided_role);
     RUN_TEST(test_validator_rejects_second_exclusive_analog_output_owner);
     RUN_TEST(test_device_setup_export_includes_metadata_and_redacts_secret_strings);
+    RUN_TEST(test_device_setup_transfer_round_trips_chip_and_board_id);
+    RUN_TEST(test_device_setup_transfer_defaults_board_id_when_bundle_predates_field);
     RUN_TEST(test_device_setup_export_round_trips_back_into_registry);
     RUN_TEST(test_device_setup_transfer_covers_all_registered_types);
     RUN_TEST(test_device_setup_transfer_round_trips_previously_missing_types);
