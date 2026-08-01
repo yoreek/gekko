@@ -4,8 +4,7 @@
       <div class="portal-drawer__brand">
         <div class="portal-drawer__brand-copy">
           <div class="text-body-1 font-weight-bold">{{ t('app.title') }}</div>
-          <div class="text-caption">{{ t('app.subtitle') }}</div>
-          <div v-if="selectedBoardLabel" class="text-caption">{{ selectedBoardLabel }}</div>
+          <div class="text-caption">{{ brandSubtitle }}</div>
         </div>
         <v-btn class="portal-drawer__close" icon="close" variant="text" @click="drawerOpen = false" />
       </div>
@@ -40,8 +39,7 @@
 
       <div class="app-bar__brand">
         <div class="text-body-1 font-weight-bold">{{ t('app.title') }}</div>
-        <div class="text-caption">{{ t('app.subtitle') }}</div>
-        <div v-if="selectedBoardLabel" class="text-caption">{{ selectedBoardLabel }}</div>
+        <div class="text-caption">{{ brandSubtitle }}</div>
       </div>
 
       <v-spacer />
@@ -151,6 +149,9 @@ const menuItems = computed<MenuItem[]>(() =>
 const activePanelName = computed(() => (route.name === 'dashboard' ? panelStore.activePanel?.name ?? '' : ''))
 
 const selectedBoardLabel = computed(() => BOARD_CATALOG[boardStore.selectedBoardId]?.label ?? '')
+const brandSubtitle = computed(() => (
+  selectedBoardLabel.value ? `${t('app.subtitle')} / ${selectedBoardLabel.value}` : t('app.subtitle')
+))
 
 function selectLocale(locale: AppLocale): void {
   void appStore.setLocale(locale)
