@@ -7,6 +7,11 @@ const mockPath = '/devices?mockMode=1&mockReset=1'
 async function selectOption(page: Page, name: string, option: string | RegExp): Promise<void> {
   const input = page.getByRole('combobox', { name, exact: true })
   await input.locator('xpath=ancestor::*[contains(@class, "v-field")][1]').click()
+  // The option list is virtualized - typing the option text filters it down so an option far
+  // down the (unfiltered) list is actually rendered, rather than relying on it being pre-rendered.
+  if (typeof option === 'string') {
+    await input.fill(option)
+  }
   await page.getByRole('option', { name: option, exact: true }).click()
 }
 
@@ -102,6 +107,9 @@ test('dummy device has no command UI and creates only base config', async ({ pag
 
   await page.goto(mockPath)
   await page.getByRole('link', { name: 'Create device' }).click()
+  // The create form's Type field defaults to the first "buses"-category device (onewire_bus),
+  // not "dummy" - explicitly select it rather than relying on an implicit default.
+  await selectOption(page, 'Type', 'Dummy device')
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Dummy Basic')
   await page.getByRole('button', { name: 'Save' }).click()
   await page.waitForURL('**/devices')

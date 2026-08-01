@@ -1,4 +1,16 @@
 import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
+
+async function selectOption(page: Page, name: string, option: string | RegExp): Promise<void> {
+  const input = page.getByRole('combobox', { name, exact: true })
+  await input.locator('xpath=ancestor::*[contains(@class, "v-field")][1]').click()
+  // The option list is virtualized - typing the option text filters it down so an option far
+  // down the (unfiltered) list is actually rendered, rather than relying on it being pre-rendered.
+  if (typeof option === 'string') {
+    await input.fill(option)
+  }
+  await page.getByRole('option', { name: option, exact: true }).click()
+}
 
 test.beforeEach(({ page }) => {
   page.on('pageerror', err => {
@@ -21,7 +33,10 @@ test('v2 devices list renders and links to detail', async ({ page }) => {
 test('v2 device create flow: create a dummy device', async ({ page }) => {
   await page.goto('/devices/new?mockMode=1&mockReset=1')
 
-  await page.locator('input').first().fill('V2 Test Dummy')
+  // The create form's Type field defaults to the first "buses"-category device (onewire_bus),
+  // not "dummy" - explicitly select it rather than relying on an implicit default.
+  await selectOption(page, 'Type', 'Dummy device')
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('V2 Test Dummy')
   await page.getByRole('button', { name: 'Save' }).click()
 
   // Create redirects to the devices list (not the new device's detail page) so "back" from the

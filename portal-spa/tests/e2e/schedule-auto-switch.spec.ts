@@ -7,6 +7,11 @@ const mockPath = '/devices?mockMode=1&mockReset=1'
 async function selectOption(page: Page, name: string, option: string | RegExp): Promise<void> {
   const input = page.getByRole('combobox', { name, exact: true })
   await input.locator('xpath=ancestor::*[contains(@class, "v-field")][1]').click()
+  // The option list is virtualized - typing the option text filters it down so an option far
+  // down the (unfiltered) list is actually rendered, rather than relying on it being pre-rendered.
+  if (typeof option === 'string') {
+    await input.fill(option)
+  }
   await page.getByRole('option', { name: option, exact: true }).click()
 }
 
@@ -21,8 +26,10 @@ async function saveAndOpenByName(page: Page, name: string): Promise<void> {
 
 test('creates a schedule device with a rule', async ({ page }) => {
   await page.goto('/devices/new?mockMode=1&mockReset=1')
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Night Light Schedule')
+  // Select Type before filling Name - DeviceCreateView resets the whole draft (including name)
+  // to createDefaultName(typeName) whenever typeName changes, which would wipe a name filled first.
   await selectOption(page, 'Type', 'Schedule')
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Night Light Schedule')
 
   await expect(page.getByText('No rules yet.')).toBeVisible()
   await page.getByRole('button', { name: 'Add rule' }).click()
@@ -62,14 +69,16 @@ test('creates an auto switch bound to a target switch and a schedule', async ({ 
 
   // Seed a schedule device to depend on, same create flow as the previous test.
   await page.goto('/devices/new?mockMode=1&mockReset=1')
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Pump Schedule')
+  // Select Type before filling Name - DeviceCreateView resets the whole draft (including name)
+  // to createDefaultName(typeName) whenever typeName changes, which would wipe a name filled first.
   await selectOption(page, 'Type', 'Schedule')
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Pump Schedule')
   await page.getByRole('button', { name: 'Add rule' }).click()
   await saveAndOpenByName(page, 'Pump Schedule')
 
   await page.goto('/devices/new?mockMode=1&mockReset=0')
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Pump Auto Switch')
   await selectOption(page, 'Type', 'Auto switch')
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Pump Auto Switch')
   await selectOption(page, 'Target switch', /GPIO Relay #670845750/)
   await page.getByRole('button', { name: 'Add condition' }).click()
   await selectOption(page, 'Condition device', /Pump Schedule/)

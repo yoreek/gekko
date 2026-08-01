@@ -16,11 +16,15 @@ test('OLED designer persists typed layout widgets in mock mode', async ({ page }
   await page.goto(mockPath)
 
   await page.getByRole('row').filter({ hasText: 'OLED Display' }).click()
-  await page.getByRole('link', { name: 'OLED display designer' }).click()
+  await page.getByRole('link', { name: 'Design display', exact: true }).first().click()
 
   await page.getByRole('button', { name: 'Text', exact: true }).click()
   await page.getByRole('textbox', { name: 'Text', exact: true }).fill('Hello OLED')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
+  // Save is async (useDisplayDesigner/useDeviceDetail's save() persists via a promise) - reloading
+  // immediately after the click can race the write and revert to the pre-save layout (matches the
+  // wait already used in the bitmap-widget test below, around its own Save click).
+  await page.waitForTimeout(300)
 
   await page.reload()
   await page.getByText('Hello OLED').click()
@@ -31,7 +35,7 @@ test('OLED designer preview resolves placeholder samples and filters', async ({ 
   await page.goto(mockPath)
 
   await page.getByRole('row').filter({ hasText: 'OLED Display' }).click()
-  await page.getByRole('link', { name: 'OLED display designer' }).click()
+  await page.getByRole('link', { name: 'Design display', exact: true }).first().click()
 
   await page.getByRole('button', { name: 'Text', exact: true }).click()
   await page.getByRole('textbox', { name: 'Text', exact: true }).fill('{{dev.670845750.state | upper}}')
@@ -44,7 +48,7 @@ test('OLED designer preview resolves placeholder samples and filters', async ({ 
 test('OLED designer imports, resizes, saves, and reloads bitmap widgets', async ({ page }) => {
   await page.goto(mockPath)
   await page.getByRole('row').filter({ hasText: 'OLED Display' }).click()
-  await page.getByRole('link', { name: 'OLED display designer' }).click()
+  await page.getByRole('link', { name: 'Design display', exact: true }).first().click()
 
   await page.getByRole('button', { name: 'Bitmap', exact: true }).click()
 
@@ -76,7 +80,7 @@ test('OLED designer imports, resizes, saves, and reloads bitmap widgets', async 
 test('placeholder builder live-previews the format filter on system.time', async ({ page }) => {
   await page.goto(mockPath)
   await page.getByRole('row').filter({ hasText: 'OLED Display' }).click()
-  await page.getByRole('link', { name: 'OLED display designer' }).click()
+  await page.getByRole('link', { name: 'Design display', exact: true }).first().click()
   await page.getByRole('button', { name: 'Text', exact: true }).click()
 
   await selectOption(page, 'Namespace', 'System')
@@ -91,7 +95,7 @@ test('placeholder builder live-previews the format filter on system.time', async
 test('placeholder builder live-previews the fixed filter on system.uptime', async ({ page }) => {
   await page.goto(mockPath)
   await page.getByRole('row').filter({ hasText: 'OLED Display' }).click()
-  await page.getByRole('link', { name: 'OLED display designer' }).click()
+  await page.getByRole('link', { name: 'Design display', exact: true }).first().click()
   await page.getByRole('button', { name: 'Text', exact: true }).click()
 
   await selectOption(page, 'Namespace', 'System')

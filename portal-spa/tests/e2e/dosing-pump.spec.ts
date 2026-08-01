@@ -109,8 +109,10 @@ test('dosing history dialog lists seeded journal entries with stats', async ({ p
 
 test('creates a dosing pump bound to the seeded relay with a generated schedule', async ({ page }) => {
   await page.goto('/devices/new?mockMode=1&mockReset=1')
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Alkalinity')
+  // Select Type before filling Name - DeviceCreateView resets the whole draft (including name)
+  // to createDefaultName(typeName) whenever typeName changes, which would wipe a name filled first.
   await selectOption(page, 'Type', 'Dosing pump')
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Alkalinity')
   await selectOption(page, 'Pump switch', /GPIO Relay #670845750/)
 
   await page.getByRole('button', { name: 'Generator…' }).click()

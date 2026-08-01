@@ -5,6 +5,7 @@
         <div class="portal-drawer__brand-copy">
           <div class="text-body-1 font-weight-bold">{{ t('app.title') }}</div>
           <div class="text-caption">{{ t('app.subtitle') }}</div>
+          <div v-if="selectedBoardLabel" class="text-caption">{{ selectedBoardLabel }}</div>
         </div>
         <v-btn class="portal-drawer__close" icon="close" variant="text" @click="drawerOpen = false" />
       </div>
@@ -40,6 +41,7 @@
       <div class="app-bar__brand">
         <div class="text-body-1 font-weight-bold">{{ t('app.title') }}</div>
         <div class="text-caption">{{ t('app.subtitle') }}</div>
+        <div v-if="selectedBoardLabel" class="text-caption">{{ selectedBoardLabel }}</div>
       </div>
 
       <v-spacer />
@@ -101,7 +103,10 @@ import { useTheme } from 'vuetify'
 
 import type { PortalIconName } from './icons'
 import { localeOptions, type AppLocale } from './i18n'
+import { fetchBoardSettings } from './api'
+import { BOARD_CATALOG } from './data/board-pin-capabilities'
 import { useAppStore } from './stores/app'
+import { useBoardStore } from './stores/board'
 import { useOtaStore } from './stores/ota'
 import { usePanelStore } from './stores/panels'
 
@@ -111,6 +116,7 @@ const vuetifyTheme = useTheme()
 const appStore = useAppStore()
 const panelStore = usePanelStore()
 const otaStore = useOtaStore()
+const boardStore = useBoardStore()
 
 const drawerOpen = ref(false)
 
@@ -144,6 +150,8 @@ const menuItems = computed<MenuItem[]>(() =>
 
 const activePanelName = computed(() => (route.name === 'dashboard' ? panelStore.activePanel?.name ?? '' : ''))
 
+const selectedBoardLabel = computed(() => BOARD_CATALOG[boardStore.selectedBoardId]?.label ?? '')
+
 function selectLocale(locale: AppLocale): void {
   void appStore.setLocale(locale)
 }
@@ -172,6 +180,11 @@ watch(
 
 onMounted(() => {
   void otaStore.loadStatus()
+  void fetchBoardSettings()
+    .then(settings => boardStore.replaceFromSettings(settings))
+    .catch(() => {
+      // Non-fatal: the toolbar simply omits the board name if this fails.
+    })
 })
 </script>
 

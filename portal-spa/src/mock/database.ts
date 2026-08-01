@@ -396,6 +396,9 @@ const seedDatabase: SeedDatabase = {
         id: 'switches',
         name: 'Switches',
         order: 2,
+        // Includes the former "misc" grab-bag devices (dummy lamps, displays, thermostat, RTC)
+        // on a second row - DashboardLayoutStore::kMaxPanels caps a layout at 8 panels, so a
+        // 9th "Misc" panel isn't representable on real firmware and must not appear in seed data.
         widgets: [
           [670845760, 0, 0, 1, 1],
           [670845761, 1, 0, 1, 1],
@@ -405,6 +408,12 @@ const seedDatabase: SeedDatabase = {
           [670845750, 5, 0, 1, 1],
           [670845764, 6, 0, 1, 1],
           [670845765, 7, 0, 1, 1],
+          [670845748, 0, 1, 1, 1],
+          [670845749, 1, 1, 1, 1],
+          [670845753, 2, 1, 1, 1],
+          [670845759, 3, 1, 1, 1],
+          [670845755, 4, 1, 1, 1],
+          [670845756, 5, 1, 1, 1],
         ],
       },
       {
@@ -472,19 +481,6 @@ const seedDatabase: SeedDatabase = {
           [670845809, 1, 0, 1, 1],
           [kSeedPixelAlarmStripId, 2, 0, 1, 1],
           [670845811, 3, 0, 1, 1],
-        ],
-      },
-      {
-        id: 'misc',
-        name: 'Misc',
-        order: 8,
-        widgets: [
-          [670845748, 0, 0, 1, 1],
-          [670845749, 1, 0, 1, 1],
-          [670845753, 2, 0, 1, 1],
-          [670845759, 3, 0, 1, 1],
-          [670845755, 4, 0, 1, 1],
-          [670845756, 5, 0, 1, 1],
         ],
       },
     ],
