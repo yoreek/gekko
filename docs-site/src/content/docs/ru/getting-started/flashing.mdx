@@ -66,11 +66,20 @@ BLE-приложение; для ESP32-S2 такого варианта нет (
        [esptool releases page](https://github.com/espressif/esptool/releases).
     2. Положите его рядом со скриптами в папке репозитория `webflash/`
        (переименуйте в `esptool` на macOS/Linux, в `esptool.exe` на Windows).
-    3. Запустите `webflash/flash.sh [default|ble] [CHIP] [PORT]` (macOS/Linux)
-       или `webflash/flash.bat [default|ble] [CHIP] [PORT]` (Windows), где
-       `CHIP` — один из `esp32` (по умолчанию), `esp32s2`, `esp32s3`,
-       `esp32c3`, `esp32c6`, тот, что соответствует вашей плате. Если порт не
+    3. Запустите скрипт прошивки, подставив `CHIP` под вашу плату (`esp32`
+       по умолчанию, `esp32s2`, `esp32s3`, `esp32c3`, `esp32c6`). Если порт не
        указан, esptool попытается найти его сам.
+
+       ```sh
+       webflash/flash.sh [default|ble] [CHIP] [PORT]   # macOS/Linux
+       webflash/flash.bat [default|ble] [CHIP] [PORT]  # Windows
+       ```
+
+       Пример — BLE-сборка для платы ESP32-C3:
+
+       ```sh
+       webflash/flash.sh ble esp32c3
+       ```
 
   </TabItem>
   <TabItem label="Python">

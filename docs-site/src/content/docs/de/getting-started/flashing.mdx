@@ -67,11 +67,20 @@ Binaries.
     2. Lege es neben die Skripte im `webflash/`-Ordner des Repositories
        (unter macOS/Linux in `esptool` umbenennen, unter Windows in
        `esptool.exe`).
-    3. Starte `webflash/flash.sh [default|ble] [CHIP] [PORT]` (macOS/Linux)
-       oder `webflash/flash.bat [default|ble] [CHIP] [PORT]` (Windows), wobei
-       `CHIP` eines von `esp32` (Standard), `esp32s2`, `esp32s3`, `esp32c3`,
-       `esp32c6` ist - passend zu deinem Board. Ohne Port-Argument erkennt
-       esptool den Port automatisch.
+    3. Starte das Flash-Skript, `CHIP` passend zu deinem Board (`esp32`
+       Standard, `esp32s2`, `esp32s3`, `esp32c3`, `esp32c6`). Ohne
+       Port-Argument erkennt esptool den Port automatisch.
+
+       ```sh
+       webflash/flash.sh [default|ble] [CHIP] [PORT]   # macOS/Linux
+       webflash/flash.bat [default|ble] [CHIP] [PORT]  # Windows
+       ```
+
+       Beispiel - ein BLE-Build fuer ein ESP32-C3-Board:
+
+       ```sh
+       webflash/flash.sh ble esp32c3
+       ```
 
   </TabItem>
   <TabItem label="Python">

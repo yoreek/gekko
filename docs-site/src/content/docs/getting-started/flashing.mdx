@@ -64,12 +64,20 @@ below — they flash the exact same binaries.
        [esptool releases page](https://github.com/espressif/esptool/releases).
     2. Place it next to the scripts in the repository's `webflash/` folder
        (rename to `esptool` on macOS/Linux, `esptool.exe` on Windows).
-    3. Run `webflash/flash.sh [default|ble] [CHIP] [PORT]` (macOS/Linux) or
-       `webflash/flash.bat [default|ble] [CHIP] [PORT]` (Windows), where `CHIP`
-       is one of `esp32` (default), `esp32s2`, `esp32s3`, `esp32c3`, `esp32c6` —
-       match the board you actually have. Without a port argument, esptool
-       auto-detects it. For a downloaded BLE CI bundle, use `flash.sh ble
-       esp32c3 [PORT]` or `flash.bat ble esp32c3 [PORT]` (substitute your chip).
+    3. Run the flasher script, matching `CHIP` to your board (`esp32` default,
+       `esp32s2`, `esp32s3`, `esp32c3`, `esp32c6`). Without a port argument,
+       esptool auto-detects it.
+
+       ```sh
+       webflash/flash.sh [default|ble] [CHIP] [PORT]   # macOS/Linux
+       webflash/flash.bat [default|ble] [CHIP] [PORT]  # Windows
+       ```
+
+       Example — a BLE build for an ESP32-C3 board:
+
+       ```sh
+       webflash/flash.sh ble esp32c3
+       ```
 
   </TabItem>
   <TabItem label="Python">

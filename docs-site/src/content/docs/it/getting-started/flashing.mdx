@@ -64,11 +64,20 @@ gli stessi binari.
        [pagina release di esptool](https://github.com/espressif/esptool/releases).
     2. Mettilo accanto agli script nella cartella `webflash/` del repository
        (rinominalo in `esptool` su macOS/Linux, `esptool.exe` su Windows).
-    3. Esegui `webflash/flash.sh [default|ble] [CHIP] [PORT]` (macOS/Linux)
-       oppure `webflash/flash.bat [default|ble] [CHIP] [PORT]` (Windows), dove
-       `CHIP` è `esp32` (predefinito), `esp32s2`, `esp32s3`, `esp32c3` o
-       `esp32c6` — quello corrispondente alla tua scheda. Senza argomento
-       porta, esptool la rileva automaticamente.
+    3. Esegui lo script di flashing, facendo corrispondere `CHIP` alla tua
+       scheda (`esp32` predefinito, `esp32s2`, `esp32s3`, `esp32c3`,
+       `esp32c6`). Senza argomento porta, esptool la rileva automaticamente.
+
+       ```sh
+       webflash/flash.sh [default|ble] [CHIP] [PORT]   # macOS/Linux
+       webflash/flash.bat [default|ble] [CHIP] [PORT]  # Windows
+       ```
+
+       Esempio — una build con BLE per una scheda ESP32-C3:
+
+       ```sh
+       webflash/flash.sh ble esp32c3
+       ```
 
   </TabItem>
   <TabItem label="Python">

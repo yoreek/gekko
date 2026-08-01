@@ -65,11 +65,20 @@ ESP32-C6 (конфлікт лінкера у фреймворку `pioarduino`/A
        [сторінки релізів esptool](https://github.com/espressif/esptool/releases).
     2. Покладіть його поруч зі скриптами в папці репозиторію `webflash/`
        (перейменуйте на `esptool` у macOS/Linux або `esptool.exe` у Windows).
-    3. Запустіть `webflash/flash.sh [default|ble] [CHIP] [PORT]` (macOS/Linux)
-       або `webflash/flash.bat [default|ble] [CHIP] [PORT]` (Windows), де
-       `CHIP` — один з `esp32` (типово), `esp32s2`, `esp32s3`, `esp32c3`,
-       `esp32c6`, той, що відповідає вашій платі. Якщо порт не вказано,
-       esptool визначить його автоматично.
+    3. Запустіть скрипт прошивки, підставивши `CHIP` під вашу плату (`esp32`
+       типово, `esp32s2`, `esp32s3`, `esp32c3`, `esp32c6`). Якщо порт не
+       вказано, esptool визначить його автоматично.
+
+       ```sh
+       webflash/flash.sh [default|ble] [CHIP] [PORT]   # macOS/Linux
+       webflash/flash.bat [default|ble] [CHIP] [PORT]  # Windows
+       ```
+
+       Приклад — BLE-збірка для плати ESP32-C3:
+
+       ```sh
+       webflash/flash.sh ble esp32c3
+       ```
 
   </TabItem>
   <TabItem label="Python">

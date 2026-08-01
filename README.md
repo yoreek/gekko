@@ -50,42 +50,45 @@ Firmware and SPA are versioned from `git describe` at build time, not from a han
 git config core.hooksPath .githooks
 ```
 
-This enables the local pre-commit hook (`.githooks/pre-commit`): before every commit it runs the tests, builds the SPA (`data/`) and the firmware (`webflash/*.bin`), and adds the result to the same commit. If tests or the build fail, the commit is aborted. Without this command the hook file exists in the repository, but git never runs it.
-
-GitHub Actions CI duplicates the test run on the server for every push/PR — a safety net in case the hook isn't activated or a commit was made with `--no-verify`.
+`.githooks/pre-commit` is a no-op — it exists only so this command has something to point at. All builds and tests (native unit tests, every chip's firmware, the SPA, the webflash bundles) run in CI (`.github/workflows/build.yml`) on every push/PR; nothing runs at commit time. See `CLAUDE.md` → "Before committing" for what to check locally before pushing.
 
 ## Flashing the firmware
 
 Ready-to-flash binaries (`bootloader.bin`, `partitions.bin`, `firmware.bin`,
-`littlefs.bin`, and the combined `merged-firmware.bin`) live in `webflash/` and
-are kept up to date by the pre-commit hook. The hook derives the individual
-image offsets in `manifest.json` and `flash-layout.env` from
-`my_partitions.csv`.
+`littlefs.bin`) for every supported chip are built by CI on every commit and
+published as workflow artifacts / the web installer / GitHub Releases —
+`data/` and `webflash/*.bin` are gitignored build outputs, not committed.
 
-**Easiest — web installer:** open **[yoreek.github.io/gekko/install](https://yoreek.github.io/gekko/install/)** in Chrome/Edge/Opera on desktop and flash over Web Serial, nothing to install. (Browser serial support has known issues on some Linux + USB-chip combinations — fall back to the options below if it fails.)
+**Easiest — web installer:** open **[yoreek.github.io/gekko/install](https://yoreek.github.io/gekko/install/)** in Chrome/Edge/Opera on desktop and flash over Web Serial, nothing to install. (Browser serial support has known issues on some Linux + USB-chip combinations — fall back to the options below if it fails.) The installer detects the connected chip automatically — classic ESP32, ESP32-S2, ESP32-S3, ESP32-C3, and ESP32-C6 are all supported.
 
 The installer offers two variants:
 
 - **Recommended** excludes the Bluetooth provisioning code and its GPIO
   reservation. WiFi setup through the access point and web portal remains
-  available. Install this unless you specifically need BLE.
+  available. Install this unless you specifically need BLE. Works on any of
+  the 5 supported chips.
 - **With BLE** includes BLE WiFi provisioning and reserves GPIO 32 for its
-  activation button, at the cost of flash/RAM most installs don't need.
-
-CI builds the BLE variant separately and publishes it as the
-`gekko-esp32-ble-<commit>` workflow artifact. It is intentionally not built
-by the local pre-commit hook, so local tests and commits still compile firmware
-only once.
+  activation button, at the cost of flash/RAM most installs don't need. Only
+  available for classic ESP32, ESP32-S3, and ESP32-C3 — ESP32-S2 has no BLE
+  radio and ESP32-C6 hits a framework linker conflict (see
+  `docs/esp32-board-models.md`).
 
 **Recommended offline — esptool script (Windows/macOS/Linux, no Python required):**
 
 1. Download the standalone `esptool` binary for your OS from the [esptool releases page](https://github.com/espressif/esptool/releases).
 2. Place it next to the scripts in `webflash/` (rename to `esptool` on macOS/Linux, `esptool.exe` on Windows).
-3. Run `webflash/flash.sh [PORT]` (macOS/Linux) or
-   `webflash/flash.bat [PORT]` (Windows). By default this writes the combined
-   image at `0x0`. If no port is given, esptool tries to auto-detect it.
-   To flash a downloaded BLE CI bundle, add `ble` before the port:
-   `flash.sh ble [PORT]` or `flash.bat ble [PORT]`.
+3. Run the flasher script, matching `CHIP` to your board:
+
+   ```sh
+   webflash/flash.sh [default|ble] [CHIP] [PORT]   # macOS/Linux
+   webflash/flash.bat [default|ble] [CHIP] [PORT]  # Windows
+   ```
+
+   `CHIP` is one of `esp32` (default), `esp32s2`, `esp32s3`, `esp32c3`,
+   `esp32c6`; `ble` only exists for `esp32`/`esp32s3`/`esp32c3`. By default
+   this writes the combined image at `0x0`. If no port is given, esptool
+   tries to auto-detect it. Example — a BLE build for an ESP32-C3 board:
+   `webflash/flash.sh ble esp32c3`.
 
 The combined image is intended for a complete installation. Because `devdata`
 is located between the application and LittleFS partitions, writing the
@@ -94,14 +97,15 @@ part of the image. Use a selective target for routine updates that must preserve
 `devdata`.
 
 To update only one image, append `bootloader`, `partitions`, `firmware`, or
-`littlefs`, for example `webflash/flash.sh /dev/ttyUSB0 littlefs`. The target
-can also be used without a port, for example `webflash/flash.sh littlefs`.
+`littlefs` after the port, for example `webflash/flash.sh default esp32
+/dev/ttyUSB0 littlefs`. The target can also be used without a port, for
+example `webflash/flash.sh default esp32 littlefs`.
 
 **Alternative — Python:**
 
 ```sh
 pip install esptool
-python3 webflash/flash.py [default|ble] [PORT] [all|bootloader|partitions|firmware|littlefs]
+python3 webflash/flash.py [default|ble] [CHIP] [PORT] [all|bootloader|partitions|firmware|littlefs]
 ```
 
 **Alternative — PlatformIO (for development):**
@@ -110,9 +114,10 @@ python3 webflash/flash.py [default|ble] [PORT] [all|bootloader|partitions|firmwa
 pio run -e esp32dev -t upload       # firmware, over serial (recommended, no BLE)
 pio run -e esp32dev -t uploadfs     # LittleFS data, over serial
 pio run -e esp32dev_ble             # compile firmware with BLE provisioning
+pio run -e esp32s3_ble -t upload    # other chips: esp32s3[_ble], esp32c3[_ble], esp32s2, esp32c6
 ```
 
-**Browser, local copy:** `webflash/index.html` is the same [ESP Web Tools](https://esphome.github.io/esp-web-tools/) installer that is published at the web installer link above; serve it with any static file server (e.g. `python3 -m http.server` from `webflash/`) to flash local binaries.
+**Browser, local copy:** `webflash/index.html` is the same [ESP Web Tools](https://esphome.github.io/esp-web-tools/) installer that is published at the web installer link above; serve it with any static file server (e.g. `python3 -m http.server` from `webflash/`) to flash local binaries (requires a `manifest.json` bundle from CI next to it, since binaries aren't committed).
 
 ## Development commands
 
