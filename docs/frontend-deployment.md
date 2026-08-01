@@ -1,104 +1,54 @@
 # Frontend Deployment
 
 The frontend build and the ESP32 filesystem upload are separate steps.
+`data/` and the `webflash/` firmware bundles are **not** git-tracked — they are
+CI build outputs (see "CI Builds Everything" below). Building them locally is
+only for your own testing/flashing, never for committing.
 
 ## Build Output
 
 - `portal-spa/` builds the Vue SPA.
-- `portal-spa/scripts/export-data.mjs` copies gzip-only deployable assets into git-tracked `data/`.
+- `portal-spa/scripts/export-data.mjs` copies gzip-only deployable assets into `data/` (gitignored).
 - `portal-spa` pnpm script `deploy:data` rebuilds the SPA and refreshes `data/`.
 
 ## LittleFS Size Budget
 
 - The ESP32 partition table reserves `0xA0000` bytes (`640 KiB`) for `littlefs`.
-- `portal-spa/scripts/check-data-budget.mjs` should enforce the same `640 KiB` hard limit for git-tracked gzip assets in `data/`.
+- `portal-spa/scripts/check-data-budget.mjs` enforces the same `640 KiB` hard limit for the gzip assets in `data/`.
 - The script also reports the largest gzipped JavaScript asset so bundle growth remains visible, but the filesystem fit check is based on total `data/` usage.
 
 ## Flashing The Controller
 
 - `pio run -t uploadfs` remains the explicit filesystem upload step for the ESP32.
-- Use it after refreshing `data/` when validating the offline AP-mode UI on hardware.
+- `data/` must exist locally first — run `cd portal-spa && pnpm deploy:data` before `uploadfs` (or before `pio run -t buildfs`, which packs `data/` into `littlefs.bin`).
 
 ## Practical Rule
 
-- Update `data/` from the frontend build first.
+- Run `pnpm deploy:data` locally whenever you need a fresh `data/` for hardware testing; it is never committed.
 - Upload the filesystem separately when you want the controller to serve the new SPA.
 - Keep the `dataBudgetBytes` value in `portal-spa/scripts/check-data-budget.mjs` aligned with the `littlefs` partition size in `my_partitions.csv` whenever either one changes.
 
-## Pre-commit Hook & Reproducible Builds
+## CI Builds Everything
 
-`.githooks/pre-commit` (activate once per clone with `git config core.hooksPath
-.githooks`) does, on **every** commit: `scripts/test.sh` → `pnpm deploy:data`
-(rebuild SPA into `data/`) → `pio run` + `buildfs` (rebuild firmware +
-littlefs) → `scripts/collect_webflash.py`. The collector verifies that the
-built partition table matches `my_partitions.csv`, copies the individual
-images, creates `merged-firmware.bin`, and regenerates `manifest.json` and
-`flash-layout.env` from the same partition offsets. The hook then stages the
-regenerated `data/` and `webflash/` artifacts for the commit — you do not stage
-them by hand.
+`.githooks/pre-commit` is now a no-op — local commits no longer build or test
+anything. All of that moved to `.github/workflows/build.yml`:
 
-The hook builds only the default `esp32dev` bundle (no BLE provisioning).
-GitHub Actions builds `esp32dev_ble` separately, runs the same collector into
-a `ble/` subdirectory, and publishes the complete result as a workflow
-artifact. The Pages workflow also creates `install/ble/manifest.json`, which
-is selected by the second button in `webflash/index.html`. Do not add the BLE
-build to the pre-commit hook: it would duplicate the firmware and LittleFS
-build on every local commit without adding another test path.
+- **`test`** — `scripts/test.sh` (lint + native unit tests).
+- **`spa`** — `pnpm test:unit`, then `pnpm deploy:data` (SPA build + `data/`), uploaded as the `gekko-spa-dist-<sha>` and `gekko-data-<sha>` workflow artifacts.
+- **`firmware`** (matrix, needs `spa`'s `data/` artifact) — builds every chip env from `platformio.ini` (`esp32dev[_ble]`, `esp32s3[_ble]`, `esp32c3[_ble]`, `esp32s2`, `esp32c6`) plus `buildfs`, uploaded per-env as `gekko-firmware-<env>-<sha>`. `esp32dev_ota` is excluded (upload-only alias, nothing new to build).
+- **`webflash`** (matrix over the default and BLE firmware) — runs `scripts/collect_webflash.py` against the downloaded firmware artifact, copies the static flasher tool (`webflash/index.html`, `flash.sh`/`flash.bat`/`flash.py`, which stay git-tracked), uploads `gekko-webflash-default-<sha>` / `gekko-webflash-ble-<sha>`.
+- **`release`** (tag pushes only) — packages both webflash bundles into the GitHub Release zips.
 
-Because the hook rebuilds and re-stages on every commit, the SPA build **must be
-reproducible**: the same source at the same commit must produce byte-identical
-output, or `data/*.gz` would differ on every commit even with no source change
-and the working tree would never come clean. Rules:
+`.github/workflows/docs.yml` builds `data/` and both webflash bundles the same
+way (from source, in CI) before publishing the Pages web installer — it does
+not depend on anything being committed either.
 
-- **Never inject wall-clock time into the bundle.** `vite.config.ts` derives
-  `__APP_BUILD_DATE__` from the commit date (`git log -1 --format=%cI`), not
-  `new Date()`. A wall-clock value changes the entry bundle's content hash every
-  build, renaming `assets/i-[hash].js` and churning `index.html`. Keep any new
-  build-time constant tied to committed state (git), never to the clock.
+Since nothing is rebuilt or re-staged at commit time, the SPA build no longer
+needs to be byte-reproducible for `git status` to stay clean. `vite.config.ts`
+still derives `__APP_BUILD_DATE__` from the commit date rather than
+`new Date()` — keep that if you touch it, since a wall-clock value would still
+make repeated CI builds of the same commit non-deterministic — but this is no
+longer a "commit fails otherwise" constraint.
 
-### Do not run the pre-commit hook manually
-
-The hook is designed to run as part of `git commit`: it rebuilds `data/` and
-`webflash/`, then stages those artifacts for that commit. A manual run happens
-against the current `HEAD`, while the normal hook runs before Git creates the
-next commit. If either build embeds commit metadata, the manual run can therefore
-produce a different hashed SPA asset and leave `data/` or `webflash/` dirty even
-though the prior commit was correct.
-
-Use the hook through `git commit`, not as a standalone verification command.
-For diagnostics, run the narrow underlying command instead (for example,
-`scripts/test.sh`, `pnpm deploy:data`, or `pio run`). If a manual hook run has
-already dirtied only generated artifacts, discard or reset only those generated
-changes after confirming they do not belong to the task; do not treat them as a
-new source change.
-
-### Commits routinely take longer than 2 minutes
-
-`scripts/test.sh` alone runs `pio check` (cppcheck + clang-tidy) for **both**
-`esp32dev` and `native`, and the native `cppcheck` pass regularly takes
-1.5–3 minutes on its own — on top of the SPA rebuild, firmware rebuild, and
-`buildfs` that follow it. A full `git commit` through the hook can easily run
-5+ minutes. Any tool or shell with a short fixed timeout (e.g. a 2-minute
-default) will kill the process mid-hook if you just wait on it directly —
-this does not corrupt anything (see "If a commit aborts partway" below), but
-it wastes the run and leaves you re-diagnosing a timeout instead of a real
-failure.
-
-Use `scripts/commit.sh "<message>"`, never a direct `git commit`. The wrapper
-runs the single commit process non-blockingly, writes complete output to
-`/tmp/gekko-commit.log`, reports hook stage changes, and prevents a second
-wrapper commit from starting concurrently. Poll the original command session
-until it exits. If that session cannot be recovered, use
-`scripts/commit.sh --status`; do not start another commit while the reported
-process is running or its state is unknown.
-
-### If a commit aborts partway
-
-The hook stages the rebuilt artifacts before the checks that can fail (e.g.
-`clang-format`). When a commit is rejected, those artifacts stay in the index.
-Retrying rebuilds again, and any residual non-determinism produces a different
-asset hash, leaving stale staged entries. To recover: fix the failure, then run
-`git reset` (mixed — touches the index only, never the files on disk) to drop
-the hook-staged leftovers, and commit again. Never `git checkout --`/`rm` on
-`data/` or `webflash/` to "clean up": those are required, committed build
-outputs, not stray files.
+Use a plain `git commit` — `scripts/commit.sh`'s non-blocking wrapper existed
+only to survive the old multi-minute hook and is no longer required.

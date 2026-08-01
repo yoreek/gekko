@@ -95,8 +95,12 @@ DeviceValidationResult LedcAnalogOutputDevice::configureHardware(uint32_t now) {
         return validation;
     }
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+    (void)ledcAttachChannel(config_.pin, config_.frequencyHz, config_.dutyBits, config_.ledcChannel);
+#else
     (void)ledcSetup(config_.ledcChannel, config_.frequencyHz, config_.dutyBits);
     (void)ledcAttachPin(config_.pin, config_.ledcChannel);
+#endif
 #endif
     hardwareReady_ = true;
     return {};
@@ -109,7 +113,11 @@ DeviceValidationResult LedcAnalogOutputDevice::applyHardwareOutput(const uint16_
     }
     const uint32_t duty = outputStateToDuty(state);
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+    (void)ledcWriteChannel(config_.ledcChannel, duty);
+#else
     (void)ledcWrite(config_.ledcChannel, duty);
+#endif
 #endif
     (void)duty;
     return {};
@@ -119,8 +127,13 @@ void LedcAnalogOutputDevice::releaseHardware(uint32_t now) {
     (void)now;
 #if defined(ARDUINO) && !defined(UNIT_TEST)
     if (hardwareReady_) {
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+        (void)ledcWriteChannel(config_.ledcChannel, 0U);
+        (void)ledcDetach(config_.pin);
+#else
         (void)ledcWrite(config_.ledcChannel, 0U);
         (void)ledcDetachPin(config_.pin);
+#endif
     }
     pinMode(config_.pin, INPUT);
 #endif

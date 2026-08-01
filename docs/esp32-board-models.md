@@ -1,65 +1,218 @@
 # ESP32 Board Models — Research Database
 
-Research only, not wired into any code. Organized by **chip variant**, because
-that is what actually determines a compile target: the firmware toolchain and
-architecture (Xtensa vs RISC-V) is fixed per chip, not per physical board.
-Every board listed under the same chip already runs (or would run) the exact
-same compiled binary — they only differ in which GPIOs are physically broken
-out and what's permanently wired to what. List gathered from vendor pinout
-references, the ESPHome board registry
-(`esphome/components/esp32/boards.py`), the Tasmota supported-device/template
-repository (templates.blakadder.com), and espboards.dev's board catalog (272
-boards across 6 chip families at the time of writing — this doc picks a
-handful of genuinely distinct/popular boards per family, not an exhaustive
-catalog).
+Organized by **chip variant**, because that is what actually determines a
+compile target: the firmware toolchain and architecture (Xtensa vs RISC-V) is
+fixed per chip, not per physical board. Every board listed under the same
+chip already runs (or would run) the exact same compiled binary — they only
+differ in which GPIOs are physically broken out and what's permanently wired
+to what. List gathered from vendor pinout references, the ESPHome board
+registry (`esphome/components/esp32/boards.py`), the Tasmota
+supported-device/template repository (templates.blakadder.com), and
+espboards.dev's board catalog (272 boards across 6 chip families at the time
+of writing — this doc picks a handful of genuinely distinct/popular boards
+per family, not an exhaustive catalog).
 
-Today this project only builds for classic ESP32 (`platformio.ini`'s
-`esp32dev`/`esp32dev_ble`/`esp32dev_ota` environments, `toolchain-xtensa-esp32`
-pinned). S3, C3, S2 and C6 have no code-level blocker found in `src/` (no
-Xtensa-assembly, no architecture-specific BLE/RTOS calls) but need their own
-PlatformIO environment + toolchain + pin dataset before they can actually be
-compiled — tracked as future work, not done yet. **H2 has no WiFi radio at
-all** and cannot run this project's portal architecture regardless of pin
-work — included below only for completeness, not as a real target.
+**Current state: all 5 candidate chips compile and are wired into
+`platformio.ini` as real environments** (`esp32dev`/`esp32dev_ble`/
+`esp32dev_ota` for classic, plus `esp32s2`, `esp32s3`/`esp32s3_ble`,
+`esp32c3`/`esp32c3_ble`, `esp32c6`). **H2 has no WiFi radio at all** and
+cannot run this project's portal architecture regardless of pin work — not
+included as a target.
 
-## Memory: will the firmware actually fit?
+## Compile results (2026-08-01)
 
-### Flash — fits comfortably on every board researched here
+| Chip | Env | Platform | RAM | Flash |
+|---|---|---|---|---|
+| Classic ESP32 | `esp32dev` | official `platformio/espressif32@6.9.0`, core 2.x | 17.9% (58,528 / 327,680 B) | 58.8% (1.85 MB / 3 MB `app0`) |
+| S2 | `esp32s2` | same, core 2.x | 16.2% (53,160 / 327,680 B) | 56.4% |
+| S3 | `esp32s3` | same, core 2.x | 17.8% (58,196 / 327,680 B) | 57.1% |
+| C3 | `esp32c3` | same, core 2.x | 15.9% (52,020 / 327,680 B) | 55.9% |
+| C6 | `esp32c6` | `pioarduino` fork, core 3.x | 17.6% (57,540 / 327,680 B) | 47.2% (1.98 MB / 4 MB `app0` — C6's board has a 4 MB partition table, same layout, more total flash headroom than the 3 MB `app0` slot on the other four) |
 
-`my_partitions.csv` requires exactly 4 MB of flash total: `app0` (3 MB) +
-`devdata` (256 KB) + `littlefs` (640 KB) + `nvs` (64 KB) = `0x400000`
-(measured, not estimated — this is the literal sum of the partition table's
-offsets/sizes). The compiled firmware itself currently uses 1.84 MB of the
-3 MB `app0` slot (58.5%, from an actual `pio run -e esp32dev` build).
+### `platformio.ini` structure: BLE off by default, only turned on where it works
 
-4 MB is the minimum flash size on virtually every board listed above —
-several (larger S3 boards especially) ship with 8 or 16 MB, leaving
-comfortable headroom. No board researched here reports less than 4 MB, so
-flash is not expected to be a blocker for any of the 5 real candidate chip
-families (classic, S3, C3, S2, C6).
+Every chip env is built BLE-off by default (`[env]`'s top-level `lib_ignore =
+WiFiProv, SimpleBLE`, no `-DWITH_BLE_PROVISIONING` flag anywhere in the base
+`build_flags`). A chip's `_ble` variant `extends` the plain env and only adds
+the flag back plus un-ignores the two libraries (`lib_ignore =` empty) — a
+few lines, nothing declared then later undone. `env:esp32dev` itself now
+carries every classic-ESP32 platform/board/toolchain setting directly (no
+longer a child of a separate `_ble`-named base); `esp32dev_ble` and
+`esp32dev_ota` both simply `extend` it.
 
-### RAM — likely fine for most families, ESP32-S2 is the one genuine risk
+### BLE-provisioning compile results per chip
 
-Current static RAM usage on classic ESP32 is modest: 58,528 / 327,680 bytes
-(17.9%), from the same real build. This number is **link-time static data
-only** — it does not include runtime heap (AsyncWebServer, WebSocket
-buffers, JSON parsing, the device registry, etc. all allocate from the heap
-dynamically), so it understates real usage, but it's the only concrete data
-point available without actually compiling for each chip.
+| Chip | `_ble` env | Result | RAM | Flash |
+|---|---|---|---|---|
+| Classic ESP32 | `esp32dev_ble` | ✅ SUCCESS | 21.9% (71,760 B) | 83.2% (2.62 MB) |
+| S3 | `esp32s3_ble` | ✅ SUCCESS | 24.2% (79,316 B) | 75.0% (2.36 MB) |
+| C3 | `esp32c3_ble` | ✅ SUCCESS | 22.3% (73,236 B) | 77.0% (2.42 MB) |
+| S2 | *(none)* | ❌ impossible | — | — |
+| C6 | *(none)* | ❌ blocked | — | — |
 
-| Chip | Total SRAM | Assessment |
-|---|---|---|
-| Classic ESP32 | 520 KB | Proven — this is what's actually running today |
-| ESP32-S3 | 512 KB (often + PSRAM) | Likely fine — comparable or more headroom |
-| ESP32-C6 | 512 KB HP + 16 KB LP | Likely fine — comparable headroom |
-| ESP32-C3 | 400 KB | Probably fine given today's low static usage, unverified |
-| **ESP32-S2** | **320 KB, single-core** | **Tightest candidate** — least total SRAM of the WiFi-capable families, and the WiFi/LWIP stack still needs meaningful RAM even without a second core to spread work across |
+BLE costs a real, consistent ~6–20 percentage points of flash across every
+chip that supports it (the whole reason this project ships two separate
+binaries instead of one BLE-always-on build) — confirmed by these numbers,
+not assumed.
 
-None of this is verified by an actual build — it's paper comparison of
-today's classic-ESP32 numbers against each chip's datasheet SRAM figure.
-The only way to know for certain is to add each chip's PlatformIO
-environment and read the linker's real RAM/flash report, the same way
-`pio run -e esp32dev` did above.
+**S2 has no BLE variant because it has no Bluetooth/BLE radio at all** — it's
+a WiFi-only chip. `framework = arduino` for `esp32-s2-saola-1` with
+`-DWITH_BLE_PROVISIONING` fails to *link*, not compile:
+`undefined reference to 'wifi_prov_scheme_ble'` /
+`'wifi_prov_scheme_ble_set_service_uuid'` — the SDK simply never builds that
+symbol for this chip. Confirmed by an actual build attempt, not inferred
+from the datasheet.
+
+**C6 has no BLE variant because of a framework packaging bug**, not
+something in this project's own source: linking `esp32c6` with
+`-DWITH_BLE_PROVISIONING` on the `pioarduino` core-3.x release fails with
+
+```
+multiple definition of `wi_fi_scan_result__init'
+(and 5+ more protobuf symbols)
+```
+
+between `libespressif__network_provisioning.a` and `libwifi_provisioning.a`
+— two internal ESP-IDF components in this Arduino-ESP32 3.x release that
+both compile the same generated protobuf code and end up in the final link.
+Not investigated further (e.g. `-Wl,--allow-multiple-definition` as a rough
+workaround was not tried) — recorded as a known blocker for a future pass if
+BLE provisioning on C6 becomes a real requirement.
+
+No chip is a memory risk — this supersedes the paper estimate further below
+that called S2 the "tightest candidate"; its real numbers are in line with
+(slightly better than) classic ESP32.
+
+### Classic/S2/S3/C3: same official platform, same Arduino-ESP32 core 2.x
+
+All four build against the platform already pinned in `platformio.ini`
+(`platformio/espressif32@6.9.0`). Each needs its own toolchain pinned
+explicitly — the platform's own default per-board toolchain is an older GCC
+`8.4.0` that miscompiles this codebase (see below) — plus a couple of
+chip-specific flags:
+
+| Chip | Board used | `board_build.mcu` | Toolchain package pinned | Extra flags needed |
+|---|---|---|---|---|
+| S3 | `esp32-s3-devkitc-1` | `esp32s3` | `toolchain-xtensa-esp32s3@12.2.0+20230208` | `board_build.f_flash=80000000L`, `board_build.flash_mode=qio` (the board's own defaults — `env:esp32dev_ble`'s inherited 40 MHz classic-ESP32 override makes the bootloader packaging step look for a `bootloader_qio_40m.elf` that doesn't ship for S3) |
+| C3 | `esp32-c3-devkitm-1` | `esp32c3` | `toolchain-riscv32-esp@12.2.0+20230208` | `-march=rv32imc_zicsr_zifencei` (without it: assembler error `csrr ... extension zicsr required` — GCC 12.2's RISC-V default ISA baseline doesn't imply Zicsr/Zifencei the way the framework headers assume) |
+| S2 | `esp32-s2-saola-1` | `esp32s2` | `toolchain-xtensa-esp32s2@12.2.0+20230208` | none beyond the toolchain pin |
+
+Also needed: `board_build.mcu` must be set explicitly per env. `env:esp32dev_ble`
+sets `board_build.mcu = esp32` for the classic build; any env that `extends`
+it inherits that override and silently forces the classic-ESP32 toolchain
+regardless of `board =`, producing incomprehensible compiler-version-specific
+errors instead of an obvious "wrong chip" failure.
+
+### GCC 8.4.0 miscompiles a pimpl pattern (toolchain issue, not a chip issue)
+
+Using each board's *default* toolchain (all ship GCC `8.4.0+2021r2-patch5` by
+default in this platform release, same as classic ESP32's pre-pin default)
+fails identically on every chip with:
+
+```
+error: invalid application of 'sizeof' to incomplete type 'Adafruit_SSD1306'
+```
+
+from `Ssd1306Device.h`'s forward-declared `std::unique_ptr<::Adafruit_SSD1306>`
+member — a standard pimpl pattern with the destructor defined out-of-line in
+the `.cpp`. GCC 8.4.0 instantiates the deleter early regardless; GCC 12.2.0
+does not. This is exactly why `env:esp32dev_ble` already pins
+`toolchain-xtensa-esp32@12.2.0+20230208` instead of taking the platform
+default — the same pin (for the matching per-chip toolchain package) is
+required for every other chip too, not optional.
+
+### Fixed: `VSPI`/`HSPI` don't exist outside classic ESP32
+
+`src/devices/bus/spi/ArduinoSpiBusDriver.cpp` mapped `SpiBusConfig::host` to
+Arduino's `VSPI`/`HSPI` enum values unconditionally. Those macros are classic-
+ESP32-only (two named SPI peripherals); S2/S3/C3/C6 have a single default SPI2/
+SPI3 host selected automatically by the Arduino core. Fixed with a
+`#if defined(VSPI)` guard: on chips without it, `ArduinoSpiBusDriver::begin()`
+constructs `new SPIClass()` with no host argument (the explicit `sckPin`/
+`mosiPin`/`misoPin` it already takes fully describe the bus either way) and
+lets the Arduino core assign the free peripheral.
+
+### Flash and RAM fit comfortably on every candidate chip
+
+`my_partitions.csv` requires exactly 4 MB of flash total on the four chips
+sharing its 3 MB `app0` slot (`app0` + `devdata` 256 KB + `littlefs` 640 KB +
+`nvs` 64 KB = `0x400000`); C6's board (`esp32-c6-devkitm-1`) has a 4 MB `app0`
+in its own partition table, hence the lower flash percentage in the results
+table above despite a similar absolute binary size. See the results table
+above for the real, measured numbers — no chip is a memory risk. The earlier
+paper comparison that called S2 the "tightest candidate" (least total SRAM of
+the WiFi-capable families) did not hold up: its real measured usage is in
+line with classic ESP32.
+
+## ESP32-C6: works, but needed Arduino-ESP32 core 3.x
+
+`platformio/espressif32` (the official platform, every version checked up to
+`7.0.1`) cannot build C6 with Arduino at all: it only ships
+`framework-arduinoespressif32 @ 3.20017.241212+sha.dcc1105b` (PlatformIO's
+version numbering for Arduino-ESP32 core **2.0.17**), and C6 Arduino support
+was only ever added upstream in core **3.x**. Every C6 board manifest in the
+official platform lists `frameworks: ["espidf"]` only; `framework = arduino`
+fails immediately with `Error: This board doesn't support arduino
+framework!`, before any package download — not a version-pinning problem, no
+released official-platform version can do this (confirmed by checking
+`6.9.0` through `7.0.1`, and by the platform's own changelog, which only adds
+C6 *board* entries, never Arduino framework support for them).
+
+`env:esp32c6` in `platformio.ini` instead uses the community
+**[pioarduino/platform-espressif32](https://github.com/pioarduino/platform-espressif32)**
+fork (`platform = https://github.com/pioarduino/platform-espressif32/releases/download/54.03.20/platform-espressif32.zip`),
+which repackages the real Espressif Arduino-ESP32 3.2.0 release (confirmed
+via [PlatformIO community: "Confused in 2025: does PlatformIO support
+ESP32-C6 for Arduino code?"](https://community.platformio.org/t/confused-in-2025-does-platform-io-support-esp32-c6-for-arduino-code/47300)).
+This is a different core generation than classic/S2/S3/C3 (which stay on the
+official platform's core 2.x) — `env:esp32c6` is the only environment on
+core 3.x/`pioarduino`, isolated from the rest.
+
+### Core 2.x → 3.x API breaks found and fixed (all in `src/`, all small)
+
+Getting the project's own source to compile against core 3.x surfaced a
+short, finite list of renamed/removed APIs — not a wide rewrite. Each is
+guarded with `#if ESP_ARDUINO_VERSION_MAJOR >= 3` (from `<esp_arduino_version.h>`,
+included transitively by `<Arduino.h>`) so classic/S2/S3/C3 keep using the
+core 2.x calls unchanged:
+
+| File | Core 2.x | Core 3.x | Note |
+|---|---|---|---|
+| `ArduinoAdcInputDriver.cpp` | `adcAttachPin(pin)` | *(nothing — implicit on first read)* | ADC channel attachment is automatic now |
+| `LedcAnalogOutputDevice.cpp` | `ledcSetup(ch, freq, bits)` + `ledcAttachPin(pin, ch)` | `ledcAttachChannel(pin, freq, bits, ch)` | explicit channel still supported, just one call |
+| `LedcAnalogOutputDevice.cpp` | `ledcWrite(ch, duty)` | `ledcWriteChannel(ch, duty)` | rename |
+| `LedcAnalogOutputDevice.cpp` | `ledcDetachPin(pin)` | `ledcDetach(pin)` | rename |
+| `RmtPulseCapture.h`/`.cpp` | `rmt_obj_t* handle` + `rmtInit(pin, mode, memsize)` returning a handle, `rmtSetTick`, `rmtSetRxThreshold(handle, ...)`, `rmtReadAsync(handle, items, count, cb, wait, timeout)`, `rmtReceiveCompleted(handle)`, `rmtEnd`/`rmtDeinit(handle)` | pin-addressed, no handle: `rmtInit(pin, dir, memsize, freq_Hz)` returns `bool`, `rmtSetRxMaxThreshold(pin, ...)`, `rmtReadAsync(pin, items, &count)`, `rmtReceiveCompleted(pin)`, `rmtDeinit(pin)` | full API restructure (used by the DHT11 driver's RMT receive backend); no `rmtEnd` equivalent — `cancel()` just clears `pending_`, `release()` is the one that calls `rmtDeinit` |
+| `ArduinoNtpClient.cpp` | `udp_.flush()` (drained rx as a side effect) | `udp_.clear()` (`flush()` still exists but now only means tx-flush, `-Werror=deprecated-declarations` catches the old call) | matches `flushPackets()`'s actual intent (drain stale rx) |
+| `RandomBlobKey.cpp` | `esp_random()` pulled in transitively via `<esp_system.h>` | needs its own `#include <esp_random.h>` | header no longer re-exports it |
+
+### Third-party library gap found and worked around: `OneWire` doesn't know about C6
+
+`paulstoffregen/OneWire`'s registry release (2.3.8, the latest tagged
+release, same one every other env uses) fails to compile for C6:
+`OneWire_direct_gpio.h`'s ESP32 branch only special-cases
+`CONFIG_IDF_TARGET_ESP32C3` to use the chip's typed GPIO register structs
+(`GPIO.out_w1tc.val = ...`); C6 needs the identical treatment but falls
+through to the "plain ESP32" branch, which assumes a raw `uint32_t` register
+and fails to compile against C6's typed struct. This is exactly the kind of
+one-off, direct-register bit-banging (`OneWire::reset()`/`write_bit()`/
+`read_bit()`, timing-critical, called with interrupts disabled) that trades
+portability for speed, so it isn't chip-agnostic by design.
+
+Fixed upstream — `PaulStoffregen/OneWire`'s `master` branch (verified via
+GitHub's compare API to be exactly 2 commits/1 file ahead of the `v2.3.8` tag,
+no unrelated changes bundled in for the C6 fix itself) adds
+`|| CONFIG_IDF_TARGET_ESP32C6` to the same 5 functions already special-cased
+for C3 — but there is no tagged release with the fix yet. `env:esp32c6`
+points `lib_deps` at `https://github.com/PaulStoffregen/OneWire.git#master`
+for this one library, in this one env only; every other env keeps the
+registry release. Re-pin to a tagged release once `2.3.9+` ships it.
+
+Note: `master` also carries one unrelated change (a loosened `pin <= 33`
+output-pin check on classic ESP32's branch, PR #146) that this project does
+not use or need — it only affects classic ESP32, which stays on the registry
+release, so it has no effect here. A separate, still-open, not-yet-merged PR
+(#160) adds ESP32-H2 support the same way; irrelevant since H2 has no WiFi.
 
 ## 1. Classic ESP32 (Xtensa LX6, dual-core) — compiles today
 

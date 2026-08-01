@@ -7,14 +7,18 @@ sidebar:
 
 ## Das Controller-Board
 
-Gekko zielt auf den klassischen **ESP32** (den urspruenglichen Dual-Core-Chip)
-mit **4 MB Flash** - also das uebliche "ESP32 DevKit"-Entwicklungsboard, das
-oft nur wenige Euro kostet. Fuer diese Konfiguration sind die vorgebauten
-Binärdateien gedacht:
+Gekko laeuft auf fuenf ESP32-Chips, fuer alle gibt es vorgebaute Binaerdateien:
+den klassischen **ESP32**, **ESP32-S2**, **ESP32-S3**, **ESP32-C3** und
+**ESP32-C6** (BLE-WiFi-Provisioning gibt es nur fuer ESP32/S3/C3 - siehe
+Tabelle unten). Jedes uebliche "DevKit"-Board fuer diese Chips funktioniert,
+und alle brauchen **4 MB Flash**. Der klassische ESP32 ist die einfachste,
+guenstigste und gebraeuchlichste Wahl, wenn du noch kein bestimmtes Board
+hast - das ist die Konfiguration, auf die sich der Rest dieser Doku bezieht,
+sofern nicht anders angegeben:
 
 | Partition | Flash-Offset |
 | --- | --- |
-| Bootloader | `0x1000` |
+| Bootloader | `0x1000` (klassischer ESP32 / ESP32-S2), `0x0` (S3 / C3 / C6) |
 | Partitionstabelle | `0x8000` |
 | Firmware (einzelne App, kein OTA) | `0x10000` |
 | LittleFS (Webportal-Assets) | `0x370000` |

@@ -1,6 +1,7 @@
 #include "platform/ArduinoNtpClient.h"
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+#include <esp_arduino_version.h>
 #include <lwip/def.h>
 #endif
 
@@ -81,7 +82,13 @@ bool ArduinoNtpClient::pollResponse(uint32_t& outEpochSeconds) {
 #if defined(ARDUINO) && !defined(UNIT_TEST)
 void ArduinoNtpClient::flushPackets() {
     while (udp_.parsePacket() != 0) {
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+        // Core 3.x split flush() (tx) from clear() (rx); draining stale rx packets here
+        // means clear() is the one that matches this function's intent now.
+        udp_.clear();
+#else
         udp_.flush();
+#endif
     }
 }
 

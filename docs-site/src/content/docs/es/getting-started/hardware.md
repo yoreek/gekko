@@ -7,14 +7,18 @@ sidebar:
 
 ## La placa controladora
 
-Gekko apunta al **ESP32** clásico (el chip original de doble núcleo) con
-**4 MB de flash** - la típica placa de desarrollo "ESP32 DevKit" que suele
-costar unos pocos dólares. Esa es la configuración para la que se construyen
-los binarios precompilados:
+Gekko funciona en cinco chips de la familia ESP32, todos con binarios
+precompilados: el **ESP32** clásico, **ESP32-S2**, **ESP32-S3**, **ESP32-C3** y
+**ESP32-C6** (el aprovisionamiento WiFi por BLE solo está disponible en
+ESP32/S3/C3 - ver la tabla más abajo). Cualquier placa "DevKit" habitual para
+estos chips sirve, y todas necesitan **4 MB de flash**. El ESP32 clásico es la
+opción más simple, barata y habitual si aún no tienes una placa concreta - es
+la configuración a la que se refiere el resto de esta documentación salvo que
+se indique lo contrario:
 
 | Partición | Offset de flash |
 | --- | --- |
-| Bootloader | `0x1000` |
+| Bootloader | `0x1000` (ESP32 clásico / ESP32-S2), `0x0` (S3 / C3 / C6) |
 | Tabla de particiones | `0x8000` |
 | Firmware (una sola app, sin OTA) | `0x10000` |
 | LittleFS (assets del portal web) | `0x370000` |

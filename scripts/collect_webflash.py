@@ -17,6 +17,20 @@ PARTITION_ENTRY = struct.Struct("<HBBII16sI")
 PARTITION_MAGIC = 0x50AA
 PARTITION_MD5_MAGIC = 0xEBEB
 
+# Bootloader load offset and esp-web-tools chip-family id per chip we build in
+# platformio.ini (see docs/esp32-board-models.md). The partition table itself always
+# starts at the fixed 0x8000 offset on every chip; only the bootloader's own start
+# offset (and therefore its size budget, since the partition table follows it right
+# after) differs: the classic ESP32 and ESP32-S2 leave the first 4 KiB empty and start
+# the bootloader at 0x1000, while S3/C3/C6 start it at 0x0.
+CHIP_PROFILES = {
+    "esp32": {"chip_family": "ESP32", "bootloader_offset": 0x1000},
+    "esp32s2": {"chip_family": "ESP32-S2", "bootloader_offset": 0x1000},
+    "esp32s3": {"chip_family": "ESP32-S3", "bootloader_offset": 0x0},
+    "esp32c3": {"chip_family": "ESP32-C3", "bootloader_offset": 0x0},
+    "esp32c6": {"chip_family": "ESP32-C6", "bootloader_offset": 0x0},
+}
+
 
 @dataclass(frozen=True)
 class Partition:
@@ -96,11 +110,11 @@ def validate_partition_binary(csv_partitions: dict[str, Partition], binary_path:
             )
 
 
-def build_images(partitions: dict[str, Partition]) -> list[Image]:
+def build_images(partitions: dict[str, Partition], bootloader_offset: int) -> list[Image]:
     app = require_partition(partitions, "app0")
     littlefs = require_partition(partitions, "littlefs")
     return [
-        Image("bootloader", "bootloader.bin", 0x1000, 0x8000 - 0x1000),
+        Image("bootloader", "bootloader.bin", bootloader_offset, 0x8000 - bootloader_offset),
         Image("partitions", "partitions.bin", 0x8000, app.offset - 0x8000),
         Image("firmware", "firmware.bin", app.offset, app.size),
         Image("littlefs", "littlefs.bin", littlefs.offset, littlefs.size),
@@ -147,7 +161,7 @@ def write_merged_image(images: list[Image], output_dir: Path) -> None:
     temporary.replace(destination)
 
 
-def write_manifest(images: list[Image], output_dir: Path) -> None:
+def write_manifest(images: list[Image], output_dir: Path, chip_family: str) -> None:
     manifest = {
         "name": "Gekko",
         "version": "latest",
@@ -155,7 +169,7 @@ def write_manifest(images: list[Image], output_dir: Path) -> None:
         "new_install_prompt_erase": True,
         "builds": [
             {
-                "chipFamily": "ESP32",
+                "chipFamily": chip_family,
                 "parts": [{"path": image.path, "offset": image.offset} for image in images],
             }
         ],
@@ -174,14 +188,15 @@ def write_shell_layout(images: list[Image], output_dir: Path) -> None:
     (output_dir / "flash-layout.env").write_text("\n".join(lines) + "\n", encoding="ascii")
 
 
-def collect(build_dir: Path, output_dir: Path, partition_csv: Path) -> None:
+def collect(build_dir: Path, output_dir: Path, partition_csv: Path, chip: str = "esp32") -> None:
+    profile = CHIP_PROFILES[chip]
     partitions = read_partition_csv(partition_csv)
-    images = build_images(partitions)
+    images = build_images(partitions, profile["bootloader_offset"])
     validate_partition_binary(partitions, build_dir / "partitions.bin")
     validate_images(images, build_dir)
     copy_images(images, build_dir, output_dir)
     write_merged_image(images, output_dir)
-    write_manifest(images, output_dir)
+    write_manifest(images, output_dir, profile["chip_family"])
     write_shell_layout(images, output_dir)
 
 
@@ -190,8 +205,9 @@ def main() -> None:
     parser.add_argument("--build-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--partitions", type=Path, required=True)
+    parser.add_argument("--chip", default="esp32", choices=sorted(CHIP_PROFILES))
     args = parser.parse_args()
-    collect(args.build_dir, args.output_dir, args.partitions)
+    collect(args.build_dir, args.output_dir, args.partitions, args.chip)
 
 
 if __name__ == "__main__":

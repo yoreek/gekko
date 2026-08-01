@@ -14,14 +14,15 @@ Split by design, not by accident:
     carry the full catalog across every chip/board researched.
 
 Modes:
-  generate --chip <chip>   -- writes src/devices/core/BoardPinCapabilities.h for that one
+  generate --chip <chip>   -- writes src/platform/BoardPinCapabilities.h for that one
                                chip's pin table (union of all its boards' pins). Defaults
-                               to 'esp32', the only chip this project actually builds today
-                               (see platformio.ini). A future esp32s3/esp32c3/... build
-                               environment would regenerate this file for its own chip
-                               before compiling (analogous to how
-                               scripts/generate_version_header.py runs pre-build) -- not
-                               wired up yet since no such environment exists yet.
+                               to 'esp32', the recommended install target and the one kept
+                               committed. platformio.ini also builds esp32s3/esp32c3/esp32s2/
+                               esp32c6 envs (see docs/esp32-board-models.md); CI regenerates
+                               this header for each one right before compiling it (not wired
+                               into platformio.ini's extra_scripts like
+                               scripts/generate_version_header.py, since switching chips
+                               locally is rare -- run this by hand when you do).
   generate-spa              -- writes portal-spa/src/data/board-pin-capabilities.ts with
                                every board from every chip (see reasoning above).
   check --chip <chip>       -- regenerates the firmware header in memory, diffs against

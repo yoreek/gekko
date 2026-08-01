@@ -8,20 +8,24 @@ sidebar:
 import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 Готовые к прошивке бинарники (`bootloader.bin`, `partitions.bin`,
-`firmware.bin`, `littlefs.bin`) собираются для каждого коммита и содержат
-прошивку и ресурсы веб-портала.
+`firmware.bin`, `littlefs.bin`) собираются для каждого коммита и для каждого
+поддерживаемого чипа (классическая ESP32, ESP32-S2, ESP32-S3, ESP32-C3,
+ESP32-C6), и содержат прошивку и ресурсы веб-портала.
 
 ## Выбор варианта прошивки
 
-| Вариант | Настройка WiFi через BLE | GPIO 32 | Точка доступа и веб-портал |
-| --- | --- | --- | --- |
-| **Рекомендуемый** | Код BLE не компилируется в прошивку | Доступен для другого устройства | Доступны |
-| **С BLE** | Включена | Зарезервирован для кнопки активации BLE | Доступны |
+| Вариант | Настройка WiFi через BLE | GPIO 32 | Точка доступа и веб-портал | Чипы |
+| --- | --- | --- | --- | --- |
+| **Рекомендуемый** | Код BLE не компилируется в прошивку | Доступен для другого устройства | Доступны | ESP32, S2, S3, C3, C6 |
+| **С BLE** | Включена | Зарезервирован для кнопки активации BLE | Доступны | только ESP32, S3, C3 |
 
 Выбирайте **Рекомендуемый** вариант, если не нужна настройка WiFi из
 мобильного BLE-приложения: эта прошивка меньше и не резервирует GPIO 32.
 Выбирайте **С BLE**, только если нужна настройка через мобильное
-BLE-приложение.
+BLE-приложение; для ESP32-S2 такого варианта нет (в чипе вообще отсутствует
+радиомодуль BLE), как и для ESP32-C6 (конфликт линковщика во фреймворке
+`pioarduino`/Arduino-ESP32 core 3.x) — подробности в `docs/esp32-board-models.md`
+в репозитории.
 
 ## Вариант 1 — веб-установщик (проще всего)
 
@@ -31,14 +35,15 @@ BLE-приложение.
 
 <Steps>
 
-1. Подключите плату ESP32 к компьютеру USB-кабелем **для передачи данных**.
+1. Подключите плату к компьютеру USB-кабелем **для передачи данных**.
 
 2. Откройте установщик в **Chrome**, **Edge** или **Opera** на рабочем столе
    (Web Serial недоступен в Firefox/Safari и на мобильных браузерах).
 
 3. Выберите **Рекомендуемый** или **С BLE**, нажмите соответствующую кнопку
    установки, выберите serial port платы в диалоге браузера и подтвердите.
-   При первой установке предлагается стереть устройство.
+   Установщик сам определяет подключённый чип — выбирать его вручную не
+   нужно. При первой установке предлагается стереть устройство.
 
 4. Дождитесь завершения прогресс-бара, затем перейдите к
    [Первому запуску и WiFi-setup](/gekko/ru/getting-started/first-boot-wifi/).
@@ -61,18 +66,18 @@ BLE-приложение.
        [esptool releases page](https://github.com/espressif/esptool/releases).
     2. Положите его рядом со скриптами в папке репозитория `webflash/`
        (переименуйте в `esptool` на macOS/Linux, в `esptool.exe` на Windows).
-    3. Запустите `webflash/flash.sh [PORT]` (macOS/Linux) или
-       `webflash/flash.bat [PORT]` (Windows). Если порт не указан, esptool
-       попытается найти его сам.
-       Для скачанного из CI BLE-комплекта используйте
-       `flash.sh ble [PORT]` или `flash.bat ble [PORT]`.
+    3. Запустите `webflash/flash.sh [default|ble] [CHIP] [PORT]` (macOS/Linux)
+       или `webflash/flash.bat [default|ble] [CHIP] [PORT]` (Windows), где
+       `CHIP` — один из `esp32` (по умолчанию), `esp32s2`, `esp32s3`,
+       `esp32c3`, `esp32c6`, тот, что соответствует вашей плате. Если порт не
+       указан, esptool попытается найти его сам.
 
   </TabItem>
   <TabItem label="Python">
 
     ```sh
     pip install esptool
-    python3 webflash/flash.py [default|ble] [PORT]
+    python3 webflash/flash.py [default|ble] [CHIP] [PORT]
     ```
 
   </TabItem>
@@ -90,6 +95,9 @@ pio run -e esp32dev -t uploadfs
 # С BLE
 pio run -e esp32dev_ble -t upload
 pio run -e esp32dev_ble -t uploadfs
+
+# Другие чипы: esp32s3[_ble], esp32c3[_ble], esp32s2, esp32c6
+pio run -e esp32s3_ble -t upload
 ```
 
 Смотрите `CLAUDE.md` и `docs/platformio-environments.md` в репозитории для

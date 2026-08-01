@@ -8,20 +8,24 @@ sidebar:
 import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 Les binaires prêts à flasher (`bootloader.bin`, `partitions.bin`,
-`firmware.bin`, `littlefs.bin`) sont produits à chaque commit et incluent à la
-fois le firmware et les ressources du portail web.
+`firmware.bin`, `littlefs.bin`) sont produits à chaque commit pour chaque puce
+prise en charge (ESP32 classique, ESP32-S2, ESP32-S3, ESP32-C3, ESP32-C6) et
+incluent à la fois le firmware et les ressources du portail web.
 
 ## Choisir une variante du firmware
 
-| Variante | Configuration WiFi par BLE | GPIO 32 | Point d'accès et portail web |
-| --- | --- | --- | --- |
-| **Recommandée** | Le code BLE n'est pas compilé | Disponible pour un autre périphérique | Disponibles |
-| **Avec BLE** | Incluse | Réservé au bouton d'activation BLE | Disponibles |
+| Variante | Configuration WiFi par BLE | GPIO 32 | Point d'accès et portail web | Puces |
+| --- | --- | --- | --- | --- |
+| **Recommandée** | Le code BLE n'est pas compilé | Disponible pour un autre périphérique | Disponibles | ESP32, S2, S3, C3, C6 |
+| **Avec BLE** | Incluse | Réservé au bouton d'activation BLE | Disponibles | ESP32, S3, C3 uniquement |
 
 Choisissez **Recommandée** sauf si vous devez configurer le WiFi depuis une
 application BLE mobile : ce firmware est plus compact et ne réserve pas
 GPIO 32. Choisissez **Avec BLE** uniquement si cette configuration par
-application vous est nécessaire.
+application vous est nécessaire ; elle n'existe pas pour l'ESP32-S2 (pas de
+radio BLE) ni l'ESP32-C6 (un conflit de l'éditeur de liens dans le framework
+`pioarduino`/Arduino-ESP32 core 3.x) — voir `docs/esp32-board-models.md` dans
+le dépôt.
 
 ## Option 1 — Installateur web (le plus simple)
 
@@ -31,14 +35,16 @@ Flashez directement depuis le navigateur, sans logiciel à installer :
 
 <Steps>
 
-1. Connectez la carte ESP32 à votre ordinateur avec un câble USB **de
+1. Connectez votre carte à votre ordinateur avec un câble USB **de
    données**.
 
 2. Ouvrez l'installateur dans **Chrome**, **Edge** ou **Opera** sur ordinateur
    (Web Serial n'est pas disponible dans Firefox/Safari ni sur mobile).
 
 3. Choisissez **Recommandée** ou **Avec BLE**, cliquez sur son bouton
-   d'installation, sélectionnez le port série, puis confirmez.
+   d'installation, sélectionnez le port série, puis confirmez. L'installateur
+   détecte automatiquement la puce connectée — inutile de la choisir
+   vous-même.
 
 4. Attendez la fin de la barre de progression, puis continuez avec
    [Premier démarrage et configuration WiFi](/gekko/fr/getting-started/first-boot-wifi/).
@@ -61,18 +67,18 @@ elles flashent exactement les mêmes binaires.
        [page des versions d'esptool](https://github.com/espressif/esptool/releases).
     2. Placez-le à côté des scripts dans le dossier `webflash/` du dépôt
        (renommez-le en `esptool` sur macOS/Linux, `esptool.exe` sur Windows).
-    3. Exécutez `webflash/flash.sh [PORT]` (macOS/Linux) ou `webflash/flash.bat
-       [PORT]` (Windows). Sans argument de port, esptool le détecte
-       automatiquement.
-       Pour le paquet BLE de CI, utilisez `flash.sh ble [PORT]` ou
-       `flash.bat ble [PORT]`.
+    3. Exécutez `webflash/flash.sh [default|ble] [CHIP] [PORT]` (macOS/Linux)
+       ou `webflash/flash.bat [default|ble] [CHIP] [PORT]` (Windows), où
+       `CHIP` est `esp32` (par défaut), `esp32s2`, `esp32s3`, `esp32c3` ou
+       `esp32c6` — celle qui correspond à votre carte. Sans argument de
+       port, esptool le détecte automatiquement.
 
   </TabItem>
   <TabItem label="Python">
 
     ```sh
     pip install esptool
-    python3 webflash/flash.py [default|ble] [PORT]
+    python3 webflash/flash.py [default|ble] [CHIP] [PORT]
     ```
 
   </TabItem>
@@ -90,6 +96,9 @@ pio run -e esp32dev -t uploadfs
 # Avec BLE
 pio run -e esp32dev_ble -t upload
 pio run -e esp32dev_ble -t uploadfs
+
+# Autres puces : esp32s3[_ble], esp32c3[_ble], esp32s2, esp32c6
+pio run -e esp32s3_ble -t upload
 ```
 
 Voir `CLAUDE.md` et `docs/platformio-environments.md` dans le dépôt pour le

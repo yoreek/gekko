@@ -12,6 +12,7 @@
 namespace ewfm {
 
 #if defined(ARDUINO) && !defined(UNIT_TEST)
+#if defined(VSPI)
 namespace {
 uint8_t spiHostToArduinoHost(uint8_t host) {
     switch (host) {
@@ -23,11 +24,19 @@ uint8_t spiHostToArduinoHost(uint8_t host) {
     }
 }
 } // namespace
+#endif
 
 class ArduinoSpiBusDriver final : public ISpiBusDriver {
 public:
     bool begin(uint8_t host, uint8_t sckPin, uint8_t mosiPin, uint8_t misoPin) override {
+#if defined(VSPI)
         bus_.reset(new SPIClass(spiHostToArduinoHost(host)));
+#else
+        // Chips with a single default SPI peripheral (S2/S3/C3/C6): the Arduino core
+        // assigns SPI2/SPI3 automatically; explicit pins below fully describe the bus.
+        (void)host;
+        bus_.reset(new SPIClass());
+#endif
         if (bus_ == nullptr) {
             return false;
         }

@@ -16,6 +16,7 @@ python3 "$ROOT_DIR/tools/devicegen/check_config_versions.py" "$ROOT_DIR"
 
 # Webflash artifacts must derive all partition offsets from the partition table.
 python3 -B "$ROOT_DIR/scripts/test_collect_webflash.py"
+python3 -B "$ROOT_DIR/scripts/test_merge_webflash_manifests.py"
 
 # `pio test` does not run platformio.ini's extra_scripts (unlike `pio run`), so
 # generated/Version.h would be missing on a fresh checkout without this.

@@ -2,21 +2,31 @@
 REM Flashes the firmware via standalone esptool.exe (no Python, no browser needed).
 REM "default" is the recommended build (no BLE provisioning); "ble" adds BLE WiFi
 REM provisioning and its setup-button GPIO reservation, at the cost of flash/RAM.
+REM CHIP is one of esp32 (default), esp32s2, esp32s3, esp32c3, esp32c6 -- match the
+REM board you actually have; "ble" only exists for esp32/esp32s3/esp32c3.
 REM Download esptool.exe and place it next to this file:
 REM   https://github.com/espressif/esptool/releases
 REM
-REM Usage: flash.bat [default^|ble] [PORT] [all^|bootloader^|partitions^|firmware^|littlefs]
+REM Usage: flash.bat [default^|ble] [CHIP] [PORT] [all^|bootloader^|partitions^|firmware^|littlefs]
 REM The target can be passed without a port, for example: flash.bat littlefs
 
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
-set "BUNDLE_DIR=."
+set "VARIANT_DIR=."
 if /i "%~1"=="default" shift
 if /i "%~1"=="ble" (
-  set "BUNDLE_DIR=ble"
+  set "VARIANT_DIR=ble"
   shift
 )
+
+set "CHIP=esp32"
+if /i "%~1"=="esp32" (set "CHIP=esp32" & shift)
+if /i "%~1"=="esp32s2" (set "CHIP=esp32s2" & shift)
+if /i "%~1"=="esp32s3" (set "CHIP=esp32s3" & shift)
+if /i "%~1"=="esp32c3" (set "CHIP=esp32c3" & shift)
+if /i "%~1"=="esp32c6" (set "CHIP=esp32c6" & shift)
+set "BUNDLE_DIR=!VARIANT_DIR!\!CHIP!"
 
 if not exist "!BUNDLE_DIR!\flash-layout.env" (
   echo !BUNDLE_DIR!\flash-layout.env not found.
@@ -62,8 +72,8 @@ if /i "!TARGET!"=="all" (
   exit /b 2
 )
 
-esptool.exe --chip esp32 --baud 921600 !PORT_ARG! write_flash -z ^
-  --flash_mode dio --flash_freq 40m --flash_size detect ^
+esptool.exe --chip !CHIP! --baud 921600 !PORT_ARG! write_flash -z ^
+  --flash_mode keep --flash_freq keep --flash_size detect ^
   !FLASH_OFFSET! "!BUNDLE_DIR!\!FLASH_FILE!"
 
 pause

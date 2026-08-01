@@ -7,7 +7,7 @@ on:
       - 'docs-site/**'
       - 'webflash/**'
       - 'src/**'
-      - 'data/**'
+      - 'portal-spa/**'
       - 'platformio.ini'
       - 'my_partitions.csv'
       - 'scripts/collect_webflash.py'
@@ -51,8 +51,11 @@ jobs:
             ~/.cache/pip
           key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
 
-      - name: Install PlatformIO
-        run: pip install -U platformio
+      - name: Install PlatformIO + clang-format
+        run: |
+          pip install -U platformio
+          sudo apt-get update
+          sudo apt-get install -y clang-format
 
       - name: Install dependencies
         working-directory: docs-site
@@ -62,27 +65,50 @@ jobs:
         working-directory: docs-site
         run: pnpm build
 
-      - name: Bundle web flasher
+      - name: Install portal SPA dependencies
+        working-directory: portal-spa
+        run: pnpm install --frozen-lockfile
+
+      - name: Build portal SPA -> data/ (LittleFS assets)
+        working-directory: portal-spa
+        run: pnpm deploy:data
+
+      - name: Bundle web flasher (every chip, default + BLE)
         run: |
-          mkdir -p docs-site/dist/install
-          cp webflash/index.html webflash/manifest.json webflash/*.bin \
-             webflash/flash.sh webflash/flash.bat webflash/flash.py \
+          set -euo pipefail
+          mkdir -p docs-site/dist/install/ble
+
+          build_chip() {
+            env_name="$1"
+            chip="$2"
+            out_dir="$3"
+            python3 tools/devicegen/generate_boards.py generate --chip "$chip"
+            pio run -e "$env_name"
+            pio run -e "$env_name" -t buildfs
+            python3 scripts/collect_webflash.py \
+              --build-dir ".pio/build/$env_name" \
+              --output-dir "$out_dir/$chip" \
+              --partitions my_partitions.csv \
+              --chip "$chip"
+          }
+
+          build_chip esp32dev esp32 docs-site/dist/install
+          build_chip esp32s2 esp32s2 docs-site/dist/install
+          build_chip esp32s3 esp32s3 docs-site/dist/install
+          build_chip esp32c3 esp32c3 docs-site/dist/install
+          build_chip esp32c6 esp32c6 docs-site/dist/install
+          python3 scripts/merge_webflash_manifests.py \
+            --output-dir docs-site/dist/install \
+            --chips esp32 esp32s2 esp32s3 esp32c3 esp32c6
+          cp webflash/index.html webflash/flash.sh webflash/flash.bat webflash/flash.py \
              docs-site/dist/install/
 
-      - name: Bundle web flasher with BLE provisioning
-        run: |
-          pio run -e esp32dev_ble
-          mkdir -p .pio/ble-staging
-          cp .pio/build/esp32dev_ble/bootloader.bin \
-             .pio/build/esp32dev_ble/partitions.bin \
-             .pio/build/esp32dev_ble/firmware.bin \
-             .pio/ble-staging/
-          pio run -e esp32dev_ble -t buildfs
-          cp .pio/build/esp32dev_ble/littlefs.bin .pio/ble-staging/
-          python3 scripts/collect_webflash.py \
-            --build-dir .pio/ble-staging \
+          build_chip esp32dev_ble esp32 docs-site/dist/install/ble
+          build_chip esp32s3_ble esp32s3 docs-site/dist/install/ble
+          build_chip esp32c3_ble esp32c3 docs-site/dist/install/ble
+          python3 scripts/merge_webflash_manifests.py \
             --output-dir docs-site/dist/install/ble \
-            --partitions my_partitions.csv
+            --chips esp32 esp32s3 esp32c3
 
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -2,24 +2,32 @@
 # Flashes the firmware via standalone esptool (no Python, no browser needed).
 # "default" is the recommended build (no BLE provisioning); "ble" adds BLE WiFi
 # provisioning and its setup-button GPIO reservation, at the cost of flash/RAM.
+# CHIP is one of esp32 (default), esp32s2, esp32s3, esp32c3, esp32c6 -- match the
+# board you actually have; "ble" only exists for esp32/esp32s3/esp32c3.
 # Download the esptool binary for your OS and place it next to this script:
 #   https://github.com/espressif/esptool/releases
 # (the file is named esptool or esptool-macos/esptool-linux -- rename it to esptool)
 #
-# Usage: ./flash.sh [default|ble] [PORT] [all|bootloader|partitions|firmware|littlefs]
+# Usage: ./flash.sh [default|ble] [CHIP] [PORT] [all|bootloader|partitions|firmware|littlefs]
 # The target can be passed without a port, for example: ./flash.sh littlefs
 set -euo pipefail
 cd "$(dirname "$0")"
 
 VARIANT="default"
-BUNDLE_DIR="."
+VARIANT_DIR="."
 if [ "${1-}" = "default" ] || [ "${1-}" = "ble" ]; then
   VARIANT="$1"
   shift
 fi
 if [ "$VARIANT" = "ble" ]; then
-  BUNDLE_DIR="./ble"
+  VARIANT_DIR="./ble"
 fi
+
+CHIP="esp32"
+case "${1-}" in
+  esp32|esp32s2|esp32s3|esp32c3|esp32c6) CHIP="$1"; shift ;;
+esac
+BUNDLE_DIR="$VARIANT_DIR/$CHIP"
 
 if [ ! -f "$BUNDLE_DIR/flash-layout.env" ]; then
   echo "$BUNDLE_DIR/flash-layout.env not found."
@@ -70,6 +78,6 @@ if [ "$PORT" != "" ]; then
   PORT_ARGS=(--port "$PORT")
 fi
 
-"$ESPTOOL" --chip esp32 --baud 921600 "${PORT_ARGS[@]}" write_flash -z \
-  --flash_mode dio --flash_freq 40m --flash_size detect \
+"$ESPTOOL" --chip "$CHIP" --baud 921600 "${PORT_ARGS[@]}" write_flash -z \
+  --flash_mode keep --flash_freq keep --flash_size detect \
   "$FLASH_OFFSET" "$FLASH_FILE"

@@ -8,19 +8,24 @@ sidebar:
 import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 Die bereitstellbaren Binaries (`bootloader.bin`, `partitions.bin`,
-`firmware.bin`, `littlefs.bin`) werden aus jedem Commit erzeugt und enthalten
-sowohl die Firmware als auch die Webportal-Assets.
+`firmware.bin`, `littlefs.bin`) werden aus jedem Commit fuer jeden
+unterstuetzten Chip erzeugt (klassischer ESP32, ESP32-S2, ESP32-S3,
+ESP32-C3, ESP32-C6) und enthalten sowohl die Firmware als auch die
+Webportal-Assets.
 
 ## Firmware-Variante waehlen
 
-| Variante | WiFi-Einrichtung ueber BLE | GPIO 32 | Setup-Access-Point und Webportal |
-| --- | --- | --- | --- |
-| **Empfohlen** | BLE-Code wird nicht kompiliert | Fuer ein anderes Geraet verfuegbar | Verfuegbar |
-| **Mit BLE** | Enthalten | Fuer den BLE-Aktivierungstaster reserviert | Verfuegbar |
+| Variante | WiFi-Einrichtung ueber BLE | GPIO 32 | Setup-Access-Point und Webportal | Chips |
+| --- | --- | --- | --- | --- |
+| **Empfohlen** | BLE-Code wird nicht kompiliert | Fuer ein anderes Geraet verfuegbar | Verfuegbar | ESP32, S2, S3, C3, C6 |
+| **Mit BLE** | Enthalten | Fuer den BLE-Aktivierungstaster reserviert | Verfuegbar | nur ESP32, S3, C3 |
 
 Waehle **Empfohlen**, wenn du WiFi nicht ueber eine mobile BLE-App einrichten
 moechtest: Diese Firmware ist kleiner und reserviert GPIO 32 nicht. Waehle
-**Mit BLE** nur, wenn du diese Einrichtung ueber die BLE-App brauchst.
+**Mit BLE** nur, wenn du diese Einrichtung ueber die BLE-App brauchst - fuer
+ESP32-S2 (kein BLE-Funkmodul) und ESP32-C6 (ein Framework-Linker-Konflikt in
+pioarduino/Arduino-ESP32 Core 3.x) gibt es keine BLE-Variante, siehe
+`docs/esp32-board-models.md` im Repository.
 
 ## Option 1 - Webinstaller (am einfachsten)
 
@@ -30,13 +35,15 @@ Direkt im Browser flashen, ohne zusaetzliche Software:
 
 <Steps>
 
-1. Verbinde das ESP32-Board mit einem USB-**Daten**kabel mit dem Computer.
+1. Verbinde dein Board mit einem USB-**Daten**kabel mit dem Computer.
 
 2. Oeffne den Installer in **Chrome**, **Edge** oder **Opera** auf dem Desktop
    (Web Serial ist in Firefox/Safari und auf Mobilgeraeten nicht verfuegbar).
 
 3. Waehle **Empfohlen** oder **Mit BLE**, klicke auf die zugehoerige
-   Schaltflaeche, waehle den seriellen Port und bestaetige.
+   Schaltflaeche, waehle den seriellen Port und bestaetige. Der Installer
+   erkennt den angeschlossenen Chip automatisch - du musst ihn nicht selbst
+   auswaehlen.
 
 4. Warte, bis der Fortschrittsbalken fertig ist, und fahre dann mit
    [First boot & WiFi setup](/gekko/de/getting-started/first-boot-wifi/) fort.
@@ -60,18 +67,18 @@ Binaries.
     2. Lege es neben die Skripte im `webflash/`-Ordner des Repositories
        (unter macOS/Linux in `esptool` umbenennen, unter Windows in
        `esptool.exe`).
-    3. Starte `webflash/flash.sh [PORT]` (macOS/Linux) oder
-       `webflash/flash.bat [PORT]` (Windows). Ohne Port-Argument erkennt
+    3. Starte `webflash/flash.sh [default|ble] [CHIP] [PORT]` (macOS/Linux)
+       oder `webflash/flash.bat [default|ble] [CHIP] [PORT]` (Windows), wobei
+       `CHIP` eines von `esp32` (Standard), `esp32s2`, `esp32s3`, `esp32c3`,
+       `esp32c6` ist - passend zu deinem Board. Ohne Port-Argument erkennt
        esptool den Port automatisch.
-       Fuer das BLE-CI-Paket nutze `flash.sh ble [PORT]` oder
-       `flash.bat ble [PORT]`.
 
   </TabItem>
   <TabItem label="Python">
 
     ```sh
     pip install esptool
-    python3 webflash/flash.py [default|ble] [PORT]
+    python3 webflash/flash.py [default|ble] [CHIP] [PORT]
     ```
 
   </TabItem>
@@ -89,6 +96,9 @@ pio run -e esp32dev -t uploadfs
 # Mit BLE
 pio run -e esp32dev_ble -t upload
 pio run -e esp32dev_ble -t uploadfs
+
+# Andere Chips: esp32s3[_ble], esp32c3[_ble], esp32s2, esp32c6
+pio run -e esp32s3_ble -t upload
 ```
 
 Siehe `CLAUDE.md` und `docs/platformio-environments.md` im Repository fuer

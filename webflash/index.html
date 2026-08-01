@@ -44,12 +44,12 @@
 </head>
 <body>
   <h1>Gekko Web Installer</h1>
-  <p>Connect the ESP32 to your computer via USB and choose a firmware variant.</p>
+  <p>Connect your board (classic ESP32, ESP32-S2, ESP32-S3, ESP32-C3, or ESP32-C6) to your computer via USB and choose a firmware variant — the installer detects the connected chip automatically.</p>
 
   <div class="variants">
     <section class="variant">
       <h2>Recommended</h2>
-      <p>No BLE provisioning or its setup-button GPIO reservation. WiFi setup through the access point and web portal remains available. Install this unless you specifically need BLE.</p>
+      <p>No BLE provisioning or its setup-button GPIO reservation. WiFi setup through the access point and web portal remains available. Install this unless you specifically need BLE. Works on any of the 5 supported chips.</p>
       <esp-web-install-button manifest="manifest.json">
         <button slot="activate">Install firmware</button>
         <span slot="unsupported">Your browser doesn't support Web Serial. Open this page in Chrome or Edge.</span>
@@ -59,7 +59,7 @@
 
     <section class="variant">
       <h2>With BLE</h2>
-      <p>Adds BLE WiFi provisioning and the setup button on GPIO 32, at the cost of flash/RAM most users don't need.</p>
+      <p>Adds BLE WiFi provisioning and the setup button on GPIO 32, at the cost of flash/RAM most users don't need. Only available for classic ESP32, ESP32-S3, and ESP32-C3 — ESP32-S2 has no BLE radio and ESP32-C6 hits a framework linker conflict (see docs/esp32-board-models.md).</p>
       <esp-web-install-button manifest="ble/manifest.json">
         <button slot="activate">Install firmware with BLE</button>
         <span slot="unsupported">Your browser doesn't support Web Serial. Open this page in Chrome or Edge.</span>

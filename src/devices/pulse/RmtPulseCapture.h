@@ -8,6 +8,7 @@
 #if defined(SOC_RMT_CHANNELS_PER_GROUP) && SOC_RMT_CHANNELS_PER_GROUP > 0
 #define EWFM_HAS_RMT_PULSE_CAPTURE 1
 #include <esp32-hal-rmt.h>
+#include <esp_arduino_version.h>
 #endif
 #endif
 
@@ -51,7 +52,9 @@ public:
 private:
 #if EWFM_HAS_RMT_PULSE_CAPTURE
     static constexpr size_t kRmtItems = 64U;
+#if ESP_ARDUINO_VERSION_MAJOR < 3
     rmt_obj_t* handle_{nullptr};
+#endif
     uint8_t pin_{0xFFU};
     rmt_data_t items_[kRmtItems]{};
 #endif

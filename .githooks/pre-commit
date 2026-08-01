@@ -1,32 +1,8 @@
 #!/usr/bin/env sh
-# Local pre-commit: tests -> build SPA -> build firmware -> add result to the commit.
-# Activation (once per clone): git config core.hooksPath .githooks
-set -eu
-
-ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-cd "$ROOT_DIR"
-
-echo "==> lint + native tests"
-scripts/test.sh
-
-echo "==> SPA build -> data/"
-(cd portal-spa && pnpm deploy:data)
-
-echo "==> firmware build (esp32dev)"
-pio run -e esp32dev
-pio run -e esp32dev -t buildfs
-
-echo "==> collect flashable binaries into webflash/"
-python3 scripts/collect_webflash.py \
-    --build-dir .pio/build/esp32dev \
-    --output-dir webflash \
-    --partitions my_partitions.csv
-
-git add data/ \
-    webflash/bootloader.bin \
-    webflash/partitions.bin \
-    webflash/firmware.bin \
-    webflash/littlefs.bin \
-    webflash/merged-firmware.bin \
-    webflash/manifest.json \
-    webflash/flash-layout.env
+# All builds and tests (native unit tests, per-chip firmware, SPA, webflash
+# bundles) now run in CI (see .github/workflows/build.yml). data/ and
+# webflash/*.bin are no longer git-tracked build outputs -- CI produces them
+# as workflow artifacts / release assets / GitHub Pages deploys instead.
+# This hook is intentionally a no-op; `git config core.hooksPath .githooks`
+# can be left in place or unset, it makes no difference now.
+exit 0

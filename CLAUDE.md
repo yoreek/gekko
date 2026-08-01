@@ -25,20 +25,22 @@ pio test -e native            # run Unity unit tests on host
 cd portal-spa
 pnpm dev                      # dev server
 pnpm build                    # TypeScript check + Vite build
-pnpm deploy:data              # build + copy gzipped assets into git-tracked data/
+pnpm deploy:data              # build + refresh gitignored data/ (for local hardware testing)
 pnpm test:unit                # Node.js unit tests
 pnpm smoke                    # Playwright end-to-end tests
 ```
 
 SPA browser validation uses Playwright only, against `http://127.0.0.1:5176/?mockMode=1&mockReset=1`. Do not open preview servers for visual checks unless explicitly asked.
 
-### Committing
+### Before committing
 
-The `.githooks/pre-commit` hook rebuilds the SPA + firmware and runs `git add data/ webflash/...` to fold the regenerated build outputs into the commit. Because of that:
+`.githooks/pre-commit` is a no-op — CI is what covers the full matrix (every chip firmware env, native unit tests, SPA tests, webflash bundles) on every push, not a local hook. Before committing, run a smaller, selective check by hand based on what actually changed, rather than the whole matrix:
 
-- Stage with `git add <files>` and then run a plain `git commit` — **do not** commit with explicit pathspecs (`git commit -- <files>`), which excludes the files the hook stages and leaves `data/`/`webflash/` dirty afterward.
-- Keep the SPA build reproducible (never inject wall-clock time into the bundle) so `data/*.gz` doesn't churn on every commit. See **`docs/frontend-deployment.md` → "Pre-commit Hook & Reproducible Builds"**.
-- If a commit is rejected mid-hook, run `git reset` (index only) to drop hook-staged leftovers before retrying; never `git checkout`/`rm` on `data/` or `webflash/`.
+- **C++/firmware changes:** `scripts/test.sh` (lint + native unit tests), plus a sanity build of the main target, `pio run -e esp32dev`. Only build another chip env (`esp32s3`, `esp32c3`, `esp32s2`, `esp32c6`, `*_ble`) locally if the change specifically targets that chip/BLE path — otherwise leave it to CI.
+- **SPA changes (`portal-spa/`):** `pnpm test:unit` and `pnpm build` as a sanity check. Run `pnpm deploy:data` instead only if you also need a fresh `data/` for local hardware testing.
+- **Docs-only / config-only changes:** no local build needed.
+
+`git add <files>` + `git commit` is enough — `data/` and `webflash/*.bin` are gitignored CI outputs, never committed; see **`docs/frontend-deployment.md` → "CI Builds Everything"**.
 
 ## Architecture
 
@@ -91,7 +93,7 @@ Vue 3 + Vuetify 4 SPA. Uses `pnpm`. State is managed with Pinia. Real-time updat
 
 ### Data folder
 
-`data/` contains the gzipped LittleFS assets served by the firmware. It is updated by `pnpm deploy:data` in `portal-spa/`. The LittleFS partition is 640 KiB (`my_partitions.csv`); `portal-spa/scripts/check-data-budget.mjs` enforces this as a soft ceiling on the gzip payload, but LittleFS itself spends some of that on per-file/block overhead — confirm with `pio run -t buildfs` before shipping if usage is close to the line. Run `pio run -t uploadfs` to push a refreshed `data/` to the device.
+`data/` contains the gzipped LittleFS assets served by the firmware. It is gitignored — a build output, not committed — produced by `pnpm deploy:data` in `portal-spa/` (locally, for hardware testing) or by CI (`.github/workflows/build.yml`'s `spa` job) before any firmware env is built. The LittleFS partition is 640 KiB (`my_partitions.csv`); `portal-spa/scripts/check-data-budget.mjs` enforces this as a soft ceiling on the gzip payload, but LittleFS itself spends some of that on per-file/block overhead — confirm with `pio run -t buildfs` before shipping if usage is close to the line. Run `pio run -t uploadfs` to push a refreshed `data/` to the device.
 
 ## Key Docs
 

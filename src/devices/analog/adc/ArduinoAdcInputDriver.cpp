@@ -27,9 +27,12 @@ adc_attenuation_t toArduinoAttenuation(AdcAttenuation attenuation) {
 bool ArduinoAdcInputDriver::configurePin(uint8_t pin, AdcAttenuation attenuation) {
 #if defined(ARDUINO)
     pinMode(pin, INPUT);
+#if ESP_ARDUINO_VERSION_MAJOR < 3
+    // Core 3.x attaches the ADC channel implicitly on first read; only 2.x needs this.
     if (!adcAttachPin(pin)) {
         return false;
     }
+#endif
     analogSetPinAttenuation(pin, toArduinoAttenuation(attenuation));
     return true;
 #else

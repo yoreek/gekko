@@ -1,6 +1,7 @@
 #include "platform/RandomBlobKey.h"
 
 #if defined(ARDUINO)
+#include <esp_random.h>
 #include <esp_system.h>
 #else
 #include <cstdlib>

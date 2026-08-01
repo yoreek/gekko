@@ -7,14 +7,19 @@ sidebar:
 
 ## La carte contrôleur
 
-Gekko cible l'**ESP32** classique (la puce dual-core d'origine) avec **4 Mo de
-flash** — la carte de développement standard de type « ESP32 DevKit » qui ne
-coûte généralement que quelques euros. C'est la configuration pour laquelle
-les binaires précompilés sont construits :
+Gekko fonctionne sur cinq puces de la famille ESP32, toutes avec des binaires
+précompilés : l'**ESP32** classique, l'**ESP32-S2**, l'**ESP32-S3**,
+l'**ESP32-C3** et l'**ESP32-C6** (le provisioning WiFi par BLE n'est disponible
+que sur ESP32/S3/C3 — voir le tableau ci-dessous). N'importe quelle carte «
+DevKit » standard pour ces puces convient, et toutes nécessitent **4 Mo de
+flash**. L'ESP32 classique est le choix le plus simple, le moins cher et le
+plus courant si vous n'avez pas déjà une carte précise — c'est la
+configuration à laquelle se réfère le reste de cette documentation sauf
+mention contraire :
 
 | Partition | Offset flash |
 | --- | --- |
-| Bootloader | `0x1000` |
+| Bootloader | `0x1000` (ESP32 classique / ESP32-S2), `0x0` (S3 / C3 / C6) |
 | Table des partitions | `0x8000` |
 | Firmware (application unique, sans OTA) | `0x10000` |
 | LittleFS (ressources du portail web) | `0x370000` |

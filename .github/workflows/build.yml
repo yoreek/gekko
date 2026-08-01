@@ -34,8 +34,68 @@ jobs:
       - name: Lint + native unit tests
         run: scripts/test.sh
 
-  ble-build:
+  spa:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: portal-spa/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: portal-spa
+        run: pnpm install --frozen-lockfile
+
+      - name: Unit tests
+        working-directory: portal-spa
+        run: pnpm test:unit
+
+      - name: Build + refresh data/ (LittleFS assets)
+        working-directory: portal-spa
+        run: pnpm deploy:data
+
+      - name: Upload SPA build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gekko-spa-dist-${{ github.sha }}
+          path: portal-spa/dist
+          if-no-files-found: error
+
+      - name: Upload data/ artifact (LittleFS assets)
+        uses: actions/upload-artifact@v4
+        with:
+          name: gekko-data-${{ github.sha }}
+          path: data
+          if-no-files-found: error
+
+  firmware:
+    needs: [test, spa]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env: esp32dev
+            chip: esp32
+          - env: esp32dev_ble
+            chip: esp32
+          - env: esp32s3
+            chip: esp32s3
+          - env: esp32s3_ble
+            chip: esp32s3
+          - env: esp32c3
+            chip: esp32c3
+          - env: esp32c3_ble
+            chip: esp32c3
+          - env: esp32s2
+            chip: esp32s2
+          - env: esp32c6
+            chip: esp32c6
     steps:
       - uses: actions/checkout@v4
 
@@ -51,50 +111,111 @@ jobs:
             ~/.cache/pip
           key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
 
-      - name: Install PlatformIO
-        run: pip install -U platformio
+      - name: Install PlatformIO + clang-format
+        run: |
+          pip install -U platformio
+          sudo apt-get update
+          sudo apt-get install -y clang-format
 
       - name: Prepare PlatformIO home dirs
         run: mkdir -p ~/.platformio/packages ~/.platformio/platforms
 
-      - name: Build firmware bundle with BLE provisioning
-        run: |
-          pio run -e esp32dev_ble
-          mkdir -p .pio/ble-staging
-          cp .pio/build/esp32dev_ble/bootloader.bin \
-             .pio/build/esp32dev_ble/partitions.bin \
-             .pio/build/esp32dev_ble/firmware.bin \
-             .pio/ble-staging/
-          pio run -e esp32dev_ble -t buildfs
-          cp .pio/build/esp32dev_ble/littlefs.bin .pio/ble-staging/
-          mkdir -p .pio/ble-distribution/ble
-          python3 scripts/collect_webflash.py \
-            --build-dir .pio/ble-staging \
-            --output-dir .pio/ble-distribution/ble \
-            --partitions my_partitions.csv
-          cp webflash/flash.sh webflash/flash.bat webflash/flash.py \
-            .pio/ble-distribution/
+      - name: Download data/ artifact (LittleFS assets)
+        uses: actions/download-artifact@v4
+        with:
+          name: gekko-data-${{ github.sha }}
+          path: data
 
-      - name: Upload BLE firmware bundle
+      - name: Regenerate board pin-capability header for ${{ matrix.chip }}
+        run: python3 tools/devicegen/generate_boards.py generate --chip ${{ matrix.chip }}
+
+      - name: Build firmware (${{ matrix.env }})
+        run: |
+          pio run -e ${{ matrix.env }}
+          pio run -e ${{ matrix.env }} -t buildfs
+
+      - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
-          name: gekko-esp32-ble-${{ github.sha }}
-          path: .pio/ble-distribution
+          name: gekko-firmware-${{ matrix.env }}-${{ github.sha }}
+          path: |
+            .pio/build/${{ matrix.env }}/bootloader.bin
+            .pio/build/${{ matrix.env }}/partitions.bin
+            .pio/build/${{ matrix.env }}/firmware.bin
+            .pio/build/${{ matrix.env }}/littlefs.bin
+          if-no-files-found: error
+
+  webflash:
+    needs: firmware
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - variant: default
+            envs: esp32dev:esp32 esp32s2:esp32s2 esp32s3:esp32s3 esp32c3:esp32c3 esp32c6:esp32c6
+          - variant: ble
+            envs: esp32dev_ble:esp32 esp32s3_ble:esp32s3 esp32c3_ble:esp32c3
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Fetch each chip's firmware artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: gekko-firmware-*-${{ github.sha }}
+          path: .pio/webflash-source
+          merge-multiple: false
+
+      - name: Assemble per-chip bundles + merged manifest
+        run: |
+          set -euo pipefail
+          out_dir=".pio/webflash-out/${{ matrix.variant }}"
+          mkdir -p "$out_dir"
+          for pair in ${{ matrix.envs }}; do
+            env_name="${pair%%:*}"
+            chip="${pair##*:}"
+            python3 scripts/collect_webflash.py \
+              --build-dir ".pio/webflash-source/gekko-firmware-${env_name}-${{ github.sha }}" \
+              --output-dir "$out_dir/$chip" \
+              --partitions my_partitions.csv \
+              --chip "$chip"
+          done
+          chips=()
+          for pair in ${{ matrix.envs }}; do
+            chips+=("${pair##*:}")
+          done
+          python3 scripts/merge_webflash_manifests.py --output-dir "$out_dir" --chips "${chips[@]}"
+          cp webflash/index.html webflash/flash.sh webflash/flash.bat webflash/flash.py "$out_dir/"
+
+      - name: Upload webflash bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: gekko-webflash-${{ matrix.variant }}-${{ github.sha }}
+          path: .pio/webflash-out/${{ matrix.variant }}
           if-no-files-found: error
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [test, ble-build]
+    needs: [test, webflash]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download BLE firmware bundle
+      - name: Download default webflash bundle
         uses: actions/download-artifact@v4
         with:
-          name: gekko-esp32-ble-${{ github.sha }}
+          name: gekko-webflash-default-${{ github.sha }}
+          path: .pio/release/default-source
+
+      - name: Download BLE webflash bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gekko-webflash-ble-${{ github.sha }}
           path: .pio/release/ble-source
 
       - name: Package release firmware
@@ -106,17 +227,8 @@ jobs:
           ble_name="gekko-esp32-ble-${GITHUB_REF_NAME}"
 
           mkdir -p "${release_root}/${default_name}"
-          cp webflash/bootloader.bin \
-             webflash/partitions.bin \
-             webflash/firmware.bin \
-             webflash/littlefs.bin \
-             webflash/merged-firmware.bin \
-             webflash/manifest.json \
-             webflash/flash-layout.env \
-             webflash/flash.sh \
-             webflash/flash.bat \
-             webflash/flash.py \
-             "${release_root}/${default_name}/"
+          cp -R "${release_root}/default-source/." \
+                "${release_root}/${default_name}/"
 
           mkdir -p "${release_root}/${ble_name}"
           cp -R "${release_root}/ble-source/." \

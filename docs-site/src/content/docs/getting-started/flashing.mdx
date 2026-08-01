@@ -8,20 +8,23 @@ sidebar:
 import { LinkButton, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 Ready-to-flash binaries (`bootloader.bin`, `partitions.bin`, `firmware.bin`,
-`littlefs.bin`) are built from every commit and include both the firmware and
-the web portal assets.
+`littlefs.bin`) are built from every commit for every supported chip (classic
+ESP32, ESP32-S2, ESP32-S3, ESP32-C3, ESP32-C6) and include both the firmware
+and the web portal assets.
 
 ## Choose a firmware variant
 
-| Variant | BLE WiFi provisioning | GPIO 32 | Setup access point and web portal |
-| --- | --- | --- | --- |
-| **Recommended** | Not compiled into the firmware | Available for another device | Available |
-| **With BLE** | Included | Reserved for the BLE activation button | Available |
+| Variant | BLE WiFi provisioning | GPIO 32 | Setup access point and web portal | Chips |
+| --- | --- | --- | --- | --- |
+| **Recommended** | Not compiled into the firmware | Available for another device | Available | ESP32, S2, S3, C3, C6 |
+| **With BLE** | Included | Reserved for the BLE activation button | Available | ESP32, S3, C3 only |
 
 Choose **Recommended** unless you specifically need WiFi provisioning from a
 mobile BLE application — it's a smaller firmware, and setup through the WiFi
 access point and web portal is available either way. Choose **With BLE** only
-when you need that BLE provisioning path.
+when you need that BLE provisioning path; it isn't built for ESP32-S2 (no BLE
+radio) or ESP32-C6 (a `pioarduino`/Arduino-ESP32 core 3.x framework linker
+conflict) — see `docs/esp32-board-models.md` in the repository for details.
 
 ## Option 1 — Web installer (easiest)
 
@@ -31,14 +34,15 @@ Flash directly from the browser, no software to install:
 
 <Steps>
 
-1. Connect the ESP32 board to your computer with a USB **data** cable.
+1. Connect your board to your computer with a USB **data** cable.
 
 2. Open the installer in **Chrome**, **Edge**, or **Opera** on desktop (Web
    Serial is not available in Firefox/Safari or on mobile).
 
 3. Choose **Recommended** or **With BLE**, click its install button, pick the
-   board's serial port in the browser dialog, and confirm. A first-time install
-   offers to erase the device.
+   board's serial port in the browser dialog, and confirm. The installer
+   detects which chip is connected automatically — no need to pick a chip
+   yourself. A first-time install offers to erase the device.
 
 4. Wait for the progress bar to finish, then continue with
    [First boot & WiFi setup](/gekko/getting-started/first-boot-wifi/).
@@ -60,17 +64,19 @@ below — they flash the exact same binaries.
        [esptool releases page](https://github.com/espressif/esptool/releases).
     2. Place it next to the scripts in the repository's `webflash/` folder
        (rename to `esptool` on macOS/Linux, `esptool.exe` on Windows).
-    3. Run `webflash/flash.sh [PORT]` (macOS/Linux) or `webflash/flash.bat
-       [PORT]` (Windows). Without a port argument, esptool auto-detects it.
-       For a downloaded BLE CI bundle, use `flash.sh ble [PORT]` or
-       `flash.bat ble [PORT]`.
+    3. Run `webflash/flash.sh [default|ble] [CHIP] [PORT]` (macOS/Linux) or
+       `webflash/flash.bat [default|ble] [CHIP] [PORT]` (Windows), where `CHIP`
+       is one of `esp32` (default), `esp32s2`, `esp32s3`, `esp32c3`, `esp32c6` —
+       match the board you actually have. Without a port argument, esptool
+       auto-detects it. For a downloaded BLE CI bundle, use `flash.sh ble
+       esp32c3 [PORT]` or `flash.bat ble esp32c3 [PORT]` (substitute your chip).
 
   </TabItem>
   <TabItem label="Python">
 
     ```sh
     pip install esptool
-    python3 webflash/flash.py [default|ble] [PORT]
+    python3 webflash/flash.py [default|ble] [CHIP] [PORT]
     ```
 
   </TabItem>
@@ -88,6 +94,9 @@ pio run -e esp32dev -t uploadfs
 # With BLE
 pio run -e esp32dev_ble -t upload
 pio run -e esp32dev_ble -t uploadfs
+
+# Other chips: esp32s3[_ble], esp32c3[_ble], esp32s2, esp32c6
+pio run -e esp32s3_ble -t upload
 ```
 
 See the repository's `CLAUDE.md` and `docs/platformio-environments.md` for the
